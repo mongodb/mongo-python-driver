@@ -59,7 +59,8 @@ class TestSecondaryBecomesStandalone(MockClientTest):
 
         with self.assertRaises(ServerSelectionTimeoutError):
             c.db.command("ping")
-        self.assertEqual(c.address, None)
+        with self.assertRaises(ServerSelectionTimeoutError):
+            _ = c.address
 
         # Client can still discover the primary node
         c.revive_host("a:1")

@@ -29,9 +29,9 @@ import time
 import traceback
 from asyncio import iscoroutinefunction
 from collections import defaultdict
-from test import (
-    IntegrationTest,
-    client_context,
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    async_client_context,
     client_knobs,
     unittest,
 )
@@ -49,9 +49,9 @@ from test.unified_format_shared import (
     with_metaclass,
 )
 from test.utils import (
+    async_get_pool,
     camel_to_snake,
     camel_to_snake_args,
-    get_pool,
     parse_spec_options,
     prepare_spec_arguments,
     snake_to_camel,
@@ -65,8 +65,15 @@ import pymongo
 from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
-from gridfs import GridFSBucket, GridOut
-from pymongo import ASCENDING, CursorType, MongoClient, _csot
+from gridfs import AsyncGridFSBucket, GridOut
+from pymongo import ASCENDING, AsyncMongoClient, CursorType, _csot
+from pymongo.asynchronous.change_stream import AsyncChangeStream
+from pymongo.asynchronous.client_session import AsyncClientSession, TransactionOptions, _TxnState
+from pymongo.asynchronous.collection import AsyncCollection
+from pymongo.asynchronous.command_cursor import AsyncCommandCursor
+from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.encryption import AsyncClientEncryption
+from pymongo.asynchronous.helpers import anext
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     BulkWriteError,
@@ -90,18 +97,11 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import ServerApi
 from pymongo.server_selectors import Selection, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous.change_stream import ChangeStream
-from pymongo.synchronous.client_session import ClientSession, TransactionOptions, _TxnState
-from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.database import Database
-from pymongo.synchronous.encryption import ClientEncryption
-from pymongo.synchronous.helpers import next
 from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 IS_INTERRUPTED = False
 
@@ -111,13 +111,13 @@ def interrupt_loop():
     IS_INTERRUPTED = True
 
 
-def is_run_on_requirement_satisfied(requirement):
+async def is_run_on_requirement_satisfied(requirement):
     topology_satisfied = True
     req_topologies = requirement.get("topologies")
     if req_topologies:
-        topology_satisfied = client_context.is_topology_type(req_topologies)
+        topology_satisfied = await async_client_context.is_topology_type(req_topologies)
 
-    server_version = Version(*client_context.version[:3])
+    server_version = Version(*async_client_context.version[:3])
 
     min_version_satisfied = True
     req_min_server_version = requirement.get("minServerVersion")
@@ -131,9 +131,9 @@ def is_run_on_requirement_satisfied(requirement):
 
     serverless = requirement.get("serverless")
     if serverless == "require":
-        serverless_satisfied = client_context.serverless
+        serverless_satisfied = async_client_context.serverless
     elif serverless == "forbid":
-        serverless_satisfied = not client_context.serverless
+        serverless_satisfied = not async_client_context.serverless
     else:  # unset or "allow"
         serverless_satisfied = True
 
@@ -141,20 +141,20 @@ def is_run_on_requirement_satisfied(requirement):
     params = requirement.get("serverParameters")
     if params:
         for param, val in params.items():
-            if param not in client_context.server_parameters:
+            if param not in async_client_context.server_parameters:
                 params_satisfied = False
-            elif client_context.server_parameters[param] != val:
+            elif async_client_context.server_parameters[param] != val:
                 params_satisfied = False
 
     auth_satisfied = True
     req_auth = requirement.get("auth")
     if req_auth is not None:
         if req_auth:
-            auth_satisfied = client_context.auth_enabled
+            auth_satisfied = async_client_context.auth_enabled
             if auth_satisfied and "authMechanism" in requirement:
-                auth_satisfied = client_context.check_auth_type(requirement["authMechanism"])
+                auth_satisfied = async_client_context.check_auth_type(requirement["authMechanism"])
         else:
-            auth_satisfied = not client_context.auth_enabled
+            auth_satisfied = not async_client_context.auth_enabled
 
     csfle_satisfied = True
     req_csfle = requirement.get("csfle")
@@ -183,11 +183,11 @@ class NonLazyCursor:
         self.first_result = None
 
     @classmethod
-    def create(cls, find_cursor, client):
+    async def create(cls, find_cursor, client):
         cursor = cls(find_cursor, client)
         try:
-            cursor.first_result = next(cursor.find_cursor)
-        except StopIteration:
+            cursor.first_result = await anext(cursor.find_cursor)
+        except StopAsyncIteration:
             cursor.first_result = None
         return cursor
 
@@ -195,18 +195,18 @@ class NonLazyCursor:
     def alive(self):
         return self.first_result is not None or self.find_cursor.alive
 
-    def __next__(self):
+    async def __anext__(self):
         if self.first_result is not None:
             first = self.first_result
             self.first_result = None
             return first
-        return next(self.find_cursor)
+        return await anext(self.find_cursor)
 
     # Added to support the iterateOnce operation.
-    try_next = __next__
+    try_next = __anext__
 
-    def close(self):
-        self.find_cursor.close()
+    async def close(self):
+        await self.find_cursor.close()
         self.client = None
 
 
@@ -256,7 +256,7 @@ class EntityMapUtil:
                 current[key] = self._handle_placeholders(spec, value, subpath)
         return current
 
-    def _create_entity(self, entity_spec, uri=None):
+    async def _create_entity(self, entity_spec, uri=None):
         if len(entity_spec) != 1:
             self.test.fail(f"Entity spec {entity_spec} did not contain exactly one top-level key")
 
@@ -283,10 +283,10 @@ class EntityMapUtil:
             self._listeners[spec["id"]] = listener
             kwargs["event_listeners"] = [listener]
             if spec.get("useMultipleMongoses"):
-                if client_context.load_balancer or client_context.serverless:
-                    kwargs["h"] = client_context.MULTI_MONGOS_LB_URI
-                elif client_context.is_mongos:
-                    kwargs["h"] = client_context.mongos_seeds()
+                if async_client_context.load_balancer or async_client_context.serverless:
+                    kwargs["h"] = async_client_context.MULTI_MONGOS_LB_URI
+                elif async_client_context.is_mongos:
+                    kwargs["h"] = async_client_context.mongos_seeds()
             kwargs.update(spec.get("uriOptions", {}))
             server_api = spec.get("serverApi")
             if "waitQueueSize" in kwargs:
@@ -301,15 +301,15 @@ class EntityMapUtil:
                 )
             if uri:
                 kwargs["h"] = uri
-            client = self.test.rs_or_single_client(**kwargs)
+            client = await self.test.async_rs_or_single_client(**kwargs)
             self[spec["id"]] = client
-            self.test.addCleanup(client.close)
+            self.test.addAsyncCleanup(client.close)
             return
         elif entity_type == "database":
             client = self[spec["client"]]
-            if type(client).__name__ != "MongoClient":
+            if type(client).__name__ != "AsyncMongoClient":
                 self.test.fail(
-                    "Expected entity {} to be of type MongoClient, got {}".format(
+                    "Expected entity {} to be of type AsyncMongoClient, got {}".format(
                         spec["client"], type(client)
                     )
                 )
@@ -318,9 +318,9 @@ class EntityMapUtil:
             return
         elif entity_type == "collection":
             database = self[spec["database"]]
-            if not isinstance(database, Database):
+            if not isinstance(database, AsyncDatabase):
                 self.test.fail(
-                    "Expected entity {} to be of type Database, got {}".format(
+                    "Expected entity {} to be of type AsyncDatabase, got {}".format(
                         spec["database"], type(database)
                     )
                 )
@@ -329,9 +329,9 @@ class EntityMapUtil:
             return
         elif entity_type == "session":
             client = self[spec["client"]]
-            if type(client).__name__ != "MongoClient":
+            if type(client).__name__ != "AsyncMongoClient":
                 self.test.fail(
-                    "Expected entity {} to be of type MongoClient, got {}".format(
+                    "Expected entity {} to be of type AsyncMongoClient, got {}".format(
                         spec["client"], type(client)
                     )
                 )
@@ -344,18 +344,18 @@ class EntityMapUtil:
             session = client.start_session(**dict(opts))
             self[spec["id"]] = session
             self._session_lsids[spec["id"]] = copy.deepcopy(session.session_id)
-            self.test.addCleanup(session.end_session)
+            self.test.addAsyncCleanup(session.end_session)
             return
         elif entity_type == "bucket":
             db = self[spec["database"]]
             kwargs = parse_spec_options(spec.get("bucketOptions", {}).copy())
-            bucket = GridFSBucket(db, **kwargs)
+            bucket = AsyncGridFSBucket(db, **kwargs)
 
-            # PyMongo does not support GridFSBucket.drop(), emulate it.
+            # PyMongo does not support AsyncGridFSBucket.drop(), emulate it.
             @_csot.apply
-            def drop(self: GridFSBucket, *args: Any, **kwargs: Any) -> None:
-                self._files.drop(*args, **kwargs)
-                self._chunks.drop(*args, **kwargs)
+            async def drop(self: AsyncGridFSBucket, *args: Any, **kwargs: Any) -> None:
+                await self._files.drop(*args, **kwargs)
+                await self._chunks.drop(*args, **kwargs)
 
             if not hasattr(bucket, "drop"):
                 bucket.drop = drop.__get__(bucket)
@@ -371,7 +371,7 @@ class EntityMapUtil:
                 provider_type = provider.split(":")[0]
                 if provider_type in KMS_TLS_OPTS:
                     kms_tls_options[provider] = KMS_TLS_OPTS[provider_type]
-            self[spec["id"]] = ClientEncryption(
+            self[spec["id"]] = AsyncClientEncryption(
                 opts["kms_providers"],
                 opts["key_vault_namespace"],
                 opts["key_vault_client"],
@@ -388,15 +388,15 @@ class EntityMapUtil:
 
         self.test.fail(f"Unable to create entity of unknown type {entity_type}")
 
-    def create_entities_from_spec(self, entity_spec, uri=None):
+    async def create_entities_from_spec(self, entity_spec, uri=None):
         for spec in entity_spec:
-            self._create_entity(spec, uri=uri)
+            await self._create_entity(spec, uri=uri)
 
     def get_listener_for_client(self, client_name: str) -> EventListenerUtil:
         client = self[client_name]
-        if type(client).__name__ != "MongoClient":
+        if type(client).__name__ != "AsyncMongoClient":
             self.test.fail(
-                f"Expected entity {client_name} to be of type MongoClient, got {type(client)}"
+                f"Expected entity {client_name} to be of type AsyncMongoClient, got {type(client)}"
             )
 
         listener = self._listeners.get(client_name)
@@ -407,9 +407,9 @@ class EntityMapUtil:
 
     def get_lsid_for_session(self, session_name):
         session = self[session_name]
-        if not isinstance(session, ClientSession):
+        if not isinstance(session, AsyncClientSession):
             self.test.fail(
-                f"Expected entity {session_name} to be of type ClientSession, got {type(session)}"
+                f"Expected entity {session_name} to be of type AsyncClientSession, got {type(session)}"
             )
 
         try:
@@ -418,16 +418,16 @@ class EntityMapUtil:
             # session has been closed.
             return self._session_lsids[session_name]
 
-    def advance_cluster_times(self) -> None:
+    async def advance_cluster_times(self) -> None:
         """Manually synchronize entities when desired"""
         if not self._cluster_time:
-            self._cluster_time = (self.test.client.admin.command("ping")).get("$clusterTime")
+            self._cluster_time = (await self.test.client.admin.command("ping")).get("$clusterTime")
         for entity in self._entities.values():
-            if isinstance(entity, ClientSession) and self._cluster_time:
+            if isinstance(entity, AsyncClientSession) and self._cluster_time:
                 entity.advance_cluster_time(self._cluster_time)
 
 
-class UnifiedSpecTestMixinV1(IntegrationTest):
+class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     """Mixin class to run test cases from test specification files.
 
     Assumes that tests conform to the `unified test format
@@ -441,20 +441,20 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
-    mongos_clients: list[MongoClient] = []
+    mongos_clients: list[AsyncMongoClient] = []
 
     @staticmethod
-    def should_run_on(run_on_spec):
+    async def should_run_on(run_on_spec):
         if not run_on_spec:
             # Always run these tests.
             return True
 
         for req in run_on_spec:
-            if is_run_on_requirement_satisfied(req):
+            if await is_run_on_requirement_satisfied(req):
                 return True
         return False
 
-    def insert_initial_data(self, initial_data):
+    async def insert_initial_data(self, initial_data):
         for i, collection_data in enumerate(initial_data):
             coll_name = collection_data["collectionName"]
             db_name = collection_data["databaseName"]
@@ -463,7 +463,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
             # Setup the collection with as few majority writes as possible.
             db = self.client[db_name]
-            db.drop_collection(coll_name)
+            await db.drop_collection(coll_name)
             # Only use majority wc only on the final write.
             if i == len(initial_data) - 1:
                 wc = WriteConcern(w="majority")
@@ -471,23 +471,23 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 wc = WriteConcern(w=1)
             if documents:
                 if opts:
-                    db.create_collection(coll_name, **opts)
-                db.get_collection(coll_name, write_concern=wc).insert_many(documents)
+                    await db.create_collection(coll_name, **opts)
+                await db.get_collection(coll_name, write_concern=wc).insert_many(documents)
             else:
                 # Ensure collection exists
-                db.create_collection(coll_name, write_concern=wc, **opts)
+                await db.create_collection(coll_name, write_concern=wc, **opts)
 
     @classmethod
-    def _setup_class(cls):
+    async def _setup_class(cls):
         # super call creates internal client cls.client
-        super()._setup_class()
+        await super()._setup_class()
         # process file-level runOnRequirements
         run_on_spec = cls.TEST_SPEC.get("runOnRequirements", [])
-        if not cls.should_run_on(run_on_spec):
+        if not await cls.should_run_on(run_on_spec):
             raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
 
         # add any special-casing for skipping tests here
-        if client_context.storage_engine == "mmapv1":
+        if async_client_context.storage_engine == "mmapv1":
             if "retryable-writes" in cls.TEST_SPEC["description"] or "retryable_writes" in str(
                 cls.TEST_PATH
             ):
@@ -496,12 +496,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # Handle mongos_clients for transactions tests.
         cls.mongos_clients = []
         if (
-            client_context.supports_transactions()
-            and not client_context.load_balancer
-            and not client_context.serverless
+            async_client_context.supports_transactions()
+            and not async_client_context.load_balancer
+            and not async_client_context.serverless
         ):
-            for address in client_context.mongoses:
-                cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
+            for address in async_client_context.mongoses:
+                cls.mongos_clients.append(
+                    await cls.unmanaged_async_single_client("{}:{}".format(*address))
+                )
 
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(
@@ -513,14 +515,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         cls.knobs.enable()
 
     @classmethod
-    def _tearDown_class(cls):
+    async def _tearDown_class(cls):
         cls.knobs.disable()
         for client in cls.mongos_clients:
-            client.close()
-        super()._tearDown_class()
+            await client.close()
+        await super()._tearDown_class()
 
-    def setUp(self):
-        super().setUp()
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
         # process schemaVersion
         # note: we check major schema version during class generation
         # note: we do this here because we cannot run assertions in setUpClass
@@ -536,7 +538,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
-        if client_context.storage_engine == "mmapv1":
+        if async_client_context.storage_engine == "mmapv1":
             if (
                 "Dirty explicit session is discarded" in spec["description"]
                 or "Dirty implicit session is discarded" in spec["description"]
@@ -544,13 +546,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             ):
                 self.skipTest("MMAPv1 does not support retryWrites=True")
         if (
-            "Database-level aggregate with $out includes read preference for 5.0+ server"
+            "AsyncDatabase-level aggregate with $out includes read preference for 5.0+ server"
             in spec["description"]
         ):
-            if client_context.version[0] == 8:
+            if async_client_context.version[0] == 8:
                 self.skipTest("waiting on PYTHON-4356")
         if "Aggregate with $out includes read preference for 5.0+ server" in spec["description"]:
-            if client_context.version[0] == 8:
+            if async_client_context.version[0] == 8:
                 self.skipTest("waiting on PYTHON-4356")
         if "Client side error in command starting transaction" in spec["description"]:
             self.skipTest("Implement PYTHON-1894")
@@ -562,7 +564,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "csot" in class_name:
             if "gridfs" in class_name and sys.platform == "win32":
                 self.skipTest("PYTHON-3522 CSOT GridFS tests are flaky on Windows")
-            if client_context.storage_engine == "mmapv1":
+            if async_client_context.storage_engine == "mmapv1":
                 self.skipTest(
                     "MMAPv1 does not support retryable writes which is required for CSOT tests"
                 )
@@ -586,12 +588,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.skipTest("PyMongo does not support count()")
             if name == "listIndexNames":
                 self.skipTest("PyMongo does not support list_index_names()")
-            if client_context.storage_engine == "mmapv1":
+            if async_client_context.storage_engine == "mmapv1":
                 if name == "createChangeStream":
                     self.skipTest("MMAPv1 does not support change streams")
                 if name == "withTransaction" or name == "startTransaction":
                     self.skipTest("MMAPv1 does not support document-level locking")
-            if not client_context.test_commands_enabled:
+            if not async_client_context.test_commands_enabled:
                 if name == "failPoint" or name == "targetedFailPoint":
                     self.skipTest("Test commands must be enabled to use fail points")
             if name == "modifyCollection":
@@ -695,36 +697,38 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if not isinstance(target, target_types):
             self.fail(f"Operation {opname} not supported for entity of type {type(target)}")
 
-    def __entityOperation_createChangeStream(self, target, *args, **kwargs):
-        if client_context.storage_engine == "mmapv1":
+    async def __entityOperation_createChangeStream(self, target, *args, **kwargs):
+        if async_client_context.storage_engine == "mmapv1":
             self.skipTest("MMAPv1 does not support change streams")
-        self.__raise_if_unsupported("createChangeStream", target, MongoClient, Database, Collection)
-        stream = target.watch(*args, **kwargs)
-        self.addCleanup(stream.close)
+        self.__raise_if_unsupported(
+            "createChangeStream", target, AsyncMongoClient, AsyncDatabase, AsyncCollection
+        )
+        stream = await target.watch(*args, **kwargs)
+        self.addAsyncCleanup(stream.close)
         return stream
 
-    def _clientOperation_createChangeStream(self, target, *args, **kwargs):
-        return self.__entityOperation_createChangeStream(target, *args, **kwargs)
+    async def _clientOperation_createChangeStream(self, target, *args, **kwargs):
+        return await self.__entityOperation_createChangeStream(target, *args, **kwargs)
 
-    def _databaseOperation_createChangeStream(self, target, *args, **kwargs):
-        return self.__entityOperation_createChangeStream(target, *args, **kwargs)
+    async def _databaseOperation_createChangeStream(self, target, *args, **kwargs):
+        return await self.__entityOperation_createChangeStream(target, *args, **kwargs)
 
-    def _collectionOperation_createChangeStream(self, target, *args, **kwargs):
-        return self.__entityOperation_createChangeStream(target, *args, **kwargs)
+    async def _collectionOperation_createChangeStream(self, target, *args, **kwargs):
+        return await self.__entityOperation_createChangeStream(target, *args, **kwargs)
 
-    def _databaseOperation_runCommand(self, target, **kwargs):
-        self.__raise_if_unsupported("runCommand", target, Database)
+    async def _databaseOperation_runCommand(self, target, **kwargs):
+        self.__raise_if_unsupported("runCommand", target, AsyncDatabase)
         # Ensure the first key is the command name.
         ordered_command = SON([(kwargs.pop("command_name"), 1)])
         ordered_command.update(kwargs["command"])
         kwargs["command"] = ordered_command
-        return target.command(**kwargs)
+        return await target.command(**kwargs)
 
-    def _databaseOperation_runCursorCommand(self, target, **kwargs):
-        return list(self._databaseOperation_createCommandCursor(target, **kwargs))
+    async def _databaseOperation_runCursorCommand(self, target, **kwargs):
+        return list(await self._databaseOperation_createCommandCursor(target, **kwargs))
 
-    def _databaseOperation_createCommandCursor(self, target, **kwargs):
-        self.__raise_if_unsupported("createCommandCursor", target, Database)
+    async def _databaseOperation_createCommandCursor(self, target, **kwargs):
+        self.__raise_if_unsupported("createCommandCursor", target, AsyncDatabase)
         # Ensure the first key is the command name.
         ordered_command = SON([(kwargs.pop("command_name"), 1)])
         ordered_command.update(kwargs["command"])
@@ -746,167 +750,173 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "batch_size" in kwargs:
             batch_size = kwargs.pop("batch_size")
 
-        cursor = target.cursor_command(**kwargs)
+        cursor = await target.cursor_command(**kwargs)
 
         if batch_size > 0:
             cursor.batch_size(batch_size)
 
         return cursor
 
-    def kill_all_sessions(self):
+    async def kill_all_sessions(self):
         if getattr(self, "client", None) is None:
             return
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
             try:
-                client.admin.command("killAllSessions", [])
+                await client.admin.command("killAllSessions", [])
             except OperationFailure:
                 # "operation was interrupted" by killing the command's
                 # own session.
                 pass
 
-    def _databaseOperation_listCollections(self, target, *args, **kwargs):
+    async def _databaseOperation_listCollections(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
             kwargs["cursor"] = {"batchSize": kwargs.pop("batch_size")}
-        cursor = target.list_collections(*args, **kwargs)
+        cursor = await target.list_collections(*args, **kwargs)
         return list(cursor)
 
-    def _databaseOperation_createCollection(self, target, *args, **kwargs):
+    async def _databaseOperation_createCollection(self, target, *args, **kwargs):
         # PYTHON-1936 Ignore the listCollections event from create_collection.
         kwargs["check_exists"] = False
-        ret = target.create_collection(*args, **kwargs)
+        ret = await target.create_collection(*args, **kwargs)
         return ret
 
-    def __entityOperation_aggregate(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("aggregate", target, Database, Collection)
-        return (target.aggregate(*args, **kwargs)).to_list()
+    async def __entityOperation_aggregate(self, target, *args, **kwargs):
+        self.__raise_if_unsupported("aggregate", target, AsyncDatabase, AsyncCollection)
+        return await (await target.aggregate(*args, **kwargs)).to_list()
 
-    def _databaseOperation_aggregate(self, target, *args, **kwargs):
-        return self.__entityOperation_aggregate(target, *args, **kwargs)
+    async def _databaseOperation_aggregate(self, target, *args, **kwargs):
+        return await self.__entityOperation_aggregate(target, *args, **kwargs)
 
-    def _collectionOperation_aggregate(self, target, *args, **kwargs):
-        return self.__entityOperation_aggregate(target, *args, **kwargs)
+    async def _collectionOperation_aggregate(self, target, *args, **kwargs):
+        return await self.__entityOperation_aggregate(target, *args, **kwargs)
 
-    def _collectionOperation_find(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("find", target, Collection)
+    async def _collectionOperation_find(self, target, *args, **kwargs):
+        self.__raise_if_unsupported("find", target, AsyncCollection)
         find_cursor = target.find(*args, **kwargs)
-        return find_cursor.to_list()
+        return await find_cursor.to_list()
 
-    def _collectionOperation_createFindCursor(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("find", target, Collection)
+    async def _collectionOperation_createFindCursor(self, target, *args, **kwargs):
+        self.__raise_if_unsupported("find", target, AsyncCollection)
         if "filter" not in kwargs:
             self.fail('createFindCursor requires a "filter" argument')
-        cursor = NonLazyCursor.create(target.find(*args, **kwargs), target.database.client)
-        self.addCleanup(cursor.close)
+        cursor = await NonLazyCursor.create(target.find(*args, **kwargs), target.database.client)
+        self.addAsyncCleanup(cursor.close)
         return cursor
 
     def _collectionOperation_count(self, target, *args, **kwargs):
         self.skipTest("PyMongo does not support collection.count()")
 
-    def _collectionOperation_listIndexes(self, target, *args, **kwargs):
+    async def _collectionOperation_listIndexes(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
             self.skipTest("PyMongo does not support batch_size for list_indexes")
-        return (target.list_indexes(*args, **kwargs)).to_list()
+        return await (await target.list_indexes(*args, **kwargs)).to_list()
 
     def _collectionOperation_listIndexNames(self, target, *args, **kwargs):
         self.skipTest("PyMongo does not support list_index_names")
 
-    def _collectionOperation_createSearchIndexes(self, target, *args, **kwargs):
+    async def _collectionOperation_createSearchIndexes(self, target, *args, **kwargs):
         models = [SearchIndexModel(**i) for i in kwargs["models"]]
-        return target.create_search_indexes(models)
+        return await target.create_search_indexes(models)
 
-    def _collectionOperation_listSearchIndexes(self, target, *args, **kwargs):
+    async def _collectionOperation_listSearchIndexes(self, target, *args, **kwargs):
         name = kwargs.get("name")
         agg_kwargs = kwargs.get("aggregation_options", dict())
-        return (target.list_search_indexes(name, **agg_kwargs)).to_list()
+        return await (await target.list_search_indexes(name, **agg_kwargs)).to_list()
 
-    def _sessionOperation_withTransaction(self, target, *args, **kwargs):
-        if client_context.storage_engine == "mmapv1":
+    async def _sessionOperation_withTransaction(self, target, *args, **kwargs):
+        if async_client_context.storage_engine == "mmapv1":
             self.skipTest("MMAPv1 does not support document-level locking")
-        self.__raise_if_unsupported("withTransaction", target, ClientSession)
-        return target.with_transaction(*args, **kwargs)
+        self.__raise_if_unsupported("withTransaction", target, AsyncClientSession)
+        return await target.with_transaction(*args, **kwargs)
 
-    def _sessionOperation_startTransaction(self, target, *args, **kwargs):
-        if client_context.storage_engine == "mmapv1":
+    async def _sessionOperation_startTransaction(self, target, *args, **kwargs):
+        if async_client_context.storage_engine == "mmapv1":
             self.skipTest("MMAPv1 does not support document-level locking")
-        self.__raise_if_unsupported("startTransaction", target, ClientSession)
-        return target.start_transaction(*args, **kwargs)
+        self.__raise_if_unsupported("startTransaction", target, AsyncClientSession)
+        return await target.start_transaction(*args, **kwargs)
 
-    def _changeStreamOperation_iterateUntilDocumentOrError(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("iterateUntilDocumentOrError", target, ChangeStream)
-        return next(target)
+    async def _changeStreamOperation_iterateUntilDocumentOrError(self, target, *args, **kwargs):
+        self.__raise_if_unsupported("iterateUntilDocumentOrError", target, AsyncChangeStream)
+        return await anext(target)
 
-    def _cursor_iterateUntilDocumentOrError(self, target, *args, **kwargs):
+    async def _cursor_iterateUntilDocumentOrError(self, target, *args, **kwargs):
         self.__raise_if_unsupported(
-            "iterateUntilDocumentOrError", target, NonLazyCursor, CommandCursor
+            "iterateUntilDocumentOrError", target, NonLazyCursor, AsyncCommandCursor
         )
         while target.alive:
             try:
-                return next(target)
-            except StopIteration:
+                return await anext(target)
+            except StopAsyncIteration:
                 pass
         return None
 
-    def _cursor_close(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("close", target, NonLazyCursor, CommandCursor)
-        return target.close()
+    async def _cursor_close(self, target, *args, **kwargs):
+        self.__raise_if_unsupported("close", target, NonLazyCursor, AsyncCommandCursor)
+        return await target.close()
 
-    def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
+    async def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
             kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
 
-        return target.create_data_key(*args, **kwargs)
+        return await target.create_data_key(*args, **kwargs)
 
-    def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
-        return (target.get_keys(*args, **kwargs)).to_list()
+    async def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
+        return await (await target.get_keys(*args, **kwargs)).to_list()
 
-    def _clientEncryptionOperation_deleteKey(self, target, *args, **kwargs):
-        result = target.delete_key(*args, **kwargs)
+    async def _clientEncryptionOperation_deleteKey(self, target, *args, **kwargs):
+        result = await target.delete_key(*args, **kwargs)
         response = result.raw_result
         response["deletedCount"] = result.deleted_count
         return response
 
-    def _clientEncryptionOperation_rewrapManyDataKey(self, target, *args, **kwargs):
+    async def _clientEncryptionOperation_rewrapManyDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
             kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
-        data = target.rewrap_many_data_key(*args, **kwargs)
+        data = await target.rewrap_many_data_key(*args, **kwargs)
         if data.bulk_write_result:
             return {"bulkWriteResult": parse_bulk_write_result(data.bulk_write_result)}
         return {}
 
-    def _clientEncryptionOperation_encrypt(self, target, *args, **kwargs):
+    async def _clientEncryptionOperation_encrypt(self, target, *args, **kwargs):
         if "opts" in kwargs:
             kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
-        return target.encrypt(*args, **kwargs)
+        return await target.encrypt(*args, **kwargs)
 
-    def _bucketOperation_download(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> bytes:
-        with target.open_download_stream(*args, **kwargs) as gout:
-            return gout.read()
-
-    def _bucketOperation_downloadByName(
-        self, target: GridFSBucket, *args: Any, **kwargs: Any
+    async def _bucketOperation_download(
+        self, target: AsyncGridFSBucket, *args: Any, **kwargs: Any
     ) -> bytes:
-        with target.open_download_stream_by_name(*args, **kwargs) as gout:
-            return gout.read()
+        async with await target.open_download_stream(*args, **kwargs) as gout:
+            return await gout.read()
 
-    def _bucketOperation_upload(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> ObjectId:
+    async def _bucketOperation_downloadByName(
+        self, target: AsyncGridFSBucket, *args: Any, **kwargs: Any
+    ) -> bytes:
+        async with await target.open_download_stream_by_name(*args, **kwargs) as gout:
+            return await gout.read()
+
+    async def _bucketOperation_upload(
+        self, target: AsyncGridFSBucket, *args: Any, **kwargs: Any
+    ) -> ObjectId:
         kwargs["source"] = binascii.unhexlify(kwargs.pop("source")["$$hexBytes"])
         if "content_type" in kwargs:
             kwargs.setdefault("metadata", {})["contentType"] = kwargs.pop("content_type")
-        return target.upload_from_stream(*args, **kwargs)
+        return await target.upload_from_stream(*args, **kwargs)
 
-    def _bucketOperation_uploadWithId(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> Any:
+    async def _bucketOperation_uploadWithId(
+        self, target: AsyncGridFSBucket, *args: Any, **kwargs: Any
+    ) -> Any:
         kwargs["source"] = binascii.unhexlify(kwargs.pop("source")["$$hexBytes"])
         if "content_type" in kwargs:
             kwargs.setdefault("metadata", {})["contentType"] = kwargs.pop("content_type")
-        return target.upload_from_stream_with_id(*args, **kwargs)
+        return await target.upload_from_stream_with_id(*args, **kwargs)
 
-    def _bucketOperation_find(
-        self, target: GridFSBucket, *args: Any, **kwargs: Any
+    async def _bucketOperation_find(
+        self, target: AsyncGridFSBucket, *args: Any, **kwargs: Any
     ) -> List[GridOut]:
-        return target.find(*args, **kwargs).to_list()
+        return await target.find(*args, **kwargs).to_list()
 
-    def run_entity_operation(self, spec):
+    async def run_entity_operation(self, spec):
         target = self.entity_map[spec["object"]]
         opname = spec["name"]
         opargs = spec.get("arguments")
@@ -931,30 +941,30 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         else:
             arguments = {}
 
-        if isinstance(target, MongoClient):
+        if isinstance(target, AsyncMongoClient):
             method_name = f"_clientOperation_{opname}"
-        elif isinstance(target, Database):
+        elif isinstance(target, AsyncDatabase):
             method_name = f"_databaseOperation_{opname}"
-        elif isinstance(target, Collection):
+        elif isinstance(target, AsyncCollection):
             method_name = f"_collectionOperation_{opname}"
             # contentType is always stored in metadata in pymongo.
             if target.name.endswith(".files") and opname == "find":
                 for doc in spec.get("expectResult", []):
                     if "contentType" in doc:
                         doc.setdefault("metadata", {})["contentType"] = doc.pop("contentType")
-        elif isinstance(target, ChangeStream):
+        elif isinstance(target, AsyncChangeStream):
             method_name = f"_changeStreamOperation_{opname}"
-        elif isinstance(target, (NonLazyCursor, CommandCursor)):
+        elif isinstance(target, (NonLazyCursor, AsyncCommandCursor)):
             method_name = f"_cursor_{opname}"
-        elif isinstance(target, ClientSession):
+        elif isinstance(target, AsyncClientSession):
             method_name = f"_sessionOperation_{opname}"
-        elif isinstance(target, GridFSBucket):
+        elif isinstance(target, AsyncGridFSBucket):
             method_name = f"_bucketOperation_{opname}"
             if "id" in arguments:
                 arguments["file_id"] = arguments.pop("id")
             # MD5 is always disabled in pymongo.
             arguments.pop("disable_md5", None)
-        elif isinstance(target, ClientEncryption):
+        elif isinstance(target, AsyncClientEncryption):
             method_name = f"_clientEncryptionOperation_{opname}"
         else:
             method_name = "doesNotExist"
@@ -979,9 +989,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if "timeout" in arguments:
                 timeout = arguments.pop("timeout")
                 with pymongo.timeout(timeout):
-                    result = cmd(**dict(arguments))
+                    result = await cmd(**dict(arguments))
             else:
-                result = cmd(**dict(arguments))
+                result = await cmd(**dict(arguments))
         except Exception as exc:
             # Ignore all operation errors but to avoid masking bugs don't
             # ignore things like TypeError and ValueError.
@@ -1007,23 +1017,23 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             return None
         return None
 
-    def __set_fail_point(self, client, command_args):
-        if not client_context.test_commands_enabled:
+    async def __set_fail_point(self, client, command_args):
+        if not async_client_context.test_commands_enabled:
             self.skipTest("Test commands must be enabled")
 
         cmd_on = SON([("configureFailPoint", "failCommand")])
         cmd_on.update(command_args)
-        client.admin.command(cmd_on)
-        self.addCleanup(
+        await client.admin.command(cmd_on)
+        self.addAsyncCleanup(
             client.admin.command, "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
         )
 
-    def _testOperation_failPoint(self, spec):
-        self.__set_fail_point(
+    async def _testOperation_failPoint(self, spec):
+        await self.__set_fail_point(
             client=self.entity_map[spec["client"]], command_args=spec["failPoint"]
         )
 
-    def _testOperation_targetedFailPoint(self, spec):
+    async def _testOperation_targetedFailPoint(self, spec):
         session = self.entity_map[spec["session"]]
         if not session._pinned_address:
             self.fail(
@@ -1032,13 +1042,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 )
             )
 
-        client = self.single_client("{}:{}".format(*session._pinned_address))
-        self.addCleanup(client.close)
-        self.__set_fail_point(client=client, command_args=spec["failPoint"])
+        client = await self.async_single_client("{}:{}".format(*session._pinned_address))
+        self.addAsyncCleanup(client.close)
+        await self.__set_fail_point(client=client, command_args=spec["failPoint"])
 
-    def _testOperation_createEntities(self, spec):
-        self.entity_map.create_entities_from_spec(spec["entities"], uri=self._uri)
-        self.entity_map.advance_cluster_times()
+    async def _testOperation_createEntities(self, spec):
+        await self.entity_map.create_entities_from_spec(spec["entities"], uri=self._uri)
+        await self.entity_map.advance_cluster_times()
 
     def _testOperation_assertSessionTransactionState(self, spec):
         session = self.entity_map[spec["session"]]
@@ -1082,31 +1092,35 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         session = self.entity_map[spec["session"]]
         return self.assertFalse(session._server_session.dirty)
 
-    def _testOperation_assertCollectionExists(self, spec):
+    async def _testOperation_assertCollectionExists(self, spec):
         database_name = spec["databaseName"]
         collection_name = spec["collectionName"]
-        collection_name_list = list(self.client.get_database(database_name).list_collection_names())
+        collection_name_list = list(
+            await self.client.get_database(database_name).list_collection_names()
+        )
         self.assertIn(collection_name, collection_name_list)
 
-    def _testOperation_assertCollectionNotExists(self, spec):
+    async def _testOperation_assertCollectionNotExists(self, spec):
         database_name = spec["databaseName"]
         collection_name = spec["collectionName"]
-        collection_name_list = list(self.client.get_database(database_name).list_collection_names())
+        collection_name_list = list(
+            await self.client.get_database(database_name).list_collection_names()
+        )
         self.assertNotIn(collection_name, collection_name_list)
 
-    def _testOperation_assertIndexExists(self, spec):
+    async def _testOperation_assertIndexExists(self, spec):
         collection = self.client[spec["databaseName"]][spec["collectionName"]]
-        index_names = [idx["name"] for idx in collection.list_indexes()]
+        index_names = [idx["name"] async for idx in await collection.list_indexes()]
         self.assertIn(spec["indexName"], index_names)
 
-    def _testOperation_assertIndexNotExists(self, spec):
+    async def _testOperation_assertIndexNotExists(self, spec):
         collection = self.client[spec["databaseName"]][spec["collectionName"]]
-        for index in collection.list_indexes():
+        async for index in await collection.list_indexes():
             self.assertNotEqual(spec["indexName"], index["name"])
 
-    def _testOperation_assertNumberConnectionsCheckedOut(self, spec):
+    async def _testOperation_assertNumberConnectionsCheckedOut(self, spec):
         client = self.entity_map[spec["client"]]
-        pool = get_pool(client)
+        pool = await async_get_pool(client)
         self.assertEqual(spec["connections"], pool.active_sockets)
 
     def _event_count(self, client_name, event):
@@ -1141,9 +1155,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             f"find {count} {event} event(s)",
         )
 
-    def _testOperation_wait(self, spec):
+    async def _testOperation_wait(self, spec):
         """Run the "wait" test operation."""
-        time.sleep(spec["ms"] / 1000.0)
+        await asyncio.sleep(spec["ms"] / 1000.0)
 
     def _testOperation_recordTopologyDescription(self, spec):
         """Run the recordTopologyDescription test operation."""
@@ -1191,7 +1205,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             raise thread.exc
         self.assertFalse(thread.is_alive(), "Thread {} is still running".format(spec["thread"]))
 
-    def _testOperation_loop(self, spec):
+    async def _testOperation_loop(self, spec):
         failure_key = spec.get("storeFailuresAsEntity")
         error_key = spec.get("storeErrorsAsEntity")
         successes_key = spec.get("storeSuccessesAsEntity")
@@ -1215,7 +1229,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 if iteration_key:
                     self.entity_map._entities[iteration_key] += 1
                 for op in spec["operations"]:
-                    self.run_entity_operation(op)
+                    await self.run_entity_operation(op)
                     if successes_key:
                         self.entity_map._entities[successes_key] += 1
             except Exception as exc:
@@ -1229,7 +1243,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                     {"error": str(exc), "time": time.time(), "type": type(exc).__name__}
                 )
 
-    def run_special_operation(self, spec):
+    async def run_special_operation(self, spec):
         opname = spec["name"]
         method_name = f"_testOperation_{opname}"
         try:
@@ -1238,23 +1252,23 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.fail(f"Unsupported special test operation {opname}")
         else:
             if iscoroutinefunction(method):
-                method(spec["arguments"])
+                await method(spec["arguments"])
             else:
                 method(spec["arguments"])
 
-    def run_operations(self, spec):
+    async def run_operations(self, spec):
         for op in spec:
             if op["object"] == "testRunner":
-                self.run_special_operation(op)
+                await self.run_special_operation(op)
             else:
-                self.run_entity_operation(op)
+                await self.run_entity_operation(op)
 
-    def run_operations_and_throw(self, spec):
+    async def run_operations_and_throw(self, spec):
         for op in spec:
             if op["object"] == "testRunner":
-                self.run_special_operation(op)
+                await self.run_special_operation(op)
             else:
-                result = self.run_entity_operation(op)
+                result = await self.run_entity_operation(op)
                 if isinstance(result, Exception):
                     raise result
 
@@ -1307,7 +1321,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 final_logs.append(log)
         return final_logs
 
-    def check_log_messages(self, operations, spec):
+    async def check_log_messages(self, operations, spec):
         def format_logs(log_list):
             client_to_log = defaultdict(list)
             for log in log_list:
@@ -1325,7 +1339,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             return client_to_log
 
         with self.assertLogs("pymongo", level="DEBUG") as cm:
-            self.run_operations(operations)
+            await self.run_operations(operations)
             formatted_logs = format_logs(cm.records)
             for client in spec:
                 components = set()
@@ -1362,7 +1376,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                     self.match_evaluator.match_result(expected_data, actual_data)
                     self.match_evaluator.match_result(expected_msg, actual_msg)
 
-    def verify_outcome(self, spec):
+    async def verify_outcome(self, spec):
         for collection_data in spec:
             coll_name = collection_data["collectionName"]
             db_name = collection_data["databaseName"]
@@ -1376,25 +1390,25 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
             if expected_documents:
                 sorted_expected_documents = sorted(expected_documents, key=lambda doc: doc["_id"])
-                actual_documents = coll.find({}, sort=[("_id", ASCENDING)]).to_list()
+                actual_documents = await coll.find({}, sort=[("_id", ASCENDING)]).to_list()
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
-    def run_scenario(self, spec, uri=None):
+    async def run_scenario(self, spec, uri=None):
         if "csot" in self.id().lower() and SKIP_CSOT_TESTS:
             raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
 
         # Kill all sessions before and after each test to prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
-        self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
+        await self.kill_all_sessions()
+        self.addAsyncCleanup(self.kill_all_sessions)
 
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
             attempts = 3
             for i in range(attempts):
                 try:
-                    return self._run_scenario(spec, uri)
+                    return await self._run_scenario(spec, uri)
                 except AssertionError:
                     if i < attempts - 1:
                         print(
@@ -1402,21 +1416,21 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                             f"{traceback.format_exc()}",
                             file=sys.stderr,
                         )
-                        self.setUp()
+                        await self.asyncSetUp()
                         continue
                     raise
             return None
         else:
-            self._run_scenario(spec, uri)
+            await self._run_scenario(spec, uri)
             return None
 
-    def _run_scenario(self, spec, uri=None):
+    async def _run_scenario(self, spec, uri=None):
         # maybe skip test manually
         self.maybe_skip_test(spec)
 
         # process test-level runOnRequirements
         run_on_spec = spec.get("runOnRequirements", [])
-        if not self.should_run_on(run_on_spec):
+        if not await self.should_run_on(run_on_spec):
             raise unittest.SkipTest("runOnRequirements not satisfied")
 
         # process skipReason
@@ -1427,20 +1441,22 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process createEntities
         self._uri = uri
         self.entity_map = EntityMapUtil(self)
-        self.entity_map.create_entities_from_spec(self.TEST_SPEC.get("createEntities", []), uri=uri)
+        await self.entity_map.create_entities_from_spec(
+            self.TEST_SPEC.get("createEntities", []), uri=uri
+        )
         # process initialData
         if "initialData" in self.TEST_SPEC:
-            self.insert_initial_data(self.TEST_SPEC["initialData"])
-            self._cluster_time = (self.client.admin.command("ping")).get("$clusterTime")
-            self.entity_map.advance_cluster_times()
+            await self.insert_initial_data(self.TEST_SPEC["initialData"])
+            self._cluster_time = (await self.client.admin.command("ping")).get("$clusterTime")
+            await self.entity_map.advance_cluster_times()
 
         if "expectLogMessages" in spec:
             expect_log_messages = spec["expectLogMessages"]
             self.assertTrue(expect_log_messages, "expectEvents must be non-empty")
-            self.check_log_messages(spec["operations"], expect_log_messages)
+            await self.check_log_messages(spec["operations"], expect_log_messages)
         else:
             # process operations
-            self.run_operations(spec["operations"])
+            await self.run_operations(spec["operations"])
 
         # process expectEvents
         if "expectEvents" in spec:
@@ -1449,7 +1465,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.check_events(expect_events)
 
         # process outcome
-        self.verify_outcome(spec.get("outcome", []))
+        await self.verify_outcome(spec.get("outcome", []))
 
 
 class UnifiedSpecTestMeta(type):
@@ -1462,8 +1478,8 @@ class UnifiedSpecTestMeta(type):
         super().__init__(*args, **kwargs)
 
         def create_test(spec):
-            def test_case(self):
-                self.run_scenario(spec)
+            async def test_case(self):
+                await self.run_scenario(spec)
 
             return test_case
 
