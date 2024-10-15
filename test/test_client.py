@@ -1977,6 +1977,22 @@ class TestClient(IntegrationTest):
             None,
         )
 
+    def test_handshake_09_container_with_provider(self):
+        self._test_handshake(
+            {
+                ENV_VAR_K8S: "1",
+                "AWS_LAMBDA_RUNTIME_API": "1",
+                "AWS_REGION": "us-east-1",
+                "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": "256",
+            },
+            {
+                "container": {"orchestrator": "kubernetes"},
+                "name": "aws.lambda",
+                "region": "us-east-1",
+                "memory_mb": 256,
+            },
+        )
+
     def test_dict_hints(self):
         self.db.t.find(hint={"x": 1})
 
