@@ -50,6 +50,7 @@ from test.unified_format_shared import (
 )
 from test.utils import (
     async_get_pool,
+    async_wait_until,
     camel_to_snake,
     camel_to_snake_args,
     parse_spec_options,
@@ -1144,13 +1145,13 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         client, event, count = spec["client"], spec["event"], spec["count"]
         self.assertEqual(self._event_count(client, event), count, f"expected {count} not {event!r}")
 
-    def _testOperation_waitForEvent(self, spec):
+    async def _testOperation_waitForEvent(self, spec):
         """Run the waitForEvent test operation.
 
         Wait for a number of events to be published, or fail.
         """
         client, event, count = spec["client"], spec["event"], spec["count"]
-        wait_until(
+        await async_wait_until(
             lambda: self._event_count(client, event) >= count,
             f"find {count} {event} event(s)",
         )
