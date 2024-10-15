@@ -26,8 +26,15 @@ ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
+MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080
-DISPLAY_LOOKUP = dict(ssl="SSL", nossl="NoSSL", auth="Auth", noauth="NoAuth")
+AUTH_SSLS = [("auth", "ssl"), ("noauth", "nossl")]
+SYNCS = ["sync", "async"]
+DISPLAY_LOOKUP = dict(
+    ssl=dict(ssl="SSL", nossl="NoSSL"),
+    auth=dict(auth="Auth", noauth="NoAuth"),
+    test_suites=dict(default="Sync", default_async="Async"),
+)
 HOSTS = dict()
 
 
@@ -115,8 +122,8 @@ def get_display_name(base: str, host: str, **kwargs) -> str:
                     name = "32-bit py" + value.split()[-1]
                 else:
                     name = f"py{value}"
-        elif key in DISPLAY_LOOKUP:
-            name = DISPLAY_LOOKUP[value]
+        elif key.lower() in DISPLAY_LOOKUP:
+            name = DISPLAY_LOOKUP[key.lower()][value]
         else:
             raise ValueError(f"Missing display handling for {key}")
         display_name = f"{display_name} {name}"
@@ -175,17 +182,15 @@ def create_ocsp_variants() -> list[BuildVariant]:
 
 
 def create_server_variants() -> list[BuildVariant]:
-    AUTH_SSLS = [("auth", "ssl"), ("noauth", "nossl"), ("auth", "nossl")]
     variants = []
 
     host = "rhel8"
-    for python, auth_ssl in product(ALL_PYTHONS, AUTH_SSLS):
-        auth, ssl = auth_ssl
+    for python, (auth, ssl) in product(ALL_PYTHONS, AUTH_SSLS):
         display_name = f"Test {host}"
-        display_name = get_display_name("Test", host, python=python, auth=auth, ssl=ssl)
         expansions = dict(AUTH=auth, SSL=ssl)
+        display_name = get_display_name("Test", host, python=python, **expansions)
         variant = create_variant(
-            [f".{v}" for v in ALL_VERSIONS],
+            [".sharded_cluster", ".standalone", ".replica_set"],
             display_name,
             python=python,
             host=host,
@@ -193,11 +198,14 @@ def create_server_variants() -> list[BuildVariant]:
         )
         variants.append(variant)
 
-    for host, python in product(["win64", "macos", "macos-arm64"], CPYTHONS):
-        expansions = dict(AUTH="auth", ssl="ssl")
-        display_name = get_display_name("Test", host, python=python, auth="auth", ssl="ssl")
+    for host, python, (auth, ssl), sync in product(
+        ["macos", "macos-arm64"], MIN_MAX_PYTHON, AUTH_SSLS, SYNCS
+    ):
+        test_suite = "default" if sync == "sync" else "default_async"
+        expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite)
+        display_name = get_display_name("Test", host, python=python, **expansions)
         variant = create_variant(
-            [f".{v} .sharded_cluster" for v in ALL_VERSIONS],
+            [".sharded_cluster"],
             display_name,
             python=python,
             host=host,
@@ -205,12 +213,16 @@ def create_server_variants() -> list[BuildVariant]:
         )
         variants.append(variant)
 
-    for python in ["32-bit " + p for p in CPYTHONS]:
-        host = "win64"
-        expansions = dict(AUTH="auth", ssl="ssl")
-        display_name = get_display_name("Test", host, python=python, auth="auth", ssl="ssl")
+    host = "win64"
+    for prefix, base, (auth, ssl), sync in product(
+        ["", "32-bit "], MIN_MAX_PYTHON, AUTH_SSLS, SYNCS
+    ):
+        python = f"{prefix} {base}"
+        test_suite = "default" if sync == "sync" else "default_async"
+        expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite)
+        display_name = get_display_name("Test", host, python=python, **expansions)
         variant = create_variant(
-            [f".{v} .sharded_cluster" for v in ALL_VERSIONS],
+            [".sharded_cluster"],
             display_name,
             python=python,
             host=host,

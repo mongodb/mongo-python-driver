@@ -409,6 +409,7 @@ functions:
             AUTH=${AUTH} \
             SSL=${SSL} \
             TEST_DATA_LAKE=${TEST_DATA_LAKE} \
+            TEST_SUITES=${TEST_SUITES} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
             SKIP_HATCH=${SKIP_HATCH} \
             bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
@@ -2402,14 +2403,9 @@ buildvariants:
 # Server Tests for RHEL8.
 - name: test-rhel8-py3.9-auth-ssl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 py3.9 Auth SSL
   run_on:
     - rhel87-small
@@ -2419,14 +2415,9 @@ buildvariants:
     PYTHON_BINARY: /opt/python/3.9/bin/python3
 - name: test-rhel8-py3.9-noauth-nossl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 py3.9 NoAuth NoSSL
   run_on:
     - rhel87-small
@@ -2434,33 +2425,11 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: test-rhel8-py3.9-auth-nossl
-  tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
-  display_name: Test RHEL8 py3.9 Auth NoSSL
-  run_on:
-    - rhel87-small
-  expansions:
-    AUTH: auth
-    SSL: nossl
-    PYTHON_BINARY: /opt/python/3.9/bin/python3
 - name: test-rhel8-py3.10-auth-ssl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 py3.10 Auth SSL
   run_on:
     - rhel87-small
@@ -2470,14 +2439,9 @@ buildvariants:
     PYTHON_BINARY: /opt/python/3.10/bin/python3
 - name: test-rhel8-py3.10-noauth-nossl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 py3.10 NoAuth NoSSL
   run_on:
     - rhel87-small
@@ -2485,33 +2449,11 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/3.10/bin/python3
-- name: test-rhel8-py3.10-auth-nossl
-  tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
-  display_name: Test RHEL8 py3.10 Auth NoSSL
-  run_on:
-    - rhel87-small
-  expansions:
-    AUTH: auth
-    SSL: nossl
-    PYTHON_BINARY: /opt/python/3.10/bin/python3
 - name: test-rhel8-py3.11-auth-ssl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 py3.11 Auth SSL
   run_on:
     - rhel87-small
@@ -2521,14 +2463,9 @@ buildvariants:
     PYTHON_BINARY: /opt/python/3.11/bin/python3
 - name: test-rhel8-py3.11-noauth-nossl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 py3.11 NoAuth NoSSL
   run_on:
     - rhel87-small
@@ -2536,33 +2473,11 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/3.11/bin/python3
-- name: test-rhel8-py3.11-auth-nossl
-  tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
-  display_name: Test RHEL8 py3.11 Auth NoSSL
-  run_on:
-    - rhel87-small
-  expansions:
-    AUTH: auth
-    SSL: nossl
-    PYTHON_BINARY: /opt/python/3.11/bin/python3
 - name: test-rhel8-py3.12-auth-ssl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 py3.12 Auth SSL
   run_on:
     - rhel87-small
@@ -2572,14 +2487,9 @@ buildvariants:
     PYTHON_BINARY: /opt/python/3.12/bin/python3
 - name: test-rhel8-py3.12-noauth-nossl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 py3.12 NoAuth NoSSL
   run_on:
     - rhel87-small
@@ -2587,33 +2497,11 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/3.12/bin/python3
-- name: test-rhel8-py3.12-auth-nossl
-  tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
-  display_name: Test RHEL8 py3.12 Auth NoSSL
-  run_on:
-    - rhel87-small
-  expansions:
-    AUTH: auth
-    SSL: nossl
-    PYTHON_BINARY: /opt/python/3.12/bin/python3
 - name: test-rhel8-py3.13-auth-ssl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 py3.13 Auth SSL
   run_on:
     - rhel87-small
@@ -2623,14 +2511,9 @@ buildvariants:
     PYTHON_BINARY: /opt/python/3.13/bin/python3
 - name: test-rhel8-py3.13-noauth-nossl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 py3.13 NoAuth NoSSL
   run_on:
     - rhel87-small
@@ -2638,33 +2521,11 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: test-rhel8-py3.13-auth-nossl
-  tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
-  display_name: Test RHEL8 py3.13 Auth NoSSL
-  run_on:
-    - rhel87-small
-  expansions:
-    AUTH: auth
-    SSL: nossl
-    PYTHON_BINARY: /opt/python/3.13/bin/python3
 - name: test-rhel8-pypy3.9-auth-ssl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 pypy3.9 Auth SSL
   run_on:
     - rhel87-small
@@ -2674,14 +2535,9 @@ buildvariants:
     PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
 - name: test-rhel8-pypy3.9-noauth-nossl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 pypy3.9 NoAuth NoSSL
   run_on:
     - rhel87-small
@@ -2689,33 +2545,11 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
-- name: test-rhel8-pypy3.9-auth-nossl
-  tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
-  display_name: Test RHEL8 pypy3.9 Auth NoSSL
-  run_on:
-    - rhel87-small
-  expansions:
-    AUTH: auth
-    SSL: nossl
-    PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
 - name: test-rhel8-pypy3.10-auth-ssl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 pypy3.10 Auth SSL
   run_on:
     - rhel87-small
@@ -2725,14 +2559,9 @@ buildvariants:
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 - name: test-rhel8-pypy3.10-noauth-nossl
   tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
+    - name: .sharded_cluster
+    - name: .standalone
+    - name: .replica_set
   display_name: Test RHEL8 pypy3.10 NoAuth NoSSL
   run_on:
     - rhel87-small
@@ -2740,370 +2569,365 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-- name: test-rhel8-pypy3.10-auth-nossl
-  tasks:
-    - name: .4.0
-    - name: .4.4
-    - name: .5.0
-    - name: .6.0
-    - name: .7.0
-    - name: .8.0
-    - name: .rapid
-    - name: .latest
-  display_name: Test RHEL8 pypy3.10 Auth NoSSL
-  run_on:
-    - rhel87-small
-  expansions:
-    AUTH: auth
-    SSL: nossl
-    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-
-# Server Tests for Windows.
-- name: test-win64-py3.9-auth-ssl
-  tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test Win64 py3.9 Auth SSL
-  run_on:
-    - windows-64-vsMulti-small
-  expansions:
-    AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: C:/python/Python39/python.exe
-- name: test-win64-py3.10-auth-ssl
-  tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test Win64 py3.10 Auth SSL
-  run_on:
-    - windows-64-vsMulti-small
-  expansions:
-    AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: C:/python/Python310/python.exe
-- name: test-win64-py3.11-auth-ssl
-  tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test Win64 py3.11 Auth SSL
-  run_on:
-    - windows-64-vsMulti-small
-  expansions:
-    AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: C:/python/Python311/python.exe
-- name: test-win64-py3.12-auth-ssl
-  tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test Win64 py3.12 Auth SSL
-  run_on:
-    - windows-64-vsMulti-small
-  expansions:
-    AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: C:/python/Python312/python.exe
-- name: test-win64-py3.13-auth-ssl
-  tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test Win64 py3.13 Auth SSL
-  run_on:
-    - windows-64-vsMulti-small
-  expansions:
-    AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: C:/python/Python313/python.exe
-- name: test-macos-py3.9-auth-ssl
-  tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test macOS py3.9 Auth SSL
-  run_on:
-    - macos-14
-  expansions:
-    AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
 
 # Server tests for MacOS.
-- name: test-macos-py3.10-auth-ssl
+- name: test-macos-py3.9-auth-ssl-sync
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test macOS py3.10 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test macOS py3.9 Auth SSL Sync
   run_on:
     - macos-14
   expansions:
     AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.10/bin/python3
-- name: test-macos-py3.11-auth-ssl
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+- name: test-macos-py3.9-auth-ssl-async
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test macOS py3.11 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test macOS py3.9 Auth SSL Async
   run_on:
     - macos-14
   expansions:
     AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.11/bin/python3
-- name: test-macos-py3.12-auth-ssl
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+- name: test-macos-py3.9-noauth-nossl-sync
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test macOS py3.12 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test macOS py3.9 NoAuth NoSSL Sync
+  run_on:
+    - macos-14
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+- name: test-macos-py3.9-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test macOS py3.9 NoAuth NoSSL Async
+  run_on:
+    - macos-14
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+- name: test-macos-py3.13-auth-ssl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test macOS py3.13 Auth SSL Sync
   run_on:
     - macos-14
   expansions:
     AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.12/bin/python3
-- name: test-macos-py3.13-auth-ssl
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+- name: test-macos-py3.13-auth-ssl-async
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test macOS py3.13 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test macOS py3.13 Auth SSL Async
   run_on:
     - macos-14
   expansions:
     AUTH: auth
-    ssl: ssl
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+- name: test-macos-py3.13-noauth-nossl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test macOS py3.13 NoAuth NoSSL Sync
+  run_on:
+    - macos-14
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+- name: test-macos-py3.13-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test macOS py3.13 NoAuth NoSSL Async
+  run_on:
+    - macos-14
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 
 # Server tests for macOS (arm).
-- name: test-macos-arm-py3.9-auth-ssl
+- name: test-macos-arm-py3.9-auth-ssl-sync
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test macOS (arm) py3.9 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test macOS (arm) py3.9 Auth SSL Sync
   run_on:
     - macos-14-arm64
   expansions:
     AUTH: auth
-    ssl: ssl
+    SSL: ssl
+    TEST_SUITES: default
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-- name: test-macos-arm-py3.10-auth-ssl
+- name: test-macos-arm-py3.9-auth-ssl-async
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test macOS (arm) py3.10 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test macOS (arm) py3.9 Auth SSL Async
   run_on:
     - macos-14-arm64
   expansions:
     AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.10/bin/python3
-- name: test-macos-arm-py3.11-auth-ssl
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+- name: test-macos-arm-py3.9-noauth-nossl-sync
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test macOS (arm) py3.11 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test macOS (arm) py3.9 NoAuth NoSSL Sync
+  run_on:
+    - macos-14-arm64
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+- name: test-macos-arm-py3.9-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test macOS (arm) py3.9 NoAuth NoSSL Async
+  run_on:
+    - macos-14-arm64
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+- name: test-macos-arm-py3.13-auth-ssl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test macOS (arm) py3.13 Auth SSL Sync
   run_on:
     - macos-14-arm64
   expansions:
     AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.11/bin/python3
-- name: test-macos-arm-py3.12-auth-ssl
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+- name: test-macos-arm-py3.13-auth-ssl-async
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test macOS (arm) py3.12 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test macOS (arm) py3.13 Auth SSL Async
   run_on:
     - macos-14-arm64
   expansions:
     AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.12/bin/python3
-- name: test-macos-arm-py3.13-auth-ssl
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+- name: test-macos-arm-py3.13-noauth-nossl-sync
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test macOS (arm) py3.13 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test macOS (arm) py3.13 NoAuth NoSSL Sync
   run_on:
     - macos-14-arm64
   expansions:
-    AUTH: auth
-    ssl: ssl
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+- name: test-macos-arm-py3.13-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test macOS (arm) py3.13 NoAuth NoSSL Async
+  run_on:
+    - macos-14-arm64
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 
+# Server tests for Windows.
+- name: test-win64-py-3.9-auth-ssl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 py 3.9 Auth SSL Sync
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/Python 39/python.exe
+- name: test-win64-py-3.9-auth-ssl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 py 3.9 Auth SSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/Python 39/python.exe
+- name: test-win64-py-3.9-noauth-nossl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 py 3.9 NoAuth NoSSL Sync
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/Python 39/python.exe
+- name: test-win64-py-3.9-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 py 3.9 NoAuth NoSSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/Python 39/python.exe
+- name: test-win64-py-3.13-auth-ssl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 py 3.13 Auth SSL Sync
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/Python 313/python.exe
+- name: test-win64-py-3.13-auth-ssl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 py 3.13 Auth SSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/Python 313/python.exe
+- name: test-win64-py-3.13-noauth-nossl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 py 3.13 NoAuth NoSSL Sync
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/Python 313/python.exe
+- name: test-win64-py-3.13-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 py 3.13 NoAuth NoSSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/Python 313/python.exe
+
 # Server tests for Windows (32-bit).
-- name: test-win64-32-bit-py3.9-auth-ssl
+- name: test-win64-32-bit-py3.9-auth-ssl-sync
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test Win64 32-bit py3.9 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test Win64 32-bit py3.9 Auth SSL Sync
   run_on:
     - windows-64-vsMulti-small
   expansions:
     AUTH: auth
-    ssl: ssl
+    SSL: ssl
+    TEST_SUITES: default
     PYTHON_BINARY: C:/python/32/Python39/python.exe
-- name: test-win64-32-bit-py3.10-auth-ssl
+- name: test-win64-32-bit-py3.9-auth-ssl-async
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test Win64 32-bit py3.10 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test Win64 32-bit py3.9 Auth SSL Async
   run_on:
     - windows-64-vsMulti-small
   expansions:
     AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: C:/python/32/Python310/python.exe
-- name: test-win64-32-bit-py3.11-auth-ssl
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/32/Python39/python.exe
+- name: test-win64-32-bit-py3.9-noauth-nossl-sync
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test Win64 32-bit py3.11 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test Win64 32-bit py3.9 NoAuth NoSSL Sync
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/32/Python39/python.exe
+- name: test-win64-32-bit-py3.9-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 32-bit py3.9 NoAuth NoSSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/32/Python39/python.exe
+- name: test-win64-32-bit-py3.13-auth-ssl-sync
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 32-bit py3.13 Auth SSL Sync
   run_on:
     - windows-64-vsMulti-small
   expansions:
     AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: C:/python/32/Python311/python.exe
-- name: test-win64-32-bit-py3.12-auth-ssl
+    SSL: ssl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/32/Python313/python.exe
+- name: test-win64-32-bit-py3.13-auth-ssl-async
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test Win64 32-bit py3.12 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test Win64 32-bit py3.13 Auth SSL Async
   run_on:
     - windows-64-vsMulti-small
   expansions:
     AUTH: auth
-    ssl: ssl
-    PYTHON_BINARY: C:/python/32/Python312/python.exe
-- name: test-win64-32-bit-py3.13-auth-ssl
+    SSL: ssl
+    TEST_SUITES: default_async
+    PYTHON_BINARY: C:/python/32/Python313/python.exe
+- name: test-win64-32-bit-py3.13-noauth-nossl-sync
   tasks:
-    - name: .4.0 .sharded_cluster
-    - name: .4.4 .sharded_cluster
-    - name: .5.0 .sharded_cluster
-    - name: .6.0 .sharded_cluster
-    - name: .7.0 .sharded_cluster
-    - name: .8.0 .sharded_cluster
-    - name: .rapid .sharded_cluster
-    - name: .latest .sharded_cluster
-  display_name: Test Win64 32-bit py3.13 Auth SSL
+    - name: .sharded_cluster
+  display_name: Test Win64 32-bit py3.13 NoAuth NoSSL Sync
   run_on:
     - windows-64-vsMulti-small
   expansions:
-    AUTH: auth
-    ssl: ssl
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default
+    PYTHON_BINARY: C:/python/32/Python313/python.exe
+- name: test-win64-32-bit-py3.13-noauth-nossl-async
+  tasks:
+    - name: .sharded_cluster
+  display_name: Test Win64 32-bit py3.13 NoAuth NoSSL Async
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: noauth
+    SSL: nossl
+    TEST_SUITES: default_async
     PYTHON_BINARY: C:/python/32/Python313/python.exe
 
 - matrix_name: "tests-fips"
