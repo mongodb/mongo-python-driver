@@ -2933,7 +2933,7 @@ buildvariants:
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 
 # Server tests for macOS (arm).
-- name: test-macos-(arm)-py3.9-auth-ssl
+- name: test-macos-arm-py3.9-auth-ssl
   tasks:
     - name: .4.0 .sharded_cluster
     - name: .4.4 .sharded_cluster
@@ -2950,7 +2950,7 @@ buildvariants:
     AUTH: auth
     ssl: ssl
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-- name: test-macos-(arm)-py3.10-auth-ssl
+- name: test-macos-arm-py3.10-auth-ssl
   tasks:
     - name: .4.0 .sharded_cluster
     - name: .4.4 .sharded_cluster
@@ -2967,7 +2967,7 @@ buildvariants:
     AUTH: auth
     ssl: ssl
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.10/bin/python3
-- name: test-macos-(arm)-py3.11-auth-ssl
+- name: test-macos-arm-py3.11-auth-ssl
   tasks:
     - name: .4.0 .sharded_cluster
     - name: .4.4 .sharded_cluster
@@ -2984,7 +2984,7 @@ buildvariants:
     AUTH: auth
     ssl: ssl
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.11/bin/python3
-- name: test-macos-(arm)-py3.12-auth-ssl
+- name: test-macos-arm-py3.12-auth-ssl
   tasks:
     - name: .4.0 .sharded_cluster
     - name: .4.4 .sharded_cluster
@@ -3001,7 +3001,7 @@ buildvariants:
     AUTH: auth
     ssl: ssl
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.12/bin/python3
-- name: test-macos-(arm)-py3.13-auth-ssl
+- name: test-macos-arm-py3.13-auth-ssl
   tasks:
     - name: .4.0 .sharded_cluster
     - name: .4.4 .sharded_cluster

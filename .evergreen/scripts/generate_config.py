@@ -64,7 +64,7 @@ def create_variant(
     expansions = kwargs.pop("expansions", dict()).copy()
     host = host or "rhel8"
     run_on = [HOSTS[host].run_on]
-    name = display_name.replace(" ", "-").lower()
+    name = display_name.replace(" ", "-").replace("(", "").replace(")", "").lower()
     if python:
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
     if version:
