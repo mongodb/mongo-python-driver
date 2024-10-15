@@ -192,6 +192,7 @@ converted_tests = [
     "test_client_context.py",
     "test_collation.py",
     "test_collection.py",
+    "test_collection_management.py",
     "test_command_logging.py",
     "test_command_logging.py",
     "test_command_monitoring.py",
