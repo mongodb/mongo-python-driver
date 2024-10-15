@@ -1,4 +1,4 @@
-# Copyright 2009-present MongoDB, Inc.
+# Copyright 2009-2024 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -70,6 +70,10 @@ class TestSearchIndexModel(TestOperationsBase):
 
     def test_repr(self):
         self.assertRepr(SearchIndexModel({"hello": "hello"}, key=1))
+        self.assertEqual(
+            repr(SearchIndexModel({"hello": "hello"}, key=1)),
+            "SearchIndexModel(definition={'hello': 'hello'}, key=1)",
+        )
 
 
 if __name__ == "__main__":
