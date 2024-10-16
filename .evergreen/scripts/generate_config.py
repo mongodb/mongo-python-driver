@@ -248,19 +248,20 @@ def create_encryption_variants() -> list[BuildVariant]:
     tags = ["encryption_tag"]
     batchtime = BATCHTIME_WEEK
 
-    def expansions_for_type(encryption, expansions):
+    def get_encryption_expansions(encryption, ssl="ssl"):
+        expansions = dict(AUTH="auth", SSL=ssl, test_encryption="true")
         if "crypt_shared" in encryption:
             expansions["TEST_CRYPT_SHARED"] = "true"
         if "PyOpenSSL" in encryption:
             expansions["TEST_ENCRYPTION_PYOPENSSL"] = "true"
+        return expansions
 
     host = "rhel8"
 
     # Test against all server versions and topolgies for the three main python versions.
     encryptions = ["Encryption", "Encryption crypt_shared", "Encryption PyOpenSSL"]
     for encryption, python in product(encryptions, [*MIN_MAX_PYTHON, PYPYS[-1]]):
-        expansions = dict(TEST_ENCRYPTION="true", AUTH="auth", SSL="ssl")
-        expansions_for_type(encryption, expansions)
+        expansions = get_encryption_expansions(encryption)
         display_name = get_display_name(encryption, host, python=python, **expansions)
         variant = create_variant(
             [f".{t}" for t in TOPOLOGIES],
@@ -277,8 +278,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     for encryption, python, ssl in zip_cycle(
         encryptions, CPYTHONS[1:-1] + PYPYS[:-1], ["ssl", "nossl"]
     ):
-        expansions = dict(AUTH="auth", SSL=ssl)
-        expansions_for_type(encryption, expansions)
+        expansions = get_encryption_expansions(encryption, ssl)
         display_name = get_display_name(encryption, host, python=python, **expansions)
         variant = create_variant(
             [".replica_set"],
@@ -294,8 +294,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     task_names = [".latest .replica_set"]
     for host, encryption, python in product(["macos", "win64"], encryptions, MIN_MAX_PYTHON):
         ssl = "ssl" if python == CPYTHONS[0] else "nossl"
-        expansions = dict(TEST_ENCRYPTION="true", AUTH="auth", SSL=ssl)
-        expansions_for_type(encryption, expansions)
+        expansions = get_encryption_expansions(encryption, ssl)
         display_name = get_display_name(encryption, host, python=python, **expansions)
         variant = create_variant(
             task_names,

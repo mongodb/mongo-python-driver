@@ -2849,9 +2849,9 @@ buildvariants:
     - rhel87-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     PYTHON_BINARY: /opt/python/3.9/bin/python3
   tags: [encryption_tag]
 - name: encryption-rhel8-py3.13-auth-ssl
@@ -2864,9 +2864,9 @@ buildvariants:
     - rhel87-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     PYTHON_BINARY: /opt/python/3.13/bin/python3
   tags: [encryption_tag]
 - name: encryption-rhel8-pypy3.10-auth-ssl
@@ -2879,9 +2879,9 @@ buildvariants:
     - rhel87-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
   tags: [encryption_tag]
 - name: encryption-crypt_shared-rhel8-py3.9-auth-ssl
@@ -2894,9 +2894,9 @@ buildvariants:
     - rhel87-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     TEST_CRYPT_SHARED: "true"
     PYTHON_BINARY: /opt/python/3.9/bin/python3
   tags: [encryption_tag]
@@ -2910,9 +2910,9 @@ buildvariants:
     - rhel87-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     TEST_CRYPT_SHARED: "true"
     PYTHON_BINARY: /opt/python/3.13/bin/python3
   tags: [encryption_tag]
@@ -2926,9 +2926,9 @@ buildvariants:
     - rhel87-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     TEST_CRYPT_SHARED: "true"
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
   tags: [encryption_tag]
@@ -2942,9 +2942,9 @@ buildvariants:
     - rhel87-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     TEST_ENCRYPTION_PYOPENSSL: "true"
     PYTHON_BINARY: /opt/python/3.9/bin/python3
   tags: [encryption_tag]
@@ -2958,9 +2958,9 @@ buildvariants:
     - rhel87-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     TEST_ENCRYPTION_PYOPENSSL: "true"
     PYTHON_BINARY: /opt/python/3.13/bin/python3
   tags: [encryption_tag]
@@ -2974,9 +2974,9 @@ buildvariants:
     - rhel87-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     TEST_ENCRYPTION_PYOPENSSL: "true"
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
   tags: [encryption_tag]
@@ -2989,6 +2989,7 @@ buildvariants:
   expansions:
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     PYTHON_BINARY: /opt/python/3.10/bin/python3
 - name: encryption-crypt_shared-rhel8-py3.11-auth-nossl
   tasks:
@@ -2999,6 +3000,7 @@ buildvariants:
   expansions:
     AUTH: auth
     SSL: nossl
+    test_encryption: "true"
     TEST_CRYPT_SHARED: "true"
     PYTHON_BINARY: /opt/python/3.11/bin/python3
 - name: encryption-pyopenssl-rhel8-py3.12-auth-ssl
@@ -3010,6 +3012,7 @@ buildvariants:
   expansions:
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     TEST_ENCRYPTION_PYOPENSSL: "true"
     PYTHON_BINARY: /opt/python/3.12/bin/python3
 - name: encryption-rhel8-pypy3.9-auth-nossl
@@ -3021,6 +3024,7 @@ buildvariants:
   expansions:
     AUTH: auth
     SSL: nossl
+    test_encryption: "true"
     PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
 - name: encryption-macos-py3.9-auth-ssl
   tasks:
@@ -3030,9 +3034,9 @@ buildvariants:
     - macos-14
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
   tags: [encryption_tag]
 - name: encryption-macos-py3.13-auth-nossl
@@ -3043,9 +3047,9 @@ buildvariants:
     - macos-14
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: nossl
+    test_encryption: "true"
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
   tags: [encryption_tag]
 - name: encryption-crypt_shared-macos-py3.9-auth-ssl
@@ -3056,9 +3060,9 @@ buildvariants:
     - macos-14
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     TEST_CRYPT_SHARED: "true"
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
   tags: [encryption_tag]
@@ -3070,9 +3074,9 @@ buildvariants:
     - macos-14
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: nossl
+    test_encryption: "true"
     TEST_CRYPT_SHARED: "true"
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
   tags: [encryption_tag]
@@ -3084,9 +3088,9 @@ buildvariants:
     - windows-64-vsMulti-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     PYTHON_BINARY: C:/python/Python39/python.exe
   tags: [encryption_tag]
 - name: encryption-win64-py3.13-auth-nossl
@@ -3097,9 +3101,9 @@ buildvariants:
     - windows-64-vsMulti-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: nossl
+    test_encryption: "true"
     PYTHON_BINARY: C:/python/Python313/python.exe
   tags: [encryption_tag]
 - name: encryption-crypt_shared-win64-py3.9-auth-ssl
@@ -3110,9 +3114,9 @@ buildvariants:
     - windows-64-vsMulti-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: ssl
+    test_encryption: "true"
     TEST_CRYPT_SHARED: "true"
     PYTHON_BINARY: C:/python/Python39/python.exe
   tags: [encryption_tag]
@@ -3124,9 +3128,9 @@ buildvariants:
     - windows-64-vsMulti-small
   batchtime: 10080
   expansions:
-    TEST_ENCRYPTION: "true"
     AUTH: auth
     SSL: nossl
+    test_encryption: "true"
     TEST_CRYPT_SHARED: "true"
     PYTHON_BINARY: C:/python/Python313/python.exe
   tags: [encryption_tag]
