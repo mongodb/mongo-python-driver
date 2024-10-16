@@ -478,6 +478,21 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 # Ensure collection exists
                 await db.create_collection(coll_name, write_concern=wc, **opts)
 
+    @classmethod
+    def setUpClass(cls) -> None:
+        # Speed up the tests by decreasing the heartbeat frequency.
+        cls.knobs = client_knobs(
+            heartbeat_frequency=0.1,
+            min_heartbeat_interval=0.1,
+            kill_cursor_frequency=0.1,
+            events_queue_frequency=0.1,
+        )
+        cls.knobs.enable()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.knobs.disable()
+
     async def asyncSetUp(self):
         # super call creates internal client cls.client
         await super().asyncSetUp()
@@ -503,15 +518,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             for address in async_client_context.mongoses:
                 self.mongos_clients.append(await self.async_single_client("{}:{}".format(*address)))
 
-        # Speed up the tests by decreasing the heartbeat frequency.
-        self.knobs = client_knobs(
-            heartbeat_frequency=0.1,
-            min_heartbeat_interval=0.1,
-            kill_cursor_frequency=0.1,
-            events_queue_frequency=0.1,
-        )
-        self.knobs.enable()
-
         # process schemaVersion
         # note: we check major schema version during class generation
         version = Version.from_string(self.TEST_SPEC["schemaVersion"])
@@ -525,7 +531,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         self.match_evaluator = MatchEvaluatorUtil(self)
 
     async def asyncTearDown(self):
-        self.knobs.disable()
         for client in self.mongos_clients:
             await client.close()
         await super().asyncTearDown()

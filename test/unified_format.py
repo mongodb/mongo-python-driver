@@ -477,6 +477,21 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 # Ensure collection exists
                 db.create_collection(coll_name, write_concern=wc, **opts)
 
+    @classmethod
+    def setUpClass(cls) -> None:
+        # Speed up the tests by decreasing the heartbeat frequency.
+        cls.knobs = client_knobs(
+            heartbeat_frequency=0.1,
+            min_heartbeat_interval=0.1,
+            kill_cursor_frequency=0.1,
+            events_queue_frequency=0.1,
+        )
+        cls.knobs.enable()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.knobs.disable()
+
     def setUp(self):
         # super call creates internal client cls.client
         super().setUp()
@@ -502,15 +517,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             for address in client_context.mongoses:
                 self.mongos_clients.append(self.single_client("{}:{}".format(*address)))
 
-        # Speed up the tests by decreasing the heartbeat frequency.
-        self.knobs = client_knobs(
-            heartbeat_frequency=0.1,
-            min_heartbeat_interval=0.1,
-            kill_cursor_frequency=0.1,
-            events_queue_frequency=0.1,
-        )
-        self.knobs.enable()
-
         # process schemaVersion
         # note: we check major schema version during class generation
         version = Version.from_string(self.TEST_SPEC["schemaVersion"])
@@ -524,7 +530,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.match_evaluator = MatchEvaluatorUtil(self)
 
     def tearDown(self):
-        self.knobs.disable()
         for client in self.mongos_clients:
             client.close()
         super().tearDown()
