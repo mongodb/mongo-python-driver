@@ -174,7 +174,9 @@ class Topology:
         self._opened = False
         self._closed = False
         self._lock = _async_create_lock()
-        self._condition = _async_create_condition(self._lock, self._settings.condition_class)
+        self._condition = _async_create_condition(
+            self._lock, self._settings.condition_class if _IS_SYNC else None
+        )
         self._servers: dict[_Address, Server] = {}
         self._pid: Optional[int] = None
         self._max_cluster_time: Optional[ClusterTime] = None

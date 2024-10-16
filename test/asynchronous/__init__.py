@@ -1149,7 +1149,7 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
 
     @async_client_context.require_connection
     async def asyncSetUp(self) -> None:
-        if not _IS_SYNC:
+        if not _IS_SYNC and async_client_context.client is not None:
             await reset_client_context()
         if async_client_context.load_balancer and not getattr(self, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")

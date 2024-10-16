@@ -23,7 +23,6 @@ import os
 import socket
 import ssl
 import sys
-import threading
 import time
 import weakref
 from typing import (
@@ -992,8 +991,8 @@ class Pool:
         self.conns: collections.deque = collections.deque()
         self.active_contexts: set[_CancellationContext] = set()
         self.lock = _async_create_lock()
-        self.size_cond = _async_create_condition(self.lock, threading.Condition)
-        self._max_connecting_cond = _async_create_condition(self.lock, threading.Condition)
+        self.size_cond = _async_create_condition(self.lock)
+        self._max_connecting_cond = _async_create_condition(self.lock)
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1

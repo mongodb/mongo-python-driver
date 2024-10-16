@@ -42,13 +42,21 @@ def _async_create_lock() -> asyncio.Lock:
     return asyncio.Lock()
 
 
-def _create_condition(lock: threading.Lock, dummy: Any) -> threading.Condition:
+def _create_condition(
+    lock: threading.Lock, condition_class: Optional[Any] = None
+) -> threading.Condition:
     """Represents a threading.Condition."""
+    if condition_class:
+        return condition_class(lock)
     return threading.Condition(lock)
 
 
-def _async_create_condition(lock: asyncio.Lock, dummy: Any) -> asyncio.Condition:
+def _async_create_condition(
+    lock: asyncio.Lock, condition_class: Optional[Any] = None
+) -> asyncio.Condition:
     """Represents an asyncio.Condition."""
+    if condition_class:
+        return condition_class(lock)
     return asyncio.Condition(lock)
 
 
