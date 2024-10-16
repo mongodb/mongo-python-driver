@@ -251,9 +251,9 @@ def create_encryption_variants() -> list[BuildVariant]:
     def get_encryption_expansions(encryption, ssl="ssl"):
         expansions = dict(AUTH="auth", SSL=ssl, test_encryption="true")
         if "crypt_shared" in encryption:
-            expansions["TEST_CRYPT_SHARED"] = "true"
+            expansions["test_crypt_shared"] = "true"
         if "PyOpenSSL" in encryption:
-            expansions["TEST_ENCRYPTION_PYOPENSSL"] = "true"
+            expansions["test_encryption_pyopenssl"] = "true"
         return expansions
 
     host = "rhel8"

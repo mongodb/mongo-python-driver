@@ -2897,7 +2897,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     test_encryption: "true"
-    TEST_CRYPT_SHARED: "true"
+    test_crypt_shared: "true"
     PYTHON_BINARY: /opt/python/3.9/bin/python3
   tags: [encryption_tag]
 - name: encryption-crypt_shared-rhel8-py3.13-auth-ssl
@@ -2913,7 +2913,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     test_encryption: "true"
-    TEST_CRYPT_SHARED: "true"
+    test_crypt_shared: "true"
     PYTHON_BINARY: /opt/python/3.13/bin/python3
   tags: [encryption_tag]
 - name: encryption-crypt_shared-rhel8-pypy3.10-auth-ssl
@@ -2929,7 +2929,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     test_encryption: "true"
-    TEST_CRYPT_SHARED: "true"
+    test_crypt_shared: "true"
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
   tags: [encryption_tag]
 - name: encryption-pyopenssl-rhel8-py3.9-auth-ssl
@@ -2945,7 +2945,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     test_encryption: "true"
-    TEST_ENCRYPTION_PYOPENSSL: "true"
+    test_encryption_pyopenssl: "true"
     PYTHON_BINARY: /opt/python/3.9/bin/python3
   tags: [encryption_tag]
 - name: encryption-pyopenssl-rhel8-py3.13-auth-ssl
@@ -2961,7 +2961,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     test_encryption: "true"
-    TEST_ENCRYPTION_PYOPENSSL: "true"
+    test_encryption_pyopenssl: "true"
     PYTHON_BINARY: /opt/python/3.13/bin/python3
   tags: [encryption_tag]
 - name: encryption-pyopenssl-rhel8-pypy3.10-auth-ssl
@@ -2977,7 +2977,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     test_encryption: "true"
-    TEST_ENCRYPTION_PYOPENSSL: "true"
+    test_encryption_pyopenssl: "true"
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
   tags: [encryption_tag]
 - name: encryption-rhel8-py3.10-auth-ssl
@@ -3001,7 +3001,7 @@ buildvariants:
     AUTH: auth
     SSL: nossl
     test_encryption: "true"
-    TEST_CRYPT_SHARED: "true"
+    test_crypt_shared: "true"
     PYTHON_BINARY: /opt/python/3.11/bin/python3
 - name: encryption-pyopenssl-rhel8-py3.12-auth-ssl
   tasks:
@@ -3063,7 +3063,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     test_encryption: "true"
-    TEST_CRYPT_SHARED: "true"
+    test_crypt_shared: "true"
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
   tags: [encryption_tag]
 - name: encryption-crypt_shared-macos-py3.13-auth-nossl
@@ -3077,7 +3077,7 @@ buildvariants:
     AUTH: auth
     SSL: nossl
     test_encryption: "true"
-    TEST_CRYPT_SHARED: "true"
+    test_crypt_shared: "true"
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
   tags: [encryption_tag]
 - name: encryption-win64-py3.9-auth-ssl
@@ -3117,7 +3117,7 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     test_encryption: "true"
-    TEST_CRYPT_SHARED: "true"
+    test_crypt_shared: "true"
     PYTHON_BINARY: C:/python/Python39/python.exe
   tags: [encryption_tag]
 - name: encryption-crypt_shared-win64-py3.13-auth-nossl
@@ -3131,7 +3131,7 @@ buildvariants:
     AUTH: auth
     SSL: nossl
     test_encryption: "true"
-    TEST_CRYPT_SHARED: "true"
+    test_crypt_shared: "true"
     PYTHON_BINARY: C:/python/Python313/python.exe
   tags: [encryption_tag]
 
