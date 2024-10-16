@@ -36,7 +36,6 @@ from test.asynchronous import (
     unittest,
 )
 from test.unified_format_shared import (
-    IS_INTERRUPTED,
     KMS_TLS_OPTS,
     PLACEHOLDER_MAP,
     SKIP_CSOT_TESTS,
@@ -103,6 +102,13 @@ from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = False
+
+IS_INTERRUPTED = False
+
+
+def interrupt_loop():
+    global IS_INTERRUPTED
+    IS_INTERRUPTED = True
 
 
 async def is_run_on_requirement_satisfied(requirement):
@@ -767,7 +773,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         if "batch_size" in kwargs:
             kwargs["cursor"] = {"batchSize": kwargs.pop("batch_size")}
         cursor = await target.list_collections(*args, **kwargs)
-        return list(cursor)
+        return await cursor.to_list()
 
     async def _databaseOperation_createCollection(self, target, *args, **kwargs):
         # PYTHON-1936 Ignore the listCollections event from create_collection.

@@ -14,6 +14,11 @@ PyMongo 4.11 brings a number of changes including:
 - Dropped support for MongoDB 3.6.
 - Added support for free-threaded Python with the GIL disabled. For more information see:
   `Free-threaded CPython <https://docs.python.org/3.13/whatsnew/3.13.html#whatsnew313-free-threaded-cpython>`_.
+- :attr:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.address` and
+  :attr:`~pymongo.mongo_client.MongoClient.address` now correctly block when called on unconnected clients
+  until either connection succeeds or a server selection timeout error is raised.
+- Added :func:`repr` support to :class:`pymongo.operations.IndexModel`.
+- Added :func:`repr` support to :class:`pymongo.operations.SearchIndexModel`.
 
 Issues Resolved
 ...............
