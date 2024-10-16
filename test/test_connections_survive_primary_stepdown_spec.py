@@ -44,30 +44,22 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
     listener: CMAPListener
     coll: Collection
 
-    @classmethod
+    def tearDown(self):
+        reset_client_context()
+
     @client_context.require_replica_set
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.listener = CMAPListener()
-        cls.client = cls.unmanaged_rs_or_single_client(
-            event_listeners=[cls.listener], retryWrites=False, heartbeatFrequencyMS=500
+    def setUp(self):
+        self.listener = CMAPListener()
+        self.client = self.rs_or_single_client(
+            event_listeners=[self.listener], retryWrites=False, heartbeatFrequencyMS=500
         )
 
         # Ensure connections to all servers in replica set. This is to test
         # that the is_writable flag is properly updated for connections that
         # survive a replica set election.
-        ensure_all_connected(cls.client)
-        cls.listener.reset()
-
-        cls.db = cls.client.get_database("step-down", write_concern=WriteConcern("majority"))
-        cls.coll = cls.db.get_collection("step-down", write_concern=WriteConcern("majority"))
-
-    @classmethod
-    def _tearDown_class(cls):
-        cls.client.close()
-        reset_client_context()
-
-    def setUp(self):
+        ensure_all_connected(self.client)
+        self.db = self.client.get_database("step-down", write_concern=WriteConcern("majority"))
+        self.coll = self.db.get_collection("step-down", write_concern=WriteConcern("majority"))
         # Note that all ops use same write-concern as self.db (majority).
         self.db.drop_collection("step-down")
         self.db.create_collection("step-down")

@@ -709,6 +709,7 @@ class TestDatabase(IntegrationTest):
 
 class TestDatabaseAggregation(IntegrationTest):
     def setUp(self):
+        super().setUp()
         self.pipeline: List[Mapping[str, Any]] = [
             {"$listLocalSessions": {}},
             {"$limit": 1},

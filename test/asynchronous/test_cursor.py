@@ -1647,10 +1647,6 @@ class TestRawBatchCursor(AsyncIntegrationTest):
 
 
 class TestRawBatchCommandCursor(AsyncIntegrationTest):
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
-
     async def test_aggregate_raw(self):
         c = self.db.test
         await c.drop()

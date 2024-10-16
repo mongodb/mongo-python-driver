@@ -97,28 +97,22 @@ class TestCollation(AsyncIntegrationTest):
     warn_context: Any
     collation: Collation
 
-    @classmethod
     @async_client_context.require_connection
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.listener = EventListener()
-        cls.client = await cls.unmanaged_async_rs_or_single_client(event_listeners=[cls.listener])
-        cls.db = cls.client.pymongo_test
-        cls.collation = Collation("en_US")
-        cls.warn_context = warnings.catch_warnings()
-        cls.warn_context.__enter__()
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.listener = EventListener()
+        self.client = await self.async_rs_or_single_client(event_listeners=[self.listener])
+        self.db = self.client.pymongo_test
+        self.collation = Collation("en_US")
+        self.warn_context = warnings.catch_warnings()
+        self.warn_context.__enter__()
         warnings.simplefilter("ignore", DeprecationWarning)
 
-    @classmethod
-    async def _tearDown_class(cls):
-        cls.warn_context.__exit__()
-        cls.warn_context = None
-        await cls.client.close()
-        await super()._tearDown_class()
-
-    def tearDown(self):
+    async def asyncTearDown(self) -> None:
+        self.warn_context.__exit__()
+        self.warn_context = None
         self.listener.reset()
-        super().tearDown()
+        await super().asyncTearDown()
 
     def last_command_started(self):
         return self.listener.started_events[-1].command
