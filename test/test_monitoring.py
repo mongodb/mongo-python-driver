@@ -51,22 +51,14 @@ class TestCommandMonitoring(IntegrationTest):
     listener: EventListener
 
     @classmethod
-    @client_context.require_connection
-    def _setup_class(cls):
-        super()._setup_class()
+    def setUpClass(cls) -> None:
         cls.listener = EventListener()
-        cls.client = cls.unmanaged_rs_or_single_client(
-            event_listeners=[cls.listener], retryWrites=False
-        )
 
-    @classmethod
-    def _tearDown_class(cls):
-        cls.client.close()
-        super()._tearDown_class()
-
-    def tearDown(self):
+    @client_context.require_connection
+    def setUp(self) -> None:
+        super().setUp()
         self.listener.reset()
-        super().tearDown()
+        self.client = self.rs_or_single_client(event_listeners=[self.listener], retryWrites=False)
 
     def test_started_simple(self):
         self.client.pymongo_test.command("ping")
@@ -1137,26 +1129,29 @@ class TestGlobalListener(IntegrationTest):
     saved_listeners: Any
 
     @classmethod
-    @client_context.require_connection
-    def _setup_class(cls):
-        super()._setup_class()
+    def setUpClass(cls) -> None:
         cls.listener = EventListener()
         # We plan to call register(), which internally modifies _LISTENERS.
         cls.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
         monitoring.register(cls.listener)
-        cls.client = cls.unmanaged_single_client()
-        # Get one (authenticated) socket in the pool.
-        cls.client.pymongo_test.command("ping")
 
-    @classmethod
-    def _tearDown_class(cls):
-        monitoring._LISTENERS = cls.saved_listeners
-        cls.client.close()
-        super()._tearDown_class()
-
+    @client_context.require_connection
     def setUp(self):
         super().setUp()
+        self.listener = EventListener()
+        # We plan to call register(), which internally modifies _LISTENERS.
+        self.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
+        monitoring.register(self.listener)
+        self.client = self.single_client()
+        # Get one (authenticated) socket in the pool.
+        self.client.pymongo_test.command("ping")
+
+    def tearDown(self) -> None:
         self.listener.reset()
+
+    @classmethod
+    def tearDownClass(cls):
+        monitoring._LISTENERS = cls.saved_listeners
 
     def test_simple(self):
         self.client.pymongo_test.command("ping")

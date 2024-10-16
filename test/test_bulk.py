@@ -42,15 +42,11 @@ class BulkTestBase(IntegrationTest):
     coll: Collection
     coll_w0: Collection
 
-    @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.coll = cls.db.test
-        cls.coll_w0 = cls.coll.with_options(write_concern=WriteConcern(w=0))
-
     def setUp(self):
         super().setUp()
+        self.coll = self.db.test
         self.coll.drop()
+        self.coll_w0 = self.coll.with_options(write_concern=WriteConcern(w=0))
 
     def assertEqualResponse(self, expected, actual):
         """Compare response from bulk.execute() to expected response."""
@@ -785,12 +781,8 @@ class TestBulk(BulkTestBase):
 
 
 class BulkAuthorizationTestBase(BulkTestBase):
-    @classmethod
     @client_context.require_auth
     @client_context.require_no_api_version
-    def _setup_class(cls):
-        super()._setup_class()
-
     def setUp(self):
         super().setUp()
         client_context.create_user(self.db.name, "readonly", "pw", ["read"])
@@ -935,21 +927,19 @@ class TestBulkWriteConcern(BulkTestBase):
     w: Optional[int]
     secondary: MongoClient
 
-    @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.w = client_context.w
-        cls.secondary = None
-        if cls.w is not None and cls.w > 1:
+    def setUp(self):
+        super().setUp()
+        self.w = client_context.w
+        self.secondary = None
+        if self.w is not None and self.w > 1:
             for member in (client_context.hello)["hosts"]:
                 if member != (client_context.hello)["primary"]:
-                    cls.secondary = cls.unmanaged_single_client(*partition_node(member))
+                    self.secondary = self.single_client(*partition_node(member))
                     break
 
-    @classmethod
-    def async_tearDownClass(cls):
-        if cls.secondary:
-            cls.secondary.close()
+    def tearDown(self):
+        if self.secondary:
+            self.secondary.close()
 
     def cause_wtimeout(self, requests, ordered):
         if not client_context.test_commands_enabled:

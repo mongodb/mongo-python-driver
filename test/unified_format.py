@@ -478,31 +478,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 db.create_collection(coll_name, write_concern=wc, **opts)
 
     @classmethod
-    def _setup_class(cls):
-        # super call creates internal client cls.client
-        super()._setup_class()
-        # process file-level runOnRequirements
-        run_on_spec = cls.TEST_SPEC.get("runOnRequirements", [])
-        if not cls.should_run_on(run_on_spec):
-            raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
-
-        # add any special-casing for skipping tests here
-        if client_context.storage_engine == "mmapv1":
-            if "retryable-writes" in cls.TEST_SPEC["description"] or "retryable_writes" in str(
-                cls.TEST_PATH
-            ):
-                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
-
-        # Handle mongos_clients for transactions tests.
-        cls.mongos_clients = []
-        if (
-            client_context.supports_transactions()
-            and not client_context.load_balancer
-            and not client_context.serverless
-        ):
-            for address in client_context.mongoses:
-                cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
-
+    def setUpClass(cls) -> None:
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(
             heartbeat_frequency=0.1,
@@ -513,17 +489,36 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         cls.knobs.enable()
 
     @classmethod
-    def _tearDown_class(cls):
+    def tearDownClass(cls) -> None:
         cls.knobs.disable()
-        for client in cls.mongos_clients:
-            client.close()
-        super()._tearDown_class()
 
     def setUp(self):
+        # super call creates internal client cls.client
         super().setUp()
+        # process file-level runOnRequirements
+        run_on_spec = self.TEST_SPEC.get("runOnRequirements", [])
+        if not self.should_run_on(run_on_spec):
+            raise unittest.SkipTest(f"{self.__class__.__name__} runOnRequirements not satisfied")
+
+        # add any special-casing for skipping tests here
+        if client_context.storage_engine == "mmapv1":
+            if "retryable-writes" in self.TEST_SPEC["description"] or "retryable_writes" in str(
+                self.TEST_PATH
+            ):
+                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
+
+        # Handle mongos_clients for transactions tests.
+        self.mongos_clients = []
+        if (
+            client_context.supports_transactions()
+            and not client_context.load_balancer
+            and not client_context.serverless
+        ):
+            for address in client_context.mongoses:
+                self.mongos_clients.append(self.single_client("{}:{}".format(*address)))
+
         # process schemaVersion
         # note: we check major schema version during class generation
-        # note: we do this here because we cannot run assertions in setUpClass
         version = Version.from_string(self.TEST_SPEC["schemaVersion"])
         self.assertLessEqual(
             version,
@@ -533,6 +528,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
+
+    def tearDown(self):
+        for client in self.mongos_clients:
+            client.close()
+        super().tearDown()
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here

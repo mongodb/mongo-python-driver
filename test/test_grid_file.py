@@ -97,6 +97,7 @@ class TestGridFileNoConnect(UnitTest):
 
 class TestGridFile(IntegrationTest):
     def setUp(self):
+        super().setUp()
         self.cleanup_colls(self.db.fs.files, self.db.fs.chunks)
 
     def test_basic(self):

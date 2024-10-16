@@ -97,6 +97,7 @@ class AsyncTestGridFileNoConnect(AsyncUnitTest):
 
 class AsyncTestGridFile(AsyncIntegrationTest):
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         await self.cleanup_colls(self.db.fs.files, self.db.fs.chunks)
 
     async def test_basic(self):

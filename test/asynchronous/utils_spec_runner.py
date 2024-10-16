@@ -249,29 +249,23 @@ class AsyncSpecRunner(AsyncIntegrationTest):
     knobs: client_knobs
     listener: EventListener
 
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.mongos_clients = []
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.mongos_clients = []
 
         # Speed up the tests by decreasing the heartbeat frequency.
-        cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
-        cls.knobs.enable()
-
-    @classmethod
-    async def _tearDown_class(cls):
-        cls.knobs.disable()
-        for client in cls.mongos_clients:
-            await client.close()
-        await super()._tearDown_class()
-
-    def setUp(self):
-        super().setUp()
+        self.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
+        self.knobs.enable()
         self.targets = {}
         self.listener = None  # type: ignore
         self.pool_listener = None
         self.server_listener = None
         self.maxDiff = None
+
+    async def asyncTearDown(self) -> None:
+        self.knobs.disable()
+        for client in self.mongos_clients:
+            await client.close()
 
     async def _set_fail_point(self, client, command_args):
         cmd = SON([("configureFailPoint", "failCommand")])

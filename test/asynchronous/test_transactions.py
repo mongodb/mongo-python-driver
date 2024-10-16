@@ -403,21 +403,12 @@ class PatchSessionTimeout:
 
 
 class TestTransactionsConvenientAPI(AsyncTransactionsBase):
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.mongos_clients = []
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.mongos_clients = []
         if async_client_context.supports_transactions():
             for address in async_client_context.mongoses:
-                cls.mongos_clients.append(
-                    await cls.unmanaged_async_single_client("{}:{}".format(*address))
-                )
-
-    @classmethod
-    async def _tearDown_class(cls):
-        for client in cls.mongos_clients:
-            await client.close()
-        await super()._tearDown_class()
+                self.mongos_clients.append(await self.async_single_client("{}:{}".format(*address)))
 
     async def _set_fail_point(self, client, command_args):
         cmd = {"configureFailPoint": "failCommand"}
