@@ -1189,9 +1189,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command.
         :param sort: Specify which document the operation updates if the query matches
             multiple documents. The first document matched by the sort order will be updated.
+            This option is only supported on MongoDB 8.0 and above.
         :return: - An instance of :class:`~pymongo.results.UpdateResult`.
 
-        .. versionchanged:: 4.10
+        .. versionchanged:: 4.11
            Added ``sort`` parameter.
         .. versionchanged:: 4.1
            Added ``let`` parameter.
@@ -1302,12 +1303,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             aggregate expression context (e.g. "$$var").
         :param sort: Specify which document the operation updates if the query matches
             multiple documents. The first document matched by the sort order will be updated.
+            This option is only supported on MongoDB 8.0 and above.
         :param comment: A user-provided comment to attach to this
             command.
 
         :return: - An instance of :class:`~pymongo.results.UpdateResult`.
 
-        .. versionchanged:: 4.10
+        .. versionchanged:: 4.11
            Added ``sort`` parameter.
         .. versionchanged:: 4.1
            Added ``let`` parameter.
