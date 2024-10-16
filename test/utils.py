@@ -958,10 +958,6 @@ def parse_spec_options(opts):
 def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callback):
     for arg_name in list(arguments):
         c2s = camel_to_snake(arg_name)
-        # PyMongo accepts sort as list of tuples.
-        if arg_name == "sort":
-            sort_dict = arguments[arg_name]
-            arguments[arg_name] = list(sort_dict.items())
         # Named "key" instead not fieldName.
         if arg_name == "fieldName":
             arguments["key"] = arguments.pop(arg_name)
