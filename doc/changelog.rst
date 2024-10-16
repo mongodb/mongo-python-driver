@@ -17,6 +17,8 @@ PyMongo 4.11 brings a number of changes including:
 - :attr:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.address` and
   :attr:`~pymongo.mongo_client.MongoClient.address` now correctly block when called on unconnected clients
   until either connection succeeds or a server selection timeout error is raised.
+- Added :func:`repr` support to :class:`pymongo.operations.IndexModel`.
+- Added :func:`repr` support to :class:`pymongo.operations.SearchIndexModel`.
 
 Issues Resolved
 ...............
