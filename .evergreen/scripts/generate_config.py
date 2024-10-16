@@ -245,23 +245,25 @@ def create_server_variants() -> list[BuildVariant]:
 
 def create_encryption_variants() -> list[BuildVariant]:
     variants = []
-    task_names = [".replica_set"]
     tags = ["encryption_tag"]
     batchtime = BATCHTIME_WEEK
 
-    host = "rhel8"
-    encryptions = ["Encryption", "Encryption crypt_shared", "Encryption PyOpenSSL"]
-    for encryption, (python, ssl) in product(
-        encryptions, zip_cycle(CPYTHONS + PYPYS, ["ssl", "nossl"])
-    ):
-        expansions = dict(TEST_ENCRYPTION="true", AUTH="auth", SSL=ssl)
+    def expansions_for_type(encryption, expansions):
         if "crypt_shared" in encryption:
             expansions["TEST_CRYPT_SHARED"] = "true"
         if "PyOpenSSL" in encryption:
             expansions["TEST_ENCRYPTION_PYOPENSSL"] = "true"
+
+    host = "rhel8"
+
+    # Test against all server versions and topolgies for the three main python versions.
+    encryptions = ["Encryption", "Encryption crypt_shared", "Encryption PyOpenSSL"]
+    for encryption, python in product(encryptions, [*MIN_MAX_PYTHON, PYPYS[-1]]):
+        expansions = dict(TEST_ENCRYPTION="true", AUTH="auth", SSL="ssl")
+        expansions_for_type(encryption, expansions)
         display_name = get_display_name(encryption, host, python=python, **expansions)
         variant = create_variant(
-            task_names,
+            [f".{t}" for t in TOPOLOGIES],
             display_name,
             python=python,
             host=host,
@@ -271,13 +273,29 @@ def create_encryption_variants() -> list[BuildVariant]:
         )
         variants.append(variant)
 
+    # Test the rest of the pythons on linux for all server versions.
+    for encryption, python, ssl in zip_cycle(
+        encryptions, CPYTHONS[1:-1] + PYPYS[:-1], ["ssl", "nossl"]
+    ):
+        expansions = dict(AUTH="auth", SSL=ssl)
+        expansions_for_type(encryption, expansions)
+        display_name = get_display_name(encryption, host, python=python, **expansions)
+        variant = create_variant(
+            [".replica_set"],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+        )
+        variants.append(variant)
+
+    # Test on macos and linux on one server version and topology for min and max python.
     encryptions = ["Encryption", "Encryption crypt_shared"]
     task_names = [".latest .replica_set"]
     for host, encryption, python in product(["macos", "win64"], encryptions, MIN_MAX_PYTHON):
         ssl = "ssl" if python == CPYTHONS[0] else "nossl"
         expansions = dict(TEST_ENCRYPTION="true", AUTH="auth", SSL=ssl)
-        if "crypt_shared" in encryption:
-            expansions["TEST_CRYPT_SHARED"] = "true"
+        expansions_for_type(encryption, expansions)
         display_name = get_display_name(encryption, host, python=python, **expansions)
         variant = create_variant(
             task_names,
