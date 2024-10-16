@@ -19,6 +19,10 @@ PyMongo 4.11 brings a number of changes including:
   until either connection succeeds or a server selection timeout error is raised.
 - Added :func:`repr` support to :class:`pymongo.operations.IndexModel`.
 - Added :func:`repr` support to :class:`pymongo.operations.SearchIndexModel`.
+- Added ``sort`` parameter to
+  :meth:`~pymongo.collection.Collection.update_one`, :meth:`~pymongo.collection.Collection.replace_one`,
+  :class:`~pymongo.operations.UpdateOne`, and
+  :class:`~pymongo.operations.UpdateMany`,
 
 Issues Resolved
 ...............
