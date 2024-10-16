@@ -20,7 +20,7 @@ import collections
 import os
 import threading
 import weakref
-from asyncio import events, exceptions, wait_for
+from asyncio import TimeoutError, events, exceptions, wait_for
 from typing import Any, Coroutine, Optional, TypeVar
 
 _HAS_REGISTER_AT_FORK = hasattr(os, "register_at_fork")
