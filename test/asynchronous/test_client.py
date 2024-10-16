@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import _thread as thread
 import asyncio
+import base64
 import contextlib
 import copy
 import datetime
@@ -31,13 +32,15 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Iterable, Type, no_type_check
+import uuid
+from typing import Any, Iterable, Type, no_type_check
 from unittest import mock
 from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
 
+from bson.binary import CSHARP_LEGACY, JAVA_LEGACY, PYTHON_LEGACY, Binary, UuidRepresentation
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
@@ -57,6 +60,7 @@ from test.asynchronous import (
     unittest,
 )
 from test.asynchronous.pymongo_mocks import AsyncMockClient
+from test.test_binary import BinaryData
 from test.utils import (
     NTHREADS,
     CMAPListener,
@@ -95,7 +99,7 @@ from pymongo.asynchronous.pool import (
 from pymongo.asynchronous.settings import TOPOLOGY_TYPE
 from pymongo.asynchronous.topology import _ErrorContext
 from pymongo.client_options import ClientOptions
-from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
+from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT, MIN_SUPPORTED_WIRE_VERSION, has_c
 from pymongo.compression_support import _have_snappy, _have_zstd
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
@@ -343,7 +347,10 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     async def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
-        metadata["driver"]["name"] = "PyMongo|async"
+        if has_c():
+            metadata["driver"]["name"] = "PyMongo|c|async"
+        else:
+            metadata["driver"]["name"] = "PyMongo|async"
         metadata["application"] = {"name": "foobar"}
         client = self.simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
@@ -366,7 +373,10 @@ class AsyncClientUnitTest(AsyncUnitTest):
         with self.assertRaises(TypeError):
             self.simple_client(driver=("Foo", "1", "a"))
         # Test appending to driver info.
-        metadata["driver"]["name"] = "PyMongo|async|FooDriver"
+        if has_c():
+            metadata["driver"]["name"] = "PyMongo|c|async|FooDriver"
+        else:
+            metadata["driver"]["name"] = "PyMongo|async|FooDriver"
         metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
         client = self.simple_client(
             "foo",
@@ -828,8 +838,6 @@ class TestClient(AsyncIntegrationTest):
         c = await self.async_rs_or_single_client(connect=False)
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
-        self.assertIsNone(await c.address)  # PYTHON-2981
-        await c.admin.command("ping")  # connect
         if async_client_context.is_rs:
             # The primary's host and port are from the replica set config.
             self.assertIsNotNone(await c.address)
@@ -1703,6 +1711,7 @@ class TestClient(AsyncIntegrationTest):
                 # No error
                 await client.pymongo_test.test.find_one()
 
+    @async_client_context.require_sync
     async def test_reset_during_update_pool(self):
         client = await self.async_rs_or_single_client(minPoolSize=10)
         await client.admin.command("ping")
@@ -1727,10 +1736,7 @@ class TestClient(AsyncIntegrationTest):
                     await asyncio.sleep(0.001)
 
             def run(self):
-                if _IS_SYNC:
-                    self._run()
-                else:
-                    asyncio.run(self._run())
+                self._run()
 
         t = ResetPoolThread(pool)
         t.start()
@@ -1927,7 +1933,10 @@ class TestClient(AsyncIntegrationTest):
     async def _test_handshake(self, env_vars, expected_env):
         with patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
-            metadata["driver"]["name"] = "PyMongo|async"
+            if has_c():
+                metadata["driver"]["name"] = "PyMongo|c|async"
+            else:
+                metadata["driver"]["name"] = "PyMongo|async"
             if expected_env is not None:
                 metadata["env"] = expected_env
 
@@ -2008,6 +2017,22 @@ class TestClient(AsyncIntegrationTest):
             None,
         )
 
+    async def test_handshake_09_container_with_provider(self):
+        await self._test_handshake(
+            {
+                ENV_VAR_K8S: "1",
+                "AWS_LAMBDA_RUNTIME_API": "1",
+                "AWS_REGION": "us-east-1",
+                "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": "256",
+            },
+            {
+                "container": {"orchestrator": "kubernetes"},
+                "name": "aws.lambda",
+                "region": "us-east-1",
+                "memory_mb": 256,
+            },
+        )
+
     def test_dict_hints(self):
         self.db.t.find(hint={"x": 1})
 
@@ -2019,6 +2044,75 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_dict_hints_create_index(self):
         await self.db.t.create_index({"x": pymongo.ASCENDING})
+
+    async def test_legacy_java_uuid_roundtrip(self):
+        data = BinaryData.java_data
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
+
+        await async_client_context.client.pymongo_test.drop_collection("java_uuid")
+        db = async_client_context.client.pymongo_test
+        coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=JAVA_LEGACY))
+
+        await coll.insert_many(docs)
+        self.assertEqual(5, await coll.count_documents({}))
+        async for d in coll.find():
+            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
+
+        coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
+        async for d in coll.find():
+            self.assertNotEqual(d["newguid"], d["newguidstring"])
+        await async_client_context.client.pymongo_test.drop_collection("java_uuid")
+
+    async def test_legacy_csharp_uuid_roundtrip(self):
+        data = BinaryData.csharp_data
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
+
+        await async_client_context.client.pymongo_test.drop_collection("csharp_uuid")
+        db = async_client_context.client.pymongo_test
+        coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=CSHARP_LEGACY))
+
+        await coll.insert_many(docs)
+        self.assertEqual(5, await coll.count_documents({}))
+        async for d in coll.find():
+            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
+
+        coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
+        async for d in coll.find():
+            self.assertNotEqual(d["newguid"], d["newguidstring"])
+        await async_client_context.client.pymongo_test.drop_collection("csharp_uuid")
+
+    async def test_uri_to_uuid(self):
+        uri = "mongodb://foo/?uuidrepresentation=csharpLegacy"
+        client = await self.async_single_client(uri, connect=False)
+        self.assertEqual(client.pymongo_test.test.codec_options.uuid_representation, CSHARP_LEGACY)
+
+    async def test_uuid_queries(self):
+        db = async_client_context.client.pymongo_test
+        coll = db.test
+        await coll.drop()
+
+        uu = uuid.uuid4()
+        await coll.insert_one({"uuid": Binary(uu.bytes, 3)})
+        self.assertEqual(1, await coll.count_documents({}))
+
+        # Test regular UUID queries (using subtype 4).
+        coll = db.get_collection(
+            "test", CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        )
+        self.assertEqual(0, await coll.count_documents({"uuid": uu}))
+        await coll.insert_one({"uuid": uu})
+        self.assertEqual(2, await coll.count_documents({}))
+        docs = await coll.find({"uuid": uu}).to_list()
+        self.assertEqual(1, len(docs))
+        self.assertEqual(uu, docs[0]["uuid"])
+
+        # Test both.
+        uu_legacy = Binary.from_uuid(uu, UuidRepresentation.PYTHON_LEGACY)
+        predicate = {"uuid": {"$in": [uu, uu_legacy]}}
+        self.assertEqual(2, await coll.count_documents(predicate))
+        docs = await coll.find(predicate).to_list()
+        self.assertEqual(2, len(docs))
+        await coll.drop()
 
 
 class TestExhaustCursor(AsyncIntegrationTest):
@@ -2351,7 +2445,9 @@ class TestMongoClientFailover(AsyncMockClientTest):
 
         # But it can reconnect.
         c.revive_host("a:1")
-        await (await c._get_topology()).select_servers(writable_server_selector, _Op.TEST)
+        await (await c._get_topology()).select_servers(
+            writable_server_selector, _Op.TEST, server_selection_timeout=10
+        )
         self.assertEqual(await c.address, ("a", 1))
 
     async def _test_network_error(self, operation_callback):
@@ -2373,8 +2469,8 @@ class TestMongoClientFailover(AsyncMockClientTest):
             self.addAsyncCleanup(c.close)
 
             # Set host-specific information so we can test whether it is reset.
-            c.set_wire_version_range("a:1", 2, 6)
-            c.set_wire_version_range("b:2", 2, 7)
+            c.set_wire_version_range("a:1", 2, MIN_SUPPORTED_WIRE_VERSION)
+            c.set_wire_version_range("b:2", 2, MIN_SUPPORTED_WIRE_VERSION + 1)
             await (await c._get_topology()).select_servers(writable_server_selector, _Op.TEST)
             wait_until(lambda: len(c.nodes) == 2, "connect")
 
@@ -2398,7 +2494,7 @@ class TestMongoClientFailover(AsyncMockClientTest):
             sd_b = server_b.description
             self.assertEqual(SERVER_TYPE.RSSecondary, sd_b.server_type)
             self.assertEqual(2, sd_b.min_wire_version)
-            self.assertEqual(7, sd_b.max_wire_version)
+            self.assertEqual(MIN_SUPPORTED_WIRE_VERSION + 1, sd_b.max_wire_version)
 
     async def test_network_error_on_query(self):
         async def callback(client):

@@ -15,6 +15,7 @@
 """Test retryable writes."""
 from __future__ import annotations
 
+import asyncio
 import copy
 import pprint
 import sys
@@ -22,7 +23,13 @@ import threading
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, SkipTest, client_context, client_knobs, unittest
+from test import (
+    IntegrationTest,
+    SkipTest,
+    client_context,
+    unittest,
+)
+from test.helpers import client_knobs
 from test.utils import (
     CMAPListener,
     DeprecationFilter,
@@ -60,6 +67,8 @@ from pymongo.operations import (
 )
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
+
+_IS_SYNC = True
 
 
 class InsertEventListener(EventListener):
@@ -125,22 +134,22 @@ class IgnoreDeprecationsTest(IntegrationTest):
     deprecation_filter: DeprecationFilter
 
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
         cls.deprecation_filter = DeprecationFilter()
 
     @classmethod
-    def tearDownClass(cls):
+    def _tearDown_class(cls):
         cls.deprecation_filter.stop()
-        super().tearDownClass()
+        super()._tearDown_class()
 
 
 class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
     knobs: client_knobs
 
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
         cls.knobs.enable()
@@ -148,10 +157,10 @@ class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
         cls.db = cls.client.pymongo_test
 
     @classmethod
-    def tearDownClass(cls):
+    def _tearDown_class(cls):
         cls.knobs.disable()
         cls.client.close()
-        super().tearDownClass()
+        super()._tearDown_class()
 
     @client_context.require_no_standalone
     def test_actionable_error_message(self):
@@ -174,8 +183,8 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
     @classmethod
     @client_context.require_no_mmap
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
         cls.knobs.enable()
@@ -186,10 +195,10 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         cls.db = cls.client.pymongo_test
 
     @classmethod
-    def tearDownClass(cls):
+    def _tearDown_class(cls):
         cls.knobs.disable()
         cls.client.close()
-        super().tearDownClass()
+        super()._tearDown_class()
 
     def setUp(self):
         if client_context.is_rs and client_context.test_commands_enabled:
@@ -206,7 +215,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     def test_supported_single_statement_no_retry(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=False, event_listeners=[listener])
-        self.addCleanup(client.close)
         for method, args, kwargs in retryable_single_statement_ops(client.db.retryable_write_test):
             msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             listener.reset()
@@ -319,7 +327,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         """
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
-        self.addCleanup(client.close)
         topology = client._topology
         select_server = topology.select_server
 
@@ -446,7 +453,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         for mongos in client_context.mongos_seeds().split(","):
             client = self.rs_or_single_client(mongos)
             set_fail_point(client, fail_command)
-            self.addCleanup(client.close)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()
@@ -478,8 +484,8 @@ class TestWriteConcernError(IntegrationTest):
     @client_context.require_replica_set
     @client_context.require_no_mmap
     @client_context.require_failCommand_fail_point
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
         cls.fail_insert = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 2},
@@ -494,7 +500,6 @@ class TestWriteConcernError(IntegrationTest):
     def test_RetryableWriteError_error_label(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
-        self.addCleanup(client.close)
 
         # Ensure collection exists.
         client.pymongo_test.testcoll.insert_one({})
@@ -546,6 +551,7 @@ class TestPoolPausedError(IntegrationTest):
     RUN_ON_LOAD_BALANCER = False
     RUN_ON_SERVERLESS = False
 
+    @client_context.require_sync
     @client_context.require_failCommand_blockConnection
     @client_context.require_retryable_writes
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
@@ -555,7 +561,6 @@ class TestPoolPausedError(IntegrationTest):
         client = self.rs_or_single_client(
             maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener]
         )
-        self.addCleanup(client.close)
         for _ in range(10):
             cmap_listener.reset()
             cmd_listener.reset()
@@ -606,6 +611,7 @@ class TestPoolPausedError(IntegrationTest):
         failed = cmd_listener.failed_events
         self.assertEqual(1, len(failed), msg)
 
+    @client_context.require_sync
     @client_context.require_failCommand_fail_point
     @client_context.require_replica_set
     @client_context.require_version_min(
@@ -618,7 +624,6 @@ class TestPoolPausedError(IntegrationTest):
         cmd_listener = InsertEventListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[cmd_listener])
         client.test.test.drop()
-        self.addCleanup(client.close)
         cmd_listener.reset()
         client.admin.command(
             {
@@ -654,7 +659,6 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
         """
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
-        self.addCleanup(client.close)
         topology = client._topology
         select_server = topology.select_server
 

@@ -34,6 +34,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
@@ -333,13 +334,33 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         return self._database
 
+    @overload
+    def with_options(
+        self,
+        codec_options: None = None,
+        read_preference: Optional[_ServerMode] = ...,
+        write_concern: Optional[WriteConcern] = ...,
+        read_concern: Optional[ReadConcern] = ...,
+    ) -> Collection[_DocumentType]:
+        ...
+
+    @overload
+    def with_options(
+        self,
+        codec_options: bson.CodecOptions[_DocumentTypeArg],
+        read_preference: Optional[_ServerMode] = ...,
+        write_concern: Optional[WriteConcern] = ...,
+        read_concern: Optional[ReadConcern] = ...,
+    ) -> Collection[_DocumentTypeArg]:
+        ...
+
     def with_options(
         self,
         codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> Collection[_DocumentType]:
+    ) -> Collection[_DocumentType] | Collection[_DocumentTypeArg]:
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -1961,20 +1982,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[Collation],
     ) -> int:
         """Internal count command helper."""
-        # XXX: "ns missing" checks can be removed when we drop support for
-        # MongoDB 3.0, see SERVER-17051.
         res = self._command(
             conn,
             cmd,
             read_preference=read_preference,
-            allowable_errors=["ns missing"],
             codec_options=self._write_response_codec_options,
             read_concern=self.read_concern,
             collation=collation,
             session=session,
         )
-        if res.get("errmsg", "") == "ns missing":
-            return 0
         return int(res["n"])
 
     def _aggregate_one_result(

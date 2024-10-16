@@ -799,6 +799,13 @@ class IndexModel:
         """
         return self.__document
 
+    def __repr__(self) -> str:
+        return "{}({}{})".format(
+            self.__class__.__name__,
+            self.document["key"],
+            "".join([f", {key}={value!r}" for key, value in self.document.items() if key != "key"]),
+        )
+
 
 class SearchIndexModel:
     """Represents a search index to create."""
@@ -838,3 +845,9 @@ class SearchIndexModel:
     def document(self) -> Mapping[str, Any]:
         """The document for this index."""
         return self.__document
+
+    def __repr__(self) -> str:
+        return "{}({})".format(
+            self.__class__.__name__,
+            ", ".join([f"{key}={value!r}" for key, value in self.document.items()]),
+        )

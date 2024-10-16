@@ -88,7 +88,7 @@ TEXT = "text"
 
 from pymongo import _csot
 from pymongo._version import __version__, get_version_string, version_tuple
-from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
+from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION, has_c
 from pymongo.cursor import CursorType
 from pymongo.operations import (
     DeleteMany,
@@ -114,16 +114,6 @@ except Exception as e:
 
 version = __version__
 """Current version of PyMongo."""
-
-
-def has_c() -> bool:
-    """Is the C extension installed?"""
-    try:
-        from pymongo import _cmessage  # type: ignore[attr-defined] # noqa: F401
-
-        return True
-    except ImportError:
-        return False
 
 
 def timeout(seconds: Optional[float]) -> ContextManager[None]:

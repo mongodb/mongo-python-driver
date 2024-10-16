@@ -26,8 +26,9 @@ except ImportError:
 
 
 from bson.objectid import ObjectId
-from pymongo import MongoClient
+from pymongo import MongoClient, has_c
 from pymongo import version as pymongo_version
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.errors import OperationFailure
 from pymongo.server_api import ServerApi, ServerApiVersion
 
@@ -39,7 +40,11 @@ def _check_handshake_data(request):
     data = request["client"]
 
     assert data["application"] == {"name": "my app"}
-    assert data["driver"] == {"name": "PyMongo", "version": pymongo_version}
+    if has_c():
+        name = "PyMongo|c"
+    else:
+        name = "PyMongo"
+    assert data["driver"] == {"name": name, "version": pymongo_version}
 
     # Keep it simple, just check these fields exist.
     assert "os" in data
@@ -97,7 +102,12 @@ class TestHandshake(unittest.TestCase):
 
         hosts = [server.address_string for server in (primary, secondary)]
         primary_response = OpReply(
-            "ismaster", True, setName="rs", hosts=hosts, minWireVersion=2, maxWireVersion=6
+            "ismaster",
+            True,
+            setName="rs",
+            hosts=hosts,
+            minWireVersion=2,
+            maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
         )
         error_response = OpReply(0, errmsg="Cache Reader No keys found for HMAC ...", code=211)
 
@@ -108,7 +118,7 @@ class TestHandshake(unittest.TestCase):
             hosts=hosts,
             secondary=True,
             minWireVersion=2,
-            maxWireVersion=6,
+            maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
         )
 
         client = MongoClient(
@@ -175,7 +185,9 @@ class TestHandshake(unittest.TestCase):
         server.run()
         self.addCleanup(server.stop)
 
-        primary_response = OpReply("ismaster", True, minWireVersion=2, maxWireVersion=6)
+        primary_response = OpReply(
+            "ismaster", True, minWireVersion=2, maxWireVersion=MIN_SUPPORTED_WIRE_VERSION
+        )
         client = MongoClient(server.uri, username="username", password="password")
 
         self.addCleanup(client.close)
@@ -209,7 +221,7 @@ class TestHandshake(unittest.TestCase):
                         saslSupportedMechs=["SCRAM-SHA-256"],
                         speculativeAuthenticate=auth,
                         minWireVersion=2,
-                        maxWireVersion=6,
+                        maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
                     )
                     # Authentication should immediately fail with:
                     # OperationFailure: Server returned an invalid nonce.
@@ -236,7 +248,12 @@ class TestHandshake(unittest.TestCase):
 
     def test_handshake_max_wire(self):
         server = MockupDB()
-        primary_response = {"hello": 1, "ok": 1, "minWireVersion": 0, "maxWireVersion": 6}
+        primary_response = {
+            "hello": 1,
+            "ok": 1,
+            "minWireVersion": 0,
+            "maxWireVersion": MIN_SUPPORTED_WIRE_VERSION,
+        }
         self.found_auth_msg = False
 
         def responder(request):

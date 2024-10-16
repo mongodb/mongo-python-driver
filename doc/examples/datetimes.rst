@@ -70,9 +70,9 @@ those datetimes to UTC automatically:
 
 .. doctest::
 
-   >>> import pytz
-   >>> pacific = pytz.timezone("US/Pacific")
-   >>> aware_datetime = pacific.localize(datetime.datetime(2002, 10, 27, 6, 0, 0))
+   >>> from zoneinfo import ZoneInfo
+   >>> from datetime import datetime
+   >>> aware_datetime = datetime(2002, 10, 27, 6, 0, 0, tzinfo=ZoneInfo("US/Pacific"))
    >>> result = db.times.insert_one({"date": aware_datetime})
    >>> db.times.find_one()["date"]
    datetime.datetime(2002, 10, 27, 14, 0)
@@ -97,7 +97,7 @@ out of MongoDB in US/Pacific time:
    datetime.datetime(2002, 10, 27, 14, 0)
    >>> aware_times = db.times.with_options(codec_options=CodecOptions(
    ...     tz_aware=True,
-   ...     tzinfo=pytz.timezone('US/Pacific')))
+   ...     tzinfo=ZoneInfo("US/Pacific")))
    >>> result = aware_times.find_one()['date']
    datetime.datetime(2002, 10, 27, 6, 0,  # doctest: +NORMALIZE_WHITESPACE
                      tzinfo=<DstTzInfo 'US/Pacific' PST-1 day, 16:00:00 STD>)

@@ -313,7 +313,7 @@ class ClientContext:
                         params = self.cmd_line["parsed"].get("setParameter", {})
                         if params.get("enableTestCommands") == "1":
                             self.test_commands_enabled = True
-                    self.has_ipv6 = self._server_started_with_ipv6()
+                self.has_ipv6 = self._server_started_with_ipv6()
 
             self.is_mongos = (self.hello).get("msg") == "isdbgrid"
             if self.is_mongos:
@@ -464,11 +464,12 @@ class ClientContext:
                 if not self.connected:
                     pair = self.pair
                     raise SkipTest(f"Cannot connect to MongoDB on {pair}")
-                if iscoroutinefunction(condition) and condition():
-                    if wraps_async:
-                        return f(*args, **kwargs)
-                    else:
-                        return f(*args, **kwargs)
+                if iscoroutinefunction(condition):
+                    if condition():
+                        if wraps_async:
+                            return f(*args, **kwargs)
+                        else:
+                            return f(*args, **kwargs)
                 elif condition():
                     if wraps_async:
                         return f(*args, **kwargs)
