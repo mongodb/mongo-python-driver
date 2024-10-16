@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import functools
 import warnings
-from test.synchronous import IntegrationTest, client_context, unittest
+from test import IntegrationTest, client_context, unittest
 from test.utils import EventListener
 from typing import Any
 

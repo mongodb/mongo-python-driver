@@ -228,6 +228,8 @@ def process_files(files: list[str]) -> None:
                 lines = translate_async_sleeps(lines)
                 if file in docstring_translate_files:
                     lines = translate_docstrings(lines)
+                if file in sync_test_files:
+                    translate_imports(lines)
                 f.seek(0)
                 f.writelines(lines)
                 f.truncate()
@@ -256,6 +258,15 @@ def translate_coroutine_types(lines: list[str]) -> list[str]:
             index = lines.index(type)
             new = type.replace(old, res.group(3))
             lines[index] = new
+    return lines
+
+
+def translate_imports(lines: list[str]) -> list[str]:
+    for k, v in import_replacements.items():
+        matches = [line for line in lines if k in line and "import" in line]
+        for line in matches:
+            index = lines.index(line)
+            lines[index] = line.replace(k, v)
     return lines
 
 

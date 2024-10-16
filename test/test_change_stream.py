@@ -28,7 +28,7 @@ from typing import no_type_check
 
 sys.path[0:0] = [""]
 
-from test.synchronous import (
+from test import (
     IntegrationTest,
     PyMongoTestCase,
     Version,

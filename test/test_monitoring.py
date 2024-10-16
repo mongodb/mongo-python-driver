@@ -22,7 +22,7 @@ from typing import Any
 
 sys.path[0:0] = [""]
 
-from test.synchronous import (
+from test import (
     IntegrationTest,
     client_context,
     client_knobs,

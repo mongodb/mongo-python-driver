@@ -25,7 +25,7 @@ from pymongo.synchronous.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 
-from test.synchronous import (
+from test import (
     IntegrationTest,
     PyMongoTestCase,
     SkipTest,

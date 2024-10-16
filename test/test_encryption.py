@@ -28,8 +28,8 @@ import textwrap
 import traceback
 import uuid
 import warnings
-from test.synchronous import IntegrationTest, PyMongoTestCase, client_context
-from test.synchronous.test_bulk import BulkTestBase
+from test import IntegrationTest, PyMongoTestCase, client_context
+from test.test_bulk import BulkTestBase
 from threading import Thread
 from typing import Any, Dict, Mapping, Optional
 
@@ -53,8 +53,7 @@ from test.helpers import (
     KMIP_CREDS,
     LOCAL_MASTER_KEY,
 )
-from test.synchronous.test_bulk import BulkTestBase
-from test.synchronous.utils_spec_runner import SpecRunner
+from test.test_bulk import BulkTestBase
 from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
@@ -65,6 +64,7 @@ from test.utils import (
     is_greenthread_patched,
     wait_until,
 )
+from test.utils_spec_runner import SpecRunner
 
 from bson import DatetimeMS, Decimal128, encode, json_util
 from bson.binary import UUID_SUBTYPE, Binary, UuidRepresentation

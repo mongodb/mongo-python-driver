@@ -14,8 +14,7 @@
 from __future__ import annotations
 
 import os
-from test import unittest
-from test.synchronous import IntegrationTest
+from test import IntegrationTest, unittest
 from unittest.mock import patch
 
 from bson import json_util

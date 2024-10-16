@@ -20,7 +20,7 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test.synchronous import (
+from test import (
     IntegrationTest,
     client_context,
     unittest,

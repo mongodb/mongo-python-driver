@@ -23,13 +23,13 @@ import threading
 
 sys.path[0:0] = [""]
 
-from test.synchronous import (
+from test import (
     IntegrationTest,
     SkipTest,
     client_context,
     unittest,
 )
-from test.synchronous.helpers import client_knobs
+from test.helpers import client_knobs
 from test.utils import (
     CMAPListener,
     DeprecationFilter,
