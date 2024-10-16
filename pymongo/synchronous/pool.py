@@ -987,7 +987,6 @@ class Pool:
         self.conns: collections.deque = collections.deque()
         self.active_contexts: set[_CancellationContext] = set()
         self.lock = _create_lock()
-        self.size_cond = _create_condition(self.lock)
         self._max_connecting_cond = _create_condition(self.lock)
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
@@ -1014,6 +1013,7 @@ class Pool:
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
+        self.size_cond = _create_condition(self.lock)
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
@@ -1021,6 +1021,7 @@ class Pool:
         # The second portion of the wait queue.
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
+        self._max_connecting_cond = _create_condition(self.lock)
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         self._client_id = client_id
