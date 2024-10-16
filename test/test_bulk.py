@@ -970,6 +970,8 @@ class TestBulkWriteConcern(BulkTestBase):
     @client_context.require_secondaries_count(1)
     def test_write_concern_failure_ordered(self):
         self.skipTest("Skipping until PYTHON-4865 is resolved.")
+        details = None
+
         # Ensure we don't raise on wnote.
         coll_ww = self.coll.with_options(write_concern=WriteConcern(w=self.w))
         result = coll_ww.bulk_write([DeleteOne({"something": "that does no exist"})])
@@ -1051,6 +1053,8 @@ class TestBulkWriteConcern(BulkTestBase):
     @client_context.require_secondaries_count(1)
     def test_write_concern_failure_unordered(self):
         self.skipTest("Skipping until PYTHON-4865 is resolved.")
+        details = None
+
         # Ensure we don't raise on wnote.
         coll_ww = self.coll.with_options(write_concern=WriteConcern(w=self.w))
         result = coll_ww.bulk_write([DeleteOne({"something": "that does no exist"})], ordered=False)
