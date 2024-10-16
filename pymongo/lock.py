@@ -21,7 +21,7 @@ import os
 import sys
 import threading
 import weakref
-from asyncio import TimeoutError, wait_for
+from asyncio import wait_for
 from typing import Any, Optional, TypeVar
 
 import pymongo._asyncio_lock
@@ -33,7 +33,8 @@ _forkable_locks: weakref.WeakSet[threading.Lock] = weakref.WeakSet()
 
 _T = TypeVar("_T")
 
-# Needed to support 3.13 asyncio fixes in older versions of Python
+# Needed to support 3.13 asyncio fixes (https://github.com/python/cpython/issues/112202)
+# in older versions of Python
 if sys.version_info >= (3, 13):
     Lock = asyncio.Lock
     Condition = asyncio.Condition
@@ -83,7 +84,7 @@ def _release_locks() -> None:
 async def _async_cond_wait(condition: Condition, timeout: Optional[float]) -> bool:
     try:
         return await wait_for(condition.wait(), timeout)
-    except TimeoutError:
+    except asyncio.TimeoutError:
         return False
 
 
