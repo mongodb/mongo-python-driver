@@ -1022,7 +1022,10 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.insert_one({"y": 1}, bypass_document_validation=True)
         await db_w0.test.replace_one({"y": 1}, {"x": 1}, bypass_document_validation=True)
 
-        await async_wait_until(lambda: db_w0.test.find_one({"x": 1}), "find w:0 replaced document")
+        async def async_lambda():
+            await db_w0.test.find_one({"x": 1})
+
+        await async_wait_until(async_lambda, "find w:0 replaced document")
 
     async def test_update_bypass_document_validation(self):
         db = self.db

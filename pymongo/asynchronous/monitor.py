@@ -250,7 +250,7 @@ class Monitor(MonitorBase):
             except (OperationFailure, NotPrimaryError) as exc:
                 # Update max cluster time even when hello fails.
                 details = cast(Mapping[str, Any], exc.details)
-                self._topology.receive_cluster_time(details.get("$clusterTime"))
+                await self._topology.receive_cluster_time(details.get("$clusterTime"))
                 raise
         except ReferenceError:
             raise
