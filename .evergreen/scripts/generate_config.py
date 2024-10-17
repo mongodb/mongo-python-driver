@@ -384,10 +384,33 @@ def create_compression_variants():
     return variants
 
 
+def create_enterprise_auth_variants():
+    expansions = dict(AUTH="auth")
+    variants = []
+
+    # All python versions on linux, min and max on Windows.
+    host = "rhel8"
+    for python in ALL_PYTHONS:
+        display_name = get_display_name("Enterprise Auth", host, python=python, **expansions)
+        variant = create_variant(
+            ["test-enterprise-auth"], display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+
+    host = "win64"
+    for python in MIN_MAX_PYTHON:
+        display_name = get_display_name("Enterprise Auth", host, python=python, **expansions)
+        variant = create_variant(
+            ["test-enterprise-auth"], display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-variants = create_compression_variants()
+variants = create_enterprise_auth_variants()
 # print(len(variants))
 generate_yaml(variants=variants)

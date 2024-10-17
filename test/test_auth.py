@@ -32,6 +32,8 @@ from test import (
 )
 from test.utils import AllowListEventListener, delay, ignore_deprecations
 
+import pytest
+
 from pymongo import MongoClient, monitoring
 from pymongo.auth_shared import _build_credentials_tuple
 from pymongo.errors import OperationFailure
@@ -80,6 +82,7 @@ class AutoAuthenticateThread(threading.Thread):
 
 
 class TestGSSAPI(PyMongoTestCase):
+    pytestmark = pytest.mark.auth
     mech_properties: str
     service_realm_required: bool
 
@@ -266,6 +269,8 @@ class TestGSSAPI(PyMongoTestCase):
 
 
 class TestSASLPlain(PyMongoTestCase):
+    pytestmark = pytest.mark.auth
+
     @classmethod
     def setUpClass(cls):
         if not SASL_HOST or not SASL_USER or not SASL_PASS:
@@ -339,6 +344,8 @@ class TestSASLPlain(PyMongoTestCase):
 
 
 class TestSCRAMSHA1(IntegrationTest):
+    pytestmark = pytest.mark.auth
+
     @client_context.require_auth
     def setUp(self):
         super().setUp()
@@ -371,6 +378,8 @@ class TestSCRAMSHA1(IntegrationTest):
 
 # https://github.com/mongodb/specifications/blob/master/source/auth/auth.rst#scram-sha-256-and-mechanism-negotiation
 class TestSCRAM(IntegrationTest):
+    pytestmark = pytest.mark.auth
+
     @client_context.require_auth
     @client_context.require_version_min(3, 7, 2)
     def setUp(self):
@@ -608,6 +617,8 @@ class TestSCRAM(IntegrationTest):
 
 
 class TestAuthURIOptions(IntegrationTest):
+    pytestmark = pytest.mark.auth
+
     @client_context.require_auth
     def setUp(self):
         super().setUp()

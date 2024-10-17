@@ -3194,6 +3194,89 @@ buildvariants:
     COMPRESSORS: zstd
     PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
 
+# Enterprise auth tests.
+- name: enterprise-auth-rhel8-py3.9-auth
+  tasks:
+    - name: test-enterprise-auth
+  display_name: Enterprise Auth RHEL8 py3.9 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: enterprise-auth-rhel8-py3.10-auth
+  tasks:
+    - name: test-enterprise-auth
+  display_name: Enterprise Auth RHEL8 py3.10 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    PYTHON_BINARY: /opt/python/3.10/bin/python3
+- name: enterprise-auth-rhel8-py3.11-auth
+  tasks:
+    - name: test-enterprise-auth
+  display_name: Enterprise Auth RHEL8 py3.11 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    PYTHON_BINARY: /opt/python/3.11/bin/python3
+- name: enterprise-auth-rhel8-py3.12-auth
+  tasks:
+    - name: test-enterprise-auth
+  display_name: Enterprise Auth RHEL8 py3.12 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    PYTHON_BINARY: /opt/python/3.12/bin/python3
+- name: enterprise-auth-rhel8-py3.13-auth
+  tasks:
+    - name: test-enterprise-auth
+  display_name: Enterprise Auth RHEL8 py3.13 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+- name: enterprise-auth-rhel8-pypy3.9-auth
+  tasks:
+    - name: test-enterprise-auth
+  display_name: Enterprise Auth RHEL8 pypy3.9 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+- name: enterprise-auth-rhel8-pypy3.10-auth
+  tasks:
+    - name: test-enterprise-auth
+  display_name: Enterprise Auth RHEL8 pypy3.10 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+- name: enterprise-auth-win64-py3.9-auth
+  tasks:
+    - name: test-enterprise-auth
+  display_name: Enterprise Auth Win64 py3.9 Auth
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: auth
+    PYTHON_BINARY: C:/python/Python39/python.exe
+- name: enterprise-auth-win64-py3.13-auth
+  tasks:
+    - name: test-enterprise-auth
+  display_name: Enterprise Auth Win64 py3.13 Auth
+  run_on:
+    - windows-64-vsMulti-small
+  expansions:
+    AUTH: auth
+    PYTHON_BINARY: C:/python/Python313/python.exe
+
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
@@ -3349,24 +3432,6 @@ buildvariants:
   display_name: "Disable test commands ${python-version} ${platform}"
   tasks:
      - ".latest"
-
-- matrix_name: "test-linux-enterprise-auth"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    auth: "auth"
-  display_name: "Enterprise ${auth} ${platform} ${python-version}"
-  tasks:
-     - name: "test-enterprise-auth"
-
-- matrix_name: "tests-windows-enterprise-auth"
-  matrix_spec:
-    platform: windows
-    python-version-windows: "*"
-    auth: "auth"
-  display_name: "Enterprise ${auth} ${platform} ${python-version-windows}"
-  tasks:
-     - name: "test-enterprise-auth"
 
 - matrix_name: "test-search-index-helpers"
   matrix_spec:
