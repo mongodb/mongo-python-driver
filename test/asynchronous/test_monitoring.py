@@ -1101,11 +1101,13 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
     @async_client_context.require_version_max(6, 1, 99)
     async def test_sensitive_commands(self):
-        listeners = self.client._event_listeners
+        listener = EventListener()
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
+        listeners = client._event_listeners
 
-        self.listener.reset()
+        listener.reset()
         cmd = SON([("getnonce", 1)])
-        listeners.publish_command_start(cmd, "pymongo_test", 12345, await self.client.address, None)  # type: ignore[arg-type]
+        listeners.publish_command_start(cmd, "pymongo_test", 12345, await client.address, None)  # type: ignore[arg-type]
         delta = datetime.timedelta(milliseconds=100)
         listeners.publish_command_success(
             delta,
@@ -1116,15 +1118,15 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             None,
             database_name="pymongo_test",
         )
-        started = self.listener.started_events[0]
-        succeeded = self.listener.succeeded_events[0]
-        self.assertEqual(0, len(self.listener.failed_events))
+        started = listener.started_events[0]
+        succeeded = listener.succeeded_events[0]
+        self.assertEqual(0, len(listener.failed_events))
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqual({}, started.command)
         self.assertEqual("pymongo_test", started.database_name)
         self.assertEqual("getnonce", started.command_name)
         self.assertIsInstance(started.request_id, int)
-        self.assertEqual(await self.client.address, started.connection_id)
+        self.assertEqual(await client.address, started.connection_id)
         self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
         self.assertEqual(succeeded.duration_micros, 100000)
         self.assertEqual(started.command_name, succeeded.command_name)
