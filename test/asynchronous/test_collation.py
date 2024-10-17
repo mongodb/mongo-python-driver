@@ -18,7 +18,7 @@ from __future__ import annotations
 import functools
 import warnings
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils import EventListener
+from test.utils import EventListener, OvertCommandListener
 from typing import Any
 
 from pymongo.asynchronous.helpers import anext
@@ -101,7 +101,7 @@ class TestCollation(AsyncIntegrationTest):
     @async_client_context.require_connection
     async def _setup_class(cls):
         await super()._setup_class()
-        cls.listener = EventListener()
+        cls.listener = OvertCommandListener()
         cls.client = await cls.unmanaged_async_rs_or_single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
         cls.collation = Collation("en_US")

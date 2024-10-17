@@ -33,7 +33,7 @@ from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
-from test.utils import EventListener
+from test.utils import OvertCommandListener
 
 from bson.objectid import ObjectId
 from gridfs.errors import NoFile
@@ -808,7 +808,7 @@ Bye"""
         # Use 102 batches to cause a single getMore.
         chunk_size = 1024
         data = b"d" * (102 * chunk_size)
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
         db = client.pymongo_test
         with GridIn(db.fs, chunk_size=chunk_size) as infile:

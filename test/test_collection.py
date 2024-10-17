@@ -36,6 +36,7 @@ from test import (  # TODO: fix sync imports in PYTHON-4528
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,
+    OvertCommandListener,
     get_pool,
     is_mongos,
     wait_until,
@@ -2093,7 +2094,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(4, (c.find_one_and_update({}, {"$inc": {"i": 1}}, sort=sort))["j"])
 
     def test_find_one_and_write_concern(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         db = (self.single_client(event_listeners=[listener]))[self.db.name]
         # non-default WriteConcern.
         c_w0 = db.get_collection("test", write_concern=WriteConcern(w=0))

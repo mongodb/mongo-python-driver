@@ -31,6 +31,7 @@ from test import (
 )
 from test.utils import (
     EventListener,
+    OvertCommandListener,
     wait_until,
 )
 
@@ -54,7 +55,7 @@ class TestCommandMonitoring(IntegrationTest):
     @client_context.require_connection
     def _setup_class(cls):
         super()._setup_class()
-        cls.listener = EventListener()
+        cls.listener = OvertCommandListener()
         cls.client = cls.unmanaged_rs_or_single_client(
             event_listeners=[cls.listener], retryWrites=False
         )
@@ -1140,7 +1141,7 @@ class TestGlobalListener(IntegrationTest):
     @client_context.require_connection
     def _setup_class(cls):
         super()._setup_class()
-        cls.listener = EventListener()
+        cls.listener = OvertCommandListener()
         # We plan to call register(), which internally modifies _LISTENERS.
         cls.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
         monitoring.register(cls.listener)

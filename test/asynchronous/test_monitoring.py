@@ -31,6 +31,7 @@ from test.asynchronous import (
 )
 from test.utils import (
     EventListener,
+    OvertCommandListener,
     async_wait_until,
 )
 
@@ -54,7 +55,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
     @async_client_context.require_connection
     async def _setup_class(cls):
         await super()._setup_class()
-        cls.listener = EventListener()
+        cls.listener = OvertCommandListener()
         cls.client = await cls.unmanaged_async_rs_or_single_client(
             event_listeners=[cls.listener], retryWrites=False
         )
@@ -1140,7 +1141,7 @@ class AsyncTestGlobalListener(AsyncIntegrationTest):
     @async_client_context.require_connection
     async def _setup_class(cls):
         await super()._setup_class()
-        cls.listener = EventListener()
+        cls.listener = OvertCommandListener()
         # We plan to call register(), which internally modifies _LISTENERS.
         cls.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
         monitoring.register(cls.listener)

@@ -33,6 +33,7 @@ from test import (
 )
 from test.utils import (
     EventListener,
+    OvertCommandListener,
     cat_files,
     ignore_deprecations,
 )
@@ -552,7 +553,7 @@ class TestSSL(IntegrationTest):
         with self.assertRaises(OperationFailure):
             noauth.pymongo_test.test.find_one()
 
-        listener = EventListener()
+        listener = OvertCommandListener()
         auth = self.simple_client(
             client_context.pair,
             authMechanism="MONGODB-X509",

@@ -24,7 +24,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
-from test.utils import EventListener
+from test.utils import OvertCommandListener
 
 from pymongo import DESCENDING
 from pymongo.errors import (
@@ -44,7 +44,7 @@ _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "read_wri
 
 class TestReadWriteConcernSpec(IntegrationTest):
     def test_omit_default_read_write_concern(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         # Client with default readConcern and writeConcern
         client = self.rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
@@ -205,7 +205,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
 
     @client_context.require_version_min(4, 9)
     def test_write_error_details_exposes_errinfo(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         db = client.errinfotest
