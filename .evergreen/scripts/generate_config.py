@@ -112,12 +112,14 @@ def get_python_binary(python: str, host: str) -> str:
 def get_display_name(base: str, host: str, **kwargs) -> str:
     """Get the display name of a variant."""
     display_name = f"{base} {HOSTS[host].display_name}"
+    version = kwargs.pop("VERSION", None)
+    if version:
+        if version not in ["rapid", "latest"]:
+            version = f"v{version}"
+        display_name = f"{display_name} {version}"
     for key, value in kwargs.items():
         name = value
-        if key == "version":
-            if value not in ["rapid", "latest"]:
-                name = f"v{value}"
-        elif key == "python":
+        if key.lower() == "python":
             if not value.startswith("pypy"):
                 name = f"py{value}"
         elif key.lower() in DISPLAY_LOOKUP:
@@ -309,8 +311,34 @@ def create_encryption_variants() -> list[BuildVariant]:
     return variants
 
 
+def create_load_balancer_variants():
+    # Load balancer tests - run all supported versions for all combinations of auth and ssl and system python.
+    host = "rhel8"
+    task_names = ["load-balancer-test"]
+    batchtime = BATCHTIME_WEEK
+    expansions_base = dict(test_loadbalancer="true")
+    versions = ["6.0", "7.0", "8.0", "latest", "rapid"]
+    variants = []
+    pythons = CPYTHONS + PYPYS
+    for ind, (version, (auth, ssl)) in enumerate(product(versions, AUTH_SSLS)):
+        expansions = dict(VERSION=version, AUTH=auth, SSL=ssl)
+        expansions.update(expansions_base)
+        python = pythons[ind % len(pythons)]
+        display_name = get_display_name("Load Balancer", host, python=python, **expansions)
+        variant = create_variant(
+            task_names,
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+        )
+        variants.append(variant)
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-generate_yaml(variants=create_encryption_variants())
+generate_yaml(variants=create_load_balancer_variants())
