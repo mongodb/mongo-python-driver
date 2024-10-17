@@ -351,10 +351,11 @@ def create_compression_variants():
     host = "rhel8"
     task_names = dict(snappy=[".standalone"], zlib=[".standalone"], zstd=[".standalone !.4.0"])
     variants = []
-    for compressor, python, c_ext in product(["snappy", "zlib", "zstd"], MIN_MAX_PYTHON, C_EXTS):
+    for ind, (compressor, c_ext) in enumerate(product(["snappy", "zlib", "zstd"], C_EXTS)):
         expansions = dict(COMPRESSORS=compressor)
         handle_c_ext(c_ext, expansions)
         base_name = f"{compressor} compression"
+        python = CPYTHONS[ind % len(CPYTHONS)]
         display_name = get_display_name(base_name, host, python=python, **expansions)
         variant = create_variant(
             task_names[compressor],
@@ -365,8 +366,8 @@ def create_compression_variants():
         )
         variants.append(variant)
 
-    other_pythons = [p for p in CPYTHONS if p not in MIN_MAX_PYTHON] + PYPYS
-    for compressor, python in product(["snappy", "zlib", "zstd"], other_pythons):
+    other_pythons = PYPYS + CPYTHONS[ind:]
+    for compressor, python in zip_cycle(["snappy", "zlib", "zstd"], other_pythons):
         expansions = dict(COMPRESSORS=compressor)
         handle_c_ext(c_ext, expansions)
         base_name = f"{compressor} compression"

@@ -3119,110 +3119,6 @@ buildvariants:
     COMPRESSORS: snappy
     NO_EXT: "1"
     PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: snappy-compression-rhel8-py3.9
-  tasks:
-    - name: .standalone
-  display_name: snappy compression RHEL8 py3.9
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: snappy
-    PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: snappy-compression-rhel8-py3.13-no-c
-  tasks:
-    - name: .standalone
-  display_name: snappy compression RHEL8 py3.13 No C
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: snappy
-    NO_EXT: "1"
-    PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: snappy-compression-rhel8-py3.13
-  tasks:
-    - name: .standalone
-  display_name: snappy compression RHEL8 py3.13
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: snappy
-    PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: zlib-compression-rhel8-py3.9-no-c
-  tasks:
-    - name: .standalone
-  display_name: zlib compression RHEL8 py3.9 No C
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zlib
-    NO_EXT: "1"
-    PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: zlib-compression-rhel8-py3.9
-  tasks:
-    - name: .standalone
-  display_name: zlib compression RHEL8 py3.9
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zlib
-    PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: zlib-compression-rhel8-py3.13-no-c
-  tasks:
-    - name: .standalone
-  display_name: zlib compression RHEL8 py3.13 No C
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zlib
-    NO_EXT: "1"
-    PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: zlib-compression-rhel8-py3.13
-  tasks:
-    - name: .standalone
-  display_name: zlib compression RHEL8 py3.13
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zlib
-    PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: zstd-compression-rhel8-py3.9-no-c
-  tasks:
-    - name: .standalone !.4.0
-  display_name: zstd compression RHEL8 py3.9 No C
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zstd
-    NO_EXT: "1"
-    PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: zstd-compression-rhel8-py3.9
-  tasks:
-    - name: .standalone !.4.0
-  display_name: zstd compression RHEL8 py3.9
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zstd
-    PYTHON_BINARY: /opt/python/3.9/bin/python3
-- name: zstd-compression-rhel8-py3.13-no-c
-  tasks:
-    - name: .standalone !.4.0
-  display_name: zstd compression RHEL8 py3.13 No C
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zstd
-    NO_EXT: "1"
-    PYTHON_BINARY: /opt/python/3.13/bin/python3
-- name: zstd-compression-rhel8-py3.13
-  tasks:
-    - name: .standalone !.4.0
-  display_name: zstd compression RHEL8 py3.13
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zstd
-    PYTHON_BINARY: /opt/python/3.13/bin/python3
 - name: snappy-compression-rhel8-py3.10
   tasks:
     - name: .standalone
@@ -3232,59 +3128,15 @@ buildvariants:
   expansions:
     COMPRESSORS: snappy
     PYTHON_BINARY: /opt/python/3.10/bin/python3
-- name: snappy-compression-rhel8-py3.11
+- name: zlib-compression-rhel8-py3.11-no-c
   tasks:
     - name: .standalone
-  display_name: snappy compression RHEL8 py3.11
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: snappy
-    PYTHON_BINARY: /opt/python/3.11/bin/python3
-- name: snappy-compression-rhel8-py3.12
-  tasks:
-    - name: .standalone
-  display_name: snappy compression RHEL8 py3.12
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: snappy
-    PYTHON_BINARY: /opt/python/3.12/bin/python3
-- name: snappy-compression-rhel8-pypy3.9
-  tasks:
-    - name: .standalone
-  display_name: snappy compression RHEL8 pypy3.9
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: snappy
-    PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
-- name: snappy-compression-rhel8-pypy3.10
-  tasks:
-    - name: .standalone
-  display_name: snappy compression RHEL8 pypy3.10
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: snappy
-    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-- name: zlib-compression-rhel8-py3.10
-  tasks:
-    - name: .standalone
-  display_name: zlib compression RHEL8 py3.10
+  display_name: zlib compression RHEL8 py3.11 No C
   run_on:
     - rhel87-small
   expansions:
     COMPRESSORS: zlib
-    PYTHON_BINARY: /opt/python/3.10/bin/python3
-- name: zlib-compression-rhel8-py3.11
-  tasks:
-    - name: .standalone
-  display_name: zlib compression RHEL8 py3.11
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zlib
+    NO_EXT: "1"
     PYTHON_BINARY: /opt/python/3.11/bin/python3
 - name: zlib-compression-rhel8-py3.12
   tasks:
@@ -3295,14 +3147,33 @@ buildvariants:
   expansions:
     COMPRESSORS: zlib
     PYTHON_BINARY: /opt/python/3.12/bin/python3
-- name: zlib-compression-rhel8-pypy3.9
+- name: zstd-compression-rhel8-py3.13-no-c
   tasks:
-    - name: .standalone
-  display_name: zlib compression RHEL8 pypy3.9
+    - name: .standalone !.4.0
+  display_name: zstd compression RHEL8 py3.13 No C
   run_on:
     - rhel87-small
   expansions:
-    COMPRESSORS: zlib
+    COMPRESSORS: zstd
+    NO_EXT: "1"
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+- name: zstd-compression-rhel8-py3.9
+  tasks:
+    - name: .standalone !.4.0
+  display_name: zstd compression RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    COMPRESSORS: zstd
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: snappy-compression-rhel8-pypy3.9
+  tasks:
+    - name: .standalone
+  display_name: snappy compression RHEL8 pypy3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    COMPRESSORS: snappy
     PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
 - name: zlib-compression-rhel8-pypy3.10
   tasks:
@@ -3313,33 +3184,6 @@ buildvariants:
   expansions:
     COMPRESSORS: zlib
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-- name: zstd-compression-rhel8-py3.10
-  tasks:
-    - name: .standalone !.4.0
-  display_name: zstd compression RHEL8 py3.10
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zstd
-    PYTHON_BINARY: /opt/python/3.10/bin/python3
-- name: zstd-compression-rhel8-py3.11
-  tasks:
-    - name: .standalone !.4.0
-  display_name: zstd compression RHEL8 py3.11
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zstd
-    PYTHON_BINARY: /opt/python/3.11/bin/python3
-- name: zstd-compression-rhel8-py3.12
-  tasks:
-    - name: .standalone !.4.0
-  display_name: zstd compression RHEL8 py3.12
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zstd
-    PYTHON_BINARY: /opt/python/3.12/bin/python3
 - name: zstd-compression-rhel8-pypy3.9
   tasks:
     - name: .standalone !.4.0
@@ -3349,15 +3193,6 @@ buildvariants:
   expansions:
     COMPRESSORS: zstd
     PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
-- name: zstd-compression-rhel8-pypy3.10
-  tasks:
-    - name: .standalone !.4.0
-  display_name: zstd compression RHEL8 pypy3.10
-  run_on:
-    - rhel87-small
-  expansions:
-    COMPRESSORS: zstd
-    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
 - matrix_name: "tests-fips"
   matrix_spec:
