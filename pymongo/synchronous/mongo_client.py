@@ -74,7 +74,11 @@ from pymongo.errors import (
     WaitQueueTimeoutError,
     WriteConcernError,
 )
-from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
+from pymongo.lock import (
+    _HAS_REGISTER_AT_FORK,
+    _create_lock,
+    _release_locks,
+)
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason
@@ -1715,7 +1719,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 address=address,
             )
 
-            with operation.conn_mgr._alock:
+            with operation.conn_mgr._lock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
                     return server.run_operation(
@@ -1963,7 +1967,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         try:
             if conn_mgr:
-                with conn_mgr._alock:
+                with conn_mgr._lock:
                     # Cursor is pinned to LB outside of a transaction.
                     assert address is not None
                     assert conn_mgr.conn is not None

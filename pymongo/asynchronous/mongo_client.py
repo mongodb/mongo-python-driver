@@ -82,7 +82,11 @@ from pymongo.errors import (
     WaitQueueTimeoutError,
     WriteConcernError,
 )
-from pymongo.lock import _HAS_REGISTER_AT_FORK, _ALock, _create_lock, _release_locks
+from pymongo.lock import (
+    _HAS_REGISTER_AT_FORK,
+    _async_create_lock,
+    _release_locks,
+)
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason
@@ -842,7 +846,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._options = options = ClientOptions(username, password, dbase, opts, _IS_SYNC)
 
         self._default_database_name = dbase
-        self._lock = _ALock(_create_lock())
+        self._lock = _async_create_lock()
         self._kill_cursors_queue: list = []
 
         self._event_listeners = options.pool_options._event_listeners
@@ -1721,7 +1725,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 address=address,
             )
 
-            async with operation.conn_mgr._alock:
+            async with operation.conn_mgr._lock:
                 async with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
                     return await server.run_operation(
@@ -1969,7 +1973,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         try:
             if conn_mgr:
-                async with conn_mgr._alock:
+                async with conn_mgr._lock:
                     # Cursor is pinned to LB outside of a transaction.
                     assert address is not None
                     assert conn_mgr.conn is not None

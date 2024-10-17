@@ -114,6 +114,9 @@ replacements = {
     "async_wait_for_event": "wait_for_event",
     "pymongo_server_monitor_task": "pymongo_server_monitor_thread",
     "pymongo_server_rtt_task": "pymongo_server_rtt_thread",
+    "_async_create_lock": "_create_lock",
+    "_async_create_condition": "_create_condition",
+    "_async_cond_wait": "_cond_wait",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -133,8 +136,6 @@ docstring_replacements: dict[tuple[str, str], str] = {
 docstring_removals: set[str] = {
     ".. warning:: This API is currently in beta, meaning the classes, methods, and behaviors described within may change before the full release."
 }
-
-type_replacements = {"_Condition": "threading.Condition"}
 
 import_replacements = {"test.synchronous": "test"}
 
@@ -236,8 +237,6 @@ def process_files(files: list[str]) -> None:
                 lines = translate_async_sleeps(lines)
                 if file in docstring_translate_files:
                     lines = translate_docstrings(lines)
-                translate_locks(lines)
-                translate_types(lines)
                 if file in sync_test_files:
                     translate_imports(lines)
                 f.seek(0)
@@ -268,34 +267,6 @@ def translate_coroutine_types(lines: list[str]) -> list[str]:
             index = lines.index(type)
             new = type.replace(old, res.group(3))
             lines[index] = new
-    return lines
-
-
-def translate_locks(lines: list[str]) -> list[str]:
-    lock_lines = [line for line in lines if "_Lock(" in line]
-    cond_lines = [line for line in lines if "_Condition(" in line]
-    for line in lock_lines:
-        res = re.search(r"_Lock\(([^()]*\([^()]*\))\)", line)
-        if res:
-            old = res[0]
-            index = lines.index(line)
-            lines[index] = line.replace(old, res[1])
-    for line in cond_lines:
-        res = re.search(r"_Condition\(([^()]*\([^()]*\))\)", line)
-        if res:
-            old = res[0]
-            index = lines.index(line)
-            lines[index] = line.replace(old, res[1])
-
-    return lines
-
-
-def translate_types(lines: list[str]) -> list[str]:
-    for k, v in type_replacements.items():
-        matches = [line for line in lines if k in line and "import" not in line]
-        for line in matches:
-            index = lines.index(line)
-            lines[index] = line.replace(k, v)
     return lines
 
 

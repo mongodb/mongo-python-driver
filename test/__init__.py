@@ -1131,7 +1131,7 @@ class IntegrationTest(PyMongoTestCase):
 
     @client_context.require_connection
     def setUp(self) -> None:
-        if not _IS_SYNC:
+        if not _IS_SYNC and client_context.client is not None:
             reset_client_context()
         if client_context.load_balancer and not getattr(self, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")

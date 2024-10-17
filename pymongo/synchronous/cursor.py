@@ -77,7 +77,7 @@ class _ConnectionManager:
     def __init__(self, conn: Connection, more_to_come: bool):
         self.conn: Optional[Connection] = conn
         self.more_to_come = more_to_come
-        self._alock = _create_lock()
+        self._lock = _create_lock()
 
     def update_exhaust(self, more_to_come: bool) -> None:
         self.more_to_come = more_to_come
