@@ -30,12 +30,14 @@ MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
 TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
+C_EXTS = ["with_ext", "without_ext"]
 SYNCS = ["sync", "async"]
 DISPLAY_LOOKUP = dict(
     ssl=dict(ssl="SSL", nossl="NoSSL"),
     auth=dict(auth="Auth", noauth="NoAuth"),
     test_suites=dict(default="Sync", default_async="Async"),
     coverage=dict(coverage="cov"),
+    no_ext={"1": "No C"},
 )
 HOSTS = dict()
 
@@ -135,6 +137,12 @@ def zip_cycle(*iterables, empty_default=None):
     cycles = [cycle(i) for i in iterables]
     for _ in zip_longest(*iterables):
         yield tuple(next(i, empty_default) for i in cycles)
+
+
+def handle_c_ext(c_ext, expansions):
+    """Handle c extension option."""
+    if c_ext == C_EXTS[0]:
+        expansions["NO_EXT"] = "1"
 
 
 def generate_yaml(tasks=None, variants=None):
@@ -337,8 +345,49 @@ def create_load_balancer_variants():
     return variants
 
 
+def create_compression_variants():
+    # Compression tests - standalone versions of each server, across python versions, with and without c extensions.
+    # PyPy interpreters are always tested without extensions.
+    host = "rhel8"
+    task_names = dict(snappy=[".standalone"], zlib=[".standalone"], zstd=[".standalone !.4.0"])
+    variants = []
+    for ind, (compressor, c_ext) in enumerate(product(["snappy", "zlib", "zstd"], C_EXTS)):
+        expansions = dict(COMPRESSORS=compressor)
+        handle_c_ext(c_ext, expansions)
+        base_name = f"{compressor} compression"
+        python = CPYTHONS[ind % len(CPYTHONS)]
+        display_name = get_display_name(base_name, host, python=python, **expansions)
+        variant = create_variant(
+            task_names[compressor],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+        )
+        variants.append(variant)
+
+    other_pythons = PYPYS + CPYTHONS[ind:]
+    for compressor, python in zip_cycle(["snappy", "zlib", "zstd"], other_pythons):
+        expansions = dict(COMPRESSORS=compressor)
+        handle_c_ext(c_ext, expansions)
+        base_name = f"{compressor} compression"
+        display_name = get_display_name(base_name, host, python=python, **expansions)
+        variant = create_variant(
+            task_names[compressor],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+        )
+        variants.append(variant)
+
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-generate_yaml(variants=create_load_balancer_variants())
+variants = create_compression_variants()
+# print(len(variants))
+generate_yaml(variants=variants)

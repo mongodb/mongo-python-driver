@@ -2112,23 +2112,6 @@ axes:
            AUTH: "noauth"
            SSL: "nossl"
 
-  # Choice of wire protocol compression support
-  - id: compression
-    display_name: Compression
-    values:
-      - id: snappy
-        display_name: snappy compression
-        variables:
-            COMPRESSORS: "snappy"
-      - id: zlib
-        display_name: zlib compression
-        variables:
-            COMPRESSORS: "zlib"
-      - id: zstd
-        display_name: zstd compression
-        variables:
-            COMPRESSORS: "zstd"
-
   # Choice of MongoDB server version
   - id: mongodb-version
     display_name: "MongoDB"
@@ -3125,6 +3108,92 @@ buildvariants:
     PYTHON_BINARY: C:/python/Python313/python.exe
   tags: [encryption_tag]
 
+# Compressor tests.
+- name: snappy-compression-rhel8-py3.9-no-c
+  tasks:
+    - name: .standalone
+  display_name: snappy compression RHEL8 py3.9 No C
+  run_on:
+    - rhel87-small
+  expansions:
+    COMPRESSORS: snappy
+    NO_EXT: "1"
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: snappy-compression-rhel8-py3.10
+  tasks:
+    - name: .standalone
+  display_name: snappy compression RHEL8 py3.10
+  run_on:
+    - rhel87-small
+  expansions:
+    COMPRESSORS: snappy
+    PYTHON_BINARY: /opt/python/3.10/bin/python3
+- name: zlib-compression-rhel8-py3.11-no-c
+  tasks:
+    - name: .standalone
+  display_name: zlib compression RHEL8 py3.11 No C
+  run_on:
+    - rhel87-small
+  expansions:
+    COMPRESSORS: zlib
+    NO_EXT: "1"
+    PYTHON_BINARY: /opt/python/3.11/bin/python3
+- name: zlib-compression-rhel8-py3.12
+  tasks:
+    - name: .standalone
+  display_name: zlib compression RHEL8 py3.12
+  run_on:
+    - rhel87-small
+  expansions:
+    COMPRESSORS: zlib
+    PYTHON_BINARY: /opt/python/3.12/bin/python3
+- name: zstd-compression-rhel8-py3.13-no-c
+  tasks:
+    - name: .standalone !.4.0
+  display_name: zstd compression RHEL8 py3.13 No C
+  run_on:
+    - rhel87-small
+  expansions:
+    COMPRESSORS: zstd
+    NO_EXT: "1"
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+- name: zstd-compression-rhel8-py3.9
+  tasks:
+    - name: .standalone !.4.0
+  display_name: zstd compression RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    COMPRESSORS: zstd
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: snappy-compression-rhel8-pypy3.9
+  tasks:
+    - name: .standalone
+  display_name: snappy compression RHEL8 pypy3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    COMPRESSORS: snappy
+    PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+- name: zlib-compression-rhel8-pypy3.10
+  tasks:
+    - name: .standalone
+  display_name: zlib compression RHEL8 pypy3.10
+  run_on:
+    - rhel87-small
+  expansions:
+    COMPRESSORS: zlib
+    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+- name: zstd-compression-rhel8-pypy3.9
+  tasks:
+    - name: .standalone !.4.0
+  display_name: zstd compression RHEL8 pypy3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    COMPRESSORS: zstd
+    PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
@@ -3213,38 +3282,6 @@ buildvariants:
     - ".4.4"
     - ".4.2"
     - ".4.0"
-
-- matrix_name: "tests-python-version-rhel8-compression"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    c-extensions: "*"
-    compression: "*"
-  exclude_spec:
-   # These interpreters are always tested without extensions.
-   - platform: rhel8
-     python-version: ["pypy3.9", "pypy3.10"]
-     c-extensions: "with-c-extensions"
-     compression: "*"
-  display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
-  tasks:
-    - "test-latest-standalone"
-    - "test-8.0-standalone"
-    - "test-7.0-standalone"
-    - "test-6.0-standalone"
-    - "test-5.0-standalone"
-    - "test-4.4-standalone"
-    - "test-4.2-standalone"
-    - "test-4.0-standalone"
-  rules:
-    # Server version 4.0 supports snappy and zlib but not zstd.
-    - if:
-        python-version: "*"
-        c-extensions: "*"
-        compression: ["zstd"]
-      then:
-        remove_tasks:
-          - "test-4.0-standalone"
 
 - matrix_name: "tests-python-version-green-framework-rhel8"
   matrix_spec:
