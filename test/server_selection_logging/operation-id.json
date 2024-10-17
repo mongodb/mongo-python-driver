@@ -197,7 +197,7 @@
               }
             },
             {
-              "level": "info",
+              "level": "debug",
               "component": "serverSelection",
               "data": {
                 "message": "Waiting for suitable server to become available",
@@ -383,7 +383,7 @@
               }
             },
             {
-              "level": "info",
+              "level": "debug",
               "component": "serverSelection",
               "data": {
                 "message": "Waiting for suitable server to become available",
