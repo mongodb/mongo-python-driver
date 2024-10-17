@@ -45,18 +45,13 @@ class Host:
     name: str
     run_on: str
     display_name: str
-    expansions: dict[str, str]
 
 
-_macos_expansions = dict(  # CSOT tests are unreliable on slow hosts.
-    SKIP_CSOT_TESTS="true"
-)
-
-HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8", dict())
-HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64", _macos_expansions)
-HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32", _macos_expansions)
-HOSTS["macos"] = Host("macos", "macos-14", "macOS", _macos_expansions)
-HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64", _macos_expansions)
+HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8")
+HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
+HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32")
+HOSTS["macos"] = Host("macos", "macos-14", "macOS")
+HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64")
 
 
 ##############
@@ -84,7 +79,6 @@ def create_variant(
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
     if version:
         expansions["VERSION"] = version
-    expansions.update(HOSTS[host].expansions)
     expansions = expansions or None
     return BuildVariant(
         name=name,
@@ -129,7 +123,7 @@ def get_display_name(base: str, host: str, **kwargs) -> str:
         elif key.lower() in DISPLAY_LOOKUP:
             name = DISPLAY_LOOKUP[key.lower()][value]
         else:
-            raise ValueError(f"Missing display handling for {key}")
+            continue
         display_name = f"{display_name} {name}"
     return display_name
 
@@ -235,7 +229,7 @@ def create_server_variants() -> list[BuildVariant]:
             zip_cycle(MIN_MAX_PYTHON, AUTH_SSLS, TOPOLOGIES), SYNCS
         ):
             test_suite = "default" if sync == "sync" else "default_async"
-            expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite)
+            expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite, SKIP_CSOT_TESTS="true")
             display_name = get_display_name("Test", host, python=python, **expansions)
             variant = create_variant(
                 [f".{topology}"],
@@ -249,8 +243,74 @@ def create_server_variants() -> list[BuildVariant]:
     return variants
 
 
+def create_encryption_variants() -> list[BuildVariant]:
+    variants = []
+    tags = ["encryption_tag"]
+    batchtime = BATCHTIME_WEEK
+
+    def get_encryption_expansions(encryption, ssl="ssl"):
+        expansions = dict(AUTH="auth", SSL=ssl, test_encryption="true")
+        if "crypt_shared" in encryption:
+            expansions["test_crypt_shared"] = "true"
+        if "PyOpenSSL" in encryption:
+            expansions["test_encryption_pyopenssl"] = "true"
+        return expansions
+
+    host = "rhel8"
+
+    # Test against all server versions and topolgies for the three main python versions.
+    encryptions = ["Encryption", "Encryption crypt_shared", "Encryption PyOpenSSL"]
+    for encryption, python in product(encryptions, [*MIN_MAX_PYTHON, PYPYS[-1]]):
+        expansions = get_encryption_expansions(encryption)
+        display_name = get_display_name(encryption, host, python=python, **expansions)
+        variant = create_variant(
+            [f".{t}" for t in TOPOLOGIES],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+            tags=tags,
+        )
+        variants.append(variant)
+
+    # Test the rest of the pythons on linux for all server versions.
+    for encryption, python, ssl in zip_cycle(
+        encryptions, CPYTHONS[1:-1] + PYPYS[:-1], ["ssl", "nossl"]
+    ):
+        expansions = get_encryption_expansions(encryption, ssl)
+        display_name = get_display_name(encryption, host, python=python, **expansions)
+        variant = create_variant(
+            [".replica_set"],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+        )
+        variants.append(variant)
+
+    # Test on macos and linux on one server version and topology for min and max python.
+    encryptions = ["Encryption", "Encryption crypt_shared"]
+    task_names = [".latest .replica_set"]
+    for host, encryption, python in product(["macos", "win64"], encryptions, MIN_MAX_PYTHON):
+        ssl = "ssl" if python == CPYTHONS[0] else "nossl"
+        expansions = get_encryption_expansions(encryption, ssl)
+        display_name = get_display_name(encryption, host, python=python, **expansions)
+        variant = create_variant(
+            task_names,
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+            tags=tags,
+        )
+        variants.append(variant)
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-generate_yaml(variants=create_server_variants())
+generate_yaml(variants=create_encryption_variants())
