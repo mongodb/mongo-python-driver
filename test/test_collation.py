@@ -18,7 +18,7 @@ from __future__ import annotations
 import functools
 import warnings
 from test import IntegrationTest, client_context, unittest
-from test.utils import EventListener
+from test.utils import EventListener, OvertCommandListener
 from typing import Any
 
 from pymongo.collation import (
@@ -101,7 +101,7 @@ class TestCollation(IntegrationTest):
     @client_context.require_connection
     def _setup_class(cls):
         super()._setup_class()
-        cls.listener = EventListener()
+        cls.listener = OvertCommandListener()
         cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
         cls.collation = Collation("en_US")

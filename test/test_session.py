@@ -36,6 +36,7 @@ from test import (
 from test.utils import (
     EventListener,
     ExceptionCatchingThread,
+    OvertCommandListener,
     wait_until,
 )
 
@@ -198,7 +199,7 @@ class TestSession(IntegrationTest):
         lsid_set = set()
         failures = 0
         for _ in range(5):
-            listener = EventListener()
+            listener = OvertCommandListener()
             client = self.rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
             cursor = client.db.test.find({})
             ops: List[Tuple[Callable, List[Any]]] = [

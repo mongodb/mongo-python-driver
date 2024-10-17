@@ -31,7 +31,7 @@ import pytest
 sys.path[0:0] = [""]
 
 from test.unified_format import generate_test_classes
-from test.utils import EventListener
+from test.utils import EventListener, OvertCommandListener
 
 from bson import SON
 from pymongo import MongoClient
@@ -348,7 +348,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Create a default OIDC client and add an event listener.
         # The following assumes that the driver does not emit saslStart or saslContinue events.
         # If the driver does emit those events, ignore/filter them for the purposes of this test.
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.create_client(event_listeners=[listener])
 
         # Perform a find operation that succeeds.
@@ -1021,7 +1021,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
     def test_4_4_speculative_authentication_should_be_ignored_on_reauthentication(self):
         # Create an OIDC configured client that can listen for `SaslStart` commands.
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.create_client(event_listeners=[listener])
 
         # Preload the *Client Cache* with a valid access token to enforce Speculative Authentication.

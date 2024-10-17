@@ -33,6 +33,7 @@ from test import IntegrationTest, client_context, unittest
 from test.utils import (
     EventListener,
     FunctionCallRecorder,
+    OvertCommandListener,
     wait_until,
 )
 from test.utils_selection_tests import (
@@ -74,7 +75,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
             return [servers[idx]]
 
         # Initialize client with appropriate listeners.
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.rs_or_single_client(
             server_selector=custom_selector, event_listeners=[listener]
         )

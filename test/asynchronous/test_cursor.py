@@ -1601,7 +1601,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         await anext(c.find_raw_batches())
 
     async def test_monitoring(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         await c.drop()
@@ -1768,7 +1768,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         await anext(await self.db.test.aggregate_raw_batches([], collation=Collation("en_US")))
 
     async def test_monitoring(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         await c.drop()

@@ -27,7 +27,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, PyMongoTestCase, unittest
 from test.unified_format import generate_test_classes
-from test.utils import AllowListEventListener, EventListener
+from test.utils import AllowListEventListener, EventListener, OvertCommandListener
 
 from pymongo.errors import OperationFailure
 from pymongo.operations import SearchIndexModel
@@ -88,7 +88,7 @@ class SearchIndexIntegrationBase(PyMongoTestCase):
         url = os.environ.get("MONGODB_URI")
         username = os.environ["DB_USER"]
         password = os.environ["DB_PASSWORD"]
-        cls.listener = listener = EventListener()
+        cls.listener = listener = OvertCommandListener()
         cls.client = cls.unmanaged_simple_client(
             url, username=username, password=password, event_listeners=[listener]
         )

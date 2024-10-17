@@ -1590,7 +1590,7 @@ class TestRawBatchCursor(IntegrationTest):
         next(c.find_raw_batches())
 
     def test_monitoring(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         c.drop()
@@ -1757,7 +1757,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
         next(self.db.test.aggregate_raw_batches([], collation=Collation("en_US")))
 
     def test_monitoring(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         c.drop()
