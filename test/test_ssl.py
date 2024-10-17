@@ -553,7 +553,7 @@ class TestSSL(IntegrationTest):
         with self.assertRaises(OperationFailure):
             noauth.pymongo_test.test.find_one()
 
-        listener = OvertCommandListener()
+        listener = EventListener()
         auth = self.simple_client(
             client_context.pair,
             authMechanism="MONGODB-X509",
