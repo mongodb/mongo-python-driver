@@ -2322,32 +2322,6 @@ axes:
         variables:
            COVERAGE: "coverage"
 
-  # Run encryption tests?
-  - id: encryption
-    display_name: "Encryption"
-    values:
-      - id: "encryption"
-        display_name: "Encryption"
-        tags: ["encryption_tag"]
-        variables:
-          test_encryption: true
-        batchtime: 10080  # 7 days
-      - id: "encryption_pyopenssl"
-        display_name: "Encryption PyOpenSSL"
-        tags: ["encryption_tag"]
-        variables:
-          test_encryption: true
-          test_encryption_pyopenssl: true
-        batchtime: 10080  # 7 days
-      # The path to crypt_shared is stored in the $CRYPT_SHARED_LIB_PATH expansion.
-      - id: "encryption_crypt_shared"
-        display_name: "Encryption shared lib"
-        tags: ["encryption_tag"]
-        variables:
-          test_encryption: true
-          test_crypt_shared: true
-        batchtime: 10080  # 7 days
-
   # Run pyopenssl tests?
   - id: pyopenssl
     display_name: "PyOpenSSL"
@@ -2864,6 +2838,303 @@ buildvariants:
     PYTHON_BINARY: C:/python/32/Python39/python.exe
     SKIP_CSOT_TESTS: "true"
 
+# Encryption tests.
+- name: encryption-rhel8-py3.9-auth-ssl
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Encryption RHEL8 py3.9 Auth SSL
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+  tags: [encryption_tag]
+- name: encryption-rhel8-py3.13-auth-ssl
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Encryption RHEL8 py3.13 Auth SSL
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+  tags: [encryption_tag]
+- name: encryption-rhel8-pypy3.10-auth-ssl
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Encryption RHEL8 pypy3.10 Auth SSL
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  tags: [encryption_tag]
+- name: encryption-crypt_shared-rhel8-py3.9-auth-ssl
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Encryption crypt_shared RHEL8 py3.9 Auth SSL
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    test_crypt_shared: "true"
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+  tags: [encryption_tag]
+- name: encryption-crypt_shared-rhel8-py3.13-auth-ssl
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Encryption crypt_shared RHEL8 py3.13 Auth SSL
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    test_crypt_shared: "true"
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+  tags: [encryption_tag]
+- name: encryption-crypt_shared-rhel8-pypy3.10-auth-ssl
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Encryption crypt_shared RHEL8 pypy3.10 Auth SSL
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    test_crypt_shared: "true"
+    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  tags: [encryption_tag]
+- name: encryption-pyopenssl-rhel8-py3.9-auth-ssl
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Encryption PyOpenSSL RHEL8 py3.9 Auth SSL
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    test_encryption_pyopenssl: "true"
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+  tags: [encryption_tag]
+- name: encryption-pyopenssl-rhel8-py3.13-auth-ssl
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Encryption PyOpenSSL RHEL8 py3.13 Auth SSL
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    test_encryption_pyopenssl: "true"
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+  tags: [encryption_tag]
+- name: encryption-pyopenssl-rhel8-pypy3.10-auth-ssl
+  tasks:
+    - name: .standalone
+    - name: .replica_set
+    - name: .sharded_cluster
+  display_name: Encryption PyOpenSSL RHEL8 pypy3.10 Auth SSL
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    test_encryption_pyopenssl: "true"
+    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  tags: [encryption_tag]
+- name: encryption-rhel8-py3.10-auth-ssl
+  tasks:
+    - name: .replica_set
+  display_name: Encryption RHEL8 py3.10 Auth SSL
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    PYTHON_BINARY: /opt/python/3.10/bin/python3
+- name: encryption-crypt_shared-rhel8-py3.11-auth-nossl
+  tasks:
+    - name: .replica_set
+  display_name: Encryption crypt_shared RHEL8 py3.11 Auth NoSSL
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    SSL: nossl
+    test_encryption: "true"
+    test_crypt_shared: "true"
+    PYTHON_BINARY: /opt/python/3.11/bin/python3
+- name: encryption-pyopenssl-rhel8-py3.12-auth-ssl
+  tasks:
+    - name: .replica_set
+  display_name: Encryption PyOpenSSL RHEL8 py3.12 Auth SSL
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    TEST_ENCRYPTION_PYOPENSSL: "true"
+    PYTHON_BINARY: /opt/python/3.12/bin/python3
+- name: encryption-rhel8-pypy3.9-auth-nossl
+  tasks:
+    - name: .replica_set
+  display_name: Encryption RHEL8 pypy3.9 Auth NoSSL
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    SSL: nossl
+    test_encryption: "true"
+    PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+- name: encryption-macos-py3.9-auth-ssl
+  tasks:
+    - name: .latest .replica_set
+  display_name: Encryption macOS py3.9 Auth SSL
+  run_on:
+    - macos-14
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+  tags: [encryption_tag]
+- name: encryption-macos-py3.13-auth-nossl
+  tasks:
+    - name: .latest .replica_set
+  display_name: Encryption macOS py3.13 Auth NoSSL
+  run_on:
+    - macos-14
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: nossl
+    test_encryption: "true"
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+  tags: [encryption_tag]
+- name: encryption-crypt_shared-macos-py3.9-auth-ssl
+  tasks:
+    - name: .latest .replica_set
+  display_name: Encryption crypt_shared macOS py3.9 Auth SSL
+  run_on:
+    - macos-14
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    test_crypt_shared: "true"
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+  tags: [encryption_tag]
+- name: encryption-crypt_shared-macos-py3.13-auth-nossl
+  tasks:
+    - name: .latest .replica_set
+  display_name: Encryption crypt_shared macOS py3.13 Auth NoSSL
+  run_on:
+    - macos-14
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: nossl
+    test_encryption: "true"
+    test_crypt_shared: "true"
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+  tags: [encryption_tag]
+- name: encryption-win64-py3.9-auth-ssl
+  tasks:
+    - name: .latest .replica_set
+  display_name: Encryption Win64 py3.9 Auth SSL
+  run_on:
+    - windows-64-vsMulti-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    PYTHON_BINARY: C:/python/Python39/python.exe
+  tags: [encryption_tag]
+- name: encryption-win64-py3.13-auth-nossl
+  tasks:
+    - name: .latest .replica_set
+  display_name: Encryption Win64 py3.13 Auth NoSSL
+  run_on:
+    - windows-64-vsMulti-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: nossl
+    test_encryption: "true"
+    PYTHON_BINARY: C:/python/Python313/python.exe
+  tags: [encryption_tag]
+- name: encryption-crypt_shared-win64-py3.9-auth-ssl
+  tasks:
+    - name: .latest .replica_set
+  display_name: Encryption crypt_shared Win64 py3.9 Auth SSL
+  run_on:
+    - windows-64-vsMulti-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    test_encryption: "true"
+    test_crypt_shared: "true"
+    PYTHON_BINARY: C:/python/Python39/python.exe
+  tags: [encryption_tag]
+- name: encryption-crypt_shared-win64-py3.13-auth-nossl
+  tasks:
+    - name: .latest .replica_set
+  display_name: Encryption crypt_shared Win64 py3.13 Auth NoSSL
+  run_on:
+    - windows-64-vsMulti-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    SSL: nossl
+    test_encryption: "true"
+    test_crypt_shared: "true"
+    PYTHON_BINARY: C:/python/Python313/python.exe
+  tags: [encryption_tag]
+
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
@@ -2873,33 +3144,6 @@ buildvariants:
   display_name: "${platform} ${auth} ${ssl}"
   tasks:
     - "test-fips-standalone"
-
-- matrix_name: "test-macos-encryption"
-  matrix_spec:
-    platform:
-      - macos
-    auth: "auth"
-    ssl: "nossl"
-    encryption: "*"
-  display_name: "${encryption} ${platform} ${auth} ${ssl}"
-  tasks: "test-latest-replica_set"
-  rules:
-    - if:
-        encryption: ["encryption", "encryption_crypt_shared"]
-        platform: macos
-        auth: "auth"
-        ssl: "nossl"
-      then:
-        add_tasks: &encryption-server-versions
-          - ".rapid"
-          - ".latest"
-          - ".8.0"
-          - ".7.0"
-          - ".6.0"
-          - ".5.0"
-          - ".4.4"
-          - ".4.2"
-          - ".4.0"
 
 # Test one server version with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
@@ -2953,26 +3197,6 @@ buildvariants:
   display_name: "PyOpenSSL ${platform} ${python-version-windows} ${auth}"
   tasks:
     - '.replica_set'
-
-- matrix_name: "tests-python-version-rhel8-test-encryption"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    auth-ssl: noauth-nossl
-# TODO: dependency error for 'coverage-report' task:
-# dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
-#    coverage: "*"
-    encryption: "*"
-  display_name: "${encryption} ${python-version} ${platform} ${auth-ssl}"
-  tasks: "test-latest-replica_set"
-  rules:
-    - if:
-        encryption: ["encryption", "encryption_crypt_shared"]
-        platform: rhel8
-        auth-ssl: noauth-nossl
-        python-version: "*"
-      then:
-        add_tasks: *encryption-server-versions
 
 - matrix_name: "tests-python-version-rhel8-without-c-extensions"
   matrix_spec:
@@ -3056,23 +3280,6 @@ buildvariants:
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
      - ".5.0"
-
-- matrix_name: "tests-windows-encryption"
-  matrix_spec:
-    platform: windows
-    python-version-windows: "*"
-    auth-ssl: "*"
-    encryption: "*"
-  display_name: "${encryption} ${platform} ${python-version-windows} ${auth-ssl}"
-  tasks: "test-latest-replica_set"
-  rules:
-    - if:
-        encryption: ["encryption", "encryption_crypt_shared"]
-        platform: windows
-        python-version-windows: "*"
-        auth-ssl: "*"
-      then:
-        add_tasks: *encryption-server-versions
 
 # Storage engine tests on RHEL 8.4 (x86_64) with Python 3.9.
 - matrix_name: "tests-storage-engines"
