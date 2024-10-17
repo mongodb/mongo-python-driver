@@ -30,7 +30,7 @@ set -o xtrace
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
-TEST_SUITES=""
+TEST_SUITES=${TEST_SUITES:-}
 TEST_ARGS="${*:1}"
 
 export PIP_QUIET=1  # Quiet by default

@@ -18,14 +18,14 @@ import unittest
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest
-from test.unified_format import UnifiedSpecTestMixinV1
+from test.asynchronous import AsyncIntegrationTest
+from test.asynchronous.unified_format import UnifiedSpecTestMixinV1
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-class TestCreateEntities(IntegrationTest):
-    def test_store_events_as_entities(self):
+class TestCreateEntities(AsyncIntegrationTest):
+    async def test_store_events_as_entities(self):
         self.scenario_runner = UnifiedSpecTestMixinV1()
         spec = {
             "description": "blank",
@@ -48,16 +48,16 @@ class TestCreateEntities(IntegrationTest):
             "tests": [{"description": "foo", "operations": []}],
         }
         self.scenario_runner.TEST_SPEC = spec
-        self.scenario_runner.setUp()
-        self.scenario_runner.run_scenario(spec["tests"][0])
-        self.scenario_runner.entity_map["client0"].close()
+        await self.scenario_runner.asyncSetUp()
+        await self.scenario_runner.run_scenario(spec["tests"][0])
+        await self.scenario_runner.entity_map["client0"].close()
         final_entity_map = self.scenario_runner.entity_map
         self.assertIn("events1", final_entity_map)
         self.assertGreater(len(final_entity_map["events1"]), 0)
         for event in final_entity_map["events1"]:
             self.assertIn("PoolCreatedEvent", event["name"])
 
-    def test_store_all_others_as_entities(self):
+    async def test_store_all_others_as_entities(self):
         self.scenario_runner = UnifiedSpecTestMixinV1()
         spec = {
             "description": "Find",
@@ -110,11 +110,11 @@ class TestCreateEntities(IntegrationTest):
             ],
         }
 
-        self.client.dat.dat.delete_many({})
+        await self.client.dat.dat.delete_many({})
         self.scenario_runner.TEST_SPEC = spec
-        self.scenario_runner.setUp()
-        self.scenario_runner.run_scenario(spec["tests"][0])
-        self.scenario_runner.entity_map["client0"].close()
+        await self.scenario_runner.asyncSetUp()
+        await self.scenario_runner.run_scenario(spec["tests"][0])
+        await self.scenario_runner.entity_map["client0"].close()
         entity_map = self.scenario_runner.entity_map
         self.assertEqual(len(entity_map["errors"]), 4)
         for error in entity_map["errors"]:
