@@ -2305,28 +2305,6 @@ axes:
         variables:
            COVERAGE: "coverage"
 
-  - id: versionedApi
-    display_name: "versionedApi"
-    values:
-      # Test against a cluster with requireApiVersion=1.
-      - id: "requireApiVersion1"
-        display_name: "requireApiVersion1"
-        tags: [ "versionedApi_tag" ]
-        variables:
-          # REQUIRE_API_VERSION is set to make drivers-evergreen-tools
-          # start a cluster with the requireApiVersion parameter.
-          REQUIRE_API_VERSION: "1"
-          # MONGODB_API_VERSION is the apiVersion to use in the test suite.
-          MONGODB_API_VERSION: "1"
-      # Test against a cluster with acceptApiVersion2 but without
-      # requireApiVersion, and don't automatically add apiVersion to
-      # clients created in the test suite.
-      - id: "acceptApiVersion2"
-        display_name: "acceptApiVersion2"
-        tags: [ "versionedApi_tag" ]
-        variables:
-          ORCHESTRATION_FILE: "versioned-api-testing.json"
-
   - id: serverless
     display_name: "Serverless"
     values:
@@ -3366,6 +3344,74 @@ buildvariants:
     SSL: ssl
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
+# Versioned API tests.
+- name: versioned-api-requireapiversion1-rhel8-py3.9-auth
+  tasks:
+    - name: .standalone .5.0
+    - name: .standalone .6.0
+    - name: .standalone .7.0
+    - name: .standalone .8.0
+    - name: .standalone .rapid
+    - name: .standalone .latest
+  display_name: Versioned API requireApiVersion1 RHEL8 py3.9 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    REQUIRE_API_VERSION: "1"
+    MONGODB_API_VERSION: "1"
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+  tags: [versionedApi_tag]
+- name: versioned-api-acceptapiversion2-rhel8-py3.9-auth
+  tasks:
+    - name: .standalone .5.0
+    - name: .standalone .6.0
+    - name: .standalone .7.0
+    - name: .standalone .8.0
+    - name: .standalone .rapid
+    - name: .standalone .latest
+  display_name: Versioned API acceptApiVersion2 RHEL8 py3.9 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    ORCHESTRATION_FILE: versioned-api-testing.json
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+  tags: [versionedApi_tag]
+- name: versioned-api-requireapiversion1-rhel8-py3.13-auth
+  tasks:
+    - name: .standalone .5.0
+    - name: .standalone .6.0
+    - name: .standalone .7.0
+    - name: .standalone .8.0
+    - name: .standalone .rapid
+    - name: .standalone .latest
+  display_name: Versioned API requireApiVersion1 RHEL8 py3.13 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    REQUIRE_API_VERSION: "1"
+    MONGODB_API_VERSION: "1"
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+  tags: [versionedApi_tag]
+- name: versioned-api-acceptapiversion2-rhel8-py3.13-auth
+  tasks:
+    - name: .standalone .5.0
+    - name: .standalone .6.0
+    - name: .standalone .7.0
+    - name: .standalone .8.0
+    - name: .standalone .rapid
+    - name: .standalone .latest
+  display_name: Versioned API acceptApiVersion2 RHEL8 py3.13 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    ORCHESTRATION_FILE: versioned-api-testing.json
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+  tags: [versionedApi_tag]
+
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
@@ -3558,22 +3604,6 @@ buildvariants:
   display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
   tasks:
     - name: atlas-data-lake-tests
-
-- matrix_name: "stable-api-tests"
-  matrix_spec:
-    platform: rhel8
-    python-version: ["3.9", "3.10"]
-    auth: "auth"
-    versionedApi: "*"
-  display_name: "Versioned API ${versionedApi} ${python-version}"
-  batchtime: 10080  # 7 days
-  tasks:
-    # Versioned API was introduced in MongoDB 4.7
-    - "test-latest-standalone"
-    - "test-8.0-standalone"
-    - "test-7.0-standalone"
-    - "test-6.0-standalone"
-    - "test-5.0-standalone"
 
 # OCSP test matrix.
 - name: ocsp-test-rhel8-v4.4-py3.9
