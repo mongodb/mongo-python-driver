@@ -23,6 +23,7 @@ from shrub.v3.shrub_service import ShrubService
 ##############
 
 ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
+VERSIONS_6_0_PLUS = ["6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
@@ -239,10 +240,14 @@ def create_server_variants() -> list[BuildVariant]:
             zip_cycle(MIN_MAX_PYTHON, AUTH_SSLS, TOPOLOGIES), SYNCS
         ):
             test_suite = "default" if sync == "sync" else "default_async"
+            tasks = [f".{topology}"]
+            # MacOS arm64 only works on server versions 6.0+
+            if host == "macos-arm64":
+                tasks = [f".{topology} .{version}" for version in VERSIONS_6_0_PLUS]
             expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite, SKIP_CSOT_TESTS="true")
             display_name = get_display_name("Test", host, python=python, **expansions)
             variant = create_variant(
-                [f".{topology}"],
+                tasks,
                 display_name,
                 python=python,
                 host=host,
@@ -384,10 +389,63 @@ def create_compression_variants():
     return variants
 
 
+def create_enterprise_auth_variants():
+    expansions = dict(AUTH="auth")
+    variants = []
+
+    # All python versions across platforms.
+    for python in ALL_PYTHONS:
+        if python == CPYTHONS[0]:
+            host = "macos"
+        elif python == CPYTHONS[-1]:
+            host = "win64"
+        else:
+            host = "rhel8"
+        display_name = get_display_name("Enterprise Auth", host, python=python, **expansions)
+        variant = create_variant(
+            ["test-enterprise-auth"], display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+
+    return variants
+
+
+def create_pyopenssl_variants():
+    base_name = "PyOpenSSL"
+    batchtime = BATCHTIME_WEEK
+    base_expansions = dict(test_pyopenssl="true", SSL="ssl")
+    variants = []
+
+    for python in ALL_PYTHONS:
+        # Only test "noauth" with min python.
+        auth = "noauth" if python == CPYTHONS[0] else "auth"
+        if python == CPYTHONS[0]:
+            host = "macos"
+        elif python == CPYTHONS[-1]:
+            host = "win64"
+        else:
+            host = "rhel8"
+        expansions = dict(AUTH=auth)
+        expansions.update(base_expansions)
+
+        display_name = get_display_name(base_name, host, python=python)
+        variant = create_variant(
+            [".replica_set", ".7.0"],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+        )
+        variants.append(variant)
+
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-variants = create_compression_variants()
+variants = create_pyopenssl_variants()
 # print(len(variants))
 generate_yaml(variants=variants)
