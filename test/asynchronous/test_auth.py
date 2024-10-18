@@ -44,6 +44,8 @@ from pymongo.saslprep import HAVE_STRINGPREP
 
 _IS_SYNC = False
 
+pytestmark = pytest.mark.auth
+
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
 GSSAPI_HOST = os.environ.get("GSSAPI_HOST")
 GSSAPI_PORT = int(os.environ.get("GSSAPI_PORT", "27017"))
@@ -82,7 +84,6 @@ class AutoAuthenticateThread(threading.Thread):
 
 
 class TestGSSAPI(AsyncPyMongoTestCase):
-    pytestmark = pytest.mark.auth
     mech_properties: str
     service_realm_required: bool
 
@@ -269,8 +270,6 @@ class TestGSSAPI(AsyncPyMongoTestCase):
 
 
 class TestSASLPlain(AsyncPyMongoTestCase):
-    pytestmark = pytest.mark.auth
-
     @classmethod
     def setUpClass(cls):
         if not SASL_HOST or not SASL_USER or not SASL_PASS:
@@ -344,8 +343,6 @@ class TestSASLPlain(AsyncPyMongoTestCase):
 
 
 class TestSCRAMSHA1(AsyncIntegrationTest):
-    pytestmark = pytest.mark.auth
-
     @async_client_context.require_auth
     async def asyncSetUp(self):
         await super().asyncSetUp()
@@ -380,8 +377,6 @@ class TestSCRAMSHA1(AsyncIntegrationTest):
 
 # https://github.com/mongodb/specifications/blob/master/source/auth/auth.rst#scram-sha-256-and-mechanism-negotiation
 class TestSCRAM(AsyncIntegrationTest):
-    pytestmark = pytest.mark.auth
-
     @async_client_context.require_auth
     @async_client_context.require_version_min(3, 7, 2)
     async def asyncSetUp(self):
@@ -621,8 +616,6 @@ class TestSCRAM(AsyncIntegrationTest):
 
 
 class TestAuthURIOptions(AsyncIntegrationTest):
-    pytestmark = pytest.mark.auth
-
     @async_client_context.require_auth
     async def asyncSetUp(self):
         await super().asyncSetUp()
