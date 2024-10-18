@@ -2305,38 +2305,6 @@ axes:
         variables:
            COVERAGE: "coverage"
 
-  # Run pyopenssl tests?
-  - id: pyopenssl
-    display_name: "PyOpenSSL"
-    values:
-      - id: "enabled"
-        display_name: "PyOpenSSL"
-        variables:
-          test_pyopenssl: true
-        batchtime: 10080  # 7 days
-
-  - id: versionedApi
-    display_name: "versionedApi"
-    values:
-      # Test against a cluster with requireApiVersion=1.
-      - id: "requireApiVersion1"
-        display_name: "requireApiVersion1"
-        tags: [ "versionedApi_tag" ]
-        variables:
-          # REQUIRE_API_VERSION is set to make drivers-evergreen-tools
-          # start a cluster with the requireApiVersion parameter.
-          REQUIRE_API_VERSION: "1"
-          # MONGODB_API_VERSION is the apiVersion to use in the test suite.
-          MONGODB_API_VERSION: "1"
-      # Test against a cluster with acceptApiVersion2 but without
-      # requireApiVersion, and don't automatically add apiVersion to
-      # clients created in the test suite.
-      - id: "acceptApiVersion2"
-        display_name: "acceptApiVersion2"
-        tags: [ "versionedApi_tag" ]
-        variables:
-          ORCHESTRATION_FILE: "versioned-api-testing.json"
-
   - id: serverless
     display_name: "Serverless"
     values:
@@ -2592,7 +2560,11 @@ buildvariants:
 # Server tests for macOS Arm64.
 - name: test-macos-arm64-py3.9-auth-ssl-sync
   tasks:
-    - name: .standalone
+    - name: .standalone .6.0
+    - name: .standalone .7.0
+    - name: .standalone .8.0
+    - name: .standalone .rapid
+    - name: .standalone .latest
   display_name: Test macOS Arm64 py3.9 Auth SSL Sync
   run_on:
     - macos-14-arm64
@@ -2600,11 +2572,15 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     TEST_SUITES: default
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
     SKIP_CSOT_TESTS: "true"
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
 - name: test-macos-arm64-py3.9-auth-ssl-async
   tasks:
-    - name: .standalone
+    - name: .standalone .6.0
+    - name: .standalone .7.0
+    - name: .standalone .8.0
+    - name: .standalone .rapid
+    - name: .standalone .latest
   display_name: Test macOS Arm64 py3.9 Auth SSL Async
   run_on:
     - macos-14-arm64
@@ -2612,11 +2588,15 @@ buildvariants:
     AUTH: auth
     SSL: ssl
     TEST_SUITES: default_async
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
     SKIP_CSOT_TESTS: "true"
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
 - name: test-macos-arm64-py3.13-noauth-ssl-sync
   tasks:
-    - name: .replica_set
+    - name: .replica_set .6.0
+    - name: .replica_set .7.0
+    - name: .replica_set .8.0
+    - name: .replica_set .rapid
+    - name: .replica_set .latest
   display_name: Test macOS Arm64 py3.13 NoAuth SSL Sync
   run_on:
     - macos-14-arm64
@@ -2624,11 +2604,15 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TEST_SUITES: default
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
     SKIP_CSOT_TESTS: "true"
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 - name: test-macos-arm64-py3.13-noauth-ssl-async
   tasks:
-    - name: .replica_set
+    - name: .replica_set .6.0
+    - name: .replica_set .7.0
+    - name: .replica_set .8.0
+    - name: .replica_set .rapid
+    - name: .replica_set .latest
   display_name: Test macOS Arm64 py3.13 NoAuth SSL Async
   run_on:
     - macos-14-arm64
@@ -2636,11 +2620,15 @@ buildvariants:
     AUTH: noauth
     SSL: ssl
     TEST_SUITES: default_async
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
     SKIP_CSOT_TESTS: "true"
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 - name: test-macos-arm64-py3.9-noauth-nossl-sync
   tasks:
-    - name: .sharded_cluster
+    - name: .sharded_cluster .6.0
+    - name: .sharded_cluster .7.0
+    - name: .sharded_cluster .8.0
+    - name: .sharded_cluster .rapid
+    - name: .sharded_cluster .latest
   display_name: Test macOS Arm64 py3.9 NoAuth NoSSL Sync
   run_on:
     - macos-14-arm64
@@ -2648,11 +2636,15 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     TEST_SUITES: default
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
     SKIP_CSOT_TESTS: "true"
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
 - name: test-macos-arm64-py3.9-noauth-nossl-async
   tasks:
-    - name: .sharded_cluster
+    - name: .sharded_cluster .6.0
+    - name: .sharded_cluster .7.0
+    - name: .sharded_cluster .8.0
+    - name: .sharded_cluster .rapid
+    - name: .sharded_cluster .latest
   display_name: Test macOS Arm64 py3.9 NoAuth NoSSL Async
   run_on:
     - macos-14-arm64
@@ -2660,8 +2652,8 @@ buildvariants:
     AUTH: noauth
     SSL: nossl
     TEST_SUITES: default_async
-    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
     SKIP_CSOT_TESTS: "true"
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
 
 # Server tests for Windows.
 - name: test-win64-py3.9-auth-ssl-sync
@@ -3259,6 +3251,167 @@ buildvariants:
     AUTH: auth
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
+# PyOpenSSL tests.
+- name: pyopenssl-macos-py3.9
+  tasks:
+    - name: .replica_set
+    - name: .7.0
+  display_name: PyOpenSSL macOS py3.9
+  run_on:
+    - macos-14
+  batchtime: 10080
+  expansions:
+    AUTH: noauth
+    test_pyopenssl: "true"
+    SSL: ssl
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+- name: pyopenssl-rhel8-py3.10
+  tasks:
+    - name: .replica_set
+    - name: .7.0
+  display_name: PyOpenSSL RHEL8 py3.10
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    test_pyopenssl: "true"
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.10/bin/python3
+- name: pyopenssl-rhel8-py3.11
+  tasks:
+    - name: .replica_set
+    - name: .7.0
+  display_name: PyOpenSSL RHEL8 py3.11
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    test_pyopenssl: "true"
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.11/bin/python3
+- name: pyopenssl-rhel8-py3.12
+  tasks:
+    - name: .replica_set
+    - name: .7.0
+  display_name: PyOpenSSL RHEL8 py3.12
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    test_pyopenssl: "true"
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.12/bin/python3
+- name: pyopenssl-win64-py3.13
+  tasks:
+    - name: .replica_set
+    - name: .7.0
+  display_name: PyOpenSSL Win64 py3.13
+  run_on:
+    - windows-64-vsMulti-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    test_pyopenssl: "true"
+    SSL: ssl
+    PYTHON_BINARY: C:/python/Python313/python.exe
+- name: pyopenssl-rhel8-pypy3.9
+  tasks:
+    - name: .replica_set
+    - name: .7.0
+  display_name: PyOpenSSL RHEL8 pypy3.9
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    test_pyopenssl: "true"
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+- name: pyopenssl-rhel8-pypy3.10
+  tasks:
+    - name: .replica_set
+    - name: .7.0
+  display_name: PyOpenSSL RHEL8 pypy3.10
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    AUTH: auth
+    test_pyopenssl: "true"
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+
+# Versioned API tests.
+- name: versioned-api-require-v1-rhel8-py3.9-auth
+  tasks:
+    - name: .standalone .5.0
+    - name: .standalone .6.0
+    - name: .standalone .7.0
+    - name: .standalone .8.0
+    - name: .standalone .rapid
+    - name: .standalone .latest
+  display_name: Versioned API require v1 RHEL8 py3.9 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    REQUIRE_API_VERSION: "1"
+    MONGODB_API_VERSION: "1"
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+  tags: [versionedApi_tag]
+- name: versioned-api-accept-v2-rhel8-py3.9-auth
+  tasks:
+    - name: .standalone .5.0
+    - name: .standalone .6.0
+    - name: .standalone .7.0
+    - name: .standalone .8.0
+    - name: .standalone .rapid
+    - name: .standalone .latest
+  display_name: Versioned API accept v2 RHEL8 py3.9 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    ORCHESTRATION_FILE: versioned-api-testing.json
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+  tags: [versionedApi_tag]
+- name: versioned-api-require-v1-rhel8-py3.13-auth
+  tasks:
+    - name: .standalone .5.0
+    - name: .standalone .6.0
+    - name: .standalone .7.0
+    - name: .standalone .8.0
+    - name: .standalone .rapid
+    - name: .standalone .latest
+  display_name: Versioned API require v1 RHEL8 py3.13 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    REQUIRE_API_VERSION: "1"
+    MONGODB_API_VERSION: "1"
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+  tags: [versionedApi_tag]
+- name: versioned-api-accept-v2-rhel8-py3.13-auth
+  tasks:
+    - name: .standalone .5.0
+    - name: .standalone .6.0
+    - name: .standalone .7.0
+    - name: .standalone .8.0
+    - name: .standalone .rapid
+    - name: .standalone .latest
+  display_name: Versioned API accept v2 RHEL8 py3.13 Auth
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    ORCHESTRATION_FILE: versioned-api-testing.json
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+  tags: [versionedApi_tag]
+
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
@@ -3280,47 +3433,6 @@ buildvariants:
   display_name: "${platform} ${auth-ssl}"
   tasks:
     - ".6.0"
-
-- matrix_name: "tests-pyopenssl"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    auth: "*"
-    ssl: "ssl"
-    pyopenssl: "*"
-  # Only test "noauth" with Python 3.9.
-  exclude_spec:
-    platform: rhel8
-    python-version: ["3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
-    auth: "noauth"
-    ssl: "ssl"
-    pyopenssl: "*"
-  display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
-  tasks:
-    - '.replica_set'
-    # Test standalone and sharded only on 7.0.
-    - '.7.0'
-
-- matrix_name: "tests-pyopenssl-macOS"
-  matrix_spec:
-    platform: macos
-    auth: "auth"
-    ssl: "ssl"
-    pyopenssl: "*"
-  display_name: "PyOpenSSL ${platform} ${auth}"
-  tasks:
-    - '.replica_set'
-
-- matrix_name: "tests-pyopenssl-windows"
-  matrix_spec:
-    platform: windows
-    python-version-windows: "*"
-    auth: "auth"
-    ssl: "ssl"
-    pyopenssl: "*"
-  display_name: "PyOpenSSL ${platform} ${python-version-windows} ${auth}"
-  tasks:
-    - '.replica_set'
 
 - matrix_name: "tests-python-version-rhel8-without-c-extensions"
   matrix_spec:
@@ -3492,22 +3604,6 @@ buildvariants:
   display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
   tasks:
     - name: atlas-data-lake-tests
-
-- matrix_name: "stable-api-tests"
-  matrix_spec:
-    platform: rhel8
-    python-version: ["3.9", "3.10"]
-    auth: "auth"
-    versionedApi: "*"
-  display_name: "Versioned API ${versionedApi} ${python-version}"
-  batchtime: 10080  # 7 days
-  tasks:
-    # Versioned API was introduced in MongoDB 4.7
-    - "test-latest-standalone"
-    - "test-8.0-standalone"
-    - "test-7.0-standalone"
-    - "test-6.0-standalone"
-    - "test-5.0-standalone"
 
 # OCSP test matrix.
 - name: ocsp-test-rhel8-v4.4-py3.9
