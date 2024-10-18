@@ -410,10 +410,42 @@ def create_enterprise_auth_variants():
     return variants
 
 
+def create_pyopenssl_variants():
+    base_name = "PyOpenSSL"
+    batchtime = BATCHTIME_WEEK
+    base_expansions = dict(test_pyopenssl="true", SSL="ssl")
+    variants = []
+
+    for python in ALL_PYTHONS:
+        # Only test "noauth" with min python.
+        auth = "noauth" if python == CPYTHONS[0] else "auth"
+        if python == CPYTHONS[0]:
+            host = "macos"
+        elif python == CPYTHONS[-1]:
+            host = "win64"
+        else:
+            host = "rhel8"
+        expansions = dict(AUTH=auth)
+        expansions.update(base_expansions)
+
+        display_name = get_display_name(base_name, host, python=python)
+        variant = create_variant(
+            [".replica_set", ".7.0"],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+        )
+        variants.append(variant)
+
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-variants = create_server_variants()
+variants = create_pyopenssl_variants()
 # print(len(variants))
 generate_yaml(variants=variants)
