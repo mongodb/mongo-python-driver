@@ -23,7 +23,6 @@ from shrub.v3.shrub_service import ShrubService
 ##############
 
 ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
-VERSIONS_6_0_PLUS = ["6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
@@ -110,6 +109,14 @@ def get_python_binary(python: str, host: str) -> str:
         return f"/Library/Frameworks/Python.Framework/Versions/{python}/bin/python3"
 
     raise ValueError(f"no match found for python {python} on {host}")
+
+
+def get_pythons_from(min_version: str) -> list[str]:
+    """Get all pythons starting from a minimum version."""
+    min_version_float = float(min_version)
+    rapid_latest = ["rapid", "latest"]
+    versions = [v for v in ALL_VERSIONS if v not in rapid_latest]
+    return [v for v in versions if float(v) >= min_version_float] + rapid_latest
 
 
 def get_display_name(base: str, host: str, **kwargs) -> str:
@@ -243,7 +250,7 @@ def create_server_variants() -> list[BuildVariant]:
             tasks = [f".{topology}"]
             # MacOS arm64 only works on server versions 6.0+
             if host == "macos-arm64":
-                tasks = [f".{topology} .{version}" for version in VERSIONS_6_0_PLUS]
+                tasks = [f".{topology} .{version}" for version in get_pythons_from("6.0")]
             expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite, SKIP_CSOT_TESTS="true")
             display_name = get_display_name("Test", host, python=python, **expansions)
             variant = create_variant(
@@ -330,7 +337,7 @@ def create_load_balancer_variants():
     task_names = ["load-balancer-test"]
     batchtime = BATCHTIME_WEEK
     expansions_base = dict(test_loadbalancer="true")
-    versions = ["6.0", "7.0", "8.0", "latest", "rapid"]
+    versions = get_pythons_from("6.0")
     variants = []
     pythons = CPYTHONS + PYPYS
     for ind, (version, (auth, ssl)) in enumerate(product(versions, AUTH_SSLS)):
@@ -442,10 +449,42 @@ def create_pyopenssl_variants():
     return variants
 
 
+def create_versioned_api_tests():
+    host = "rhel8"
+    tags = ["versionedApi_tag"]
+    tasks = [f".standalone .{v}" for v in get_pythons_from("5.0")]
+    variants = []
+    types = ["require v1", "accept v2"]
+
+    # All python versions across platforms.
+    for python, test_type in product(MIN_MAX_PYTHON, types):
+        expansions = dict(AUTH="auth")
+        # Test against a cluster with requireApiVersion=1.
+        if test_type == types[0]:
+            # REQUIRE_API_VERSION is set to make drivers-evergreen-tools
+            # start a cluster with the requireApiVersion parameter.
+            expansions["REQUIRE_API_VERSION"] = "1"
+            # MONGODB_API_VERSION is the apiVersion to use in the test suite.
+            expansions["MONGODB_API_VERSION"] = "1"
+        else:
+            # Test against a cluster with acceptApiVersion2 but without
+            # requireApiVersion, and don't automatically add apiVersion to
+            # clients created in the test suite.
+            expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
+        base_display_name = f"Versioned API {test_type}"
+        display_name = get_display_name(base_display_name, host, python=python, **expansions)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, tags=tags, expansions=expansions
+        )
+        variants.append(variant)
+
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-variants = create_pyopenssl_variants()
+variants = create_versioned_api_tests()
 # print(len(variants))
 generate_yaml(variants=variants)
