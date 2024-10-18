@@ -2305,16 +2305,6 @@ axes:
         variables:
            COVERAGE: "coverage"
 
-  # Run pyopenssl tests?
-  - id: pyopenssl
-    display_name: "PyOpenSSL"
-    values:
-      - id: "enabled"
-        display_name: "PyOpenSSL"
-        variables:
-          test_pyopenssl: true
-        batchtime: 10080  # 7 days
-
   - id: versionedApi
     display_name: "versionedApi"
     values:
@@ -3215,47 +3205,6 @@ buildvariants:
   display_name: "${platform} ${auth-ssl}"
   tasks:
     - ".6.0"
-
-- matrix_name: "tests-pyopenssl"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    auth: "*"
-    ssl: "ssl"
-    pyopenssl: "*"
-  # Only test "noauth" with Python 3.9.
-  exclude_spec:
-    platform: rhel8
-    python-version: ["3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
-    auth: "noauth"
-    ssl: "ssl"
-    pyopenssl: "*"
-  display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
-  tasks:
-    - '.replica_set'
-    # Test standalone and sharded only on 7.0.
-    - '.7.0'
-
-- matrix_name: "tests-pyopenssl-macOS"
-  matrix_spec:
-    platform: macos
-    auth: "auth"
-    ssl: "ssl"
-    pyopenssl: "*"
-  display_name: "PyOpenSSL ${platform} ${auth}"
-  tasks:
-    - '.replica_set'
-
-- matrix_name: "tests-pyopenssl-windows"
-  matrix_spec:
-    platform: windows
-    python-version-windows: "*"
-    auth: "auth"
-    ssl: "ssl"
-    pyopenssl: "*"
-  display_name: "PyOpenSSL ${platform} ${python-version-windows} ${auth}"
-  tasks:
-    - '.replica_set'
 
 - matrix_name: "tests-python-version-rhel8-without-c-extensions"
   matrix_spec:

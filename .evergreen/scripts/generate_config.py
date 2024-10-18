@@ -345,6 +345,38 @@ def create_load_balancer_variants():
     return variants
 
 
+def create_pyopenssl_variants():
+    base_name = "PyOpenSSL"
+    batchtime = BATCHTIME_WEEK
+    base_expansions = dict(test_pyopenssl="true", SSL="ssl")
+    variants = []
+
+    for python in ALL_PYTHONS:
+        # Only test "noauth" with min python.
+        auth = "noauth" if python == CPYTHONS[0] else "auth"
+        if python == CPYTHONS[0]:
+            host = "macos"
+        elif python == CPYTHONS[-1]:
+            host = "win64"
+        else:
+            host = "rhel8"
+        expansions = dict(AUTH=auth)
+        expansions.update(base_expansions)
+
+        display_name = get_display_name(base_name, host, python=python)
+        variant = create_variant(
+            [".replica_set", ".7.0"],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+        )
+        variants.append(variant)
+
+    return variants
+
+
 def create_compression_variants():
     # Compression tests - standalone versions of each server, across python versions, with and without c extensions.
     # PyPy interpreters are always tested without extensions.
