@@ -23,6 +23,7 @@ from shrub.v3.shrub_service import ShrubService
 ##############
 
 ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
+VERSIONS_6_0_PLUS = ["6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
@@ -239,10 +240,14 @@ def create_server_variants() -> list[BuildVariant]:
             zip_cycle(MIN_MAX_PYTHON, AUTH_SSLS, TOPOLOGIES), SYNCS
         ):
             test_suite = "default" if sync == "sync" else "default_async"
+            tasks = [f".{topology}"]
+            # MacOS arm64 only works on server versions 6.0+
+            if host == "macos-arm64":
+                tasks = [f".{topology} .{version}" for version in VERSIONS_6_0_PLUS]
             expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite, SKIP_CSOT_TESTS="true")
             display_name = get_display_name("Test", host, python=python, **expansions)
             variant = create_variant(
-                [f".{topology}"],
+                tasks,
                 display_name,
                 python=python,
                 host=host,
