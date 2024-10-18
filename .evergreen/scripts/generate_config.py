@@ -454,7 +454,7 @@ def create_versioned_api_tests():
     tags = ["versionedApi_tag"]
     tasks = [f".standalone .{v}" for v in get_pythons_from("5.0")]
     variants = []
-    types = ["requireApiVersion1", "acceptApiVersion2"]
+    types = ["require v1", "accept v2"]
 
     # All python versions across platforms.
     for python, test_type in product(MIN_MAX_PYTHON, types):

@@ -3345,7 +3345,7 @@ buildvariants:
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
 # Versioned API tests.
-- name: versioned-api-requireapiversion1-rhel8-py3.9-auth
+- name: versioned-api-require-v1-rhel8-py3.9-auth
   tasks:
     - name: .standalone .5.0
     - name: .standalone .6.0
@@ -3353,7 +3353,7 @@ buildvariants:
     - name: .standalone .8.0
     - name: .standalone .rapid
     - name: .standalone .latest
-  display_name: Versioned API requireApiVersion1 RHEL8 py3.9 Auth
+  display_name: Versioned API require v1 RHEL8 py3.9 Auth
   run_on:
     - rhel87-small
   expansions:
@@ -3362,7 +3362,7 @@ buildvariants:
     MONGODB_API_VERSION: "1"
     PYTHON_BINARY: /opt/python/3.9/bin/python3
   tags: [versionedApi_tag]
-- name: versioned-api-acceptapiversion2-rhel8-py3.9-auth
+- name: versioned-api-accept-v2-rhel8-py3.9-auth
   tasks:
     - name: .standalone .5.0
     - name: .standalone .6.0
@@ -3370,7 +3370,7 @@ buildvariants:
     - name: .standalone .8.0
     - name: .standalone .rapid
     - name: .standalone .latest
-  display_name: Versioned API acceptApiVersion2 RHEL8 py3.9 Auth
+  display_name: Versioned API accept v2 RHEL8 py3.9 Auth
   run_on:
     - rhel87-small
   expansions:
@@ -3378,7 +3378,7 @@ buildvariants:
     ORCHESTRATION_FILE: versioned-api-testing.json
     PYTHON_BINARY: /opt/python/3.9/bin/python3
   tags: [versionedApi_tag]
-- name: versioned-api-requireapiversion1-rhel8-py3.13-auth
+- name: versioned-api-require-v1-rhel8-py3.13-auth
   tasks:
     - name: .standalone .5.0
     - name: .standalone .6.0
@@ -3386,7 +3386,7 @@ buildvariants:
     - name: .standalone .8.0
     - name: .standalone .rapid
     - name: .standalone .latest
-  display_name: Versioned API requireApiVersion1 RHEL8 py3.13 Auth
+  display_name: Versioned API require v1 RHEL8 py3.13 Auth
   run_on:
     - rhel87-small
   expansions:
@@ -3395,7 +3395,7 @@ buildvariants:
     MONGODB_API_VERSION: "1"
     PYTHON_BINARY: /opt/python/3.13/bin/python3
   tags: [versionedApi_tag]
-- name: versioned-api-acceptapiversion2-rhel8-py3.13-auth
+- name: versioned-api-accept-v2-rhel8-py3.13-auth
   tasks:
     - name: .standalone .5.0
     - name: .standalone .6.0
@@ -3403,7 +3403,7 @@ buildvariants:
     - name: .standalone .8.0
     - name: .standalone .rapid
     - name: .standalone .latest
-  display_name: Versioned API acceptApiVersion2 RHEL8 py3.13 Auth
+  display_name: Versioned API accept v2 RHEL8 py3.13 Auth
   run_on:
     - rhel87-small
   expansions:
