@@ -205,7 +205,7 @@ else:
             total_sent += sent
 
     async def _async_receive_ssl(
-        conn: _sslConn, length: int, dummy: AbstractEventLoop
+        conn: _sslConn, length: int, dummy: AbstractEventLoop, once: Optional[bool] = False
     ) -> memoryview:
         mv = memoryview(bytearray(length))
         total_read = 0
@@ -217,6 +217,9 @@ else:
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
+                # KMS responses update their expected size after the first batch, stop reading after one loop
+                if once:
+                    return mv[:read]
             except BLOCKING_IO_ERRORS:
                 await asyncio.sleep(backoff)
                 read = 0

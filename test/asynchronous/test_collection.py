@@ -36,6 +36,7 @@ from test.asynchronous import (  # TODO: fix sync imports in PYTHON-4528
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,
+    OvertCommandListener,
     async_get_pool,
     async_is_mongos,
     async_wait_until,
@@ -2101,7 +2102,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertEqual(4, (await c.find_one_and_update({}, {"$inc": {"i": 1}}, sort=sort))["j"])
 
     async def test_find_one_and_write_concern(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         db = (await self.async_single_client(event_listeners=[listener]))[self.db.name]
         # non-default WriteConcern.
         c_w0 = db.get_collection("test", write_concern=WriteConcern(w=0))

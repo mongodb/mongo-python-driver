@@ -31,6 +31,7 @@ from test.asynchronous import (
 )
 from test.utils import (
     EventListener,
+    OvertCommandListener,
     async_wait_until,
 )
 
@@ -52,7 +53,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.listener = EventListener()
+        cls.listener = OvertCommandListener()
 
     @async_client_context.require_connection
     async def asyncSetUp(self) -> None:
@@ -1094,11 +1095,13 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
     @async_client_context.require_version_max(6, 1, 99)
     async def test_sensitive_commands(self):
-        listeners = self.client._event_listeners
+        listener = EventListener()
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
+        listeners = client._event_listeners
 
-        self.listener.reset()
+        listener.reset()
         cmd = SON([("getnonce", 1)])
-        listeners.publish_command_start(cmd, "pymongo_test", 12345, await self.client.address, None)  # type: ignore[arg-type]
+        listeners.publish_command_start(cmd, "pymongo_test", 12345, await client.address, None)  # type: ignore[arg-type]
         delta = datetime.timedelta(milliseconds=100)
         listeners.publish_command_success(
             delta,
@@ -1109,15 +1112,15 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             None,
             database_name="pymongo_test",
         )
-        started = self.listener.started_events[0]
-        succeeded = self.listener.succeeded_events[0]
-        self.assertEqual(0, len(self.listener.failed_events))
+        started = listener.started_events[0]
+        succeeded = listener.succeeded_events[0]
+        self.assertEqual(0, len(listener.failed_events))
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqual({}, started.command)
         self.assertEqual("pymongo_test", started.database_name)
         self.assertEqual("getnonce", started.command_name)
         self.assertIsInstance(started.request_id, int)
-        self.assertEqual(await self.client.address, started.connection_id)
+        self.assertEqual(await client.address, started.connection_id)
         self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
         self.assertEqual(succeeded.duration_micros, 100000)
         self.assertEqual(started.command_name, succeeded.command_name)
@@ -1132,7 +1135,7 @@ class AsyncTestGlobalListener(AsyncIntegrationTest):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.listener = EventListener()
+        cls.listener = OvertCommandListener()
         # We plan to call register(), which internally modifies _LISTENERS.
         cls.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
         monitoring.register(cls.listener)
@@ -1140,16 +1143,10 @@ class AsyncTestGlobalListener(AsyncIntegrationTest):
     @async_client_context.require_connection
     async def asyncSetUp(self):
         await super().asyncSetUp()
-        self.listener = EventListener()
-        # We plan to call register(), which internally modifies _LISTENERS.
-        self.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
-        monitoring.register(self.listener)
+        self.listener.reset()
         self.client = await self.async_single_client()
         # Get one (authenticated) socket in the pool.
         await self.client.pymongo_test.command("ping")
-
-    async def asyncTearDown(self) -> None:
-        self.listener.reset()
 
     @classmethod
     def tearDownClass(cls):
