@@ -3195,15 +3195,15 @@ buildvariants:
     PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
 
 # Enterprise auth tests.
-- name: enterprise-auth-rhel8-py3.9-auth
+- name: enterprise-auth-macos-py3.9-auth
   tasks:
     - name: test-enterprise-auth
-  display_name: Enterprise Auth RHEL8 py3.9 Auth
+  display_name: Enterprise Auth macOS py3.9 Auth
   run_on:
-    - rhel87-small
+    - macos-14
   expansions:
     AUTH: auth
-    PYTHON_BINARY: /opt/python/3.9/bin/python3
+    PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
 - name: enterprise-auth-rhel8-py3.10-auth
   tasks:
     - name: test-enterprise-auth
@@ -3231,15 +3231,15 @@ buildvariants:
   expansions:
     AUTH: auth
     PYTHON_BINARY: /opt/python/3.12/bin/python3
-- name: enterprise-auth-rhel8-py3.13-auth
+- name: enterprise-auth-win64-py3.13-auth
   tasks:
     - name: test-enterprise-auth
-  display_name: Enterprise Auth RHEL8 py3.13 Auth
+  display_name: Enterprise Auth Win64 py3.13 Auth
   run_on:
-    - rhel87-small
+    - windows-64-vsMulti-small
   expansions:
     AUTH: auth
-    PYTHON_BINARY: /opt/python/3.13/bin/python3
+    PYTHON_BINARY: C:/python/Python313/python.exe
 - name: enterprise-auth-rhel8-pypy3.9-auth
   tasks:
     - name: test-enterprise-auth
@@ -3258,24 +3258,6 @@ buildvariants:
   expansions:
     AUTH: auth
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-- name: enterprise-auth-win64-py3.9-auth
-  tasks:
-    - name: test-enterprise-auth
-  display_name: Enterprise Auth Win64 py3.9 Auth
-  run_on:
-    - windows-64-vsMulti-small
-  expansions:
-    AUTH: auth
-    PYTHON_BINARY: C:/python/Python39/python.exe
-- name: enterprise-auth-win64-py3.13-auth
-  tasks:
-    - name: test-enterprise-auth
-  display_name: Enterprise Auth Win64 py3.13 Auth
-  run_on:
-    - windows-64-vsMulti-small
-  expansions:
-    AUTH: auth
-    PYTHON_BINARY: C:/python/Python313/python.exe
 
 - matrix_name: "tests-fips"
   matrix_spec:

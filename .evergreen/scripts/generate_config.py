@@ -388,22 +388,20 @@ def create_enterprise_auth_variants():
     expansions = dict(AUTH="auth")
     variants = []
 
-    # All python versions on linux, min and max on Windows.
-    host = "rhel8"
+    # All python versions across platforms.
     for python in ALL_PYTHONS:
+        if python == CPYTHONS[0]:
+            host = "macos"
+        elif python == CPYTHONS[-1]:
+            host = "win64"
+        else:
+            host = "rhel8"
         display_name = get_display_name("Enterprise Auth", host, python=python, **expansions)
         variant = create_variant(
             ["test-enterprise-auth"], display_name, host=host, python=python, expansions=expansions
         )
         variants.append(variant)
 
-    host = "win64"
-    for python in MIN_MAX_PYTHON:
-        display_name = get_display_name("Enterprise Auth", host, python=python, **expansions)
-        variant = create_variant(
-            ["test-enterprise-auth"], display_name, host=host, python=python, expansions=expansions
-        )
-        variants.append(variant)
     return variants
 
 
