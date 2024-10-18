@@ -30,7 +30,7 @@ set -o xtrace
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
-TEST_SUITES=""
+TEST_SUITES=${TEST_SUITES:-}
 TEST_ARGS="${*:1}"
 
 export PIP_QUIET=1  # Quiet by default
@@ -90,6 +90,8 @@ if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
     export GSSAPI_HOST=${SASL_HOST}
     export GSSAPI_PORT=${SASL_PORT}
     export GSSAPI_PRINCIPAL=${PRINCIPAL}
+
+    export TEST_SUITES="auth"
 fi
 
 if [ -n "$TEST_LOADBALANCER" ]; then

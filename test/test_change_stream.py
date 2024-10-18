@@ -39,6 +39,7 @@ from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     EventListener,
+    OvertCommandListener,
     wait_until,
 )
 
@@ -177,7 +178,7 @@ class APITestsMixin:
 
     @no_type_check
     def test_try_next_runs_one_getmore(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         client.admin.command("ping")
@@ -235,7 +236,7 @@ class APITestsMixin:
 
     @no_type_check
     def test_batch_size_is_honored(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         client.admin.command("ping")

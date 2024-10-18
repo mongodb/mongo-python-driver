@@ -33,6 +33,7 @@ from test import (
 )
 from test.utils import (
     EventListener,
+    OvertCommandListener,
     cat_files,
     ignore_deprecations,
 )

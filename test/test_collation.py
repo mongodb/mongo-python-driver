@@ -18,7 +18,7 @@ from __future__ import annotations
 import functools
 import warnings
 from test import IntegrationTest, client_context, unittest
-from test.utils import EventListener
+from test.utils import EventListener, OvertCommandListener
 from typing import Any
 
 from pymongo.collation import (
@@ -100,13 +100,12 @@ class TestCollation(IntegrationTest):
     @client_context.require_connection
     def setUp(self) -> None:
         super().setUp()
-        self.listener = EventListener()
+        self.listener = OvertCommandListener()
         self.client = self.rs_or_single_client(event_listeners=[self.listener])
         self.db = self.client.pymongo_test
         self.collation = Collation("en_US")
         self.warn_context = warnings.catch_warnings()
         self.warn_context.__enter__()
-        warnings.simplefilter("ignore", DeprecationWarning)
 
     def tearDown(self) -> None:
         self.warn_context.__exit__()
