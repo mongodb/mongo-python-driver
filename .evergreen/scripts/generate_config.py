@@ -23,6 +23,7 @@ from shrub.v3.shrub_service import ShrubService
 ##############
 
 ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
+VERSIONS_6_0_PLUS = ["6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
@@ -30,12 +31,14 @@ MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
 TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
+C_EXTS = ["with_ext", "without_ext"]
 SYNCS = ["sync", "async"]
 DISPLAY_LOOKUP = dict(
     ssl=dict(ssl="SSL", nossl="NoSSL"),
     auth=dict(auth="Auth", noauth="NoAuth"),
     test_suites=dict(default="Sync", default_async="Async"),
     coverage=dict(coverage="cov"),
+    no_ext={"1": "No C"},
 )
 HOSTS = dict()
 
@@ -137,6 +140,12 @@ def zip_cycle(*iterables, empty_default=None):
         yield tuple(next(i, empty_default) for i in cycles)
 
 
+def handle_c_ext(c_ext, expansions):
+    """Handle c extension option."""
+    if c_ext == C_EXTS[0]:
+        expansions["NO_EXT"] = "1"
+
+
 def generate_yaml(tasks=None, variants=None):
     """Generate the yaml for a given set of tasks and variants."""
     project = EvgProject(tasks=tasks, buildvariants=variants)
@@ -231,10 +240,14 @@ def create_server_variants() -> list[BuildVariant]:
             zip_cycle(MIN_MAX_PYTHON, AUTH_SSLS, TOPOLOGIES), SYNCS
         ):
             test_suite = "default" if sync == "sync" else "default_async"
+            tasks = [f".{topology}"]
+            # MacOS arm64 only works on server versions 6.0+
+            if host == "macos-arm64":
+                tasks = [f".{topology} .{version}" for version in VERSIONS_6_0_PLUS]
             expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite, SKIP_CSOT_TESTS="true")
             display_name = get_display_name("Test", host, python=python, **expansions)
             variant = create_variant(
-                [f".{topology}"],
+                tasks,
                 display_name,
                 python=python,
                 host=host,
@@ -337,8 +350,70 @@ def create_load_balancer_variants():
     return variants
 
 
+def create_compression_variants():
+    # Compression tests - standalone versions of each server, across python versions, with and without c extensions.
+    # PyPy interpreters are always tested without extensions.
+    host = "rhel8"
+    task_names = dict(snappy=[".standalone"], zlib=[".standalone"], zstd=[".standalone !.4.0"])
+    variants = []
+    for ind, (compressor, c_ext) in enumerate(product(["snappy", "zlib", "zstd"], C_EXTS)):
+        expansions = dict(COMPRESSORS=compressor)
+        handle_c_ext(c_ext, expansions)
+        base_name = f"{compressor} compression"
+        python = CPYTHONS[ind % len(CPYTHONS)]
+        display_name = get_display_name(base_name, host, python=python, **expansions)
+        variant = create_variant(
+            task_names[compressor],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+        )
+        variants.append(variant)
+
+    other_pythons = PYPYS + CPYTHONS[ind:]
+    for compressor, python in zip_cycle(["snappy", "zlib", "zstd"], other_pythons):
+        expansions = dict(COMPRESSORS=compressor)
+        handle_c_ext(c_ext, expansions)
+        base_name = f"{compressor} compression"
+        display_name = get_display_name(base_name, host, python=python, **expansions)
+        variant = create_variant(
+            task_names[compressor],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+        )
+        variants.append(variant)
+
+    return variants
+
+
+def create_enterprise_auth_variants():
+    expansions = dict(AUTH="auth")
+    variants = []
+
+    # All python versions across platforms.
+    for python in ALL_PYTHONS:
+        if python == CPYTHONS[0]:
+            host = "macos"
+        elif python == CPYTHONS[-1]:
+            host = "win64"
+        else:
+            host = "rhel8"
+        display_name = get_display_name("Enterprise Auth", host, python=python, **expansions)
+        variant = create_variant(
+            ["test-enterprise-auth"], display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-generate_yaml(variants=create_load_balancer_variants())
+variants = create_server_variants()
+# print(len(variants))
+generate_yaml(variants=variants)

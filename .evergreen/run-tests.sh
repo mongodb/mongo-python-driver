@@ -90,6 +90,8 @@ if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
     export GSSAPI_HOST=${SASL_HOST}
     export GSSAPI_PORT=${SASL_PORT}
     export GSSAPI_PRINCIPAL=${PRINCIPAL}
+
+    export TEST_SUITES="auth"
 fi
 
 if [ -n "$TEST_LOADBALANCER" ]; then

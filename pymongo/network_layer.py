@@ -215,11 +215,11 @@ else:
         while total_read < length:
             try:
                 read = conn.recv_into(mv[total_read:])
+                if read == 0:
+                    raise OSError("connection closed")
                 # KMS responses update their expected size after the first batch, stop reading after one loop
                 if once:
                     return mv[:read]
-                if read == 0:
-                    raise OSError("connection closed")
             except BLOCKING_IO_ERRORS:
                 await asyncio.sleep(backoff)
                 read = 0
