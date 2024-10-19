@@ -2273,19 +2273,6 @@ axes:
         variables:
           NO_EXT: ""
 
-  # Choice of MongoDB storage engine
-  - id: storage-engine
-    display_name: Storage
-    values:
-      - id: mmapv1
-        display_name: MMAPv1
-        variables:
-           STORAGE_ENGINE: "mmapv1"
-      - id: inmemory
-        display_name: InMemory
-        variables:
-           STORAGE_ENGINE: "inmemory"
-
   # Run with test commands disabled on server?
   - id: disableTestCommands
     display_name: Disable test commands
@@ -3344,6 +3331,34 @@ buildvariants:
     SSL: ssl
     PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
+# Storage Engine tests.
+- name: storage-inmemory-rhel8-py3.9
+  tasks:
+    - name: .standalone .4.0
+    - name: .standalone .4.4
+    - name: .standalone .5.0
+    - name: .standalone .6.0
+    - name: .standalone .7.0
+    - name: .standalone .8.0
+    - name: .standalone .rapid
+    - name: .standalone .latest
+  display_name: Storage InMemory RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    STORAGE_ENGINE: inmemory
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: storage-mmapv1-rhel8-py3.9
+  tasks:
+    - name: .standalone .4.0
+    - name: .replica_set .4.0
+  display_name: Storage MMAPv1 RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    STORAGE_ENGINE: mmapv1
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+
 # Versioned API tests.
 - name: versioned-api-require-v1-rhel8-py3.9-auth
   tasks:
@@ -3484,38 +3499,6 @@ buildvariants:
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
      - ".5.0"
-
-# Storage engine tests on RHEL 8.4 (x86_64) with Python 3.9.
-- matrix_name: "tests-storage-engines"
-  matrix_spec:
-    platform: rhel8
-    storage-engine: "*"
-    python-version: "3.9"
-  display_name: "Storage ${storage-engine} ${python-version} ${platform}"
-  rules:
-    - if:
-        platform: rhel8
-        storage-engine: ["inmemory"]
-        python-version: "*"
-      then:
-        add_tasks:
-          - "test-latest-standalone"
-          - "test-8.0-standalone"
-          - "test-7.0-standalone"
-          - "test-6.0-standalone"
-          - "test-5.0-standalone"
-          - "test-4.4-standalone"
-          - "test-4.2-standalone"
-          - "test-4.0-standalone"
-    - if:
-        # MongoDB 4.2 drops support for MMAPv1
-        platform: rhel8
-        storage-engine: ["mmapv1"]
-        python-version: "*"
-      then:
-        add_tasks:
-          - "test-4.0-standalone"
-          - "test-4.0-replica_set"
 
 # enableTestCommands=0 tests on RHEL 8.4 (x86_64) with Python 3.9.
 - matrix_name: "test-disableTestCommands"

@@ -111,12 +111,22 @@ def get_python_binary(python: str, host: str) -> str:
     raise ValueError(f"no match found for python {python} on {host}")
 
 
-def get_pythons_from(min_version: str) -> list[str]:
-    """Get all pythons starting from a minimum version."""
+def get_versions_from(min_version: str) -> list[str]:
+    """Get all server versions starting from a minimum version."""
     min_version_float = float(min_version)
     rapid_latest = ["rapid", "latest"]
     versions = [v for v in ALL_VERSIONS if v not in rapid_latest]
     return [v for v in versions if float(v) >= min_version_float] + rapid_latest
+
+
+def get_versions_until(max_version: str) -> list[str]:
+    """Get all server version up to a max version."""
+    max_version_float = float(max_version)
+    versions = [v for v in ALL_VERSIONS if v not in ["rapid", "latest"]]
+    versions = [v for v in versions if float(v) <= max_version_float]
+    if not len(versions):
+        raise ValueError(f"No server versions found less <= {max_version}")
+    return versions
 
 
 def get_display_name(base: str, host: str, **kwargs) -> str:
@@ -250,7 +260,7 @@ def create_server_variants() -> list[BuildVariant]:
             tasks = [f".{topology}"]
             # MacOS arm64 only works on server versions 6.0+
             if host == "macos-arm64":
-                tasks = [f".{topology} .{version}" for version in get_pythons_from("6.0")]
+                tasks = [f".{topology} .{version}" for version in get_versions_from("6.0")]
             expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite, SKIP_CSOT_TESTS="true")
             display_name = get_display_name("Test", host, python=python, **expansions)
             variant = create_variant(
@@ -337,7 +347,7 @@ def create_load_balancer_variants():
     task_names = ["load-balancer-test"]
     batchtime = BATCHTIME_WEEK
     expansions_base = dict(test_loadbalancer="true")
-    versions = get_pythons_from("6.0")
+    versions = get_versions_from("6.0")
     variants = []
     pythons = CPYTHONS + PYPYS
     for ind, (version, (auth, ssl)) in enumerate(product(versions, AUTH_SSLS)):
@@ -449,10 +459,33 @@ def create_pyopenssl_variants():
     return variants
 
 
+def create_storage_engine_tests():
+    host = "rhel8"
+    engines = ["InMemory", "MMAPv1"]
+    variants = []
+    for engine in engines:
+        python = CPYTHONS[0]
+        expansions = dict(STORAGE_ENGINE=engine.lower())
+        if engine == engines[0]:
+            tasks = [f".standalone .{v}" for v in ALL_VERSIONS]
+        else:
+            # MongoDB 4.2 drops support for MMAPv1
+            versions = get_versions_until("4.0")
+            tasks = [f".standalone .{v}" for v in versions] + [
+                f".replica_set .{v}" for v in versions
+            ]
+        display_name = get_display_name(f"Storage {engine}", host, python=python)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+    return variants
+
+
 def create_versioned_api_tests():
     host = "rhel8"
     tags = ["versionedApi_tag"]
-    tasks = [f".standalone .{v}" for v in get_pythons_from("5.0")]
+    tasks = [f".standalone .{v}" for v in get_versions_from("5.0")]
     variants = []
     types = ["require v1", "accept v2"]
 
