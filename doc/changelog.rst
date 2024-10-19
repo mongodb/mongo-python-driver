@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Changes in Version 4.11.0
--------------------------
+Changes in Version 4.11.0 (YYYY/MM/DD)
+--------------------------------------
 
 .. warning:: PyMongo 4.11 drops support for Python 3.8: Python 3.9+ or PyPy 3.9+ is now required.
 .. warning:: PyMongo 4.11 drops support for MongoDB 3.6. PyMongo now supports MongoDB 4.0+.
@@ -32,8 +32,8 @@ in this release.
 
 .. _PyMongo 4.11 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40784
 
-Changes in Version 4.10.1
--------------------------
+Changes in Version 4.10.1 (2024/10/01)
+--------------------------------------
 
 Version 4.10.1 is a bug fix release.
 
@@ -49,8 +49,8 @@ in this release.
 .. _PyMongo 4.10.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40788
 
 
-Changes in Version 4.10.0
--------------------------
+Changes in Version 4.10.0 (2024/09/30)
+--------------------------------------
 
 - Added provisional **(BETA)** support for a new Binary BSON subtype (9) used for efficient storage and retrieval of vectors:
   densely packed arrays of numbers, all of the same type.
@@ -67,8 +67,8 @@ in this release.
 
 .. _PyMongo 4.10 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40553
 
-Changes in Version 4.9.2
--------------------------
+Changes in Version 4.9.2 (2024/10/02)
+-------------------------------------
 
 - Fixed a bug where :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` could deadlock.
 - Fixed a bug where PyMongo could fail to import on Windows if ``asyncio`` is misconfigured.
@@ -83,8 +83,8 @@ in this release.
 .. _PyMongo 4.9.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40732
 
 
-Changes in Version 4.9.1
--------------------------
+Changes in Version 4.9.1 (2024/09/18)
+-------------------------------------
 
 -  Add missing documentation about the fact the async API is in beta state.
 
@@ -97,8 +97,8 @@ in this release.
 .. _PyMongo 4.9.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40720
 
 
-Changes in Version 4.9.0
--------------------------
+Changes in Version 4.9 (2024/09/18)
+-----------------------------------
 
 .. warning:: Driver support for MongoDB 3.6 reached end of life in April 2024.
    PyMongo 4.9 will be the last release to support MongoDB 3.6.
@@ -173,8 +173,8 @@ in this release.
 .. _PyMongo 4.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39940
 
 
-Changes in Version 4.8.0
--------------------------
+Changes in Version 4.8.0 (2024/06/26)
+-------------------------------------
 
 .. warning:: PyMongo 4.8 drops support for Python 3.7 and PyPy 3.8: Python 3.8+ or PyPy 3.9+ is now required.
 
@@ -209,8 +209,8 @@ in this release.
 
 .. _PyMongo 4.8 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=37057
 
-Changes in Version 4.7.3
--------------------------
+Changes in Version 4.7.3 (2024/06/04)
+-------------------------------------
 
 Version 4.7.3 has further fixes for lazily loading modules.
 
@@ -226,8 +226,8 @@ in this release.
 
 .. _PyMongo 4.7.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39865
 
-Changes in Version 4.7.2
--------------------------
+Changes in Version 4.7.2 (2024/05/07)
+-------------------------------------
 
 Version 4.7.2 fixes a bug introduced in 4.7.0:
 
@@ -242,8 +242,8 @@ in this release.
 .. _PyMongo 4.7.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39710
 
 
-Changes in Version 4.7.1
--------------------------
+Changes in Version 4.7.1 (2024/04/30)
+-------------------------------------
 
 Version 4.7.1 fixes a bug introduced in 4.7.0:
 
@@ -259,8 +259,8 @@ in this release.
 
 .. _PyMongo 4.7.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39680
 
-Changes in Version 4.7
-------------------------
+Changes in Version 4.7.0 (2024/04/24)
+-------------------------------------
 
 PyMongo 4.7 brings a number of improvements including:
 
@@ -355,8 +355,8 @@ Unavoidable breaking changes
 
 - The "aws" extra now requires minimum version of ``1.1.0`` for ``pymongo_auth_aws``.
 
-Changes in Version 4.6.3
-------------------------
+Changes in Version 4.6.3 (2024/03/27)
+-------------------------------------
 
 PyMongo 4.6.3 fixes the following bug:
 
@@ -370,8 +370,8 @@ in this release.
 
 .. _PyMongo 4.6.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=38360
 
-Changes in Version 4.6.2
-------------------------
+Changes in Version 4.6.2 (2024/02/21)
+-------------------------------------
 
 PyMongo 4.6.2 fixes the following bug:
 
@@ -386,8 +386,8 @@ in this release.
 
 .. _PyMongo 4.6.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=37906
 
-Changes in Version 4.6.1
-------------------------
+Changes in Version 4.6.1 (2023/11/29)
+------------------------------------
 
 PyMongo 4.6.1 fixes the following bug:
 
@@ -401,8 +401,8 @@ in this release.
 
 .. _PyMongo 4.6.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=37138
 
-Changes in Version 4.6
-----------------------
+Changes in Version 4.6.0 (2023/11/01)
+-------------------------------------
 
 PyMongo 4.6 brings a number of improvements including:
 
@@ -441,8 +441,8 @@ in this release.
 
 .. _PyMongo 4.6 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=36542
 
-Changes in Version 4.5
-----------------------
+Changes in Version 4.5.0 (2023/08/22)
+-------------------------------------
 
 PyMongo 4.5 brings a number of improvements including:
 
@@ -477,8 +477,8 @@ in this release.
 .. _PYTHON-3824: https://jira.mongodb.org/browse/PYTHON-3824
 .. _PYTHON-3846: https://jira.mongodb.org/browse/PYTHON-3846
 
-Changes in Version 4.4.1
-------------------------
+Changes in Version 4.4.1 (2023/07/13)
+-------------------------------------
 
 Version 4.4.1 fixes the following bugs:
 
@@ -497,8 +497,8 @@ in this release.
 .. _PYTHON-3800: https://jira.mongodb.org/browse/PYTHON-3800
 .. _PyMongo 4.4.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=36329
 
-Changes in Version 4.4
------------------------
+Changes in Version 4.4.0 (2023/06/21)
+-------------------------------------
 
 PyMongo 4.4 brings a number of improvements including:
 
@@ -539,8 +539,8 @@ in this release.
 .. _PYTHON-3717: https://jira.mongodb.org/browse/PYTHON-3717
 .. _PYTHON-3718: https://jira.mongodb.org/browse/PYTHON-3718
 
-Changes in Version 4.3.3
-------------------------
+Changes in Version 4.3.3 (2022/11/17)
+-------------------------------------
 
 Version 4.3.3 documents support for the following:
 
@@ -567,8 +567,8 @@ in this release.
 .. _PYTHON-3508: https://jira.mongodb.org/browse/PYTHON-3508
 .. _PyMongo 4.3.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=34709
 
-Changes in Version 4.3 (4.3.2)
-------------------------------
+Changes in Version 4.3.2 (2022/10/18)
+-------------------------------------
 
 Note: We withheld uploading tags 4.3.0 and 4.3.1 to PyPI due to a
 version handling error and a necessary documentation update.
@@ -624,8 +624,8 @@ in this release.
 .. _PYTHON-3389: https://jira.mongodb.org/browse/PYTHON-3389
 .. _PyMongo 4.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33425
 
-Changes in Version 4.2
-----------------------
+Changes in Version 4.2.0 (2022/07/20)
+-------------------------------------
 
 .. warning:: PyMongo 4.2 drops support for Python 3.6: Python 3.7+ is now required.
 
@@ -713,8 +713,8 @@ in this release.
 .. _PYTHON-3187: https://jira.mongodb.org/browse/PYTHON-3187
 .. _PyMongo 4.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33196
 
-Changes in Version 4.1.1
--------------------------
+Changes in Version 4.1.1 (2022/04/13)
+-------------------------------------
 
 Version 4.1.1 fixes a number of bugs:
 
@@ -739,8 +739,8 @@ in this release.
 .. _PYTHON-3222: https://jira.mongodb.org/browse/PYTHON-3222
 .. _PyMongo 4.1.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33290
 
-Changes in Version 4.1
-----------------------
+Changes in Version 4.1 (2021/12/07)
+-----------------------------------
 
 .. warning:: PyMongo 4.1 drops support for Python 3.6.0 and 3.6.1, Python 3.6.2+ is now required.
 
@@ -794,8 +794,14 @@ in this release.
 .. _PYTHON-3186: https://jira.mongodb.org/browse/PYTHON-3186
 .. _pymongo-stubs: https://github.com/mongodb-labs/pymongo-stubs
 
-Changes in Version 4.0
-----------------------
+Changes in Version 4.0.2 (2022/03/03)
+-------------------------------------
+
+Changes in Version 4.0.1 (2021/12/07)
+-------------------------------------
+
+Changes in Version 4.0 (2021/11/29)
+-----------------------------------
 
 .. warning:: PyMongo 4.0 drops support for Python 2.7, 3.4, and 3.5.
 
@@ -1014,8 +1020,8 @@ in this release.
 .. _PyMongo 4.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18463
 .. _DBRef specification: https://github.com/mongodb/specifications/blob/5a8c8d7/source/dbref.rst
 
-Changes in Version 3.13.0
--------------------------
+Changes in Version 3.13.0 (2022/11/01)
+--------------------------------------
 
 Version 3.13 provides an upgrade path to PyMongo 4.x. Most of the API changes
 from PyMongo 4.0 have been backported in a backward compatible way, allowing
@@ -1087,8 +1093,8 @@ in this release.
 .. _PYTHON-3222: https://jira.mongodb.org/browse/PYTHON-3222
 .. _PyMongo 3.13.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=31570
 
-Changes in Version 3.12.3
--------------------------
+Changes in Version 3.12.3 (2021/12/07)
+--------------------------------------
 
 Issues Resolved
 ...............
@@ -1102,8 +1108,8 @@ in this release.
 .. _PYTHON-3028: https://jira.mongodb.org/browse/PYTHON-3028
 .. _PyMongo 3.12.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=32505
 
-Changes in Version 3.12.2
--------------------------
+Changes in Version 3.12.2 (2021/11/29)
+--------------------------------------
 
 Issues Resolved
 ...............
@@ -1122,8 +1128,8 @@ in this release.
 .. _PYTHON-3017: https://jira.mongodb.org/browse/PYTHON-3017
 .. _PyMongo 3.12.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=32310
 
-Changes in Version 3.12.1
--------------------------
+Changes in Version 3.12.1 (2021/10/19)
+--------------------------------------
 
 Issues Resolved
 ...............
@@ -1143,8 +1149,8 @@ in this release.
 .. _PYTHON-2866: https://jira.mongodb.org/browse/PYTHON-2866
 .. _PyMongo 3.12.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=31527
 
-Changes in Version 3.12.0
--------------------------
+Changes in Version 3.12.0 (2021/07/13)
+--------------------------------------
 
 .. warning:: PyMongo 3.12.0 deprecates support for Python 2.7, 3.4 and 3.5.
    These Python versions will not be supported by PyMongo 4.
@@ -1236,8 +1242,8 @@ in this release.
 
 .. _PyMongo 3.12.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=29594
 
-Changes in Version 3.11.3
--------------------------
+Changes in Version 3.11.3 (2021/02/02)
+--------------------------------------
 
 Issues Resolved
 ...............
@@ -1251,8 +1257,8 @@ in this release.
 .. _PYTHON-2452: https://jira.mongodb.org/browse/PYTHON-2452
 .. _PyMongo 3.11.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=30355
 
-Changes in Version 3.11.2
--------------------------
+Changes in Version 3.11.2 (2020/12/02)
+--------------------------------------
 
 Issues Resolved
 ...............
@@ -1279,8 +1285,8 @@ in this release.
 .. _PYTHON-2443: https://jira.mongodb.org/browse/PYTHON-2443
 .. _PyMongo 3.11.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=30315
 
-Changes in Version 3.11.1
--------------------------
+Changes in Version 3.11.1 (2020/11/17)
+--------------------------------------
 
 Version 3.11.1 adds support for Python 3.9 and includes a number of bugfixes.
 Highlights include:
@@ -1313,8 +1319,8 @@ in this release.
 
 .. _PyMongo 3.11.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=29997
 
-Changes in Version 3.11.0
--------------------------
+Changes in Version 3.11.0 (2020/07/30)
+--------------------------------------
 
 Version 3.11 adds support for MongoDB 4.4 and includes a number of bug fixes.
 Highlights include:
@@ -1408,8 +1414,8 @@ in this release.
 
 .. _PyMongo 3.11.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=24799
 
-Changes in Version 3.10.1
--------------------------
+Changes in Version 3.10.1 (2020/01/07)
+--------------------------------------
 
 Version 3.10.1 fixes the following issues discovered since the release of
 3.10.0:
@@ -1427,8 +1433,8 @@ in this release.
 
 .. _PyMongo 3.10.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=25039
 
-Changes in Version 3.10.0
--------------------------
+Changes in Version 3.10.0 (2019/12/10)
+--------------------------------------
 
 Version 3.10 includes a number of improvements and bug fixes. Highlights
 include:
@@ -1454,8 +1460,8 @@ in this release.
 
 .. _PyMongo 3.10 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=23944
 
-Changes in Version 3.9.0
-------------------------
+Changes in Version 3.9.0 (2019/08/13)
+-------------------------------------
 
 Version 3.9 adds support for MongoDB 4.2. Highlights include:
 
@@ -1558,8 +1564,8 @@ in this release.
 
 .. _PyMongo 3.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=21787
 
-Changes in Version 3.8.0
-------------------------
+Changes in Version 3.8.0 (2019/04/22)
+-------------------------------------
 
 .. warning:: PyMongo no longer supports Python 2.6. RHEL 6 users should install
   Python 2.7 or newer from `Red Hat Software Collections
@@ -1637,8 +1643,8 @@ in this release.
 
 .. _PyMongo 3.8 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=19904
 
-Changes in Version 3.7.2
-------------------------
+Changes in Version 3.7.2 (2018/10/10)
+-------------------------------------
 
 Version 3.7.2 fixes a few issues discovered since the release of 3.7.1.
 
@@ -1661,8 +1667,8 @@ in this release.
 
 .. _PyMongo 3.7.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=21519
 
-Changes in Version 3.7.1
-------------------------
+Changes in Version 3.7.1 (2018/07/16)
+-------------------------------------
 
 Version 3.7.1 fixes a few issues discovered since the release of 3.7.0.
 
@@ -1681,8 +1687,8 @@ in this release.
 
 .. _PyMongo 3.7.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=21096
 
-Changes in Version 3.7.0
-------------------------
+Changes in Version 3.7.0 (2018/06/26)
+-------------------------------------
 
 Version 3.7 adds support for MongoDB 4.0. Highlights include:
 
@@ -1791,8 +1797,8 @@ in this release.
 
 .. _PyMongo 3.7 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=19287
 
-Changes in Version 3.6.1
-------------------------
+Changes in Version 3.6.1 (2018/03/01)
+-------------------------------------
 
 Version 3.6.1 fixes bugs reported since the release of 3.6.0:
 
@@ -1817,8 +1823,8 @@ in this release.
 .. _PyMongo 3.6.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=19438
 
 
-Changes in Version 3.6.0
-------------------------
+Changes in Version 3.6.0 (2017/08/23)
+-------------------------------------
 
 Version 3.6 adds support for MongoDB 3.6, drops support for CPython 3.3 (PyPy3
 is still supported), and drops support for MongoDB versions older than 2.6. If
@@ -1889,8 +1895,8 @@ in this release.
 
 .. _PyMongo 3.6 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18043
 
-Changes in Version 3.5.1
-------------------------
+Changes in Version 3.5.1 (2017/08/23)
+-------------------------------------
 
 Version 3.5.1 fixes bugs reported since the release of 3.5.0:
 
@@ -1908,8 +1914,8 @@ in this release.
 
 .. _PyMongo 3.5.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18721
 
-Changes in Version 3.5
-----------------------
+Changes in Version 3.5.0 (2017/08/08)
+-------------------------------------
 
 Version 3.5 implements a number of improvements and bug fixes:
 
@@ -1999,8 +2005,8 @@ in this release.
 
 .. _PyMongo 3.5 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=17590
 
-Changes in Version 3.4
-----------------------
+Changes in Version 3.4.0 (2016/11/29)
+-------------------------------------
 
 Version 3.4 implements the new server features introduced in MongoDB 3.4
 and a whole lot more:
@@ -2071,8 +2077,8 @@ in this release.
 
 .. _PyMongo 3.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16594
 
-Changes in Version 3.3.1
-------------------------
+Changes in Version 3.3.1 (2016/10/27)
+-------------------------------------
 
 Version 3.3.1 fixes a memory leak when decoding elements inside of a
 :class:`~bson.raw_bson.RawBSONDocument`.
@@ -2085,8 +2091,8 @@ in this release.
 
 .. _PyMongo 3.3.1 release notes in Jira: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=17636
 
-Changes in Version 3.3
-----------------------
+Changes in Version 3.3.0 (2016/07/12)
+-------------------------------------
 
 Version 3.3 adds the following major new features:
 
@@ -2112,8 +2118,8 @@ in this release.
 
 .. _PyMongo 3.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16005
 
-Changes in Version 3.2.2
-------------------------
+Changes in Version 3.2.2 (2016/03/15)
+-------------------------------------
 
 Version 3.2.2 fixes a few issues reported since the release of 3.2.1, including
 a fix for using the ``connect`` option in the MongoDB URI and support for setting
@@ -2128,8 +2134,8 @@ in this release.
 .. _PyMongo 3.2.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16538
 
 
-Changes in Version 3.2.1
-------------------------
+Changes in Version 3.2.1 (2016/02/02)
+-------------------------------------
 
 Version 3.2.1 fixes a few issues reported since the release of 3.2, including
 running the mapreduce command twice when calling the
@@ -2146,8 +2152,8 @@ in this release.
 
 .. _PyMongo 3.2.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16312
 
-Changes in Version 3.2
-----------------------
+Changes in Version 3.2 (2015/12/07)
+-----------------------------------
 
 Version 3.2 implements the new server features introduced in MongoDB 3.2.
 
@@ -2179,8 +2185,8 @@ in this release.
 
 .. _PyMongo 3.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=15612
 
-Changes in Version 3.1.1
-------------------------
+Changes in Version 3.1.1 (2015/11/17)
+-------------------------------------
 
 Version 3.1.1 fixes a few issues reported since the release of 3.1, including a
 regression in error handling for oversize command documents and interrupt
@@ -2194,8 +2200,8 @@ in this release.
 
 .. _PyMongo 3.1.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16211
 
-Changes in Version 3.1
-----------------------
+Changes in Version 3.1 (2015/11/02)
+-----------------------------------
 
 Version 3.1 implements a few new features and fixes bugs reported since the release
 of 3.0.3.
@@ -2226,8 +2232,8 @@ in this release.
 
 .. _PyMongo 3.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=14796
 
-Changes in Version 3.0.3
-------------------------
+Changes in Version 3.0.3 (2015/06/30)
+-------------------------------------
 
 Version 3.0.3 fixes issues reported since the release of 3.0.2, including a
 feature breaking bug in the GSSAPI implementation.
@@ -2240,8 +2246,8 @@ in this release.
 
 .. _PyMongo 3.0.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=15528
 
-Changes in Version 3.0.2
-------------------------
+Changes in Version 3.0.2 (2015/05/12)
+-------------------------------------
 
 Version 3.0.2 fixes issues reported since the release of 3.0.1, most
 importantly a bug that could route operations to replica set members
@@ -2258,8 +2264,8 @@ in this release.
 
 .. _PyMongo 3.0.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=15430
 
-Changes in Version 3.0.1
-------------------------
+Changes in Version 3.0.1 (2015/04/21)
+-------------------------------------
 
 Version 3.0.1 fixes issues reported since the release of 3.0, most
 importantly a bug in GridFS.delete that could prevent file chunks from
@@ -2273,8 +2279,8 @@ in this release.
 
 .. _PyMongo 3.0.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=15322
 
-Changes in Version 3.0
-----------------------
+Changes in Version 3.0 (2015/04/07)
+-----------------------------------
 
 PyMongo 3.0 is a partial rewrite of PyMongo bringing a large number of
 improvements:
@@ -2719,8 +2725,8 @@ in this release.
 
 .. _PyMongo 3.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12501
 
-Changes in Version 2.9.5
-------------------------
+Changes in Version 2.9.5 (2017/06/30)
+-------------------------------------
 
 Version 2.9.5 works around ssl module deprecations in Python 3.6, and expected
 future ssl module deprecations. It also fixes bugs found since the release of
@@ -2742,8 +2748,8 @@ in this release.
 
 .. _PyMongo 2.9.5 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=17605
 
-Changes in Version 2.9.4
-------------------------
+Changes in Version 2.9.4 (2016/09/30)
+-------------------------------------
 
 Version 2.9.4 fixes issues reported since the release of 2.9.3.
 
@@ -2761,8 +2767,8 @@ in this release.
 
 .. _PyMongo 2.9.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16885
 
-Changes in Version 2.9.3
-------------------------
+Changes in Version 2.9.3 (2016/03/15)
+-------------------------------------
 
 Version 2.9.3 fixes a few issues reported since the release of 2.9.2 including
 thread safety issues in :meth:`~pymongo.collection.Collection.ensure_index`,
@@ -2777,8 +2783,8 @@ in this release.
 
 .. _PyMongo 2.9.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16539
 
-Changes in Version 2.9.2
-------------------------
+Changes in Version 2.9.2 (2016/02/16)
+-------------------------------------
 
 Version 2.9.2 restores Python 3.1 support, which was broken in PyMongo 2.8. It
 improves an error message when decoding BSON as well as fixes a couple other
@@ -2795,8 +2801,8 @@ in this release.
 
 .. _PyMongo 2.9.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16303
 
-Changes in Version 2.9.1
-------------------------
+Changes in Version 2.9.1 (2015/11/17)
+-------------------------------------
 
 Version 2.9.1 fixes two interrupt handling issues in the C extensions and
 adapts a test case for a behavior change in MongoDB 3.2.
@@ -2809,8 +2815,8 @@ in this release.
 
 .. _PyMongo 2.9.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16208
 
-Changes in Version 2.9
-----------------------
+Changes in Version 2.9 (2015/09/30)
+-----------------------------------
 
 Version 2.9 provides an upgrade path to PyMongo 3.x. Most of the API changes
 from PyMongo 3.0 have been backported in a backward compatible way, allowing
@@ -2887,8 +2893,8 @@ in this release.
 
 .. _PyMongo 2.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=14795
 
-Changes in Version 2.8.1
-------------------------
+Changes in Version 2.8.1 (2015/05/11)
+-------------------------------------
 
 Version 2.8.1 fixes a number of issues reported since the release of PyMongo
 2.8. It is a recommended upgrade for all users of PyMongo 2.x.
@@ -2901,8 +2907,8 @@ in this release.
 
 .. _PyMongo 2.8.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=15324
 
-Changes in Version 2.8
-----------------------
+Changes in Version 2.8 (2015/01/28)
+-----------------------------------
 
 Version 2.8 is a major release that provides full support for MongoDB 3.0 and
 fixes a number of bugs.
@@ -2951,8 +2957,8 @@ in this release.
 
 .. _PyMongo 2.8 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=14223
 
-Changes in Version 2.7.2
-------------------------
+Changes in Version 2.7.2 (2014/07/29)
+-------------------------------------
 
 Version 2.7.2 includes fixes for upsert reporting in the bulk API for MongoDB
 versions previous to 2.6, a regression in how son manipulators are applied in
@@ -2968,8 +2974,8 @@ in this release.
 
 .. _PyMongo 2.7.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=14005
 
-Changes in Version 2.7.1
-------------------------
+Changes in Version 2.7.1 (2014/05/23)
+-------------------------------------
 
 Version 2.7.1 fixes a number of issues reported since the release of 2.7,
 most importantly a fix for creating indexes and manipulating users through
@@ -2983,8 +2989,8 @@ in this release.
 
 .. _PyMongo 2.7.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=13823
 
-Changes in Version 2.7
-----------------------
+Changes in Version 2.7 (2014/04/03)
+-----------------------------------
 
 PyMongo 2.7 is a major release with a large number of new features and bug
 fixes. Highlights include:
@@ -3020,8 +3026,8 @@ in this release.
 
 .. _PyMongo 2.7 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12892
 
-Changes in Version 2.6.3
-------------------------
+Changes in Version 2.6.3 (2013/10/11)
+-------------------------------------
 
 Version 2.6.3 fixes issues reported since the release of 2.6.2, most
 importantly a semaphore leak when a connection to the server fails.
@@ -3034,8 +3040,8 @@ in this release.
 
 .. _PyMongo 2.6.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=13098
 
-Changes in Version 2.6.2
-------------------------
+Changes in Version 2.6.2 (2013/09/06)
+-------------------------------------
 
 Version 2.6.2 fixes a :exc:`TypeError` problem when max_pool_size=None
 is used in Python 3.
@@ -3048,8 +3054,8 @@ in this release.
 
 .. _PyMongo 2.6.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12910
 
-Changes in Version 2.6.1
-------------------------
+Changes in Version 2.6.1 (2013/09/03)
+-------------------------------------
 
 Version 2.6.1 fixes a reference leak in
 the :meth:`~pymongo.collection.Collection.insert` method.
@@ -3062,8 +3068,8 @@ in this release.
 
 .. _PyMongo 2.6.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12905
 
-Changes in Version 2.6
-----------------------
+Changes in Version 2.6 (2013/08/19)
+-----------------------------------
 
 Version 2.6 includes some frequently requested improvements and adds
 support for some early MongoDB 2.6 features.
@@ -3111,8 +3117,8 @@ in this release.
 
 .. _PyMongo 2.6 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12380
 
-Changes in Version 2.5.2
-------------------------
+Changes in Version 2.5.2 (2013/06/01)
+-------------------------------------
 
 Version 2.5.2 fixes a NULL pointer dereference issue when decoding
 an invalid :class:`~bson.dbref.DBRef`.
@@ -3125,8 +3131,8 @@ in this release.
 
 .. _PyMongo 2.5.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12581
 
-Changes in Version 2.5.1
-------------------------
+Changes in Version 2.5.1 (2013/05/13)
+-------------------------------------
 
 Version 2.5.1 is a minor release that fixes issues discovered after the
 release of 2.5. Most importantly, this release addresses some race
@@ -3140,8 +3146,8 @@ in this release.
 
 .. _PyMongo 2.5.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12484
 
-Changes in Version 2.5
-----------------------
+Changes in Version 2.5 (2013/03/22)
+-----------------------------------
 
 Version 2.5 includes changes to support new features in MongoDB 2.4.
 
@@ -3164,8 +3170,8 @@ in this release.
 
 .. _PyMongo 2.5 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=11981
 
-Changes in Version 2.4.2
-------------------------
+Changes in Version 2.4.2 (2013/01/23)
+-------------------------------------
 
 Version 2.4.2 is a minor release that fixes issues discovered after the
 release of 2.4.1. Most importantly, PyMongo will no longer select a replica
@@ -3179,8 +3185,8 @@ in this release.
 
 .. _PyMongo 2.4.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12299
 
-Changes in Version 2.4.1
-------------------------
+Changes in Version 2.4.1 (2012/12/06)
+-------------------------------------
 
 Version 2.4.1 is a minor release that fixes issues discovered after the
 release of 2.4. Most importantly, this release fixes a regression using
@@ -3195,8 +3201,8 @@ in this release.
 
 .. _PyMongo 2.4.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12286
 
-Changes in Version 2.4
-----------------------
+Changes in Version 2.4 (2012/11/27)
+-----------------------------------
 
 Version 2.4 includes a few important new features and a large number of bug
 fixes.
@@ -3245,8 +3251,8 @@ in this release.
 
 .. _PyMongo 2.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=11485
 
-Changes in Version 2.3
-----------------------
+Changes in Version 2.3 (2012/08/29)
+-----------------------------------
 
 Version 2.3 adds support for new features and behavior changes in MongoDB
 2.2.
@@ -3279,8 +3285,8 @@ in this release.
 
 .. _PyMongo 2.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=11146
 
-Changes in Version 2.2.1
-------------------------
+Changes in Version 2.2.1 (2012/07/06)
+-------------------------------------
 
 Version 2.2.1 is a minor release that fixes issues discovered after the
 release of 2.2. Most importantly, this release fixes an incompatibility
@@ -3295,8 +3301,8 @@ in this release.
 
 .. _PyMongo 2.2.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=11185
 
-Changes in Version 2.2
-----------------------
+Changes in Version 2.2 (2012/04/30)
+-----------------------------------
 
 Version 2.2 adds a few more frequently requested features and fixes a
 number of bugs.
@@ -3340,8 +3346,8 @@ in this release.
 
 .. _PyMongo 2.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=10584
 
-Changes in Version 2.1.1
-------------------------
+Changes in Version 2.1.1 (2012/01/04)
+-------------------------------------
 
 Version 2.1.1 is a minor release that fixes a few issues
 discovered after the release of 2.1. You can now use
@@ -3360,8 +3366,8 @@ in this release.
 
 .. _PyMongo 2.1.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?version=11081&styleName=Html&projectId=10004
 
-Changes in Version 2.1
-----------------------
+Changes in Version 2.1 (2011/12/07)
+-----------------------------------
 
 Version 2.1 adds a few frequently requested features and includes the usual
 round of bug fixes and improvements.
@@ -3403,8 +3409,8 @@ See the `PyMongo 2.1 release notes in JIRA`_ for the list of resolved issues in 
 
 .. _PyMongo 2.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=10583
 
-Changes in Version 2.0.1
-------------------------
+Changes in Version 2.0.1 (2011/08/15)
+-------------------------------------
 
 Version 2.0.1 fixes a regression in :class:`~gridfs.grid_file.GridIn` when
 writing pre-chunked strings. Thanks go to Alexey Borzenkov for reporting the
@@ -3416,8 +3422,8 @@ Issues Resolved
 - `PYTHON-271 <https://jira.mongodb.org/browse/PYTHON-271>`_:
   Regression in GridFS leads to serious loss of data.
 
-Changes in Version 2.0
-----------------------
+Changes in Version 2.0 (2011/08/05)
+-----------------------------------
 
 Version 2.0 adds a large number of features and fixes a number of issues.
 
@@ -3474,8 +3480,8 @@ See the `PyMongo 2.0 release notes in JIRA`_ for the list of resolved issues in 
 
 .. _PyMongo 2.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=10274
 
-Changes in Version 1.11
------------------------
+Changes in Version 1.11 (2011/05/05)
+------------------------------------
 
 Version 1.11 adds a few new features and fixes a few more bugs.
 
@@ -3528,8 +3534,8 @@ Issues resolved
 - `PYTHON-138 <https://jira.mongodb.org/browse/PYTHON-138>`_:
   Find method for GridFS
 
-Changes in Version 1.10.1
--------------------------
+Changes in Version 1.10.1 (2011/04/07)
+--------------------------------------
 
 Version 1.10.1 is primarily a bugfix release. It fixes a regression in
 version 1.10 that broke pickling of ObjectIds. A number of other bugs
@@ -3576,8 +3582,8 @@ Issues resolved
 - `PYTHON-113 <https://jira.mongodb.org/browse/PYTHON-113>`_:
   Redunducy in MasterSlaveConnection
 
-Changes in Version 1.10
------------------------
+Changes in Version 1.10 (2011/03/30)
+------------------------------------
 
 Version 1.10 includes changes to support new features in MongoDB 1.8.x.
 Highlights include a modified map/reduce API including an inline map/reduce
@@ -3617,8 +3623,8 @@ Issues resolved
 - PYTHON-166: Fixes a concurrency issue.
 - PYTHON-158: Add code and err string to ``db assertion`` messages.
 
-Changes in Version 1.9
-----------------------
+Changes in Version 1.9 (2010/09/28)
+-----------------------------------
 
 Version 1.9 adds a new package to the PyMongo distribution,
 :mod:`bson`. :mod:`bson` contains all of the `BSON
@@ -3699,8 +3705,8 @@ rather than :class:`pymongo.errors.PyMongoError`.
   mode.
 - added :class:`uuid` support to :mod:`~bson.json_util`.
 
-Changes in Version 1.8.1
-------------------------
+Changes in Version 1.8.1 (2010/08/13)
+-------------------------------------
 
 - fixed a typo in the C extension that could cause safe-mode
   operations to report a failure (:class:`SystemError`) even when none
@@ -3708,8 +3714,8 @@ Changes in Version 1.8.1
 - added a :meth:`__ne__` implementation to any class where we define
   :meth:`__eq__`.
 
-Changes in Version 1.8
-----------------------
+Changes in Version 1.8 (2010/08/05)
+-----------------------------------
 
 Version 1.8 adds support for connecting to replica sets, specifying
 per-operation values for ``w`` and ``wtimeout``, and decoding to
@@ -3749,8 +3755,8 @@ timezone-aware datetimes.
   :class:`~pymongo.errors.OperationFailure` exceptions.
 - fixed serialization of int and float subclasses in the C extension.
 
-Changes in Version 1.7
-----------------------
+Changes in Version 1.7 (2010/06/17)
+-----------------------------------
 
 Version 1.7 is a recommended upgrade for all PyMongo users. The full
 release notes are below, and some more in depth discussion of the
@@ -3799,8 +3805,8 @@ highlights is `here
 - don't transparently map ``"filename"`` key to :attr:`name` attribute
   for GridFS.
 
-Changes in Version 1.6
-----------------------
+Changes in Version 1.6 (2010/04/14)
+-----------------------------------
 
 The biggest change in version 1.6 is a complete re-implementation of
 :mod:`gridfs` with a lot of improvements over the old
@@ -3821,13 +3827,13 @@ to be modified before upgrading to 1.6.
   on non-existent collections.
 - disallow empty bulk inserts.
 
-Changes in Version 1.5.2
-------------------------
+Changes in Version 1.5.2 (2010/03/31)
+-------------------------------------
 - fixed response handling to ignore unknown response flags in queries.
 - handle server versions containing '-pre-'.
 
-Changes in Version 1.5.1
-------------------------
+Changes in Version 1.5.1 (2010/03/17)
+-------------------------------------
 - added :data:`~gridfs.grid_file.GridFile._id` property for
   :class:`~gridfs.grid_file.GridFile` instances.
 - fix for making a :class:`~pymongo.connection.Connection` (with
@@ -3840,8 +3846,8 @@ Changes in Version 1.5.1
 - improvements to Python code caching in C extension - should improve
   behavior on mod_wsgi.
 
-Changes in Version 1.5
-----------------------
+Changes in Version 1.5 (2010/03/10)
+-----------------------------------
 - added subtype constants to :mod:`~bson.binary` module.
 - DEPRECATED ``options`` argument to
   :meth:`~pymongo.collection.Collection` and
@@ -3875,8 +3881,8 @@ Changes in Version 1.5
 - added :class:`~gridfs.errors.GridFSError` as base class for
   :mod:`gridfs` exceptions.
 
-Changes in Version 1.4
-----------------------
+Changes in Version 1.4 (2010/01/17)
+-----------------------------------
 
 Perhaps the most important change in version 1.4 is that we have
 decided to **no longer support Python 2.3**. The most immediate reason
@@ -3937,8 +3943,8 @@ Other changes:
 - allow the NULL byte in strings and disallow it in key names or regex
   patterns
 
-Changes in Version 1.3
-----------------------
+Changes in Version 1.3 (2009/12/16)
+-----------------------------------
 - DEPRECATED running :meth:`~pymongo.collection.Collection.group` as
   :meth:`~pymongo.database.Database.eval`, also changed default for
   :meth:`~pymongo.collection.Collection.group` to running as a command
@@ -3963,8 +3969,8 @@ Changes in Version 1.3
   usual, as it carries some performance implications.
 - added :meth:`~pymongo.connection.Connection.disconnect`
 
-Changes in Version 1.2.1
-------------------------
+Changes in Version 1.2.1 (2009/12/10)
+-------------------------------------
 - added :doc:`changelog` to docs
 - added ``setup.py doc --test`` to run doctests for tutorial, examples
 - moved most examples to Sphinx docs (and remove from *examples/*
@@ -3975,8 +3981,8 @@ Changes in Version 1.2.1
   characters
 - allow :class:`unicode` instances for :class:`~bson.objectid.ObjectId` init
 
-Changes in Version 1.2
-----------------------
+Changes in Version 1.2 (2009/12/09)
+-----------------------------------
 - ``spec`` parameter for :meth:`~pymongo.collection.Collection.remove` is
   now optional to allow for deleting all documents in a
   :class:`~pymongo.collection.Collection`
@@ -4002,15 +4008,15 @@ Changes in Version 1.2
 - some minor fixes for installation process
 - added support for datetime and regex in :mod:`~bson.json_util`
 
-Changes in Version 1.1.2
-------------------------
+Changes in Version 1.1.2 (2009/11/23)
+-------------------------------------
 - improvements to :meth:`~pymongo.collection.Collection.insert` speed
   (using C for insert message creation)
 - use random number for request_id
 - fix some race conditions with :class:`~pymongo.errors.AutoReconnect`
 
-Changes in Version 1.1.1
-------------------------
+Changes in Version 1.1.1 (2009/11/14)
+-------------------------------------
 - added ``multi`` parameter for
   :meth:`~pymongo.collection.Collection.update`
 - fix unicode regex patterns with C extension
@@ -4023,8 +4029,8 @@ Changes in Version 1.1.1
   to ``True`` due to performance regression
 - switch documentation to Sphinx
 
-Changes in Version 1.1
-----------------------
+Changes in Version 1.1 (2009/10/21)
+-----------------------------------
 - added :meth:`__hash__` for :class:`~bson.dbref.DBRef` and
   :class:`~bson.objectid.ObjectId`
 - bulk :meth:`~pymongo.collection.Collection.insert` works with any
@@ -4039,8 +4045,8 @@ Changes in Version 1.1
 - added ``safe`` parameter for :meth:`~pymongo.collection.Collection.remove`
 - added ``tailable`` parameter for :meth:`~pymongo.collection.Collection.find`
 
-Changes in Version 1.0
-----------------------
+Changes in Version 1.0 (2009/09/30)
+-----------------------------------
 - fixes for
   :class:`~pymongo.master_slave_connection.MasterSlaveConnection`
 - added ``finalize`` parameter for :meth:`~pymongo.collection.Collection.group`
@@ -4050,17 +4056,17 @@ Changes in Version 1.0
   :meth:`~pymongo.cursor.Cursor.__len__` for
   :class:`~pymongo.cursor.Cursor` instances
 
-Changes in Version 0.16
------------------------
+Changes in Version 0.16 (2009/09/16)
+------------------------------------
 - support for encoding/decoding :class:`uuid.UUID` instances
 - fix for :meth:`~pymongo.cursor.Cursor.explain` with limits
 
-Changes in Version 0.15.2
--------------------------
+Changes in Version 0.15.2 (2009/09/09)
+--------------------------------------
 - documentation changes only
 
-Changes in Version 0.15.1
--------------------------
+Changes in Version 0.15.1 (2009/09/02)
+--------------------------------------
 - various performance improvements
 - API CHANGE no longer need to specify direction for
   :meth:`~pymongo.collection.Collection.create_index` and
@@ -4069,8 +4075,8 @@ Changes in Version 0.15.1
 - support for encoding :class:`tuple` instances as :class:`list`
   instances
 
-Changes in Version 0.15
------------------------
+Changes in Version 0.15 (2009/08/26)
+------------------------------------
 - fix string representation of :class:`~bson.objectid.ObjectId`
   instances
 - added ``timeout`` parameter for
@@ -4078,25 +4084,25 @@ Changes in Version 0.15
 - allow scope for ``reduce`` function in
   :meth:`~pymongo.collection.Collection.group`
 
-Changes in Version 0.14.2
--------------------------
+Changes in Version 0.14.2 (2009/08/24)
+--------------------------------------
 - minor bugfixes
 
-Changes in Version 0.14.1
--------------------------
+Changes in Version 0.14.1 (2009/08/21)
+--------------------------------------
 - :meth:`~gridfs.grid_file.GridFile.seek` and
   :meth:`~gridfs.grid_file.GridFile.tell` for (read mode)
   :class:`~gridfs.grid_file.GridFile` instances
 
-Changes in Version 0.14
------------------------
+Changes in Version 0.14 (2009/08/19)
+------------------------------------
 - support for long in :class:`~bson.BSON`
 - added :meth:`~pymongo.collection.Collection.rename`
 - added ``snapshot`` parameter for
   :meth:`~pymongo.collection.Collection.find`
 
-Changes in Version 0.13
------------------------
+Changes in Version 0.13 (2009/07/29)
+------------------------------------
 - better
   :class:`~pymongo.master_slave_connection.MasterSlaveConnection`
   support
@@ -4106,38 +4112,38 @@ Changes in Version 0.13
 - DEPRECATED passing an index name to
   :meth:`~pymongo.cursor.Cursor.hint`
 
-Changes in Version 0.12
------------------------
+Changes in Version 0.12 (2009/07/08)
+------------------------------------
 - improved :class:`~bson.objectid.ObjectId` generation
 - added :class:`~pymongo.errors.AutoReconnect` exception for when
   reconnection is possible
 - make :mod:`gridfs` thread-safe
 - fix for :mod:`gridfs` with non :class:`~bson.objectid.ObjectId` ``_id``
 
-Changes in Version 0.11.3
--------------------------
+Changes in Version 0.11.3 (2009/06/18)
+--------------------------------------
 - don't allow NULL bytes in string encoder
 - fixes for Python 2.3
 
-Changes in Version 0.11.2
--------------------------
+Changes in Version 0.11.2 (2009/06/08)
+--------------------------------------
 - PEP 8
 - updates for :meth:`~pymongo.collection.Collection.group`
 - VS build
 
-Changes in Version 0.11.1
--------------------------
+Changes in Version 0.11.1 (2009/06/04)
+--------------------------------------
 - fix for connection pooling under Python 2.5
 
-Changes in Version 0.11
------------------------
+Changes in Version 0.11 (2009/06/03)
+------------------------------------
 - better build failure detection
 - driver support for selecting fields in sub-documents
 - disallow insertion of invalid key names
 - added ``timeout`` parameter for :meth:`~pymongo.connection.Connection`
 
-Changes in Version 0.10.3
--------------------------
+Changes in Version 0.10.3 (2009/05/27)
+--------------------------------------
 - fix bug with large :meth:`~pymongo.cursor.Cursor.limit`
 - better exception when modules get reloaded out from underneath the C
   extension
@@ -4145,22 +4151,22 @@ Changes in Version 0.10.3
   :class:`~pymongo.collection.Collection` or
   :class:`~pymongo.database.Database` instance
 
-Changes in Version 0.10.2
--------------------------
+Changes in Version 0.10.2 (2009/05/22)
+--------------------------------------
 - support subclasses of :class:`dict` in C encoder
 
-Changes in Version 0.10.1
--------------------------
+Changes in Version 0.10.1 (2009/05/18)
+--------------------------------------
 - alias :class:`~pymongo.connection.Connection` as
   :attr:`pymongo.Connection`
 - raise an exception rather than silently overflowing in encoder
 
-Changes in Version 0.10
------------------------
+Changes in Version 0.10 (2009/05/14)
+------------------------------------
 - added :meth:`~pymongo.collection.Collection.ensure_index`
 
-Changes in Version 0.9.7
-------------------------
+Changes in Version 0.9.7 (2009/05/13)
+-------------------------------------
 - allow sub-collections of *$cmd* as valid
   :class:`~pymongo.collection.Collection` names
 - add version as :attr:`pymongo.version`
