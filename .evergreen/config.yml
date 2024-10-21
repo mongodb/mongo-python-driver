@@ -1954,23 +1954,6 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
-    - name: "assign-pr-reviewer"
-      tags: ["pr"]
-      allowed_requesters: ["patch", "github_pr"]
-      commands:
-        - command: shell.exec
-          type: test
-          params:
-            shell: "bash"
-            working_dir: src
-            script: |
-              . .evergreen/scripts/env.sh
-              set -x
-              export CONFIG=$PROJECT_DIRECTORY/.github/reviewers.txt
-              export SCRIPT="$DRIVERS_TOOLS/.evergreen/github_app/assign-reviewer.sh"
-              bash $SCRIPT -p $CONFIG -h ${github_commit} -o "mongodb" -n "mongo-python-driver"
-              echo '{"results": [{ "status": "PASS", "test_file": "Build", "log_raw": "Test completed"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
-
     - name: "check-import-time"
       tags: ["pr"]
       commands:
@@ -3996,12 +3979,6 @@ buildvariants:
   run_on: rhel87-small
   tasks:
     - name: test_aws_lambda_task_group
-
-- name: rhel8-pr-assign-reviewer
-  display_name: Assign PR Reviewer
-  run_on: rhel87-small
-  tasks:
-    - name: "assign-pr-reviewer"
 
 - name: rhel8-import-time
   display_name: Import Time Check
