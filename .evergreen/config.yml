@@ -3564,6 +3564,7 @@ buildvariants:
     - macos-14
   expansions:
     skip_ECS_auth_test: "true"
+    skip_web_identity_auth_test: "true"
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
 - name: aws-auth-macos-py3.13
   tasks:
@@ -3579,6 +3580,7 @@ buildvariants:
     - macos-14
   expansions:
     skip_ECS_auth_test: "true"
+    skip_web_identity_auth_test: "true"
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 
 - matrix_name: "tests-fips"

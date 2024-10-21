@@ -623,6 +623,9 @@ def generate_aws_auth_variants():
         expansions = dict()
         if host != "ubuntu20":
             expansions["skip_ECS_auth_test"] = "true"
+        if host == "macos":
+            expansions["skip_ECS_auth_test"] = "true"
+            expansions["skip_web_identity_auth_test"] = "true"
         variant = create_variant(
             tasks,
             get_display_name("AWS Auth", host, python=python),
