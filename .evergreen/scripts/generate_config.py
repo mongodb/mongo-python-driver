@@ -54,6 +54,7 @@ HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
 HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32")
 HOSTS["macos"] = Host("macos", "macos-14", "macOS")
 HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64")
+HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20")
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22")
 
 
@@ -103,7 +104,7 @@ def get_python_binary(python: str, host: str) -> str:
         python = python.replace(".", "")
         return f"{base}/Python{python}/python.exe"
 
-    if host in ["rhel8", "ubuntu22"]:
+    if host in ["rhel8", "ubuntu22", "ubuntu20"]:
         return f"/opt/python/{python}/bin/python3"
 
     if host in ["macos", "macos-arm64"]:
@@ -618,7 +619,7 @@ def generate_aws_auth_variants():
         "aws-auth-test-latest",
     ]
 
-    for host, python in product(["rhel8", "win64", "macos"], MIN_MAX_PYTHON):
+    for host, python in product(["ubuntu20", "win64", "macos"], MIN_MAX_PYTHON):
         variant = create_variant(
             tasks, get_display_name("AWS Auth", host, python=python), host=host, python=python
         )
