@@ -528,10 +528,40 @@ def create_green_framework_variants():
     return variants
 
 
+def generate_no_c_ext_variants():
+    variants = []
+    host = "rhel8"
+    for python, topology in zip_cycle(CPYTHONS, TOPOLOGIES):
+        tasks = [f".{topology}"]
+        expansions = dict()
+        handle_c_ext(C_EXTS[0], expansions)
+        display_name = get_display_name("No C Ext", host, python=python)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+    return variants
+
+
+def generate_atlas_data_lake_variants():
+    variants = []
+    host = "rhel8"
+    for python, c_ext in product(MIN_MAX_PYTHON, C_EXTS):
+        tasks = ["atlas-data-lake-tests"]
+        expansions = dict()
+        handle_c_ext(c_ext, expansions)
+        display_name = get_display_name("Atlas Data Lake", host, python=python, **expansions)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-variants = create_green_framework_variants()
+variants = generate_atlas_data_lake_variants()
 # print(len(variants))
 generate_yaml(variants=variants)
