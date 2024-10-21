@@ -3533,6 +3533,7 @@ buildvariants:
   run_on:
     - windows-64-vsMulti-small
   expansions:
+    skip_ECS_auth_test: "true"
     PYTHON_BINARY: C:/python/Python39/python.exe
 - name: aws-auth-win64-py3.13
   tasks:
@@ -3547,6 +3548,7 @@ buildvariants:
   run_on:
     - windows-64-vsMulti-small
   expansions:
+    skip_ECS_auth_test: "true"
     PYTHON_BINARY: C:/python/Python313/python.exe
 - name: aws-auth-macos-py3.9
   tasks:
@@ -3561,6 +3563,7 @@ buildvariants:
   run_on:
     - macos-14
   expansions:
+    skip_ECS_auth_test: "true"
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
 - name: aws-auth-macos-py3.13
   tasks:
@@ -3575,6 +3578,7 @@ buildvariants:
   run_on:
     - macos-14
   expansions:
+    skip_ECS_auth_test: "true"
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 
 - matrix_name: "tests-fips"
