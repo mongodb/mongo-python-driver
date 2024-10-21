@@ -606,10 +606,30 @@ def generate_serverless_variants():
     ]
 
 
+def generate_aws_auth_variants():
+    variants = []
+    tasks = [
+        "aws-auth-test-4.4",
+        "aws-auth-test-5.0",
+        "aws-auth-test-6.0",
+        "aws-auth-test-7.0",
+        "aws-auth-test-8.0",
+        "aws-auth-test-rapid",
+        "aws-auth-test-latest",
+    ]
+
+    for host, python in product(["rhel8", "win64", "macos"], MIN_MAX_PYTHON):
+        variant = create_variant(
+            tasks, get_display_name("AWS Auth", host, python=python), host=host, python=python
+        )
+        variants.append(variant)
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-variants = generate_serverless_variants()
+variants = generate_aws_auth_variants()
 # print(len(variants))
 generate_yaml(variants=variants)
