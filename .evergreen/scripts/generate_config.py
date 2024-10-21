@@ -54,6 +54,7 @@ HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
 HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32")
 HOSTS["macos"] = Host("macos", "macos-14", "macOS")
 HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64")
+HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22")
 
 
 ##############
@@ -102,7 +103,7 @@ def get_python_binary(python: str, host: str) -> str:
         python = python.replace(".", "")
         return f"{base}/Python{python}/python.exe"
 
-    if host == "rhel8":
+    if host in ["rhel8", "ubuntu22"]:
         return f"/opt/python/{python}/bin/python3"
 
     if host in ["macos", "macos-arm64"]:
@@ -558,10 +559,57 @@ def generate_atlas_data_lake_variants():
     return variants
 
 
+def generate_mod_wsgi_variants():
+    variants = []
+    host = "ubuntu22"
+    tasks = [
+        "mod-wsgi-standalone",
+        "mod-wsgi-replica-set",
+        "mod-wsgi-embedded-mode-standalone",
+        "mod-wsgi-embedded-mode-replica-set",
+    ]
+    expansions = dict(MOD_WSGI_VERSION="4")
+    for python in MIN_MAX_PYTHON:
+        display_name = get_display_name("mod_wsgi", host, python=python)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+    return variants
+
+
+def generate_disable_test_commands_variants():
+    host = "rhel8"
+    expansions = dict(AUTH="auth", SSL="ssl", DISABLE_TEST_COMMANDS="1")
+    python = CPYTHONS[0]
+    display_name = get_display_name("Disable test commands", host, python=python)
+    tasks = [".latest"]
+    return [create_variant(tasks, display_name, host=host, python=python, expansions=expansions)]
+
+
+def generate_serverless_variants():
+    host = "rhel8"
+    batchtime = BATCHTIME_WEEK
+    expansions = dict(test_serverless="true", AUTH="auth", SSL="ssl")
+    tasks = ["serverless_task_group"]
+    base_name = "Serverless"
+    return [
+        create_variant(
+            tasks,
+            get_display_name(base_name, host, python=python),
+            host=host,
+            python=python,
+            expansions=expansions,
+            batchtime=batchtime,
+        )
+        for python in MIN_MAX_PYTHON
+    ]
+
+
 ##################
 # Generate Config
 ##################
 
-variants = generate_atlas_data_lake_variants()
+variants = generate_serverless_variants()
 # print(len(variants))
 generate_yaml(variants=variants)
