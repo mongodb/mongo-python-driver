@@ -514,10 +514,24 @@ def create_versioned_api_tests():
     return variants
 
 
+def create_green_framework_variants():
+    variants = []
+    tasks = [".standalone"]
+    host = "rhel8"
+    for python, framework in product([CPYTHONS[0], CPYTHONS[-2]], ["eventlet", "gevent"]):
+        expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
+        display_name = get_display_name(f"{framework.capitalize()}", host, python=python)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-variants = create_versioned_api_tests()
+variants = create_green_framework_variants()
 # print(len(variants))
 generate_yaml(variants=variants)

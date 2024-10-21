@@ -2247,19 +2247,6 @@ axes:
         variables:
           MOD_WSGI_VERSION: "4"
 
-  # Choice of Python async framework
-  - id: green-framework
-    display_name: "Green Framework"
-    values:
-      - id: "eventlet"
-        display_name: "Eventlet"
-        variables:
-          GREEN_FRAMEWORK: "eventlet"
-      - id: "gevent"
-        display_name: "Gevent"
-        variables:
-          GREEN_FRAMEWORK: "gevent"
-
   # Install and use the driver's C-extensions?
   - id: c-extensions
     display_name: "C Extensions"
@@ -3427,6 +3414,52 @@ buildvariants:
     PYTHON_BINARY: /opt/python/3.13/bin/python3
   tags: [versionedApi_tag]
 
+# Green framework tests.
+- name: eventlet-rhel8-py3.9
+  tasks:
+    - name: .standalone
+  display_name: Eventlet RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    GREEN_FRAMEWORK: eventlet
+    AUTH: auth
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: gevent-rhel8-py3.9
+  tasks:
+    - name: .standalone
+  display_name: Gevent RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    GREEN_FRAMEWORK: gevent
+    AUTH: auth
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: eventlet-rhel8-py3.12
+  tasks:
+    - name: .standalone
+  display_name: Eventlet RHEL8 py3.12
+  run_on:
+    - rhel87-small
+  expansions:
+    GREEN_FRAMEWORK: eventlet
+    AUTH: auth
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.12/bin/python3
+- name: gevent-rhel8-py3.12
+  tasks:
+    - name: .standalone
+  display_name: Gevent RHEL8 py3.12
+  run_on:
+    - rhel87-small
+  expansions:
+    GREEN_FRAMEWORK: gevent
+    AUTH: auth
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.12/bin/python3
+
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
@@ -3474,21 +3507,6 @@ buildvariants:
     - ".4.4"
     - ".4.2"
     - ".4.0"
-
-- matrix_name: "tests-python-version-green-framework-rhel8"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    green-framework: "*"
-    auth-ssl: "*"
-  exclude_spec:
-   # Don't test green frameworks on these Python versions.
-   - platform: rhel8
-     python-version: ["pypy3.9", "pypy3.10", "3.13"]
-     green-framework: "*"
-     auth-ssl: "*"
-  display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
-  tasks: *all-server-versions
 
 - matrix_name: "tests-python-version-supports-openssl-102-test-ssl"
   matrix_spec:
