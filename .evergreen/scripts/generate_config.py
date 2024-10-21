@@ -255,10 +255,13 @@ def create_server_variants() -> list[BuildVariant]:
 
     # Test a subset on each of the other platforms.
     for host in ("macos", "macos-arm64", "win64", "win32"):
-        for (python, (auth, ssl), topology), sync in product(
-            zip_cycle(MIN_MAX_PYTHON, AUTH_SSLS, TOPOLOGIES), SYNCS
-        ):
+        for (
+            python,
+            sync,
+            (auth, ssl),
+        ) in product(MIN_MAX_PYTHON, SYNCS, AUTH_SSLS):
             test_suite = "default" if sync == "sync" else "default_async"
+            topology = TOPOLOGIES[0] if python == CPYTHONS[0] else TOPOLOGIES[-1]
             tasks = [f".{topology}"]
             # MacOS arm64 only works on server versions 6.0+
             if host == "macos-arm64":
@@ -641,6 +644,6 @@ def generate_aws_auth_variants():
 # Generate Config
 ##################
 
-variants = generate_aws_auth_variants()
+variants = create_server_variants()
 # print(len(variants))
 generate_yaml(variants=variants)
