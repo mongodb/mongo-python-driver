@@ -2147,6 +2147,30 @@ axes:
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.10/bin/pypy3"
 
+  - id: python-version-windows
+    display_name: "Python"
+    values:
+      - id: "3.9"
+        display_name: "Python 3.9"
+        variables:
+          PYTHON_BINARY: "C:/python/Python39/python.exe"
+      - id: "3.10"
+        display_name: "Python 3.10"
+        variables:
+          PYTHON_BINARY: "C:/python/Python310/python.exe"
+      - id: "3.11"
+        display_name: "Python 3.11"
+        variables:
+          PYTHON_BINARY: "C:/python/Python311/python.exe"
+      - id: "3.12"
+        display_name: "Python 3.12"
+        variables:
+          PYTHON_BINARY: "C:/python/Python312/python.exe"
+      - id: "3.13"
+        display_name: "Python 3.13"
+        variables:
+          PYTHON_BINARY: "C:/python/Python313/python.exe"
+
 buildvariants:
 # Server Tests for RHEL8.
 - name: test-rhel8-py3.9-auth-ssl-cov
