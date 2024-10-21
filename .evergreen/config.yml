@@ -2247,19 +2247,6 @@ axes:
         variables:
           MOD_WSGI_VERSION: "4"
 
-  # Install and use the driver's C-extensions?
-  - id: c-extensions
-    display_name: "C Extensions"
-    values:
-      - id: "without-c-extensions"
-        display_name: "Without C Extensions"
-        variables:
-          NO_EXT: "1"
-      - id: "with-c-extensions"
-        display_name: "With C Extensions"
-        variables:
-          NO_EXT: ""
-
   # Choice of MongoDB storage engine
   - id: storage-engine
     display_name: Storage
@@ -3445,6 +3432,89 @@ buildvariants:
     SSL: ssl
     PYTHON_BINARY: /opt/python/3.12/bin/python3
 
+# No C Ext tests.
+- name: no-c-ext-rhel8-py3.9
+  tasks:
+    - name: .standalone
+  display_name: No C Ext RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    NO_EXT: "1"
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: no-c-ext-rhel8-py3.10
+  tasks:
+    - name: .replica_set
+  display_name: No C Ext RHEL8 py3.10
+  run_on:
+    - rhel87-small
+  expansions:
+    NO_EXT: "1"
+    PYTHON_BINARY: /opt/python/3.10/bin/python3
+- name: no-c-ext-rhel8-py3.11
+  tasks:
+    - name: .sharded_cluster
+  display_name: No C Ext RHEL8 py3.11
+  run_on:
+    - rhel87-small
+  expansions:
+    NO_EXT: "1"
+    PYTHON_BINARY: /opt/python/3.11/bin/python3
+- name: no-c-ext-rhel8-py3.12
+  tasks:
+    - name: .standalone
+  display_name: No C Ext RHEL8 py3.12
+  run_on:
+    - rhel87-small
+  expansions:
+    NO_EXT: "1"
+    PYTHON_BINARY: /opt/python/3.12/bin/python3
+- name: no-c-ext-rhel8-py3.13
+  tasks:
+    - name: .replica_set
+  display_name: No C Ext RHEL8 py3.13
+  run_on:
+    - rhel87-small
+  expansions:
+    NO_EXT: "1"
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+
+# Atlas Data Lake tests.
+- name: atlas-data-lake-rhel8-py3.9-no-c
+  tasks:
+    - name: atlas-data-lake-tests
+  display_name: Atlas Data Lake RHEL8 py3.9 No C
+  run_on:
+    - rhel87-small
+  expansions:
+    NO_EXT: "1"
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: atlas-data-lake-rhel8-py3.9
+  tasks:
+    - name: atlas-data-lake-tests
+  display_name: Atlas Data Lake RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: atlas-data-lake-rhel8-py3.13-no-c
+  tasks:
+    - name: atlas-data-lake-tests
+  display_name: Atlas Data Lake RHEL8 py3.13 No C
+  run_on:
+    - rhel87-small
+  expansions:
+    NO_EXT: "1"
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+- name: atlas-data-lake-rhel8-py3.13
+  tasks:
+    - name: atlas-data-lake-tests
+  display_name: Atlas Data Lake RHEL8 py3.13
+  run_on:
+    - rhel87-small
+  expansions:
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
@@ -3466,32 +3536,6 @@ buildvariants:
   display_name: "${platform} ${auth-ssl}"
   tasks:
     - ".6.0"
-
-- matrix_name: "tests-python-version-rhel8-without-c-extensions"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    c-extensions: without-c-extensions
-    auth-ssl: noauth-nossl
-    coverage: "*"
-  exclude_spec:
-   # These interpreters are always tested without extensions.
-   - platform: rhel8
-     python-version: ["pypy3.9", "pypy3.10"]
-     c-extensions: "*"
-     auth-ssl: "*"
-     coverage: "*"
-  display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
-  tasks: &all-server-versions
-    - ".rapid"
-    - ".latest"
-    - ".8.0"
-    - ".7.0"
-    - ".6.0"
-    - ".5.0"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
 
 - matrix_name: "tests-python-version-supports-openssl-102-test-ssl"
   matrix_spec:
@@ -3612,16 +3656,6 @@ buildvariants:
   display_name: "${serverless} ${python-version} ${platform}"
   tasks:
     - "serverless_task_group"
-
-- matrix_name: "data-lake-spec-tests"
-  matrix_spec:
-    platform: ubuntu-22.04
-    python-version: ["3.9", "3.10"]
-    auth: "auth"
-    c-extensions: "*"
-  display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
-  tasks:
-    - name: atlas-data-lake-tests
 
 # OCSP test matrix.
 - name: ocsp-test-rhel8-v4.4-py3.9
