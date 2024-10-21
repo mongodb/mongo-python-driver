@@ -2112,47 +2112,6 @@ axes:
            AUTH: "noauth"
            SSL: "nossl"
 
-  # Choice of MongoDB server version
-  - id: mongodb-version
-    display_name: "MongoDB"
-    values:
-      - id: "4.0"
-        display_name: "MongoDB 4.0"
-        variables:
-          VERSION: "4.0"
-      - id: "4.2"
-        display_name: "MongoDB 4.2"
-        variables:
-          VERSION: "4.2"
-      - id: "4.4"
-        display_name: "MongoDB 4.4"
-        variables:
-          VERSION: "4.4"
-      - id: "5.0"
-        display_name: "MongoDB 5.0"
-        variables:
-          VERSION: "5.0"
-      - id: "6.0"
-        display_name: "MongoDB 6.0"
-        variables:
-          VERSION: "6.0"
-      - id: "7.0"
-        display_name: "MongoDB 7.0"
-        variables:
-          VERSION: "7.0"
-      - id: "8.0"
-        display_name: "MongoDB 8.0"
-        variables:
-          VERSION: "8.0"
-      - id: "latest"
-        display_name: "MongoDB latest"
-        variables:
-          VERSION: "latest"
-      - id: "rapid"
-        display_name: "MongoDB rapid"
-        variables:
-          VERSION: "rapid"
-
   # Choice of Python runtime version
   - id: python-version
     display_name: "Python"
@@ -2187,93 +2146,6 @@ axes:
         display_name: "PyPy 3.10"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.10/bin/pypy3"
-
-  - id: python-version-windows
-    display_name: "Python"
-    values:
-      - id: "3.9"
-        display_name: "Python 3.9"
-        variables:
-          PYTHON_BINARY: "C:/python/Python39/python.exe"
-      - id: "3.10"
-        display_name: "Python 3.10"
-        variables:
-          PYTHON_BINARY: "C:/python/Python310/python.exe"
-      - id: "3.11"
-        display_name: "Python 3.11"
-        variables:
-          PYTHON_BINARY: "C:/python/Python311/python.exe"
-      - id: "3.12"
-        display_name: "Python 3.12"
-        variables:
-          PYTHON_BINARY: "C:/python/Python312/python.exe"
-      - id: "3.13"
-        display_name: "Python 3.13"
-        variables:
-          PYTHON_BINARY: "C:/python/Python313/python.exe"
-
-  - id: python-version-windows-32
-    display_name: "Python"
-    values:
-
-
-      - id: "3.9"
-        display_name: "32-bit Python 3.9"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python39/python.exe"
-      - id: "3.10"
-        display_name: "32-bit Python 3.10"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python310/python.exe"
-      - id: "3.11"
-        display_name: "32-bit Python 3.11"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python311/python.exe"
-      - id: "3.12"
-        display_name: "32-bit Python 3.12"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python312/python.exe"
-      - id: "3.13"
-        display_name: "32-bit Python 3.13"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python313/python.exe"
-
-  # Choice of mod_wsgi version
-  - id: mod-wsgi-version
-    display_name: "mod_wsgi version"
-    values:
-      - id: "4"
-        display_name: "mod_wsgi 4.x"
-        variables:
-          MOD_WSGI_VERSION: "4"
-
-  # Run with test commands disabled on server?
-  - id: disableTestCommands
-    display_name: Disable test commands
-    values:
-      - id: disabled
-        display_name: disabled
-        variables:
-           DISABLE_TEST_COMMANDS: "1"
-
-  # Generate coverage report?
-  - id: coverage
-    display_name: "Coverage"
-    values:
-      - id: "coverage"
-        display_name: "Coverage"
-        tags: ["coverage_tag"]
-        variables:
-           COVERAGE: "coverage"
-
-  - id: serverless
-    display_name: "Serverless"
-    values:
-      - id: "enabled"
-        display_name: "Serverless"
-        variables:
-          test_serverless: true
-        batchtime: 10080  # 7 days
 
 buildvariants:
 # Server Tests for RHEL8.
@@ -3530,6 +3402,71 @@ buildvariants:
   expansions:
     PYTHON_BINARY: /opt/python/3.13/bin/python3
 
+# Mod_wsgi tests.
+- name: mod_wsgi-ubuntu-22-py3.9
+  tasks:
+    - name: mod-wsgi-standalone
+    - name: mod-wsgi-replica-set
+    - name: mod-wsgi-embedded-mode-standalone
+    - name: mod-wsgi-embedded-mode-replica-set
+  display_name: mod_wsgi Ubuntu-22 py3.9
+  run_on:
+    - ubuntu2204-small
+  expansions:
+    MOD_WSGI_VERSION: "4"
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: mod_wsgi-ubuntu-22-py3.13
+  tasks:
+    - name: mod-wsgi-standalone
+    - name: mod-wsgi-replica-set
+    - name: mod-wsgi-embedded-mode-standalone
+    - name: mod-wsgi-embedded-mode-replica-set
+  display_name: mod_wsgi Ubuntu-22 py3.13
+  run_on:
+    - ubuntu2204-small
+  expansions:
+    MOD_WSGI_VERSION: "4"
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+
+# Disable test commands variants.
+- name: disable-test-commands-rhel8-py3.9
+  tasks:
+    - name: .latest
+  display_name: Disable test commands RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    AUTH: auth
+    SSL: ssl
+    DISABLE_TEST_COMMANDS: "1"
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+
+# Serverless variants.
+- name: serverless-rhel8-py3.9
+  tasks:
+    - name: serverless_task_group
+  display_name: Serverless RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    test_serverless: "true"
+    AUTH: auth
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: serverless-rhel8-py3.13
+  tasks:
+    - name: serverless_task_group
+  display_name: Serverless RHEL8 py3.13
+  run_on:
+    - rhel87-small
+  batchtime: 10080
+  expansions:
+    test_serverless: "true"
+    AUTH: auth
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
@@ -3562,16 +3499,6 @@ buildvariants:
   tasks:
      - ".5.0"
 
-# enableTestCommands=0 tests on RHEL 8.4 (x86_64) with Python 3.9.
-- matrix_name: "test-disableTestCommands"
-  matrix_spec:
-    platform: rhel8
-    disableTestCommands: "*"
-    python-version: "3.9"
-  display_name: "Disable test commands ${python-version} ${platform}"
-  tasks:
-     - ".latest"
-
 - matrix_name: "test-search-index-helpers"
   matrix_spec:
     platform: rhel8
@@ -3579,18 +3506,6 @@ buildvariants:
   display_name: "Search Index Helpers ${platform}"
   tasks:
      - name: "test_atlas_task_group_search_indexes"
-
-- matrix_name: "tests-mod-wsgi"
-  matrix_spec:
-    platform: ubuntu-22.04
-    python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-    mod-wsgi-version: "*"
-  display_name: "${mod-wsgi-version} ${python-version} ${platform}"
-  tasks:
-     - name: "mod-wsgi-standalone"
-     - name: "mod-wsgi-replica-set"
-     - name: "mod-wsgi-embedded-mode-standalone"
-     - name: "mod-wsgi-embedded-mode-replica-set"
 
 - matrix_name: "mockupdb-tests"
   matrix_spec:
@@ -3629,16 +3544,6 @@ buildvariants:
   display_name: "Atlas connect ${python-version} ${platform}"
   tasks:
     - name: "atlas-connect"
-
-- matrix_name: "serverless"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    auth-ssl: auth-ssl
-    serverless: "enabled"
-  display_name: "${serverless} ${python-version} ${platform}"
-  tasks:
-    - "serverless_task_group"
 
 # OCSP test matrix.
 - name: ocsp-test-rhel8-v4.4-py3.9
