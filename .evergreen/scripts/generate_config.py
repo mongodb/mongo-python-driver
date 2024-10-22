@@ -685,80 +685,9 @@ def generate_alternative_hosts_variants():
     return variants
 
 
-"""
-
-      - id: rhel7
-        display_name: .x"
-        run_on: rhel79-small
-        batchtime: 10080  # 7 days
-      - id: rhel9-fips
-        display_name: "RHEL 9 FIPS"
-        run_on: rhel92-fips
-        batchtime: 10080  # 7 days
-      - id: rhel8-zseries
-        display_name: "RHEL 8 (zSeries)"
-        run_on: rhel8-zseries-small
-        batchtime: 10080  # 7 days
-        variables:
-          SKIP_HATCH: true
-      - id: rhel8-power8
-        display_name: "RHEL 8 (POWER8)"
-        run_on: rhel8-power-small
-        batchtime: 10080  # 7 days
-        variables:
-          SKIP_HATCH: true
-      - id: rhel8-arm64
-        display_name: "RHEL 8 (ARM64)"
-        run_on: rhel82-arm64-small
-        batchtime: 10080  # 7 days
-        variables:
-
-    - name: "test-fips-standalone"
-      tags: ["fips"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "latest"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-- matrix_name: "tests-fips"
-  matrix_spec:
-    platform:
-      - rhel9-fips
-    auth: "auth"
-    ssl: "ssl"
-  display_name: "${platform} ${auth} ${ssl}"
-  tasks:
-    - "test-fips-standalone"
-
-# Test one server version with zSeries, POWER8, and ARM.
-- matrix_name: "test-different-cpu-architectures"
-  matrix_spec:
-    platform:
-      - rhel8-zseries  # Added in 5.0.8 (SERVER-44074)
-      - rhel8-power8 # Added in 4.2.7 (SERVER-44072)
-      - rhel8-arm64 # Added in 4.4.2 (SERVER-48282)
-    auth-ssl: "*"
-  display_name: "${platform} ${auth-ssl}"
-  tasks:
-    - ".6.0"
-
-- matrix_name: "tests-python-version-supports-openssl-102-test-ssl"
-  matrix_spec:
-    platform: rhel7
-    # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: ["3.9"]
-    auth-ssl: "*"
-  display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
-  tasks:
-     - ".5.0"
-"""
-
 ##################
 # Generate Config
 ##################
 
 variants = generate_alternative_hosts_variants()
-# print(len(variants))
 generate_yaml(variants=variants)
