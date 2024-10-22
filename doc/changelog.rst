@@ -797,8 +797,12 @@ in this release.
 Changes in Version 4.0.2 (2022/03/03)
 -------------------------------------
 
+- No changes
+
 Changes in Version 4.0.1 (2021/12/07)
 -------------------------------------
+
+- No changes
 
 Changes in Version 4.0 (2021/11/29)
 -----------------------------------
