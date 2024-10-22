@@ -49,6 +49,7 @@ class Host:
     display_name: str
 
 
+# Hosts with toolchains.
 HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8")
 HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
 HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32")
@@ -56,7 +57,7 @@ HOSTS["macos"] = Host("macos", "macos-14", "macOS")
 HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64")
 HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20")
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22")
-
+HOSTS["rhel7"] = Host("rhel7", "rhel79-small", "RHEL7")
 
 ##############
 # Helpers
@@ -76,8 +77,11 @@ def create_variant(
     task_refs = [EvgTaskRef(name=n) for n in task_names]
     kwargs.setdefault("expansions", dict())
     expansions = kwargs.pop("expansions", dict()).copy()
-    host = host or "rhel8"
-    run_on = [HOSTS[host].run_on]
+    if "run_on" in kwargs:
+        run_on = kwargs.pop("run_on")
+    else:
+        host = host or "rhel8"
+        run_on = [HOSTS[host].run_on]
     name = display_name.replace(" ", "-").lower()
     if python:
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
@@ -104,7 +108,7 @@ def get_python_binary(python: str, host: str) -> str:
         python = python.replace(".", "")
         return f"{base}/Python{python}/python.exe"
 
-    if host in ["rhel8", "ubuntu22", "ubuntu20"]:
+    if host in ["rhel8", "ubuntu22", "ubuntu20", "rhel7"]:
         return f"/opt/python/{python}/bin/python3"
 
     if host in ["macos", "macos-arm64"]:
@@ -131,9 +135,11 @@ def get_versions_until(max_version: str) -> list[str]:
     return versions
 
 
-def get_display_name(base: str, host: str, **kwargs) -> str:
+def get_display_name(base: str, host: str | None = None, **kwargs) -> str:
     """Get the display name of a variant."""
-    display_name = f"{base} {HOSTS[host].display_name}"
+    display_name = base
+    if host is not None:
+        display_name += f" {HOSTS[host].display_name}"
     version = kwargs.pop("VERSION", None)
     if version:
         if version not in ["rapid", "latest"]:
@@ -640,10 +646,119 @@ def generate_aws_auth_variants():
     return variants
 
 
+def generate_alternative_hosts_variants():
+    base_expansions = dict(SKIP_HATCH="true")
+    batchtime = BATCHTIME_WEEK
+    variants = []
+
+    host = "rhel7"
+    for auth, ssl in AUTH_SSLS:
+        expansions = base_expansions.copy()
+        expansions["AUTH"] = auth
+        expansions["SSL"] = ssl
+        variants.append(
+            create_variant(
+                [".5.0 .standalone"],
+                get_display_name("OpenSSL 1.0.2", "rhel7", python=CPYTHONS[0], **expansions),
+                host=host,
+                python=CPYTHONS[0],
+                batchtime=batchtime,
+                expansions=expansions,
+            )
+        )
+
+    hosts = ["rhel92-fips", "rhel8-zseries-small", "rhel8-power-small", "rhel82-arm64-small"]
+    host_names = ["RHEL9-FIPS", "RHEL8-zseries", "RHEL8-POWER8", "RHEL8-arm64"]
+    for (host, host_name), (auth, ssl) in product(zip(hosts, host_names), AUTH_SSLS):
+        expansions = base_expansions.copy()
+        expansions["AUTH"] = auth
+        expansions["SSL"] = ssl
+        variants.append(
+            create_variant(
+                [".6.0 .standalone"],
+                display_name=get_display_name(f"Other hosts {host_name}", **expansions),
+                expansions=expansions,
+                batchtime=batchtime,
+                run_on=[host],
+            )
+        )
+    return variants
+
+
+"""
+
+      - id: rhel7
+        display_name: .x"
+        run_on: rhel79-small
+        batchtime: 10080  # 7 days
+      - id: rhel9-fips
+        display_name: "RHEL 9 FIPS"
+        run_on: rhel92-fips
+        batchtime: 10080  # 7 days
+      - id: rhel8-zseries
+        display_name: "RHEL 8 (zSeries)"
+        run_on: rhel8-zseries-small
+        batchtime: 10080  # 7 days
+        variables:
+          SKIP_HATCH: true
+      - id: rhel8-power8
+        display_name: "RHEL 8 (POWER8)"
+        run_on: rhel8-power-small
+        batchtime: 10080  # 7 days
+        variables:
+          SKIP_HATCH: true
+      - id: rhel8-arm64
+        display_name: "RHEL 8 (ARM64)"
+        run_on: rhel82-arm64-small
+        batchtime: 10080  # 7 days
+        variables:
+
+    - name: "test-fips-standalone"
+      tags: ["fips"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run tests"
+
+- matrix_name: "tests-fips"
+  matrix_spec:
+    platform:
+      - rhel9-fips
+    auth: "auth"
+    ssl: "ssl"
+  display_name: "${platform} ${auth} ${ssl}"
+  tasks:
+    - "test-fips-standalone"
+
+# Test one server version with zSeries, POWER8, and ARM.
+- matrix_name: "test-different-cpu-architectures"
+  matrix_spec:
+    platform:
+      - rhel8-zseries  # Added in 5.0.8 (SERVER-44074)
+      - rhel8-power8 # Added in 4.2.7 (SERVER-44072)
+      - rhel8-arm64 # Added in 4.4.2 (SERVER-48282)
+    auth-ssl: "*"
+  display_name: "${platform} ${auth-ssl}"
+  tasks:
+    - ".6.0"
+
+- matrix_name: "tests-python-version-supports-openssl-102-test-ssl"
+  matrix_spec:
+    platform: rhel7
+    # Python 3.10+ requires OpenSSL 1.1.1+
+    python-version: ["3.9"]
+    auth-ssl: "*"
+  display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
+  tasks:
+     - ".5.0"
+"""
+
 ##################
 # Generate Config
 ##################
 
-variants = create_server_variants()
+variants = generate_alternative_hosts_variants()
 # print(len(variants))
 generate_yaml(variants=variants)
