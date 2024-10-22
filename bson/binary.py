@@ -404,14 +404,14 @@ class Binary(bytes):
         dtype: Optional[BinaryVectorDtype] = None,
         padding: Optional[int] = None,
     ) -> Binary:
-        """**(BETA)** Create a BSON :class:`~bson.binary.Binary` of Vector subtype from a list of Numbers.
+        """**(BETA)** Create a BSON :class:`~bson.binary.Binary` of Vector subtype.
 
         To interpret the representation of the numbers, a data type must be included.
         See :class:`~bson.binary.BinaryVectorDtype` for available types and descriptions.
 
         The dtype and padding are prepended to the binary data's value.
 
-        :param vector: List of values
+        :param vector: Either a List of values, or a :class:`~bson.binary.BinaryVector` dataclass.
         :param dtype: Data type of the values
         :param padding: For fractional bytes, number of bits to ignore at end of vector.
         :return: Binary packed data identified by dtype and padding.
