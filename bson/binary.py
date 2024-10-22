@@ -16,7 +16,7 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Sequence, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Type, Union
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -400,9 +400,9 @@ class Binary(bytes):
     @classmethod
     def from_vector(
         cls: Type[Binary],
-        vector: list[int, float],
-        dtype: BinaryVectorDtype,
-        padding: int = 0,
+        vector: Union[BinaryVector, list[int, float]],
+        dtype: Optional[BinaryVectorDtype] = None,
+        padding: Optional[int] = None,
     ) -> Binary:
         """**(BETA)** Create a BSON :class:`~bson.binary.Binary` of Vector subtype from a list of Numbers.
 
@@ -418,6 +418,17 @@ class Binary(bytes):
 
         .. versionadded:: 4.10
         """
+        if isinstance(vector, BinaryVector):
+            if dtype or padding:
+                raise ValueError(
+                    "The first argument, vector, has type BinaryVector. "
+                    "dtype or padding cannot be separately defined, but were."
+                )
+            dtype = vector.dtype
+            padding = vector.padding
+            vector = vector.data
+
+        padding = 0 if padding is None else padding
         if dtype == BinaryVectorDtype.INT8:  # pack ints in [-128, 127] as signed int8
             format_str = "b"
             if padding:
