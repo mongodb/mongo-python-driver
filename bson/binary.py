@@ -426,7 +426,7 @@ class Binary(bytes):
                 )
             dtype = vector.dtype
             padding = vector.padding
-            vector = vector.data
+            vector = vector.data  # type: ignore
 
         padding = 0 if padding is None else padding
         if dtype == BinaryVectorDtype.INT8:  # pack ints in [-128, 127] as signed int8
@@ -443,7 +443,7 @@ class Binary(bytes):
             raise NotImplementedError("%s not yet supported" % dtype)
 
         metadata = struct.pack("<sB", dtype.value, padding)
-        data = struct.pack(f"<{len(vector)}{format_str}", *vector)
+        data = struct.pack(f"<{len(vector)}{format_str}", *vector)  # type: ignore
         return cls(metadata + data, subtype=VECTOR_SUBTYPE)
 
     def as_vector(self) -> BinaryVector:
