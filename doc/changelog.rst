@@ -387,7 +387,7 @@ in this release.
 .. _PyMongo 4.6.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=37906
 
 Changes in Version 4.6.1 (2023/11/29)
-------------------------------------
+-------------------------------------
 
 PyMongo 4.6.1 fixes the following bug:
 
