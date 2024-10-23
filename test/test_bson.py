@@ -51,7 +51,13 @@ from bson import (
     is_valid,
     json_util,
 )
-from bson.binary import USER_DEFINED_SUBTYPE, Binary, BinaryVectorDtype, UuidRepresentation
+from bson.binary import (
+    USER_DEFINED_SUBTYPE,
+    Binary,
+    BinaryVector,
+    BinaryVectorDtype,
+    UuidRepresentation,
+)
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
 from bson.datetime_ms import _DATETIME_ERROR_SUGGESTION
@@ -784,6 +790,18 @@ class TestBSON(unittest.TestCase):
                 self.assertTrue(isinstance(exc, struct.error))
             else:
                 self.fail("Failed to raise an exception.")
+
+        # Test form of Binary.from_vector(BinaryVector)
+
+        assert padded_vec == Binary.from_vector(
+            BinaryVector(list_vector, BinaryVectorDtype.PACKED_BIT, padding)
+        )
+        assert binary_vector == Binary.from_vector(
+            BinaryVector(list_vector, BinaryVectorDtype.INT8)
+        )
+        assert float_binary == Binary.from_vector(
+            BinaryVector(list_vector, BinaryVectorDtype.FLOAT32)
+        )
 
     def test_unicode_regex(self):
         """Tests we do not get a segfault for C extension on unicode RegExs.
