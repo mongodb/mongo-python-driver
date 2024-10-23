@@ -59,6 +59,7 @@ HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20")
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22")
 HOSTS["rhel7"] = Host("rhel7", "rhel79-small", "RHEL7")
 
+
 ##############
 # Helpers
 ##############
@@ -616,6 +617,72 @@ def generate_serverless_variants():
     ]
 
 
+def generate_oidc_auth_variants():
+    variants = []
+    for host in ["rhel8", "macos", "win64"]:
+        variants.append(
+            create_variant(
+                ["testoidc_task_group"],
+                get_display_name("OIDC Auth", host),
+                host=host,
+                batchtime=BATCHTIME_WEEK * 2,
+            )
+        )
+    return variants
+
+
+def generate_search_index_variants():
+    host = "rhel8"
+    python = CPYTHONS[0]
+    return [
+        create_variant(
+            ["test_atlas_task_group_search_indexes"],
+            get_display_name("Search Index Helpers", host, python=python),
+            python=python,
+            host=host,
+        )
+    ]
+
+
+def generate_mockupdb_variants():
+    host = "rhel8"
+    python = CPYTHONS[0]
+    return [
+        create_variant(
+            ["mockupdb"],
+            get_display_name("MockupDB Tests", host, python=python),
+            python=python,
+            host=host,
+        )
+    ]
+
+
+def generate_doctests_variants():
+    host = "rhel8"
+    python = CPYTHONS[0]
+    return [
+        create_variant(
+            ["doctests"],
+            get_display_name("Doctests", host, python=python),
+            python=python,
+            host=host,
+        )
+    ]
+
+
+def generate_atlas_connect_variants():
+    host = "rhel8"
+    return [
+        create_variant(
+            ["atlas-connect"],
+            get_display_name("Atlas connect", host, python=python),
+            python=python,
+            host=host,
+        )
+        for python in MIN_MAX_PYTHON
+    ]
+
+
 def generate_aws_auth_variants():
     variants = []
     tasks = [
@@ -689,5 +756,11 @@ def generate_alternative_hosts_variants():
 # Generate Config
 ##################
 
-variants = generate_alternative_hosts_variants()
+variants = (
+    generate_oidc_auth_variants()
+    + generate_atlas_connect_variants()
+    + generate_doctests_variants()
+    + generate_mockupdb_variants()
+    + generate_search_index_variants()
+)
 generate_yaml(variants=variants)

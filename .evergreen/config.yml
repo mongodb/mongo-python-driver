@@ -1990,99 +1990,6 @@ tasks:
             - mongo-python-driver
             - ${github_commit}
 
-axes:
-  # Choice of distro
-  - id: platform
-    display_name: OS
-    values:
-      - id: rhel8
-        display_name: "RHEL 8.x"
-        run_on: rhel8.8-small
-        batchtime: 10080  # 7 days
-      - id: windows
-        display_name: "Windows 64"
-        run_on: windows-64-vsMulti-small
-        batchtime: 10080  # 7 days
-      - id: macos
-        display_name: "macOS"
-        run_on: macos-14
-
-  # Test with authentication?
-  - id: auth
-    display_name: Authentication
-    values:
-      - id: auth
-        display_name: Auth
-        variables:
-           AUTH: "auth"
-      - id: noauth
-        display_name: NoAuth
-        variables:
-           AUTH: "noauth"
-
-  # Test with SSL?
-  - id: ssl
-    display_name: SSL
-    values:
-      - id: ssl
-        display_name: SSL
-        variables:
-           SSL: "ssl"
-      - id: nossl
-        display_name: NoSSL
-        variables:
-           SSL: "nossl"
-
-  # Test with Auth + SSL (combined for convenience)?
-  - id: auth-ssl
-    display_name: Auth SSL
-    values:
-      - id: auth-ssl
-        display_name: Auth SSL
-        variables:
-           AUTH: "auth"
-           SSL: "ssl"
-      - id: noauth-nossl
-        display_name: NoAuth NoSSL
-        variables:
-           AUTH: "noauth"
-           SSL: "nossl"
-
-  # Choice of Python runtime version
-  - id: python-version
-    display_name: "Python"
-    values:
-      # Note: always display platform with python-version to avoid ambiguous display names.
-      # Linux
-      - id: "3.9"
-        display_name: "Python 3.9"
-        variables:
-          PYTHON_BINARY: "/opt/python/3.9/bin/python3"
-      - id: "3.10"
-        display_name: "Python 3.10"
-        variables:
-          PYTHON_BINARY: "/opt/python/3.10/bin/python3"
-      - id: "3.11"
-        display_name: "Python 3.11"
-        variables:
-          PYTHON_BINARY: "/opt/python/3.11/bin/python3"
-      - id: "3.12"
-        display_name: "Python 3.12"
-        variables:
-          PYTHON_BINARY: "/opt/python/3.12/bin/python3"
-      - id: "3.13"
-        display_name: "Python 3.13"
-        variables:
-          PYTHON_BINARY: "/opt/python/3.13/bin/python3"
-      - id: "pypy3.9"
-        display_name: "PyPy 3.9"
-        variables:
-           PYTHON_BINARY: "/opt/python/pypy3.9/bin/pypy3"
-      - id: "pypy3.10"
-        display_name: "PyPy 3.10"
-        variables:
-           PYTHON_BINARY: "/opt/python/pypy3.10/bin/pypy3"
-
 buildvariants:
 # Server Tests.
 - name: test-rhel8-py3.9-auth-ssl-cov
@@ -3970,30 +3877,67 @@ buildvariants:
     SKIP_HATCH: "true"
     AUTH: noauth
     SSL: nossl
-
-- matrix_name: "test-search-index-helpers"
-  matrix_spec:
-    platform: rhel8
-    python-version: "3.9"
-  display_name: "Search Index Helpers ${platform}"
+- name: oidc-auth-rhel8
   tasks:
-     - name: "test_atlas_task_group_search_indexes"
-
-- matrix_name: "mockupdb-tests"
-  matrix_spec:
-    platform: rhel8
-    python-version: 3.9
-  display_name: "MockupDB Tests"
+    - name: testoidc_task_group
+  display_name: OIDC Auth RHEL8
+  run_on:
+    - rhel87-small
+  batchtime: 20160
+- name: oidc-auth-macos
   tasks:
-     - name: "mockupdb"
-
-- matrix_name: "tests-doctests"
-  matrix_spec:
-    platform: rhel8
-    python-version: ["3.9"]
-  display_name: "Doctests ${python-version} ${platform}"
+    - name: testoidc_task_group
+  display_name: OIDC Auth macOS
+  run_on:
+    - macos-14
+  batchtime: 20160
+- name: oidc-auth-win64
   tasks:
-     - name: "doctests"
+    - name: testoidc_task_group
+  display_name: OIDC Auth Win64
+  run_on:
+    - windows-64-vsMulti-small
+  batchtime: 20160
+- name: atlas-connect-rhel8-py3.9
+  tasks:
+    - name: atlas-connect
+  display_name: Atlas connect RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: atlas-connect-rhel8-py3.13
+  tasks:
+    - name: atlas-connect
+  display_name: Atlas connect RHEL8 py3.13
+  run_on:
+    - rhel87-small
+  expansions:
+    PYTHON_BINARY: /opt/python/3.13/bin/python3
+- name: doctests-rhel8-py3.9
+  tasks:
+    - name: doctests
+  display_name: Doctests RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: mockupdb-tests-rhel8-py3.9
+  tasks:
+    - name: mockupdb
+  display_name: MockupDB Tests RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: search-index-helpers-rhel8-py3.9
+  tasks:
+    - name: test_atlas_task_group_search_indexes
+  display_name: Search Index Helpers RHEL8 py3.9
+  run_on:
+    - rhel87-small
+  expansions:
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
 
 - name: "no-server"
   display_name: "No server test"
@@ -4009,15 +3953,7 @@ buildvariants:
   tasks:
      - name: "coverage-report"
 
-- matrix_name: "atlas-connect"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-  display_name: "Atlas connect ${python-version} ${platform}"
-  tasks:
-    - name: "atlas-connect"
-
-# OCSP test matrix.
+# OCSP tests.
 - name: ocsp-test-rhel8-v4.4-py3.9
   tasks:
     - name: .ocsp
@@ -4358,14 +4294,6 @@ buildvariants:
     SSL: nossl
     test_loadbalancer: "true"
     PYTHON_BINARY: /opt/python/3.9/bin/python3
-
-- matrix_name: "oidc-auth-test"
-  matrix_spec:
-    platform: [ rhel8, macos, windows ]
-  display_name: "OIDC Auth ${platform}"
-  tasks:
-    - name: testoidc_task_group
-      batchtime: 20160 # 14 days
 
 - name: testazureoidc-variant
   display_name: "OIDC Auth Azure"
