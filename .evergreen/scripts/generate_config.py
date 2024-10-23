@@ -756,11 +756,5 @@ def generate_alternative_hosts_variants():
 # Generate Config
 ##################
 
-variants = (
-    generate_oidc_auth_variants()
-    + generate_atlas_connect_variants()
-    + generate_doctests_variants()
-    + generate_mockupdb_variants()
-    + generate_search_index_variants()
-)
+variants = generate_search_index_variants()
 generate_yaml(variants=variants)
