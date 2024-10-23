@@ -75,7 +75,7 @@ class DummyMonitor:
     def request_check(self):
         pass
 
-    def close(self):
+    async def close(self):
         self.opened = False
 
 
