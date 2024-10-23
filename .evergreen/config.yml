@@ -1830,15 +1830,6 @@ tasks:
             # and then run our test suite on the vm.
             export GCPOIDC_TEST_CMD="OIDC_ENV=gcp ./.evergreen/run-mongodb-oidc-test.sh"
             bash $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/run-driver-test.sh
-
-    - name: "test-fips-standalone"
-      tags: ["fips"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "latest"
-            TOPOLOGY: "server"
-        - func: "run tests"
 # }}}
     - name: "coverage-report"
       tags: ["coverage"]
@@ -2004,72 +1995,17 @@ axes:
   - id: platform
     display_name: OS
     values:
-      - id: macos
-        display_name: "macOS"
-        run_on: macos-14
-        variables:
-          skip_EC2_auth_test: true
-          skip_ECS_auth_test: true
-          skip_web_identity_auth_test: true
-          # CSOT tests are unreliable on our slow macOS hosts.
-          SKIP_CSOT_TESTS: true
-      - id: macos-arm64
-        display_name: "macOS Arm64"
-        run_on: macos-14-arm64
-        variables:
-          skip_EC2_auth_test: true
-          skip_ECS_auth_test: true
-          skip_web_identity_auth_test: true
-          # CSOT tests are unreliable on our slow macOS hosts.
-          SKIP_CSOT_TESTS: true
-      - id: rhel7
-        display_name: "RHEL 7.x"
-        run_on: rhel79-small
-        batchtime: 10080  # 7 days
       - id: rhel8
         display_name: "RHEL 8.x"
         run_on: rhel8.8-small
         batchtime: 10080  # 7 days
-      - id: rhel9-fips
-        display_name: "RHEL 9 FIPS"
-        run_on: rhel92-fips
-        batchtime: 10080  # 7 days
-      - id: ubuntu-22.04
-        display_name: "Ubuntu 22.04"
-        run_on: ubuntu2204-small
-        batchtime: 10080  # 7 days
-      - id: ubuntu-20.04
-        display_name: "Ubuntu 20.04"
-        run_on: ubuntu2004-small
-        batchtime: 10080  # 7 days
-      - id: rhel8-zseries
-        display_name: "RHEL 8 (zSeries)"
-        run_on: rhel8-zseries-small
-        batchtime: 10080  # 7 days
-        variables:
-          SKIP_HATCH: true
-      - id: rhel8-power8
-        display_name: "RHEL 8 (POWER8)"
-        run_on: rhel8-power-small
-        batchtime: 10080  # 7 days
-        variables:
-          SKIP_HATCH: true
-      - id: rhel8-arm64
-        display_name: "RHEL 8 (ARM64)"
-        run_on: rhel82-arm64-small
-        batchtime: 10080  # 7 days
-        variables:
       - id: windows
         display_name: "Windows 64"
         run_on: windows-64-vsMulti-small
         batchtime: 10080  # 7 days
-        variables:
-          skip_ECS_auth_test: true
-          skip_EC2_auth_test: true
-          skip_web_identity_auth_test: true
-          venv_bin_dir: "Scripts"
-          # CSOT tests are unreliable on our slow Windows hosts.
-          SKIP_CSOT_TESTS: true
+      - id: macos
+        display_name: "macOS"
+        run_on: macos-14
 
   # Test with authentication?
   - id: auth
@@ -2146,30 +2082,6 @@ axes:
         display_name: "PyPy 3.10"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.10/bin/pypy3"
-
-  - id: python-version-windows
-    display_name: "Python"
-    values:
-      - id: "3.9"
-        display_name: "Python 3.9"
-        variables:
-          PYTHON_BINARY: "C:/python/Python39/python.exe"
-      - id: "3.10"
-        display_name: "Python 3.10"
-        variables:
-          PYTHON_BINARY: "C:/python/Python310/python.exe"
-      - id: "3.11"
-        display_name: "Python 3.11"
-        variables:
-          PYTHON_BINARY: "C:/python/Python311/python.exe"
-      - id: "3.12"
-        display_name: "Python 3.12"
-        variables:
-          PYTHON_BINARY: "C:/python/Python312/python.exe"
-      - id: "3.13"
-        display_name: "Python 3.13"
-        variables:
-          PYTHON_BINARY: "C:/python/Python313/python.exe"
 
 buildvariants:
 # Server Tests.
@@ -3889,37 +3801,175 @@ buildvariants:
     skip_web_identity_auth_test: "true"
     PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 
-- matrix_name: "tests-fips"
-  matrix_spec:
-    platform:
-      - rhel9-fips
-    auth: "auth"
-    ssl: "ssl"
-  display_name: "${platform} ${auth} ${ssl}"
+# Other hosts tests.
+- name: openssl-1.0.2-rhel7-py3.9-auth-ssl
   tasks:
-    - "test-fips-standalone"
-
-# Test one server version with zSeries, POWER8, and ARM.
-- matrix_name: "test-different-cpu-architectures"
-  matrix_spec:
-    platform:
-      - rhel8-zseries  # Added in 5.0.8 (SERVER-44074)
-      - rhel8-power8 # Added in 4.2.7 (SERVER-44072)
-      - rhel8-arm64 # Added in 4.4.2 (SERVER-48282)
-    auth-ssl: "*"
-  display_name: "${platform} ${auth-ssl}"
+    - name: .5.0 .standalone
+  display_name: OpenSSL 1.0.2 RHEL7 py3.9 Auth SSL
+  run_on:
+    - rhel79-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: auth
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: openssl-1.0.2-rhel7-py3.9-noauth-ssl
   tasks:
-    - ".6.0"
-
-- matrix_name: "tests-python-version-supports-openssl-102-test-ssl"
-  matrix_spec:
-    platform: rhel7
-    # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: ["3.9"]
-    auth-ssl: "*"
-  display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
+    - name: .5.0 .standalone
+  display_name: OpenSSL 1.0.2 RHEL7 py3.9 NoAuth SSL
+  run_on:
+    - rhel79-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: noauth
+    SSL: ssl
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: openssl-1.0.2-rhel7-py3.9-noauth-nossl
   tasks:
-     - ".5.0"
+    - name: .5.0 .standalone
+  display_name: OpenSSL 1.0.2 RHEL7 py3.9 NoAuth NoSSL
+  run_on:
+    - rhel79-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: noauth
+    SSL: nossl
+    PYTHON_BINARY: /opt/python/3.9/bin/python3
+- name: other-hosts-rhel9-fips-auth-ssl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL9-FIPS Auth SSL
+  run_on:
+    - rhel92-fips
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: auth
+    SSL: ssl
+- name: other-hosts-rhel9-fips-noauth-ssl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL9-FIPS NoAuth SSL
+  run_on:
+    - rhel92-fips
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: noauth
+    SSL: ssl
+- name: other-hosts-rhel9-fips-noauth-nossl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL9-FIPS NoAuth NoSSL
+  run_on:
+    - rhel92-fips
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: noauth
+    SSL: nossl
+- name: other-hosts-rhel8-zseries-auth-ssl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL8-zseries Auth SSL
+  run_on:
+    - rhel8-zseries-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: auth
+    SSL: ssl
+- name: other-hosts-rhel8-zseries-noauth-ssl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL8-zseries NoAuth SSL
+  run_on:
+    - rhel8-zseries-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: noauth
+    SSL: ssl
+- name: other-hosts-rhel8-zseries-noauth-nossl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL8-zseries NoAuth NoSSL
+  run_on:
+    - rhel8-zseries-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: noauth
+    SSL: nossl
+- name: other-hosts-rhel8-power8-auth-ssl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL8-POWER8 Auth SSL
+  run_on:
+    - rhel8-power-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: auth
+    SSL: ssl
+- name: other-hosts-rhel8-power8-noauth-ssl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL8-POWER8 NoAuth SSL
+  run_on:
+    - rhel8-power-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: noauth
+    SSL: ssl
+- name: other-hosts-rhel8-power8-noauth-nossl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL8-POWER8 NoAuth NoSSL
+  run_on:
+    - rhel8-power-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: noauth
+    SSL: nossl
+- name: other-hosts-rhel8-arm64-auth-ssl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL8-arm64 Auth SSL
+  run_on:
+    - rhel82-arm64-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: auth
+    SSL: ssl
+- name: other-hosts-rhel8-arm64-noauth-ssl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL8-arm64 NoAuth SSL
+  run_on:
+    - rhel82-arm64-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: noauth
+    SSL: ssl
+- name: other-hosts-rhel8-arm64-noauth-nossl
+  tasks:
+    - name: .6.0 .standalone
+  display_name: Other hosts RHEL8-arm64 NoAuth NoSSL
+  run_on:
+    - rhel82-arm64-small
+  batchtime: 10080
+  expansions:
+    SKIP_HATCH: "true"
+    AUTH: noauth
+    SSL: nossl
 
 - matrix_name: "test-search-index-helpers"
   matrix_spec:
