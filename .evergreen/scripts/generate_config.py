@@ -9,8 +9,11 @@
 # Note: Run this file with `hatch run`, `pipx run`, or `uv run`.
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
+from inspect import getmembers, isfunction
 from itertools import cycle, product, zip_longest
+from pathlib import Path
 from typing import Any
 
 from shrub.v3.evg_build_variant import BuildVariant
@@ -172,10 +175,10 @@ def handle_c_ext(c_ext, expansions):
         expansions["NO_EXT"] = "1"
 
 
-def generate_yaml(tasks=None, variants=None):
+def create_yaml(tasks=None, variants=None):
     """Generate the yaml for a given set of tasks and variants."""
     project = EvgProject(tasks=tasks, buildvariants=variants)
-    out = ShrubService.generate_yaml(project)
+    out = ShrubService.create_yaml(project)
     # Dedent by two spaces to match what we use in config.yml
     lines = [line[2:] for line in out.splitlines()]
     print("\n".join(lines))  # noqa: T201
@@ -198,7 +201,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
         host = "rhel8"
         variant = create_variant(
             [".ocsp"],
-            get_display_name(base_display, host, version, python),
+            get_display_name(base_display, host, version=version, python=python),
             python=python,
             version=version,
             host=host,
@@ -213,7 +216,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
         python = CPYTHONS[0] if version == "4.4" else CPYTHONS[-1]
         variant = create_variant(
             [".ocsp-rsa !.ocsp-staple"],
-            get_display_name(base_display, host, version, python),
+            get_display_name(base_display, host, version=version, python=python),
             python=python,
             version=version,
             host=host,
@@ -540,7 +543,7 @@ def create_green_framework_variants():
     return variants
 
 
-def generate_no_c_ext_variants():
+def create_no_c_ext_variants():
     variants = []
     host = "rhel8"
     for python, topology in zip_cycle(CPYTHONS, TOPOLOGIES):
@@ -555,7 +558,7 @@ def generate_no_c_ext_variants():
     return variants
 
 
-def generate_atlas_data_lake_variants():
+def create_atlas_data_lake_variants():
     variants = []
     host = "rhel8"
     for python, c_ext in product(MIN_MAX_PYTHON, C_EXTS):
@@ -570,7 +573,7 @@ def generate_atlas_data_lake_variants():
     return variants
 
 
-def generate_mod_wsgi_variants():
+def create_mod_wsgi_variants():
     variants = []
     host = "ubuntu22"
     tasks = [
@@ -589,7 +592,7 @@ def generate_mod_wsgi_variants():
     return variants
 
 
-def generate_disable_test_commands_variants():
+def create_disable_test_commands_variants():
     host = "rhel8"
     expansions = dict(AUTH="auth", SSL="ssl", DISABLE_TEST_COMMANDS="1")
     python = CPYTHONS[0]
@@ -598,7 +601,7 @@ def generate_disable_test_commands_variants():
     return [create_variant(tasks, display_name, host=host, python=python, expansions=expansions)]
 
 
-def generate_serverless_variants():
+def create_serverless_variants():
     host = "rhel8"
     batchtime = BATCHTIME_WEEK
     expansions = dict(test_serverless="true", AUTH="auth", SSL="ssl")
@@ -617,7 +620,7 @@ def generate_serverless_variants():
     ]
 
 
-def generate_oidc_auth_variants():
+def create_oidc_auth_variants():
     variants = []
     for host in ["rhel8", "macos", "win64"]:
         variants.append(
@@ -631,7 +634,7 @@ def generate_oidc_auth_variants():
     return variants
 
 
-def generate_search_index_variants():
+def create_search_index_variants():
     host = "rhel8"
     python = CPYTHONS[0]
     return [
@@ -644,7 +647,7 @@ def generate_search_index_variants():
     ]
 
 
-def generate_mockupdb_variants():
+def create_mockupdb_variants():
     host = "rhel8"
     python = CPYTHONS[0]
     return [
@@ -657,7 +660,7 @@ def generate_mockupdb_variants():
     ]
 
 
-def generate_doctests_variants():
+def create_doctests_variants():
     host = "rhel8"
     python = CPYTHONS[0]
     return [
@@ -670,7 +673,7 @@ def generate_doctests_variants():
     ]
 
 
-def generate_atlas_connect_variants():
+def create_atlas_connect_variants():
     host = "rhel8"
     return [
         create_variant(
@@ -683,7 +686,7 @@ def generate_atlas_connect_variants():
     ]
 
 
-def generate_aws_auth_variants():
+def create_aws_auth_variants():
     variants = []
     tasks = [
         "aws-auth-test-4.4",
@@ -713,7 +716,7 @@ def generate_aws_auth_variants():
     return variants
 
 
-def generate_alternative_hosts_variants():
+def create_alternative_hosts_variants():
     base_expansions = dict(SKIP_HATCH="true")
     batchtime = BATCHTIME_WEEK
     variants = []
@@ -756,5 +759,35 @@ def generate_alternative_hosts_variants():
 # Generate Config
 ##################
 
-variants = generate_search_index_variants()
-generate_yaml(variants=variants)
+
+def write_variants_to_file():
+    mod = sys.modules[__name__]
+    here = Path(__file__).absolute().parent
+    target = here.parent / "generated_configs" / "variants.yml"
+    if target.exists():
+        target.unlink()
+    with target.open("w") as fid:
+        fid.write("buildvariants:\n")
+
+    for name, func in getmembers(mod, isfunction):
+        if not name.endswith("_variants"):
+            continue
+        if not name.startswith("create_"):
+            raise ValueError("Variant creators must start with create_")
+        title = name.replace("create_", "").replace("_variants", "").replace("_", " ").capitalize()
+        project = EvgProject(tasks=None, buildvariants=func())
+        out = ShrubService.generate_yaml(project).splitlines()
+        with target.open("a") as fid:
+            fid.write(f"  # {title} tests\n")
+            for line in out[1:]:
+                fid.write(f"{line}\n")
+            fid.write("\n")
+
+    # Remove extra trailing newline:
+    data = target.read_text().splitlines()
+    with target.open("w") as fid:
+        for line in data[:-1]:
+            fid.write(f"{line}\n")
+
+
+write_variants_to_file()
