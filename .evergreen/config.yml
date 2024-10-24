@@ -26,7 +26,8 @@ timeout:
         ls -la
 
 include:
-   - filename: .evergreen/generated_configs/variants.yml
+  - filename: .evergreen/generated_configs/tasks.yml
+  - filename: .evergreen/generated_configs/variants.yml
 
 functions:
   "fetch source":
