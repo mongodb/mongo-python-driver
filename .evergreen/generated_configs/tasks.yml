@@ -12,7 +12,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - standalone
       - auth
       - ssl
@@ -29,7 +29,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - standalone
       - auth
       - ssl
@@ -46,7 +46,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - standalone
       - noauth
       - ssl
@@ -63,7 +63,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - standalone
       - noauth
       - ssl
@@ -80,7 +80,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - standalone
       - noauth
       - nossl
@@ -97,7 +97,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - standalone
       - noauth
       - nossl
@@ -114,7 +114,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - standalone
       - auth
       - ssl
@@ -131,7 +131,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - standalone
       - auth
       - ssl
@@ -148,7 +148,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - standalone
       - noauth
       - ssl
@@ -165,7 +165,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - standalone
       - noauth
       - ssl
@@ -182,7 +182,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - standalone
       - noauth
       - nossl
@@ -199,7 +199,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - standalone
       - noauth
       - nossl
@@ -216,7 +216,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - standalone
       - auth
       - ssl
@@ -233,7 +233,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - standalone
       - auth
       - ssl
@@ -250,7 +250,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - standalone
       - noauth
       - ssl
@@ -267,7 +267,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - standalone
       - noauth
       - ssl
@@ -284,7 +284,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - standalone
       - noauth
       - nossl
@@ -301,7 +301,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - standalone
       - noauth
       - nossl
@@ -318,7 +318,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - standalone
       - auth
       - ssl
@@ -335,7 +335,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - standalone
       - auth
       - ssl
@@ -352,7 +352,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - standalone
       - noauth
       - ssl
@@ -369,7 +369,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - standalone
       - noauth
       - ssl
@@ -386,7 +386,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - standalone
       - noauth
       - nossl
@@ -403,7 +403,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - standalone
       - noauth
       - nossl
@@ -420,7 +420,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - standalone
       - auth
       - ssl
@@ -437,7 +437,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - standalone
       - auth
       - ssl
@@ -454,7 +454,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - standalone
       - noauth
       - ssl
@@ -471,7 +471,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - standalone
       - noauth
       - ssl
@@ -488,7 +488,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - standalone
       - noauth
       - nossl
@@ -505,7 +505,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - standalone
       - noauth
       - nossl
@@ -522,7 +522,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - standalone
       - auth
       - ssl
@@ -539,7 +539,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - standalone
       - auth
       - ssl
@@ -556,7 +556,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - standalone
       - noauth
       - ssl
@@ -573,7 +573,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - standalone
       - noauth
       - ssl
@@ -590,7 +590,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - standalone
       - noauth
       - nossl
@@ -607,7 +607,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - standalone
       - noauth
       - nossl
@@ -828,7 +828,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - replica_set
       - auth
       - ssl
@@ -845,7 +845,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - replica_set
       - auth
       - ssl
@@ -862,7 +862,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - replica_set
       - noauth
       - ssl
@@ -879,7 +879,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - replica_set
       - noauth
       - ssl
@@ -896,7 +896,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - replica_set
       - noauth
       - nossl
@@ -913,7 +913,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - replica_set
       - noauth
       - nossl
@@ -930,7 +930,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - replica_set
       - auth
       - ssl
@@ -947,7 +947,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - replica_set
       - auth
       - ssl
@@ -964,7 +964,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - replica_set
       - noauth
       - ssl
@@ -981,7 +981,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - replica_set
       - noauth
       - ssl
@@ -998,7 +998,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - replica_set
       - noauth
       - nossl
@@ -1015,7 +1015,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - replica_set
       - noauth
       - nossl
@@ -1032,7 +1032,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - replica_set
       - auth
       - ssl
@@ -1049,7 +1049,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - replica_set
       - auth
       - ssl
@@ -1066,7 +1066,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - replica_set
       - noauth
       - ssl
@@ -1083,7 +1083,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - replica_set
       - noauth
       - ssl
@@ -1100,7 +1100,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - replica_set
       - noauth
       - nossl
@@ -1117,7 +1117,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - replica_set
       - noauth
       - nossl
@@ -1134,7 +1134,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - replica_set
       - auth
       - ssl
@@ -1151,7 +1151,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - replica_set
       - auth
       - ssl
@@ -1168,7 +1168,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - replica_set
       - noauth
       - ssl
@@ -1185,7 +1185,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - replica_set
       - noauth
       - ssl
@@ -1202,7 +1202,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - replica_set
       - noauth
       - nossl
@@ -1219,7 +1219,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - replica_set
       - noauth
       - nossl
@@ -1236,7 +1236,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - replica_set
       - auth
       - ssl
@@ -1253,7 +1253,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - replica_set
       - auth
       - ssl
@@ -1270,7 +1270,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - replica_set
       - noauth
       - ssl
@@ -1287,7 +1287,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - replica_set
       - noauth
       - ssl
@@ -1304,7 +1304,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - replica_set
       - noauth
       - nossl
@@ -1321,7 +1321,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - replica_set
       - noauth
       - nossl
@@ -1338,7 +1338,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - replica_set
       - auth
       - ssl
@@ -1355,7 +1355,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - replica_set
       - auth
       - ssl
@@ -1372,7 +1372,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - replica_set
       - noauth
       - ssl
@@ -1389,7 +1389,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - replica_set
       - noauth
       - ssl
@@ -1406,7 +1406,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - replica_set
       - noauth
       - nossl
@@ -1423,7 +1423,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - replica_set
       - noauth
       - nossl
@@ -1644,7 +1644,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - sharded_cluster
       - auth
       - ssl
@@ -1661,7 +1661,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - sharded_cluster
       - auth
       - ssl
@@ -1678,7 +1678,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - sharded_cluster
       - noauth
       - ssl
@@ -1695,7 +1695,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - sharded_cluster
       - noauth
       - ssl
@@ -1712,7 +1712,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - sharded_cluster
       - noauth
       - nossl
@@ -1729,7 +1729,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.0"
+      - v4.0
       - sharded_cluster
       - noauth
       - nossl
@@ -1746,7 +1746,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - sharded_cluster
       - auth
       - ssl
@@ -1763,7 +1763,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - sharded_cluster
       - auth
       - ssl
@@ -1780,7 +1780,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - sharded_cluster
       - noauth
       - ssl
@@ -1797,7 +1797,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - sharded_cluster
       - noauth
       - ssl
@@ -1814,7 +1814,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - sharded_cluster
       - noauth
       - nossl
@@ -1831,7 +1831,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "4.4"
+      - v4.4
       - sharded_cluster
       - noauth
       - nossl
@@ -1848,7 +1848,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - sharded_cluster
       - auth
       - ssl
@@ -1865,7 +1865,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - sharded_cluster
       - auth
       - ssl
@@ -1882,7 +1882,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - sharded_cluster
       - noauth
       - ssl
@@ -1899,7 +1899,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - sharded_cluster
       - noauth
       - ssl
@@ -1916,7 +1916,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - sharded_cluster
       - noauth
       - nossl
@@ -1933,7 +1933,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "5.0"
+      - v5.0
       - sharded_cluster
       - noauth
       - nossl
@@ -1950,7 +1950,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - sharded_cluster
       - auth
       - ssl
@@ -1967,7 +1967,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - sharded_cluster
       - auth
       - ssl
@@ -1984,7 +1984,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - sharded_cluster
       - noauth
       - ssl
@@ -2001,7 +2001,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - sharded_cluster
       - noauth
       - ssl
@@ -2018,7 +2018,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - sharded_cluster
       - noauth
       - nossl
@@ -2035,7 +2035,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "6.0"
+      - v6.0
       - sharded_cluster
       - noauth
       - nossl
@@ -2052,7 +2052,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - sharded_cluster
       - auth
       - ssl
@@ -2069,7 +2069,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - sharded_cluster
       - auth
       - ssl
@@ -2086,7 +2086,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - sharded_cluster
       - noauth
       - ssl
@@ -2103,7 +2103,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - sharded_cluster
       - noauth
       - ssl
@@ -2120,7 +2120,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - sharded_cluster
       - noauth
       - nossl
@@ -2137,7 +2137,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "7.0"
+      - v7.0
       - sharded_cluster
       - noauth
       - nossl
@@ -2154,7 +2154,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - sharded_cluster
       - auth
       - ssl
@@ -2171,7 +2171,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - sharded_cluster
       - auth
       - ssl
@@ -2188,7 +2188,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - sharded_cluster
       - noauth
       - ssl
@@ -2205,7 +2205,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - sharded_cluster
       - noauth
       - ssl
@@ -2222,7 +2222,7 @@ tasks:
           TEST_SUITES: default
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - sharded_cluster
       - noauth
       - nossl
@@ -2239,7 +2239,7 @@ tasks:
           TEST_SUITES: default_async
       - func: run tests
     tags:
-      - "8.0"
+      - v8.0
       - sharded_cluster
       - noauth
       - nossl

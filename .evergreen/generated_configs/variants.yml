@@ -2,7 +2,7 @@ buildvariants:
   # Alternative hosts tests
   - name: openssl-1.0.2-rhel7-py3.9
     tasks:
-      - name: .5.0 .standalone
+      - name: .v5.0 .standalone
     display_name: OpenSSL 1.0.2 RHEL7 py3.9
     run_on:
       - rhel79-small
@@ -12,7 +12,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: other-hosts-rhel9-fips
     tasks:
-      - name: .6.0 .standalone
+      - name: .v6.0 .standalone
     display_name: Other hosts RHEL9-FIPS
     run_on:
       - rhel92-fips
@@ -21,7 +21,7 @@ buildvariants:
       SKIP_HATCH: "true"
   - name: other-hosts-rhel8-zseries
     tasks:
-      - name: .6.0 .standalone
+      - name: .v6.0 .standalone
     display_name: Other hosts RHEL8-zseries
     run_on:
       - rhel8-zseries-small
@@ -30,7 +30,7 @@ buildvariants:
       SKIP_HATCH: "true"
   - name: other-hosts-rhel8-power8
     tasks:
-      - name: .6.0 .standalone
+      - name: .v6.0 .standalone
     display_name: Other hosts RHEL8-POWER8
     run_on:
       - rhel8-power-small
@@ -39,7 +39,7 @@ buildvariants:
       SKIP_HATCH: "true"
   - name: other-hosts-rhel8-arm64
     tasks:
-      - name: .6.0 .standalone
+      - name: .v6.0 .standalone
     display_name: Other hosts RHEL8-arm64
     run_on:
       - rhel82-arm64-small
@@ -1122,7 +1122,7 @@ buildvariants:
   - name: pyopenssl-macos-py3.9
     tasks:
       - name: .replica_set .nossl .noauth
-      - name: .7.0 .nossl .noauth
+      - name: .v7.0 .nossl .noauth
     display_name: PyOpenSSL macOS py3.9
     run_on:
       - macos-14
@@ -1133,7 +1133,7 @@ buildvariants:
   - name: pyopenssl-rhel8-py3.10
     tasks:
       - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: .v7.0 .nossl .auth
     display_name: PyOpenSSL RHEL8 py3.10
     run_on:
       - rhel87-small
@@ -1144,7 +1144,7 @@ buildvariants:
   - name: pyopenssl-rhel8-py3.11
     tasks:
       - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: .v7.0 .nossl .auth
     display_name: PyOpenSSL RHEL8 py3.11
     run_on:
       - rhel87-small
@@ -1155,7 +1155,7 @@ buildvariants:
   - name: pyopenssl-rhel8-py3.12
     tasks:
       - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: .v7.0 .nossl .auth
     display_name: PyOpenSSL RHEL8 py3.12
     run_on:
       - rhel87-small
@@ -1166,7 +1166,7 @@ buildvariants:
   - name: pyopenssl-win64-py3.13
     tasks:
       - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: .v7.0 .nossl .auth
     display_name: PyOpenSSL Win64 py3.13
     run_on:
       - windows-64-vsMulti-small
@@ -1177,7 +1177,7 @@ buildvariants:
   - name: pyopenssl-rhel8-pypy3.9
     tasks:
       - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: .v7.0 .nossl .auth
     display_name: PyOpenSSL RHEL8 pypy3.9
     run_on:
       - rhel87-small
@@ -1188,7 +1188,7 @@ buildvariants:
   - name: pyopenssl-rhel8-pypy3.10
     tasks:
       - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: .v7.0 .nossl .auth
     display_name: PyOpenSSL RHEL8 pypy3.10
     run_on:
       - rhel87-small
@@ -1312,15 +1312,15 @@ buildvariants:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
   - name: test-macos-arm64-py3.9
     tasks:
-      - name: .sharded_cluster .auth .ssl .6.0
-      - name: .replica_set .noauth .ssl .6.0
-      - name: .standalone .noauth .nossl .6.0
-      - name: .sharded_cluster .auth .ssl .7.0
-      - name: .replica_set .noauth .ssl .7.0
-      - name: .standalone .noauth .nossl .7.0
-      - name: .sharded_cluster .auth .ssl .8.0
-      - name: .replica_set .noauth .ssl .8.0
-      - name: .standalone .noauth .nossl .8.0
+      - name: .sharded_cluster .auth .ssl .v6.0
+      - name: .replica_set .noauth .ssl .v6.0
+      - name: .standalone .noauth .nossl .v6.0
+      - name: .sharded_cluster .auth .ssl .v7.0
+      - name: .replica_set .noauth .ssl .v7.0
+      - name: .standalone .noauth .nossl .v7.0
+      - name: .sharded_cluster .auth .ssl .v8.0
+      - name: .replica_set .noauth .ssl .v8.0
+      - name: .standalone .noauth .nossl .v8.0
       - name: .sharded_cluster .auth .ssl .rapid
       - name: .replica_set .noauth .ssl .rapid
       - name: .standalone .noauth .nossl .rapid
@@ -1335,15 +1335,15 @@ buildvariants:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
   - name: test-macos-arm64-py3.13
     tasks:
-      - name: .sharded_cluster .auth .ssl .6.0
-      - name: .replica_set .noauth .ssl .6.0
-      - name: .standalone .noauth .nossl .6.0
-      - name: .sharded_cluster .auth .ssl .7.0
-      - name: .replica_set .noauth .ssl .7.0
-      - name: .standalone .noauth .nossl .7.0
-      - name: .sharded_cluster .auth .ssl .8.0
-      - name: .replica_set .noauth .ssl .8.0
-      - name: .standalone .noauth .nossl .8.0
+      - name: .sharded_cluster .auth .ssl .v6.0
+      - name: .replica_set .noauth .ssl .v6.0
+      - name: .standalone .noauth .nossl .v6.0
+      - name: .sharded_cluster .auth .ssl .v7.0
+      - name: .replica_set .noauth .ssl .v7.0
+      - name: .standalone .noauth .nossl .v7.0
+      - name: .sharded_cluster .auth .ssl .v8.0
+      - name: .replica_set .noauth .ssl .v8.0
+      - name: .standalone .noauth .nossl .v8.0
       - name: .sharded_cluster .auth .ssl .rapid
       - name: .replica_set .noauth .ssl .rapid
       - name: .standalone .noauth .nossl .rapid
