@@ -745,25 +745,30 @@ def create_alternative_hosts_variants():
     return variants
 
 
+##############
+# Tasks
+##############
+
+
 def create_server_tasks():
     tasks = []
     for topo, version, (auth, ssl), sync in product(TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, SYNCS):
         name = f"test-{version}-{topo}-{auth}-{ssl}-{sync}".lower()
         tags = [version, topo, auth, ssl, sync]
-        topology = topo if topo != "standalone" else "server"
-        test_suite = "default" if sync == "sync" else "default_async"
-        vars = dict(
+        bootstrap_vars = dict(
             VERSION=version,
-            TOPOLOGY=topology,
+            TOPOLOGY=topo if topo != "standalone" else "server",
+            AUTH=auth,
+            SSL=ssl,
+        )
+        bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
+        test_vars = dict(
             AUTH=auth,
             SSL=ssl,
             SYNC=sync,
-            TEST_SUITES=test_suite,
+            TEST_SUITES="default" if sync == "sync" else "default_async",
         )
-
-        bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=vars)
-        test_func = FunctionCall(func="run tests")
-
+        test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
     return tasks
 

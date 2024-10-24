@@ -8,9 +8,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.0"
       - standalone
@@ -25,9 +28,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.0"
       - standalone
@@ -42,9 +48,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.0"
       - standalone
@@ -59,9 +68,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.0"
       - standalone
@@ -76,9 +88,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.0"
       - standalone
@@ -93,9 +108,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.0"
       - standalone
@@ -110,9 +128,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.4"
       - standalone
@@ -127,9 +148,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.4"
       - standalone
@@ -144,9 +168,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.4"
       - standalone
@@ -161,9 +188,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.4"
       - standalone
@@ -178,9 +208,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.4"
       - standalone
@@ -195,9 +228,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.4"
       - standalone
@@ -212,9 +248,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "5.0"
       - standalone
@@ -229,9 +268,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "5.0"
       - standalone
@@ -246,9 +288,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "5.0"
       - standalone
@@ -263,9 +308,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "5.0"
       - standalone
@@ -280,9 +328,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "5.0"
       - standalone
@@ -297,9 +348,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "5.0"
       - standalone
@@ -314,9 +368,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "6.0"
       - standalone
@@ -331,9 +388,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "6.0"
       - standalone
@@ -348,9 +408,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "6.0"
       - standalone
@@ -365,9 +428,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "6.0"
       - standalone
@@ -382,9 +448,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "6.0"
       - standalone
@@ -399,9 +468,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "6.0"
       - standalone
@@ -416,9 +488,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "7.0"
       - standalone
@@ -433,9 +508,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "7.0"
       - standalone
@@ -450,9 +528,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "7.0"
       - standalone
@@ -467,9 +548,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "7.0"
       - standalone
@@ -484,9 +568,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "7.0"
       - standalone
@@ -501,9 +588,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "7.0"
       - standalone
@@ -518,9 +608,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "8.0"
       - standalone
@@ -535,9 +628,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "8.0"
       - standalone
@@ -552,9 +648,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "8.0"
       - standalone
@@ -569,9 +668,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "8.0"
       - standalone
@@ -586,9 +688,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "8.0"
       - standalone
@@ -603,9 +708,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "8.0"
       - standalone
@@ -620,9 +728,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - rapid
       - standalone
@@ -637,9 +748,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - rapid
       - standalone
@@ -654,9 +768,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - rapid
       - standalone
@@ -671,9 +788,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - rapid
       - standalone
@@ -688,9 +808,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - rapid
       - standalone
@@ -705,9 +828,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - rapid
       - standalone
@@ -722,9 +848,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - latest
       - standalone
@@ -739,9 +868,12 @@ tasks:
           TOPOLOGY: server
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - latest
       - standalone
@@ -756,9 +888,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - latest
       - standalone
@@ -773,9 +908,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - latest
       - standalone
@@ -790,9 +928,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - latest
       - standalone
@@ -807,9 +948,12 @@ tasks:
           TOPOLOGY: server
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - latest
       - standalone
@@ -824,9 +968,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.0"
       - replica_set
@@ -841,9 +988,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.0"
       - replica_set
@@ -858,9 +1008,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.0"
       - replica_set
@@ -875,9 +1028,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.0"
       - replica_set
@@ -892,9 +1048,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.0"
       - replica_set
@@ -909,9 +1068,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.0"
       - replica_set
@@ -926,9 +1088,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.4"
       - replica_set
@@ -943,9 +1108,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.4"
       - replica_set
@@ -960,9 +1128,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.4"
       - replica_set
@@ -977,9 +1148,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.4"
       - replica_set
@@ -994,9 +1168,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.4"
       - replica_set
@@ -1011,9 +1188,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.4"
       - replica_set
@@ -1028,9 +1208,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "5.0"
       - replica_set
@@ -1045,9 +1228,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "5.0"
       - replica_set
@@ -1062,9 +1248,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "5.0"
       - replica_set
@@ -1079,9 +1268,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "5.0"
       - replica_set
@@ -1096,9 +1288,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "5.0"
       - replica_set
@@ -1113,9 +1308,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "5.0"
       - replica_set
@@ -1130,9 +1328,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "6.0"
       - replica_set
@@ -1147,9 +1348,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "6.0"
       - replica_set
@@ -1164,9 +1368,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "6.0"
       - replica_set
@@ -1181,9 +1388,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "6.0"
       - replica_set
@@ -1198,9 +1408,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "6.0"
       - replica_set
@@ -1215,9 +1428,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "6.0"
       - replica_set
@@ -1232,9 +1448,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "7.0"
       - replica_set
@@ -1249,9 +1468,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "7.0"
       - replica_set
@@ -1266,9 +1488,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "7.0"
       - replica_set
@@ -1283,9 +1508,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "7.0"
       - replica_set
@@ -1300,9 +1528,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "7.0"
       - replica_set
@@ -1317,9 +1548,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "7.0"
       - replica_set
@@ -1334,9 +1568,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "8.0"
       - replica_set
@@ -1351,9 +1588,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "8.0"
       - replica_set
@@ -1368,9 +1608,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "8.0"
       - replica_set
@@ -1385,9 +1628,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "8.0"
       - replica_set
@@ -1402,9 +1648,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "8.0"
       - replica_set
@@ -1419,9 +1668,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "8.0"
       - replica_set
@@ -1436,9 +1688,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - rapid
       - replica_set
@@ -1453,9 +1708,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - rapid
       - replica_set
@@ -1470,9 +1728,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - rapid
       - replica_set
@@ -1487,9 +1748,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - rapid
       - replica_set
@@ -1504,9 +1768,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - rapid
       - replica_set
@@ -1521,9 +1788,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - rapid
       - replica_set
@@ -1538,9 +1808,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - latest
       - replica_set
@@ -1555,9 +1828,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - latest
       - replica_set
@@ -1572,9 +1848,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - latest
       - replica_set
@@ -1589,9 +1868,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - latest
       - replica_set
@@ -1606,9 +1888,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - latest
       - replica_set
@@ -1623,9 +1908,12 @@ tasks:
           TOPOLOGY: replica_set
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - latest
       - replica_set
@@ -1640,9 +1928,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.0"
       - sharded_cluster
@@ -1657,9 +1948,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.0"
       - sharded_cluster
@@ -1674,9 +1968,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.0"
       - sharded_cluster
@@ -1691,9 +1988,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.0"
       - sharded_cluster
@@ -1708,9 +2008,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.0"
       - sharded_cluster
@@ -1725,9 +2028,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.0"
       - sharded_cluster
@@ -1742,9 +2048,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.4"
       - sharded_cluster
@@ -1759,9 +2068,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.4"
       - sharded_cluster
@@ -1776,9 +2088,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.4"
       - sharded_cluster
@@ -1793,9 +2108,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.4"
       - sharded_cluster
@@ -1810,9 +2128,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "4.4"
       - sharded_cluster
@@ -1827,9 +2148,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "4.4"
       - sharded_cluster
@@ -1844,9 +2168,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "5.0"
       - sharded_cluster
@@ -1861,9 +2188,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "5.0"
       - sharded_cluster
@@ -1878,9 +2208,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "5.0"
       - sharded_cluster
@@ -1895,9 +2228,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "5.0"
       - sharded_cluster
@@ -1912,9 +2248,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "5.0"
       - sharded_cluster
@@ -1929,9 +2268,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "5.0"
       - sharded_cluster
@@ -1946,9 +2288,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "6.0"
       - sharded_cluster
@@ -1963,9 +2308,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "6.0"
       - sharded_cluster
@@ -1980,9 +2328,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "6.0"
       - sharded_cluster
@@ -1997,9 +2348,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "6.0"
       - sharded_cluster
@@ -2014,9 +2368,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "6.0"
       - sharded_cluster
@@ -2031,9 +2388,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "6.0"
       - sharded_cluster
@@ -2048,9 +2408,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "7.0"
       - sharded_cluster
@@ -2065,9 +2428,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "7.0"
       - sharded_cluster
@@ -2082,9 +2448,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "7.0"
       - sharded_cluster
@@ -2099,9 +2468,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "7.0"
       - sharded_cluster
@@ -2116,9 +2488,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "7.0"
       - sharded_cluster
@@ -2133,9 +2508,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "7.0"
       - sharded_cluster
@@ -2150,9 +2528,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "8.0"
       - sharded_cluster
@@ -2167,9 +2548,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "8.0"
       - sharded_cluster
@@ -2184,9 +2568,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "8.0"
       - sharded_cluster
@@ -2201,9 +2588,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "8.0"
       - sharded_cluster
@@ -2218,9 +2608,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - "8.0"
       - sharded_cluster
@@ -2235,9 +2628,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - "8.0"
       - sharded_cluster
@@ -2252,9 +2648,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - rapid
       - sharded_cluster
@@ -2269,9 +2668,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - rapid
       - sharded_cluster
@@ -2286,9 +2688,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - rapid
       - sharded_cluster
@@ -2303,9 +2708,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - rapid
       - sharded_cluster
@@ -2320,9 +2728,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - rapid
       - sharded_cluster
@@ -2337,9 +2748,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - rapid
       - sharded_cluster
@@ -2354,9 +2768,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - latest
       - sharded_cluster
@@ -2371,9 +2788,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - latest
       - sharded_cluster
@@ -2388,9 +2808,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - latest
       - sharded_cluster
@@ -2405,9 +2828,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - latest
       - sharded_cluster
@@ -2422,9 +2848,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: sync
           TEST_SUITES: default
-      - func: run tests
     tags:
       - latest
       - sharded_cluster
@@ -2439,9 +2868,12 @@ tasks:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
           SYNC: async
           TEST_SUITES: default_async
-      - func: run tests
     tags:
       - latest
       - sharded_cluster
