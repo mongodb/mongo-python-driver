@@ -1121,8 +1121,8 @@ buildvariants:
   # Pyopenssl tests
   - name: pyopenssl-macos-py3.9
     tasks:
-      - name: .replica_set .nossl .noauth
-      - name: .7.0 .nossl .noauth
+      - name: ".replica_set .noauth .nossl "
+      - name: .7.0 .noauth .nossl
     display_name: PyOpenSSL macOS py3.9
     run_on:
       - macos-14
@@ -1132,8 +1132,8 @@ buildvariants:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
   - name: pyopenssl-rhel8-py3.10
     tasks:
-      - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: ".replica_set .auth .nossl "
+      - name: .7.0 .auth .nossl
     display_name: PyOpenSSL RHEL8 py3.10
     run_on:
       - rhel87-small
@@ -1143,8 +1143,8 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.10/bin/python3
   - name: pyopenssl-rhel8-py3.11
     tasks:
-      - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: ".replica_set .auth .nossl "
+      - name: .7.0 .auth .nossl
     display_name: PyOpenSSL RHEL8 py3.11
     run_on:
       - rhel87-small
@@ -1154,8 +1154,8 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.11/bin/python3
   - name: pyopenssl-rhel8-py3.12
     tasks:
-      - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: ".replica_set .auth .nossl "
+      - name: .7.0 .auth .nossl
     display_name: PyOpenSSL RHEL8 py3.12
     run_on:
       - rhel87-small
@@ -1165,8 +1165,8 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: pyopenssl-win64-py3.13
     tasks:
-      - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: ".replica_set .auth .nossl "
+      - name: .7.0 .auth .nossl
     display_name: PyOpenSSL Win64 py3.13
     run_on:
       - windows-64-vsMulti-small
@@ -1176,8 +1176,8 @@ buildvariants:
       PYTHON_BINARY: C:/python/Python313/python.exe
   - name: pyopenssl-rhel8-pypy3.9
     tasks:
-      - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: ".replica_set .auth .nossl "
+      - name: .7.0 .auth .nossl
     display_name: PyOpenSSL RHEL8 pypy3.9
     run_on:
       - rhel87-small
@@ -1187,8 +1187,8 @@ buildvariants:
       PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
   - name: pyopenssl-rhel8-pypy3.10
     tasks:
-      - name: .replica_set .nossl .auth
-      - name: .7.0 .nossl .auth
+      - name: ".replica_set .auth .nossl "
+      - name: .7.0 .auth .nossl
     display_name: PyOpenSSL RHEL8 pypy3.10
     run_on:
       - rhel87-small
