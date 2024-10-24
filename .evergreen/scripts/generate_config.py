@@ -449,6 +449,7 @@ def create_pyopenssl_variants():
     for python in ALL_PYTHONS:
         # Only test "noauth" with min python.
         auth = "noauth" if python == CPYTHONS[0] else "auth"
+        ssl = "nossl" if auth == "noauth" else "ssl"
         if python == CPYTHONS[0]:
             host = "macos"
         elif python == CPYTHONS[-1]:
@@ -458,7 +459,7 @@ def create_pyopenssl_variants():
 
         display_name = get_display_name(base_name, host, python=python)
         variant = create_variant(
-            [f".replica_set .{auth} .nossl"],
+            [f".replica_set .{auth} .{ssl}", f".7.0 .{auth} .{ssl}"],
             display_name,
             python=python,
             host=host,
