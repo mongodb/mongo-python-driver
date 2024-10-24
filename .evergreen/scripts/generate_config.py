@@ -458,7 +458,7 @@ def create_pyopenssl_variants():
 
         display_name = get_display_name(base_name, host, python=python)
         variant = create_variant(
-            [f".replica_set.{auth} .nossl ", f".7.0 .{auth} .nossl"],
+            [f".replica_set .{auth} .nossl ", f".7.0 .{auth} .nossl"],
             display_name,
             python=python,
             host=host,
