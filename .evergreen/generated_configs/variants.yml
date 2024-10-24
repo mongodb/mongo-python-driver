@@ -307,7 +307,7 @@ buildvariants:
   # Encryption tests
   - name: encryption-rhel8-py3.9
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Encryption RHEL8 py3.9
@@ -320,7 +320,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-rhel8-py3.13
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Encryption RHEL8 py3.13
@@ -333,7 +333,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-rhel8-pypy3.10
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Encryption RHEL8 pypy3.10
@@ -346,7 +346,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-crypt_shared-rhel8-py3.9
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Encryption crypt_shared RHEL8 py3.9
@@ -360,7 +360,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-crypt_shared-rhel8-py3.13
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Encryption crypt_shared RHEL8 py3.13
@@ -374,7 +374,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-crypt_shared-rhel8-pypy3.10
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Encryption crypt_shared RHEL8 pypy3.10
@@ -388,7 +388,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8-py3.9
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Encryption PyOpenSSL RHEL8 py3.9
@@ -402,7 +402,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8-py3.13
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Encryption PyOpenSSL RHEL8 py3.13
@@ -416,7 +416,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8-pypy3.10
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Encryption PyOpenSSL RHEL8 pypy3.10
@@ -430,7 +430,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-rhel8-py3.10
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
     display_name: Encryption RHEL8 py3.10
     run_on:
       - rhel87-small
@@ -459,7 +459,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: encryption-rhel8-pypy3.9
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
     display_name: Encryption RHEL8 pypy3.9
     run_on:
       - rhel87-small
@@ -1246,7 +1246,7 @@ buildvariants:
     tags: [coverage_tag]
   - name: test-rhel8-py3.10
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Test RHEL8 py3.10
@@ -1257,7 +1257,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.10/bin/python3
   - name: test-rhel8-py3.11
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Test RHEL8 py3.11
@@ -1268,7 +1268,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.11/bin/python3
   - name: test-rhel8-py3.12
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Test RHEL8 py3.12
@@ -1279,7 +1279,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: test-rhel8-pypy3.9
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Test RHEL8 pypy3.9
@@ -1290,7 +1290,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
   - name: test-macos-py3.9
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Test macOS py3.9
@@ -1301,7 +1301,7 @@ buildvariants:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
   - name: test-macos-py3.13
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Test macOS py3.13
@@ -1312,19 +1312,19 @@ buildvariants:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
   - name: test-macos-arm64-py3.9
     tasks:
-      - name: .shared_cluster .auth .ssl .6.0
+      - name: .sharded_cluster .auth .ssl .6.0
       - name: .replica_set .noauth .ssl .6.0
       - name: .standalone .noauth .nossl .6.0
-      - name: .shared_cluster .auth .ssl .7.0
+      - name: .sharded_cluster .auth .ssl .7.0
       - name: .replica_set .noauth .ssl .7.0
       - name: .standalone .noauth .nossl .7.0
-      - name: .shared_cluster .auth .ssl .8.0
+      - name: .sharded_cluster .auth .ssl .8.0
       - name: .replica_set .noauth .ssl .8.0
       - name: .standalone .noauth .nossl .8.0
-      - name: .shared_cluster .auth .ssl .rapid
+      - name: .sharded_cluster .auth .ssl .rapid
       - name: .replica_set .noauth .ssl .rapid
       - name: .standalone .noauth .nossl .rapid
-      - name: .shared_cluster .auth .ssl .latest
+      - name: .sharded_cluster .auth .ssl .latest
       - name: .replica_set .noauth .ssl .latest
       - name: .standalone .noauth .nossl .latest
     display_name: Test macOS Arm64 py3.9
@@ -1335,19 +1335,19 @@ buildvariants:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
   - name: test-macos-arm64-py3.13
     tasks:
-      - name: .shared_cluster .auth .ssl .6.0
+      - name: .sharded_cluster .auth .ssl .6.0
       - name: .replica_set .noauth .ssl .6.0
       - name: .standalone .noauth .nossl .6.0
-      - name: .shared_cluster .auth .ssl .7.0
+      - name: .sharded_cluster .auth .ssl .7.0
       - name: .replica_set .noauth .ssl .7.0
       - name: .standalone .noauth .nossl .7.0
-      - name: .shared_cluster .auth .ssl .8.0
+      - name: .sharded_cluster .auth .ssl .8.0
       - name: .replica_set .noauth .ssl .8.0
       - name: .standalone .noauth .nossl .8.0
-      - name: .shared_cluster .auth .ssl .rapid
+      - name: .sharded_cluster .auth .ssl .rapid
       - name: .replica_set .noauth .ssl .rapid
       - name: .standalone .noauth .nossl .rapid
-      - name: .shared_cluster .auth .ssl .latest
+      - name: .sharded_cluster .auth .ssl .latest
       - name: .replica_set .noauth .ssl .latest
       - name: .standalone .noauth .nossl .latest
     display_name: Test macOS Arm64 py3.13
@@ -1358,7 +1358,7 @@ buildvariants:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
   - name: test-win64-py3.9
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Test Win64 py3.9
@@ -1369,7 +1369,7 @@ buildvariants:
       PYTHON_BINARY: C:/python/Python39/python.exe
   - name: test-win64-py3.13
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Test Win64 py3.13
@@ -1380,7 +1380,7 @@ buildvariants:
       PYTHON_BINARY: C:/python/Python313/python.exe
   - name: test-win32-py3.9
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Test Win32 py3.9
@@ -1391,7 +1391,7 @@ buildvariants:
       PYTHON_BINARY: C:/python/32/Python39/python.exe
   - name: test-win32-py3.13
     tasks:
-      - name: .shared_cluster .auth .ssl
+      - name: .sharded_cluster .auth .ssl
       - name: .replica_set .noauth .ssl
       - name: .standalone .noauth .nossl
     display_name: Test Win32 py3.13

@@ -37,7 +37,7 @@ TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
 C_EXTS = ["with_ext", "without_ext"]
 # By default test each of the topologies with a subset of auth/ssl.
 SUB_TASKS = [
-    ".shared_cluster .auth .ssl",
+    ".sharded_cluster .auth .ssl",
     ".replica_set .noauth .ssl",
     ".standalone .noauth .nossl",
 ]
