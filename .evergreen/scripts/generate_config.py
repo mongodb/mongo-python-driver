@@ -275,10 +275,7 @@ def create_server_variants() -> list[BuildVariant]:
             if host == "macos-arm64":
                 tasks = []
                 for version in get_versions_from("6.0"):
-                    version_tag = version
-                    if version not in ["rapid", "latest"]:
-                        version_tag = f"v{version}"
-                    tasks.extend(f"{t} .{version_tag}" for t in SUB_TASKS)
+                    tasks.extend(f"{t} .{version}" for t in SUB_TASKS)
             expansions = dict(SKIP_CSOT_TESTS="true")
             display_name = get_display_name("Test", host, python=python, **expansions)
             variant = create_variant(
@@ -461,7 +458,7 @@ def create_pyopenssl_variants():
 
         display_name = get_display_name(base_name, host, python=python)
         variant = create_variant(
-            [f".replica_set .nossl .{auth}", f".v7.0 .nossl .{auth}"],
+            [f".replica_set .nossl .{auth}", f".7.0 .nossl .{auth}"],
             display_name,
             python=python,
             host=host,
@@ -723,7 +720,7 @@ def create_alternative_hosts_variants():
     host = "rhel7"
     variants.append(
         create_variant(
-            [".v5.0 .standalone"],
+            [".5.0 .standalone"],
             get_display_name("OpenSSL 1.0.2", "rhel7", python=CPYTHONS[0], **expansions),
             host=host,
             python=CPYTHONS[0],
@@ -737,7 +734,7 @@ def create_alternative_hosts_variants():
     for host, host_name in zip(hosts, host_names):
         variants.append(
             create_variant(
-                [".v6.0 .standalone"],
+                [".6.0 .standalone"],
                 display_name=get_display_name(f"Other hosts {host_name}", **expansions),
                 expansions=expansions,
                 batchtime=batchtime,
@@ -751,10 +748,7 @@ def create_server_tasks():
     tasks = []
     for topo, version, (auth, ssl), sync in product(TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, SYNCS):
         name = f"test-{version}-{topo}-{auth}-{ssl}-{sync}".lower()
-        version_tag = version
-        if version not in ["rapid", "latest"]:
-            version_tag = f"v{version}"
-        tags = [version_tag, topo, auth, ssl, sync]
+        tags = [version, topo, auth, ssl, sync]
         topology = topo if topo != "standalone" else "server"
         test_suite = "default" if sync == "sync" else "default_async"
         vars = dict(
