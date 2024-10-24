@@ -16,7 +16,7 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Type, Union, overload
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -396,6 +396,18 @@ class Binary(bytes):
         raise ValueError(
             f"cannot decode subtype {self.subtype} to {UUID_REPRESENTATION_NAMES[uuid_representation]}"
         )
+
+    @classmethod
+    @overload
+    def from_vector(cls: Type[Binary], vector: BinaryVector) -> Binary:
+        ...
+
+    @classmethod
+    @overload
+    def from_vector(
+        cls: Type[Binary], vector: list[int, float], dtype: BinaryVectorDtype, padding: int = 0
+    ) -> Binary:
+        ...
 
     @classmethod
     def from_vector(
