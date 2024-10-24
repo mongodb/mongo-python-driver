@@ -761,7 +761,7 @@ def create_server_tasks():
             TEST_SUITES=test_suite,
         )
 
-        bootstrap_func = FunctionCall(func="bootstrap mongo orchestration", vars=vars)
+        bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=vars)
         test_func = FunctionCall(func="run tests")
 
         tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
