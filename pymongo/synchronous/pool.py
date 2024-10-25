@@ -702,6 +702,8 @@ class Connection:
         # shutdown.
         try:
             self.conn.close()
+        except asyncio.CancelledError:
+            raise
         except Exception:  # noqa: S110
             pass
 

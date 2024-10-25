@@ -23,7 +23,6 @@ from shrub.v3.shrub_service import ShrubService
 ##############
 
 ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
-VERSIONS_6_0_PLUS = ["6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
@@ -55,6 +54,8 @@ HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
 HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32")
 HOSTS["macos"] = Host("macos", "macos-14", "macOS")
 HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64")
+HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20")
+HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22")
 
 
 ##############
@@ -103,13 +104,31 @@ def get_python_binary(python: str, host: str) -> str:
         python = python.replace(".", "")
         return f"{base}/Python{python}/python.exe"
 
-    if host == "rhel8":
+    if host in ["rhel8", "ubuntu22", "ubuntu20"]:
         return f"/opt/python/{python}/bin/python3"
 
     if host in ["macos", "macos-arm64"]:
         return f"/Library/Frameworks/Python.Framework/Versions/{python}/bin/python3"
 
     raise ValueError(f"no match found for python {python} on {host}")
+
+
+def get_versions_from(min_version: str) -> list[str]:
+    """Get all server versions starting from a minimum version."""
+    min_version_float = float(min_version)
+    rapid_latest = ["rapid", "latest"]
+    versions = [v for v in ALL_VERSIONS if v not in rapid_latest]
+    return [v for v in versions if float(v) >= min_version_float] + rapid_latest
+
+
+def get_versions_until(max_version: str) -> list[str]:
+    """Get all server version up to a max version."""
+    max_version_float = float(max_version)
+    versions = [v for v in ALL_VERSIONS if v not in ["rapid", "latest"]]
+    versions = [v for v in versions if float(v) <= max_version_float]
+    if not len(versions):
+        raise ValueError(f"No server versions found less <= {max_version}")
+    return versions
 
 
 def get_display_name(base: str, host: str, **kwargs) -> str:
@@ -236,14 +255,17 @@ def create_server_variants() -> list[BuildVariant]:
 
     # Test a subset on each of the other platforms.
     for host in ("macos", "macos-arm64", "win64", "win32"):
-        for (python, (auth, ssl), topology), sync in product(
-            zip_cycle(MIN_MAX_PYTHON, AUTH_SSLS, TOPOLOGIES), SYNCS
-        ):
+        for (
+            python,
+            sync,
+            (auth, ssl),
+        ) in product(MIN_MAX_PYTHON, SYNCS, AUTH_SSLS):
             test_suite = "default" if sync == "sync" else "default_async"
+            topology = TOPOLOGIES[0] if python == CPYTHONS[0] else TOPOLOGIES[-1]
             tasks = [f".{topology}"]
             # MacOS arm64 only works on server versions 6.0+
             if host == "macos-arm64":
-                tasks = [f".{topology} .{version}" for version in VERSIONS_6_0_PLUS]
+                tasks = [f".{topology} .{version}" for version in get_versions_from("6.0")]
             expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite, SKIP_CSOT_TESTS="true")
             display_name = get_display_name("Test", host, python=python, **expansions)
             variant = create_variant(
@@ -330,7 +352,7 @@ def create_load_balancer_variants():
     task_names = ["load-balancer-test"]
     batchtime = BATCHTIME_WEEK
     expansions_base = dict(test_loadbalancer="true")
-    versions = ["6.0", "7.0", "8.0", "latest", "rapid"]
+    versions = get_versions_from("6.0")
     variants = []
     pythons = CPYTHONS + PYPYS
     for ind, (version, (auth, ssl)) in enumerate(product(versions, AUTH_SSLS)):
@@ -442,10 +464,186 @@ def create_pyopenssl_variants():
     return variants
 
 
+def create_storage_engine_tests():
+    host = "rhel8"
+    engines = ["InMemory", "MMAPv1"]
+    variants = []
+    for engine in engines:
+        python = CPYTHONS[0]
+        expansions = dict(STORAGE_ENGINE=engine.lower())
+        if engine == engines[0]:
+            tasks = [f".standalone .{v}" for v in ALL_VERSIONS]
+        else:
+            # MongoDB 4.2 drops support for MMAPv1
+            versions = get_versions_until("4.0")
+            tasks = [f".standalone .{v}" for v in versions] + [
+                f".replica_set .{v}" for v in versions
+            ]
+        display_name = get_display_name(f"Storage {engine}", host, python=python)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+    return variants
+
+
+def create_versioned_api_tests():
+    host = "rhel8"
+    tags = ["versionedApi_tag"]
+    tasks = [f".standalone .{v}" for v in get_versions_from("5.0")]
+    variants = []
+    types = ["require v1", "accept v2"]
+
+    # All python versions across platforms.
+    for python, test_type in product(MIN_MAX_PYTHON, types):
+        expansions = dict(AUTH="auth")
+        # Test against a cluster with requireApiVersion=1.
+        if test_type == types[0]:
+            # REQUIRE_API_VERSION is set to make drivers-evergreen-tools
+            # start a cluster with the requireApiVersion parameter.
+            expansions["REQUIRE_API_VERSION"] = "1"
+            # MONGODB_API_VERSION is the apiVersion to use in the test suite.
+            expansions["MONGODB_API_VERSION"] = "1"
+        else:
+            # Test against a cluster with acceptApiVersion2 but without
+            # requireApiVersion, and don't automatically add apiVersion to
+            # clients created in the test suite.
+            expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
+        base_display_name = f"Versioned API {test_type}"
+        display_name = get_display_name(base_display_name, host, python=python, **expansions)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, tags=tags, expansions=expansions
+        )
+        variants.append(variant)
+
+    return variants
+
+
+def create_green_framework_variants():
+    variants = []
+    tasks = [".standalone"]
+    host = "rhel8"
+    for python, framework in product([CPYTHONS[0], CPYTHONS[-2]], ["eventlet", "gevent"]):
+        expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
+        display_name = get_display_name(f"{framework.capitalize()}", host, python=python)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+    return variants
+
+
+def generate_no_c_ext_variants():
+    variants = []
+    host = "rhel8"
+    for python, topology in zip_cycle(CPYTHONS, TOPOLOGIES):
+        tasks = [f".{topology}"]
+        expansions = dict()
+        handle_c_ext(C_EXTS[0], expansions)
+        display_name = get_display_name("No C Ext", host, python=python)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+    return variants
+
+
+def generate_atlas_data_lake_variants():
+    variants = []
+    host = "rhel8"
+    for python, c_ext in product(MIN_MAX_PYTHON, C_EXTS):
+        tasks = ["atlas-data-lake-tests"]
+        expansions = dict()
+        handle_c_ext(c_ext, expansions)
+        display_name = get_display_name("Atlas Data Lake", host, python=python, **expansions)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+    return variants
+
+
+def generate_mod_wsgi_variants():
+    variants = []
+    host = "ubuntu22"
+    tasks = [
+        "mod-wsgi-standalone",
+        "mod-wsgi-replica-set",
+        "mod-wsgi-embedded-mode-standalone",
+        "mod-wsgi-embedded-mode-replica-set",
+    ]
+    expansions = dict(MOD_WSGI_VERSION="4")
+    for python in MIN_MAX_PYTHON:
+        display_name = get_display_name("mod_wsgi", host, python=python)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, expansions=expansions
+        )
+        variants.append(variant)
+    return variants
+
+
+def generate_disable_test_commands_variants():
+    host = "rhel8"
+    expansions = dict(AUTH="auth", SSL="ssl", DISABLE_TEST_COMMANDS="1")
+    python = CPYTHONS[0]
+    display_name = get_display_name("Disable test commands", host, python=python)
+    tasks = [".latest"]
+    return [create_variant(tasks, display_name, host=host, python=python, expansions=expansions)]
+
+
+def generate_serverless_variants():
+    host = "rhel8"
+    batchtime = BATCHTIME_WEEK
+    expansions = dict(test_serverless="true", AUTH="auth", SSL="ssl")
+    tasks = ["serverless_task_group"]
+    base_name = "Serverless"
+    return [
+        create_variant(
+            tasks,
+            get_display_name(base_name, host, python=python),
+            host=host,
+            python=python,
+            expansions=expansions,
+            batchtime=batchtime,
+        )
+        for python in MIN_MAX_PYTHON
+    ]
+
+
+def generate_aws_auth_variants():
+    variants = []
+    tasks = [
+        "aws-auth-test-4.4",
+        "aws-auth-test-5.0",
+        "aws-auth-test-6.0",
+        "aws-auth-test-7.0",
+        "aws-auth-test-8.0",
+        "aws-auth-test-rapid",
+        "aws-auth-test-latest",
+    ]
+
+    for host, python in product(["ubuntu20", "win64", "macos"], MIN_MAX_PYTHON):
+        expansions = dict()
+        if host != "ubuntu20":
+            expansions["skip_ECS_auth_test"] = "true"
+        if host == "macos":
+            expansions["skip_EC2_auth_test"] = "true"
+            expansions["skip_web_identity_auth_test"] = "true"
+        variant = create_variant(
+            tasks,
+            get_display_name("AWS Auth", host, python=python),
+            host=host,
+            python=python,
+            expansions=expansions,
+        )
+        variants.append(variant)
+    return variants
+
+
 ##################
 # Generate Config
 ##################
 
-variants = create_pyopenssl_variants()
+variants = create_server_variants()
 # print(len(variants))
 generate_yaml(variants=variants)
