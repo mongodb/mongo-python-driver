@@ -264,8 +264,6 @@ class SpecRunner(IntegrationTest):
 
     def tearDown(self) -> None:
         self.knobs.disable()
-        for client in self.mongos_clients:
-            client.close()
 
     def _set_fail_point(self, client, command_args):
         cmd = SON([("configureFailPoint", "failCommand")])

@@ -44,9 +44,6 @@ class TestAsyncConnectionsSurvivePrimaryStepDown(AsyncIntegrationTest):
     listener: CMAPListener
     coll: AsyncCollection
 
-    async def asyncTearDown(self):
-        await reset_client_context()
-
     @async_client_context.require_replica_set
     async def asyncSetUp(self):
         self.listener = CMAPListener()

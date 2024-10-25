@@ -529,11 +529,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
 
-    def tearDown(self):
-        for client in self.mongos_clients:
-            client.close()
-        super().tearDown()
-
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
         if client_context.storage_engine == "mmapv1":
