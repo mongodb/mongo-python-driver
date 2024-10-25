@@ -619,10 +619,14 @@ def create_serverless_variants():
 
 def create_oidc_auth_variants():
     variants = []
-    for host in ["rhel8", "macos", "win64"]:
+    other_tasks = ["testazureoidc_task_group", "testgcpoidc_task_group", "testk8soidc_task_group"]
+    for host in ["ubuntu22", "macos", "win64"]:
+        tasks = ["testoidc_task_group"]
+        if host == "ubuntu22":
+            tasks += other_tasks
         variants.append(
             create_variant(
-                ["testoidc_task_group"],
+                tasks,
                 get_display_name("OIDC Auth", host),
                 host=host,
                 batchtime=BATCHTIME_WEEK * 2,

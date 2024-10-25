@@ -1788,27 +1788,6 @@ buildvariants:
   tasks:
      - name: "coverage-report"
 
-- name: testazureoidc-variant
-  display_name: "OIDC Auth Azure"
-  run_on: ubuntu2204-small
-  tasks:
-    - name: testazureoidc_task_group
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
-
-- name: testgcpoidc-variant
-  display_name: "OIDC Auth GCP"
-  run_on: ubuntu2204-small
-  tasks:
-    - name: testgcpoidc_task_group
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
-
-- name: testk8soidc-variant
-  display_name: "OIDC Auth K8S"
-  run_on: ubuntu2204-small
-  tasks:
-    - name: testk8soidc_task_group
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
-
 - name: testgcpkms-variant
   display_name: "GCP KMS"
   run_on:
