@@ -1605,7 +1605,7 @@ tasks:
           args:
             - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
-    - name: "oidc-auth-test-azure"
+    - name: "oidc-auth-test-gcp"
       commands:
       - command: subprocess.exec
         type: test
