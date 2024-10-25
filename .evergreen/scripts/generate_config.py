@@ -557,7 +557,7 @@ def create_no_c_ext_variants():
 
 def create_atlas_data_lake_variants():
     variants = []
-    host = "rhel8"
+    host = "ubuntu22"
     for python, c_ext in product(MIN_MAX_PYTHON, C_EXTS):
         tasks = ["atlas-data-lake-tests"]
         expansions = dict()
