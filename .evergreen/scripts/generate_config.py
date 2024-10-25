@@ -152,6 +152,7 @@ def get_display_name(base: str, host: str | None = None, **kwargs) -> str:
     if host is not None:
         display_name += f" {HOSTS[host].display_name}"
     version = kwargs.pop("VERSION", None)
+    version = version or kwargs.pop("version", None)
     if version:
         if version not in ["rapid", "latest"]:
             version = f"v{version}"
@@ -354,25 +355,20 @@ def create_encryption_variants() -> list[BuildVariant]:
 
 
 def create_load_balancer_variants():
-    # Load balancer tests - run all supported versions for all combinations of auth and ssl and system python.
+    # Load balancer tests - run all supported server versions using the lowest supported python.
     host = "rhel8"
-    task_names = ["load-balancer-test"]
     batchtime = BATCHTIME_WEEK
-    expansions_base = dict(test_loadbalancer="true")
     versions = get_versions_from("6.0")
     variants = []
-    pythons = CPYTHONS + PYPYS
-    for ind, (version, (auth, ssl)) in enumerate(product(versions, AUTH_SSLS)):
-        expansions = dict(VERSION=version, AUTH=auth, SSL=ssl)
-        expansions.update(expansions_base)
-        python = pythons[ind % len(pythons)]
-        display_name = get_display_name("Load Balancer", host, python=python, **expansions)
+    for version in versions:
+        python = CPYTHONS[0]
+        display_name = get_display_name("Load Balancer", host, python=python, version=version)
         variant = create_variant(
-            task_names,
+            [".load-balancer"],
             display_name,
             python=python,
             host=host,
-            expansions=expansions,
+            version=version,
             batchtime=batchtime,
         )
         variants.append(variant)
@@ -770,6 +766,22 @@ def create_server_tasks():
         )
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
+    return tasks
+
+
+def create_load_balancer_tasks():
+    tasks = []
+    for auth, ssl in AUTH_SSLS:
+        name = f"test-load-balancer-{auth}-{ssl}".lower()
+        tags = ["load-balancer", auth, ssl]
+        bootstrap_vars = dict(TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, LOAD_BALANCER="true")
+        bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
+        balancer_func = FunctionCall(func="run load-balancer")
+        test_vars = dict(AUTH=auth, SSL=ssl, test_loadbalancer="true")
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(
+            EvgTask(name=name, tags=tags, commands=[bootstrap_func, balancer_func, test_func])
+        )
     return tasks
 
 

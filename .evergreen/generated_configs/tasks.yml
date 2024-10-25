@@ -1,4 +1,51 @@
 tasks:
+  # Load balancer tests
+  - name: test-load-balancer-auth-ssl
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
+          SSL: ssl
+          LOAD_BALANCER: "true"
+      - func: run load-balancer
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          test_loadbalancer: "true"
+    tags: [load-balancer, auth, ssl]
+  - name: test-load-balancer-noauth-ssl
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: ssl
+          LOAD_BALANCER: "true"
+      - func: run load-balancer
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          test_loadbalancer: "true"
+    tags: [load-balancer, noauth, ssl]
+  - name: test-load-balancer-noauth-nossl
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: nossl
+          LOAD_BALANCER: "true"
+      - func: run load-balancer
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          test_loadbalancer: "true"
+    tags: [load-balancer, noauth, nossl]
+
   # Server tests
   - name: test-4.0-standalone-auth-ssl-sync
     commands:

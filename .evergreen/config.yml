@@ -1542,15 +1542,6 @@ tasks:
         - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
-    - name: load-balancer-test
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            TOPOLOGY: "sharded_cluster"
-            LOAD_BALANCER: true
-        - func: "run load-balancer"
-        - func: "run tests"
-
     - name: "oidc-auth-test"
       commands:
       - func: "run oidc auth test with test credentials"
