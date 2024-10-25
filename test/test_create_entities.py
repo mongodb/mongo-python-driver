@@ -56,6 +56,9 @@ class TestCreateEntities(IntegrationTest):
         self.assertGreater(len(final_entity_map["events1"]), 0)
         for event in final_entity_map["events1"]:
             self.assertIn("PoolCreatedEvent", event["name"])
+        if self.scenario_runner.mongos_clients:
+            for client in self.scenario_runner.mongos_clients:
+                client.close()
 
     def test_store_all_others_as_entities(self):
         self.scenario_runner = UnifiedSpecTestMixinV1()
@@ -122,6 +125,9 @@ class TestCreateEntities(IntegrationTest):
         self.assertEqual(entity_map["failures"], [])
         self.assertEqual(entity_map["successes"], 2)
         self.assertEqual(entity_map["iterations"], 5)
+        if self.scenario_runner.mongos_clients:
+            for client in self.scenario_runner.mongos_clients:
+                client.close()
 
 
 if __name__ == "__main__":
