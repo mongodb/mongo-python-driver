@@ -66,38 +66,38 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Atlas data lake tests
-  - name: atlas-data-lake-rhel8-py3.9-no-c
+  - name: atlas-data-lake-ubuntu-22-py3.9-no-c
     tasks:
       - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake RHEL8 py3.9 No C
+    display_name: Atlas Data Lake Ubuntu-22 py3.9 No C
     run_on:
-      - rhel87-small
+      - ubuntu2204-small
     expansions:
       NO_EXT: "1"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: atlas-data-lake-rhel8-py3.9
+  - name: atlas-data-lake-ubuntu-22-py3.9
     tasks:
       - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake RHEL8 py3.9
+    display_name: Atlas Data Lake Ubuntu-22 py3.9
     run_on:
-      - rhel87-small
+      - ubuntu2204-small
     expansions:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: atlas-data-lake-rhel8-py3.13-no-c
+  - name: atlas-data-lake-ubuntu-22-py3.13-no-c
     tasks:
       - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake RHEL8 py3.13 No C
+    display_name: Atlas Data Lake Ubuntu-22 py3.13 No C
     run_on:
-      - rhel87-small
+      - ubuntu2204-small
     expansions:
       NO_EXT: "1"
       PYTHON_BINARY: /opt/python/3.13/bin/python3
-  - name: atlas-data-lake-rhel8-py3.13
+  - name: atlas-data-lake-ubuntu-22-py3.13
     tasks:
       - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake RHEL8 py3.13
+    display_name: Atlas Data Lake Ubuntu-22 py3.13
     run_on:
-      - rhel87-small
+      - ubuntu2204-small
     expansions:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
