@@ -1021,7 +1021,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
     def test_4_4_speculative_authentication_should_be_ignored_on_reauthentication(self):
         # Create an OIDC configured client that can listen for `SaslStart` commands.
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.create_client(event_listeners=[listener])
 
         # Preload the *Client Cache* with a valid access token to enforce Speculative Authentication.
