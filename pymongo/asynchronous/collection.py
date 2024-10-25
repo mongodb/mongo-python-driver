@@ -993,6 +993,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[AsyncClientSession] = None,
         retryable_write: bool = False,
         let: Optional[Mapping[str, Any]] = None,
+        sort: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
     ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
@@ -1024,6 +1025,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             if not isinstance(hint, str):
                 hint = helpers_shared._index_document(hint)
             update_doc["hint"] = hint
+        if sort is not None:
+            if not acknowledged and conn.max_wire_version < 25:
+                raise ConfigurationError(
+                    "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."
+                )
+            common.validate_is_mapping("sort", sort)
+            update_doc["sort"] = sort
+
         command = {"update": self.name, "ordered": ordered, "updates": [update_doc]}
         if let is not None:
             common.validate_is_mapping("let", let)
@@ -1079,6 +1088,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[AsyncClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
+        sort: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
     ) -> Optional[Mapping[str, Any]]:
         """Internal update / replace helper."""
@@ -1102,6 +1112,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 retryable_write=retryable_write,
                 let=let,
+                sort=sort,
                 comment=comment,
             )
 
@@ -1122,6 +1133,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[AsyncClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
+        sort: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
     ) -> UpdateResult:
         """Replace a single document matching the filter.
@@ -1176,8 +1188,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             aggregate expression context (e.g. "$$var").
         :param comment: A user-provided comment to attach to this
             command.
+        :param sort: Specify which document the operation updates if the query matches
+            multiple documents. The first document matched by the sort order will be updated.
+            This option is only supported on MongoDB 8.0 and above.
         :return: - An instance of :class:`~pymongo.results.UpdateResult`.
 
+        .. versionchanged:: 4.11
+           Added ``sort`` parameter.
         .. versionchanged:: 4.1
            Added ``let`` parameter.
            Added ``comment`` parameter.
@@ -1209,6 +1226,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 hint=hint,
                 session=session,
                 let=let,
+                sort=sort,
                 comment=comment,
             ),
             write_concern.acknowledged,
@@ -1225,6 +1243,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[AsyncClientSession] = None,
         let: Optional[Mapping[str, Any]] = None,
+        sort: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
     ) -> UpdateResult:
         """Update a single document matching the filter.
@@ -1283,11 +1302,16 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+        :param sort: Specify which document the operation updates if the query matches
+            multiple documents. The first document matched by the sort order will be updated.
+            This option is only supported on MongoDB 8.0 and above.
         :param comment: A user-provided comment to attach to this
             command.
 
         :return: - An instance of :class:`~pymongo.results.UpdateResult`.
 
+        .. versionchanged:: 4.11
+           Added ``sort`` parameter.
         .. versionchanged:: 4.1
            Added ``let`` parameter.
            Added ``comment`` parameter.
@@ -1322,6 +1346,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 hint=hint,
                 session=session,
                 let=let,
+                sort=sort,
                 comment=comment,
             ),
             write_concern.acknowledged,
@@ -1960,20 +1985,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[Collation],
     ) -> int:
         """Internal count command helper."""
-        # XXX: "ns missing" checks can be removed when we drop support for
-        # MongoDB 3.0, see SERVER-17051.
         res = await self._command(
             conn,
             cmd,
             read_preference=read_preference,
-            allowable_errors=["ns missing"],
             codec_options=self._write_response_codec_options,
             read_concern=self.read_concern,
             collation=collation,
             session=session,
         )
-        if res.get("errmsg", "") == "ns missing":
-            return 0
         return int(res["n"])
 
     async def _aggregate_one_result(

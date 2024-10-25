@@ -31,8 +31,6 @@ except ImportError:
 
 from operations import upgrades  # type: ignore[import]
 
-from pymongo import MongoClient
-
 pytestmark = pytest.mark.mockupdb
 
 

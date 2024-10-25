@@ -32,6 +32,8 @@ from test.asynchronous import (
 )
 from test.utils import AllowListEventListener, delay, ignore_deprecations
 
+import pytest
+
 from pymongo import AsyncMongoClient, monitoring
 from pymongo.asynchronous.auth import HAVE_KERBEROS
 from pymongo.auth_shared import _build_credentials_tuple
@@ -41,6 +43,8 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.saslprep import HAVE_STRINGPREP
 
 _IS_SYNC = False
+
+pytestmark = pytest.mark.auth
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
 GSSAPI_HOST = os.environ.get("GSSAPI_HOST")

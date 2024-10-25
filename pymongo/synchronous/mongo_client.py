@@ -496,9 +496,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           - `authSource`: The database to authenticate on. Defaults to the
             database specified in the URI, if provided, or to "admin".
           - `authMechanism`: See :data:`~pymongo.auth.MECHANISMS` for options.
-            If no mechanism is specified, PyMongo automatically SCRAM-SHA-1
-            when connected to MongoDB 3.6 and negotiates the mechanism to use
-            (SCRAM-SHA-1 or SCRAM-SHA-256) when connected to MongoDB 4.0+.
+            If no mechanism is specified, PyMongo automatically negotiates the
+            mechanism to use (SCRAM-SHA-1 or SCRAM-SHA-256) with the MongoDB server.
           - `authMechanismProperties`: Used to specify authentication mechanism
             specific options. To specify the service name for GSSAPI
             authentication pass authMechanismProperties='SERVICE_NAME:<service
@@ -1448,13 +1447,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 'Cannot use "address" property when load balancing among'
                 ' mongoses, use "nodes" instead.'
             )
-        if topology_type not in (
-            TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-            TOPOLOGY_TYPE.Single,
-            TOPOLOGY_TYPE.LoadBalanced,
-            TOPOLOGY_TYPE.Sharded,
-        ):
-            return None
         return self._server_property("address")
 
     @property

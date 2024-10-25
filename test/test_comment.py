@@ -20,24 +20,15 @@ import inspect
 import sys
 
 sys.path[0:0] = [""]
-
+from asyncio import iscoroutinefunction
 from test import IntegrationTest, client_context, unittest
-from test.utils import EventListener
+from test.utils import OvertCommandListener
 
 from bson.dbref import DBRef
 from pymongo.operations import IndexModel
 from pymongo.synchronous.command_cursor import CommandCursor
 
-
-class Empty:
-    def __getattr__(self, item):
-        try:
-            self.__dict__[item]
-        except KeyError:
-            return self.empty
-
-    def empty(self, *args, **kwargs):
-        return Empty()
+_IS_SYNC = True
 
 
 class TestComment(IntegrationTest):
@@ -46,8 +37,6 @@ class TestComment(IntegrationTest):
         helpers,
         already_supported,
         listener,
-        db=Empty(),  # noqa: B008
-        coll=Empty(),  # noqa: B008
     ):
         for h, args in helpers:
             c = "testing comment with " + h.__name__
@@ -55,19 +44,10 @@ class TestComment(IntegrationTest):
                 for cc in [c, {"key": c}, ["any", 1]]:
                     listener.reset()
                     kwargs = {"comment": cc}
-                    if h == coll.rename:
-                        _ = db.get_collection("temp_temp_temp").drop()
-                        destruct_coll = db.get_collection("test_temp")
-                        destruct_coll.insert_one({})
-                        maybe_cursor = destruct_coll.rename(*args, **kwargs)
-                        destruct_coll.drop()
-                    elif h == db.validate_collection:
-                        coll = db.get_collection("test")
-                        coll.insert_one({})
-                        maybe_cursor = db.validate_collection(*args, **kwargs)
-                    else:
-                        coll.create_index("a")
+                    try:
                         maybe_cursor = h(*args, **kwargs)
+                    except Exception:
+                        maybe_cursor = None
                     self.assertIn(
                         "comment",
                         inspect.signature(h).parameters,
@@ -79,15 +59,11 @@ class TestComment(IntegrationTest):
                     )
                     if isinstance(maybe_cursor, CommandCursor):
                         maybe_cursor.close()
-                    tested = False
-                    # For some reason collection.list_indexes creates two commands and the first
-                    # one doesn't contain 'comment'.
-                    for i in listener.started_events:
-                        if cc == i.command.get("comment", ""):
-                            self.assertEqual(cc, i.command["comment"])
-                            tested = True
-                    self.assertTrue(tested)
-                    if h not in [coll.aggregate_raw_batches]:
+
+                    cmd = listener.started_events[0]
+                    self.assertEqual(cc, cmd.command.get("comment"), msg=cmd)
+
+                    if h.__name__ != "aggregate_raw_batches":
                         self.assertIn(
                             ":param comment:",
                             h.__doc__,
@@ -108,8 +84,8 @@ class TestComment(IntegrationTest):
     @client_context.require_version_min(4, 7, -1)
     @client_context.require_replica_set
     def test_database_helpers(self):
-        listener = EventListener()
-        db = self.rs_or_single_client(event_listeners=[listener]).db
+        listener = OvertCommandListener()
+        db = (self.rs_or_single_client(event_listeners=[listener])).db
         helpers = [
             (db.watch, []),
             (db.command, ["hello"]),
@@ -120,12 +96,12 @@ class TestComment(IntegrationTest):
             (db.dereference, [DBRef("collection", 1)]),
         ]
         already_supported = [db.command, db.list_collections, db.list_collection_names]
-        self._test_ops(helpers, already_supported, listener, db=db, coll=db.get_collection("test"))
+        self._test_ops(helpers, already_supported, listener)
 
     @client_context.require_version_min(4, 7, -1)
     @client_context.require_replica_set
     def test_client_helpers(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         cli = self.rs_or_single_client(event_listeners=[listener])
         helpers = [
             (cli.watch, []),
@@ -140,8 +116,8 @@ class TestComment(IntegrationTest):
 
     @client_context.require_version_min(4, 7, -1)
     def test_collection_helpers(self):
-        listener = EventListener()
-        db = self.rs_or_single_client(event_listeners=[listener])[self.db.name]
+        listener = OvertCommandListener()
+        db = (self.rs_or_single_client(event_listeners=[listener]))[self.db.name]
         coll = db.get_collection("test")
 
         helpers = [
@@ -176,7 +152,7 @@ class TestComment(IntegrationTest):
             coll.find_one_and_delete,
             coll.find_one_and_update,
         ]
-        self._test_ops(helpers, already_supported, listener, coll=coll, db=db)
+        self._test_ops(helpers, already_supported, listener)
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ from __future__ import annotations
 import functools
 import warnings
 from test import IntegrationTest, client_context, unittest
-from test.utils import EventListener
+from test.utils import EventListener, OvertCommandListener
 from typing import Any
 
 from pymongo.collation import (
@@ -37,7 +37,10 @@ from pymongo.operations import (
     UpdateMany,
     UpdateOne,
 )
+from pymongo.synchronous.helpers import next
 from pymongo.write_concern import WriteConcern
+
+_IS_SYNC = True
 
 
 class TestCollationObject(unittest.TestCase):
@@ -96,9 +99,9 @@ class TestCollation(IntegrationTest):
 
     @classmethod
     @client_context.require_connection
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.listener = EventListener()
+    def _setup_class(cls):
+        super()._setup_class()
+        cls.listener = OvertCommandListener()
         cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
         cls.collation = Collation("en_US")
@@ -107,11 +110,11 @@ class TestCollation(IntegrationTest):
         warnings.simplefilter("ignore", DeprecationWarning)
 
     @classmethod
-    def tearDownClass(cls):
+    def _tearDown_class(cls):
         cls.warn_context.__exit__()
         cls.warn_context = None
         cls.client.close()
-        super().tearDownClass()
+        super()._tearDown_class()
 
     def tearDown(self):
         self.listener.reset()

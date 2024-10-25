@@ -8,7 +8,7 @@ dynamic = ["version", "dependencies", "optional-dependencies"]
 description = "Python driver for MongoDB <http://www.mongodb.org>"
 readme = "README.md"
 license = {file="LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
     { name = "The MongoDB Python Team" },
 ]
@@ -30,7 +30,6 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -100,6 +99,7 @@ filterwarnings = [
 markers = [
     "auth_aws: tests that rely on pymongo-auth-aws",
     "auth_oidc: tests that rely on oidc auth",
+    "auth: tests that rely on authentication",
     "ocsp: tests that rely on ocsp",
     "atlas: tests that rely on atlas",
     "data_lake: tests that rely on atlas data lake",
@@ -237,6 +237,8 @@ partial_branches = ["if (.*and +)*not _use_c( and.*)*:"]
 directory = "htmlcov"
 
 [tool.cibuildwheel]
+# Enable free-threaded support
+free-threaded-support = true
 skip = "pp* *-musllinux*"
 build-frontend = "build"
 test-command = "python {project}/tools/fail_if_no_c.py"

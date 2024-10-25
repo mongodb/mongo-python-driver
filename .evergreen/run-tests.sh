@@ -30,7 +30,7 @@ set -o xtrace
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
-TEST_SUITES=""
+TEST_SUITES=${TEST_SUITES:-}
 TEST_ARGS="${*:1}"
 
 export PIP_QUIET=1  # Quiet by default
@@ -90,6 +90,8 @@ if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
     export GSSAPI_HOST=${SASL_HOST}
     export GSSAPI_PORT=${SASL_PORT}
     export GSSAPI_PRINCIPAL=${PRINCIPAL}
+
+    export TEST_SUITES="auth"
 fi
 
 if [ -n "$TEST_LOADBALANCER" ]; then
@@ -257,9 +259,9 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     # Use --capture=tee-sys so pytest prints test output inline:
     # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
     if [ -z "$TEST_SUITES" ]; then
-      python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 $TEST_ARGS
+      python -m pytest -v --capture=tee-sys --durations=5 $TEST_ARGS
     else
-      python -m pytest -v --capture=tee-sys --durations=5 --maxfail=10 -m $TEST_SUITES $TEST_ARGS
+      python -m pytest -v --capture=tee-sys --durations=5 -m $TEST_SUITES $TEST_ARGS
     fi
 else
     python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS

@@ -43,6 +43,7 @@ replacements = {
     "AsyncConnection": "Connection",
     "async_command": "command",
     "async_receive_message": "receive_message",
+    "async_receive_data": "receive_data",
     "async_sendall": "sendall",
     "asynchronous": "synchronous",
     "Asynchronous": "Synchronous",
@@ -104,7 +105,11 @@ replacements = {
     "PyMongo|c|async": "PyMongo|c",
     "AsyncTestGridFile": "TestGridFile",
     "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
+    "AsyncTestSpec": "TestSpec",
+    "AsyncSpecTestCreator": "SpecTestCreator",
     "async_set_fail_point": "set_fail_point",
+    "async_ensure_all_connected": "ensure_all_connected",
+    "async_repl_set_step_down": "repl_set_step_down",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -149,7 +154,7 @@ gridfs_files = [
 
 def async_only_test(f: str) -> bool:
     """Return True for async tests that should not be converted to sync."""
-    return f in ["test_locks.py"]
+    return f in ["test_locks.py", "test_concurrency.py"]
 
 
 test_files = [
@@ -185,7 +190,18 @@ converted_tests = [
     "test_client.py",
     "test_client_bulk_write.py",
     "test_client_context.py",
+    "test_collation.py",
     "test_collection.py",
+    "test_collection_management.py",
+    "test_command_logging.py",
+    "test_command_logging.py",
+    "test_command_monitoring.py",
+    "test_comment.py",
+    "test_common.py",
+    "test_connection_logging.py",
+    "test_connections_survive_primary_stepdown_spec.py",
+    "test_create_entities.py",
+    "test_crud_unified.py",
     "test_cursor.py",
     "test_database.py",
     "test_encryption.py",
@@ -197,6 +213,7 @@ converted_tests = [
     "test_retryable_writes.py",
     "test_session.py",
     "test_transactions.py",
+    "unified_format.py",
 ]
 
 sync_test_files = [

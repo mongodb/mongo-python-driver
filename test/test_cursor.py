@@ -1403,12 +1403,11 @@ class TestCursor(IntegrationTest):
         self.assertEqual(len(docs), 2)
 
     def test_to_list_csot_applied(self):
-        client = self.single_client(timeoutMS=500)
+        client = self.single_client(timeoutMS=500, w=1)
+        coll = client.pymongo.test
         # Initialize the client with a larger timeout to help make test less flakey
         with pymongo.timeout(10):
-            client.admin.command("ping")
-        coll = client.pymongo.test
-        coll.insert_many([{} for _ in range(5)])
+            coll.insert_many([{} for _ in range(5)])
         cursor = coll.find({"$where": delay(1)})
         with self.assertRaises(PyMongoError) as ctx:
             cursor.to_list()
@@ -1445,12 +1444,11 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_failCommand_blockConnection
     def test_command_cursor_to_list_csot_applied(self):
-        client = self.single_client(timeoutMS=500)
+        client = self.single_client(timeoutMS=500, w=1)
+        coll = client.pymongo.test
         # Initialize the client with a larger timeout to help make test less flakey
         with pymongo.timeout(10):
-            client.admin.command("ping")
-        coll = client.pymongo.test
-        coll.insert_many([{} for _ in range(5)])
+            coll.insert_many([{} for _ in range(5)])
         fail_command = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 5},
@@ -1592,7 +1590,7 @@ class TestRawBatchCursor(IntegrationTest):
         next(c.find_raw_batches())
 
     def test_monitoring(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         c.drop()
@@ -1759,7 +1757,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
         next(self.db.test.aggregate_raw_batches([], collation=Collation("en_US")))
 
     def test_monitoring(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         c.drop()

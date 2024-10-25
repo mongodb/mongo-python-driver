@@ -29,7 +29,7 @@ except ImportError:
 
 
 from bson import SON
-from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.read_preferences import (
     Nearest,
     Primary,
@@ -46,7 +46,11 @@ class TestQueryAndReadModeSharded(PyMongoTestCase):
         """Test OP_MSG sends non-primary $readPreference and never $query."""
         server = MockupDB()
         server.autoresponds(
-            "ismaster", ismaster=True, msg="isdbgrid", minWireVersion=2, maxWireVersion=6
+            "ismaster",
+            ismaster=True,
+            msg="isdbgrid",
+            minWireVersion=2,
+            maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
         )
         server.run()
         self.addCleanup(server.stop)
