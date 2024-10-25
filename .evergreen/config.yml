@@ -894,6 +894,7 @@ task_groups:
       - command: ec2.assume_role
         params:
           role_arn: ${aws_test_secrets_role}
+          duration_seconds: 1800
       - command: subprocess.exec
         params:
           binary: bash
