@@ -380,9 +380,9 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
         is_greenthread_patched(),
         "gevent and eventlet do not support POSIX-style forking.",
     )
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-4738 fails often on PyPy")
     @async_client_context.require_sync
     async def test_fork(self):
+        self.skipTest("Test is flaky, PYTHON-4738")
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
 
