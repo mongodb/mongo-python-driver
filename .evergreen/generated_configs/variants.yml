@@ -66,39 +66,43 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Atlas data lake tests
-  - name: atlas-data-lake-ubuntu-22-py3.9-no-c
+  - name: atlas-data-lake-ubuntu-22-py3.9-auth-no-c
     tasks:
       - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake Ubuntu-22 py3.9 No C
+    display_name: Atlas Data Lake Ubuntu-22 py3.9 Auth No C
     run_on:
       - ubuntu2204-small
     expansions:
+      AUTH: auth
       NO_EXT: "1"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: atlas-data-lake-ubuntu-22-py3.9
+  - name: atlas-data-lake-ubuntu-22-py3.9-auth
     tasks:
       - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake Ubuntu-22 py3.9
+    display_name: Atlas Data Lake Ubuntu-22 py3.9 Auth
     run_on:
       - ubuntu2204-small
     expansions:
+      AUTH: auth
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: atlas-data-lake-ubuntu-22-py3.13-no-c
+  - name: atlas-data-lake-ubuntu-22-py3.13-auth-no-c
     tasks:
       - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake Ubuntu-22 py3.13 No C
+    display_name: Atlas Data Lake Ubuntu-22 py3.13 Auth No C
     run_on:
       - ubuntu2204-small
     expansions:
+      AUTH: auth
       NO_EXT: "1"
       PYTHON_BINARY: /opt/python/3.13/bin/python3
-  - name: atlas-data-lake-ubuntu-22-py3.13
+  - name: atlas-data-lake-ubuntu-22-py3.13-auth
     tasks:
       - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake Ubuntu-22 py3.13
+    display_name: Atlas Data Lake Ubuntu-22 py3.13 Auth
     run_on:
       - ubuntu2204-small
     expansions:
+      AUTH: auth
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Aws auth tests

@@ -560,7 +560,7 @@ def create_atlas_data_lake_variants():
     host = "ubuntu22"
     for python, c_ext in product(MIN_MAX_PYTHON, C_EXTS):
         tasks = ["atlas-data-lake-tests"]
-        expansions = dict()
+        expansions = dict(AUTH="auth")
         handle_c_ext(c_ext, expansions)
         display_name = get_display_name("Atlas Data Lake", host, python=python, **expansions)
         variant = create_variant(
