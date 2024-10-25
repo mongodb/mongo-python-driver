@@ -1600,6 +1600,19 @@ tasks:
           binary: bash
           working_dir: src
           env:
+            OIDC_ENV: azure
+          include_expansions_in_env: ["DRIVERS_TOOLS"]
+          args:
+            - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
+
+    - name: "oidc-auth-test-azure"
+      commands:
+      - command: subprocess.exec
+        type: test
+        params:
+          binary: bash
+          working_dir: src
+          env:
             OIDC_ENV: gcp
           include_expansions_in_env: ["DRIVERS_TOOLS"]
           args:
