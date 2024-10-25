@@ -9,13 +9,17 @@
 # Note: Run this file with `hatch run`, `pipx run`, or `uv run`.
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
+from inspect import getmembers, isfunction
 from itertools import cycle, product, zip_longest
+from pathlib import Path
 from typing import Any
 
 from shrub.v3.evg_build_variant import BuildVariant
+from shrub.v3.evg_command import FunctionCall
 from shrub.v3.evg_project import EvgProject
-from shrub.v3.evg_task import EvgTaskRef
+from shrub.v3.evg_task import EvgTask, EvgTaskRef
 from shrub.v3.shrub_service import ShrubService
 
 ##############
@@ -31,6 +35,12 @@ BATCHTIME_WEEK = 10080
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
 TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
 C_EXTS = ["with_ext", "without_ext"]
+# By default test each of the topologies with a subset of auth/ssl.
+SUB_TASKS = [
+    ".sharded_cluster .auth .ssl",
+    ".replica_set .noauth .ssl",
+    ".standalone .noauth .nossl",
+]
 SYNCS = ["sync", "async"]
 DISPLAY_LOOKUP = dict(
     ssl=dict(ssl="SSL", nossl="NoSSL"),
@@ -49,6 +59,7 @@ class Host:
     display_name: str
 
 
+# Hosts with toolchains.
 HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8")
 HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64")
 HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32")
@@ -56,6 +67,7 @@ HOSTS["macos"] = Host("macos", "macos-14", "macOS")
 HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64")
 HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20")
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22")
+HOSTS["rhel7"] = Host("rhel7", "rhel79-small", "RHEL7")
 
 
 ##############
@@ -76,8 +88,11 @@ def create_variant(
     task_refs = [EvgTaskRef(name=n) for n in task_names]
     kwargs.setdefault("expansions", dict())
     expansions = kwargs.pop("expansions", dict()).copy()
-    host = host or "rhel8"
-    run_on = [HOSTS[host].run_on]
+    if "run_on" in kwargs:
+        run_on = kwargs.pop("run_on")
+    else:
+        host = host or "rhel8"
+        run_on = [HOSTS[host].run_on]
     name = display_name.replace(" ", "-").lower()
     if python:
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
@@ -104,7 +119,7 @@ def get_python_binary(python: str, host: str) -> str:
         python = python.replace(".", "")
         return f"{base}/Python{python}/python.exe"
 
-    if host in ["rhel8", "ubuntu22", "ubuntu20"]:
+    if host in ["rhel8", "ubuntu22", "ubuntu20", "rhel7"]:
         return f"/opt/python/{python}/bin/python3"
 
     if host in ["macos", "macos-arm64"]:
@@ -131,10 +146,13 @@ def get_versions_until(max_version: str) -> list[str]:
     return versions
 
 
-def get_display_name(base: str, host: str, **kwargs) -> str:
+def get_display_name(base: str, host: str | None = None, **kwargs) -> str:
     """Get the display name of a variant."""
-    display_name = f"{base} {HOSTS[host].display_name}"
+    display_name = base
+    if host is not None:
+        display_name += f" {HOSTS[host].display_name}"
     version = kwargs.pop("VERSION", None)
+    version = version or kwargs.pop("version", None)
     if version:
         if version not in ["rapid", "latest"]:
             version = f"v{version}"
@@ -191,7 +209,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
         host = "rhel8"
         variant = create_variant(
             [".ocsp"],
-            get_display_name(base_display, host, version, python),
+            get_display_name(base_display, host, version=version, python=python),
             python=python,
             version=version,
             host=host,
@@ -206,7 +224,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
         python = CPYTHONS[0] if version == "4.4" else CPYTHONS[-1]
         variant = create_variant(
             [".ocsp-rsa !.ocsp-staple"],
-            get_display_name(base_display, host, version, python),
+            get_display_name(base_display, host, version=version, python=python),
             python=python,
             version=version,
             host=host,
@@ -223,9 +241,9 @@ def create_server_variants() -> list[BuildVariant]:
 
     # Run the full matrix on linux with min and max CPython, and latest pypy.
     host = "rhel8"
-    for python, (auth, ssl) in product([*MIN_MAX_PYTHON, PYPYS[-1]], AUTH_SSLS):
+    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
         display_name = f"Test {host}"
-        expansions = dict(AUTH=auth, SSL=ssl, COVERAGE="coverage")
+        expansions = dict(COVERAGE="coverage")
         display_name = get_display_name("Test", host, python=python, **expansions)
         variant = create_variant(
             [f".{t}" for t in TOPOLOGIES],
@@ -237,15 +255,12 @@ def create_server_variants() -> list[BuildVariant]:
         )
         variants.append(variant)
 
-    # Test the rest of the pythons on linux.
-    for python, (auth, ssl), topology in zip_cycle(
-        CPYTHONS[1:-1] + PYPYS[:-1], AUTH_SSLS, TOPOLOGIES
-    ):
+    # Test the rest of the pythons.
+    for python in CPYTHONS[1:-1] + PYPYS[:-1]:
         display_name = f"Test {host}"
-        expansions = dict(AUTH=auth, SSL=ssl)
-        display_name = get_display_name("Test", host, python=python, **expansions)
+        display_name = get_display_name("Test", host, python=python)
         variant = create_variant(
-            [f".{topology}"],
+            SUB_TASKS,
             display_name,
             python=python,
             host=host,
@@ -255,18 +270,14 @@ def create_server_variants() -> list[BuildVariant]:
 
     # Test a subset on each of the other platforms.
     for host in ("macos", "macos-arm64", "win64", "win32"):
-        for (
-            python,
-            sync,
-            (auth, ssl),
-        ) in product(MIN_MAX_PYTHON, SYNCS, AUTH_SSLS):
-            test_suite = "default" if sync == "sync" else "default_async"
-            topology = TOPOLOGIES[0] if python == CPYTHONS[0] else TOPOLOGIES[-1]
-            tasks = [f".{topology}"]
+        for python in MIN_MAX_PYTHON:
+            tasks = SUB_TASKS
             # MacOS arm64 only works on server versions 6.0+
             if host == "macos-arm64":
-                tasks = [f".{topology} .{version}" for version in get_versions_from("6.0")]
-            expansions = dict(AUTH=auth, SSL=ssl, TEST_SUITES=test_suite, SKIP_CSOT_TESTS="true")
+                tasks = []
+                for version in get_versions_from("6.0"):
+                    tasks.extend(f"{t} .{version}" for t in SUB_TASKS)
+            expansions = dict(SKIP_CSOT_TESTS="true")
             display_name = get_display_name("Test", host, python=python, **expansions)
             variant = create_variant(
                 tasks,
@@ -285,8 +296,8 @@ def create_encryption_variants() -> list[BuildVariant]:
     tags = ["encryption_tag"]
     batchtime = BATCHTIME_WEEK
 
-    def get_encryption_expansions(encryption, ssl="ssl"):
-        expansions = dict(AUTH="auth", SSL=ssl, test_encryption="true")
+    def get_encryption_expansions(encryption):
+        expansions = dict(test_encryption="true")
         if "crypt_shared" in encryption:
             expansions["test_crypt_shared"] = "true"
         if "PyOpenSSL" in encryption:
@@ -295,13 +306,13 @@ def create_encryption_variants() -> list[BuildVariant]:
 
     host = "rhel8"
 
-    # Test against all server versions and topolgies for the three main python versions.
+    # Test against all server versions for the three main python versions.
     encryptions = ["Encryption", "Encryption crypt_shared", "Encryption PyOpenSSL"]
     for encryption, python in product(encryptions, [*MIN_MAX_PYTHON, PYPYS[-1]]):
         expansions = get_encryption_expansions(encryption)
         display_name = get_display_name(encryption, host, python=python, **expansions)
         variant = create_variant(
-            [f".{t}" for t in TOPOLOGIES],
+            SUB_TASKS,
             display_name,
             python=python,
             host=host,
@@ -312,13 +323,11 @@ def create_encryption_variants() -> list[BuildVariant]:
         variants.append(variant)
 
     # Test the rest of the pythons on linux for all server versions.
-    for encryption, python, ssl in zip_cycle(
-        encryptions, CPYTHONS[1:-1] + PYPYS[:-1], ["ssl", "nossl"]
-    ):
-        expansions = get_encryption_expansions(encryption, ssl)
+    for encryption, python, task in zip_cycle(encryptions, CPYTHONS[1:-1] + PYPYS[:-1], SUB_TASKS):
+        expansions = get_encryption_expansions(encryption)
         display_name = get_display_name(encryption, host, python=python, **expansions)
         variant = create_variant(
-            [".replica_set"],
+            [task],
             display_name,
             python=python,
             host=host,
@@ -330,8 +339,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     encryptions = ["Encryption", "Encryption crypt_shared"]
     task_names = [".latest .replica_set"]
     for host, encryption, python in product(["macos", "win64"], encryptions, MIN_MAX_PYTHON):
-        ssl = "ssl" if python == CPYTHONS[0] else "nossl"
-        expansions = get_encryption_expansions(encryption, ssl)
+        expansions = get_encryption_expansions(encryption)
         display_name = get_display_name(encryption, host, python=python, **expansions)
         variant = create_variant(
             task_names,
@@ -347,25 +355,20 @@ def create_encryption_variants() -> list[BuildVariant]:
 
 
 def create_load_balancer_variants():
-    # Load balancer tests - run all supported versions for all combinations of auth and ssl and system python.
+    # Load balancer tests - run all supported server versions using the lowest supported python.
     host = "rhel8"
-    task_names = ["load-balancer-test"]
     batchtime = BATCHTIME_WEEK
-    expansions_base = dict(test_loadbalancer="true")
     versions = get_versions_from("6.0")
     variants = []
-    pythons = CPYTHONS + PYPYS
-    for ind, (version, (auth, ssl)) in enumerate(product(versions, AUTH_SSLS)):
-        expansions = dict(VERSION=version, AUTH=auth, SSL=ssl)
-        expansions.update(expansions_base)
-        python = pythons[ind % len(pythons)]
-        display_name = get_display_name("Load Balancer", host, python=python, **expansions)
+    for version in versions:
+        python = CPYTHONS[0]
+        display_name = get_display_name("Load Balancer", host, python=python, version=version)
         variant = create_variant(
-            task_names,
+            [".load-balancer"],
             display_name,
             python=python,
             host=host,
-            expansions=expansions,
+            version=version,
             batchtime=batchtime,
         )
         variants.append(variant)
@@ -376,7 +379,8 @@ def create_compression_variants():
     # Compression tests - standalone versions of each server, across python versions, with and without c extensions.
     # PyPy interpreters are always tested without extensions.
     host = "rhel8"
-    task_names = dict(snappy=[".standalone"], zlib=[".standalone"], zstd=[".standalone !.4.0"])
+    base_task = ".standalone .noauth .nossl"
+    task_names = dict(snappy=[base_task], zlib=[base_task], zstd=[f"{base_task} !.4.0"])
     variants = []
     for ind, (compressor, c_ext) in enumerate(product(["snappy", "zlib", "zstd"], C_EXTS)):
         expansions = dict(COMPRESSORS=compressor)
@@ -435,24 +439,23 @@ def create_enterprise_auth_variants():
 def create_pyopenssl_variants():
     base_name = "PyOpenSSL"
     batchtime = BATCHTIME_WEEK
-    base_expansions = dict(test_pyopenssl="true", SSL="ssl")
+    expansions = dict(test_pyopenssl="true")
     variants = []
 
     for python in ALL_PYTHONS:
         # Only test "noauth" with min python.
         auth = "noauth" if python == CPYTHONS[0] else "auth"
+        ssl = "nossl" if auth == "noauth" else "ssl"
         if python == CPYTHONS[0]:
             host = "macos"
         elif python == CPYTHONS[-1]:
             host = "win64"
         else:
             host = "rhel8"
-        expansions = dict(AUTH=auth)
-        expansions.update(base_expansions)
 
         display_name = get_display_name(base_name, host, python=python)
         variant = create_variant(
-            [".replica_set", ".7.0"],
+            [f".replica_set .{auth} .{ssl}", f".7.0 .{auth} .{ssl}"],
             display_name,
             python=python,
             host=host,
@@ -472,12 +475,12 @@ def create_storage_engine_tests():
         python = CPYTHONS[0]
         expansions = dict(STORAGE_ENGINE=engine.lower())
         if engine == engines[0]:
-            tasks = [f".standalone .{v}" for v in ALL_VERSIONS]
+            tasks = [f".standalone .noauth .nossl .{v}" for v in ALL_VERSIONS]
         else:
             # MongoDB 4.2 drops support for MMAPv1
             versions = get_versions_until("4.0")
-            tasks = [f".standalone .{v}" for v in versions] + [
-                f".replica_set .{v}" for v in versions
+            tasks = [f".standalone .{v} .noauth .nossl" for v in versions] + [
+                f".replica_set .{v} .noauth .nossl" for v in versions
             ]
         display_name = get_display_name(f"Storage {engine}", host, python=python)
         variant = create_variant(
@@ -490,7 +493,7 @@ def create_storage_engine_tests():
 def create_versioned_api_tests():
     host = "rhel8"
     tags = ["versionedApi_tag"]
-    tasks = [f".standalone .{v}" for v in get_versions_from("5.0")]
+    tasks = [f".standalone .{v} .noauth .nossl" for v in get_versions_from("5.0")]
     variants = []
     types = ["require v1", "accept v2"]
 
@@ -521,7 +524,7 @@ def create_versioned_api_tests():
 
 def create_green_framework_variants():
     variants = []
-    tasks = [".standalone"]
+    tasks = [".standalone .noauth .nossl"]
     host = "rhel8"
     for python, framework in product([CPYTHONS[0], CPYTHONS[-2]], ["eventlet", "gevent"]):
         expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
@@ -533,11 +536,11 @@ def create_green_framework_variants():
     return variants
 
 
-def generate_no_c_ext_variants():
+def create_no_c_ext_variants():
     variants = []
     host = "rhel8"
     for python, topology in zip_cycle(CPYTHONS, TOPOLOGIES):
-        tasks = [f".{topology}"]
+        tasks = [f".{topology} .noauth .nossl"]
         expansions = dict()
         handle_c_ext(C_EXTS[0], expansions)
         display_name = get_display_name("No C Ext", host, python=python)
@@ -548,7 +551,7 @@ def generate_no_c_ext_variants():
     return variants
 
 
-def generate_atlas_data_lake_variants():
+def create_atlas_data_lake_variants():
     variants = []
     host = "rhel8"
     for python, c_ext in product(MIN_MAX_PYTHON, C_EXTS):
@@ -563,7 +566,7 @@ def generate_atlas_data_lake_variants():
     return variants
 
 
-def generate_mod_wsgi_variants():
+def create_mod_wsgi_variants():
     variants = []
     host = "ubuntu22"
     tasks = [
@@ -582,7 +585,7 @@ def generate_mod_wsgi_variants():
     return variants
 
 
-def generate_disable_test_commands_variants():
+def create_disable_test_commands_variants():
     host = "rhel8"
     expansions = dict(AUTH="auth", SSL="ssl", DISABLE_TEST_COMMANDS="1")
     python = CPYTHONS[0]
@@ -591,7 +594,7 @@ def generate_disable_test_commands_variants():
     return [create_variant(tasks, display_name, host=host, python=python, expansions=expansions)]
 
 
-def generate_serverless_variants():
+def create_serverless_variants():
     host = "rhel8"
     batchtime = BATCHTIME_WEEK
     expansions = dict(test_serverless="true", AUTH="auth", SSL="ssl")
@@ -610,7 +613,73 @@ def generate_serverless_variants():
     ]
 
 
-def generate_aws_auth_variants():
+def create_oidc_auth_variants():
+    variants = []
+    for host in ["rhel8", "macos", "win64"]:
+        variants.append(
+            create_variant(
+                ["testoidc_task_group"],
+                get_display_name("OIDC Auth", host),
+                host=host,
+                batchtime=BATCHTIME_WEEK * 2,
+            )
+        )
+    return variants
+
+
+def create_search_index_variants():
+    host = "rhel8"
+    python = CPYTHONS[0]
+    return [
+        create_variant(
+            ["test_atlas_task_group_search_indexes"],
+            get_display_name("Search Index Helpers", host, python=python),
+            python=python,
+            host=host,
+        )
+    ]
+
+
+def create_mockupdb_variants():
+    host = "rhel8"
+    python = CPYTHONS[0]
+    return [
+        create_variant(
+            ["mockupdb"],
+            get_display_name("MockupDB Tests", host, python=python),
+            python=python,
+            host=host,
+        )
+    ]
+
+
+def create_doctests_variants():
+    host = "rhel8"
+    python = CPYTHONS[0]
+    return [
+        create_variant(
+            ["doctests"],
+            get_display_name("Doctests", host, python=python),
+            python=python,
+            host=host,
+        )
+    ]
+
+
+def create_atlas_connect_variants():
+    host = "rhel8"
+    return [
+        create_variant(
+            ["atlas-connect"],
+            get_display_name("Atlas connect", host, python=python),
+            python=python,
+            host=host,
+        )
+        for python in MIN_MAX_PYTHON
+    ]
+
+
+def create_aws_auth_variants():
     variants = []
     tasks = [
         "aws-auth-test-4.4",
@@ -640,10 +709,146 @@ def generate_aws_auth_variants():
     return variants
 
 
+def create_alternative_hosts_variants():
+    expansions = dict(SKIP_HATCH="true")
+    batchtime = BATCHTIME_WEEK
+    variants = []
+
+    host = "rhel7"
+    variants.append(
+        create_variant(
+            [".5.0 .standalone"],
+            get_display_name("OpenSSL 1.0.2", "rhel7", python=CPYTHONS[0], **expansions),
+            host=host,
+            python=CPYTHONS[0],
+            batchtime=batchtime,
+            expansions=expansions,
+        )
+    )
+
+    hosts = ["rhel92-fips", "rhel8-zseries-small", "rhel8-power-small", "rhel82-arm64-small"]
+    host_names = ["RHEL9-FIPS", "RHEL8-zseries", "RHEL8-POWER8", "RHEL8-arm64"]
+    for host, host_name in zip(hosts, host_names):
+        variants.append(
+            create_variant(
+                [".6.0 .standalone"],
+                display_name=get_display_name(f"Other hosts {host_name}", **expansions),
+                expansions=expansions,
+                batchtime=batchtime,
+                run_on=[host],
+            )
+        )
+    return variants
+
+
+##############
+# Tasks
+##############
+
+
+def create_server_tasks():
+    tasks = []
+    for topo, version, (auth, ssl), sync in product(TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, SYNCS):
+        name = f"test-{version}-{topo}-{auth}-{ssl}-{sync}".lower()
+        tags = [version, topo, auth, ssl, sync]
+        bootstrap_vars = dict(
+            VERSION=version,
+            TOPOLOGY=topo if topo != "standalone" else "server",
+            AUTH=auth,
+            SSL=ssl,
+        )
+        bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
+        test_vars = dict(
+            AUTH=auth,
+            SSL=ssl,
+            SYNC=sync,
+            TEST_SUITES="default" if sync == "sync" else "default_async",
+        )
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
+    return tasks
+
+
+def create_load_balancer_tasks():
+    tasks = []
+    for auth, ssl in AUTH_SSLS:
+        name = f"test-load-balancer-{auth}-{ssl}".lower()
+        tags = ["load-balancer", auth, ssl]
+        bootstrap_vars = dict(TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, LOAD_BALANCER="true")
+        bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
+        balancer_func = FunctionCall(func="run load-balancer")
+        test_vars = dict(AUTH=auth, SSL=ssl, test_loadbalancer="true")
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(
+            EvgTask(name=name, tags=tags, commands=[bootstrap_func, balancer_func, test_func])
+        )
+    return tasks
+
+
 ##################
 # Generate Config
 ##################
 
-variants = create_server_variants()
-# print(len(variants))
-generate_yaml(variants=variants)
+
+def write_variants_to_file():
+    mod = sys.modules[__name__]
+    here = Path(__file__).absolute().parent
+    target = here.parent / "generated_configs" / "variants.yml"
+    if target.exists():
+        target.unlink()
+    with target.open("w") as fid:
+        fid.write("buildvariants:\n")
+
+    for name, func in getmembers(mod, isfunction):
+        if not name.endswith("_variants"):
+            continue
+        if not name.startswith("create_"):
+            raise ValueError("Variant creators must start with create_")
+        title = name.replace("create_", "").replace("_variants", "").replace("_", " ").capitalize()
+        project = EvgProject(tasks=None, buildvariants=func())
+        out = ShrubService.generate_yaml(project).splitlines()
+        with target.open("a") as fid:
+            fid.write(f"  # {title} tests\n")
+            for line in out[1:]:
+                fid.write(f"{line}\n")
+            fid.write("\n")
+
+    # Remove extra trailing newline:
+    data = target.read_text().splitlines()
+    with target.open("w") as fid:
+        for line in data[:-1]:
+            fid.write(f"{line}\n")
+
+
+def write_tasks_to_file():
+    mod = sys.modules[__name__]
+    here = Path(__file__).absolute().parent
+    target = here.parent / "generated_configs" / "tasks.yml"
+    if target.exists():
+        target.unlink()
+    with target.open("w") as fid:
+        fid.write("tasks:\n")
+
+    for name, func in getmembers(mod, isfunction):
+        if not name.endswith("_tasks"):
+            continue
+        if not name.startswith("create_"):
+            raise ValueError("Task creators must start with create_")
+        title = name.replace("create_", "").replace("_tasks", "").replace("_", " ").capitalize()
+        project = EvgProject(tasks=func(), buildvariants=None)
+        out = ShrubService.generate_yaml(project).splitlines()
+        with target.open("a") as fid:
+            fid.write(f"  # {title} tests\n")
+            for line in out[1:]:
+                fid.write(f"{line}\n")
+            fid.write("\n")
+
+    # Remove extra trailing newline:
+    data = target.read_text().splitlines()
+    with target.open("w") as fid:
+        for line in data[:-1]:
+            fid.write(f"{line}\n")
+
+
+write_variants_to_file()
+write_tasks_to_file()
