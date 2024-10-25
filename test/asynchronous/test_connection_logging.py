@@ -22,7 +22,7 @@ import sys
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes
 
 _IS_SYNC = False
 
