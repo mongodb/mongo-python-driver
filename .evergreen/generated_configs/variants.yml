@@ -1065,9 +1065,9 @@ buildvariants:
   # Server tests
   - name: test-rhel8-py3.9-cov
     tasks:
-      - name: .standalone
-      - name: .replica_set
-      - name: .sharded_cluster
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
     display_name: Test RHEL8 py3.9 cov
     run_on:
       - rhel87-small
@@ -1077,9 +1077,9 @@ buildvariants:
     tags: [coverage_tag]
   - name: test-rhel8-py3.13-cov
     tasks:
-      - name: .standalone
-      - name: .replica_set
-      - name: .sharded_cluster
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
     display_name: Test RHEL8 py3.13 cov
     run_on:
       - rhel87-small
@@ -1089,9 +1089,9 @@ buildvariants:
     tags: [coverage_tag]
   - name: test-rhel8-pypy3.10-cov
     tasks:
-      - name: .standalone
-      - name: .replica_set
-      - name: .sharded_cluster
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
     display_name: Test RHEL8 pypy3.10 cov
     run_on:
       - rhel87-small

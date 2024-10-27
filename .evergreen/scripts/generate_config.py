@@ -246,7 +246,7 @@ def create_server_variants() -> list[BuildVariant]:
         expansions = dict(COVERAGE="coverage")
         display_name = get_display_name("Test", host, python=python, **expansions)
         variant = create_variant(
-            [f".{t}" for t in TOPOLOGIES],
+            [f".{t} .sync_async" for t in TOPOLOGIES],
             display_name,
             python=python,
             host=host,
