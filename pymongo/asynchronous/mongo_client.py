@@ -2354,11 +2354,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             if not write_concern:
                 write_concern = self.write_concern
 
-        if not write_concern.acknowledged and verbose_results:
+        if write_concern and not write_concern.acknowledged and verbose_results:
             raise InvalidOperation(
                 "Cannot request unacknowledged write concern and verbose results"
             )
-        elif not write_concern.acknowledged and ordered:
+        elif write_concern and not write_concern.acknowledged and ordered:
             raise InvalidOperation("Cannot request unacknowledged write concern and ordered writes")
 
         common.validate_list("models", models)
