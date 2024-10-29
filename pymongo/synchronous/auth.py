@@ -326,21 +326,6 @@ def _authenticate_x509(credentials: MongoCredential, conn: Connection) -> None:
     conn.command("$external", cmd)
 
 
-def _authenticate_mongo_cr(credentials: MongoCredential, conn: Connection) -> None:
-    """Authenticate using MONGODB-CR."""
-    source = credentials.source
-    username = credentials.username
-    password = credentials.password
-    # Get a nonce
-    response = conn.command(source, {"getnonce": 1})
-    nonce = response["nonce"]
-    key = _auth_key(nonce, username, password)
-
-    # Actually authenticate
-    query = {"authenticate": 1, "user": username, "nonce": nonce, "key": key}
-    conn.command(source, query)
-
-
 def _authenticate_default(credentials: MongoCredential, conn: Connection) -> None:
     if conn.max_wire_version >= 7:
         if conn.negotiated_mechs:
@@ -360,7 +345,6 @@ def _authenticate_default(credentials: MongoCredential, conn: Connection) -> Non
 
 _AUTH_MAP: Mapping[str, Callable[..., None]] = {
     "GSSAPI": _authenticate_gssapi,
-    "MONGODB-CR": _authenticate_mongo_cr,
     "MONGODB-X509": _authenticate_x509,
     "MONGODB-AWS": _authenticate_aws,
     "MONGODB-OIDC": _authenticate_oidc,  # type:ignore[dict-item]

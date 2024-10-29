@@ -142,7 +142,6 @@ class TestURI(unittest.TestCase):
         self.assertEqual({"fsync": True}, split_options("fsync=true"))
         self.assertEqual({"fsync": False}, split_options("fsync=false"))
         self.assertEqual({"authmechanism": "GSSAPI"}, split_options("authMechanism=GSSAPI"))
-        self.assertEqual({"authmechanism": "MONGODB-CR"}, split_options("authMechanism=MONGODB-CR"))
         self.assertEqual(
             {"authmechanism": "SCRAM-SHA-1"}, split_options("authMechanism=SCRAM-SHA-1")
         )
@@ -294,32 +293,6 @@ class TestURI(unittest.TestCase):
         self.assertEqual(res, parse_uri("mongodb://localhost/?readPreference=secondary"))
 
         # Various authentication tests
-        res = copy.deepcopy(orig)
-        res["options"] = {"authmechanism": "MONGODB-CR"}
-        res["username"] = "user"
-        res["password"] = "password"
-        self.assertEqual(
-            res, parse_uri("mongodb://user:password@localhost/?authMechanism=MONGODB-CR")
-        )
-
-        res = copy.deepcopy(orig)
-        res["options"] = {"authmechanism": "MONGODB-CR", "authsource": "bar"}
-        res["username"] = "user"
-        res["password"] = "password"
-        res["database"] = "foo"
-        self.assertEqual(
-            res,
-            parse_uri(
-                "mongodb://user:password@localhost/foo?authSource=bar;authMechanism=MONGODB-CR"
-            ),
-        )
-
-        res = copy.deepcopy(orig)
-        res["options"] = {"authmechanism": "MONGODB-CR"}
-        res["username"] = "user"
-        res["password"] = ""
-        self.assertEqual(res, parse_uri("mongodb://user:@localhost/?authMechanism=MONGODB-CR"))
-
         res = copy.deepcopy(orig)
         res["username"] = "user@domain.com"
         res["password"] = "password"

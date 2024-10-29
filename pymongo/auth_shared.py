@@ -34,7 +34,6 @@ from pymongo.errors import ConfigurationError
 MECHANISMS = frozenset(
     [
         "GSSAPI",
-        "MONGODB-CR",
         "MONGODB-OIDC",
         "MONGODB-X509",
         "MONGODB-AWS",
