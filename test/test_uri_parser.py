@@ -294,6 +294,32 @@ class TestURI(unittest.TestCase):
 
         # Various authentication tests
         res = copy.deepcopy(orig)
+        res["options"] = {"authmechanism": "SCRAM-SHA-256"}
+        res["username"] = "user"
+        res["password"] = "password"
+        self.assertEqual(
+            res, parse_uri("mongodb://user:password@localhost/?authMechanism=SCRAM-SHA-256")
+        )
+
+        res = copy.deepcopy(orig)
+        res["options"] = {"authmechanism": "SCRAM-SHA-256", "authsource": "bar"}
+        res["username"] = "user"
+        res["password"] = "password"
+        res["database"] = "foo"
+        self.assertEqual(
+            res,
+            parse_uri(
+                "mongodb://user:password@localhost/foo?authSource=bar;authMechanism=SCRAM-SHA-256"
+            ),
+        )
+
+        res = copy.deepcopy(orig)
+        res["options"] = {"authmechanism": "SCRAM-SHA-256"}
+        res["username"] = "user"
+        res["password"] = ""
+        self.assertEqual(res, parse_uri("mongodb://user:@localhost/?authMechanism=SCRAM-SHA-256"))
+
+        res = copy.deepcopy(orig)
         res["username"] = "user@domain.com"
         res["password"] = "password"
         res["database"] = "foo"
