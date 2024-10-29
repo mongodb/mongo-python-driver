@@ -83,10 +83,18 @@ GSSAPIProperties = namedtuple(
 """Mechanism properties for GSSAPI authentication."""
 
 
-_CANONICALIZE_HOST_NAME_VALUES = ["false", "true", "none", "forward", "forwardAndReverse"]
-
 _AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 """Mechanism properties for MONGODB-AWS authentication."""
+
+
+def _validate_canonicalize_host_name(value: str | bool) -> str | bool:
+    valid_names = [False, True, "none", "forward", "forwardAndReverse"]
+    if value in ["true", "false", True, False]:
+        return value in ["true", True]
+
+    if value not in valid_names:
+        raise ValueError(f"CANONICALIZE_HOST_NAME '{value}' not in valid options: {valid_names}")
+    return value
 
 
 def _build_credentials_tuple(
@@ -107,10 +115,7 @@ def _build_credentials_tuple(
         service_name = properties.get("SERVICE_NAME", "mongodb")
         service_host = properties.get("SERVICE_HOST", None)
         canonicalize = properties.get("CANONICALIZE_HOST_NAME", "false")
-        if canonicalize not in _CANONICALIZE_HOST_NAME_VALUES:
-            raise ConfigurationError(
-                f"CANONICALIZE_HOST_NAME '{canonicalize}' not in valid options: {_CANONICALIZE_HOST_NAME_VALUES}"
-            )
+        canonicalize = _validate_canonicalize_host_name(canonicalize)
         service_realm = properties.get("SERVICE_REALM")
         props = GSSAPIProperties(
             service_name=service_name,

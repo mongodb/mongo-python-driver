@@ -477,7 +477,9 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
             )
 
         if key == "CANONICALIZE_HOST_NAME":
-            props[key] = validate_boolean_or_string(key, val)
+            from pymongo.auth_shared import _validate_canonicalize_host_name
+
+            props[key] = _validate_canonicalize_host_name(val)
         else:
             props[key] = val
 
