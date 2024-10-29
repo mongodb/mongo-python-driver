@@ -486,7 +486,7 @@
       ]
     },
     {
-      "description": "partialResult is set when first operation fails during an unordered bulk write (summary)",
+      "description": "partialResult is set when second operation fails during an unordered bulk write (summary)",
       "operations": [
         {
           "object": "client0",
