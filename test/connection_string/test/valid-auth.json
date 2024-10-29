@@ -282,7 +282,7 @@
         "authmechanism": "GSSAPI",
         "authmechanismproperties": {
           "SERVICE_NAME": "other",
-          "CANONICALIZE_HOST_NAME": true,
+          "CANONICALIZE_HOST_NAME": "true",
           "SERVICE_HOST": "example.com"
         }
       }
