@@ -139,8 +139,8 @@ SRV_SERVICE_NAME = "mongodb"
 # Default value for serverMonitoringMode
 SERVER_MONITORING_MODE = "auto"  # poll/stream/auto
 
-# Options that must raise an error instead of warning if they invalidate.
-_OPTION_MUST_RAISE = ["CANONICALIZE_HOST_NAME"]
+# Auth mechanism properties that must raise an error instead of warning if they invalidate.
+_MECH_PROP_MUST_RAISE = ["CANONICALIZE_HOST_NAME"]
 
 
 def partition_node(node: str) -> tuple[str, int]:
@@ -873,7 +873,9 @@ def get_validated_options(
             validator = _get_validator(opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key)
             validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
-            if warn and opt not in _OPTION_MUST_RAISE:
+            if normed_key == "authmechanismproperties" and _MECH_PROP_MUST_RAISE in str(exc):
+                raise
+            if warn:
                 warnings.warn(str(exc), stacklevel=2)
             else:
                 raise
