@@ -220,29 +220,8 @@
       "options": null
     },
     {
-      "description": "Escaped user info and database (MONGODB-CR)",
-      "uri": "mongodb://%24am:f%3Azzb%40z%2Fz%3D@127.0.0.1/admin%3F?authMechanism=MONGODB-CR",
-      "valid": true,
-      "warning": false,
-      "hosts": [
-        {
-          "type": "ipv4",
-          "host": "127.0.0.1",
-          "port": null
-        }
-      ],
-      "auth": {
-        "username": "$am",
-        "password": "f:zzb@z/z=",
-        "db": "admin?"
-      },
-      "options": {
-        "authmechanism": "MONGODB-CR"
-      }
-    },
-    {
-      "description": "Subdelimiters in user/pass don't need escaping (MONGODB-CR)",
-      "uri": "mongodb://!$&'()*+,;=:!$&'()*+,;=@127.0.0.1/admin?authMechanism=MONGODB-CR",
+      "description": "Subdelimiters in user/pass don't need escaping (PLAIN)",
+      "uri": "mongodb://!$&'()*+,;=:!$&'()*+,;=@127.0.0.1/admin?authMechanism=PLAIN",
       "valid": true,
       "warning": false,
       "hosts": [
@@ -258,7 +237,7 @@
         "db": "admin"
       },
       "options": {
-        "authmechanism": "MONGODB-CR"
+        "authmechanism": "PLAIN"
       }
     },
     {
@@ -284,7 +263,7 @@
     },
     {
       "description": "Escaped username (GSSAPI)",
-      "uri": "mongodb://user%40EXAMPLE.COM:secret@localhost/?authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:true&authMechanism=GSSAPI",
+      "uri": "mongodb://user%40EXAMPLE.COM:secret@localhost/?authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:forward,SERVICE_HOST:example.com&authMechanism=GSSAPI",
       "valid": true,
       "warning": false,
       "hosts": [
@@ -303,7 +282,8 @@
         "authmechanism": "GSSAPI",
         "authmechanismproperties": {
           "SERVICE_NAME": "other",
-          "CANONICALIZE_HOST_NAME": true
+          "SERVICE_HOST": "example.com",
+          "CANONICALIZE_HOST_NAME": "forward"
         }
       }
     },
