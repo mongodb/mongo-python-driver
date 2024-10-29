@@ -216,7 +216,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         <https://en.wikipedia.org/wiki/TXT_record>`_. See the
         `Initial DNS Seedlist Discovery spec
         <https://github.com/mongodb/specifications/blob/master/source/
-        initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.rst>`_
+        initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.md>`_
         for more details. Note that the use of SRV URIs implicitly enables
         TLS support. Pass tls=false in the URI to override.
 
@@ -365,7 +365,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             :meth:`~pymongo.collection.Collection.aggregate` using the ``$out``
             pipeline operator and any operation with an unacknowledged write
             concern (e.g. {w: 0})). See
-            https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.rst
+            https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.md
           - `retryReads`: (boolean) Whether supported read operations
             executed within this MongoClient will be retried once after a
             network error. Defaults to ``True``.
@@ -392,7 +392,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             transient errors such as network failures, database upgrades, and
             replica set failovers. For an exact definition of which errors
             trigger a retry, see the `retryable reads specification
-            <https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.rst>`_.
+            <https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.md>`_.
 
           - `compressors`: Comma separated list of compressors for wire
             protocol compression. The list is used to negotiate a compressor

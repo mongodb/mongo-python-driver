@@ -14,7 +14,7 @@
 
 """Shared utility functions and constants for the unified test format runner.
 
-https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
+https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.md
 """
 from __future__ import annotations
 
