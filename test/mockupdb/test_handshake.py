@@ -229,6 +229,39 @@ class TestHandshake(unittest.TestCase):
                         future()
                     return
 
+    def test_client_handshake_saslSupportedMechs_unknown(self):
+        server = MockupDB()
+        server.run()
+        self.addCleanup(server.stop)
+
+        primary_response = OpReply(
+            "ismaster",
+            True,
+            minWireVersion=2,
+            maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
+            saslSupportedMechs=["SCRAM-SHA-256", "does_not_exist"],
+        )
+        client = MongoClient(
+            server.uri, authmechanism="PLAIN", username="username", password="password"
+        )
+
+        self.addCleanup(client.close)
+
+        # New monitoring connections send data during handshake.
+        heartbeat = server.receives("ismaster")
+        heartbeat.ok(primary_response)
+
+        future = go(client.db.command, "whatever")
+        for request in server:
+            if request.matches("ismaster"):
+                request.ok(primary_response)
+            elif request.matches("saslStart"):
+                request.ok("saslStart", True, conversationId=1, payload=b"", done=True, ok=1)
+            else:
+                request.ok()
+                future()
+                return
+
     def test_handshake_load_balanced(self):
         self.hello_with_option_helper(OpMsg, loadBalanced=True)
         with self.assertRaisesRegex(AssertionError, "does not match"):
