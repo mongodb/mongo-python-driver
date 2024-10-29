@@ -4,8 +4,10 @@ from test import PyMongoTestCase
 
 import pytest
 
+from pymongo import InsertOne
+
 try:
-    from mockupdb import MockupDB, OpMsg, going
+    from mockupdb import MockupDB, OpMsg, go, going
 
     _HAVE_MOCKUPDB = True
 except ImportError:
@@ -25,7 +27,7 @@ class TestIdOrdering(PyMongoTestCase):
             isWritablePrimary=True,
             msg="isdbgrid",
             minWireVersion=0,
-            maxWireVersion=20,
+            maxWireVersion=25,
             helloOk=True,
             serviceId=ObjectId(),
         )
@@ -35,6 +37,16 @@ class TestIdOrdering(PyMongoTestCase):
         client = self.simple_client(server.uri, loadBalanced=True)
         collection = client.db.coll
         with going(collection.insert_one, {"x": 1}):
-            request = server.receives(OpMsg({"insert": "coll"}))
+            request = server.receives()
             self.assertEqual("_id", next(iter(request["documents"][0])))
+            request.reply({"ok": 1})
+
+        with going(collection.bulk_write, [InsertOne({"x1": 1})]):
+            request = server.receives()
+            self.assertEqual("_id", next(iter(request["documents"][0])))
+            request.reply({"ok": 1})
+
+        with going(client.bulk_write, [InsertOne(namespace="db.coll", document={"x2": 1})]):
+            request = server.receives()
+            self.assertEqual("_id", next(iter(request["ops"][0]["document"])))
             request.reply({"ok": 1})

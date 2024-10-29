@@ -133,7 +133,10 @@ class _AsyncClientBulk:
         validate_is_document_type("document", document)
         # Generate ObjectId client side.
         if not (isinstance(document, RawBSONDocument) or "_id" in document):
-            document["_id"] = ObjectId()
+            new_document = {"_id": ObjectId()}
+            new_document.update(document)
+            document.clear()
+            document.update(new_document)
         cmd = {"insert": -1, "document": document}
         self.ops.append(("insert", cmd))
         self.namespaces.append(namespace)
