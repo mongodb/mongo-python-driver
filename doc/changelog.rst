@@ -1581,7 +1581,7 @@ Changes in Version 3.8.0 (2019/04/22)
   must upgrade to PyPy3.5+.
 
 - :class:`~bson.objectid.ObjectId` now implements the `ObjectID specification
-  version 0.2 <https://github.com/mongodb/specifications/blob/master/source/bson-objectid/objectid.rst>`_.
+  version 0.2 <https://github.com/mongodb/specifications/blob/master/source/bson-objectid/objectid.md>`_.
 - For better performance and to better follow the GridFS spec,
   :class:`~gridfs.grid_file.GridOut` now uses a single cursor to read all the
   chunks in the file. Previously, each chunk in the file was queried
