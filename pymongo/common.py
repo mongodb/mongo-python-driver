@@ -139,6 +139,9 @@ SRV_SERVICE_NAME = "mongodb"
 # Default value for serverMonitoringMode
 SERVER_MONITORING_MODE = "auto"  # poll/stream/auto
 
+# Options that must raise an error instead of warning if they invalidate.
+_OPTION_MUST_RAISE = ["CANONICALIZE_HOST_NAME"]
+
 
 def partition_node(node: str) -> tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""
@@ -870,7 +873,7 @@ def get_validated_options(
             validator = _get_validator(opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key)
             validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
-            if warn:
+            if warn and opt not in _OPTION_MUST_RAISE:
                 warnings.warn(str(exc), stacklevel=2)
             else:
                 raise
