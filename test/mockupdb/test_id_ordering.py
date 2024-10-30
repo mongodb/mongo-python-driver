@@ -50,3 +50,21 @@ class TestIdOrdering(PyMongoTestCase):
             request = server.receives()
             self.assertEqual("_id", next(iter(request["ops"][0]["document"])))
             request.reply({"ok": 1})
+
+        # Re-ordering user-supplied _id fields is not required by the spec, but PyMongo does it for performance reasons
+        with going(collection.insert_one, {"x": 1, "_id": 111}):
+            request = server.receives()
+            self.assertEqual("_id", next(iter(request["documents"][0])))
+            request.reply({"ok": 1})
+
+        with going(collection.bulk_write, [InsertOne({"x1": 1, "_id": 1111})]):
+            request = server.receives()
+            self.assertEqual("_id", next(iter(request["documents"][0])))
+            request.reply({"ok": 1})
+
+        with going(
+            client.bulk_write, [InsertOne(namespace="db.coll", document={"x2": 1, "_id": 11111})]
+        ):
+            request = server.receives()
+            self.assertEqual("_id", next(iter(request["ops"][0]["document"])))
+            request.reply({"ok": 1})

@@ -21,6 +21,7 @@ from __future__ import annotations
 import copy
 import datetime
 import logging
+from collections import ChainMap
 from collections.abc import MutableMapping
 from itertools import islice
 from typing import (
@@ -133,10 +134,9 @@ class _AsyncClientBulk:
         validate_is_document_type("document", document)
         # Generate ObjectId client side.
         if not (isinstance(document, RawBSONDocument) or "_id" in document):
-            new_document = {"_id": ObjectId()}
-            new_document.update(document)
-            document.clear()
-            document.update(new_document)
+            document = ChainMap(document, {"_id": ObjectId()})
+        elif not isinstance(document, RawBSONDocument) and "_id" in document:
+            document = ChainMap(document, {"_id": document["_id"]})
         cmd = {"insert": -1, "document": document}
         self.ops.append(("insert", cmd))
         self.namespaces.append(namespace)
