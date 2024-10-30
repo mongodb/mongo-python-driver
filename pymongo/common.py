@@ -873,7 +873,9 @@ def get_validated_options(
             validator = _get_validator(opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key)
             validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
-            if normed_key == "authmechanismproperties" and _MECH_PROP_MUST_RAISE in str(exc):
+            if normed_key == "authmechanismproperties" and any(
+                p in str(exc) for p in _MECH_PROP_MUST_RAISE
+            ):
                 raise
             if warn:
                 warnings.warn(str(exc), stacklevel=2)
