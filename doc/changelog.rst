@@ -1027,7 +1027,7 @@ See the `PyMongo 4.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18463
-.. _DBRef specification: https://github.com/mongodb/specifications/blob/5a8c8d7/source/dbref.rst
+.. _DBRef specification: https://github.com/mongodb/specifications/blob/master/source/dbref/dbref.md
 
 Changes in Version 3.13.0 (2022/11/01)
 --------------------------------------
@@ -1562,7 +1562,7 @@ Unavoidable breaking changes:
   bumped to 1.16.0. This is a breaking change for applications that use
   PyMongo's SRV support with a version of ``dnspython`` older than 1.16.0.
 
-.. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
+.. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.md
 
 
 Issues Resolved
@@ -1586,7 +1586,7 @@ Changes in Version 3.8.0 (2019/04/22)
   must upgrade to PyPy3.5+.
 
 - :class:`~bson.objectid.ObjectId` now implements the `ObjectID specification
-  version 0.2 <https://github.com/mongodb/specifications/blob/master/source/objectid.rst>`_.
+  version 0.2 <https://github.com/mongodb/specifications/blob/master/source/bson-objectid/objectid.md>`_.
 - For better performance and to better follow the GridFS spec,
   :class:`~gridfs.grid_file.GridOut` now uses a single cursor to read all the
   chunks in the file. Previously, each chunk in the file was queried
@@ -1948,7 +1948,7 @@ Highlights include:
   :class:`~pymongo.operations.UpdateOne`, and
   :class:`~pymongo.operations.UpdateMany`.
 - Implemented the `MongoDB Extended JSON
-  <https://github.com/mongodb/specifications/blob/master/source/extended-json.rst>`_
+  <https://github.com/mongodb/specifications/blob/master/source/extended-json/extended-json.md>`_
   specification.
 - :class:`~bson.decimal128.Decimal128` now works when cdecimal is installed.
 - PyMongo is now tested against a wider array of operating systems and CPU
