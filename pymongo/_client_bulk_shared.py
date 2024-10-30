@@ -16,7 +16,7 @@
 """Constants, types, and classes shared across Client Bulk Write API implementations."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, NoReturn
+from typing import TYPE_CHECKING, Any, ChainMap, Mapping, MutableMapping, NoReturn
 
 from pymongo.errors import ClientBulkWriteException, OperationFailure
 from pymongo.helpers_shared import _get_wce_doc
@@ -63,6 +63,10 @@ def _throw_client_bulk_write_exception(
     """Raise a ClientBulkWriteException from the full result."""
     # retryWrites on MMAPv1 should raise an actionable error.
     if full_result["writeErrors"]:
+        # Unpack ChainMaps into the original document only
+        for doc in full_result["writeErrors"]:
+            if "document" in doc["op"] and isinstance(doc["op"]["document"], ChainMap):
+                doc["op"]["document"] = doc["op"]["document"].maps[0]
         full_result["writeErrors"].sort(key=lambda error: error["idx"])
         err = full_result["writeErrors"][0]
         code = err["code"]

@@ -133,10 +133,16 @@ class _AsyncClientBulk:
         """Add an insert document to the list of ops."""
         validate_is_document_type("document", document)
         # Generate ObjectId client side.
-        if not (isinstance(document, RawBSONDocument) or "_id" in document):
-            document = ChainMap(document, {"_id": ObjectId()})
-        elif not isinstance(document, RawBSONDocument) and "_id" in document:
-            document = ChainMap(document, {"_id": document["_id"]})
+        if not isinstance(document, RawBSONDocument):
+            # Since the data document itself is nested within the insert document
+            # it won't be automatically re-ordered by the BSON conversion.
+            # We use ChainMap here to make the _id field the first field instead.
+            if "_id" in document:
+                document = ChainMap(document, {"_id": document["_id"]})
+            else:
+                id = ObjectId()
+                document["_id"] = id
+                document = ChainMap(document, {"_id": id})
         cmd = {"insert": -1, "document": document}
         self.ops.append(("insert", cmd))
         self.namespaces.append(namespace)

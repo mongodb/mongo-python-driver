@@ -48,22 +48,31 @@ class TestIdOrdering(PyMongoTestCase):
         server.run()
         self.addCleanup(server.stop)
 
+        # We also verify that the original document contains an _id field after each insert
+        document = {"x": 1}
+
         client = self.simple_client(server.uri, loadBalanced=True)
         collection = client.db.coll
-        with going(collection.insert_one, {"x": 1}):
+        with going(collection.insert_one, document):
             request = server.receives()
             self.assertEqual("_id", next(iter(request["documents"][0])))
             request.reply({"ok": 1})
+        self.assertIn("_id", document)
 
-        with going(collection.bulk_write, [InsertOne({"x1": 1})]):
+        document = {"x1": 1}
+
+        with going(collection.bulk_write, [InsertOne(document)]):
             request = server.receives()
             self.assertEqual("_id", next(iter(request["documents"][0])))
             request.reply({"ok": 1})
+        self.assertIn("_id", document)
 
-        with going(client.bulk_write, [InsertOne(namespace="db.coll", document={"x2": 1})]):
+        document = {"x2": 1}
+        with going(client.bulk_write, [InsertOne(namespace="db.coll", document=document)]):
             request = server.receives()
             self.assertEqual("_id", next(iter(request["ops"][0]["document"])))
             request.reply({"ok": 1})
+        self.assertIn("_id", document)
 
         # Re-ordering user-supplied _id fields is not required by the spec, but PyMongo does it for performance reasons
         with going(collection.insert_one, {"x": 1, "_id": 111}):

@@ -190,7 +190,7 @@ from __future__ import annotations
 
 import datetime
 from collections import abc, namedtuple
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Any, ChainMap, Mapping, Optional, Sequence
 
 from bson.objectid import ObjectId
 from pymongo.hello import Hello, HelloCompat
@@ -625,6 +625,11 @@ class CommandStartedEvent(_CommandEvent):
             raise ValueError(f"{command!r} is not a valid command")
         # Command name must be first key.
         command_name = next(iter(command))
+        # Unpack ChainMaps into the original document only
+        if command_name == "bulkWrite" and "ops" in command:
+            for doc in command["ops"]:
+                if "document" in doc and isinstance(doc["document"], ChainMap):
+                    doc["document"] = doc["document"].maps[0]
         super().__init__(
             command_name,
             request_id,
