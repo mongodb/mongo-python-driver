@@ -24,6 +24,10 @@ PyMongo 4.11 brings a number of changes including:
   :meth:`~pymongo.collection.Collection.update_one`, :meth:`~pymongo.collection.Collection.replace_one`,
   :class:`~pymongo.operations.UpdateOne`, and
   :class:`~pymongo.operations.UpdateMany`,
+- :meth:`~pymongo.mongo_client.MongoClient.bulk_write` and
+  :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write` now throw an error
+  when ``ordered=True`` or ``verboseResults=True`` are used with unacknowledged writes.
+  These are unavoidable breaking changes.
 
 Issues Resolved
 ...............
