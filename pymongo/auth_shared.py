@@ -77,13 +77,23 @@ MongoCredential = namedtuple(
 
 
 GSSAPIProperties = namedtuple(
-    "GSSAPIProperties", ["service_name", "canonicalize_host_name", "service_realm"]
+    "GSSAPIProperties", ["service_name", "canonicalize_host_name", "service_realm", "service_host"]
 )
 """Mechanism properties for GSSAPI authentication."""
 
 
 _AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 """Mechanism properties for MONGODB-AWS authentication."""
+
+
+def _validate_canonicalize_host_name(value: str | bool) -> str | bool:
+    valid_names = [False, True, "none", "forward", "forwardAndReverse"]
+    if value in ["true", "false", True, False]:
+        return value in ["true", True]
+
+    if value not in valid_names:
+        raise ValueError(f"CANONICALIZE_HOST_NAME '{value}' not in valid options: {valid_names}")
+    return value
 
 
 def _build_credentials_tuple(
@@ -102,12 +112,15 @@ def _build_credentials_tuple(
             raise ValueError("authentication source must be $external or None for GSSAPI")
         properties = extra.get("authmechanismproperties", {})
         service_name = properties.get("SERVICE_NAME", "mongodb")
-        canonicalize = bool(properties.get("CANONICALIZE_HOST_NAME", False))
+        service_host = properties.get("SERVICE_HOST", None)
+        canonicalize = properties.get("CANONICALIZE_HOST_NAME", "false")
+        canonicalize = _validate_canonicalize_host_name(canonicalize)
         service_realm = properties.get("SERVICE_REALM")
         props = GSSAPIProperties(
             service_name=service_name,
             canonicalize_host_name=canonicalize,
             service_realm=service_realm,
+            service_host=service_host,
         )
         # Source is always $external.
         return MongoCredential(mech, "$external", user, passwd, props, None)
