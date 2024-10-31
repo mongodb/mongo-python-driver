@@ -96,10 +96,10 @@ class TestGSSAPI(AsyncPyMongoTestCase):
         cls.service_realm_required = (
             GSSAPI_SERVICE_REALM is not None and GSSAPI_SERVICE_REALM not in GSSAPI_PRINCIPAL
         )
-        mech_properties = f"SERVICE_NAME:{GSSAPI_SERVICE_NAME}"
-        mech_properties += f",CANONICALIZE_HOST_NAME:{GSSAPI_CANONICALIZE}"
-        if GSSAPI_SERVICE_REALM is not None:
-            mech_properties += f",SERVICE_REALM:{GSSAPI_SERVICE_REALM}"
+        mech_properties = dict(
+            SERVICE_NAME=GSSAPI_SERVICE_NAME, CANONICALIZE_HOST_NAME=GSSAPI_CANONICALIZE
+        )
+        mech_properties["SERVICE_REALM"] = GSSAPI_SERVICE_REALM
         cls.mech_properties = mech_properties
 
     async def test_credentials_hashing(self):
@@ -267,6 +267,64 @@ class TestGSSAPI(AsyncPyMongoTestCase):
             for thread in threads:
                 thread.join()
                 self.assertTrue(thread.success)
+
+    async def test_gssapi_canonicalize_host_name(self):
+        # Use the equivalent named CANONICALIZE_HOST_NAME.
+        if self.mech_properties["CANONICALIZE_HOST_NAME"] == "true":
+            self.mech_properties["CANONICALIZE_HOST_NAME"] = "forwardAndReverse"
+        else:
+            self.mech_properties["CANONICALIZE_HOST_NAME"] = "none"
+        client = self.simple_client(
+            GSSAPI_HOST,
+            GSSAPI_PORT,
+            username=GSSAPI_PRINCIPAL,
+            password=GSSAPI_PASS,
+            authMechanism="GSSAPI",
+            authMechanismProperties=self.mech_properties,
+        )
+        await client.server_info()
+
+        if self.mech_properties["CANONICALIZE_HOST_NAME"] == "none":
+            return
+
+        # Test with "forward".
+        self.mech_properties["CANONICALIZE_HOST_NAME"] = "forward"
+        client = self.simple_client(
+            GSSAPI_HOST,
+            GSSAPI_PORT,
+            username=GSSAPI_PRINCIPAL,
+            password=GSSAPI_PASS,
+            authMechanism="GSSAPI",
+            authMechanismProperties=self.mech_properties,
+        )
+        await client.server_info()
+
+    async def test_gssapi_host_name(self):
+        props = self.mech_properties
+        props["SERVICE_HOST"] = "example.com"
+
+        # Authenticate with authMechanismProperties.
+        client = self.simple_client(
+            GSSAPI_HOST,
+            GSSAPI_PORT,
+            username=GSSAPI_PRINCIPAL,
+            password=GSSAPI_PASS,
+            authMechanism="GSSAPI",
+            authMechanismProperties=self.mech_properties,
+        )
+        with self.assertRaises(OperationFailure):
+            await client.server_info()
+
+        props["SERVICE_HOST"] = GSSAPI_HOST
+        client = self.simple_client(
+            GSSAPI_HOST,
+            GSSAPI_PORT,
+            username=GSSAPI_PRINCIPAL,
+            password=GSSAPI_PASS,
+            authMechanism="GSSAPI",
+            authMechanismProperties=self.mech_properties,
+        )
+        await client.server_info()
 
 
 class TestSASLPlain(AsyncPyMongoTestCase):
