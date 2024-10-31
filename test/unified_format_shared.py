@@ -431,10 +431,12 @@ class MatchEvaluatorUtil:
         self.test.assertLessEqual(actual[key_to_compare], spec)
 
     def _operation_matchAsDocument(self, spec, actual, key_to_compare):
-        self._match_document(spec, json_util.loads(actual[key_to_compare]), False)
+        self._match_document(spec, json_util.loads(actual[key_to_compare]), False, test=True)
 
     def _operation_matchAsRoot(self, spec, actual, key_to_compare):
-        self._match_document(spec, actual, True)
+        if key_to_compare:
+            actual = actual[key_to_compare]
+        self._match_document(spec, actual, True, test=True)
 
     def _evaluate_special_operation(self, opname, spec, actual, key_to_compare):
         method_name = "_operation_{}".format(opname.strip("$"))
@@ -487,7 +489,7 @@ class MatchEvaluatorUtil:
 
     def _match_document(self, expectation, actual, is_root, test=False):
         if self._evaluate_if_special_operation(expectation, actual):
-            return
+            return True
 
         self.test.assertIsInstance(actual, abc.Mapping)
         for key, value in expectation.items():
@@ -519,25 +521,26 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual, abc.MutableSequence)
             for e, a in zip(expectation, actual):
                 if isinstance(e, abc.Mapping):
-                    self._match_document(e, a, is_root=not in_recursive_call, test=test)
+                    res = self._match_document(e, a, is_root=not in_recursive_call, test=test)
                 else:
-                    self.match_result(e, a, in_recursive_call=True, test=test)
-                return None
+                    res = self.match_result(e, a, in_recursive_call=True, test=test)
+                if not res:
+                    return False
+            return True
 
         # account for flexible numerics in element-wise comparison
-        if isinstance(expectation, int) or isinstance(expectation, float):
+        if isinstance(expectation, (int, float)):
             if test:
                 self.test.assertEqual(expectation, actual)
             else:
                 return expectation == actual
-            return None
         else:
             if test:
                 self.test.assertIsInstance(actual, type(expectation))
                 self.test.assertEqual(expectation, actual)
             else:
                 return isinstance(actual, type(expectation)) and expectation == actual
-            return None
+        return True
 
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
         for field, expected in spec.items():

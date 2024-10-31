@@ -9,9 +9,7 @@
   "tests": [
     {
       "description": "foo",
-      "operations": [
-
-      ]
+      "operations": []
     }
   ]
 }
