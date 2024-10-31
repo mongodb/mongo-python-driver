@@ -1604,7 +1604,7 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest):
         return self._test_automatic(expected_document_extjson, {"secret_gcp": "string0"})
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#deadlock-tests
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#deadlock-tests
 class TestDeadlockProse(EncryptionIntegrationTest):
     def setUp(self):
         self.client_test = self.rs_or_single_client(
@@ -1829,7 +1829,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self.assertEqual(len(self.topology_listener.results["opened"]), 1)
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#14-decryption-events
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#14-decryption-events
 class TestDecryptProse(EncryptionIntegrationTest):
     def setUp(self):
         self.client = client_context.client
@@ -1901,7 +1901,7 @@ class TestDecryptProse(EncryptionIntegrationTest):
         self.assertEqual(event.reply["cursor"]["firstBatch"][0]["encrypted"], self.cipher_text)
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#bypass-spawning-mongocryptd
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#bypass-spawning-mongocryptd
 class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     @unittest.skipIf(
         os.environ.get("TEST_CRYPT_SHARED"),
@@ -1982,7 +1982,7 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
         with self.assertRaises(ServerSelectionTimeoutError):
             no_mongocryptd_client.db.command("ping")
 
-    # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#20-bypass-creating-mongocryptd-client-when-shared-library-is-loaded
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#20-bypass-creating-mongocryptd-client-when-shared-library-is-loaded
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_client_via_loading_shared_library(self):
         connection_established = False
@@ -2058,7 +2058,7 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
             self.client_encrypted.create_data_key("aws", master_key=key)
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#kms-tls-options-tests
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#kms-tls-options-tests
 class TestKmsTLSOptions(EncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def setUp(self):
@@ -2264,7 +2264,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         self.client_encryption_with_names.create_data_key("kmip:with_tls")
 
 
-# https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.rst#unique-index-on-keyaltnames
+# https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.md#unique-index-on-keyaltnames
 class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
     def setUp(self):
         self.client = client_context.client
@@ -2293,7 +2293,7 @@ class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
         assert key_doc["keyAltNames"] == ["def"]
 
 
-# https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.rst#explicit-encryption
+# https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.md#explicit-encryption
 class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(7, 0, -1)
@@ -2407,7 +2407,7 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         self.assertEqual(decrypted, val)
 
 
-# https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.rst#rewrap
+# https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.md#rewrap
 class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
     MASTER_KEYS: Mapping[str, Mapping[str, Any]] = {
         "aws": {
@@ -2489,7 +2489,7 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
             )
 
 
-# https://github.com/mongodb/specifications/blob/5cf3ed/source/client-side-encryption/tests/README.rst#on-demand-aws-credentials
+# https://github.com/mongodb/specifications/blob/5cf3ed/source/client-side-encryption/tests/README.md#on-demand-aws-credentials
 class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
     def setUp(self):
         super().setUp()
@@ -2851,7 +2851,7 @@ class TestRangeQueryDefaultsProse(EncryptionIntegrationTest):
         assert len(payload) > len(self.payload_defaults)
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#automatic-data-encryption-keys
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#automatic-data-encryption-keys
 class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(7, 0, -1)

@@ -22,7 +22,7 @@ is emitted and parsed, with the default being the Relaxed Extended JSON format.
 when :const:`CANONICAL_JSON_OPTIONS` or :const:`LEGACY_JSON_OPTIONS` is
 provided, respectively.
 
-.. _Extended JSON: https://github.com/mongodb/specifications/blob/master/source/extended-json.rst
+.. _Extended JSON: https://github.com/mongodb/specifications/blob/master/source/extended-json/extended-json.md
 
 Example usage (deserialization):
 

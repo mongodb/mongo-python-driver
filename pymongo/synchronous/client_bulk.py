@@ -679,11 +679,11 @@ class _ClientBulk:
             _throw_client_bulk_write_exception(full_result, self.verbose_results)
         return full_result
 
-    def execute_command_unack_unordered(
+    def execute_command_unack(
         self,
         conn: Connection,
     ) -> None:
-        """Execute commands with OP_MSG and w=0 writeConcern, unordered."""
+        """Execute commands with OP_MSG and w=0 writeConcern. Always unordered."""
         db_name = "admin"
         cmd_name = "bulkWrite"
         listeners = self.client._event_listeners
@@ -702,8 +702,8 @@ class _ClientBulk:
         while self.idx_offset < self.total_ops:
             # Construct the server command, specifying the relevant options.
             cmd = {"bulkWrite": 1}
-            cmd["errorsOnly"] = not self.verbose_results
-            cmd["ordered"] = self.ordered  # type: ignore[assignment]
+            cmd["errorsOnly"] = True
+            cmd["ordered"] = False
             if self.bypass_doc_val is not None:
                 cmd["bypassDocumentValidation"] = self.bypass_doc_val
             cmd["writeConcern"] = {"w": 0}  # type: ignore[assignment]
@@ -721,43 +721,6 @@ class _ClientBulk:
 
             self.idx_offset += len(to_send_ops)
 
-    def execute_command_unack_ordered(
-        self,
-        conn: Connection,
-    ) -> None:
-        """Execute commands with OP_MSG and w=0 WriteConcern, ordered."""
-        full_result: MutableMapping[str, Any] = {
-            "anySuccessful": False,
-            "error": None,
-            "writeErrors": [],
-            "writeConcernErrors": [],
-            "nInserted": 0,
-            "nUpserted": 0,
-            "nMatched": 0,
-            "nModified": 0,
-            "nDeleted": 0,
-            "insertResults": {},
-            "updateResults": {},
-            "deleteResults": {},
-        }
-        # Ordered bulk writes have to be acknowledged so that we stop
-        # processing at the first error, even when the application
-        # specified unacknowledged writeConcern.
-        initial_write_concern = WriteConcern()
-        op_id = _randint()
-        try:
-            self._execute_command(
-                initial_write_concern,
-                None,
-                conn,
-                op_id,
-                False,
-                full_result,
-                self.write_concern,
-            )
-        except OperationFailure:
-            pass
-
     def execute_no_results(
         self,
         conn: Connection,
@@ -773,9 +736,7 @@ class _ClientBulk:
                 "Cannot set bypass_document_validation with unacknowledged write concern"
             )
 
-        if self.ordered:
-            return self.execute_command_unack_ordered(conn)
-        return self.execute_command_unack_unordered(conn)
+        return self.execute_command_unack(conn)
 
     def execute(
         self,
