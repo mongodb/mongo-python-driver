@@ -169,7 +169,7 @@ class TestGSSAPI(PyMongoTestCase):
 
         # Log in using URI, with authMechanismProperties.
         mech_properties_str = ""
-        for key, value in self.mech_properties:
+        for key, value in self.mech_properties.values():
             mech_properties_str += f"{key}:{value},"
         mech_uri = uri + f"&authMechanismProperties={mech_properties_str[:-1]}"
         client = self.simple_client(mech_uri)
