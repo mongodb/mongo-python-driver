@@ -209,7 +209,7 @@ def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -> None
         props = credentials.mechanism_properties
         # Starting here and continuing through the while loop below - establish
         # the security context. See RFC 4752, Section 3.1, first paragraph.
-        host = props.host_name or conn.address[0]
+        host = props.service_host or conn.address[0]
         host = _canonicalize_hostname(host, props.canonicalize_host_name)
         service = props.service_name + "@" + host
         if props.service_realm is not None:
