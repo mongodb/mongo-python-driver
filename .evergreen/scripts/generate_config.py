@@ -467,7 +467,7 @@ def create_pyopenssl_variants():
     return variants
 
 
-def create_storage_engine_variants():
+def create_storage_engine_tests():
     host = "rhel8"
     engines = ["InMemory", "MMAPv1"]
     variants = []
@@ -490,34 +490,29 @@ def create_storage_engine_variants():
     return variants
 
 
-def create_versioned_api_variants():
+def create_versioned_api_tests():
     host = "rhel8"
     tags = ["versionedApi_tag"]
+    tasks = [f".standalone .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")]
     variants = []
+    types = ["require v1", "accept v2"]
 
-    for python in MIN_MAX_PYTHON:
+    # All python versions across platforms.
+    for python, test_type in product(MIN_MAX_PYTHON, types):
         expansions = dict(AUTH="auth")
-        tasks = [f".{v} .auth .ssl .sync_async" for v in get_versions_from("5.0")]
-        # REQUIRE_API_VERSION is set to make drivers-evergreen-tools
-        # start a cluster with the requireApiVersion parameter.
-        expansions["REQUIRE_API_VERSION"] = "1"
-        # MONGODB_API_VERSION is the apiVersion to use in the test suite.
-        expansions["MONGODB_API_VERSION"] = "1"
-        base_display_name = "Versioned API require v1"
-        display_name = get_display_name(base_display_name, host, python=python, **expansions)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, tags=tags, expansions=expansions
-        )
-        variants.append(variant)
-
-    for python in MIN_MAX_PYTHON:
-        expansions = dict()
-        tasks = [f".{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")]
-        # Test against a cluster with acceptApiVersion2 but without
-        # requireApiVersion, and don't automatically add apiVersion to
-        # clients created in the test suite.
-        expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
-        base_display_name = "Versioned API accept v2"
+        # Test against a cluster with requireApiVersion=1.
+        if test_type == types[0]:
+            # REQUIRE_API_VERSION is set to make drivers-evergreen-tools
+            # start a cluster with the requireApiVersion parameter.
+            expansions["REQUIRE_API_VERSION"] = "1"
+            # MONGODB_API_VERSION is the apiVersion to use in the test suite.
+            expansions["MONGODB_API_VERSION"] = "1"
+        else:
+            # Test against a cluster with acceptApiVersion2 but without
+            # requireApiVersion, and don't automatically add apiVersion to
+            # clients created in the test suite.
+            expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
+        base_display_name = f"Versioned API {test_type}"
         display_name = get_display_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
             tasks, display_name, host=host, python=python, tags=tags, expansions=expansions
