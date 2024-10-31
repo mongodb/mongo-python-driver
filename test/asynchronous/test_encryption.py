@@ -86,6 +86,7 @@ from pymongo.errors import (
     EncryptedCollectionError,
     EncryptionError,
     InvalidOperation,
+    NetworkTimeout,
     OperationFailure,
     ServerSelectionTimeoutError,
     WriteError,
@@ -3131,6 +3132,108 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
                 ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
             ):
                 await self.mongocryptd_client.db.test.insert_one({"x": 1}, session=s)
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#3-clientencryption
+class TestCSOTProse(AsyncEncryptionIntegrationTest):
+    mongocryptd_client: AsyncMongoClient
+    MONGOCRYPTD_PORT = 27020
+    LOCAL_MASTERKEY = Binary(
+        base64.b64decode(
+            b"Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
+        ),
+        UUID_SUBTYPE,
+    )
+
+    async def asyncSetUp(self) -> None:
+        self.listener = OvertCommandListener()
+        self.client = await self.async_single_client(
+            read_preference=ReadPreference.PRIMARY_PREFERRED, event_listeners=[self.listener]
+        )
+        await self.client.keyvault.datakeys.drop()
+        self.key_vault_client = await self.async_rs_or_single_client(
+            timeoutMS=50, event_listeners=[self.listener]
+        )
+        self.client_encryption = self.create_client_encryption(
+            key_vault_namespace="keyvault.datakeys",
+            kms_providers={"local": {"key": self.LOCAL_MASTERKEY}},
+            key_vault_client=self.key_vault_client,
+            codec_options=OPTS,
+        )
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#createdatakey
+    async def test_01_create_data_key(self):
+        async with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["insert"], "blockConnection": True, "blockTimeMS": 100},
+            }
+        ):
+            self.listener.reset()
+            with self.assertRaisesRegex(EncryptionError, "timed out"):
+                await self.client_encryption.create_data_key("local")
+
+        events = self.listener.started_events
+        self.assertEqual(1, len(events))
+        self.assertEqual("insert", events[0].command_name)
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#encrypt
+    async def test_02_encrypt(self):
+        data_key_id = await self.client_encryption.create_data_key("local")
+        self.assertEqual(4, data_key_id.subtype)
+        async with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "blockConnection": True, "blockTimeMS": 100},
+            }
+        ):
+            self.listener.reset()
+            with self.assertRaisesRegex(EncryptionError, "timed out"):
+                await self.client_encryption.encrypt(
+                    "hello",
+                    Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+                    key_id=data_key_id,
+                )
+
+        events = self.listener.started_events
+        self.assertEqual(1, len(events))
+        self.assertEqual("find", events[0].command_name)
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#decrypt
+    async def test_03_decrypt(self):
+        data_key_id = await self.client_encryption.create_data_key("local")
+        self.assertEqual(4, data_key_id.subtype)
+
+        encrypted = await self.client_encryption.encrypt(
+            "hello", Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_id=data_key_id
+        )
+        self.assertEqual(6, encrypted.subtype)
+
+        await self.key_vault_client.close()
+        self.key_vault_client = await self.async_rs_or_single_client(
+            timeoutMS=50, event_listeners=[self.listener]
+        )
+        await self.client_encryption.close()
+        self.client_encryption = self.create_client_encryption(
+            key_vault_namespace="keyvault.datakeys",
+            kms_providers={"local": {"key": self.LOCAL_MASTERKEY}},
+            key_vault_client=self.key_vault_client,
+            codec_options=OPTS,
+        )
+
+        async with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "blockConnection": True, "blockTimeMS": 100},
+            }
+        ):
+            self.listener.reset()
+            with self.assertRaisesRegex(EncryptionError, "timed out"):
+                await self.client_encryption.decrypt(encrypted)
+
+        events = self.listener.started_events
+        self.assertEqual(1, len(events))
+        self.assertEqual("find", events[0].command_name)
 
 
 if __name__ == "__main__":

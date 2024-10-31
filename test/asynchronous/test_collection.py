@@ -64,6 +64,7 @@ from pymongo.errors import (
     InvalidDocument,
     InvalidName,
     InvalidOperation,
+    NetworkTimeout,
     OperationFailure,
     WriteConcernError,
 )
@@ -2276,6 +2277,31 @@ class AsyncTestCollection(AsyncIntegrationTest):
                     await helper(*args, let=let)  # type: ignore
         for helper, args in helpers:
             await helper(*args, let={})  # type: ignore
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#1-multi-batch-inserts
+    @async_client_context.require_standalone
+    @async_client_context.require_version_min(4, 4, -1)
+    async def test_01_multi_batch_inserts(self):
+        client = await self.async_single_client(read_preference=ReadPreference.PRIMARY_PREFERRED)
+        await client.db.coll.drop()
+
+        async with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["insert"], "blockConnection": True, "blockTimeMS": 1010},
+            }
+        ):
+            listener = OvertCommandListener()
+            client2 = await self.async_single_client(
+                timeoutMS=2000,
+                read_preference=ReadPreference.PRIMARY_PREFERRED,
+                event_listeners=[listener],
+            )
+            docs = [{"a": "b" * 1000000} for _ in range(50)]
+            with self.assertRaises(NetworkTimeout):
+                await client2.db.coll.insert_many(docs)
+
+        self.assertEqual(2, len(listener.started_events))
 
 
 if __name__ == "__main__":

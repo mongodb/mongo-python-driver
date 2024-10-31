@@ -48,7 +48,7 @@ from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.helpers import anext
 from pymongo.common import _MAX_END_SESSIONS
-from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
+from pymongo.errors import ConfigurationError, InvalidOperation, NetworkTimeout, OperationFailure
 from pymongo.operations import IndexModel, InsertOne, UpdateOne
 from pymongo.read_concern import ReadConcern
 

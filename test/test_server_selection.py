@@ -17,9 +17,10 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 
 from pymongo import MongoClient, ReadPreference
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import NetworkTimeout, ServerSelectionTimeoutError
 from pymongo.hello import HelloCompat
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
@@ -198,6 +199,96 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         with self.assertRaisesRegex(ServerSelectionTimeoutError, "No primary available for writes"):
             topology.select_server(writable_server_selector, _Op.TEST, server_selection_timeout=0.1)
         self.assertEqual(selector.call_count, 0)
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#8-server-selection
+class TestServerSelectionCSOT(IntegrationTest):
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#serverselectiontimeoutms-honored-if-timeoutms-is-not-set
+    def test_08_01_server_selection_timeoutMS_honored(self):
+        client = self.single_client("mongodb://invalid/?serverSelectionTimeoutMS=10")
+        with self.assertRaises(ServerSelectionTimeoutError):
+            start = time.time_ns() * 1000
+            client.admin.command({"ping": 1})
+
+        end = time.time_ns() * 1000
+
+        self.assertLessEqual(start - end, 15)
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#timeoutms-honored-for-server-selection-if-its-lower-than-serverselectiontimeoutms
+    def test_08_02_timeoutMS_honored_for_server_selection_if_lower(self):
+        client = self.single_client("mongodb://invalid/?timeoutMS=10&serverSelectionTimeoutMS=20")
+        with self.assertRaises(ServerSelectionTimeoutError):
+            start = time.time_ns() * 1_000_000
+            client.admin.command({"ping": 1})
+        end = time.time_ns() * 1_000_000
+
+        self.assertLessEqual(start - end, 15)
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#serverselectiontimeoutms-honored-for-server-selection-if-its-lower-than-timeoutms
+    def test_08_03_serverselectiontimeoutms_honored_for_server_selection_if_lower(self):
+        client = self.single_client("mongodb://invalid/?timeoutMS=20&serverSelectionTimeoutMS=10")
+        with self.assertRaises(ServerSelectionTimeoutError):
+            start = time.time_ns() * 1_000_000
+            client.admin.command({"ping": 1})
+
+        end = time.time_ns() * 1_000_000
+
+        self.assertLessEqual(start - end, 15)
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#serverselectiontimeoutms-honored-for-server-selection-if-timeoutms0
+    def test_08_04_serverselectiontimeoutms_honored_for_server_selection_if_zero_timeoutms(self):
+        client = self.single_client("mongodb://invalid/?timeoutMS=0&serverSelectionTimeoutMS=10")
+        with self.assertRaises(ServerSelectionTimeoutError):
+            start = time.time_ns() * 1_000_000
+            client.admin.command({"ping": 1})
+
+        end = time.time_ns() * 1_000_000
+
+        self.assertLessEqual(start - end, 15)
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#timeoutms-honored-for-connection-handshake-commands-if-its-lower-than-serverselectiontimeoutms
+    @client_context.require_auth
+    def test_08_05_timeoutms_honored_for_handshake_if_lower(self):
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {
+                    "failCommands": ["saslContinue"],
+                    "blockConnection": True,
+                    "blockTimeMS": 15,
+                },
+            }
+        ):
+            client = self.single_client(timeoutMS=10, serverSelectionTimeoutMS=20)
+            with self.assertRaises(NetworkTimeout):
+                start = time.time_ns() * 1_000_000
+                client.db.coll.insert_one({"x": 1})
+
+            end = time.time_ns() * 1_000_000
+
+            self.assertLessEqual(start - end, 15)
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#serverselectiontimeoutms-honored-for-connection-handshake-commands-if-its-lower-than-timeoutms
+    @client_context.require_auth
+    def test_08_06_serverSelectionTimeoutMS_honored_for_handshake_if_lower(self):
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {
+                    "failCommands": ["saslContinue"],
+                    "blockConnection": True,
+                    "blockTimeMS": 15,
+                },
+            }
+        ):
+            client = self.single_client(timeoutMS=20, serverSelectionTimeoutMS=10)
+            with self.assertRaises(NetworkTimeout):
+                start = time.time_ns() * 1_000_000
+                client.db.coll.insert_one({"x": 1})
+
+            end = time.time_ns() * 1_000_000
+
+            self.assertLessEqual(start - end, 15)
 
 
 if __name__ == "__main__":

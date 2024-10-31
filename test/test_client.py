@@ -63,6 +63,7 @@ from test.test_binary import BinaryData
 from test.utils import (
     NTHREADS,
     CMAPListener,
+    EventListener,
     FunctionCallRecorder,
     assertRaisesExactly,
     delay,
@@ -102,7 +103,13 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
-from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
+from pymongo.monitoring import (
+    ConnectionClosedEvent,
+    ConnectionCreatedEvent,
+    ConnectionReadyEvent,
+    ServerHeartbeatListener,
+    ServerHeartbeatStartedEvent,
+)
 from pymongo.pool_options import _MAX_METADATA_SIZE, _METADATA, ENV_VAR_K8S, PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
@@ -2539,6 +2546,44 @@ class TestClientPool(MockClientTest):
         self.assertEqual(len(arbiter.pool.conns), 1)
         # Arbiter pool is marked ready.
         self.assertEqual(listener.event_count(monitoring.PoolReadyEvent), 1)
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#4-background-connection-pooling
+class TestClientCSOTProse(IntegrationTest):
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#timeoutms-is-refreshed-for-each-handshake-command
+    @client_context.require_auth
+    @client_context.require_version_min(4, 4, -1)
+    def test_02_timeoutMS_refreshed_for_each_handshake_command(self):
+        listener = CMAPListener()
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {
+                    "failCommands": ["hello", "isMaster", "saslContinue"],
+                    "blockConnection": True,
+                    "blockTimeMS": 15,
+                    "appName": "refreshTimeoutBackgroundPoolTest",
+                },
+            }
+        ):
+            _ = self.single_client(
+                minPoolSize=1,
+                timeoutMS=20,
+                appname="refreshTimeoutBackgroundPoolTest",
+                event_listeners=[listener],
+            )
+
+        def predicate():
+            return (
+                listener.event_count(ConnectionCreatedEvent) == 1
+                and listener.event_count(ConnectionReadyEvent) == 1
+            )
+
+        wait_until(
+            predicate,
+            "didn't ever see a ConnectionCreatedEvent and a ConnectionReadyEvent",
+        )
 
 
 if __name__ == "__main__":

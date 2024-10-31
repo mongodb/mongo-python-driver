@@ -472,7 +472,11 @@ _WITH_TRANSACTION_RETRY_TIME_LIMIT = 120
 
 def _within_time_limit(start_time: float) -> bool:
     """Are we within the with_transaction retry limit?"""
-    return time.monotonic() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
+    timeout = _csot.get_timeout()
+    if timeout:
+        return time.monotonic() - start_time < timeout
+    else:
+        return time.monotonic() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
 
 
 _T = TypeVar("_T")
@@ -511,6 +515,7 @@ class ClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
+        self._timeout = client.options.timeout
 
     def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -596,6 +601,7 @@ class ClientSession:
             return parent_val
         return getattr(self.client, name)
 
+    @_csot.apply
     def with_transaction(
         self,
         callback: Callable[[ClientSession], _T],
@@ -694,7 +700,8 @@ class ClientSession:
                 ret = callback(self)
             except Exception as exc:
                 if self.in_transaction:
-                    self.abort_transaction()
+                    with _csot.reset():
+                        self.abort_transaction()
                 if (
                     isinstance(exc, PyMongoError)
                     and exc.has_error_label("TransientTransactionError")
@@ -813,6 +820,7 @@ class ClientSession:
         finally:
             self._transaction.state = _TxnState.COMMITTED
 
+    @_csot.apply
     def abort_transaction(self) -> None:
         """Abort a multi-statement transaction.
 

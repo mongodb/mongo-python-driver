@@ -37,6 +37,7 @@ from bson.son import SON
 from gridfs.errors import CorruptGridFile, NoFile
 from pymongo.errors import (
     ConfigurationError,
+    NetworkTimeout,
     NotPrimaryError,
     ServerSelectionTimeoutError,
     WriteConcernError,
@@ -523,6 +524,79 @@ class TestGridfsBucketReplicaSet(IntegrationTest):
         # Connects, doesn't create index.
         self.assertRaises(NoFile, gfs.open_download_stream_by_name, "test_filename")
         self.assertRaises(NotPrimaryError, gfs.upload_from_stream, "test_filename", b"data")
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#6-gridfs---upload
+class TestGridFsCSOT(IntegrationTest):
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#uploads-via-openuploadstream-can-be-timed-out
+    def test_06_01_uploads_via_open_upload_stream_can_be_timed_out(self):
+        self.client.db.fs.files.drop()
+        self.client.db.fs.chunks.drop()
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["insert"], "blockConnection": True, "blockTimeMS": 200},
+            }
+        ):
+            client = self.single_client(timeoutMS=150)
+            bucket = gridfs.GridFSBucket(client.db)
+            upload_stream = bucket.open_upload_stream("filename")
+            upload_stream.write(b"0x12")
+            with self.assertRaises(NetworkTimeout):
+                upload_stream.close()
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#aborting-an-upload-stream-can-be-timed-out
+    def test_06_02_aborting_an_upload_stream_can_be_timed_out(self):
+        self.client.db.fs.files.drop()
+        self.client.db.fs.chunks.drop()
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["delete"], "blockConnection": True, "blockTimeMS": 200},
+            }
+        ):
+            client = self.single_client(timeoutMS=150)
+            bucket = gridfs.GridFSBucket(client.db, chunk_size_bytes=2)
+            upload_stream = bucket.open_upload_stream("filename")
+            upload_stream.write(b"0x010x020x030x04")
+            with self.assertRaises(NetworkTimeout):
+                upload_stream.abort()
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#7-gridfs---download
+    def test_07_gridfs_download_csot(self):
+        self.client.db.fs.files.drop()
+        self.client.db.fs.chunks.drop()
+
+        id = ObjectId("000000000000000000000005")
+
+        self.client.db.fs.files.insert_one(
+            {
+                "_id": id,
+                "length": 10,
+                "chunkSize": 4,
+                "uploadDate": {"$date": "1970-01-01T00:00:00.000Z"},
+                "md5": "57d83cd477bfb1ccd975ab33d827a92b",
+                "filename": "length-10",
+                "contentType": "application/octet-stream",
+                "aliases": [],
+                "metadata": {},
+            }
+        )
+
+        client = self.single_client(timeoutMS=150)
+        bucket = gridfs.GridFSBucket(client.db)
+        download_stream = bucket.open_download_stream(id)
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "blockConnection": True, "blockTimeMS": 200},
+            }
+        ):
+            with self.assertRaises(NetworkTimeout):
+                download_stream.read()
 
 
 if __name__ == "__main__":
