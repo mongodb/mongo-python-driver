@@ -274,32 +274,33 @@ class TestGSSAPI(AsyncPyMongoTestCase):
 
     async def test_gssapi_canonicalize_host_name(self):
         # Use the equivalent named CANONICALIZE_HOST_NAME.
-        if self.mech_properties["CANONICALIZE_HOST_NAME"] == "true":
-            self.mech_properties["CANONICALIZE_HOST_NAME"] = "forwardAndReverse"
+        props = self.mech_properties.copy()
+        if props["CANONICALIZE_HOST_NAME"] == "true":
+            props["CANONICALIZE_HOST_NAME"] = "forwardAndReverse"
         else:
-            self.mech_properties["CANONICALIZE_HOST_NAME"] = "none"
+            props["CANONICALIZE_HOST_NAME"] = "none"
         client = self.simple_client(
             GSSAPI_HOST,
             GSSAPI_PORT,
             username=GSSAPI_PRINCIPAL,
             password=GSSAPI_PASS,
             authMechanism="GSSAPI",
-            authMechanismProperties=self.mech_properties,
+            authMechanismProperties=props,
         )
         await client.server_info()
 
-        if self.mech_properties["CANONICALIZE_HOST_NAME"] == "none":
+        if props["CANONICALIZE_HOST_NAME"] == "none":
             return
 
         # Test with "forward".
-        self.mech_properties["CANONICALIZE_HOST_NAME"] = "forward"
+        props["CANONICALIZE_HOST_NAME"] = "forward"
         client = self.simple_client(
             GSSAPI_HOST,
             GSSAPI_PORT,
             username=GSSAPI_PRINCIPAL,
             password=GSSAPI_PASS,
             authMechanism="GSSAPI",
-            authMechanismProperties=self.mech_properties,
+            authMechanismProperties=props,
         )
         await client.server_info()
 
