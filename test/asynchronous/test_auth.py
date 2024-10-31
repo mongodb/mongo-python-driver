@@ -35,7 +35,7 @@ from test.utils import AllowListEventListener, delay, ignore_deprecations
 import pytest
 
 from pymongo import AsyncMongoClient, monitoring
-from pymongo.asynchronous.auth import HAVE_KERBEROS
+from pymongo.asynchronous.auth import HAVE_KERBEROS, _canonicalize_hostname
 from pymongo.auth_shared import _build_credentials_tuple
 from pymongo.errors import OperationFailure
 from pymongo.hello import HelloCompat
@@ -330,6 +330,12 @@ class TestGSSAPI(AsyncPyMongoTestCase):
             authMechanismProperties=self.mech_properties,
         )
         await client.server_info()
+
+    def test_canonicalize_host_name(self):
+        result = _canonicalize_hostname(GSSAPI_HOST, "forward")
+        self.assertIn("compute-1.amazonaws.com", result)
+        result = _canonicalize_hostname(GSSAPI_HOST, "forwardAndReverse")
+        self.assertEqual(result, GSSAPI_HOST)
 
 
 class TestSASLPlain(AsyncPyMongoTestCase):

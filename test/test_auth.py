@@ -40,7 +40,7 @@ from pymongo.errors import OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.read_preferences import ReadPreference
 from pymongo.saslprep import HAVE_STRINGPREP
-from pymongo.synchronous.auth import HAVE_KERBEROS
+from pymongo.synchronous.auth import HAVE_KERBEROS, _canonicalize_hostname
 
 _IS_SYNC = True
 
@@ -330,6 +330,12 @@ class TestGSSAPI(PyMongoTestCase):
             authMechanismProperties=self.mech_properties,
         )
         client.server_info()
+
+    def test_canonicalize_host_name(self):
+        result = _canonicalize_hostname(GSSAPI_HOST, "forward")
+        self.assertIn("compute-1.amazonaws.com", result)
+        result = _canonicalize_hostname(GSSAPI_HOST, "forwardAndReverse")
+        self.assertEqual(result, GSSAPI_HOST)
 
 
 class TestSASLPlain(PyMongoTestCase):
