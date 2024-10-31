@@ -1119,7 +1119,7 @@ def _client_batched_op_msg_impl(
         if real_op_type == "insert":
             doc = op_doc["document"]
             if not isinstance(doc, RawBSONDocument):
-                doc_to_encode = op_doc.copy()  # Shallow copy
+                doc_to_encode = op_doc.copy()  # type: ignore[attr-defined] # Shallow copy
                 doc_to_encode["document"] = ChainMap(doc, {"_id": doc["_id"]})  # type: ignore[index]
 
         # Encode current operation doc and, if newly added, namespace doc.
