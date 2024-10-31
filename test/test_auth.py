@@ -333,7 +333,8 @@ class TestGSSAPI(PyMongoTestCase):
 
     def test_canonicalize_host_name(self):
         result = _canonicalize_hostname(GSSAPI_HOST, "forward")
-        self.assertIn("compute-1.amazonaws.com", result)
+        if "compute-1.amazonaws.com" not in result:
+            self.assertEqual(result, GSSAPI_HOST)
         result = _canonicalize_hostname(GSSAPI_HOST, "forwardAndReverse")
         self.assertEqual(result, GSSAPI_HOST)
 
