@@ -1115,11 +1115,15 @@ def _client_batched_op_msg_impl(
         # Since the data document itself is nested within the insert document
         # it won't be automatically re-ordered by the BSON conversion.
         # We use ChainMap here to make the _id field the first field instead.
+        doc_to_encode = op_doc
         if real_op_type == "insert":
-            op_doc["document"] = ChainMap(op_doc["document"], {"_id": op_doc["document"]["_id"]})  # type: ignore[index]
+            doc = op_doc["document"]
+            if not isinstance(doc, RawBSONDocument):
+                doc_to_encode = op_doc.copy()  # Shallow copy
+                doc_to_encode["document"] = ChainMap(doc, {"_id": doc["_id"]})  # type: ignore[index]
 
         # Encode current operation doc and, if newly added, namespace doc.
-        op_doc_encoded = _dict_to_bson(op_doc, False, opts)
+        op_doc_encoded = _dict_to_bson(doc_to_encode, False, opts)
         op_length = len(op_doc_encoded)
         if ns_doc:
             ns_doc_encoded = _dict_to_bson(ns_doc, False, opts)
