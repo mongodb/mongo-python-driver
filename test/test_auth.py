@@ -274,6 +274,7 @@ class TestGSSAPI(PyMongoTestCase):
 
     def test_gssapi_canonicalize_host_name(self):
         # Test the low level method.
+        assert GSSAPI_HOST is not None
         result = _canonicalize_hostname(GSSAPI_HOST, "forward")
         if "compute-1.amazonaws.com" not in result:
             self.assertEqual(result, GSSAPI_HOST)
