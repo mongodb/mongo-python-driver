@@ -24,6 +24,7 @@ from __future__ import annotations
 import datetime
 import random
 import struct
+from collections import ChainMap
 from io import BytesIO as _BytesIO
 from typing import (
     TYPE_CHECKING,
@@ -1110,6 +1111,12 @@ def _client_batched_op_msg_impl(
         # First entry in the operation doc has the operation type as its
         # key and the index of its namespace within ns_info as its value.
         op_doc[op_type] = ns_info[namespace]  # type: ignore[index]
+
+        # Since the data document itself is nested within the insert document
+        # it won't be automatically re-ordered by the BSON conversion.
+        # We use ChainMap here to make the _id field the first field instead.
+        if real_op_type == "insert":
+            op_doc["document"] = ChainMap(op_doc["document"], {"_id": op_doc["document"]["_id"]})  # type: ignore[index]
 
         # Encode current operation doc and, if newly added, namespace doc.
         op_doc_encoded = _dict_to_bson(op_doc, False, opts)

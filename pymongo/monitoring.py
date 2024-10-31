@@ -189,8 +189,8 @@ will not add that listener to existing client instances.
 from __future__ import annotations
 
 import datetime
-from collections import abc, namedtuple
-from typing import TYPE_CHECKING, Any, ChainMap, Mapping, Optional, Sequence
+from collections import ChainMap, abc, namedtuple
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
 from bson.objectid import ObjectId
 from pymongo.hello import Hello, HelloCompat
