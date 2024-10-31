@@ -273,6 +273,13 @@ class TestGSSAPI(AsyncPyMongoTestCase):
                 self.assertTrue(thread.success)
 
     async def test_gssapi_canonicalize_host_name(self):
+        # Test the low level method.
+        result = _canonicalize_hostname(GSSAPI_HOST, "forward")
+        if "compute-1.amazonaws.com" not in result:
+            self.assertEqual(result, GSSAPI_HOST)
+        result = _canonicalize_hostname(GSSAPI_HOST, "forwardAndReverse")
+        self.assertEqual(result, GSSAPI_HOST)
+
         # Use the equivalent named CANONICALIZE_HOST_NAME.
         props = self.mech_properties.copy()
         if props["CANONICALIZE_HOST_NAME"] == "true":
@@ -291,18 +298,6 @@ class TestGSSAPI(AsyncPyMongoTestCase):
 
         if props["CANONICALIZE_HOST_NAME"] == "none":
             return
-
-        # Test with "forward".
-        props["CANONICALIZE_HOST_NAME"] = "forward"
-        client = self.simple_client(
-            GSSAPI_HOST,
-            GSSAPI_PORT,
-            username=GSSAPI_PRINCIPAL,
-            password=GSSAPI_PASS,
-            authMechanism="GSSAPI",
-            authMechanismProperties=props,
-        )
-        await client.server_info()
 
     async def test_gssapi_host_name(self):
         props = self.mech_properties
@@ -330,13 +325,6 @@ class TestGSSAPI(AsyncPyMongoTestCase):
             authMechanismProperties=self.mech_properties,
         )
         await client.server_info()
-
-    def test_canonicalize_host_name(self):
-        result = _canonicalize_hostname(GSSAPI_HOST, "forward")
-        if "compute-1.amazonaws.com" not in result:
-            self.assertEqual(result, GSSAPI_HOST)
-        result = _canonicalize_hostname(GSSAPI_HOST, "forwardAndReverse")
-        self.assertEqual(result, GSSAPI_HOST)
 
 
 class TestSASLPlain(AsyncPyMongoTestCase):
