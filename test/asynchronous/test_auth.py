@@ -168,7 +168,10 @@ class TestGSSAPI(AsyncPyMongoTestCase):
         await client[GSSAPI_DB].collection.find_one()
 
         # Log in using URI, with authMechanismProperties.
-        mech_uri = uri + f"&authMechanismProperties={self.mech_properties}"
+        mech_properties_str = ""
+        for key, value in self.mech_properties:
+            mech_properties_str += f"{key}:{value},"
+        mech_uri = uri + f"&authMechanismProperties={mech_properties_str[:-1]}"
         client = self.simple_client(mech_uri)
         await client[GSSAPI_DB].collection.find_one()
 
