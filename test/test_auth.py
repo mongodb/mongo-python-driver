@@ -99,7 +99,8 @@ class TestGSSAPI(PyMongoTestCase):
         mech_properties = dict(
             SERVICE_NAME=GSSAPI_SERVICE_NAME, CANONICALIZE_HOST_NAME=GSSAPI_CANONICALIZE
         )
-        mech_properties["SERVICE_REALM"] = GSSAPI_SERVICE_REALM
+        if GSSAPI_SERVICE_REALM is not None:
+            mech_properties["SERVICE_REALM"] = GSSAPI_SERVICE_REALM
         cls.mech_properties = mech_properties
 
     def test_credentials_hashing(self):
