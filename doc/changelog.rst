@@ -28,6 +28,11 @@ PyMongo 4.11 brings a number of changes including:
   :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write` now throw an error
   when ``ordered=True`` or ``verboseResults=True`` are used with unacknowledged writes.
   These are unavoidable breaking changes.
+- Fixed a bug in :const:`bson.json_util.dumps` where a :class:`bson.datetime_ms.DatetimeMS` would
+  be incorrectly encoded as ``'{"$date": "X"}'`` instead of ``'{"$date": X}'`` when using the
+  legacy MongoDB Extended JSON datetime representation.
+- Fixed a bug where :const:`bson.json_util.loads` would raise an IndexError when parsing an invalid
+  ``"$date"`` instead of a ValueError.
 
 Issues Resolved
 ...............
