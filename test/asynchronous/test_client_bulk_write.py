@@ -18,7 +18,8 @@ from __future__ import annotations
 import os
 import sys
 
-from bson import RawBSONDocument, encode
+from bson import encode
+from bson.raw_bson import RawBSONDocument
 
 sys.path[0:0] = [""]
 

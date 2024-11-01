@@ -33,8 +33,9 @@ from bson.objectid import ObjectId
 pytestmark = pytest.mark.mockupdb
 
 
+# https://github.com/mongodb/specifications/blob/master/source/crud/tests/README.md#16-generated-document-identifiers-are-the-first-field-in-their-document
 class TestIdOrdering(PyMongoTestCase):
-    def test_id_ordering(self):
+    def test_16_generated_document_ids_are_first_field(self):
         server = MockupDB()
         server.autoresponds(
             "hello",
