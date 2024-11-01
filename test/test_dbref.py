@@ -128,7 +128,7 @@ class TestDBRef(unittest.TestCase):
         self.assertNotEqual(hash(dbref_1a), hash(dbref_2a))
 
 
-# https://github.com/mongodb/specifications/blob/master/source/dbref.rst#test-plan
+# https://github.com/mongodb/specifications/blob/master/source/dbref/dbref.md#test-plan
 class TestDBRefSpec(unittest.TestCase):
     def test_decoding_1_2_3(self):
         doc: Any

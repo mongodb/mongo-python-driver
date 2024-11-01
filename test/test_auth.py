@@ -373,7 +373,7 @@ class TestSCRAMSHA1(IntegrationTest):
             db.command("dbstats")
 
 
-# https://github.com/mongodb/specifications/blob/master/source/auth/auth.rst#scram-sha-256-and-mechanism-negotiation
+# https://github.com/mongodb/specifications/blob/master/source/auth/auth.md#scram-sha-256-and-mechanism-negotiation
 class TestSCRAM(IntegrationTest):
     @client_context.require_auth
     @client_context.require_version_min(3, 7, 2)

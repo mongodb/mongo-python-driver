@@ -12,6 +12,7 @@ PyMongo 4.11 brings a number of changes including:
 
 - Dropped support for Python 3.8.
 - Dropped support for MongoDB 3.6.
+- Dropped support for the MONGODB-CR authenticate mechanism, which is no longer supported by MongoDB 4.0+.
 - Added support for free-threaded Python with the GIL disabled. For more information see:
   `Free-threaded CPython <https://docs.python.org/3.13/whatsnew/3.13.html#whatsnew313-free-threaded-cpython>`_.
 - :attr:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.address` and
@@ -23,6 +24,15 @@ PyMongo 4.11 brings a number of changes including:
   :meth:`~pymongo.collection.Collection.update_one`, :meth:`~pymongo.collection.Collection.replace_one`,
   :class:`~pymongo.operations.UpdateOne`, and
   :class:`~pymongo.operations.UpdateMany`,
+- :meth:`~pymongo.mongo_client.MongoClient.bulk_write` and
+  :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write` now throw an error
+  when ``ordered=True`` or ``verboseResults=True`` are used with unacknowledged writes.
+  These are unavoidable breaking changes.
+- Fixed a bug in :const:`bson.json_util.dumps` where a :class:`bson.datetime_ms.DatetimeMS` would
+  be incorrectly encoded as ``'{"$date": "X"}'`` instead of ``'{"$date": X}'`` when using the
+  legacy MongoDB Extended JSON datetime representation.
+- Fixed a bug where :const:`bson.json_util.loads` would raise an IndexError when parsing an invalid
+  ``"$date"`` instead of a ValueError.
 
 Issues Resolved
 ...............
@@ -1022,7 +1032,7 @@ See the `PyMongo 4.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18463
-.. _DBRef specification: https://github.com/mongodb/specifications/blob/5a8c8d7/source/dbref.rst
+.. _DBRef specification: https://github.com/mongodb/specifications/blob/master/source/dbref/dbref.md
 
 Changes in Version 3.13.0 (2022/11/01)
 --------------------------------------
@@ -1557,7 +1567,7 @@ Unavoidable breaking changes:
   bumped to 1.16.0. This is a breaking change for applications that use
   PyMongo's SRV support with a version of ``dnspython`` older than 1.16.0.
 
-.. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
+.. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.md
 
 
 Issues Resolved
@@ -1581,7 +1591,7 @@ Changes in Version 3.8.0 (2019/04/22)
   must upgrade to PyPy3.5+.
 
 - :class:`~bson.objectid.ObjectId` now implements the `ObjectID specification
-  version 0.2 <https://github.com/mongodb/specifications/blob/master/source/objectid.rst>`_.
+  version 0.2 <https://github.com/mongodb/specifications/blob/master/source/bson-objectid/objectid.md>`_.
 - For better performance and to better follow the GridFS spec,
   :class:`~gridfs.grid_file.GridOut` now uses a single cursor to read all the
   chunks in the file. Previously, each chunk in the file was queried
@@ -1943,7 +1953,7 @@ Highlights include:
   :class:`~pymongo.operations.UpdateOne`, and
   :class:`~pymongo.operations.UpdateMany`.
 - Implemented the `MongoDB Extended JSON
-  <https://github.com/mongodb/specifications/blob/master/source/extended-json.rst>`_
+  <https://github.com/mongodb/specifications/blob/master/source/extended-json/extended-json.md>`_
   specification.
 - :class:`~bson.decimal128.Decimal128` now works when cdecimal is installed.
 - PyMongo is now tested against a wider array of operating systems and CPU

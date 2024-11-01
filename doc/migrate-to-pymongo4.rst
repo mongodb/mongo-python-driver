@@ -118,7 +118,7 @@ Renamed URI options
 
 Several deprecated URI options have been renamed to the standardized
 option names defined in the
-`URI options specification <https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst>`_.
+`URI options specification <https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.md>`_.
 The old option names and their renamed equivalents are summarized in the table
 below. Some renamed options have different semantics from the option being
 replaced as noted in the 'Migration Notes' column.
@@ -965,7 +965,7 @@ correct type. Otherwise the document is returned as normal. Previously, any
 subdocument containing a ``$ref`` field would be decoded as a
 :class:`~bson.dbref.DBRef`.
 
-.. _DBRef specification: https://github.com/mongodb/specifications/blob/5a8c8d7/source/dbref.rst
+.. _DBRef specification: https://github.com/mongodb/specifications/blob/master/source/dbref/dbref.md
 
 Encoding a UUID raises an error by default
 ..........................................
