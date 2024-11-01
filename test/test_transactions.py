@@ -379,7 +379,10 @@ class TestTransactions(TransactionsBase):
                 if isinstance(res, (CommandCursor, Cursor)):
                     res.to_list()
 
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#10-convenient-transactions
     @client_context.require_transactions
+    @client_context.require_version_min(4, 4, -1)
+    @client_context.require_failCommand_fail_point
     def test_10_convenient_transactions_csot(self):
         self.client.db.coll.drop()
 
