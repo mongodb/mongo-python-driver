@@ -3144,6 +3144,8 @@ class TestCSOTProse(EncryptionIntegrationTest):
         )
 
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#createdatakey
+    @client_context.require_failCommand_fail_point
+    @client_context.require_version_min(4, 4, -1)
     def test_01_create_data_key(self):
         with self.fail_point(
             {
@@ -3160,6 +3162,8 @@ class TestCSOTProse(EncryptionIntegrationTest):
         self.assertEqual("insert", events[0].command_name)
 
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#encrypt
+    @client_context.require_failCommand_fail_point
+    @client_context.require_version_min(4, 4, -1)
     def test_02_encrypt(self):
         data_key_id = self.client_encryption.create_data_key("local")
         self.assertEqual(4, data_key_id.subtype)
@@ -3182,6 +3186,8 @@ class TestCSOTProse(EncryptionIntegrationTest):
         self.assertEqual("find", events[0].command_name)
 
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#decrypt
+    @client_context.require_failCommand_fail_point
+    @client_context.require_version_min(4, 4, -1)
     def test_03_decrypt(self):
         data_key_id = self.client_encryption.create_data_key("local")
         self.assertEqual(4, data_key_id.subtype)

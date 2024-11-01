@@ -2281,6 +2281,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#1-multi-batch-inserts
     @async_client_context.require_standalone
     @async_client_context.require_version_min(4, 4, -1)
+    @async_client_context.require_failCommand_fail_point
     async def test_01_multi_batch_inserts(self):
         client = await self.async_single_client(read_preference=ReadPreference.PRIMARY_PREFERRED)
         await client.db.coll.drop()

@@ -529,6 +529,8 @@ class TestGridfsBucketReplicaSet(IntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#6-gridfs---upload
 class TestGridFsCSOT(IntegrationTest):
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#uploads-via-openuploadstream-can-be-timed-out
+    @client_context.require_failCommand_fail_point
+    @client_context.require_version_min(4, 4, -1)
     def test_06_01_uploads_via_open_upload_stream_can_be_timed_out(self):
         self.client.db.fs.files.drop()
         self.client.db.fs.chunks.drop()
@@ -547,6 +549,8 @@ class TestGridFsCSOT(IntegrationTest):
                 upload_stream.close()
 
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#aborting-an-upload-stream-can-be-timed-out
+    @client_context.require_failCommand_fail_point
+    @client_context.require_version_min(4, 4, -1)
     def test_06_02_aborting_an_upload_stream_can_be_timed_out(self):
         self.client.db.fs.files.drop()
         self.client.db.fs.chunks.drop()
@@ -565,6 +569,8 @@ class TestGridFsCSOT(IntegrationTest):
                 upload_stream.abort()
 
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#7-gridfs---download
+    @client_context.require_failCommand_fail_point
+    @client_context.require_version_min(4, 4, -1)
     def test_07_gridfs_download_csot(self):
         self.client.db.fs.files.drop()
         self.client.db.fs.chunks.drop()

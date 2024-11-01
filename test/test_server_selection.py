@@ -204,6 +204,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#8-server-selection
 class TestServerSelectionCSOT(IntegrationTest):
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#serverselectiontimeoutms-honored-if-timeoutms-is-not-set
+    @client_context.require_version_min(4, 4, -1)
     def test_08_01_server_selection_timeoutMS_honored(self):
         client = self.single_client("mongodb://invalid/?serverSelectionTimeoutMS=10")
         with self.assertRaises(ServerSelectionTimeoutError):
@@ -215,6 +216,7 @@ class TestServerSelectionCSOT(IntegrationTest):
         self.assertLessEqual(start - end, 15)
 
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#timeoutms-honored-for-server-selection-if-its-lower-than-serverselectiontimeoutms
+    @client_context.require_version_min(4, 4, -1)
     def test_08_02_timeoutMS_honored_for_server_selection_if_lower(self):
         client = self.single_client("mongodb://invalid/?timeoutMS=10&serverSelectionTimeoutMS=20")
         with self.assertRaises(ServerSelectionTimeoutError):
@@ -225,6 +227,7 @@ class TestServerSelectionCSOT(IntegrationTest):
         self.assertLessEqual(start - end, 15)
 
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#serverselectiontimeoutms-honored-for-server-selection-if-its-lower-than-timeoutms
+    @client_context.require_version_min(4, 4, -1)
     def test_08_03_serverselectiontimeoutms_honored_for_server_selection_if_lower(self):
         client = self.single_client("mongodb://invalid/?timeoutMS=20&serverSelectionTimeoutMS=10")
         with self.assertRaises(ServerSelectionTimeoutError):
@@ -236,6 +239,7 @@ class TestServerSelectionCSOT(IntegrationTest):
         self.assertLessEqual(start - end, 15)
 
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#serverselectiontimeoutms-honored-for-server-selection-if-timeoutms0
+    @client_context.require_version_min(4, 4, -1)
     def test_08_04_serverselectiontimeoutms_honored_for_server_selection_if_zero_timeoutms(self):
         client = self.single_client("mongodb://invalid/?timeoutMS=0&serverSelectionTimeoutMS=10")
         with self.assertRaises(ServerSelectionTimeoutError):
@@ -248,6 +252,8 @@ class TestServerSelectionCSOT(IntegrationTest):
 
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#timeoutms-honored-for-connection-handshake-commands-if-its-lower-than-serverselectiontimeoutms
     @client_context.require_auth
+    @client_context.require_version_min(4, 4, -1)
+    @client_context.require_failCommand_fail_point
     def test_08_05_timeoutms_honored_for_handshake_if_lower(self):
         with self.fail_point(
             {
@@ -270,6 +276,8 @@ class TestServerSelectionCSOT(IntegrationTest):
 
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#serverselectiontimeoutms-honored-for-connection-handshake-commands-if-its-lower-than-timeoutms
     @client_context.require_auth
+    @client_context.require_version_min(4, 4, -1)
+    @client_context.require_failCommand_fail_point
     def test_08_06_serverSelectionTimeoutMS_honored_for_handshake_if_lower(self):
         with self.fail_point(
             {

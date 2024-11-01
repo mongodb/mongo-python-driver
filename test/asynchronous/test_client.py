@@ -2597,6 +2597,7 @@ class TestClientCSOTProse(AsyncIntegrationTest):
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#timeoutms-is-refreshed-for-each-handshake-command
     @async_client_context.require_auth
     @async_client_context.require_version_min(4, 4, -1)
+    @async_client_context.require_failCommand_appName
     async def test_02_timeoutMS_refreshed_for_each_handshake_command(self):
         listener = CMAPListener()
 

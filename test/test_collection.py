@@ -2258,6 +2258,7 @@ class TestCollection(IntegrationTest):
     # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#1-multi-batch-inserts
     @client_context.require_standalone
     @client_context.require_version_min(4, 4, -1)
+    @client_context.require_failCommand_fail_point
     def test_01_multi_batch_inserts(self):
         client = self.single_client(read_preference=ReadPreference.PRIMARY_PREFERRED)
         client.db.coll.drop()
