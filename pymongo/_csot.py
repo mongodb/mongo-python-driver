@@ -67,7 +67,11 @@ def remaining() -> Optional[float]:
 
 @contextlib.contextmanager
 def reset() -> Generator:
-    deadline_token = DEADLINE.set(DEADLINE.get() + get_timeout())  # type: ignore[operator]
+    timeout = get_timeout()
+    if timeout is None:
+        deadline_token = DEADLINE.set(DEADLINE.get())
+    else:
+        deadline_token = DEADLINE.set(DEADLINE.get() + timeout)  # type: ignore[operator]
     yield
     DEADLINE.reset(deadline_token)
 
