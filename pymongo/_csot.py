@@ -71,7 +71,7 @@ def reset() -> Generator:
     if timeout is None:
         deadline_token = DEADLINE.set(DEADLINE.get())
     else:
-        deadline_token = DEADLINE.set(DEADLINE.get() + timeout)  # type: ignore[operator]
+        deadline_token = DEADLINE.set(DEADLINE.get() + timeout)
     yield
     DEADLINE.reset(deadline_token)
 
