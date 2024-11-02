@@ -1727,7 +1727,7 @@ tasks:
 
 buildvariants:
 - name: "no-server"
-  display_name: "No server test"
+  display_name: "No server"
   run_on:
     - rhel84-small
   tasks:
