@@ -93,7 +93,7 @@ def create_variant(
     else:
         host = host or "rhel8"
         run_on = [HOSTS[host].run_on]
-    name = display_name.replace(" ", "-").lower()
+    name = display_name.replace(" ", "-").replace("*-", "").lower()
     if python:
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
     if version:
