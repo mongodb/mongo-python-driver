@@ -33,6 +33,14 @@
         },
         {
           "_id": 2,
+          "json": "1"
+        },
+        {
+          "_id": 3,
+          "json": "[ \"foo\" ]"
+        },
+        {
+          "_id": 4,
           "json": "{ \"x\" }"
         }
       ]
@@ -119,7 +127,7 @@
       ]
     },
     {
-      "description": "matchAsDocument fails to decode Extended JSON",
+      "description": "matchAsDocument expects JSON object but given scalar",
       "operations": [
         {
           "name": "find",
@@ -135,7 +143,57 @@
               "_id": 2,
               "json": {
                 "$$matchAsDocument": {
-                  "x": 1
+                  "$$matchAsRoot": {}
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "matchAsDocument expects JSON object but given array",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 3
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 3,
+              "json": {
+                "$$matchAsDocument": {
+                  "$$matchAsRoot": {}
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "matchAsDocument fails to decode Extended JSON",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 4
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 4,
+              "json": {
+                "$$matchAsDocument": {
+                  "$$matchAsRoot": {}
                 }
               }
             }

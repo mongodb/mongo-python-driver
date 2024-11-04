@@ -33,17 +33,13 @@
             "y": 2,
             "z": 3
           }
-        },
-        {
-          "_id": 2,
-          "x": "{ \"x\": 1, \"y\": 2.0 }"
         }
       ]
     }
   ],
   "tests": [
     {
-      "description": "matchAsRoot with nested document",
+      "description": "matchAsRoot with nested document does not match",
       "operations": [
         {
           "name": "find",
@@ -60,33 +56,6 @@
               "x": {
                 "$$matchAsRoot": {
                   "y": 3
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "description": "matchAsRoot with matchAsDocument",
-      "operations": [
-        {
-          "name": "find",
-          "object": "collection0",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            },
-            "limit": 1
-          },
-          "expectResult": [
-            {
-              "_id": 2,
-              "x": {
-                "$$matchAsDocument": {
-                  "$$matchAsRoot": {
-                    "x": 1
-                  }
                 }
               }
             }
