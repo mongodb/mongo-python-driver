@@ -26,6 +26,7 @@ from bson import Binary
 from pymongo.auth_oidc_shared import (
     _OIDCAzureCallback,
     _OIDCGCPCallback,
+    _OIDCK8SCallback,
     _OIDCProperties,
     _OIDCTestCallback,
 )
@@ -192,6 +193,9 @@ def _build_credentials_tuple(
                         "GCP provider for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
                     )
                 callback = _OIDCGCPCallback(token_resource)
+            elif environ == "k8s":
+                passwd = None
+                callback = _OIDCK8SCallback()
             else:
                 raise ConfigurationError(f"unrecognized ENVIRONMENT for MONGODB-OIDC: {environ}")
         else:
