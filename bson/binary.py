@@ -195,7 +195,7 @@ SENSITIVE_SUBTYPE = 8
 
 
 VECTOR_SUBTYPE = 9
-"""**(BETA)** BSON binary subtype for densely packed vector data.
+"""BSON binary subtype for densely packed vector data.
 
 .. versionadded:: 4.10
 """
@@ -207,7 +207,7 @@ USER_DEFINED_SUBTYPE = 128
 
 
 class BinaryVectorDtype(Enum):
-    """**(BETA)** Datatypes of vector subtype.
+    """Datatypes of vector subtype.
 
     :param FLOAT32: (0x27) Pack list of :class:`float` as float32
     :param INT8: (0x03) Pack list of :class:`int` in [-128, 127] as signed int8
@@ -229,7 +229,7 @@ class BinaryVectorDtype(Enum):
 
 @dataclass
 class BinaryVector:
-    """**(BETA)** Vector of numbers along with metadata for binary interoperability.
+    """Vector of numbers along with metadata for binary interoperability.
     .. versionadded:: 4.10
     """
 
@@ -256,7 +256,7 @@ class Binary(bytes):
     the difference between what should be considered binary data and
     what should be considered a string when we encode to BSON.
 
-    **(BETA)** Subtype 9 provides a space-efficient representation of 1-dimensional vector data.
+    Subtype 9 provides a space-efficient representation of 1-dimensional vector data.
     Its data is prepended with two bytes of metadata.
     The first (dtype) describes its data type, such as float32 or int8.
     The second (padding) prescribes the number of bits to ignore in the final byte.
@@ -278,7 +278,7 @@ class Binary(bytes):
        Support any bytes-like type that implements the buffer protocol.
 
     .. versionchanged:: 4.10
-       **(BETA)** Addition of vector subtype.
+       Addition of vector subtype.
     """
 
     _type_marker = 5
@@ -416,7 +416,7 @@ class Binary(bytes):
         dtype: Optional[BinaryVectorDtype] = None,
         padding: Optional[int] = None,
     ) -> Binary:
-        """**(BETA)** Create a BSON :class:`~bson.binary.Binary` of Vector subtype.
+        """Create a BSON :class:`~bson.binary.Binary` of Vector subtype.
 
         To interpret the representation of the numbers, a data type must be included.
         See :class:`~bson.binary.BinaryVectorDtype` for available types and descriptions.
@@ -459,7 +459,7 @@ class Binary(bytes):
         return cls(metadata + data, subtype=VECTOR_SUBTYPE)
 
     def as_vector(self) -> BinaryVector:
-        """**(BETA)** From the Binary, create a list of numbers, along with dtype and padding.
+        """From the Binary, create a list of numbers, along with dtype and padding.
 
         :return: BinaryVector
 
