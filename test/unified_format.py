@@ -1314,8 +1314,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 if log.module == "ocsp_support":
                     continue
                 data = json_util.loads(log.getMessage())
-                client = data.pop("clientId") if "clientId" in data else data.pop("topologyId")
-                client_to_log[client].append(
+                client_id = data.get("clientId", data.get("topologyId"))
+                client_to_log[client_id].append(
                     {
                         "level": log.levelname.lower(),
                         "component": log.name.replace("pymongo.", "", 1),
