@@ -1289,6 +1289,74 @@ buildvariants:
       SSL: ssl
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
+  # Stable api tests
+  - name: stable-api-require-v1-rhel8-py3.9-auth
+    tasks:
+      - name: .standalone .5.0 .noauth .nossl .sync_async
+      - name: .standalone .6.0 .noauth .nossl .sync_async
+      - name: .standalone .7.0 .noauth .nossl .sync_async
+      - name: .standalone .8.0 .noauth .nossl .sync_async
+      - name: .standalone .rapid .noauth .nossl .sync_async
+      - name: .standalone .latest .noauth .nossl .sync_async
+    display_name: Stable API require v1 RHEL8 py3.9 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      REQUIRE_API_VERSION: "1"
+      MONGODB_API_VERSION: "1"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+    tags: [versionedApi_tag]
+  - name: stable-api-accept-v2-rhel8-py3.9-auth
+    tasks:
+      - name: .standalone .5.0 .noauth .nossl .sync_async
+      - name: .standalone .6.0 .noauth .nossl .sync_async
+      - name: .standalone .7.0 .noauth .nossl .sync_async
+      - name: .standalone .8.0 .noauth .nossl .sync_async
+      - name: .standalone .rapid .noauth .nossl .sync_async
+      - name: .standalone .latest .noauth .nossl .sync_async
+    display_name: Stable API accept v2 RHEL8 py3.9 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      ORCHESTRATION_FILE: versioned-api-testing.json
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+    tags: [versionedApi_tag]
+  - name: stable-api-require-v1-rhel8-py3.13-auth
+    tasks:
+      - name: .standalone .5.0 .noauth .nossl .sync_async
+      - name: .standalone .6.0 .noauth .nossl .sync_async
+      - name: .standalone .7.0 .noauth .nossl .sync_async
+      - name: .standalone .8.0 .noauth .nossl .sync_async
+      - name: .standalone .rapid .noauth .nossl .sync_async
+      - name: .standalone .latest .noauth .nossl .sync_async
+    display_name: Stable API require v1 RHEL8 py3.13 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      REQUIRE_API_VERSION: "1"
+      MONGODB_API_VERSION: "1"
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [versionedApi_tag]
+  - name: stable-api-accept-v2-rhel8-py3.13-auth
+    tasks:
+      - name: .standalone .5.0 .noauth .nossl .sync_async
+      - name: .standalone .6.0 .noauth .nossl .sync_async
+      - name: .standalone .7.0 .noauth .nossl .sync_async
+      - name: .standalone .8.0 .noauth .nossl .sync_async
+      - name: .standalone .rapid .noauth .nossl .sync_async
+      - name: .standalone .latest .noauth .nossl .sync_async
+    display_name: Stable API accept v2 RHEL8 py3.13 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      ORCHESTRATION_FILE: versioned-api-testing.json
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [versionedApi_tag]
+
   # Storage engine tests
   - name: storage-inmemory-rhel8-py3.9
     tasks:
@@ -1316,71 +1384,3 @@ buildvariants:
     expansions:
       STORAGE_ENGINE: mmapv1
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-
-  # Versioned api tests
-  - name: versioned-api-require-v1-rhel8-py3.9-auth
-    tasks:
-      - name: .standalone .5.0 .noauth .nossl .sync_async
-      - name: .standalone .6.0 .noauth .nossl .sync_async
-      - name: .standalone .7.0 .noauth .nossl .sync_async
-      - name: .standalone .8.0 .noauth .nossl .sync_async
-      - name: .standalone .rapid .noauth .nossl .sync_async
-      - name: .standalone .latest .noauth .nossl .sync_async
-    display_name: Versioned API require v1 RHEL8 py3.9 Auth
-    run_on:
-      - rhel87-small
-    expansions:
-      AUTH: auth
-      REQUIRE_API_VERSION: "1"
-      MONGODB_API_VERSION: "1"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-    tags: [versionedApi_tag]
-  - name: versioned-api-accept-v2-rhel8-py3.9-auth
-    tasks:
-      - name: .standalone .5.0 .noauth .nossl .sync_async
-      - name: .standalone .6.0 .noauth .nossl .sync_async
-      - name: .standalone .7.0 .noauth .nossl .sync_async
-      - name: .standalone .8.0 .noauth .nossl .sync_async
-      - name: .standalone .rapid .noauth .nossl .sync_async
-      - name: .standalone .latest .noauth .nossl .sync_async
-    display_name: Versioned API accept v2 RHEL8 py3.9 Auth
-    run_on:
-      - rhel87-small
-    expansions:
-      AUTH: auth
-      ORCHESTRATION_FILE: versioned-api-testing.json
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-    tags: [versionedApi_tag]
-  - name: versioned-api-require-v1-rhel8-py3.13-auth
-    tasks:
-      - name: .standalone .5.0 .noauth .nossl .sync_async
-      - name: .standalone .6.0 .noauth .nossl .sync_async
-      - name: .standalone .7.0 .noauth .nossl .sync_async
-      - name: .standalone .8.0 .noauth .nossl .sync_async
-      - name: .standalone .rapid .noauth .nossl .sync_async
-      - name: .standalone .latest .noauth .nossl .sync_async
-    display_name: Versioned API require v1 RHEL8 py3.13 Auth
-    run_on:
-      - rhel87-small
-    expansions:
-      AUTH: auth
-      REQUIRE_API_VERSION: "1"
-      MONGODB_API_VERSION: "1"
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
-    tags: [versionedApi_tag]
-  - name: versioned-api-accept-v2-rhel8-py3.13-auth
-    tasks:
-      - name: .standalone .5.0 .noauth .nossl .sync_async
-      - name: .standalone .6.0 .noauth .nossl .sync_async
-      - name: .standalone .7.0 .noauth .nossl .sync_async
-      - name: .standalone .8.0 .noauth .nossl .sync_async
-      - name: .standalone .rapid .noauth .nossl .sync_async
-      - name: .standalone .latest .noauth .nossl .sync_async
-    display_name: Versioned API accept v2 RHEL8 py3.13 Auth
-    run_on:
-      - rhel87-small
-    expansions:
-      AUTH: auth
-      ORCHESTRATION_FILE: versioned-api-testing.json
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
-    tags: [versionedApi_tag]

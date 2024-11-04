@@ -491,7 +491,7 @@ def create_storage_engine_variants():
     return variants
 
 
-def create_versioned_api_variants():
+def create_stable_api_variants():
     host = "rhel8"
     tags = ["versionedApi_tag"]
     tasks = [f".standalone .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")]
@@ -513,7 +513,7 @@ def create_versioned_api_variants():
             # requireApiVersion, and don't automatically add apiVersion to
             # clients created in the test suite.
             expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
-        base_display_name = f"Versioned API {test_type}"
+        base_display_name = f"Stable API {test_type}"
         display_name = get_display_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
             tasks, display_name, host=host, python=python, tags=tags, expansions=expansions
