@@ -241,10 +241,11 @@ def create_server_variants() -> list[BuildVariant]:
 
     # Run the full matrix on linux with min and max CPython, and latest pypy.
     host = "rhel8"
+    # Prefix the display name with an underscore so it is sorted first.
+    base_display_name = "_Test"
     for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
-        display_name = f"Test {host}"
         expansions = dict(COVERAGE="coverage")
-        display_name = get_display_name("Test", host, python=python, **expansions)
+        display_name = get_display_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
             [f".{t} .sync_async" for t in TOPOLOGIES],
             display_name,
@@ -258,7 +259,7 @@ def create_server_variants() -> list[BuildVariant]:
     # Test the rest of the pythons.
     for python in CPYTHONS[1:-1] + PYPYS[:-1]:
         display_name = f"Test {host}"
-        display_name = get_display_name("Test", host, python=python)
+        display_name = get_display_name(base_display_name, host, python=python)
         variant = create_variant(
             [f"{t} .sync_async" for t in SUB_TASKS],
             display_name,
@@ -278,7 +279,7 @@ def create_server_variants() -> list[BuildVariant]:
                 for version in get_versions_from("6.0"):
                     tasks.extend(f"{t} .{version} !.sync_async" for t in SUB_TASKS)
             expansions = dict(SKIP_CSOT_TESTS="true")
-            display_name = get_display_name("Test", host, python=python, **expansions)
+            display_name = get_display_name(base_display_name, host, python=python, **expansions)
             variant = create_variant(
                 tasks,
                 display_name,
