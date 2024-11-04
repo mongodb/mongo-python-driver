@@ -1779,19 +1779,14 @@ buildvariants:
   tasks:
      - name: "coverage-report"
 
-- name: testgcpkms-variant
-  display_name: "GCP KMS"
+- name: testkms-variant
+  display_name: "KMS"
   run_on:
     - debian11-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
     - testgcpkms-fail-task
-
-- name: testazurekms-variant
-  display_name: "Azure KMS"
-  run_on: debian11-small
-  tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
     - testazurekms-fail-task
