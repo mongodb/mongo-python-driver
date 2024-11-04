@@ -137,7 +137,7 @@ class TestJsonUtil(unittest.TestCase):
             '{"dt": { "$date" : "1970-01-01T00:00:00.000Z"}}',
             '{"dt": { "$date" : "1970-01-01T00:00:00.000000Z"}}',
             '{"dt": { "$date" : "1970-01-01T00:00:00Z"}}',
-            '{"dt": {"$date": "1970-01-01T00:00:00.000"}}',
+            '{"dt": { "$date" : "1970-01-01T00:00:00.000"}}',
             '{"dt": { "$date" : "1970-01-01T00:00:00"}}',
             '{"dt": { "$date" : "1970-01-01T00:00:00.000000"}}',
             '{"dt": { "$date" : "1969-12-31T16:00:00.000-0800"}}',
@@ -282,9 +282,9 @@ class TestJsonUtil(unittest.TestCase):
         opts = JSONOptions(
             datetime_representation=DatetimeRepresentation.LEGACY, json_mode=JSONMode.LEGACY
         )
-        self.assertEqual('{"x": {"$date": "-1"}}', json_util.dumps(dat_min, json_options=opts))
+        self.assertEqual('{"x": {"$date": -1}}', json_util.dumps(dat_min, json_options=opts))
         self.assertEqual(
-            '{"x": {"$date": "' + str(int(dat_max["x"])) + '"}}',
+            '{"x": {"$date": ' + str(int(dat_max["x"])) + "}}",
             json_util.dumps(dat_max, json_options=opts),
         )
 
@@ -316,6 +316,25 @@ class TestJsonUtil(unittest.TestCase):
             DatetimeMS(dat_max["x"]),
             json_util.loads(json_util.dumps(dat_max), json_options=opts)["x"],
         )
+
+    def test_parse_invalid_date(self):
+        # These cases should raise ValueError, not IndexError.
+        for invalid in [
+            '{"dt": { "$date" : "1970-01-01T00:00:"}}',
+            '{"dt": { "$date" : "1970-01-01T01:00"}}',
+            '{"dt": { "$date" : "1970-01-01T01:"}}',
+            '{"dt": { "$date" : "1970-01-01T01"}}',
+            '{"dt": { "$date" : "1970-01-01T"}}',
+            '{"dt": { "$date" : "1970-01-01"}}',
+            '{"dt": { "$date" : "1970-01-"}}',
+            '{"dt": { "$date" : "1970-01"}}',
+            '{"dt": { "$date" : "1970-"}}',
+            '{"dt": { "$date" : "1970"}}',
+            '{"dt": { "$date" : "1"}}',
+            '{"dt": { "$date" : ""}}',
+        ]:
+            with self.assertRaisesRegex(ValueError, "does not match"):
+                json_util.loads(invalid)
 
     def test_regex_object_hook(self):
         # Extended JSON format regular expression.

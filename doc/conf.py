@@ -85,7 +85,7 @@ pygments_style = "sphinx"
 # wiki.centos.org has been flakey.
 # sourceforge.net is giving a 403 error, but is still accessible from the browser.
 linkcheck_ignore = [
-    "https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.rst#requesting-an-immediate-check",
+    "https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.md#requesting-an-immediate-check",
     "https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source",
     r"https://wiki.centos.org/[\w/]*",
     r"http://sourceforge.net/",

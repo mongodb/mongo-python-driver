@@ -216,7 +216,7 @@ def _metadata_env() -> dict[str, Any]:
 _MAX_METADATA_SIZE = 512
 
 
-# See: https://github.com/mongodb/specifications/blob/5112bcc/source/mongodb-handshake/handshake.rst#limitations
+# See: https://github.com/mongodb/specifications/blob/master/source/mongodb-handshake/handshake.md#limitations
 def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     """Perform metadata truncation."""
     if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:

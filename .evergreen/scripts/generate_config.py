@@ -93,7 +93,7 @@ def create_variant(
     else:
         host = host or "rhel8"
         run_on = [HOSTS[host].run_on]
-    name = display_name.replace(" ", "-").lower()
+    name = display_name.replace(" ", "-").replace("*-", "").lower()
     if python:
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
     if version:
@@ -201,7 +201,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
     variants = []
     batchtime = BATCHTIME_WEEK * 2
     expansions = dict(AUTH="noauth", SSL="ssl", TOPOLOGY="server")
-    base_display = "OCSP test"
+    base_display = "OCSP"
 
     # OCSP tests on rhel8 with all servers v4.4+ and all python versions.
     versions = [v for v in ALL_VERSIONS if v != "4.0"]
@@ -241,10 +241,11 @@ def create_server_variants() -> list[BuildVariant]:
 
     # Run the full matrix on linux with min and max CPython, and latest pypy.
     host = "rhel8"
+    # Prefix the display name with an asterisk so it is sorted first.
+    base_display_name = "* Test"
     for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
-        display_name = f"Test {host}"
         expansions = dict(COVERAGE="coverage")
-        display_name = get_display_name("Test", host, python=python, **expansions)
+        display_name = get_display_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
             [f".{t} .sync_async" for t in TOPOLOGIES],
             display_name,
@@ -258,7 +259,7 @@ def create_server_variants() -> list[BuildVariant]:
     # Test the rest of the pythons.
     for python in CPYTHONS[1:-1] + PYPYS[:-1]:
         display_name = f"Test {host}"
-        display_name = get_display_name("Test", host, python=python)
+        display_name = get_display_name(base_display_name, host, python=python)
         variant = create_variant(
             [f"{t} .sync_async" for t in SUB_TASKS],
             display_name,
@@ -278,7 +279,7 @@ def create_server_variants() -> list[BuildVariant]:
                 for version in get_versions_from("6.0"):
                     tasks.extend(f"{t} .{version} !.sync_async" for t in SUB_TASKS)
             expansions = dict(SKIP_CSOT_TESTS="true")
-            display_name = get_display_name("Test", host, python=python, **expansions)
+            display_name = get_display_name(base_display_name, host, python=python, **expansions)
             variant = create_variant(
                 tasks,
                 display_name,
@@ -385,7 +386,7 @@ def create_compression_variants():
     for ind, (compressor, c_ext) in enumerate(product(["snappy", "zlib", "zstd"], C_EXTS)):
         expansions = dict(COMPRESSORS=compressor)
         handle_c_ext(c_ext, expansions)
-        base_name = f"{compressor} compression"
+        base_name = f"Compression {compressor}"
         python = CPYTHONS[ind % len(CPYTHONS)]
         display_name = get_display_name(base_name, host, python=python, **expansions)
         variant = create_variant(
@@ -401,7 +402,7 @@ def create_compression_variants():
     for compressor, python in zip_cycle(["snappy", "zlib", "zstd"], other_pythons):
         expansions = dict(COMPRESSORS=compressor)
         handle_c_ext(c_ext, expansions)
-        base_name = f"{compressor} compression"
+        base_name = f"Compression {compressor}"
         display_name = get_display_name(base_name, host, python=python, **expansions)
         variant = create_variant(
             task_names[compressor],
@@ -427,7 +428,7 @@ def create_enterprise_auth_variants():
             host = "win64"
         else:
             host = "rhel8"
-        display_name = get_display_name("Enterprise Auth", host, python=python, **expansions)
+        display_name = get_display_name("Auth Enterprise", host, python=python, **expansions)
         variant = create_variant(
             ["test-enterprise-auth"], display_name, host=host, python=python, expansions=expansions
         )
@@ -467,7 +468,7 @@ def create_pyopenssl_variants():
     return variants
 
 
-def create_storage_engine_tests():
+def create_storage_engine_variants():
     host = "rhel8"
     engines = ["InMemory", "MMAPv1"]
     variants = []
@@ -490,7 +491,7 @@ def create_storage_engine_tests():
     return variants
 
 
-def create_versioned_api_tests():
+def create_stable_api_variants():
     host = "rhel8"
     tags = ["versionedApi_tag"]
     tasks = [f".standalone .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")]
@@ -512,7 +513,7 @@ def create_versioned_api_tests():
             # requireApiVersion, and don't automatically add apiVersion to
             # clients created in the test suite.
             expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
-        base_display_name = f"Versioned API {test_type}"
+        base_display_name = f"Stable API {test_type}"
         display_name = get_display_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
             tasks, display_name, host=host, python=python, tags=tags, expansions=expansions
@@ -528,7 +529,7 @@ def create_green_framework_variants():
     host = "rhel8"
     for python, framework in product([CPYTHONS[0], CPYTHONS[-2]], ["eventlet", "gevent"]):
         expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
-        display_name = get_display_name(f"{framework.capitalize()}", host, python=python)
+        display_name = get_display_name(f"Green {framework.capitalize()}", host, python=python)
         variant = create_variant(
             tasks, display_name, host=host, python=python, expansions=expansions
         )
@@ -553,10 +554,10 @@ def create_no_c_ext_variants():
 
 def create_atlas_data_lake_variants():
     variants = []
-    host = "rhel8"
+    host = "ubuntu22"
     for python, c_ext in product(MIN_MAX_PYTHON, C_EXTS):
         tasks = ["atlas-data-lake-tests"]
-        expansions = dict()
+        expansions = dict(AUTH="auth")
         handle_c_ext(c_ext, expansions)
         display_name = get_display_name("Atlas Data Lake", host, python=python, **expansions)
         variant = create_variant(
@@ -615,11 +616,15 @@ def create_serverless_variants():
 
 def create_oidc_auth_variants():
     variants = []
-    for host in ["rhel8", "macos", "win64"]:
+    other_tasks = ["testazureoidc_task_group", "testgcpoidc_task_group", "testk8soidc_task_group"]
+    for host in ["ubuntu22", "macos", "win64"]:
+        tasks = ["testoidc_task_group"]
+        if host == "ubuntu22":
+            tasks += other_tasks
         variants.append(
             create_variant(
-                ["testoidc_task_group"],
-                get_display_name("OIDC Auth", host),
+                tasks,
+                get_display_name("Auth OIDC", host),
                 host=host,
                 batchtime=BATCHTIME_WEEK * 2,
             )
@@ -646,7 +651,7 @@ def create_mockupdb_variants():
     return [
         create_variant(
             ["mockupdb"],
-            get_display_name("MockupDB Tests", host, python=python),
+            get_display_name("MockupDB", host, python=python),
             python=python,
             host=host,
         )
@@ -700,7 +705,7 @@ def create_aws_auth_variants():
             expansions["skip_web_identity_auth_test"] = "true"
         variant = create_variant(
             tasks,
-            get_display_name("AWS Auth", host, python=python),
+            get_display_name("Auth AWS", host, python=python),
             host=host,
             python=python,
             expansions=expansions,

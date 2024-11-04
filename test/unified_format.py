@@ -14,7 +14,7 @@
 
 """Unified test format runner.
 
-https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
+https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.md
 """
 from __future__ import annotations
 
@@ -431,7 +431,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     """Mixin class to run test cases from test specification files.
 
     Assumes that tests conform to the `unified test format
-    <https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst>`_.
+    <https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.md>`_.
 
     Specification of the test suite being currently run is available as
     a class attribute ``TEST_SPEC``.
@@ -858,7 +858,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return target.create_data_key(*args, **kwargs)
 
     def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
-        return (target.get_keys(*args, **kwargs)).to_list()
+        return target.get_keys(*args, **kwargs).to_list()
 
     def _clientEncryptionOperation_deleteKey(self, target, *args, **kwargs):
         result = target.delete_key(*args, **kwargs)

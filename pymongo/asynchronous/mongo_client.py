@@ -221,7 +221,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         <https://en.wikipedia.org/wiki/TXT_record>`_. See the
         `Initial DNS Seedlist Discovery spec
         <https://github.com/mongodb/specifications/blob/master/source/
-        initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.rst>`_
+        initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.md>`_
         for more details. Note that the use of SRV URIs implicitly enables
         TLS support. Pass tls=false in the URI to override.
 
@@ -367,7 +367,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate` using the ``$out``
             pipeline operator and any operation with an unacknowledged write
             concern (e.g. {w: 0})). See
-            https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.rst
+            https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.md
           - `retryReads`: (boolean) Whether supported read operations
             executed within this AsyncMongoClient will be retried once after a
             network error. Defaults to ``True``.
@@ -394,7 +394,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             transient errors such as network failures, database upgrades, and
             replica set failovers. For an exact definition of which errors
             trigger a retry, see the `retryable reads specification
-            <https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.rst>`_.
+            <https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.md>`_.
 
           - `compressors`: Comma separated list of compressors for wire
             protocol compression. The list is used to negotiate a compressor
@@ -2353,6 +2353,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # Inherit the client's write concern if none is provided.
             if not write_concern:
                 write_concern = self.write_concern
+
+        if write_concern and not write_concern.acknowledged and verbose_results:
+            raise InvalidOperation(
+                "Cannot request unacknowledged write concern and verbose results"
+            )
+        elif write_concern and not write_concern.acknowledged and ordered:
+            raise InvalidOperation("Cannot request unacknowledged write concern and ordered writes")
 
         common.validate_list("models", models)
 
