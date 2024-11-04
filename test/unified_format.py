@@ -858,7 +858,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return target.create_data_key(*args, **kwargs)
 
     def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
-        return (target.get_keys(*args, **kwargs)).to_list()
+        return target.get_keys(*args, **kwargs).to_list()
 
     def _clientEncryptionOperation_deleteKey(self, target, *args, **kwargs):
         result = target.delete_key(*args, **kwargs)

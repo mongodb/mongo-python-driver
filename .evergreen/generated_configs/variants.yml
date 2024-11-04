@@ -955,12 +955,15 @@ buildvariants:
       VERSION: "8.0"
 
   # Oidc auth tests
-  - name: auth-oidc-rhel8
+  - name: auth-oidc-ubuntu-22
     tasks:
       - name: testoidc_task_group
-    display_name: Auth OIDC RHEL8
+      - name: testazureoidc_task_group
+      - name: testgcpoidc_task_group
+      - name: testk8soidc_task_group
+    display_name: Auth OIDC Ubuntu-22
     run_on:
-      - rhel87-small
+      - ubuntu2204-small
     batchtime: 20160
   - name: auth-oidc-macos
     tasks:
