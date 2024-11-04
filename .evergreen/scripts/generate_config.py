@@ -241,8 +241,8 @@ def create_server_variants() -> list[BuildVariant]:
 
     # Run the full matrix on linux with min and max CPython, and latest pypy.
     host = "rhel8"
-    # Prefix the display name with an underscore so it is sorted first.
-    base_display_name = "_Test"
+    # Prefix the display name with an asterisk so it is sorted first.
+    base_display_name = "* Test"
     for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
         expansions = dict(COVERAGE="coverage")
         display_name = get_display_name(base_display_name, host, python=python, **expansions)

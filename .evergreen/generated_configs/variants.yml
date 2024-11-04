@@ -1070,109 +1070,109 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Server tests
-  - name: _test-rhel8-py3.9-cov
+  - name: "*-test-rhel8-py3.9-cov"
     tasks:
       - name: .standalone .sync_async
       - name: .replica_set .sync_async
       - name: .sharded_cluster .sync_async
-    display_name: _Test RHEL8 py3.9 cov
+    display_name: "* Test RHEL8 py3.9 cov"
     run_on:
       - rhel87-small
     expansions:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [coverage_tag]
-  - name: _test-rhel8-py3.13-cov
+  - name: "*-test-rhel8-py3.13-cov"
     tasks:
       - name: .standalone .sync_async
       - name: .replica_set .sync_async
       - name: .sharded_cluster .sync_async
-    display_name: _Test RHEL8 py3.13 cov
+    display_name: "* Test RHEL8 py3.13 cov"
     run_on:
       - rhel87-small
     expansions:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [coverage_tag]
-  - name: _test-rhel8-pypy3.10-cov
+  - name: "*-test-rhel8-pypy3.10-cov"
     tasks:
       - name: .standalone .sync_async
       - name: .replica_set .sync_async
       - name: .sharded_cluster .sync_async
-    display_name: _Test RHEL8 pypy3.10 cov
+    display_name: "* Test RHEL8 pypy3.10 cov"
     run_on:
       - rhel87-small
     expansions:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
     tags: [coverage_tag]
-  - name: _test-rhel8-py3.10
+  - name: "*-test-rhel8-py3.10"
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: _Test RHEL8 py3.10
+    display_name: "* Test RHEL8 py3.10"
     run_on:
       - rhel87-small
     expansions:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/3.10/bin/python3
-  - name: _test-rhel8-py3.11
+  - name: "*-test-rhel8-py3.11"
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: _Test RHEL8 py3.11
+    display_name: "* Test RHEL8 py3.11"
     run_on:
       - rhel87-small
     expansions:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/3.11/bin/python3
-  - name: _test-rhel8-py3.12
+  - name: "*-test-rhel8-py3.12"
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: _Test RHEL8 py3.12
+    display_name: "* Test RHEL8 py3.12"
     run_on:
       - rhel87-small
     expansions:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/3.12/bin/python3
-  - name: _test-rhel8-pypy3.9
+  - name: "*-test-rhel8-pypy3.9"
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: _Test RHEL8 pypy3.9
+    display_name: "* Test RHEL8 pypy3.9"
     run_on:
       - rhel87-small
     expansions:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
-  - name: _test-macos-py3.9
+  - name: "*-test-macos-py3.9"
     tasks:
       - name: .sharded_cluster .auth .ssl !.sync_async
       - name: .replica_set .noauth .ssl !.sync_async
       - name: .standalone .noauth .nossl !.sync_async
-    display_name: _Test macOS py3.9
+    display_name: "* Test macOS py3.9"
     run_on:
       - macos-14
     expansions:
       SKIP_CSOT_TESTS: "true"
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-  - name: _test-macos-py3.13
+  - name: "*-test-macos-py3.13"
     tasks:
       - name: .sharded_cluster .auth .ssl !.sync_async
       - name: .replica_set .noauth .ssl !.sync_async
       - name: .standalone .noauth .nossl !.sync_async
-    display_name: _Test macOS py3.13
+    display_name: "* Test macOS py3.13"
     run_on:
       - macos-14
     expansions:
       SKIP_CSOT_TESTS: "true"
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
-  - name: _test-macos-arm64-py3.9
+  - name: "*-test-macos-arm64-py3.9"
     tasks:
       - name: .sharded_cluster .auth .ssl .6.0 !.sync_async
       - name: .replica_set .noauth .ssl .6.0 !.sync_async
@@ -1189,13 +1189,13 @@ buildvariants:
       - name: .sharded_cluster .auth .ssl .latest !.sync_async
       - name: .replica_set .noauth .ssl .latest !.sync_async
       - name: .standalone .noauth .nossl .latest !.sync_async
-    display_name: _Test macOS Arm64 py3.9
+    display_name: "* Test macOS Arm64 py3.9"
     run_on:
       - macos-14-arm64
     expansions:
       SKIP_CSOT_TESTS: "true"
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-  - name: _test-macos-arm64-py3.13
+  - name: "*-test-macos-arm64-py3.13"
     tasks:
       - name: .sharded_cluster .auth .ssl .6.0 !.sync_async
       - name: .replica_set .noauth .ssl .6.0 !.sync_async
@@ -1212,51 +1212,51 @@ buildvariants:
       - name: .sharded_cluster .auth .ssl .latest !.sync_async
       - name: .replica_set .noauth .ssl .latest !.sync_async
       - name: .standalone .noauth .nossl .latest !.sync_async
-    display_name: _Test macOS Arm64 py3.13
+    display_name: "* Test macOS Arm64 py3.13"
     run_on:
       - macos-14-arm64
     expansions:
       SKIP_CSOT_TESTS: "true"
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
-  - name: _test-win64-py3.9
+  - name: "*-test-win64-py3.9"
     tasks:
       - name: .sharded_cluster .auth .ssl !.sync_async
       - name: .replica_set .noauth .ssl !.sync_async
       - name: .standalone .noauth .nossl !.sync_async
-    display_name: _Test Win64 py3.9
+    display_name: "* Test Win64 py3.9"
     run_on:
       - windows-64-vsMulti-small
     expansions:
       SKIP_CSOT_TESTS: "true"
       PYTHON_BINARY: C:/python/Python39/python.exe
-  - name: _test-win64-py3.13
+  - name: "*-test-win64-py3.13"
     tasks:
       - name: .sharded_cluster .auth .ssl !.sync_async
       - name: .replica_set .noauth .ssl !.sync_async
       - name: .standalone .noauth .nossl !.sync_async
-    display_name: _Test Win64 py3.13
+    display_name: "* Test Win64 py3.13"
     run_on:
       - windows-64-vsMulti-small
     expansions:
       SKIP_CSOT_TESTS: "true"
       PYTHON_BINARY: C:/python/Python313/python.exe
-  - name: _test-win32-py3.9
+  - name: "*-test-win32-py3.9"
     tasks:
       - name: .sharded_cluster .auth .ssl !.sync_async
       - name: .replica_set .noauth .ssl !.sync_async
       - name: .standalone .noauth .nossl !.sync_async
-    display_name: _Test Win32 py3.9
+    display_name: "* Test Win32 py3.9"
     run_on:
       - windows-64-vsMulti-small
     expansions:
       SKIP_CSOT_TESTS: "true"
       PYTHON_BINARY: C:/python/32/Python39/python.exe
-  - name: _test-win32-py3.13
+  - name: "*-test-win32-py3.13"
     tasks:
       - name: .sharded_cluster .auth .ssl !.sync_async
       - name: .replica_set .noauth .ssl !.sync_async
       - name: .standalone .noauth .nossl !.sync_async
-    display_name: _Test Win32 py3.13
+    display_name: "* Test Win32 py3.13"
     run_on:
       - windows-64-vsMulti-small
     expansions:
