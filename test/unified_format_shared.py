@@ -137,6 +137,8 @@ elif OIDC_ENV == "gcp":
         "ENVIRONMENT": "gcp",
         "TOKEN_RESOURCE": os.environ["GCPOIDC_AUDIENCE"],
     }
+elif OIDC_ENV == "k8s":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"ENVIRONMENT": "k8s"}
 
 
 def with_metaclass(meta, *bases):

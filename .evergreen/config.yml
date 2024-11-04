@@ -520,6 +520,18 @@ functions:
         args:
           - .evergreen/run-mongodb-oidc-test.sh
 
+  "run oidc k8s auth test":
+    - command: subprocess.exec
+      type: test
+      params:
+        binary: bash
+        working_dir: src
+        env:
+          OIDC_ENV: k8s
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "K8S_VARIANT"]
+        args:
+          - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
+
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
       type: test
@@ -872,6 +884,32 @@ task_groups:
     setup_group_timeout_secs: 1800
     tasks:
       - oidc-auth-test-gcp
+
+  - name: testk8soidc_task_group
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: ec2.assume_role
+        params:
+          role_arn: ${aws_test_secrets_role}
+          duration_seconds: 1800
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/k8s/setup.sh
+    teardown_task:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/k8s/teardown.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - oidc-auth-test-k8s
 
   - name: testoidc_task_group
     setup_group:
@@ -1548,40 +1586,41 @@ tasks:
 
     - name: "oidc-auth-test-azure"
       commands:
-      - command: shell.exec
+      - command: subprocess.exec
         type: test
         params:
-          shell: bash
-          script: |-
-            set -o errexit
-            . src/.evergreen/scripts/env.sh
-            cd src
-            git add .
-            git commit -m "add files"
-            export AZUREOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
-            git archive -o $AZUREOIDC_DRIVERS_TAR_FILE HEAD
-            export AZUREOIDC_TEST_CMD="OIDC_ENV=azure ./.evergreen/run-mongodb-oidc-test.sh"
-            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
+          binary: bash
+          working_dir: src
+          env:
+            OIDC_ENV: azure
+          include_expansions_in_env: ["DRIVERS_TOOLS"]
+          args:
+            - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
     - name: "oidc-auth-test-gcp"
       commands:
-      - command: shell.exec
+      - command: subprocess.exec
         type: test
         params:
-          shell: bash
-          script: |-
-            set -o errexit
-            . src/.evergreen/scripts/env.sh
-            cd src
-            git add .
-            git commit -m "add files"
-            export GCPOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
-            git archive -o $GCPOIDC_DRIVERS_TAR_FILE HEAD
-            # Define the command to run on the VM.
-            # Ensure that we source the environment file created for us, set up any other variables we need,
-            # and then run our test suite on the vm.
-            export GCPOIDC_TEST_CMD="OIDC_ENV=gcp ./.evergreen/run-mongodb-oidc-test.sh"
-            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/run-driver-test.sh
+          binary: bash
+          working_dir: src
+          env:
+            OIDC_ENV: gcp
+          include_expansions_in_env: ["DRIVERS_TOOLS"]
+          args:
+            - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
+
+    - name: "oidc-auth-test-k8s"
+      commands:
+        - func: "run oidc k8s auth test"
+          vars:
+            K8S_VARIANT: eks
+        - func: "run oidc k8s auth test"
+          vars:
+            K8S_VARIANT: gke
+        - func: "run oidc k8s auth test"
+          vars:
+            K8S_VARIANT: aks
 # }}}
     - name: "coverage-report"
       tags: ["coverage"]
@@ -1739,20 +1778,6 @@ buildvariants:
     - rhel84-small
   tasks:
      - name: "coverage-report"
-
-- name: testazureoidc-variant
-  display_name: "OIDC Auth Azure"
-  run_on: ubuntu2204-small
-  tasks:
-    - name: testazureoidc_task_group
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
-
-- name: testgcpoidc-variant
-  display_name: "OIDC Auth GCP"
-  run_on: ubuntu2204-small
-  tasks:
-    - name: testgcpoidc_task_group
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
 
 - name: testgcpkms-variant
   display_name: "GCP KMS"
