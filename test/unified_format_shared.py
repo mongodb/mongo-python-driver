@@ -14,7 +14,7 @@
 
 """Shared utility functions and constants for the unified test format runner.
 
-https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
+https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.md
 """
 from __future__ import annotations
 
@@ -137,6 +137,8 @@ elif OIDC_ENV == "gcp":
         "ENVIRONMENT": "gcp",
         "TOKEN_RESOURCE": os.environ["GCPOIDC_AUDIENCE"],
     }
+elif OIDC_ENV == "k8s":
+    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"ENVIRONMENT": "k8s"}
 
 
 def with_metaclass(meta, *bases):

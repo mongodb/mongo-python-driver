@@ -84,7 +84,7 @@ Finally, the same UUID would historically be serialized by the Java driver as::
 .. note:: For in-depth information about the the byte-order historically
    used by different drivers, see the `Handling of Native UUID Types
    Specification
-   <https://github.com/mongodb/specifications/blob/master/source/uuid.rst>`_.
+   <https://github.com/mongodb/specifications/blob/master/source/bson-binary-uuid/uuid.md>`_.
 
 This difference in the byte-order of UUIDs encoded by different drivers can
 result in highly unintuitive behavior in some scenarios. We detail two such
