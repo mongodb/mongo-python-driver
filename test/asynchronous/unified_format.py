@@ -529,11 +529,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
 
-    async def asyncTearDown(self):
-        for client in self.mongos_clients:
-            await client.close()
-        await super().asyncTearDown()
-
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
         if async_client_context.storage_engine == "mmapv1":
