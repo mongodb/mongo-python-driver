@@ -46,7 +46,6 @@ from test import (
     unittest,
 )
 from test.asynchronous.test_bulk import AsyncBulkTestBase
-from test.asynchronous.unified_format import generate_test_classes
 from test.asynchronous.utils_spec_runner import AsyncSpecRunner
 from test.helpers import (
     AWS_CREDS,
@@ -57,6 +56,7 @@ from test.helpers import (
     KMIP_CREDS,
     LOCAL_MASTER_KEY,
 )
+from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     OvertCommandListener,
