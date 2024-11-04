@@ -1766,7 +1766,7 @@ tasks:
 
 buildvariants:
 - name: "no-server"
-  display_name: "No server test"
+  display_name: "No server"
   run_on:
     - rhel84-small
   tasks:
@@ -1779,31 +1779,26 @@ buildvariants:
   tasks:
      - name: "coverage-report"
 
-- name: testgcpkms-variant
-  display_name: "GCP KMS"
+- name: testkms-variant
+  display_name: "KMS"
   run_on:
     - debian11-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
     - testgcpkms-fail-task
-
-- name: testazurekms-variant
-  display_name: "Azure KMS"
-  run_on: debian11-small
-  tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
     - testazurekms-fail-task
 
 - name: rhel8-test-lambda
-  display_name: AWS Lambda handler tests
+  display_name: FaaS Lambda
   run_on: rhel87-small
   tasks:
     - name: test_aws_lambda_task_group
 
 - name: rhel8-import-time
-  display_name: Import Time Check
+  display_name: Import Time
   run_on: rhel87-small
   tasks:
     - name: "check-import-time"
@@ -1816,7 +1811,7 @@ buildvariants:
     - name: "backport-pr"
 
 - name: "perf-tests"
-  display_name: "Performance Benchmark Tests"
+  display_name: "Performance Benchmarks"
   batchtime: 10080  # 7 days
   run_on: rhel90-dbx-perf-large
   tasks:
