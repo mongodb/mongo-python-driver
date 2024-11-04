@@ -304,6 +304,7 @@ class EntityMapUtil:
                 kwargs["h"] = uri
             client = await self.test.async_rs_or_single_client(**kwargs)
             self[spec["id"]] = client
+            self.test.addAsyncCleanup(client.close)
             return
         elif entity_type == "database":
             client = self[spec["client"]]
@@ -528,6 +529,11 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
+
+    async def asyncTearDown(self):
+        for client in self.mongos_clients:
+            await client.close()
+        await super().asyncTearDown()
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
@@ -1036,6 +1042,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             )
 
         client = await self.async_single_client("{}:{}".format(*session._pinned_address))
+        self.addAsyncCleanup(client.close)
         await self.__set_fail_point(client=client, command_args=spec["failPoint"])
 
     async def _testOperation_createEntities(self, spec):

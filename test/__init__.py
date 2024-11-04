@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import asyncio
 import gc
-import logging
 import multiprocessing
 import os
 import signal
@@ -26,7 +25,6 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
@@ -193,8 +191,6 @@ class ClientContext:
             client.close()
 
     def _init_client(self):
-        self.mongoses = []
-        self.connection_attempts = []
         self.client = self._connect(host, port)
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not

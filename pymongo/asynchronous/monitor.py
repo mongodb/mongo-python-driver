@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import atexit
 import logging
 import time
@@ -27,7 +26,7 @@ from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
 from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
-from pymongo.lock import _async_create_lock
+from pymongo.lock import _create_lock
 from pymongo.logger import _SDAM_LOGGER, _debug_log, _SDAMStatusMessage
 from pymongo.periodic_executor import _shutdown_executors
 from pymongo.pool_options import _is_faas
@@ -277,7 +276,7 @@ class Monitor(MonitorBase):
             await self._reset_connection()
             if isinstance(error, _OperationCancelled):
                 raise
-            await self._rtt_monitor.reset()
+            self._rtt_monitor.reset()
             # Server type defaults to Unknown.
             return ServerDescription(address, error=error)
 
@@ -316,9 +315,9 @@ class Monitor(MonitorBase):
             self._cancel_context = conn.cancel_context
             response, round_trip_time = await self._check_with_socket(conn)
             if not response.awaitable:
-                await self._rtt_monitor.add_sample(round_trip_time)
+                self._rtt_monitor.add_sample(round_trip_time)
 
-            avg_rtt, min_rtt = await self._rtt_monitor.get()
+            avg_rtt, min_rtt = self._rtt_monitor.get()
             sd = ServerDescription(address, response, avg_rtt, min_round_trip_time=min_rtt)
             if self._publish:
                 assert self._listeners is not None
@@ -414,8 +413,6 @@ class SrvMonitor(MonitorBase):
             if len(seedlist) == 0:
                 # As per the spec: this should be treated as a failure.
                 raise Exception
-        except asyncio.CancelledError:
-            raise
         except Exception:
             # As per the spec, upon encountering an error:
             # - An error must not be raised
@@ -444,7 +441,7 @@ class _RttMonitor(MonitorBase):
         self._pool = pool
         self._moving_average = MovingAverage()
         self._moving_min = MovingMinimum()
-        self._lock = _async_create_lock()
+        self._lock = _create_lock()
 
     async def close(self) -> None:
         self.gc_safe_close()
@@ -452,20 +449,20 @@ class _RttMonitor(MonitorBase):
         # thread has the socket checked out, it will be closed when checked in.
         await self._pool.reset()
 
-    async def add_sample(self, sample: float) -> None:
+    def add_sample(self, sample: float) -> None:
         """Add a RTT sample."""
-        async with self._lock:
+        with self._lock:
             self._moving_average.add_sample(sample)
             self._moving_min.add_sample(sample)
 
-    async def get(self) -> tuple[Optional[float], float]:
+    def get(self) -> tuple[Optional[float], float]:
         """Get the calculated average, or None if no samples yet and the min."""
-        async with self._lock:
+        with self._lock:
             return self._moving_average.get(), self._moving_min.get()
 
-    async def reset(self) -> None:
+    def reset(self) -> None:
         """Reset the average RTT."""
-        async with self._lock:
+        with self._lock:
             self._moving_average.reset()
             self._moving_min.reset()
 
@@ -475,12 +472,10 @@ class _RttMonitor(MonitorBase):
             # heartbeat protocol (MongoDB 4.4+).
             # XXX: Skip check if the server is unknown?
             rtt = await self._ping()
-            await self.add_sample(rtt)
+            self.add_sample(rtt)
         except ReferenceError:
             # Topology was garbage-collected.
             await self.close()
-        except asyncio.CancelledError:
-            raise
         except Exception:
             await self._pool.reset()
 

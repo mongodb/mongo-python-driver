@@ -25,7 +25,7 @@ from test.asynchronous import AsyncPyMongoTestCase
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.asynchronous.unified_format import generate_test_classes
+from test.unified_format import generate_test_classes
 
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.auth_oidc import OIDCCallback

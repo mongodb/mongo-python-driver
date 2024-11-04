@@ -303,6 +303,7 @@ class EntityMapUtil:
                 kwargs["h"] = uri
             client = self.test.rs_or_single_client(**kwargs)
             self[spec["id"]] = client
+            self.test.addCleanup(client.close)
             return
         elif entity_type == "database":
             client = self[spec["client"]]
@@ -527,6 +528,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
+
+    def tearDown(self):
+        for client in self.mongos_clients:
+            client.close()
+        super().tearDown()
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
@@ -1027,6 +1033,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             )
 
         client = self.single_client("{}:{}".format(*session._pinned_address))
+        self.addCleanup(client.close)
         self.__set_fail_point(client=client, command_args=spec["failPoint"])
 
     def _testOperation_createEntities(self, spec):
