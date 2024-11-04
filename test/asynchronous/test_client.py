@@ -2580,7 +2580,7 @@ class TestClientPool(AsyncMockClientTest):
         await async_wait_until(lambda: len(c.nodes) == 1, "connect")
         self.assertEqual(await c.address, ("c", 3))
         # Assert that we create 1 pooled connection.
-        await listener.async_wait_for_event(monitoring.ConnectionReadyEvent, 1)
+        listener.wait_for_event(monitoring.ConnectionReadyEvent, 1)
         self.assertEqual(listener.event_count(monitoring.ConnectionCreatedEvent), 1)
         arbiter = c._topology.get_server_by_address(("c", 3))
         self.assertEqual(len(arbiter.pool.conns), 1)

@@ -264,6 +264,8 @@ class AsyncSpecRunner(AsyncIntegrationTest):
 
     async def asyncTearDown(self) -> None:
         self.knobs.disable()
+        for client in self.mongos_clients:
+            await client.close()
 
     async def _set_fail_point(self, client, command_args):
         cmd = SON([("configureFailPoint", "failCommand")])
