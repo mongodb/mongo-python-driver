@@ -862,7 +862,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         return await target.create_data_key(*args, **kwargs)
 
     async def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
-        return await (await target.get_keys(*args, **kwargs)).to_list()
+        return await target.get_keys(*args, **kwargs).to_list()
 
     async def _clientEncryptionOperation_deleteKey(self, target, *args, **kwargs):
         result = await target.delete_key(*args, **kwargs)
