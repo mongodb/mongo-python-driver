@@ -940,10 +940,13 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Assert that the callback has been called once.
         self.assertEqual(self.request_called, 1)
 
-    def test_4_1_reauthentication_succeds(self):
+    def test_4_1_reauthentication_succeeds(self):
         # Create a ``MongoClient`` configured with a custom OIDC callback that
         # implements the provider logic.
         client = self.create_client()
+
+        # Perform a ``find`` operation that succeeds.
+        client.test.test.find_one()
 
         # Set a fail point for the find command.
         with self.fail_point(
