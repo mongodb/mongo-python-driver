@@ -803,12 +803,11 @@ class TestBSON(unittest.TestCase):
             BinaryVector(list_vector, BinaryVectorDtype.FLOAT32)
         )
         # Confirm kwargs cannot be passed when BinaryVector is provided
-        self.assertRaises(
-            ValueError,
-            Binary.from_vector,
-            BinaryVector(list_vector, BinaryVectorDtype.PACKED_BIT, padding),
-            {"dtype": BinaryVectorDtype.PACKED_BIT},
-        )
+        with self.assertRaises(ValueError):
+            Binary.from_vector(
+                BinaryVector(list_vector, BinaryVectorDtype.PACKED_BIT, padding),
+                dtype=BinaryVectorDtype.PACKED_BIT,
+            )  # type: ignore[call-overload]
 
     def test_unicode_regex(self):
         """Tests we do not get a segfault for C extension on unicode RegExs.
