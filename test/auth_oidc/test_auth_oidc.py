@@ -756,7 +756,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
     def create_request_cb(self, username=None, sleep=0):
         def request_token(context):
-            print("got a request")
+            with open("temp.txt", "a") as fid:  # noqa: ASYNC101
+                fid.write(b"got a request\n")
             assert isinstance(context.timeout_seconds, int)
             assert context.version == 1
             assert context.refresh_token is None
