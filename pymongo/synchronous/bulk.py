@@ -180,7 +180,7 @@ class _Bulk:
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
-        cmd = {"q": selector, "u": replacement}
+        cmd: dict[str, Any] = {"q": selector, "u": replacement}
         if upsert is not None:
             cmd["upsert"] = upsert
         if collation is not None:
@@ -202,7 +202,7 @@ class _Bulk:
         hint: Union[str, dict[str, Any], None] = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
-        cmd = {"q": selector, "limit": limit}
+        cmd: dict[str, Any] = {"q": selector, "limit": limit}
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
