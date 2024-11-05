@@ -873,8 +873,10 @@ def get_validated_options(
             validator = _get_validator(opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key)
             validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
-            if normed_key == "authmechanismproperties" and any(
-                p in str(exc) for p in _MECH_PROP_MUST_RAISE
+            if (
+                normed_key == "authmechanismproperties"
+                and any(p in str(exc) for p in _MECH_PROP_MUST_RAISE)
+                and "is not a supported auth mechanism property" not in str(exc)
             ):
                 raise
             if warn:

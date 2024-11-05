@@ -161,6 +161,8 @@ def _build_credentials_tuple(
             "::1",
         ]
         allowed_hosts = properties.get("ALLOWED_HOSTS", default_allowed)
+        if properties.get("ALLOWED_HOSTS", None) is not None and human_callback is None:
+            raise ConfigurationError("ALLOWED_HOSTS is only valid with OIDC_HUMAN_CALLBACK")
         msg = (
             "authentication with MONGODB-OIDC requires providing either a callback or a environment"
         )
