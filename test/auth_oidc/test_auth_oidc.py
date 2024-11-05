@@ -114,10 +114,10 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
     @classmethod
     def setUpClass(cls):
-        # if ENVIRON != "test":
-        #     raise unittest.SkipTest("Human workflows are only tested with the test environment")
-        # if DOMAIN is None:
-        #     raise ValueError("Missing OIDC_DOMAIN")
+        if ENVIRON != "test":
+            raise unittest.SkipTest("Human workflows are only tested with the test environment")
+        if DOMAIN is None:
+            raise ValueError("Missing OIDC_DOMAIN")
         super().setUpClass()
 
     def setUp(self):
