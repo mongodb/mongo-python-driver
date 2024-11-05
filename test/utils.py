@@ -20,6 +20,7 @@ import contextlib
 import copy
 import functools
 import os
+import random
 import re
 import shutil
 import sys
@@ -309,6 +310,7 @@ class MockConnection:
     def __init__(self):
         self.cancel_context = _CancellationContext()
         self.more_to_come = False
+        self.id = random.randint(0, 100)
 
     def close_conn(self, reason):
         pass
