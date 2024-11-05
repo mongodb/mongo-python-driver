@@ -106,20 +106,13 @@ class _AsyncClientBulk:
         self.bypass_doc_val = bypass_document_validation
         self.comment = comment
         self.verbose_results = verbose_results
-
         self.ops: list[tuple[str, Mapping[str, Any]]] = []
         self.namespaces: list[str] = []
         self.idx_offset: int = 0
         self.total_ops: int = 0
-
         self.executed = False
-        self.uses_upsert = False
         self.uses_collation = False
         self.uses_array_filters = False
-        self.uses_hint_update = False
-        self.uses_hint_delete = False
-        self.uses_sort = False
-
         self.is_retryable = self.client.options.retry_writes
         self.retrying = False
         self.started_retryable_write = False
@@ -144,7 +137,7 @@ class _AsyncClientBulk:
         namespace: str,
         selector: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
-        multi: bool = False,
+        multi: bool,
         upsert: Optional[bool] = None,
         collation: Optional[Mapping[str, Any]] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
@@ -160,19 +153,16 @@ class _AsyncClientBulk:
             "multi": multi,
         }
         if upsert is not None:
-            self.uses_upsert = True
             cmd["upsert"] = upsert
         if array_filters is not None:
             self.uses_array_filters = True
             cmd["arrayFilters"] = array_filters
         if hint is not None:
-            self.uses_hint_update = True
             cmd["hint"] = hint
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
         if sort is not None:
-            self.uses_sort = True
             cmd["sort"] = sort
         if multi:
             # A bulk_write containing an update_many is not retryable.
@@ -200,16 +190,13 @@ class _AsyncClientBulk:
             "multi": False,
         }
         if upsert is not None:
-            self.uses_upsert = True
             cmd["upsert"] = upsert
         if hint is not None:
-            self.uses_hint_update = True
             cmd["hint"] = hint
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
         if sort is not None:
-            self.uses_sort = True
             cmd["sort"] = sort
         self.ops.append(("replace", cmd))
         self.namespaces.append(namespace)
@@ -226,7 +213,6 @@ class _AsyncClientBulk:
         """Create a delete document and add it to the list of ops."""
         cmd = {"delete": -1, "filter": selector, "multi": multi}
         if hint is not None:
-            self.uses_hint_delete = True
             cmd["hint"] = hint
         if collation is not None:
             self.uses_collation = True

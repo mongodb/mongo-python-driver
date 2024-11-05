@@ -1,0 +1,205 @@
+{
+  "description": "operator-matchAsDocument",
+  "schemaVersion": "1.13",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0"
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "test"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "coll0"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "coll0",
+      "databaseName": "test",
+      "documents": [
+        {
+          "_id": 1,
+          "json": "{ \"x\": 1, \"y\": 2 }"
+        },
+        {
+          "_id": 2,
+          "json": "1"
+        },
+        {
+          "_id": 3,
+          "json": "[ \"foo\" ]"
+        },
+        {
+          "_id": 4,
+          "json": "{ \"x\" }"
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "matchAsDocument with non-matching filter",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "json": {
+                "$$matchAsDocument": {
+                  "x": 1,
+                  "y": "two"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "matchAsDocument evaluates special operators",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "json": {
+                "$$matchAsDocument": {
+                  "x": 1,
+                  "y": {
+                    "$$exists": false
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "matchAsDocument does not permit extra fields",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "json": {
+                "$$matchAsDocument": {
+                  "x": 1
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "matchAsDocument expects JSON object but given scalar",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 2
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 2,
+              "json": {
+                "$$matchAsDocument": {
+                  "$$matchAsRoot": {}
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "matchAsDocument expects JSON object but given array",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 3
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 3,
+              "json": {
+                "$$matchAsDocument": {
+                  "$$matchAsRoot": {}
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "matchAsDocument fails to decode Extended JSON",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 4
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 4,
+              "json": {
+                "$$matchAsDocument": {
+                  "$$matchAsRoot": {}
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
