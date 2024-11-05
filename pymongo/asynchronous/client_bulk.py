@@ -150,11 +150,8 @@ class _AsyncClientBulk:
             "update": -1,
             "filter": selector,
             "updateMods": update,
+            "multi": multi,
         }
-        if multi:
-            # A bulk_write containing an update_many is not retryable.
-            self.is_retryable = False
-            cmd["multi"] = multi
         if upsert is not None:
             cmd["upsert"] = upsert
         if array_filters is not None:
@@ -167,6 +164,9 @@ class _AsyncClientBulk:
             cmd["collation"] = collation
         if sort is not None:
             cmd["sort"] = sort
+        if multi:
+            # A bulk_write containing an update_many is not retryable.
+            self.is_retryable = False
         self.ops.append(("update", cmd))
         self.namespaces.append(namespace)
         self.total_ops += 1
@@ -211,16 +211,15 @@ class _AsyncClientBulk:
         hint: Union[str, dict[str, Any], None] = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
-        cmd = {"delete": -1, "filter": selector}
-        if multi:
-            cmd["multi"] = multi
-            # A bulk_write containing an update_many is not retryable.
-            self.is_retryable = False
+        cmd = {"delete": -1, "filter": selector, "multi": multi}
         if hint is not None:
             cmd["hint"] = hint
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
+        if multi:
+            # A bulk_write containing an update_many is not retryable.
+            self.is_retryable = False
         self.ops.append(("delete", cmd))
         self.namespaces.append(namespace)
         self.total_ops += 1

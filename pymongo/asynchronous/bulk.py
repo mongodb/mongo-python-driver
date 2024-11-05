@@ -149,11 +149,7 @@ class _AsyncBulk:
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
-        cmd: dict[str, Any] = {"q": selector, "u": update}
-        if multi:
-            cmd["multi"] = multi
-            # A bulk_write containing an update_many is not retryable.
-            self.is_retryable = False
+        cmd: dict[str, Any] = {"q": selector, "u": update, "multi": multi}
         if upsert is not None:
             cmd["upsert"] = upsert
         if collation is not None:
@@ -168,6 +164,9 @@ class _AsyncBulk:
         if sort is not None:
             self.uses_sort = True
             cmd["sort"] = sort
+        if multi:
+            # A bulk_write containing an update_many is not retryable.
+            self.is_retryable = False
         self.ops.append((_UPDATE, cmd))
 
     def add_replace(
