@@ -255,16 +255,14 @@ functions:
           - ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
   "run mod_wsgi tests":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
+        include_expansions_in_env: ["PROJECT_DIRECTORY"]
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          set -o xtrace
-          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
-            MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
-            bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
+        binary: bash
+        args:
+          - .evergreen/scripts/run-modwsgi-tests.sh
 
   "run mockupdb tests":
     - command: subprocess.exec
@@ -360,20 +358,14 @@ functions:
             bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
 
   "run enterprise auth tests":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
+        binary: bash
         working_dir: "src"
-        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-        script: |
-          # Disable xtrace for security reasons (just in case it was accidentally set).
-          set +x
-          bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/enterprise_auth
-          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
-            PYTHON_BINARY="${PYTHON_BINARY}" \
-            TEST_ENTERPRISE_AUTH=1 \
-            AUTH=auth \
-            bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
+        include_expansions_in_env: ["DRIVERS_TOOLS", "PROJECT_DIRECTORY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        args:
+          - .evergreen/scripts/run-enterprise-auth-tests.sh
 
   "run atlas tests":
     - command: subprocess.exec
