@@ -258,11 +258,11 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["PROJECT_DIRECTORY"]
+        include_expansions_in_env: ["PROJECT_DIRECTORY", "PYTHON_BINARY", "MOD_WSGI_VERSION", "MOD_WSGI_EMBEDDED"]
         working_dir: "src"
         binary: bash
         args:
-          - .evergreen/scripts/run-modwsgi-tests.sh
+          - .evergreen/scripts/run-mod-wsgi-tests.sh
 
   "run mockupdb tests":
     - command: subprocess.exec
@@ -387,55 +387,66 @@ functions:
           - ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup-secrets.sh
 
   "run aws auth test with regular aws credentials":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
-        shell: "bash"
+        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        binary: bash
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          .evergreen/run-mongodb-aws-test.sh regular
+        args:
+          - .evergreen/scripts/run-mongodb-aws-test.sh regular
 
   "run aws auth test with assume role credentials":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
-        shell: "bash"
+        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        binary: bash
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          .evergreen/run-mongodb-aws-test.sh assume-role
+        args:
+          - .evergreen/scripts/run-mongodb-aws-test.sh assume-role
 
   "run aws auth test with aws EC2 credentials":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
+        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        binary: bash
         working_dir: "src"
-        shell: "bash"
-        script: |
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support the EC2 auth test, skipping..."
-             exit 0
-          fi
-          . .evergreen/scripts/env.sh
-          .evergreen/run-mongodb-aws-test.sh ec2
+        args:
+          - .evergreen/scripts/run-mongodb-aws-test.sh ec2
 
   "run aws auth test with aws web identity credentials":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
+        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        binary: bash
         working_dir: "src"
-        shell: "bash"
-        script: |
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support the web identity auth test, skipping..."
-             exit 0
-          fi
-          . .evergreen/scripts/env.sh
+        args:
           # Test with and without AWS_ROLE_SESSION_NAME set.
-          .evergreen/run-mongodb-aws-test.sh web-identity
-          AWS_ROLE_SESSION_NAME="test" \
-            .evergreen/run-mongodb-aws-test.sh web-identity
+          - .evergreen/scripts/run-mongodb-aws-test.sh web-identity
+          - AWS_ROLE_SESSION_NAME="test" .evergreen/scripts/run-mongodb-aws-test.sh web-identity
+
+  "run aws auth test with aws credentials as environment variables":
+    - command: subprocess.exec
+      type: test
+      params:
+        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/run-mongodb-aws-test.sh env-creds
+
+  "run aws auth test with aws credentials and session token as environment variables":
+    - command: subprocess.exec
+      type: test
+      params:
+        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/run-mongodb-aws-test.sh session-creds
 
   "run oidc auth test with test credentials":
     - command: subprocess.exec
@@ -458,26 +469,6 @@ functions:
         include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "K8S_VARIANT"]
         args:
           - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
-
-  "run aws auth test with aws credentials as environment variables":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        shell: bash
-        script: |
-          . .evergreen/scripts/env.sh
-          .evergreen/run-mongodb-aws-test.sh env-creds
-
-  "run aws auth test with aws credentials and session token as environment variables":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        shell: bash
-        script: |
-          . .evergreen/scripts/env.sh
-          .evergreen/run-mongodb-aws-test.sh session-creds
 
   "run aws ECS auth test":
     - command: subprocess.exec

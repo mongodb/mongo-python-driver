@@ -2,6 +2,8 @@
 set -o xtrace
 set -o errexit
 
+. .evergreen/scripts/env.sh
+
 APACHE=$(command -v apache2 || command -v /usr/lib/apache2/mpm-prefork/apache2) || true
 if [ -n "$APACHE" ]; then
     APACHE_CONFIG=apache24ubuntu161404.conf
