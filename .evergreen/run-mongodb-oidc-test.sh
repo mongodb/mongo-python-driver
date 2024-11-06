@@ -35,4 +35,5 @@ export AUTH="auth"
 bash ./.evergreen/hatch.sh test:test-eg -- "${@:1}" || {
     echo "Test failed!"
     cat temp.txt
+    exit 1
 }
