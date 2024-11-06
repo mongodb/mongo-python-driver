@@ -32,4 +32,7 @@ fi
 export TEST_AUTH_OIDC=1
 export COVERAGE=1
 export AUTH="auth"
-bash ./.evergreen/hatch.sh test:test-eg -- "${@:1}" || cat temp.txt
+bash ./.evergreen/hatch.sh test:test-eg -- "${@:1}" || {
+    echo "Test failed!"
+    cat temp.txt
+}
