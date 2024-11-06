@@ -87,7 +87,10 @@ functions:
         working_dir: "src"
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         args:
-          - src/.evergreen/scripts/download-and-merge-coverage.sh ${bucket_name} ${revision} ${version_id}
+          - src/.evergreen/scripts/download-and-merge-coverage.sh
+          - ${bucket_name}
+          - ${revision}
+          - ${version_id}
     - command: subprocess.exec
       params:
         working_dir: "src"
@@ -394,7 +397,8 @@ functions:
         binary: bash
         working_dir: "src"
         args:
-          - .evergreen/scripts/run-mongodb-aws-test.sh regular
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - regular
 
   "run aws auth test with assume role credentials":
     - command: subprocess.exec
@@ -542,18 +546,14 @@ functions:
         file: atlas-expansion.yml
 
   "run-ocsp-test":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
+        include_expansions_in_env: ["DRIVERS_TOOLS", "PROJECT_DIRECTORY", "OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED"]
+        binary: bash
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          TEST_OCSP=1 \
-          PYTHON_BINARY=${PYTHON_BINARY} \
-          CA_FILE="${DRIVERS_TOOLS}/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
-          OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
-          bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
-          bash ${DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh
+        args:
+          - .evergreen/scripts/run-ocsp-test.sh
 
   "run-ocsp-server":
     - command: subprocess.exec

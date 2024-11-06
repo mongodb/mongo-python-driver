@@ -20,10 +20,10 @@ if [ "${skip_EC2_auth_test}" = "true" ] && { [ "$1" = "ec2" ] || [ "$1" = "web-i
 fi
 
 . .evergreen/scripts/env.sh
-echo "Running MONGODB-AWS authentication tests"
+echo "Running MONGODB-AWS authentication tests for $1"
 
 # Handle credentials and environment setup.
-. $DRIVERS_TOOLS/.evergreen/auth_aws/aws_setup.sh $1
+. "$DRIVERS_TOOLS"/.evergreen/auth_aws/aws_setup.sh "$1"
 
 # show test output
 set -x
