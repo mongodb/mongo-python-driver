@@ -80,14 +80,14 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${assume_role_arn}
-    - command: shell.exec
+    - command: subprocess.exec
       params:
+        binary: bash
         silent: true
         working_dir: "src"
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-        script: |
-          # Download all the task coverage files.
-          aws s3 cp --recursive s3://${bucket_name}/coverage/${revision}/${version_id}/coverage/ coverage/
+        args:
+          - src/.evergreen/scripts/download_and_merge_coverage.sh ${bucket_name} ${revision} ${version_id}
     - command: subprocess.exec
       params:
         working_dir: "src"
