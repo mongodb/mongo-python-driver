@@ -31,7 +31,7 @@ EPOCH_NAIVE = EPOCH_AWARE.replace(tzinfo=None)
 _DATETIME_ERROR_SUGGESTION = (
     "(Consider Using CodecOptions(datetime_conversion=DATETIME_AUTO)"
     " or MongoClient(datetime_conversion='DATETIME_AUTO'))."
-    " See: https://pymongo.readthedocs.io/en/stable/examples/datetimes.html#handling-out-of-range-datetimes"
+    " See: https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes"
 )
 
 

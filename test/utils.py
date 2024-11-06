@@ -20,6 +20,7 @@ import contextlib
 import copy
 import functools
 import os
+import random
 import re
 import shutil
 import sys
@@ -309,6 +310,7 @@ class MockConnection:
     def __init__(self):
         self.cancel_context = _CancellationContext()
         self.more_to_come = False
+        self.id = random.randint(0, 100)
 
     def close_conn(self, reason):
         pass
@@ -418,298 +420,6 @@ class FunctionCallRecorder:
         return len(self._call_list)
 
 
-class SpecTestCreator:
-    """Class to create test cases from specifications."""
-
-    def __init__(self, create_test, test_class, test_path):
-        """Create a TestCreator object.
-
-        :Parameters:
-          - `create_test`: callback that returns a test case. The callback
-            must accept the following arguments - a dictionary containing the
-            entire test specification (the `scenario_def`), a dictionary
-            containing the specification for which the test case will be
-            generated (the `test_def`).
-          - `test_class`: the unittest.TestCase class in which to create the
-            test case.
-          - `test_path`: path to the directory containing the JSON files with
-            the test specifications.
-        """
-        self._create_test = create_test
-        self._test_class = test_class
-        self.test_path = test_path
-
-    def _ensure_min_max_server_version(self, scenario_def, method):
-        """Test modifier that enforces a version range for the server on a
-        test case.
-        """
-        if "minServerVersion" in scenario_def:
-            min_ver = tuple(int(elt) for elt in scenario_def["minServerVersion"].split("."))
-            if min_ver is not None:
-                method = client_context.require_version_min(*min_ver)(method)
-
-        if "maxServerVersion" in scenario_def:
-            max_ver = tuple(int(elt) for elt in scenario_def["maxServerVersion"].split("."))
-            if max_ver is not None:
-                method = client_context.require_version_max(*max_ver)(method)
-
-        if "serverless" in scenario_def:
-            serverless = scenario_def["serverless"]
-            if serverless == "require":
-                serverless_satisfied = client_context.serverless
-            elif serverless == "forbid":
-                serverless_satisfied = not client_context.serverless
-            else:  # unset or "allow"
-                serverless_satisfied = True
-            method = unittest.skipUnless(
-                serverless_satisfied, "Serverless requirement not satisfied"
-            )(method)
-
-        return method
-
-    @staticmethod
-    def valid_topology(run_on_req):
-        return client_context.is_topology_type(
-            run_on_req.get("topology", ["single", "replicaset", "sharded", "load-balanced"])
-        )
-
-    @staticmethod
-    def min_server_version(run_on_req):
-        version = run_on_req.get("minServerVersion")
-        if version:
-            min_ver = tuple(int(elt) for elt in version.split("."))
-            return client_context.version >= min_ver
-        return True
-
-    @staticmethod
-    def max_server_version(run_on_req):
-        version = run_on_req.get("maxServerVersion")
-        if version:
-            max_ver = tuple(int(elt) for elt in version.split("."))
-            return client_context.version <= max_ver
-        return True
-
-    @staticmethod
-    def valid_auth_enabled(run_on_req):
-        if "authEnabled" in run_on_req:
-            if run_on_req["authEnabled"]:
-                return client_context.auth_enabled
-            return not client_context.auth_enabled
-        return True
-
-    @staticmethod
-    def serverless_ok(run_on_req):
-        serverless = run_on_req["serverless"]
-        if serverless == "require":
-            return client_context.serverless
-        elif serverless == "forbid":
-            return not client_context.serverless
-        else:  # unset or "allow"
-            return True
-
-    def should_run_on(self, scenario_def):
-        run_on = scenario_def.get("runOn", [])
-        if not run_on:
-            # Always run these tests.
-            return True
-
-        for req in run_on:
-            if (
-                self.valid_topology(req)
-                and self.min_server_version(req)
-                and self.max_server_version(req)
-                and self.valid_auth_enabled(req)
-                and self.serverless_ok(req)
-            ):
-                return True
-        return False
-
-    def ensure_run_on(self, scenario_def, method):
-        """Test modifier that enforces a 'runOn' on a test case."""
-        return client_context._require(
-            lambda: self.should_run_on(scenario_def), "runOn not satisfied", method
-        )
-
-    def tests(self, scenario_def):
-        """Allow CMAP spec test to override the location of test."""
-        return scenario_def["tests"]
-
-    def create_tests(self):
-        for dirpath, _, filenames in os.walk(self.test_path):
-            dirname = os.path.split(dirpath)[-1]
-
-            for filename in filenames:
-                with open(os.path.join(dirpath, filename)) as scenario_stream:
-                    # Use tz_aware=False to match how CodecOptions decodes
-                    # dates.
-                    opts = json_util.JSONOptions(tz_aware=False)
-                    scenario_def = ScenarioDict(
-                        json_util.loads(scenario_stream.read(), json_options=opts)
-                    )
-
-                test_type = os.path.splitext(filename)[0]
-
-                # Construct test from scenario.
-                for test_def in self.tests(scenario_def):
-                    test_name = "test_{}_{}_{}".format(
-                        dirname,
-                        test_type.replace("-", "_").replace(".", "_"),
-                        str(test_def["description"].replace(" ", "_").replace(".", "_")),
-                    )
-
-                    new_test = self._create_test(scenario_def, test_def, test_name)
-                    new_test = self._ensure_min_max_server_version(scenario_def, new_test)
-                    new_test = self.ensure_run_on(scenario_def, new_test)
-
-                    new_test.__name__ = test_name
-                    setattr(self._test_class, new_test.__name__, new_test)
-
-
-def _connection_string(h):
-    if h.startswith(("mongodb://", "mongodb+srv://")):
-        return h
-    return f"mongodb://{h!s}"
-
-
-def _mongo_client(host, port, authenticate=True, directConnection=None, **kwargs):
-    """Create a new client over SSL/TLS if necessary."""
-    host = host or client_context.host
-    port = port or client_context.port
-    client_options: dict = client_context.default_client_options.copy()
-    if client_context.replica_set_name and not directConnection:
-        client_options["replicaSet"] = client_context.replica_set_name
-    if directConnection is not None:
-        client_options["directConnection"] = directConnection
-    client_options.update(kwargs)
-
-    uri = _connection_string(host)
-    auth_mech = kwargs.get("authMechanism", "")
-    if client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
-        # Only add the default username or password if one is not provided.
-        res = parse_uri(uri)
-        if (
-            not res["username"]
-            and not res["password"]
-            and "username" not in client_options
-            and "password" not in client_options
-        ):
-            client_options["username"] = db_user
-            client_options["password"] = db_pwd
-    return MongoClient(uri, port, **client_options)
-
-
-async def _async_mongo_client(host, port, authenticate=True, directConnection=None, **kwargs):
-    """Create a new client over SSL/TLS if necessary."""
-    host = host or await async_client_context.host
-    port = port or await async_client_context.port
-    client_options: dict = async_client_context.default_client_options.copy()
-    if async_client_context.replica_set_name and not directConnection:
-        client_options["replicaSet"] = async_client_context.replica_set_name
-    if directConnection is not None:
-        client_options["directConnection"] = directConnection
-    client_options.update(kwargs)
-
-    uri = _connection_string(host)
-    auth_mech = kwargs.get("authMechanism", "")
-    if async_client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
-        # Only add the default username or password if one is not provided.
-        res = parse_uri(uri)
-        if (
-            not res["username"]
-            and not res["password"]
-            and "username" not in client_options
-            and "password" not in client_options
-        ):
-            client_options["username"] = db_user
-            client_options["password"] = db_pwd
-    client = AsyncMongoClient(uri, port, **client_options)
-    if client._options.connect:
-        await client.aconnect()
-    return client
-
-
-def single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
-    """Make a direct connection. Don't authenticate."""
-    return _mongo_client(h, p, authenticate=False, directConnection=True, **kwargs)
-
-
-def single_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
-    """Make a direct connection, and authenticate if necessary."""
-    return _mongo_client(h, p, directConnection=True, **kwargs)
-
-
-def rs_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
-    """Connect to the replica set. Don't authenticate."""
-    return _mongo_client(h, p, authenticate=False, **kwargs)
-
-
-def rs_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
-    """Connect to the replica set and authenticate if necessary."""
-    return _mongo_client(h, p, **kwargs)
-
-
-def rs_or_single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
-    """Connect to the replica set if there is one, otherwise the standalone.
-
-    Like rs_or_single_client, but does not authenticate.
-    """
-    return _mongo_client(h, p, authenticate=False, **kwargs)
-
-
-def rs_or_single_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[Any]:
-    """Connect to the replica set if there is one, otherwise the standalone.
-
-    Authenticates if necessary.
-    """
-    return _mongo_client(h, p, **kwargs)
-
-
-async def async_single_client_noauth(
-    h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[dict]:
-    """Make a direct connection. Don't authenticate."""
-    return await _async_mongo_client(h, p, authenticate=False, directConnection=True, **kwargs)
-
-
-async def async_single_client(
-    h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[dict]:
-    """Make a direct connection, and authenticate if necessary."""
-    return await _async_mongo_client(h, p, directConnection=True, **kwargs)
-
-
-async def async_rs_client_noauth(
-    h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[dict]:
-    """Connect to the replica set. Don't authenticate."""
-    return await _async_mongo_client(h, p, authenticate=False, **kwargs)
-
-
-async def async_rs_client(h: Any = None, p: Any = None, **kwargs: Any) -> AsyncMongoClient[dict]:
-    """Connect to the replica set and authenticate if necessary."""
-    return await _async_mongo_client(h, p, **kwargs)
-
-
-async def async_rs_or_single_client_noauth(
-    h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[dict]:
-    """Connect to the replica set if there is one, otherwise the standalone.
-
-    Like rs_or_single_client, but does not authenticate.
-    """
-    return await _async_mongo_client(h, p, authenticate=False, **kwargs)
-
-
-async def async_rs_or_single_client(
-    h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[Any]:
-    """Connect to the replica set if there is one, otherwise the standalone.
-
-    Authenticates if necessary.
-    """
-    return await _async_mongo_client(h, p, **kwargs)
-
-
 def ensure_all_connected(client: MongoClient) -> None:
     """Ensure that the client's connection pool has socket connections to all
     members of a replica set. Raises ConfigurationError when called with a
@@ -738,6 +448,44 @@ def ensure_all_connected(client: MongoClient) -> None:
 
     try:
         wait_until(lambda: target_host_list == discover(), "connected to all hosts")
+    except AssertionError as exc:
+        raise AssertionError(
+            f"{exc}, {connected_host_list} != {target_host_list}, {client.topology_description}"
+        )
+
+
+async def async_ensure_all_connected(client: AsyncMongoClient) -> None:
+    """Ensure that the client's connection pool has socket connections to all
+    members of a replica set. Raises ConfigurationError when called with a
+    non-replica set client.
+
+    Depending on the use-case, the caller may need to clear any event listeners
+    that are configured on the client.
+    """
+    hello: dict = await client.admin.command(HelloCompat.LEGACY_CMD)
+    if "setName" not in hello:
+        raise ConfigurationError("cluster is not a replica set")
+
+    target_host_list = set(hello["hosts"] + hello.get("passives", []))
+    connected_host_list = {hello["me"]}
+
+    # Run hello until we have connected to each host at least once.
+    async def discover():
+        i = 0
+        while i < 100 and connected_host_list != target_host_list:
+            hello: dict = await client.admin.command(
+                HelloCompat.LEGACY_CMD, read_preference=ReadPreference.SECONDARY
+            )
+            connected_host_list.update([hello["me"]])
+            i += 1
+        return connected_host_list
+
+    try:
+
+        async def predicate():
+            return target_host_list == await discover()
+
+        await async_wait_until(predicate, "connected to all hosts")
     except AssertionError as exc:
         raise AssertionError(
             f"{exc}, {connected_host_list} != {target_host_list}, {client.topology_description}"
@@ -904,16 +652,6 @@ async def async_wait_until(predicate, success_description, timeout=10):
             raise AssertionError("Didn't ever %s" % success_description)
 
         await asyncio.sleep(interval)
-
-
-def repl_set_step_down(client, **kwargs):
-    """Run replSetStepDown, first unfreezing a secondary with replSetFreeze."""
-    cmd = SON([("replSetStepDown", 1)])
-    cmd.update(kwargs)
-
-    # Unfreeze a secondary to ensure a speedy election.
-    client.admin.command("replSetFreeze", 0, read_preference=ReadPreference.SECONDARY)
-    client.admin.command(cmd)
 
 
 def is_mongos(client):
@@ -1108,20 +846,6 @@ def is_greenthread_patched():
     return gevent_monkey_patched() or eventlet_monkey_patched()
 
 
-def disable_replication(client):
-    """Disable replication on all secondaries."""
-    for host, port in client.secondaries:
-        secondary = single_client(host, port)
-        secondary.admin.command("configureFailPoint", "stopReplProducer", mode="alwaysOn")
-
-
-def enable_replication(client):
-    """Enable replication on all secondaries."""
-    for host, port in client.secondaries:
-        secondary = single_client(host, port)
-        secondary.admin.command("configureFailPoint", "stopReplProducer", mode="off")
-
-
 class ExceptionCatchingThread(threading.Thread):
     """A thread that stores any exception encountered from run()."""
 
@@ -1236,10 +960,6 @@ def parse_spec_options(opts):
 def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callback):
     for arg_name in list(arguments):
         c2s = camel_to_snake(arg_name)
-        # PyMongo accepts sort as list of tuples.
-        if arg_name == "sort":
-            sort_dict = arguments[arg_name]
-            arguments[arg_name] = list(sort_dict.items())
         # Named "key" instead not fieldName.
         if arg_name == "fieldName":
             arguments["key"] = arguments.pop(arg_name)
@@ -1316,3 +1036,9 @@ def set_fail_point(client, command_args):
     cmd = SON([("configureFailPoint", "failCommand")])
     cmd.update(command_args)
     client.admin.command(cmd)
+
+
+async def async_set_fail_point(client, command_args):
+    cmd = SON([("configureFailPoint", "failCommand")])
+    cmd.update(command_args)
+    await client.admin.command(cmd)

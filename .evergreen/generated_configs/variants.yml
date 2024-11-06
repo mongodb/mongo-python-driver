@@ -1,0 +1,1386 @@
+buildvariants:
+  # Alternative hosts tests
+  - name: openssl-1.0.2-rhel7-py3.9
+    tasks:
+      - name: .5.0 .standalone !.sync_async
+    display_name: OpenSSL 1.0.2 RHEL7 py3.9
+    run_on:
+      - rhel79-small
+    batchtime: 10080
+    expansions:
+      SKIP_HATCH: "true"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: other-hosts-rhel9-fips
+    tasks:
+      - name: .6.0 .standalone !.sync_async
+    display_name: Other hosts RHEL9-FIPS
+    run_on:
+      - rhel92-fips
+    batchtime: 10080
+    expansions:
+      SKIP_HATCH: "true"
+  - name: other-hosts-rhel8-zseries
+    tasks:
+      - name: .6.0 .standalone !.sync_async
+    display_name: Other hosts RHEL8-zseries
+    run_on:
+      - rhel8-zseries-small
+    batchtime: 10080
+    expansions:
+      SKIP_HATCH: "true"
+  - name: other-hosts-rhel8-power8
+    tasks:
+      - name: .6.0 .standalone !.sync_async
+    display_name: Other hosts RHEL8-POWER8
+    run_on:
+      - rhel8-power-small
+    batchtime: 10080
+    expansions:
+      SKIP_HATCH: "true"
+  - name: other-hosts-rhel8-arm64
+    tasks:
+      - name: .6.0 .standalone !.sync_async
+    display_name: Other hosts RHEL8-arm64
+    run_on:
+      - rhel82-arm64-small
+    batchtime: 10080
+    expansions:
+      SKIP_HATCH: "true"
+
+  # Atlas connect tests
+  - name: atlas-connect-rhel8-py3.9
+    tasks:
+      - name: atlas-connect
+    display_name: Atlas connect RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: atlas-connect-rhel8-py3.13
+    tasks:
+      - name: atlas-connect
+    display_name: Atlas connect RHEL8 py3.13
+    run_on:
+      - rhel87-small
+    expansions:
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+
+  # Atlas data lake tests
+  - name: atlas-data-lake-ubuntu-22-py3.9-auth-no-c
+    tasks:
+      - name: atlas-data-lake-tests
+    display_name: Atlas Data Lake Ubuntu-22 py3.9 Auth No C
+    run_on:
+      - ubuntu2204-small
+    expansions:
+      AUTH: auth
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: atlas-data-lake-ubuntu-22-py3.9-auth
+    tasks:
+      - name: atlas-data-lake-tests
+    display_name: Atlas Data Lake Ubuntu-22 py3.9 Auth
+    run_on:
+      - ubuntu2204-small
+    expansions:
+      AUTH: auth
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: atlas-data-lake-ubuntu-22-py3.13-auth-no-c
+    tasks:
+      - name: atlas-data-lake-tests
+    display_name: Atlas Data Lake Ubuntu-22 py3.13 Auth No C
+    run_on:
+      - ubuntu2204-small
+    expansions:
+      AUTH: auth
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+  - name: atlas-data-lake-ubuntu-22-py3.13-auth
+    tasks:
+      - name: atlas-data-lake-tests
+    display_name: Atlas Data Lake Ubuntu-22 py3.13 Auth
+    run_on:
+      - ubuntu2204-small
+    expansions:
+      AUTH: auth
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+
+  # Aws auth tests
+  - name: auth-aws-ubuntu-20-py3.9
+    tasks:
+      - name: aws-auth-test-4.4
+      - name: aws-auth-test-5.0
+      - name: aws-auth-test-6.0
+      - name: aws-auth-test-7.0
+      - name: aws-auth-test-8.0
+      - name: aws-auth-test-rapid
+      - name: aws-auth-test-latest
+    display_name: Auth AWS Ubuntu-20 py3.9
+    run_on:
+      - ubuntu2004-small
+    expansions:
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: auth-aws-ubuntu-20-py3.13
+    tasks:
+      - name: aws-auth-test-4.4
+      - name: aws-auth-test-5.0
+      - name: aws-auth-test-6.0
+      - name: aws-auth-test-7.0
+      - name: aws-auth-test-8.0
+      - name: aws-auth-test-rapid
+      - name: aws-auth-test-latest
+    display_name: Auth AWS Ubuntu-20 py3.13
+    run_on:
+      - ubuntu2004-small
+    expansions:
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+  - name: auth-aws-win64-py3.9
+    tasks:
+      - name: aws-auth-test-4.4
+      - name: aws-auth-test-5.0
+      - name: aws-auth-test-6.0
+      - name: aws-auth-test-7.0
+      - name: aws-auth-test-8.0
+      - name: aws-auth-test-rapid
+      - name: aws-auth-test-latest
+    display_name: Auth AWS Win64 py3.9
+    run_on:
+      - windows-64-vsMulti-small
+    expansions:
+      skip_ECS_auth_test: "true"
+      PYTHON_BINARY: C:/python/Python39/python.exe
+  - name: auth-aws-win64-py3.13
+    tasks:
+      - name: aws-auth-test-4.4
+      - name: aws-auth-test-5.0
+      - name: aws-auth-test-6.0
+      - name: aws-auth-test-7.0
+      - name: aws-auth-test-8.0
+      - name: aws-auth-test-rapid
+      - name: aws-auth-test-latest
+    display_name: Auth AWS Win64 py3.13
+    run_on:
+      - windows-64-vsMulti-small
+    expansions:
+      skip_ECS_auth_test: "true"
+      PYTHON_BINARY: C:/python/Python313/python.exe
+  - name: auth-aws-macos-py3.9
+    tasks:
+      - name: aws-auth-test-4.4
+      - name: aws-auth-test-5.0
+      - name: aws-auth-test-6.0
+      - name: aws-auth-test-7.0
+      - name: aws-auth-test-8.0
+      - name: aws-auth-test-rapid
+      - name: aws-auth-test-latest
+    display_name: Auth AWS macOS py3.9
+    run_on:
+      - macos-14
+    expansions:
+      skip_ECS_auth_test: "true"
+      skip_EC2_auth_test: "true"
+      skip_web_identity_auth_test: "true"
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+  - name: auth-aws-macos-py3.13
+    tasks:
+      - name: aws-auth-test-4.4
+      - name: aws-auth-test-5.0
+      - name: aws-auth-test-6.0
+      - name: aws-auth-test-7.0
+      - name: aws-auth-test-8.0
+      - name: aws-auth-test-rapid
+      - name: aws-auth-test-latest
+    display_name: Auth AWS macOS py3.13
+    run_on:
+      - macos-14
+    expansions:
+      skip_ECS_auth_test: "true"
+      skip_EC2_auth_test: "true"
+      skip_web_identity_auth_test: "true"
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+
+  # Compression tests
+  - name: compression-snappy-rhel8-py3.9-no-c
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Compression snappy RHEL8 py3.9 No C
+    run_on:
+      - rhel87-small
+    expansions:
+      COMPRESSORS: snappy
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: compression-snappy-rhel8-py3.10
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Compression snappy RHEL8 py3.10
+    run_on:
+      - rhel87-small
+    expansions:
+      COMPRESSORS: snappy
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: compression-zlib-rhel8-py3.11-no-c
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Compression zlib RHEL8 py3.11 No C
+    run_on:
+      - rhel87-small
+    expansions:
+      COMPRESSORS: zlib
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: compression-zlib-rhel8-py3.12
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Compression zlib RHEL8 py3.12
+    run_on:
+      - rhel87-small
+    expansions:
+      COMPRESSORS: zlib
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: compression-zstd-rhel8-py3.13-no-c
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async !.4.0
+    display_name: Compression zstd RHEL8 py3.13 No C
+    run_on:
+      - rhel87-small
+    expansions:
+      COMPRESSORS: zstd
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+  - name: compression-zstd-rhel8-py3.9
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async !.4.0
+    display_name: Compression zstd RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      COMPRESSORS: zstd
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: compression-snappy-rhel8-pypy3.9
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Compression snappy RHEL8 pypy3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      COMPRESSORS: snappy
+      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+  - name: compression-zlib-rhel8-pypy3.10
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Compression zlib RHEL8 pypy3.10
+    run_on:
+      - rhel87-small
+    expansions:
+      COMPRESSORS: zlib
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  - name: compression-zstd-rhel8-pypy3.9
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async !.4.0
+    display_name: Compression zstd RHEL8 pypy3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      COMPRESSORS: zstd
+      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+
+  # Disable test commands tests
+  - name: disable-test-commands-rhel8-py3.9
+    tasks:
+      - name: .latest .sync_async
+    display_name: Disable test commands RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      SSL: ssl
+      DISABLE_TEST_COMMANDS: "1"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+
+  # Doctests tests
+  - name: doctests-rhel8-py3.9
+    tasks:
+      - name: doctests
+    display_name: Doctests RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+
+  # Encryption tests
+  - name: encryption-rhel8-py3.9
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-rhel8-py3.13
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption RHEL8 py3.13
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-rhel8-pypy3.10
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption RHEL8 pypy3.10
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-crypt_shared-rhel8-py3.9
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption crypt_shared RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      test_crypt_shared: "true"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-crypt_shared-rhel8-py3.13
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption crypt_shared RHEL8 py3.13
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      test_crypt_shared: "true"
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-crypt_shared-rhel8-pypy3.10
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption crypt_shared RHEL8 pypy3.10
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      test_crypt_shared: "true"
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-pyopenssl-rhel8-py3.9
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption PyOpenSSL RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      test_encryption_pyopenssl: "true"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-pyopenssl-rhel8-py3.13
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption PyOpenSSL RHEL8 py3.13
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      test_encryption_pyopenssl: "true"
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-pyopenssl-rhel8-pypy3.10
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption PyOpenSSL RHEL8 pypy3.10
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      test_encryption_pyopenssl: "true"
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-rhel8-py3.10
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+    display_name: Encryption RHEL8 py3.10
+    run_on:
+      - rhel87-small
+    expansions:
+      test_encryption: "true"
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: encryption-crypt_shared-rhel8-py3.11
+    tasks:
+      - name: .replica_set .noauth .ssl .sync_async
+    display_name: Encryption crypt_shared RHEL8 py3.11
+    run_on:
+      - rhel87-small
+    expansions:
+      test_encryption: "true"
+      test_crypt_shared: "true"
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: encryption-pyopenssl-rhel8-py3.12
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption PyOpenSSL RHEL8 py3.12
+    run_on:
+      - rhel87-small
+    expansions:
+      test_encryption: "true"
+      test_encryption_pyopenssl: "true"
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: encryption-rhel8-pypy3.9
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+    display_name: Encryption RHEL8 pypy3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      test_encryption: "true"
+      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+  - name: encryption-macos-py3.9
+    tasks:
+      - name: .latest .replica_set .sync_async
+    display_name: Encryption macOS py3.9
+    run_on:
+      - macos-14
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-macos-py3.13
+    tasks:
+      - name: .latest .replica_set .sync_async
+    display_name: Encryption macOS py3.13
+    run_on:
+      - macos-14
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-crypt_shared-macos-py3.9
+    tasks:
+      - name: .latest .replica_set .sync_async
+    display_name: Encryption crypt_shared macOS py3.9
+    run_on:
+      - macos-14
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      test_crypt_shared: "true"
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-crypt_shared-macos-py3.13
+    tasks:
+      - name: .latest .replica_set .sync_async
+    display_name: Encryption crypt_shared macOS py3.13
+    run_on:
+      - macos-14
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      test_crypt_shared: "true"
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-win64-py3.9
+    tasks:
+      - name: .latest .replica_set .sync_async
+    display_name: Encryption Win64 py3.9
+    run_on:
+      - windows-64-vsMulti-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      PYTHON_BINARY: C:/python/Python39/python.exe
+    tags: [encryption_tag]
+  - name: encryption-win64-py3.13
+    tasks:
+      - name: .latest .replica_set .sync_async
+    display_name: Encryption Win64 py3.13
+    run_on:
+      - windows-64-vsMulti-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      PYTHON_BINARY: C:/python/Python313/python.exe
+    tags: [encryption_tag]
+  - name: encryption-crypt_shared-win64-py3.9
+    tasks:
+      - name: .latest .replica_set .sync_async
+    display_name: Encryption crypt_shared Win64 py3.9
+    run_on:
+      - windows-64-vsMulti-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      test_crypt_shared: "true"
+      PYTHON_BINARY: C:/python/Python39/python.exe
+    tags: [encryption_tag]
+  - name: encryption-crypt_shared-win64-py3.13
+    tasks:
+      - name: .latest .replica_set .sync_async
+    display_name: Encryption crypt_shared Win64 py3.13
+    run_on:
+      - windows-64-vsMulti-small
+    batchtime: 10080
+    expansions:
+      test_encryption: "true"
+      test_crypt_shared: "true"
+      PYTHON_BINARY: C:/python/Python313/python.exe
+    tags: [encryption_tag]
+
+  # Enterprise auth tests
+  - name: auth-enterprise-macos-py3.9-auth
+    tasks:
+      - name: test-enterprise-auth
+    display_name: Auth Enterprise macOS py3.9 Auth
+    run_on:
+      - macos-14
+    expansions:
+      AUTH: auth
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+  - name: auth-enterprise-rhel8-py3.10-auth
+    tasks:
+      - name: test-enterprise-auth
+    display_name: Auth Enterprise RHEL8 py3.10 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: auth-enterprise-rhel8-py3.11-auth
+    tasks:
+      - name: test-enterprise-auth
+    display_name: Auth Enterprise RHEL8 py3.11 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: auth-enterprise-rhel8-py3.12-auth
+    tasks:
+      - name: test-enterprise-auth
+    display_name: Auth Enterprise RHEL8 py3.12 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: auth-enterprise-win64-py3.13-auth
+    tasks:
+      - name: test-enterprise-auth
+    display_name: Auth Enterprise Win64 py3.13 Auth
+    run_on:
+      - windows-64-vsMulti-small
+    expansions:
+      AUTH: auth
+      PYTHON_BINARY: C:/python/Python313/python.exe
+  - name: auth-enterprise-rhel8-pypy3.9-auth
+    tasks:
+      - name: test-enterprise-auth
+    display_name: Auth Enterprise RHEL8 pypy3.9 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+  - name: auth-enterprise-rhel8-pypy3.10-auth
+    tasks:
+      - name: test-enterprise-auth
+    display_name: Auth Enterprise RHEL8 pypy3.10 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+
+  # Green framework tests
+  - name: green-eventlet-rhel8-py3.9
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Green Eventlet RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      GREEN_FRAMEWORK: eventlet
+      AUTH: auth
+      SSL: ssl
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: green-gevent-rhel8-py3.9
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Green Gevent RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      GREEN_FRAMEWORK: gevent
+      AUTH: auth
+      SSL: ssl
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: green-eventlet-rhel8-py3.12
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Green Eventlet RHEL8 py3.12
+    run_on:
+      - rhel87-small
+    expansions:
+      GREEN_FRAMEWORK: eventlet
+      AUTH: auth
+      SSL: ssl
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: green-gevent-rhel8-py3.12
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Green Gevent RHEL8 py3.12
+    run_on:
+      - rhel87-small
+    expansions:
+      GREEN_FRAMEWORK: gevent
+      AUTH: auth
+      SSL: ssl
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+
+  # Load balancer tests
+  - name: load-balancer-rhel8-v6.0-py3.9
+    tasks:
+      - name: .load-balancer
+    display_name: Load Balancer RHEL8 v6.0 py3.9
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      VERSION: "6.0"
+  - name: load-balancer-rhel8-v7.0-py3.9
+    tasks:
+      - name: .load-balancer
+    display_name: Load Balancer RHEL8 v7.0 py3.9
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      VERSION: "7.0"
+  - name: load-balancer-rhel8-v8.0-py3.9
+    tasks:
+      - name: .load-balancer
+    display_name: Load Balancer RHEL8 v8.0 py3.9
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      VERSION: "8.0"
+  - name: load-balancer-rhel8-rapid-py3.9
+    tasks:
+      - name: .load-balancer
+    display_name: Load Balancer RHEL8 rapid py3.9
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      VERSION: rapid
+  - name: load-balancer-rhel8-latest-py3.9
+    tasks:
+      - name: .load-balancer
+    display_name: Load Balancer RHEL8 latest py3.9
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      VERSION: latest
+
+  # Mockupdb tests
+  - name: mockupdb-rhel8-py3.9
+    tasks:
+      - name: mockupdb
+    display_name: MockupDB RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+
+  # Mod wsgi tests
+  - name: mod_wsgi-ubuntu-22-py3.9
+    tasks:
+      - name: mod-wsgi-standalone
+      - name: mod-wsgi-replica-set
+      - name: mod-wsgi-embedded-mode-standalone
+      - name: mod-wsgi-embedded-mode-replica-set
+    display_name: mod_wsgi Ubuntu-22 py3.9
+    run_on:
+      - ubuntu2204-small
+    expansions:
+      MOD_WSGI_VERSION: "4"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: mod_wsgi-ubuntu-22-py3.13
+    tasks:
+      - name: mod-wsgi-standalone
+      - name: mod-wsgi-replica-set
+      - name: mod-wsgi-embedded-mode-standalone
+      - name: mod-wsgi-embedded-mode-replica-set
+    display_name: mod_wsgi Ubuntu-22 py3.13
+    run_on:
+      - ubuntu2204-small
+    expansions:
+      MOD_WSGI_VERSION: "4"
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+
+  # No c ext tests
+  - name: no-c-ext-rhel8-py3.9
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: No C Ext RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: no-c-ext-rhel8-py3.10
+    tasks:
+      - name: .replica_set .noauth .nossl .sync_async
+    display_name: No C Ext RHEL8 py3.10
+    run_on:
+      - rhel87-small
+    expansions:
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: no-c-ext-rhel8-py3.11
+    tasks:
+      - name: .sharded_cluster .noauth .nossl .sync_async
+    display_name: No C Ext RHEL8 py3.11
+    run_on:
+      - rhel87-small
+    expansions:
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: no-c-ext-rhel8-py3.12
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: No C Ext RHEL8 py3.12
+    run_on:
+      - rhel87-small
+    expansions:
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: no-c-ext-rhel8-py3.13
+    tasks:
+      - name: .replica_set .noauth .nossl .sync_async
+    display_name: No C Ext RHEL8 py3.13
+    run_on:
+      - rhel87-small
+    expansions:
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+
+  # Ocsp tests
+  - name: ocsp-rhel8-v4.4-py3.9
+    tasks:
+      - name: .ocsp
+    display_name: OCSP RHEL8 v4.4 py3.9
+    run_on:
+      - rhel87-small
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      VERSION: "4.4"
+  - name: ocsp-rhel8-v5.0-py3.10
+    tasks:
+      - name: .ocsp
+    display_name: OCSP RHEL8 v5.0 py3.10
+    run_on:
+      - rhel87-small
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+      VERSION: "5.0"
+  - name: ocsp-rhel8-v6.0-py3.11
+    tasks:
+      - name: .ocsp
+    display_name: OCSP RHEL8 v6.0 py3.11
+    run_on:
+      - rhel87-small
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+      VERSION: "6.0"
+  - name: ocsp-rhel8-v7.0-py3.12
+    tasks:
+      - name: .ocsp
+    display_name: OCSP RHEL8 v7.0 py3.12
+    run_on:
+      - rhel87-small
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+      VERSION: "7.0"
+  - name: ocsp-rhel8-v8.0-py3.13
+    tasks:
+      - name: .ocsp
+    display_name: OCSP RHEL8 v8.0 py3.13
+    run_on:
+      - rhel87-small
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+      VERSION: "8.0"
+  - name: ocsp-rhel8-rapid-pypy3.9
+    tasks:
+      - name: .ocsp
+    display_name: OCSP RHEL8 rapid pypy3.9
+    run_on:
+      - rhel87-small
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+      VERSION: rapid
+  - name: ocsp-rhel8-latest-pypy3.10
+    tasks:
+      - name: .ocsp
+    display_name: OCSP RHEL8 latest pypy3.10
+    run_on:
+      - rhel87-small
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+      VERSION: latest
+  - name: ocsp-win64-v4.4-py3.9
+    tasks:
+      - name: .ocsp-rsa !.ocsp-staple
+    display_name: OCSP Win64 v4.4 py3.9
+    run_on:
+      - windows-64-vsMulti-small
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      PYTHON_BINARY: C:/python/Python39/python.exe
+      VERSION: "4.4"
+  - name: ocsp-win64-v8.0-py3.13
+    tasks:
+      - name: .ocsp-rsa !.ocsp-staple
+    display_name: OCSP Win64 v8.0 py3.13
+    run_on:
+      - windows-64-vsMulti-small
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      PYTHON_BINARY: C:/python/Python313/python.exe
+      VERSION: "8.0"
+  - name: ocsp-macos-v4.4-py3.9
+    tasks:
+      - name: .ocsp-rsa !.ocsp-staple
+    display_name: OCSP macOS v4.4 py3.9
+    run_on:
+      - macos-14
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+      VERSION: "4.4"
+  - name: ocsp-macos-v8.0-py3.13
+    tasks:
+      - name: .ocsp-rsa !.ocsp-staple
+    display_name: OCSP macOS v8.0 py3.13
+    run_on:
+      - macos-14
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+      VERSION: "8.0"
+
+  # Oidc auth tests
+  - name: auth-oidc-ubuntu-22
+    tasks:
+      - name: testoidc_task_group
+      - name: testazureoidc_task_group
+      - name: testgcpoidc_task_group
+      - name: testk8soidc_task_group
+    display_name: Auth OIDC Ubuntu-22
+    run_on:
+      - ubuntu2204-small
+    batchtime: 20160
+  - name: auth-oidc-macos
+    tasks:
+      - name: testoidc_task_group
+    display_name: Auth OIDC macOS
+    run_on:
+      - macos-14
+    batchtime: 20160
+  - name: auth-oidc-win64
+    tasks:
+      - name: testoidc_task_group
+    display_name: Auth OIDC Win64
+    run_on:
+      - windows-64-vsMulti-small
+    batchtime: 20160
+
+  # Pyopenssl tests
+  - name: pyopenssl-macos-py3.9
+    tasks:
+      - name: .replica_set .noauth .nossl .sync_async
+      - name: .7.0 .noauth .nossl .sync_async
+    display_name: PyOpenSSL macOS py3.9
+    run_on:
+      - macos-14
+    batchtime: 10080
+    expansions:
+      test_pyopenssl: "true"
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+  - name: pyopenssl-rhel8-py3.10
+    tasks:
+      - name: .replica_set .auth .ssl .sync_async
+      - name: .7.0 .auth .ssl .sync_async
+    display_name: PyOpenSSL RHEL8 py3.10
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_pyopenssl: "true"
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: pyopenssl-rhel8-py3.11
+    tasks:
+      - name: .replica_set .auth .ssl .sync_async
+      - name: .7.0 .auth .ssl .sync_async
+    display_name: PyOpenSSL RHEL8 py3.11
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_pyopenssl: "true"
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: pyopenssl-rhel8-py3.12
+    tasks:
+      - name: .replica_set .auth .ssl .sync_async
+      - name: .7.0 .auth .ssl .sync_async
+    display_name: PyOpenSSL RHEL8 py3.12
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_pyopenssl: "true"
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: pyopenssl-win64-py3.13
+    tasks:
+      - name: .replica_set .auth .ssl .sync_async
+      - name: .7.0 .auth .ssl .sync_async
+    display_name: PyOpenSSL Win64 py3.13
+    run_on:
+      - windows-64-vsMulti-small
+    batchtime: 10080
+    expansions:
+      test_pyopenssl: "true"
+      PYTHON_BINARY: C:/python/Python313/python.exe
+  - name: pyopenssl-rhel8-pypy3.9
+    tasks:
+      - name: .replica_set .auth .ssl .sync_async
+      - name: .7.0 .auth .ssl .sync_async
+    display_name: PyOpenSSL RHEL8 pypy3.9
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_pyopenssl: "true"
+      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+  - name: pyopenssl-rhel8-pypy3.10
+    tasks:
+      - name: .replica_set .auth .ssl .sync_async
+      - name: .7.0 .auth .ssl .sync_async
+    display_name: PyOpenSSL RHEL8 pypy3.10
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_pyopenssl: "true"
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+
+  # Search index tests
+  - name: search-index-helpers-rhel8-py3.9
+    tasks:
+      - name: test_atlas_task_group_search_indexes
+    display_name: Search Index Helpers RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+
+  # Server tests
+  - name: test-rhel8-py3.9-cov
+    tasks:
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
+    display_name: "* Test RHEL8 py3.9 cov"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+    tags: [coverage_tag]
+  - name: test-rhel8-py3.13-cov
+    tasks:
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
+    display_name: "* Test RHEL8 py3.13 cov"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [coverage_tag]
+  - name: test-rhel8-pypy3.10-cov
+    tasks:
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
+    display_name: "* Test RHEL8 pypy3.10 cov"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+    tags: [coverage_tag]
+  - name: test-rhel8-py3.10
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: "* Test RHEL8 py3.10"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: test-rhel8-py3.11
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: "* Test RHEL8 py3.11"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: test-rhel8-py3.12
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: "* Test RHEL8 py3.12"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: test-rhel8-pypy3.9
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: "* Test RHEL8 pypy3.9"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+  - name: test-macos-py3.9
+    tasks:
+      - name: .sharded_cluster .auth .ssl !.sync_async
+      - name: .replica_set .noauth .ssl !.sync_async
+      - name: .standalone .noauth .nossl !.sync_async
+    display_name: "* Test macOS py3.9"
+    run_on:
+      - macos-14
+    expansions:
+      SKIP_CSOT_TESTS: "true"
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+  - name: test-macos-py3.13
+    tasks:
+      - name: .sharded_cluster .auth .ssl !.sync_async
+      - name: .replica_set .noauth .ssl !.sync_async
+      - name: .standalone .noauth .nossl !.sync_async
+    display_name: "* Test macOS py3.13"
+    run_on:
+      - macos-14
+    expansions:
+      SKIP_CSOT_TESTS: "true"
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+  - name: test-macos-arm64-py3.9
+    tasks:
+      - name: .sharded_cluster .auth .ssl .6.0 !.sync_async
+      - name: .replica_set .noauth .ssl .6.0 !.sync_async
+      - name: .standalone .noauth .nossl .6.0 !.sync_async
+      - name: .sharded_cluster .auth .ssl .7.0 !.sync_async
+      - name: .replica_set .noauth .ssl .7.0 !.sync_async
+      - name: .standalone .noauth .nossl .7.0 !.sync_async
+      - name: .sharded_cluster .auth .ssl .8.0 !.sync_async
+      - name: .replica_set .noauth .ssl .8.0 !.sync_async
+      - name: .standalone .noauth .nossl .8.0 !.sync_async
+      - name: .sharded_cluster .auth .ssl .rapid !.sync_async
+      - name: .replica_set .noauth .ssl .rapid !.sync_async
+      - name: .standalone .noauth .nossl .rapid !.sync_async
+      - name: .sharded_cluster .auth .ssl .latest !.sync_async
+      - name: .replica_set .noauth .ssl .latest !.sync_async
+      - name: .standalone .noauth .nossl .latest !.sync_async
+    display_name: "* Test macOS Arm64 py3.9"
+    run_on:
+      - macos-14-arm64
+    expansions:
+      SKIP_CSOT_TESTS: "true"
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
+  - name: test-macos-arm64-py3.13
+    tasks:
+      - name: .sharded_cluster .auth .ssl .6.0 !.sync_async
+      - name: .replica_set .noauth .ssl .6.0 !.sync_async
+      - name: .standalone .noauth .nossl .6.0 !.sync_async
+      - name: .sharded_cluster .auth .ssl .7.0 !.sync_async
+      - name: .replica_set .noauth .ssl .7.0 !.sync_async
+      - name: .standalone .noauth .nossl .7.0 !.sync_async
+      - name: .sharded_cluster .auth .ssl .8.0 !.sync_async
+      - name: .replica_set .noauth .ssl .8.0 !.sync_async
+      - name: .standalone .noauth .nossl .8.0 !.sync_async
+      - name: .sharded_cluster .auth .ssl .rapid !.sync_async
+      - name: .replica_set .noauth .ssl .rapid !.sync_async
+      - name: .standalone .noauth .nossl .rapid !.sync_async
+      - name: .sharded_cluster .auth .ssl .latest !.sync_async
+      - name: .replica_set .noauth .ssl .latest !.sync_async
+      - name: .standalone .noauth .nossl .latest !.sync_async
+    display_name: "* Test macOS Arm64 py3.13"
+    run_on:
+      - macos-14-arm64
+    expansions:
+      SKIP_CSOT_TESTS: "true"
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+  - name: test-win64-py3.9
+    tasks:
+      - name: .sharded_cluster .auth .ssl !.sync_async
+      - name: .replica_set .noauth .ssl !.sync_async
+      - name: .standalone .noauth .nossl !.sync_async
+    display_name: "* Test Win64 py3.9"
+    run_on:
+      - windows-64-vsMulti-small
+    expansions:
+      SKIP_CSOT_TESTS: "true"
+      PYTHON_BINARY: C:/python/Python39/python.exe
+  - name: test-win64-py3.13
+    tasks:
+      - name: .sharded_cluster .auth .ssl !.sync_async
+      - name: .replica_set .noauth .ssl !.sync_async
+      - name: .standalone .noauth .nossl !.sync_async
+    display_name: "* Test Win64 py3.13"
+    run_on:
+      - windows-64-vsMulti-small
+    expansions:
+      SKIP_CSOT_TESTS: "true"
+      PYTHON_BINARY: C:/python/Python313/python.exe
+  - name: test-win32-py3.9
+    tasks:
+      - name: .sharded_cluster .auth .ssl !.sync_async
+      - name: .replica_set .noauth .ssl !.sync_async
+      - name: .standalone .noauth .nossl !.sync_async
+    display_name: "* Test Win32 py3.9"
+    run_on:
+      - windows-64-vsMulti-small
+    expansions:
+      SKIP_CSOT_TESTS: "true"
+      PYTHON_BINARY: C:/python/32/Python39/python.exe
+  - name: test-win32-py3.13
+    tasks:
+      - name: .sharded_cluster .auth .ssl !.sync_async
+      - name: .replica_set .noauth .ssl !.sync_async
+      - name: .standalone .noauth .nossl !.sync_async
+    display_name: "* Test Win32 py3.13"
+    run_on:
+      - windows-64-vsMulti-small
+    expansions:
+      SKIP_CSOT_TESTS: "true"
+      PYTHON_BINARY: C:/python/32/Python313/python.exe
+
+  # Serverless tests
+  - name: serverless-rhel8-py3.9
+    tasks:
+      - name: serverless_task_group
+    display_name: Serverless RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_serverless: "true"
+      AUTH: auth
+      SSL: ssl
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: serverless-rhel8-py3.13
+    tasks:
+      - name: serverless_task_group
+    display_name: Serverless RHEL8 py3.13
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      test_serverless: "true"
+      AUTH: auth
+      SSL: ssl
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+
+  # Stable api tests
+  - name: stable-api-require-v1-rhel8-py3.9-auth
+    tasks:
+      - name: .standalone .5.0 .noauth .nossl .sync_async
+      - name: .standalone .6.0 .noauth .nossl .sync_async
+      - name: .standalone .7.0 .noauth .nossl .sync_async
+      - name: .standalone .8.0 .noauth .nossl .sync_async
+      - name: .standalone .rapid .noauth .nossl .sync_async
+      - name: .standalone .latest .noauth .nossl .sync_async
+    display_name: Stable API require v1 RHEL8 py3.9 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      REQUIRE_API_VERSION: "1"
+      MONGODB_API_VERSION: "1"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+    tags: [versionedApi_tag]
+  - name: stable-api-accept-v2-rhel8-py3.9-auth
+    tasks:
+      - name: .standalone .5.0 .noauth .nossl .sync_async
+      - name: .standalone .6.0 .noauth .nossl .sync_async
+      - name: .standalone .7.0 .noauth .nossl .sync_async
+      - name: .standalone .8.0 .noauth .nossl .sync_async
+      - name: .standalone .rapid .noauth .nossl .sync_async
+      - name: .standalone .latest .noauth .nossl .sync_async
+    display_name: Stable API accept v2 RHEL8 py3.9 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      ORCHESTRATION_FILE: versioned-api-testing.json
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+    tags: [versionedApi_tag]
+  - name: stable-api-require-v1-rhel8-py3.13-auth
+    tasks:
+      - name: .standalone .5.0 .noauth .nossl .sync_async
+      - name: .standalone .6.0 .noauth .nossl .sync_async
+      - name: .standalone .7.0 .noauth .nossl .sync_async
+      - name: .standalone .8.0 .noauth .nossl .sync_async
+      - name: .standalone .rapid .noauth .nossl .sync_async
+      - name: .standalone .latest .noauth .nossl .sync_async
+    display_name: Stable API require v1 RHEL8 py3.13 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      REQUIRE_API_VERSION: "1"
+      MONGODB_API_VERSION: "1"
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [versionedApi_tag]
+  - name: stable-api-accept-v2-rhel8-py3.13-auth
+    tasks:
+      - name: .standalone .5.0 .noauth .nossl .sync_async
+      - name: .standalone .6.0 .noauth .nossl .sync_async
+      - name: .standalone .7.0 .noauth .nossl .sync_async
+      - name: .standalone .8.0 .noauth .nossl .sync_async
+      - name: .standalone .rapid .noauth .nossl .sync_async
+      - name: .standalone .latest .noauth .nossl .sync_async
+    display_name: Stable API accept v2 RHEL8 py3.13 Auth
+    run_on:
+      - rhel87-small
+    expansions:
+      AUTH: auth
+      ORCHESTRATION_FILE: versioned-api-testing.json
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [versionedApi_tag]
+
+  # Storage engine tests
+  - name: storage-inmemory-rhel8-py3.9
+    tasks:
+      - name: .standalone .noauth .nossl .4.0 .sync_async
+      - name: .standalone .noauth .nossl .4.4 .sync_async
+      - name: .standalone .noauth .nossl .5.0 .sync_async
+      - name: .standalone .noauth .nossl .6.0 .sync_async
+      - name: .standalone .noauth .nossl .7.0 .sync_async
+      - name: .standalone .noauth .nossl .8.0 .sync_async
+      - name: .standalone .noauth .nossl .rapid .sync_async
+      - name: .standalone .noauth .nossl .latest .sync_async
+    display_name: Storage InMemory RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      STORAGE_ENGINE: inmemory
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: storage-mmapv1-rhel8-py3.9
+    tasks:
+      - name: .standalone .4.0 .noauth .nossl .sync_async
+      - name: .replica_set .4.0 .noauth .nossl .sync_async
+    display_name: Storage MMAPv1 RHEL8 py3.9
+    run_on:
+      - rhel87-small
+    expansions:
+      STORAGE_ENGINE: mmapv1
+      PYTHON_BINARY: /opt/python/3.9/bin/python3

@@ -14,62 +14,57 @@
 
 """Unified test format runner.
 
-https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
+https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.md
 """
 from __future__ import annotations
 
+import asyncio
 import binascii
-import collections
 import copy
-import datetime
 import functools
 import os
 import re
 import sys
 import time
 import traceback
-import types
-from collections import abc, defaultdict
+from asyncio import iscoroutinefunction
+from collections import defaultdict
 from test import (
     IntegrationTest,
     client_context,
     client_knobs,
     unittest,
 )
-from test.helpers import (
-    AWS_CREDS,
-    AWS_CREDS_2,
-    AZURE_CREDS,
-    CA_PEM,
-    CLIENT_PEM,
-    GCP_CREDS,
-    KMIP_CREDS,
-    LOCAL_MASTER_KEY,
-    client_knobs,
+from test.unified_format_shared import (
+    KMS_TLS_OPTS,
+    PLACEHOLDER_MAP,
+    SKIP_CSOT_TESTS,
+    EventListenerUtil,
+    MatchEvaluatorUtil,
+    coerce_result,
+    parse_bulk_write_error_result,
+    parse_bulk_write_result,
+    parse_client_bulk_write_error_result,
+    parse_collection_or_database_options,
+    with_metaclass,
 )
 from test.utils import (
-    CMAPListener,
     camel_to_snake,
     camel_to_snake_args,
     get_pool,
-    parse_collection_options,
     parse_spec_options,
     prepare_spec_arguments,
-    rs_or_single_client,
-    single_client,
     snake_to_camel,
     wait_until,
 )
 from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional
 
 import pymongo
-from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
-from bson.binary import Binary
+from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
-from bson.regex import RE_TYPE, Regex
 from gridfs import GridFSBucket, GridOut
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
@@ -85,55 +80,14 @@ from pymongo.errors import (
     PyMongoError,
 )
 from pymongo.monitoring import (
-    _SENSITIVE_COMMANDS,
-    CommandFailedEvent,
-    CommandListener,
     CommandStartedEvent,
-    CommandSucceededEvent,
-    ConnectionCheckedInEvent,
-    ConnectionCheckedOutEvent,
-    ConnectionCheckOutFailedEvent,
-    ConnectionCheckOutStartedEvent,
-    ConnectionClosedEvent,
-    ConnectionCreatedEvent,
-    ConnectionReadyEvent,
-    PoolClearedEvent,
-    PoolClosedEvent,
-    PoolCreatedEvent,
-    PoolReadyEvent,
-    ServerClosedEvent,
-    ServerDescriptionChangedEvent,
-    ServerHeartbeatFailedEvent,
-    ServerHeartbeatListener,
-    ServerHeartbeatStartedEvent,
-    ServerHeartbeatSucceededEvent,
-    ServerListener,
-    ServerOpeningEvent,
-    TopologyClosedEvent,
-    TopologyDescriptionChangedEvent,
-    TopologyEvent,
-    TopologyListener,
-    TopologyOpenedEvent,
-    _CommandEvent,
-    _ConnectionEvent,
-    _PoolEvent,
-    _ServerEvent,
-    _ServerHeartbeatEvent,
 )
 from pymongo.operations import (
-    DeleteMany,
-    DeleteOne,
-    InsertOne,
-    ReplaceOne,
     SearchIndexModel,
-    UpdateMany,
-    UpdateOne,
 )
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import BulkWriteResult, ClientBulkWriteResult
 from pymongo.server_api import ServerApi
-from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous.change_stream import ChangeStream
@@ -142,85 +96,19 @@ from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.encryption import ClientEncryption
+from pymongo.synchronous.helpers import next
 from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 
-SKIP_CSOT_TESTS = os.getenv("SKIP_CSOT_TESTS")
-
-JSON_OPTS = json_util.JSONOptions(tz_aware=False)
+_IS_SYNC = True
 
 IS_INTERRUPTED = False
-
-KMS_TLS_OPTS = {
-    "kmip": {
-        "tlsCAFile": CA_PEM,
-        "tlsCertificateKeyFile": CLIENT_PEM,
-    }
-}
-
-
-# Build up a placeholder maps.
-PLACEHOLDER_MAP = {}
-for provider_name, provider_data in [
-    ("local", {"key": LOCAL_MASTER_KEY}),
-    ("local:name1", {"key": LOCAL_MASTER_KEY}),
-    ("aws", AWS_CREDS),
-    ("aws:name1", AWS_CREDS),
-    ("aws:name2", AWS_CREDS_2),
-    ("azure", AZURE_CREDS),
-    ("azure:name1", AZURE_CREDS),
-    ("gcp", GCP_CREDS),
-    ("gcp:name1", GCP_CREDS),
-    ("kmip", KMIP_CREDS),
-    ("kmip:name1", KMIP_CREDS),
-]:
-    for key, value in provider_data.items():
-        placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
-        PLACEHOLDER_MAP[placeholder] = value
-
-OIDC_ENV = os.environ.get("OIDC_ENV", "test")
-if OIDC_ENV == "test":
-    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"ENVIRONMENT": "test"}
-elif OIDC_ENV == "azure":
-    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
-        "ENVIRONMENT": "azure",
-        "TOKEN_RESOURCE": os.environ["AZUREOIDC_RESOURCE"],
-    }
-elif OIDC_ENV == "gcp":
-    PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {
-        "ENVIRONMENT": "gcp",
-        "TOKEN_RESOURCE": os.environ["GCPOIDC_AUDIENCE"],
-    }
 
 
 def interrupt_loop():
     global IS_INTERRUPTED
     IS_INTERRUPTED = True
-
-
-def with_metaclass(meta, *bases):
-    """Create a base class with a metaclass.
-
-    Vendored from six: https://github.com/benjaminp/six/blob/master/six.py
-    """
-
-    # This requires a bit of explanation: the basic idea is to make a dummy
-    # metaclass for one level of class instantiation that replaces itself with
-    # the actual metaclass.
-    class metaclass(type):
-        def __new__(cls, name, this_bases, d):
-            # __orig_bases__ is required by PEP 560.
-            resolved_bases = types.resolve_bases(bases)
-            if resolved_bases is not bases:
-                d["__orig_bases__"] = bases
-            return meta(name, resolved_bases, d)
-
-        @classmethod
-        def __prepare__(cls, name, this_bases):
-            return meta.__prepare__(name, bases)
-
-    return type.__new__(metaclass, "temporary_class", (), {})
 
 
 def is_run_on_requirement_satisfied(requirement):
@@ -285,77 +173,6 @@ def is_run_on_requirement_satisfied(requirement):
     )
 
 
-def parse_collection_or_database_options(options):
-    return parse_collection_options(options)
-
-
-def parse_bulk_write_result(result):
-    upserted_ids = {str(int_idx): result.upserted_ids[int_idx] for int_idx in result.upserted_ids}
-    return {
-        "deletedCount": result.deleted_count,
-        "insertedCount": result.inserted_count,
-        "matchedCount": result.matched_count,
-        "modifiedCount": result.modified_count,
-        "upsertedCount": result.upserted_count,
-        "upsertedIds": upserted_ids,
-    }
-
-
-def parse_client_bulk_write_individual(op_type, result):
-    if op_type == "insert":
-        return {"insertedId": result.inserted_id}
-    if op_type == "update":
-        if result.upserted_id:
-            return {
-                "matchedCount": result.matched_count,
-                "modifiedCount": result.modified_count,
-                "upsertedId": result.upserted_id,
-            }
-        else:
-            return {
-                "matchedCount": result.matched_count,
-                "modifiedCount": result.modified_count,
-            }
-    if op_type == "delete":
-        return {
-            "deletedCount": result.deleted_count,
-        }
-
-
-def parse_client_bulk_write_result(result):
-    insert_results, update_results, delete_results = {}, {}, {}
-    if result.has_verbose_results:
-        for idx, res in result.insert_results.items():
-            insert_results[str(idx)] = parse_client_bulk_write_individual("insert", res)
-        for idx, res in result.update_results.items():
-            update_results[str(idx)] = parse_client_bulk_write_individual("update", res)
-        for idx, res in result.delete_results.items():
-            delete_results[str(idx)] = parse_client_bulk_write_individual("delete", res)
-
-    return {
-        "deletedCount": result.deleted_count,
-        "insertedCount": result.inserted_count,
-        "matchedCount": result.matched_count,
-        "modifiedCount": result.modified_count,
-        "upsertedCount": result.upserted_count,
-        "insertResults": insert_results,
-        "updateResults": update_results,
-        "deleteResults": delete_results,
-    }
-
-
-def parse_bulk_write_error_result(error):
-    write_result = BulkWriteResult(error.details, True)
-    return parse_bulk_write_result(write_result)
-
-
-def parse_client_bulk_write_error_result(error):
-    write_result = error.partial_result
-    if not write_result:
-        return None
-    return parse_client_bulk_write_result(write_result)
-
-
 class NonLazyCursor:
     """A find cursor proxy that creates the remote cursor when initialized."""
 
@@ -363,7 +180,16 @@ class NonLazyCursor:
         self.client = client
         self.find_cursor = find_cursor
         # Create the server side cursor.
-        self.first_result = next(find_cursor, None)
+        self.first_result = None
+
+    @classmethod
+    def create(cls, find_cursor, client):
+        cursor = cls(find_cursor, client)
+        try:
+            cursor.first_result = next(cursor.find_cursor)
+        except StopIteration:
+            cursor.first_result = None
+        return cursor
 
     @property
     def alive(self):
@@ -382,105 +208,6 @@ class NonLazyCursor:
     def close(self):
         self.find_cursor.close()
         self.client = None
-
-
-class EventListenerUtil(
-    CMAPListener, CommandListener, ServerListener, ServerHeartbeatListener, TopologyListener
-):
-    def __init__(
-        self, observe_events, ignore_commands, observe_sensitive_commands, store_events, entity_map
-    ):
-        self._event_types = {name.lower() for name in observe_events}
-        if observe_sensitive_commands:
-            self._observe_sensitive_commands = True
-            self._ignore_commands = set(ignore_commands)
-        else:
-            self._observe_sensitive_commands = False
-            self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
-            self._ignore_commands.add("configurefailpoint")
-        self._event_mapping = collections.defaultdict(list)
-        self.entity_map = entity_map
-        if store_events:
-            for i in store_events:
-                id = i["id"]
-                events = (i.lower() for i in i["events"])
-                for i in events:
-                    self._event_mapping[i].append(id)
-                self.entity_map[id] = []
-        super().__init__()
-
-    def get_events(self, event_type):
-        assert event_type in ("command", "cmap", "sdam", "all"), event_type
-        if event_type == "all":
-            return list(self.events)
-        if event_type == "command":
-            return [e for e in self.events if isinstance(e, _CommandEvent)]
-        if event_type == "cmap":
-            return [e for e in self.events if isinstance(e, (_ConnectionEvent, _PoolEvent))]
-        return [
-            e
-            for e in self.events
-            if isinstance(e, (_ServerEvent, TopologyEvent, _ServerHeartbeatEvent))
-        ]
-
-    def add_event(self, event):
-        event_name = type(event).__name__.lower()
-        if event_name in self._event_types:
-            super().add_event(event)
-        for id in self._event_mapping[event_name]:
-            self.entity_map[id].append(
-                {
-                    "name": type(event).__name__,
-                    "observedAt": time.time(),
-                    "description": repr(event),
-                }
-            )
-
-    def _command_event(self, event):
-        if event.command_name.lower() not in self._ignore_commands:
-            self.add_event(event)
-
-    def started(self, event):
-        if isinstance(event, CommandStartedEvent):
-            if event.command == {}:
-                # Command is redacted. Observe only if flag is set.
-                if self._observe_sensitive_commands:
-                    self._command_event(event)
-            else:
-                self._command_event(event)
-        else:
-            self.add_event(event)
-
-    def succeeded(self, event):
-        if isinstance(event, CommandSucceededEvent):
-            if event.reply == {}:
-                # Command is redacted. Observe only if flag is set.
-                if self._observe_sensitive_commands:
-                    self._command_event(event)
-            else:
-                self._command_event(event)
-        else:
-            self.add_event(event)
-
-    def failed(self, event):
-        if isinstance(event, CommandFailedEvent):
-            self._command_event(event)
-        else:
-            self.add_event(event)
-
-    def opened(self, event: Union[ServerOpeningEvent, TopologyOpenedEvent]) -> None:
-        self.add_event(event)
-
-    def description_changed(
-        self, event: Union[ServerDescriptionChangedEvent, TopologyDescriptionChangedEvent]
-    ) -> None:
-        self.add_event(event)
-
-    def topology_changed(self, event: TopologyDescriptionChangedEvent) -> None:
-        self.add_event(event)
-
-    def closed(self, event: Union[ServerClosedEvent, TopologyClosedEvent]) -> None:
-        self.add_event(event)
 
 
 class EntityMapUtil:
@@ -574,13 +301,13 @@ class EntityMapUtil:
                 )
             if uri:
                 kwargs["h"] = uri
-            client = rs_or_single_client(**kwargs)
+            client = self.test.rs_or_single_client(**kwargs)
             self[spec["id"]] = client
             self.test.addCleanup(client.close)
             return
         elif entity_type == "database":
             client = self[spec["client"]]
-            if not isinstance(client, MongoClient):
+            if type(client).__name__ != "MongoClient":
                 self.test.fail(
                     "Expected entity {} to be of type MongoClient, got {}".format(
                         spec["client"], type(client)
@@ -602,7 +329,7 @@ class EntityMapUtil:
             return
         elif entity_type == "session":
             client = self[spec["client"]]
-            if not isinstance(client, MongoClient):
+            if type(client).__name__ != "MongoClient":
                 self.test.fail(
                     "Expected entity {} to be of type MongoClient, got {}".format(
                         spec["client"], type(client)
@@ -667,7 +394,7 @@ class EntityMapUtil:
 
     def get_listener_for_client(self, client_name: str) -> EventListenerUtil:
         client = self[client_name]
-        if not isinstance(client, MongoClient):
+        if type(client).__name__ != "MongoClient":
             self.test.fail(
                 f"Expected entity {client_name} to be of type MongoClient, got {type(client)}"
             )
@@ -694,358 +421,17 @@ class EntityMapUtil:
     def advance_cluster_times(self) -> None:
         """Manually synchronize entities when desired"""
         if not self._cluster_time:
-            self._cluster_time = self.test.client.admin.command("ping").get("$clusterTime")
+            self._cluster_time = (self.test.client.admin.command("ping")).get("$clusterTime")
         for entity in self._entities.values():
             if isinstance(entity, ClientSession) and self._cluster_time:
                 entity.advance_cluster_time(self._cluster_time)
-
-
-binary_types = (Binary, bytes)
-long_types = (Int64,)
-unicode_type = str
-
-
-BSON_TYPE_ALIAS_MAP = {
-    # https://mongodb.com/docs/manual/reference/operator/query/type/
-    # https://pymongo.readthedocs.io/en/stable/api/bson/index.html
-    "double": (float,),
-    "string": (str,),
-    "object": (abc.Mapping,),
-    "array": (abc.MutableSequence,),
-    "binData": binary_types,
-    "undefined": (type(None),),
-    "objectId": (ObjectId,),
-    "bool": (bool,),
-    "date": (datetime.datetime,),
-    "null": (type(None),),
-    "regex": (Regex, RE_TYPE),
-    "dbPointer": (DBRef,),
-    "javascript": (unicode_type, Code),
-    "symbol": (unicode_type,),
-    "javascriptWithScope": (unicode_type, Code),
-    "int": (int,),
-    "long": (Int64,),
-    "decimal": (Decimal128,),
-    "maxKey": (MaxKey,),
-    "minKey": (MinKey,),
-}
-
-
-class MatchEvaluatorUtil:
-    """Utility class that implements methods for evaluating matches as per
-    the unified test format specification.
-    """
-
-    def __init__(self, test_class):
-        self.test = test_class
-
-    def _operation_exists(self, spec, actual, key_to_compare):
-        if spec is True:
-            if key_to_compare is None:
-                assert actual is not None
-            else:
-                self.test.assertIn(key_to_compare, actual)
-        elif spec is False:
-            if key_to_compare is None:
-                assert actual is None
-            else:
-                self.test.assertNotIn(key_to_compare, actual)
-        else:
-            self.test.fail(f"Expected boolean value for $$exists operator, got {spec}")
-
-    def __type_alias_to_type(self, alias):
-        if alias not in BSON_TYPE_ALIAS_MAP:
-            self.test.fail(f"Unrecognized BSON type alias {alias}")
-        return BSON_TYPE_ALIAS_MAP[alias]
-
-    def _operation_type(self, spec, actual, key_to_compare):
-        if isinstance(spec, abc.MutableSequence):
-            permissible_types = tuple(
-                [t for alias in spec for t in self.__type_alias_to_type(alias)]
-            )
-        else:
-            permissible_types = self.__type_alias_to_type(spec)
-        value = actual[key_to_compare] if key_to_compare else actual
-        self.test.assertIsInstance(value, permissible_types)
-
-    def _operation_matchesEntity(self, spec, actual, key_to_compare):
-        expected_entity = self.test.entity_map[spec]
-        self.test.assertEqual(expected_entity, actual[key_to_compare])
-
-    def _operation_matchesHexBytes(self, spec, actual, key_to_compare):
-        expected = binascii.unhexlify(spec)
-        value = actual[key_to_compare] if key_to_compare else actual
-        self.test.assertEqual(value, expected)
-
-    def _operation_unsetOrMatches(self, spec, actual, key_to_compare):
-        if key_to_compare is None and not actual:
-            # top-level document can be None when unset
-            return
-
-        if key_to_compare not in actual:
-            # we add a dummy value for the compared key to pass map size check
-            actual[key_to_compare] = "dummyValue"
-            return
-        self.match_result(spec, actual[key_to_compare], in_recursive_call=True)
-
-    def _operation_sessionLsid(self, spec, actual, key_to_compare):
-        expected_lsid = self.test.entity_map.get_lsid_for_session(spec)
-        self.test.assertEqual(expected_lsid, actual[key_to_compare])
-
-    def _operation_lte(self, spec, actual, key_to_compare):
-        if key_to_compare not in actual:
-            self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
-        self.test.assertLessEqual(actual[key_to_compare], spec)
-
-    def _operation_matchAsDocument(self, spec, actual, key_to_compare):
-        self._match_document(spec, json_util.loads(actual[key_to_compare]), False)
-
-    def _operation_matchAsRoot(self, spec, actual, key_to_compare):
-        self._match_document(spec, actual, True)
-
-    def _evaluate_special_operation(self, opname, spec, actual, key_to_compare):
-        method_name = "_operation_{}".format(opname.strip("$"))
-        try:
-            method = getattr(self, method_name)
-        except AttributeError:
-            self.test.fail(f"Unsupported special matching operator {opname}")
-        else:
-            method(spec, actual, key_to_compare)
-
-    def _evaluate_if_special_operation(self, expectation, actual, key_to_compare=None):
-        """Returns True if a special operation is evaluated, False
-        otherwise. If the ``expectation`` map contains a single key,
-        value pair we check it for a special operation.
-        If given, ``key_to_compare`` is assumed to be the key in
-        ``expectation`` whose corresponding value needs to be
-        evaluated for a possible special operation. ``key_to_compare``
-        is ignored when ``expectation`` has only one key.
-        """
-        if not isinstance(expectation, abc.Mapping):
-            return False
-
-        is_special_op, opname, spec = False, False, False
-
-        if key_to_compare is not None:
-            if key_to_compare.startswith("$$"):
-                is_special_op = True
-                opname = key_to_compare
-                spec = expectation[key_to_compare]
-                key_to_compare = None
-            else:
-                nested = expectation[key_to_compare]
-                if isinstance(nested, abc.Mapping) and len(nested) == 1:
-                    opname, spec = next(iter(nested.items()))
-                    if opname.startswith("$$"):
-                        is_special_op = True
-        elif len(expectation) == 1:
-            opname, spec = next(iter(expectation.items()))
-            if opname.startswith("$$"):
-                is_special_op = True
-                key_to_compare = None
-
-        if is_special_op:
-            self._evaluate_special_operation(
-                opname=opname, spec=spec, actual=actual, key_to_compare=key_to_compare
-            )
-            return True
-
-        return False
-
-    def _match_document(self, expectation, actual, is_root, test=False):
-        if self._evaluate_if_special_operation(expectation, actual):
-            return
-
-        self.test.assertIsInstance(actual, abc.Mapping)
-        for key, value in expectation.items():
-            if self._evaluate_if_special_operation(expectation, actual, key):
-                continue
-
-            self.test.assertIn(key, actual)
-            if not self.match_result(value, actual[key], in_recursive_call=True, test=test):
-                return False
-
-        if not is_root:
-            expected_keys = set(expectation.keys())
-            for key, value in expectation.items():
-                if value == {"$$exists": False}:
-                    expected_keys.remove(key)
-            if test:
-                self.test.assertEqual(expected_keys, set(actual.keys()))
-            else:
-                return set(expected_keys).issubset(set(actual.keys()))
-        return True
-
-    def match_result(self, expectation, actual, in_recursive_call=False, test=True):
-        if isinstance(expectation, abc.Mapping):
-            return self._match_document(
-                expectation, actual, is_root=not in_recursive_call, test=test
-            )
-
-        if isinstance(expectation, abc.MutableSequence):
-            self.test.assertIsInstance(actual, abc.MutableSequence)
-            for e, a in zip(expectation, actual):
-                if isinstance(e, abc.Mapping):
-                    self._match_document(e, a, is_root=not in_recursive_call, test=test)
-                else:
-                    self.match_result(e, a, in_recursive_call=True, test=test)
-                return None
-
-        # account for flexible numerics in element-wise comparison
-        if isinstance(expectation, int) or isinstance(expectation, float):
-            if test:
-                self.test.assertEqual(expectation, actual)
-            else:
-                return expectation == actual
-            return None
-        else:
-            if test:
-                self.test.assertIsInstance(actual, type(expectation))
-                self.test.assertEqual(expectation, actual)
-            else:
-                return isinstance(actual, type(expectation)) and expectation == actual
-            return None
-
-    def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
-        for field, expected in spec.items():
-            field = camel_to_snake(field)
-            if field == "type":
-                field = "server_type_name"
-            self.test.assertEqual(getattr(actual, field), expected)
-
-    def match_topology_description(self, actual: TopologyDescription, spec: dict) -> None:
-        for field, expected in spec.items():
-            field = camel_to_snake(field)
-            if field == "type":
-                field = "topology_type_name"
-            self.test.assertEqual(getattr(actual, field), expected)
-
-    def match_event_fields(self, actual: Any, spec: dict) -> None:
-        for field, expected in spec.items():
-            if field == "command" and isinstance(actual, CommandStartedEvent):
-                command = spec["command"]
-                if command:
-                    self.match_result(command, actual.command)
-                continue
-            if field == "reply" and isinstance(actual, CommandSucceededEvent):
-                reply = spec["reply"]
-                if reply:
-                    self.match_result(reply, actual.reply)
-                continue
-            if field == "hasServiceId":
-                if spec["hasServiceId"]:
-                    self.test.assertIsNotNone(actual.service_id)
-                    self.test.assertIsInstance(actual.service_id, ObjectId)
-                else:
-                    self.test.assertIsNone(actual.service_id)
-                continue
-            if field == "hasServerConnectionId":
-                if spec["hasServerConnectionId"]:
-                    self.test.assertIsNotNone(actual.server_connection_id)
-                    self.test.assertIsInstance(actual.server_connection_id, int)
-                else:
-                    self.test.assertIsNone(actual.server_connection_id)
-                continue
-            if field in ("previousDescription", "newDescription"):
-                if isinstance(actual, ServerDescriptionChangedEvent):
-                    self.match_server_description(
-                        getattr(actual, camel_to_snake(field)), spec[field]
-                    )
-                    continue
-                if isinstance(actual, TopologyDescriptionChangedEvent):
-                    self.match_topology_description(
-                        getattr(actual, camel_to_snake(field)), spec[field]
-                    )
-                    continue
-
-            if field == "interruptInUseConnections":
-                field = "interrupt_connections"
-            else:
-                field = camel_to_snake(field)
-            self.test.assertEqual(getattr(actual, field), expected)
-
-    def match_event(self, expectation, actual):
-        name, spec = next(iter(expectation.items()))
-        if name == "commandStartedEvent":
-            self.test.assertIsInstance(actual, CommandStartedEvent)
-        elif name == "commandSucceededEvent":
-            self.test.assertIsInstance(actual, CommandSucceededEvent)
-        elif name == "commandFailedEvent":
-            self.test.assertIsInstance(actual, CommandFailedEvent)
-        elif name == "poolCreatedEvent":
-            self.test.assertIsInstance(actual, PoolCreatedEvent)
-        elif name == "poolReadyEvent":
-            self.test.assertIsInstance(actual, PoolReadyEvent)
-        elif name == "poolClearedEvent":
-            self.test.assertIsInstance(actual, PoolClearedEvent)
-            self.test.assertIsInstance(actual.interrupt_connections, bool)
-        elif name == "poolClosedEvent":
-            self.test.assertIsInstance(actual, PoolClosedEvent)
-        elif name == "connectionCreatedEvent":
-            self.test.assertIsInstance(actual, ConnectionCreatedEvent)
-        elif name == "connectionReadyEvent":
-            self.test.assertIsInstance(actual, ConnectionReadyEvent)
-        elif name == "connectionClosedEvent":
-            self.test.assertIsInstance(actual, ConnectionClosedEvent)
-        elif name == "connectionCheckOutStartedEvent":
-            self.test.assertIsInstance(actual, ConnectionCheckOutStartedEvent)
-        elif name == "connectionCheckOutFailedEvent":
-            self.test.assertIsInstance(actual, ConnectionCheckOutFailedEvent)
-        elif name == "connectionCheckedOutEvent":
-            self.test.assertIsInstance(actual, ConnectionCheckedOutEvent)
-        elif name == "connectionCheckedInEvent":
-            self.test.assertIsInstance(actual, ConnectionCheckedInEvent)
-        elif name == "serverDescriptionChangedEvent":
-            self.test.assertIsInstance(actual, ServerDescriptionChangedEvent)
-        elif name == "serverHeartbeatStartedEvent":
-            self.test.assertIsInstance(actual, ServerHeartbeatStartedEvent)
-        elif name == "serverHeartbeatSucceededEvent":
-            self.test.assertIsInstance(actual, ServerHeartbeatSucceededEvent)
-        elif name == "serverHeartbeatFailedEvent":
-            self.test.assertIsInstance(actual, ServerHeartbeatFailedEvent)
-        elif name == "topologyDescriptionChangedEvent":
-            self.test.assertIsInstance(actual, TopologyDescriptionChangedEvent)
-        elif name == "topologyOpeningEvent":
-            self.test.assertIsInstance(actual, TopologyOpenedEvent)
-        elif name == "topologyClosedEvent":
-            self.test.assertIsInstance(actual, TopologyClosedEvent)
-        else:
-            raise Exception(f"Unsupported event type {name}")
-
-        self.match_event_fields(actual, spec)
-
-
-def coerce_result(opname, result):
-    """Convert a pymongo result into the spec's result format."""
-    if hasattr(result, "acknowledged") and not result.acknowledged:
-        return {"acknowledged": False}
-    if opname == "bulkWrite":
-        return parse_bulk_write_result(result)
-    if opname == "clientBulkWrite":
-        return parse_client_bulk_write_result(result)
-    if opname == "insertOne":
-        return {"insertedId": result.inserted_id}
-    if opname == "insertMany":
-        return dict(enumerate(result.inserted_ids))
-    if opname in ("deleteOne", "deleteMany"):
-        return {"deletedCount": result.deleted_count}
-    if opname in ("updateOne", "updateMany", "replaceOne"):
-        value = {
-            "matchedCount": result.matched_count,
-            "modifiedCount": result.modified_count,
-            "upsertedCount": 0 if result.upserted_id is None else 1,
-        }
-        if result.upserted_id is not None:
-            value["upsertedId"] = result.upserted_id
-        return value
-    return result
 
 
 class UnifiedSpecTestMixinV1(IntegrationTest):
     """Mixin class to run test cases from test specification files.
 
     Assumes that tests conform to the `unified test format
-    <https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst>`_.
+    <https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.md>`_.
 
     Specification of the test suite being currently run is available as
     a class attribute ``TEST_SPEC``.
@@ -1092,13 +478,20 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 db.create_collection(coll_name, write_concern=wc, **opts)
 
     @classmethod
-    def setUpClass(cls):
+    def _setup_class(cls):
         # super call creates internal client cls.client
-        super().setUpClass()
+        super()._setup_class()
         # process file-level runOnRequirements
         run_on_spec = cls.TEST_SPEC.get("runOnRequirements", [])
         if not cls.should_run_on(run_on_spec):
             raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
+
+        # add any special-casing for skipping tests here
+        if client_context.storage_engine == "mmapv1":
+            if "retryable-writes" in cls.TEST_SPEC["description"] or "retryable_writes" in str(
+                cls.TEST_PATH
+            ):
+                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
         # Handle mongos_clients for transactions tests.
         cls.mongos_clients = []
@@ -1108,12 +501,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             and not client_context.serverless
         ):
             for address in client_context.mongoses:
-                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
-
-        # add any special-casing for skipping tests here
-        if client_context.storage_engine == "mmapv1":
-            if "retryable-writes" in cls.TEST_SPEC["description"]:
-                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
+                cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
 
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(
@@ -1125,11 +513,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         cls.knobs.enable()
 
     @classmethod
-    def tearDownClass(cls):
+    def _tearDown_class(cls):
         cls.knobs.disable()
         for client in cls.mongos_clients:
             client.close()
-        super().tearDownClass()
+        super()._tearDown_class()
 
     def setUp(self):
         super().setUp()
@@ -1168,9 +556,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
-        if "unpin after non-transient error on abort" in spec["description"]:
-            if client_context.version[0] == 8:
-                self.skipTest("Skipping TransientTransactionError pending PYTHON-4182")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
@@ -1384,7 +769,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "batch_size" in kwargs:
             kwargs["cursor"] = {"batchSize": kwargs.pop("batch_size")}
         cursor = target.list_collections(*args, **kwargs)
-        return list(cursor)
+        return cursor.to_list()
 
     def _databaseOperation_createCollection(self, target, *args, **kwargs):
         # PYTHON-1936 Ignore the listCollections event from create_collection.
@@ -1394,7 +779,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def __entityOperation_aggregate(self, target, *args, **kwargs):
         self.__raise_if_unsupported("aggregate", target, Database, Collection)
-        return list(target.aggregate(*args, **kwargs))
+        return (target.aggregate(*args, **kwargs)).to_list()
 
     def _databaseOperation_aggregate(self, target, *args, **kwargs):
         return self.__entityOperation_aggregate(target, *args, **kwargs)
@@ -1405,13 +790,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _collectionOperation_find(self, target, *args, **kwargs):
         self.__raise_if_unsupported("find", target, Collection)
         find_cursor = target.find(*args, **kwargs)
-        return list(find_cursor)
+        return find_cursor.to_list()
 
     def _collectionOperation_createFindCursor(self, target, *args, **kwargs):
         self.__raise_if_unsupported("find", target, Collection)
         if "filter" not in kwargs:
             self.fail('createFindCursor requires a "filter" argument')
-        cursor = NonLazyCursor(target.find(*args, **kwargs), target.database.client)
+        cursor = NonLazyCursor.create(target.find(*args, **kwargs), target.database.client)
         self.addCleanup(cursor.close)
         return cursor
 
@@ -1421,7 +806,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _collectionOperation_listIndexes(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
             self.skipTest("PyMongo does not support batch_size for list_indexes")
-        return list(target.list_indexes(*args, **kwargs))
+        return (target.list_indexes(*args, **kwargs)).to_list()
 
     def _collectionOperation_listIndexNames(self, target, *args, **kwargs):
         self.skipTest("PyMongo does not support list_index_names")
@@ -1433,7 +818,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _collectionOperation_listSearchIndexes(self, target, *args, **kwargs):
         name = kwargs.get("name")
         agg_kwargs = kwargs.get("aggregation_options", dict())
-        return list(target.list_search_indexes(name, **agg_kwargs))
+        return (target.list_search_indexes(name, **agg_kwargs)).to_list()
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
         if client_context.storage_engine == "mmapv1":
@@ -1473,7 +858,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return target.create_data_key(*args, **kwargs)
 
     def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
-        return list(target.get_keys(*args, **kwargs))
+        return target.get_keys(*args, **kwargs).to_list()
 
     def _clientEncryptionOperation_deleteKey(self, target, *args, **kwargs):
         result = target.delete_key(*args, **kwargs)
@@ -1519,7 +904,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _bucketOperation_find(
         self, target: GridFSBucket, *args: Any, **kwargs: Any
     ) -> List[GridOut]:
-        return list(target.find(*args, **kwargs))
+        return target.find(*args, **kwargs).to_list()
 
     def run_entity_operation(self, spec):
         target = self.entity_map[spec["object"]]
@@ -1647,7 +1032,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 )
             )
 
-        client = single_client("{}:{}".format(*session._pinned_address))
+        client = self.single_client("{}:{}".format(*session._pinned_address))
         self.addCleanup(client.close)
         self.__set_fail_point(client=client, command_args=spec["failPoint"])
 
@@ -1852,7 +1237,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         except AttributeError:
             self.fail(f"Unsupported special test operation {opname}")
         else:
-            method(spec["arguments"])
+            if iscoroutinefunction(method):
+                method(spec["arguments"])
+            else:
+                method(spec["arguments"])
 
     def run_operations(self, spec):
         for op in spec:
@@ -1926,8 +1314,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 if log.module == "ocsp_support":
                     continue
                 data = json_util.loads(log.getMessage())
-                client = data.pop("clientId") if "clientId" in data else data.pop("topologyId")
-                client_to_log[client].append(
+                client_id = data.get("clientId", data.get("topologyId"))
+                client_to_log[client_id].append(
                     {
                         "level": log.levelname.lower(),
                         "component": log.name.replace("pymongo.", "", 1),
@@ -1988,7 +1376,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
             if expected_documents:
                 sorted_expected_documents = sorted(expected_documents, key=lambda doc: doc["_id"])
-                actual_documents = list(coll.find({}, sort=[("_id", ASCENDING)]))
+                actual_documents = coll.find({}, sort=[("_id", ASCENDING)]).to_list()
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
@@ -2043,7 +1431,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process initialData
         if "initialData" in self.TEST_SPEC:
             self.insert_initial_data(self.TEST_SPEC["initialData"])
-            self._cluster_time = self.client.admin.command("ping").get("$clusterTime")
+            self._cluster_time = (self.client.admin.command("ping")).get("$clusterTime")
             self.entity_map.advance_cluster_times()
 
         if "expectLogMessages" in spec:
@@ -2157,7 +1545,7 @@ def generate_test_classes(
                     raise ValueError(
                         f"test file '{fpath}' has unsupported schemaVersion '{schema_version}'"
                     )
-                module_dict = {"__module__": module}
+                module_dict = {"__module__": module, "TEST_PATH": test_path}
                 module_dict.update(kwargs)
                 test_klasses[class_name] = type(
                     class_name,

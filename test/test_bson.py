@@ -49,8 +49,15 @@ from bson import (
     decode_iter,
     encode,
     is_valid,
+    json_util,
 )
-from bson.binary import USER_DEFINED_SUBTYPE, Binary, UuidRepresentation
+from bson.binary import (
+    USER_DEFINED_SUBTYPE,
+    Binary,
+    BinaryVector,
+    BinaryVectorDtype,
+    UuidRepresentation,
+)
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
 from bson.datetime_ms import _DATETIME_ERROR_SUGGESTION
@@ -148,6 +155,9 @@ class TestBSON(unittest.TestCase):
         helper({"a binary": Binary(b"test", 128)})
         helper({"a binary": Binary(b"test", 254)})
         helper({"another binary": Binary(b"test", 2)})
+        helper({"binary packed bit vector": Binary(b"\x10\x00\x7f\x07", 9)})
+        helper({"binary int8 vector": Binary(b"\x03\x00\x7f\x07", 9)})
+        helper({"binary float32 vector": Binary(b"'\x00\x00\x00\xfeB\x00\x00\xe0@", 9)})
         helper(SON([("test dst", datetime.datetime(1993, 4, 4, 2))]))
         helper(SON([("test negative dst", datetime.datetime(1, 1, 1, 1, 1, 1))]))
         helper({"big float": float(10000000000)})
@@ -447,6 +457,20 @@ class TestBSON(unittest.TestCase):
             encode({"test": Binary(b"test", 128)}),
             b"\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00\x00\x00\x80\x74\x65\x73\x74\x00",
         )
+        self.assertEqual(
+            encode({"vector_int8": Binary.from_vector([-128, -1, 127], BinaryVectorDtype.INT8)}),
+            b"\x1c\x00\x00\x00\x05vector_int8\x00\x05\x00\x00\x00\t\x03\x00\x80\xff\x7f\x00",
+        )
+        self.assertEqual(
+            encode({"vector_bool": Binary.from_vector([1, 127], BinaryVectorDtype.PACKED_BIT)}),
+            b"\x1b\x00\x00\x00\x05vector_bool\x00\x04\x00\x00\x00\t\x10\x00\x01\x7f\x00",
+        )
+        self.assertEqual(
+            encode(
+                {"vector_float32": Binary.from_vector([-1.1, 1.1e10], BinaryVectorDtype.FLOAT32)}
+            ),
+            b"$\x00\x00\x00\x05vector_float32\x00\n\x00\x00\x00\t'\x00\xcd\xcc\x8c\xbf\xac\xe9#P\x00",
+        )
         self.assertEqual(encode({"test": None}), b"\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
         self.assertEqual(
             encode({"date": datetime.datetime(2007, 1, 8, 0, 30, 11)}),
@@ -711,9 +735,84 @@ class TestBSON(unittest.TestCase):
         transformed = bin.as_uuid(UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(id, transformed)
 
-    # The C extension was segfaulting on unicode RegExs, so we have this test
-    # that doesn't really test anything but the lack of a segfault.
+    def test_vector(self):
+        """Tests of subtype 9"""
+        # We start with valid cases, across the 3 dtypes implemented.
+        # Work with a simple vector that can be interpreted as int8, float32, or ubyte
+        list_vector = [127, 7]
+        # As INT8, vector has length 2
+        binary_vector = Binary.from_vector(list_vector, BinaryVectorDtype.INT8)
+        vector = binary_vector.as_vector()
+        assert vector.data == list_vector
+        # test encoding roundtrip
+        assert {"vector": binary_vector} == decode(encode({"vector": binary_vector}))
+        # test json roundtrip
+        assert binary_vector == json_util.loads(json_util.dumps(binary_vector))
+
+        # For vectors of bits, aka PACKED_BIT type, vector has length 8 * 2
+        packed_bit_binary = Binary.from_vector(list_vector, BinaryVectorDtype.PACKED_BIT)
+        packed_bit_vec = packed_bit_binary.as_vector()
+        assert packed_bit_vec.data == list_vector
+
+        # A padding parameter permits vectors of length that aren't divisible by 8
+        # The following ignores the last 3 bits in list_vector,
+        # hence it's length is 8 * len(list_vector) - padding
+        padding = 3
+        padded_vec = Binary.from_vector(list_vector, BinaryVectorDtype.PACKED_BIT, padding=padding)
+        assert padded_vec.as_vector().data == list_vector
+        # To visualize how this looks as a binary vector..
+        uncompressed = ""
+        for val in list_vector:
+            uncompressed += format(val, "08b")
+        assert uncompressed[:-padding] == "0111111100000"
+
+        # It is worthwhile explicitly showing the values encoded to BSON
+        padded_doc = {"padded_vec": padded_vec}
+        assert (
+            encode(padded_doc)
+            == b"\x1a\x00\x00\x00\x05padded_vec\x00\x04\x00\x00\x00\t\x10\x03\x7f\x07\x00"
+        )
+        # and dumped to json
+        assert (
+            json_util.dumps(padded_doc)
+            == '{"padded_vec": {"$binary": {"base64": "EAN/Bw==", "subType": "09"}}}'
+        )
+
+        # FLOAT32 is also implemented
+        float_binary = Binary.from_vector(list_vector, BinaryVectorDtype.FLOAT32)
+        assert all(isinstance(d, float) for d in float_binary.as_vector().data)
+
+        # Now some invalid cases
+        for x in [-1, 257]:
+            try:
+                Binary.from_vector([x], BinaryVectorDtype.PACKED_BIT)
+            except Exception as exc:
+                self.assertTrue(isinstance(exc, struct.error))
+            else:
+                self.fail("Failed to raise an exception.")
+
+        # Test form of Binary.from_vector(BinaryVector)
+
+        assert padded_vec == Binary.from_vector(
+            BinaryVector(list_vector, BinaryVectorDtype.PACKED_BIT, padding)
+        )
+        assert binary_vector == Binary.from_vector(
+            BinaryVector(list_vector, BinaryVectorDtype.INT8)
+        )
+        assert float_binary == Binary.from_vector(
+            BinaryVector(list_vector, BinaryVectorDtype.FLOAT32)
+        )
+        # Confirm kwargs cannot be passed when BinaryVector is provided
+        with self.assertRaises(ValueError):
+            Binary.from_vector(
+                BinaryVector(list_vector, BinaryVectorDtype.PACKED_BIT, padding),
+                dtype=BinaryVectorDtype.PACKED_BIT,
+            )  # type: ignore[call-overload]
+
     def test_unicode_regex(self):
+        """Tests we do not get a segfault for C extension on unicode RegExs.
+        This had been happening.
+        """
         regex = re.compile("revisi\xf3n")
         decode(encode({"regex": regex}))
 

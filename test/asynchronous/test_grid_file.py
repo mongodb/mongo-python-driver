@@ -33,7 +33,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 sys.path[0:0] = [""]
 
-from test.utils import EventListener, async_rs_or_single_client
+from test.utils import OvertCommandListener
 
 from bson.objectid import ObjectId
 from gridfs.asynchronous.grid_file import (
@@ -792,7 +792,7 @@ Bye"""
         await outfile.readchunk()
 
     async def test_grid_in_lazy_connect(self):
-        client = AsyncMongoClient("badhost", connect=False, serverSelectionTimeoutMS=10)
+        client = self.simple_client("badhost", connect=False, serverSelectionTimeoutMS=10)
         fs = client.db.fs
         infile = AsyncGridIn(fs, file_id=-1, chunk_size=1)
         with self.assertRaises(ServerSelectionTimeoutError):
@@ -803,15 +803,15 @@ Bye"""
     async def test_unacknowledged(self):
         # w=0 is prohibited.
         with self.assertRaises(ConfigurationError):
-            AsyncGridIn((await async_rs_or_single_client(w=0)).pymongo_test.fs)
+            AsyncGridIn((await self.async_rs_or_single_client(w=0)).pymongo_test.fs)
 
     async def test_survive_cursor_not_found(self):
         # By default the find command returns 101 documents in the first batch.
         # Use 102 batches to cause a single getMore.
         chunk_size = 1024
         data = b"d" * (102 * chunk_size)
-        listener = EventListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        listener = OvertCommandListener()
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         db = client.pymongo_test
         async with AsyncGridIn(db.fs, chunk_size=chunk_size) as infile:
             await infile.write(data)

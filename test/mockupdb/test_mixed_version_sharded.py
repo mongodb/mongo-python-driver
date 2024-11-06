@@ -18,6 +18,7 @@ from __future__ import annotations
 import time
 import unittest
 from queue import Queue
+from test import PyMongoTestCase
 
 import pytest
 
@@ -30,12 +31,10 @@ except ImportError:
 
 from operations import upgrades  # type: ignore[import]
 
-from pymongo import MongoClient
-
 pytestmark = pytest.mark.mockupdb
 
 
-class TestMixedVersionSharded(unittest.TestCase):
+class TestMixedVersionSharded(PyMongoTestCase):
     def setup_server(self, upgrade):
         self.mongos_old, self.mongos_new = MockupDB(), MockupDB()
 
@@ -62,7 +61,7 @@ class TestMixedVersionSharded(unittest.TestCase):
             self.mongos_new.address_string,
         )
 
-        self.client = MongoClient(self.mongoses_uri)
+        self.client = self.simple_client(self.mongoses_uri)
 
     def tearDown(self):
         if hasattr(self, "client") and self.client:

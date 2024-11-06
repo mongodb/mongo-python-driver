@@ -170,8 +170,9 @@ class Topology:
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
         self._closed = False
-        self._lock = _ALock(_create_lock())
-        self._condition = _ACondition(self._settings.condition_class(self._lock))  # type: ignore[arg-type]
+        _lock = _create_lock()
+        self._lock = _ALock(_lock)
+        self._condition = _ACondition(self._settings.condition_class(_lock))
         self._servers: dict[_Address, Server] = {}
         self._pid: Optional[int] = None
         self._max_cluster_time: Optional[ClusterTime] = None
@@ -227,8 +228,9 @@ class Topology:
             warnings.warn(  # type: ignore[call-overload] # noqa: B028
                 "AsyncMongoClient opened before fork. May not be entirely fork-safe, "
                 "proceed with caution. See PyMongo's documentation for details: "
-                "https://pymongo.readthedocs.io/en/stable/faq.html#"
-                "is-pymongo-fork-safe",
+                "https://www.mongodb.com/docs/languages/"
+                "python/pymongo-driver/current/faq/"
+                "#is-pymongo-fork-safe-",
                 **kwargs,
             )
             async with self._lock:

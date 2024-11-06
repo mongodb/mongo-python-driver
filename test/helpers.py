@@ -28,6 +28,7 @@ import time
 import traceback
 import unittest
 import warnings
+from asyncio import iscoroutinefunction
 
 try:
     import ipaddress
@@ -41,11 +42,14 @@ from unittest import SkipTest
 
 from bson.son import SON
 from pymongo import common, message
+from pymongo.read_preferences import ReadPreference
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 from pymongo.uri_parser import parse_uri
 
 if HAVE_SSL:
     import ssl
+
+_IS_SYNC = True
 
 # Enable debug output for uncollectable objects. PyPy does not have set_debug.
 if hasattr(gc, "set_debug"):
@@ -145,6 +149,16 @@ def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
     cmd["roles"] = roles or ["root"]
     cmd.update(**kwargs)
     return authdb.command(cmd)
+
+
+def repl_set_step_down(client, **kwargs):
+    """Run replSetStepDown, first unfreezing a secondary with replSetFreeze."""
+    cmd = SON([("replSetStepDown", 1)])
+    cmd.update(kwargs)
+
+    # Unfreeze a secondary to ensure a speedy election.
+    client.admin.command("replSetFreeze", 0, read_preference=ReadPreference.SECONDARY)
+    client.admin.command(cmd)
 
 
 class client_knobs:

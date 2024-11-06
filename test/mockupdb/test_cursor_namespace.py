@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import unittest
+from test import PyMongoTestCase
 
 import pytest
 
@@ -28,19 +29,20 @@ except ImportError:
 
 
 from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 
 pytestmark = pytest.mark.mockupdb
 
 
-class TestCursorNamespace(unittest.TestCase):
+class TestCursorNamespace(PyMongoTestCase):
     server: MockupDB
     client: MongoClient
 
     @classmethod
     def setUpClass(cls):
-        cls.server = MockupDB(auto_ismaster={"maxWireVersion": 6})
+        cls.server = MockupDB(auto_ismaster={"maxWireVersion": 7})
         cls.server.run()
-        cls.client = MongoClient(cls.server.uri)
+        cls.client = cls.unmanaged_simple_client(cls.server.uri)
 
     @classmethod
     def tearDownClass(cls):
@@ -88,15 +90,15 @@ class TestCursorNamespace(unittest.TestCase):
         self._test_cursor_namespace(op, "listIndexes")
 
 
-class TestKillCursorsNamespace(unittest.TestCase):
+class TestKillCursorsNamespace(PyMongoTestCase):
     server: MockupDB
     client: MongoClient
 
     @classmethod
     def setUpClass(cls):
-        cls.server = MockupDB(auto_ismaster={"maxWireVersion": 6})
+        cls.server = MockupDB(auto_ismaster={"maxWireVersion": MIN_SUPPORTED_WIRE_VERSION})
         cls.server.run()
-        cls.client = MongoClient(cls.server.uri)
+        cls.client = cls.unmanaged_simple_client(cls.server.uri)
 
     @classmethod
     def tearDownClass(cls):

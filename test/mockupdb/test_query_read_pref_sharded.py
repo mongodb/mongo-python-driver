@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import unittest
+from test import PyMongoTestCase
 
 import pytest
 
@@ -28,7 +29,7 @@ except ImportError:
 
 
 from bson import SON
-from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.read_preferences import (
     Nearest,
     Primary,
@@ -40,18 +41,21 @@ from pymongo.read_preferences import (
 pytestmark = pytest.mark.mockupdb
 
 
-class TestQueryAndReadModeSharded(unittest.TestCase):
+class TestQueryAndReadModeSharded(PyMongoTestCase):
     def test_query_and_read_mode_sharded_op_msg(self):
         """Test OP_MSG sends non-primary $readPreference and never $query."""
         server = MockupDB()
         server.autoresponds(
-            "ismaster", ismaster=True, msg="isdbgrid", minWireVersion=2, maxWireVersion=6
+            "ismaster",
+            ismaster=True,
+            msg="isdbgrid",
+            minWireVersion=2,
+            maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
         )
         server.run()
         self.addCleanup(server.stop)
 
-        client = MongoClient(server.uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(server.uri)
 
         read_prefs = (
             Primary(),

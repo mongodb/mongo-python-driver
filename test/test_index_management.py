@@ -25,11 +25,10 @@ import pytest
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, unittest
+from test import IntegrationTest, PyMongoTestCase, unittest
 from test.unified_format import generate_test_classes
-from test.utils import AllowListEventListener, EventListener
+from test.utils import AllowListEventListener, EventListener, OvertCommandListener
 
-from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.operations import SearchIndexModel
 from pymongo.read_concern import ReadConcern
@@ -47,8 +46,7 @@ class TestCreateSearchIndex(IntegrationTest):
         if not os.environ.get("TEST_INDEX_MANAGEMENT"):
             raise unittest.SkipTest("Skipping index management tests")
         listener = AllowListEventListener("createSearchIndexes")
-        client = MongoClient(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.simple_client(event_listeners=[listener])
         coll = client.test.test
         coll.drop()
         definition = dict(mappings=dict(dynamic=True))
@@ -79,7 +77,7 @@ class TestCreateSearchIndex(IntegrationTest):
         )
 
 
-class SearchIndexIntegrationBase(unittest.TestCase):
+class SearchIndexIntegrationBase(PyMongoTestCase):
     db_name = "test_search_index_base"
 
     @classmethod
@@ -90,8 +88,8 @@ class SearchIndexIntegrationBase(unittest.TestCase):
         url = os.environ.get("MONGODB_URI")
         username = os.environ["DB_USER"]
         password = os.environ["DB_PASSWORD"]
-        cls.listener = listener = EventListener()
-        cls.client = MongoClient(
+        cls.listener = listener = OvertCommandListener()
+        cls.client = cls.unmanaged_simple_client(
             url, username=username, password=password, event_listeners=[listener]
         )
         cls.client.drop_database(_NAME)

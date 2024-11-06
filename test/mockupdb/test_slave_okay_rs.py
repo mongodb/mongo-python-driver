@@ -32,6 +32,7 @@ except ImportError:
 from operations import operations  # type: ignore[import]
 
 from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 
 pytestmark = pytest.mark.mockupdb
 
@@ -45,7 +46,12 @@ class TestSlaveOkayRS(unittest.TestCase):
 
         hosts = [server.address_string for server in (self.primary, self.secondary)]
         self.primary.autoresponds(
-            "ismaster", ismaster=True, setName="rs", hosts=hosts, minWireVersion=2, maxWireVersion=6
+            "ismaster",
+            ismaster=True,
+            setName="rs",
+            hosts=hosts,
+            minWireVersion=2,
+            maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
         )
         self.secondary.autoresponds(
             "ismaster",
@@ -54,7 +60,7 @@ class TestSlaveOkayRS(unittest.TestCase):
             setName="rs",
             hosts=hosts,
             minWireVersion=2,
-            maxWireVersion=6,
+            maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
         )
 
 

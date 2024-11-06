@@ -76,30 +76,11 @@ For best performance on Python versions older than 2.7.8 install `backports.pbkd
 
 .. _backports.pbkdf2: https://pypi.python.org/pypi/backports.pbkdf2/
 
-MONGODB-CR
-----------
-
-.. warning:: MONGODB-CR was deprecated with the release of MongoDB 3.6 and
-  is no longer supported by MongoDB 4.0.
-
-Before MongoDB 3.0 the default authentication mechanism was MONGODB-CR,
-the "MongoDB Challenge-Response" protocol::
-
-  >>> from pymongo import MongoClient
-  >>> client = MongoClient('example.com',
-  ...                      username='user',
-  ...                      password='password',
-  ...                      authMechanism='MONGODB-CR')
-  >>>
-  >>> uri = "mongodb://user:password@example.com/?authSource=the_database&authMechanism=MONGODB-CR"
-  >>> client = MongoClient(uri)
-
 Default Authentication Mechanism
 --------------------------------
 
-If no mechanism is specified, PyMongo automatically SCRAM-SHA-1 when connected
-to MongoDB 3.6 and negotiates the mechanism to use (SCRAM-SHA-1
-or SCRAM-SHA-256) when connected to MongoDB 4.0+.
+If no mechanism is specified, PyMongo automatically negotiates the mechanism to use (SCRAM-SHA-1
+or SCRAM-SHA-256) with the MongoDB server.
 
 Default Database and "authSource"
 ---------------------------------
@@ -222,8 +203,7 @@ SASL PLAIN (RFC 4616)
 
 MongoDB Enterprise Edition version 2.6 and newer support the SASL PLAIN
 authentication mechanism, initially intended for delegating authentication
-to an LDAP server. Using the PLAIN mechanism is very similar to MONGODB-CR.
-These examples use the $external virtual database for LDAP support::
+to an LDAP server. These examples use the $external virtual database for LDAP support::
 
   >>> from pymongo import MongoClient
   >>> uri = "mongodb://user:password@example.com/?authMechanism=PLAIN"

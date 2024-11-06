@@ -36,7 +36,7 @@ from test import (
 from test.utils import (
     EventListener,
     ExceptionCatchingThread,
-    rs_or_single_client,
+    OvertCommandListener,
     wait_until,
 )
 
@@ -88,7 +88,7 @@ class TestSession(IntegrationTest):
         super()._setup_class()
         # Create a second client so we can make sure clients cannot share
         # sessions.
-        cls.client2 = rs_or_single_client()
+        cls.client2 = cls.unmanaged_rs_or_single_client()
 
         # Redact no commands, so we can test user-admin commands have "lsid".
         cls.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
@@ -103,7 +103,7 @@ class TestSession(IntegrationTest):
     def setUp(self):
         self.listener = SessionTestListener()
         self.session_checker_listener = SessionTestListener()
-        self.client = rs_or_single_client(
+        self.client = self.rs_or_single_client(
             event_listeners=[self.listener, self.session_checker_listener]
         )
         self.addCleanup(self.client.close)
@@ -199,8 +199,8 @@ class TestSession(IntegrationTest):
         lsid_set = set()
         failures = 0
         for _ in range(5):
-            listener = EventListener()
-            client = rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
+            listener = OvertCommandListener()
+            client = self.rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
             cursor = client.db.test.find({})
             ops: List[Tuple[Callable, List[Any]]] = [
                 (client.db.test.find_one, [{"_id": 1}]),
@@ -283,7 +283,7 @@ class TestSession(IntegrationTest):
     def test_end_sessions(self):
         # Use a new client so that the tearDown hook does not error.
         listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         # Start many sessions.
         sessions = [client.start_session() for _ in range(_MAX_END_SESSIONS + 1)]
         for s in sessions:
@@ -787,8 +787,7 @@ class TestSession(IntegrationTest):
     def test_unacknowledged_writes(self):
         # Ensure the collection exists.
         self.client.pymongo_test.test_unacked_writes.insert_one({})
-        client = rs_or_single_client(w=0, event_listeners=[self.listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(w=0, event_listeners=[self.listener])
         db = client.pymongo_test
         coll = db.test_unacked_writes
         ops: list = [
@@ -836,7 +835,7 @@ class TestCausalConsistency(UnitTest):
     @classmethod
     def _setup_class(cls):
         cls.listener = SessionTestListener()
-        cls.client = rs_or_single_client(event_listeners=[cls.listener])
+        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     def _tearDown_class(cls):
@@ -1137,8 +1136,7 @@ class TestClusterTime(IntegrationTest):
     def test_cluster_time(self):
         listener = SessionTestListener()
         # Prevent heartbeats from updating $clusterTime between operations.
-        client = rs_or_single_client(event_listeners=[listener], heartbeatFrequencyMS=999999)
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener], heartbeatFrequencyMS=999999)
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
         collection.insert_many([{} for _ in range(10)])

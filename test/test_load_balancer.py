@@ -26,7 +26,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
-from test.utils import ExceptionCatchingThread, get_pool, rs_client, wait_until
+from test.utils import ExceptionCatchingThread, get_pool, wait_until
 
 pytestmark = pytest.mark.load_balancer
 
@@ -54,7 +54,7 @@ class TestLB(IntegrationTest):
 
     @client_context.require_load_balancer
     def test_unpin_committed_transaction(self):
-        client = rs_client()
+        client = self.rs_client()
         self.addCleanup(client.close)
         pool = get_pool(client)
         coll = client[self.db.name].test
@@ -85,7 +85,7 @@ class TestLB(IntegrationTest):
         self._test_no_gc_deadlock(create_resource)
 
     def _test_no_gc_deadlock(self, create_resource):
-        client = rs_client()
+        client = self.rs_client()
         self.addCleanup(client.close)
         pool = get_pool(client)
         coll = client[self.db.name].test
@@ -124,7 +124,7 @@ class TestLB(IntegrationTest):
 
     @client_context.require_transactions
     def test_session_gc(self):
-        client = rs_client()
+        client = self.rs_client()
         self.addCleanup(client.close)
         pool = get_pool(client)
         session = client.start_session()

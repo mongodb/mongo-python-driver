@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import warnings
 import weakref
 from collections import defaultdict
 from typing import (
@@ -176,6 +177,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           For more details, see the relevant section of the PyMongo 4.x migration guide:
           :ref:`pymongo4-migration-direct-connection`.
 
+        .. warning:: This API is currently in beta, meaning the classes, methods, and behaviors described within may change before the full release.
+
         The client object is thread-safe and has connection-pooling built in.
         If an operation fails because of a network error,
         :class:`~pymongo.errors.ConnectionFailure` is raised and the client
@@ -218,7 +221,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         <https://en.wikipedia.org/wiki/TXT_record>`_. See the
         `Initial DNS Seedlist Discovery spec
         <https://github.com/mongodb/specifications/blob/master/source/
-        initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.rst>`_
+        initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.md>`_
         for more details. Note that the use of SRV URIs implicitly enables
         TLS support. Pass tls=false in the URI to override.
 
@@ -364,7 +367,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate` using the ``$out``
             pipeline operator and any operation with an unacknowledged write
             concern (e.g. {w: 0})). See
-            https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.rst
+            https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.md
           - `retryReads`: (boolean) Whether supported read operations
             executed within this AsyncMongoClient will be retried once after a
             network error. Defaults to ``True``.
@@ -391,7 +394,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             transient errors such as network failures, database upgrades, and
             replica set failovers. For an exact definition of which errors
             trigger a retry, see the `retryable reads specification
-            <https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.rst>`_.
+            <https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.md>`_.
 
           - `compressors`: Comma separated list of compressors for wire
             protocol compression. The list is used to negotiate a compressor
@@ -495,9 +498,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           - `authSource`: The database to authenticate on. Defaults to the
             database specified in the URI, if provided, or to "admin".
           - `authMechanism`: See :data:`~pymongo.auth.MECHANISMS` for options.
-            If no mechanism is specified, PyMongo automatically SCRAM-SHA-1
-            when connected to MongoDB 3.6 and negotiates the mechanism to use
-            (SCRAM-SHA-1 or SCRAM-SHA-256) when connected to MongoDB 4.0+.
+            If no mechanism is specified, PyMongo automatically negotiates the
+            mechanism to use (SCRAM-SHA-1 or SCRAM-SHA-256) with the MongoDB server.
           - `authMechanismProperties`: Used to specify authentication mechanism
             specific options. To specify the service name for GSSAPI
             authentication pass authMechanismProperties='SERVICE_NAME:<service
@@ -720,6 +722,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionchanged:: 4.7
             Deprecated parameter ``wTimeoutMS``, use :meth:`~pymongo.timeout`.
+
+        .. versionchanged:: 4.9
+            The default value of ``connect`` is changed to ``False`` when running in a
+            Function-as-a-service environment.
         """
         doc_class = document_class or dict
         self._init_kwargs: dict[str, Any] = {
@@ -803,7 +809,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if tz_aware is None:
             tz_aware = opts.get("tz_aware", False)
         if connect is None:
-            connect = opts.get("connect", True)
+            # Default to connect=True unless on a FaaS system, which might use fork.
+            from pymongo.pool_options import _is_faas
+
+            connect = opts.get("connect", not _is_faas())
         keyword_opts["tz_aware"] = tz_aware
         keyword_opts["connect"] = connect
 
@@ -864,6 +873,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
         self._opened = False
+        self._closed = False
         self._init_background()
 
         if _IS_SYNC and connect:
@@ -1173,6 +1183,21 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return database.AsyncDatabase(self, name)
 
+    def __del__(self) -> None:
+        """Check that this AsyncMongoClient has been closed and issue a warning if not."""
+        try:
+            if self._opened and not self._closed:
+                warnings.warn(
+                    (
+                        f"Unclosed {type(self).__name__} opened at:\n{self._topology_settings._stack}"
+                        f"Call {type(self).__name__}.close() to safely shut down your client and free up resources."
+                    ),
+                    ResourceWarning,
+                    stacklevel=2,
+                )
+        except AttributeError:
+            pass
+
     def _close_cursor_soon(
         self,
         cursor_id: int,
@@ -1428,13 +1453,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 'Cannot use "address" property when load balancing among'
                 ' mongoses, use "nodes" instead.'
             )
-        if topology_type not in (
-            TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-            TOPOLOGY_TYPE.Single,
-            TOPOLOGY_TYPE.LoadBalanced,
-            TOPOLOGY_TYPE.Sharded,
-        ):
-            return None
         return await self._server_property("address")
 
     @property
@@ -1540,6 +1558,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             await self._encrypter.close()
+        self._closed = True
 
     if not _IS_SYNC:
         # Add support for contextlib.aclosing.
@@ -2335,6 +2354,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             if not write_concern:
                 write_concern = self.write_concern
 
+        if write_concern and not write_concern.acknowledged and verbose_results:
+            raise InvalidOperation(
+                "Cannot request unacknowledged write concern and verbose results"
+            )
+        elif write_concern and not write_concern.acknowledged and ordered:
+            raise InvalidOperation("Cannot request unacknowledged write concern and ordered writes")
+
         common.validate_list("models", models)
 
         blk = _AsyncClientBulk(
@@ -2420,7 +2446,9 @@ class _MongoClientErrorHandler:
         self, client: AsyncMongoClient, server: Server, session: Optional[AsyncClientSession]
     ):
         if not isinstance(client, AsyncMongoClient):
-            raise TypeError(f"AsyncMongoClient required but given {type(client)}")
+            # This is for compatibility with mocked and subclassed types, such as in Motor.
+            if not any(cls.__name__ == "AsyncMongoClient" for cls in type(client).__mro__):
+                raise TypeError(f"AsyncMongoClient required but given {type(client).__name__}")
 
         self.client = client
         self.server_address = server.description.address

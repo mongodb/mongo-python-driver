@@ -20,11 +20,10 @@ import sys
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
+from test.helpers import repl_set_step_down
 from test.utils import (
     CMAPListener,
     ensure_all_connected,
-    repl_set_step_down,
-    rs_or_single_client,
 )
 
 from bson import SON
@@ -33,6 +32,8 @@ from pymongo.errors import NotPrimaryError
 from pymongo.synchronous.collection import Collection
 from pymongo.write_concern import WriteConcern
 
+_IS_SYNC = True
+
 
 class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
     listener: CMAPListener
@@ -40,10 +41,10 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
 
     @classmethod
     @client_context.require_replica_set
-    def setUpClass(cls):
-        super().setUpClass()
+    def _setup_class(cls):
+        super()._setup_class()
         cls.listener = CMAPListener()
-        cls.client = rs_or_single_client(
+        cls.client = cls.unmanaged_rs_or_single_client(
             event_listeners=[cls.listener], retryWrites=False, heartbeatFrequencyMS=500
         )
 
@@ -57,7 +58,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         cls.coll = cls.db.get_collection("step-down", write_concern=WriteConcern("majority"))
 
     @classmethod
-    def tearDownClass(cls):
+    def _tearDown_class(cls):
         cls.client.close()
 
     def setUp(self):

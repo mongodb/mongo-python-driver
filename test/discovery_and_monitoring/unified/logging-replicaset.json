@@ -357,6 +357,7 @@
                 },
                 "durationMS": {
                   "$$type": [
+                    "double",
                     "int",
                     "long"
                   ]
@@ -398,6 +399,7 @@
                 },
                 "durationMS": {
                   "$$type": [
+                    "double",
                     "int",
                     "long"
                   ]
@@ -439,6 +441,7 @@
                 },
                 "durationMS": {
                   "$$type": [
+                    "double",
                     "int",
                     "long"
                   ]
@@ -589,6 +592,7 @@
                 },
                 "durationMS": {
                   "$$type": [
+                    "double",
                     "int",
                     "long"
                   ]

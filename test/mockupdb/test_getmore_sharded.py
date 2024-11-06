@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import unittest
 from queue import Queue
+from test import PyMongoTestCase
 
 import pytest
 
@@ -28,12 +29,12 @@ except ImportError:
     _HAVE_MOCKUPDB = False
 
 
-from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 
 pytestmark = pytest.mark.mockupdb
 
 
-class TestGetmoreSharded(unittest.TestCase):
+class TestGetmoreSharded(PyMongoTestCase):
     def test_getmore_sharded(self):
         servers = [MockupDB(), MockupDB()]
 
@@ -42,16 +43,19 @@ class TestGetmoreSharded(unittest.TestCase):
         for server in servers:
             server.subscribe(q.put)
             server.autoresponds(
-                "ismaster", ismaster=True, msg="isdbgrid", minWireVersion=2, maxWireVersion=6
+                "ismaster",
+                ismaster=True,
+                msg="isdbgrid",
+                minWireVersion=2,
+                maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
             )
             server.run()
             self.addCleanup(server.stop)
 
-        client = MongoClient(
+        client = self.simple_client(
             "mongodb://%s:%d,%s:%d"
             % (servers[0].host, servers[0].port, servers[1].host, servers[1].port)
         )
-        self.addCleanup(client.close)
         collection = client.db.collection
         cursor = collection.find()
         with going(next, cursor):

@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import unittest
+from test import PyMongoTestCase
 
 import pytest
 
@@ -29,13 +30,16 @@ except ImportError:
 
 from bson import Timestamp
 from pymongo import DeleteMany, InsertOne, MongoClient, UpdateOne
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.errors import OperationFailure
 
 pytestmark = pytest.mark.mockupdb
 
 
-class TestClusterTime(unittest.TestCase):
-    def cluster_time_conversation(self, callback, replies, max_wire_version=6):
+class TestClusterTime(PyMongoTestCase):
+    def cluster_time_conversation(
+        self, callback, replies, max_wire_version=MIN_SUPPORTED_WIRE_VERSION
+    ):
         cluster_time = Timestamp(0, 0)
         server = MockupDB()
 
@@ -52,8 +56,7 @@ class TestClusterTime(unittest.TestCase):
         server.run()
         self.addCleanup(server.stop)
 
-        client = MongoClient(server.uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(server.uri)
 
         with going(callback, client):
             for reply in replies:
@@ -110,7 +113,7 @@ class TestClusterTime(unittest.TestCase):
         cluster_time = Timestamp(0, 0)
         reply = {
             "minWireVersion": 0,
-            "maxWireVersion": 6,
+            "maxWireVersion": MIN_SUPPORTED_WIRE_VERSION,
             "$clusterTime": {"clusterTime": cluster_time},
         }
 
@@ -118,8 +121,7 @@ class TestClusterTime(unittest.TestCase):
         server.run()
         self.addCleanup(server.stop)
 
-        client = MongoClient(server.uri, heartbeatFrequencyMS=500)
-        self.addCleanup(client.close)
+        client = self.simple_client(server.uri, heartbeatFrequencyMS=500)
 
         request = server.receives("ismaster")
         # No $clusterTime in first ismaster, only in subsequent ones
