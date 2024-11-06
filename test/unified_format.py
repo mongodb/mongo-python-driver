@@ -497,7 +497,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process file-level runOnRequirements
         run_on_spec = self.TEST_SPEC.get("runOnRequirements", [])
         if not self.should_run_on(run_on_spec):
-            self.client.close()
+            # Explicitly close async clients here
+            # to prevent leaky monitor tasks
+            if not _IS_SYNC:
+                client_context.client.close()
             raise unittest.SkipTest(f"{self.__class__.__name__} runOnRequirements not satisfied")
 
         # add any special-casing for skipping tests here
