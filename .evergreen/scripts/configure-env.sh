@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -eux
 
 # Get the current unique version of this checkout
 # shellcheck disable=SC2154
@@ -38,6 +38,9 @@ export DRIVERS_TOOLS="$DRIVERS_TOOLS"
 export MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
 export MONGODB_BINARIES="$MONGODB_BINARIES"
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
+export AUTH="${AUTH:-noauth}"
+export SSL="${SSL:-nossl}"
+export PYTHON_BINARY="${PYTHON_BINARY:-}"
 
 export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
 export PATH="$MONGODB_BINARIES:$PATH"

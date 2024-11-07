@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -eu
 . .evergreen/scripts/env.sh
 
 TEST_OCSP=1 \

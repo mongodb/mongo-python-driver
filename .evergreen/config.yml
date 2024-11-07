@@ -40,7 +40,7 @@ functions:
     # Make an evergreen expansion file with dynamic values
     - command: subprocess.exec
       params:
-        include_expansions_in_env: ["is_patch", "project", "version_id"]
+        include_expansions_in_env: ["is_patch", "project", "version_id", "AUTH", "SSL", "PYTHON_BINARY"]
         binary: bash
         working_dir: "src"
         args:
@@ -486,7 +486,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED", "PYTHON_BINARY"]
+        include_expansions_in_env: ["OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED"]
         binary: bash
         working_dir: "src"
         args:
