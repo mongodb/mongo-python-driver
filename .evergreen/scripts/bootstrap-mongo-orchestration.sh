@@ -22,7 +22,7 @@ if [ -f /proc/self/coredump_filter ]; then
     fi
 fi
 
-if [ $(uname -s) = "Darwin" ]; then
+if [ "$(uname -s)" = "Darwin" ]; then
     core_pattern_mac=$(/usr/sbin/sysctl -n "kern.corefile")
     if [ "$core_pattern_mac" = "dump_%N.%P.core" ]; then
         echo "Enabling coredumps"

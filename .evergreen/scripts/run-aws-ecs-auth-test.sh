@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# shellcheck disable=SC2154
 if [ "${skip_ECS_auth_test}" = "true" ]; then
     echo "This platform does not support the ECS auth test, skipping..."
     exit 0

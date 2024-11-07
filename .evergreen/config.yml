@@ -20,10 +20,9 @@ exec_timeout_secs: 3600 # 60 minutes is the longest we'll ever run (primarily
 
 # What to do when evergreen hits the timeout (`post:` tasks are run automatically)
 timeout:
-  - command: shell.exec
+  - command: subprocess.exec
     params:
-      script: |
-        ls -la
+      binary: ls -la
 
 include:
   - filename: .evergreen/generated_configs/tasks.yml
@@ -97,13 +96,17 @@ functions:
         args:
           - .evergreen/combine-coverage.sh
     # Upload the resulting html coverage report.
-    - command: shell.exec
+    - command: subprocess.exec
       params:
         silent: true
+        binary: bash
         working_dir: "src"
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-        script: |
-           aws s3 cp htmlcov/ s3://${bucket_name}/coverage/${revision}/${version_id}/htmlcov/ --recursive --acl public-read --region us-east-1
+        args:
+          - src/.evergreen/scripts/upload-coverage-report.sh
+          - ${bucket_name}
+          - ${revision}
+          - ${version_id}
     # Attach the index.html with s3.put so it shows up in the Evergreen UI.
     - command: s3.put
       params:
@@ -483,16 +486,12 @@ functions:
           - .evergreen/scripts/run-aws-ecs-auth-test.sh
 
   "cleanup":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
+        binary: bash
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          if [ -f $DRIVERS_TOOLS/.evergreen/csfle/secrets-export.sh ]; then
-            . .evergreen/hatch.sh encryption:teardown
-          fi
-          rm -rf ${DRIVERS_TOOLS} || true
-          rm -f ./secrets-export.sh || true
+        args:
+          - .evergreen/scripts/cleanup.sh
 
   "fix absolute paths":
     - command: subprocess.exec
@@ -553,7 +552,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED"]
+        include_expansions_in_env: ["OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED", "PYTHON_BINARY"]
         binary: bash
         working_dir: "src"
         args:
@@ -569,42 +568,36 @@ functions:
           - ${DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh
 
   "run load-balancer":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          DRIVERS_TOOLS=${DRIVERS_TOOLS} MONGODB_URI=${MONGODB_URI} bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh start
+        binary: bash
+        include_expansions_in_env: ["MONGODB_URI"]
+        args:
+          - src/.evergreen/scripts/run-load-balancer.sh
     - command: expansions.update
       params:
         file: lb-expansion.yml
 
   "stop load-balancer":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          cd ${DRIVERS_TOOLS}/.evergreen
-          DRIVERS_TOOLS=${DRIVERS_TOOLS} bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh stop
+        binary: bash
+        args:
+          - src/.evergreen/scripts/stop-load-balancer.sh
 
   "teardown_docker":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          # Remove all Docker images
-          DOCKER=$(command -v docker) || true
-          if [ -n "$DOCKER" ]; then
-            docker rmi -f $(docker images -a -q) &> /dev/null || true
-          fi
+        binary: bash
+        args:
+          - src/.evergreen/scripts/teardown-docker.sh
 
   "teardown_aws":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        shell: "bash"
-        script: |
-          . src/.evergreen/scripts/env.sh
-          cd "${DRIVERS_TOOLS}/.evergreen/auth_aws"
-          if [ -f "./aws_e2e_setup.json" ]; then
-            . ./activate-authawsvenv.sh
-            python ./lib/aws_assign_instance_profile.py
-          fi
+        binary: bash
+        args:
+          - src/.evergreen/scripts/teardown-aws.sh
 
   "teardown atlas":
     - command: subprocess.exec
@@ -614,10 +607,13 @@ functions:
           - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
 
   "run perf tests":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
         working_dir: "src"
+        binary: bash
+        args:
+          - .evergreen/scripts/run-perf-tests.sh
         script: |
           . .evergreen/scripts/env.sh
           PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-perf-tests.sh
@@ -858,31 +854,12 @@ tasks:
     # Throw it here, and execute this task on all buildvariants
     - name: getdata
       commands:
-        - command: shell.exec
+        - command: subprocess.exec
+          binary: bash
           type: test
           params:
-            script: |
-               set -o xtrace
-               . ${DRIVERS_TOOLS}/.evergreen/download-mongodb.sh || true
-               get_distro || true
-               echo $DISTRO
-               echo $MARCH
-               echo $OS
-               uname -a || true
-               ls /etc/*release* || true
-               cc --version || true
-               gcc --version || true
-               clang --version || true
-               gcov --version || true
-               lcov --version || true
-               llvm-cov --version || true
-               echo $PATH
-               ls -la /usr/local/Cellar/llvm/*/bin/ || true
-               ls -la /usr/local/Cellar/ || true
-               scan-build --version || true
-               genhtml --version || true
-               valgrind --version || true
-
+            args:
+              - src/.evergreen/scripts/run-getdata.sh
 # Standard test tasks {{{
 
     - name: "mockupdb"
@@ -1552,17 +1529,13 @@ tasks:
           vars:
             VERSION: "latest"
             TOPOLOGY: "server"
-        - command: shell.exec
+        - command: subprocess.exec
           type: test
           params:
             working_dir: "src"
-            shell: "bash"
-            script: |
-              . .evergreen/scripts/env.sh
-              export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
-              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
-              SKIP_SERVERS=1 bash ./.evergreen/setup-encryption.sh
-              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/hatch.sh test:test-eg
+            binary: "bash"
+            args:
+              - .evergreen/scripts/run-gcpkms-fail-test.sh
 
     - name: testazurekms-task
       commands:
@@ -1628,18 +1601,15 @@ tasks:
     - name: "check-import-time"
       tags: ["pr"]
       commands:
-        - command: shell.exec
+        - command: subprocess.exec
           type: test
           params:
             shell: "bash"
             working_dir: src
-            script: |
-              . .evergreen/scripts/env.sh
-              set -x
-              export BASE_SHA=${revision}
-              export HEAD_SHA=${github_commit}
-              bash .evergreen/run-import-time-test.sh
-
+            args:
+              - .evergreen/scripts/check-import-time.sh
+              - ${revision}
+              - ${github_commit}
     - name: "backport-pr"
       allowed_requesters: ["commit"]
       commands:
