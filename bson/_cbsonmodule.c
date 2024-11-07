@@ -1744,35 +1744,34 @@ int write_dict(PyObject* self, buffer_t buffer,
             if (!decode_and_write_pair(self, buffer, key, value,
                                     check_keys, options, top_level)) {
                 if (PyErr_Occurred()) {
-                    PyObject *etype, *evalue, *etrace;
+                    PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
                     PyErr_Fetch(&etype, &evalue, &etrace);
                     PyObject *InvalidDocument = _error("InvalidDocument");
 
-                    if (PyErr_GivenExceptionMatches(etype, InvalidDocument)) {
-                        if (InvalidDocument) {
-                            Py_DECREF(etype);
-                            etype = InvalidDocument;
+                    if (top_level && InvalidDocument && PyErr_GivenExceptionMatches(etype, InvalidDocument)) {
 
-                            if (evalue) {
-                                PyObject *msg = PyObject_Str(evalue);
-                                Py_DECREF(evalue);
+                        Py_DECREF(etype);
+                        etype = InvalidDocument;
 
-                                if (msg) {
-                                    // Prepend doc to the existing message
-                                    PyObject *dict_str = PyObject_Str(dict);
-                                    PyObject *new_msg = PyUnicode_FromFormat("Invalid document %s | %s", PyUnicode_AsUTF8(dict_str), PyUnicode_AsUTF8(msg));
-                                    Py_DECREF(dict_str);
+                        if (evalue) {
+                            PyObject *msg = PyObject_Str(evalue);
+                            Py_DECREF(evalue);
 
-                                    if (new_msg) {
-                                        evalue = new_msg;
-                                    }
-                                    else {
-                                    evalue = msg;
-                                    }
+                            if (msg) {
+                                // Prepend doc to the existing message
+                                PyObject *dict_str = PyObject_Str(dict);
+                                PyObject *new_msg = PyUnicode_FromFormat("Invalid document %s | %s", PyUnicode_AsUTF8(dict_str), PyUnicode_AsUTF8(msg));
+                                Py_DECREF(dict_str);
+
+                                if (new_msg) {
+                                    evalue = new_msg;
+                                }
+                                else {
+                                evalue = msg;
                                 }
                             }
-                            PyErr_NormalizeException(&etype, &evalue, &etrace);
                         }
+                        PyErr_NormalizeException(&etype, &evalue, &etrace);
                     }
                     else {
                         Py_DECREF(InvalidDocument);
