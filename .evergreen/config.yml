@@ -548,9 +548,6 @@ functions:
         binary: bash
         args:
           - .evergreen/scripts/run-perf-tests.sh
-        script: |
-          . .evergreen/scripts/env.sh
-          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-perf-tests.sh
 
   "attach benchmark test results":
     - command: attach.results
@@ -1538,7 +1535,7 @@ tasks:
         - command: subprocess.exec
           type: test
           params:
-            shell: "bash"
+            binary: bash
             working_dir: src
             args:
               - .evergreen/scripts/check-import-time.sh
