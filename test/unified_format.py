@@ -536,6 +536,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
+        with open("temp.txt", "a") as fid:
+            fid.write(f"****\n{spec['description']}\n")
         if client_context.storage_engine == "mmapv1":
             if (
                 "Dirty explicit session is discarded" in spec["description"]
