@@ -83,7 +83,6 @@ functions:
     - command: subprocess.exec
       params:
         binary: bash
-        silent: true
         working_dir: "src"
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         args:
@@ -261,7 +260,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["PROJECT_DIRECTORY", "PYTHON_BINARY", "MOD_WSGI_VERSION", "MOD_WSGI_EMBEDDED"]
+        include_expansions_in_env: ["PYTHON_BINARY", "MOD_WSGI_VERSION", "MOD_WSGI_EMBEDDED"]
         working_dir: "src"
         binary: bash
         args:
@@ -366,7 +365,7 @@ functions:
       params:
         binary: bash
         working_dir: "src"
-        include_expansions_in_env: ["DRIVERS_TOOLS", "PROJECT_DIRECTORY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         args:
           - .evergreen/scripts/run-enterprise-auth-tests.sh
 
@@ -375,7 +374,7 @@ functions:
       type: test
       params:
         binary: bash
-        include_expansions_in_env: ["DRIVERS_TOOLS", "PROJECT_DIRECTORY", "PYTHON_BINARY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["PYTHON_BINARY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         working_dir: "src"
         args:
           - .evergreen/scripts/run-atlas-tests.sh
@@ -393,7 +392,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "PYTHON_BINARY", "skip_EC2_auth_test"]
         binary: bash
         working_dir: "src"
         args:
@@ -404,7 +403,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
         binary: bash
         working_dir: "src"
         args:
@@ -414,7 +413,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
         binary: bash
         working_dir: "src"
         args:
@@ -424,7 +423,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
         binary: bash
         working_dir: "src"
         args:
@@ -436,7 +435,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
         binary: bash
         working_dir: "src"
         args:
@@ -446,7 +445,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["DRIVERS_TOOLS"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
         binary: bash
         working_dir: "src"
         args:
@@ -478,7 +477,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        binary: "bash"
+        binary: bash
         working_dir: "src"
         args:
           - .evergreen/scripts/run-aws-ecs-auth-test.sh
@@ -498,30 +497,35 @@ functions:
   "fix absolute paths":
     - command: subprocess.exec
       params:
+        binary: bash
         args:
           - src/.evergreen/scripts/fix-absolute-paths.sh
 
   "windows fix":
     - command: subprocess.exec
       params:
+        binary: bash
         args:
           - src/.evergreen/scripts/windows-fix.sh
 
   "make files executable":
     - command: subprocess.exec
       params:
+        binary: bash
         args:
           - src/.evergreen/scripts/make-files-executable.sh
 
   "init test-results":
     - command: subprocess.exec
       params:
+        binary: bash
         args:
           - src/.evergreen/scripts/init-test-results.sh
 
   "install dependencies":
     - command: subprocess.exec
       params:
+        binary: bash
         working_dir: "src"
         args:
           - .evergreen/scripts/install-dependencies.sh
@@ -549,7 +553,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "PROJECT_DIRECTORY", "OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED"]
+        include_expansions_in_env: ["OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED"]
         binary: bash
         working_dir: "src"
         args:
@@ -560,7 +564,7 @@ functions:
       params:
         background: true
         binary: bash
-        include_expansions_in_env: [SERVER_TYPE, OCSP_ALGORITHM]
+        include_expansions_in_env: ["SERVER_TYPE", "OCSP_ALGORITHM"]
         args:
           - ${DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh
 
@@ -683,13 +687,13 @@ task_groups:
       - func: make files executable
       - command: subprocess.exec
         params:
-          binary: "bash"
+          binary: bash
           args:
             - ${DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
     teardown_task:
       - command: subprocess.exec
         params:
-          binary: "bash"
+          binary: bash
           args:
             - ${DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/delete-instance.sh
       - func: "upload test results"
@@ -1535,7 +1539,7 @@ tasks:
           type: setup
           params:
             working_dir: "src"
-            binary: "bash"
+            binary: bash
             include_expansions_in_env: ["DRIVERS_TOOLS"]
             args:
               - .evergreen/run-gcpkms-test.sh
