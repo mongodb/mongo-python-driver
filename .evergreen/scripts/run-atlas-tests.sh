@@ -1,6 +1,5 @@
 #!/bin/bash
 
-. .evergreen/scripts/env.sh
 # Disable xtrace for security reasons (just in case it was accidentally set).
 set +x
 set -o errexit

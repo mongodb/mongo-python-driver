@@ -290,6 +290,14 @@ functions:
   "run tests":
     - command: subprocess.exec
       params:
+          working_dir: "src"
+          binary: bash
+          background: true
+          include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+          args:
+            - .evergreen/scripts/setup-encryption.sh
+    - command: subprocess.exec
+      params:
         working_dir: "src"
         binary: bash
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
@@ -314,6 +322,7 @@ functions:
         include_expansions_in_env: ["PYTHON_BINARY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-atlas-tests.sh
 
   "get aws auth secrets":
@@ -344,7 +353,8 @@ functions:
         binary: bash
         working_dir: "src"
         args:
-          - .evergreen/scripts/run-mongodb-aws-test.sh assume-role
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - assume-role
 
   "run aws auth test with aws EC2 credentials":
     - command: subprocess.exec
@@ -354,9 +364,11 @@ functions:
         binary: bash
         working_dir: "src"
         args:
-          - .evergreen/scripts/run-mongodb-aws-test.sh ec2
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - ec2
 
   "run aws auth test with aws web identity credentials":
+    - # Test with and without AWS_ROLE_SESSION_NAME set.
     - command: subprocess.exec
       type: test
       params:
@@ -364,9 +376,17 @@ functions:
         binary: bash
         working_dir: "src"
         args:
-          # Test with and without AWS_ROLE_SESSION_NAME set.
-          - .evergreen/scripts/run-mongodb-aws-test.sh web-identity
-          - AWS_ROLE_SESSION_NAME="test" .evergreen/scripts/run-mongodb-aws-test.sh web-identity
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - web-identity
+    - command: subprocess.exec
+      type: test
+      params:
+        include_expansions_in_env: [ "DRIVERS_TOOLS", "skip_EC2_auth_test" ]
+        binary: bash
+        working_dir: "src"
+        args:
+          - AWS_ROLE_SESSION_NAME="test" .evergreen/scripts/run-mongodb-aws-test.sh
+          - web-identity
 
   "run aws auth test with aws credentials as environment variables":
     - command: subprocess.exec
@@ -376,7 +396,8 @@ functions:
         binary: bash
         working_dir: "src"
         args:
-          - .evergreen/scripts/run-mongodb-aws-test.sh env-creds
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - env-creds
 
   "run aws auth test with aws credentials and session token as environment variables":
     - command: subprocess.exec
@@ -386,7 +407,8 @@ functions:
         binary: bash
         working_dir: "src"
         args:
-          - .evergreen/scripts/run-mongodb-aws-test.sh session-creds
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - session-creds
 
   "run oidc auth test with test credentials":
     - command: subprocess.exec
@@ -497,7 +519,7 @@ functions:
       params:
         background: true
         binary: bash
-        include_expansions_in_env: ["SERVER_TYPE", "OCSP_ALGORITHM"]
+        include_expansions_in_env: [SERVER_TYPE, OCSP_ALGORITHM]
         args:
           - ${DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh
 
