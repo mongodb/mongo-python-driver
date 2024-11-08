@@ -858,6 +858,12 @@ class TestAuthOIDCMachine(OIDCTestBase):
         with self.assertRaises(ConfigurationError):
             self.create_client(authmechanismproperties=props)
 
+        # Create an OIDC configured client with auth mechanism properties `{"OIDC_CALLBACK": "<my_callback>", "ALLOWED_HOSTS": []}`.
+        props: Dict = {"OIDC_CALLBACK": self.create_request_cb(), "ALLOWED_HOSTS": []}
+        # Assert it returns a client configuration error.
+        with self.assertRaises(ConfigurationError):
+            self.create_client(authmechanismproperties=props)
+
     def test_2_6_ALLOWED_HOSTS_defaults_ignored(self):
         # Create a MongoCredential for OIDC with a machine callback.
         props = {"OIDC_CALLBACK": self.create_request_cb()}
