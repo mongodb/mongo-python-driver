@@ -859,7 +859,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Create a MongoCredential for OIDC with a machine callback.
         props = {"OIDC_CALLBACK": self.create_request_cb()}
         extra = dict(authmechanismproperties=props)
-        mongo_creds = _build_credentials_tuple("MONGODB-OIDC", "", "foo", "", extra, "test")
+        mongo_creds = _build_credentials_tuple("MONGODB-OIDC", None, "foo", None, extra, "test")
         # Assert that creating an authenticator for example.com does not result in an error.
         authenticator = _get_authenticator(mongo_creds, ("example.com", 30))
         assert authenticator.properties.username == "foo"
@@ -867,7 +867,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Create a MongoCredential for OIDC with an ENVIRONMENT.
         props = {"ENVIRONMENT": "test"}
         extra = dict(authmechanismproperties=props)
-        mongo_creds = _build_credentials_tuple("MONGODB-OIDC", "", "", "", extra, "test")
+        mongo_creds = _build_credentials_tuple("MONGODB-OIDC", None, None, None, extra, "test")
         # Assert that creating an authenticator for example.com does not result in an error.
         authenticator = _get_authenticator(mongo_creds, ("example.com", 30))
         assert authenticator.properties.username is None

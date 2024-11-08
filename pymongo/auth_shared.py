@@ -100,8 +100,8 @@ def _validate_canonicalize_host_name(value: str | bool) -> str | bool:
 def _build_credentials_tuple(
     mech: str,
     source: Optional[str],
-    user: str,
-    passwd: str,
+    user: Optional[str],
+    passwd: Optional[str],
     extra: Mapping[str, Any],
     database: Optional[str],
 ) -> MongoCredential:
