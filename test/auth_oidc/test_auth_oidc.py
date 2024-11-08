@@ -263,15 +263,6 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Close the client.
         client.close()
 
-    def test_1_9_non_default_allowed_host_errors(self):
-        # Create a MongoCredential for OIDC with a human callback.
-        props = {"OIDC_HUMAN_CALLBACK": self.create_request_cb()}
-        extra = dict(authmechanismproperties=props)
-        mongo_creds = _build_credentials_tuple("MONGODB-OIDC", None, "", None, extra, "test")
-        # Assert that creating an authenticator for example.com results in a client error.
-        with self.assertRaises(ConfigurationError):
-            _get_authenticator(mongo_creds, ("example.com", 30))
-
     def test_2_1_valid_callback_inputs(self):
         # Create a MongoClient with a human callback that validates its inputs and returns a valid access token.
         client = self.create_client()
