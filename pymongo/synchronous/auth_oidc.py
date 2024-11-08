@@ -87,8 +87,6 @@ class _OIDCAuthenticator:
     def reauthenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
         """Handle a reauthenticate from the server."""
         # Invalidate the token for the connection.
-        with open("temp.txt", "a") as fid:  # noqa: ASYNC101
-            fid.write("reauthenticating\n")
         self._invalidate(conn)
         # Call the appropriate auth logic for the callback type.
         if self.properties.callback:
@@ -99,19 +97,12 @@ class _OIDCAuthenticator:
         """Handle an initial authenticate request."""
         # First handle speculative auth.
         # If it succeeded, we are done.
-        with open("temp.txt", "a") as fid:  # noqa: ASYNC101
-            fid.write("authenticating\n")
         ctx = conn.auth_ctx
         if ctx and ctx.speculate_succeeded():
-            with open("temp.txt", "a") as fid:  # noqa: ASYNC101
-                fid.write("speculative auth succeeded\n")
             resp = ctx.speculative_authenticate
             if resp and resp["done"]:
                 conn.oidc_token_gen_id = self.token_gen_id
                 return resp
-        else:
-            with open("temp.txt", "a") as fid:  # noqa: ASYNC101
-                fid.write("speculative auth failed\n")
 
         # If spec auth failed, call the appropriate auth logic for the callback type.
         # We cannot assume that the token is invalid, because a proxy may have been
