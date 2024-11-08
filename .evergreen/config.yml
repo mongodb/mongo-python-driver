@@ -40,7 +40,7 @@ functions:
     # Make an evergreen expansion file with dynamic values
     - command: subprocess.exec
       params:
-        include_expansions_in_env: ["is_patch", "project", "version_id", "AUTH", "SSL", "PYTHON_BINARY"]
+        include_expansions_in_env: ["is_patch", "project", "version_id", "AUTH", "SSL", "PYTHON_BINARY", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "SETDEFAULTENCODING", "test_loadbalancer", "test_serverless", "TEST_INDEX_MANAGEMENT", "SKIP_CSOT_TESTS", "MONGODB_STARTED", "DISABLE_TEST_COMMANDS", "GREEN_FRAMEWORK", "NO_EXT", "COVERAGE", "COMPRESSORS", "TEST_DATA_LAKE", "TEST_SUITES", "MONGODB_API_VERSION", "SKIP_HATCH", "skip_crypt_shared", "VERSION", "TOPOLOGY", "STORAGE_ENGINE", "ORCHESTRATION_FILE", "REQUIRE_API_VERSION", "LOAD_BALANCER"]
         binary: bash
         working_dir: "src"
         args:
@@ -305,7 +305,7 @@ functions:
       params:
         working_dir: "src"
         binary: bash
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "TEST_DATA_LAKE"]
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         args:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-tests.sh
