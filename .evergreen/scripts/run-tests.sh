@@ -45,6 +45,8 @@ if [ -n "${SKIP_CSOT_TESTS}" ]; then
   export SKIP_CSOT_TESTS=1
 fi
 
+python -c "import os; print([(k, v[:3]) for (k, v) in os.environ.items()])"
+
 GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
   PYTHON_BINARY=${PYTHON_BINARY} \
   NO_EXT=${NO_EXT} \
