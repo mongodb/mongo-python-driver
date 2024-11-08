@@ -64,7 +64,7 @@ class _OIDCProperties:
     environment: Optional[str] = field(default=None)
     allowed_hosts: list[str] = field(default_factory=list)
     token_resource: Optional[str] = field(default=None)
-    username: Optional[str] = ""
+    username: str = ""
 
 
 """Mechanism properties for MONGODB-OIDC authentication."""

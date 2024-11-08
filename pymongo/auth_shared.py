@@ -209,7 +209,7 @@ def _build_credentials_tuple(
             environment=environ,
             allowed_hosts=allowed_hosts,
             token_resource=token_resource,
-            username=user,
+            username=user or "",
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, _Cache())
 
