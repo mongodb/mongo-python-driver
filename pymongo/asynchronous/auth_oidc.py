@@ -99,10 +99,15 @@ class _OIDCAuthenticator:
         # If it succeeded, we are done.
         ctx = conn.auth_ctx
         if ctx and ctx.speculate_succeeded():
+            print("speculative auth succeeded")
             resp = ctx.speculative_authenticate
             if resp and resp["done"]:
                 conn.oidc_token_gen_id = self.token_gen_id
                 return resp
+        elif ctx:
+            print("speculative auth failed")
+        else:
+            print("no speculative auth")
 
         # If spec auth failed, call the appropriate auth logic for the callback type.
         # We cannot assume that the token is invalid, because a proxy may have been

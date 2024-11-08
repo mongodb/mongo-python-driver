@@ -193,6 +193,7 @@ ignore = [
   "EM103",  # Exception must not use a `.format()` string directly, assign to variable first
   "C408",   # Unnecessary `dict` call (rewrite as a literal)
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
+  "T20",
 ]
 unfixable = [
   "RUF100", # Unused noqa
