@@ -874,7 +874,7 @@ task_groups:
             GCPOIDC_VMNAME_PREFIX: "PYTHON_DRIVER"
           args:
             - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/gcp/setup.sh
-    teardown_group:
+    teardown_task:
       - command: subprocess.exec
         params:
           binary: bash
