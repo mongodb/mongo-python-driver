@@ -45,13 +45,11 @@ def _handle_reauth(func: F) -> F:
             return await func(*args, **kwargs)
         except OperationFailure as exc:
             if no_reauth:
-                print("failure with no reauth")
                 raise
             if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
                 # Look for an argument that either is a AsyncConnection
                 # or has a connection attribute, so we can trigger
                 # a reauth.
-                print("got reauth")
                 conn = None
                 for arg in args:
                     if isinstance(arg, AsyncConnection):
@@ -61,10 +59,8 @@ def _handle_reauth(func: F) -> F:
                         conn = arg.conn  # type: ignore[assignment]
                         break
                 if conn:
-                    print("running reauth")
                     await conn.authenticate(reauthenticate=True)
                 else:
-                    print("not running reauth, no conn")
                     raise
                 return func(*args, **kwargs)
             raise
