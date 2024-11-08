@@ -870,7 +870,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         mongo_creds = _build_credentials_tuple("MONGODB-OIDC", None, None, None, extra, "test")
         # Assert that creating an authenticator for example.com does not result in an error.
         authenticator = _get_authenticator(mongo_creds, ("example.com", 30))
-        assert authenticator.properties.username is None
+        assert authenticator.properties.username == ""
 
     def test_3_1_authentication_failure_with_cached_tokens_fetch_a_new_token_and_retry(self):
         # Create a MongoClient and an OIDC callback that implements the provider logic.
