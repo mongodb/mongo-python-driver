@@ -1,6 +1,5 @@
 #!/bin/bash
 
-. src/.evergreen/scripts/env.sh
 set -o xtrace
 
 # Enable core dumps if enabled on the machine

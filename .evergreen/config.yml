@@ -228,6 +228,7 @@ functions:
       params:
         binary: bash
         args:
+          - src/.evergreen/scripts/run-with-env.sh
           - src/.evergreen/scripts/bootstrap-mongo-orchestration.sh
     - command: expansions.update
       params:
@@ -267,6 +268,7 @@ functions:
         working_dir: "src"
         binary: bash
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-mod-wsgi-tests.sh
 
   "run mockupdb tests":
@@ -276,6 +278,7 @@ functions:
         working_dir: "src"
         binary: bash
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-mockupdb-tests.sh
 
   "run doctests":
@@ -285,6 +288,7 @@ functions:
          working_dir: "src"
          binary: bash
          args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-doctests.sh
 
   "run tests":
@@ -295,6 +299,7 @@ functions:
           background: true
           include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
           args:
+            - .evergreen/scripts/run-with-env.sh
             - .evergreen/scripts/setup-encryption.sh
     - command: subprocess.exec
       params:
@@ -302,6 +307,7 @@ functions:
         binary: bash
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-tests.sh
 
   "run enterprise auth tests":
@@ -312,6 +318,7 @@ functions:
         working_dir: "src"
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-enterprise-auth-tests.sh
 
   "run atlas tests":
@@ -319,7 +326,7 @@ functions:
       type: test
       params:
         binary: bash
-        include_expansions_in_env: ["PYTHON_BINARY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         working_dir: "src"
         args:
           - .evergreen/scripts/run-with-env.sh
@@ -338,10 +345,11 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "PYTHON_BINARY", "skip_EC2_auth_test"]
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
         binary: bash
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-mongodb-aws-test.sh
           - regular
 
@@ -353,6 +361,7 @@ functions:
         binary: bash
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-mongodb-aws-test.sh
           - assume-role
 
@@ -364,6 +373,7 @@ functions:
         binary: bash
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-mongodb-aws-test.sh
           - ec2
 
@@ -376,6 +386,7 @@ functions:
         binary: bash
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-mongodb-aws-test.sh
           - web-identity
     - command: subprocess.exec
@@ -385,6 +396,7 @@ functions:
         binary: bash
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - AWS_ROLE_SESSION_NAME="test" .evergreen/scripts/run-mongodb-aws-test.sh
           - web-identity
 
@@ -396,6 +408,7 @@ functions:
         binary: bash
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-mongodb-aws-test.sh
           - env-creds
 
@@ -407,6 +420,7 @@ functions:
         binary: bash
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-mongodb-aws-test.sh
           - session-creds
 
@@ -439,6 +453,7 @@ functions:
         binary: bash
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-aws-ecs-auth-test.sh
 
   "cleanup":
@@ -447,6 +462,7 @@ functions:
         binary: bash
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/cleanup.sh
 
   "fix absolute paths":
@@ -483,6 +499,7 @@ functions:
         binary: bash
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/install-dependencies.sh
 
   "assume ec2 role":
@@ -512,6 +529,7 @@ functions:
         binary: bash
         working_dir: "src"
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-ocsp-test.sh
 
   "run-ocsp-server":
@@ -529,6 +547,7 @@ functions:
         binary: bash
         include_expansions_in_env: ["MONGODB_URI"]
         args:
+          - src/.evergreen/scripts/run-with-env.sh
           - src/.evergreen/scripts/run-load-balancer.sh
     - command: expansions.update
       params:
@@ -553,6 +572,7 @@ functions:
       params:
         binary: bash
         args:
+          - src/.evergreen/scripts/run-with-env.sh
           - src/.evergreen/scripts/teardown-aws.sh
 
   "teardown atlas":
@@ -569,6 +589,7 @@ functions:
         working_dir: "src"
         binary: bash
         args:
+          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-perf-tests.sh
 
   "attach benchmark test results":

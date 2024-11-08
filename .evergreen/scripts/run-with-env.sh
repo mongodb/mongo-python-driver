@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash
 
 # Example use: bash run-with-env.sh run-tests.sh {args...}
 
@@ -8,6 +8,8 @@ if [ "${PWD##*/}" == "src" ]; then
 else
     . src/.evergreen/scripts/env.sh
 fi
+
+set -eu
 
 # shellcheck source=/dev/null
 . "$1" "${@:2}"

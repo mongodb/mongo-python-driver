@@ -1,8 +1,5 @@
 #!/bin/bash
 
-set -eu
-. .evergreen/scripts/env.sh
-
 TEST_OCSP=1 \
 PYTHON_BINARY="${PYTHON_BINARY}" \
 CA_FILE="${DRIVERS_TOOLS}/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
