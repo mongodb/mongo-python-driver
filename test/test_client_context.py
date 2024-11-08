@@ -25,7 +25,7 @@ _IS_SYNC = True
 
 class TestClientContext(UnitTest):
     def test_must_connect(self):
-        if "PYMONGO_MUST_CONNECT" not in os.environ:
+        if not os.environ.get("PYMONGO_MUST_CONNECT"):
             raise SkipTest("PYMONGO_MUST_CONNECT is not set")
 
         self.assertTrue(
@@ -37,7 +37,7 @@ class TestClientContext(UnitTest):
         )
 
     def test_serverless(self):
-        if "TEST_SERVERLESS" not in os.environ:
+        if not os.environ.get("TEST_SERVERLESS"):
             raise SkipTest("TEST_SERVERLESS is not set")
 
         self.assertTrue(
@@ -47,7 +47,7 @@ class TestClientContext(UnitTest):
         )
 
     def test_enableTestCommands_is_disabled(self):
-        if "PYMONGO_DISABLE_TEST_COMMANDS" not in os.environ:
+        if not os.environ.get("PYMONGO_DISABLE_TEST_COMMANDS"):
             raise SkipTest("PYMONGO_DISABLE_TEST_COMMANDS is not set")
 
         self.assertFalse(
@@ -56,7 +56,7 @@ class TestClientContext(UnitTest):
         )
 
     def test_setdefaultencoding_worked(self):
-        if "SETDEFAULTENCODING" not in os.environ:
+        if not os.environ.get("SETDEFAULTENCODING"):
             raise SkipTest("SETDEFAULTENCODING is not set")
 
         self.assertEqual(sys.getdefaultencoding(), os.environ["SETDEFAULTENCODING"])

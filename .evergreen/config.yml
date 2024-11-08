@@ -264,7 +264,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["PYTHON_BINARY", "MOD_WSGI_VERSION", "MOD_WSGI_EMBEDDED"]
+        include_expansions_in_env: [MOD_WSGI_VERSION, MOD_WSGI_EMBEDDED]
         working_dir: "src"
         binary: bash
         args:
