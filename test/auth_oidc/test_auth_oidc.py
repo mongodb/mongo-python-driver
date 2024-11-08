@@ -942,9 +942,6 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # implements the provider logic.
         client = self.create_client()
 
-        # Perform a ``find`` operation that succeeds.
-        client.test.test.find_one()
-
         # Set a fail point for the find command.
         with self.fail_point(
             {
