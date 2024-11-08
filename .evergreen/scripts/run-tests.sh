@@ -1,5 +1,8 @@
 #!/bin/bash
 
+TEST_INDEX_MANAGEMENT="${TEST_INDEX_MANAGEMENT:-}"
+TEST_DATA_LAKE="${TEST_DATA_LAKE:-}"
+
 if [ -n "${test_encryption}" ]; then
   ./.evergreen/hatch.sh encryption:setup &
 fi
@@ -44,8 +47,6 @@ fi
 if [ -n "${SKIP_CSOT_TESTS}" ]; then
   export SKIP_CSOT_TESTS=1
 fi
-
-python -c "import os; print([(k, v[:3]) for (k, v) in os.environ.items()])"
 
 GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
   PYTHON_BINARY=${PYTHON_BINARY} \

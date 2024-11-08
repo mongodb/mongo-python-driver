@@ -6,7 +6,7 @@
 if [ "${PWD##*/}" == "src" ]; then
   . .evergreen/scripts/env.sh
 else
-    . src/.evergreen/scripts/env.sh
+  . src/.evergreen/scripts/env.sh
 fi
 
 set -eu
