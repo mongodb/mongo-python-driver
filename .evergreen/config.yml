@@ -306,7 +306,7 @@ functions:
       params:
         working_dir: "src"
         binary: bash
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "test_serverless", "CRYPT_SHARED_LIB_PATH"]
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH"]
         args:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-tests.sh

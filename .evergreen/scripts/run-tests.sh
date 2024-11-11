@@ -1,8 +1,5 @@
 #!/bin/bash
 
-TEST_INDEX_MANAGEMENT="${TEST_INDEX_MANAGEMENT:-}"
-TEST_DATA_LAKE="${TEST_DATA_LAKE:-}"
-
 if [ -n "${test_encryption}" ]; then
   ./.evergreen/hatch.sh encryption:setup &
 fi
@@ -41,7 +38,7 @@ fi
 if [ -n "${test_serverless}" ]; then
   export TEST_SERVERLESS=1
 fi
-if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
+if [ -n "${TEST_INDEX_MANAGEMENT:-}" ]; then
   export TEST_INDEX_MANAGEMENT=1
 fi
 if [ -n "${SKIP_CSOT_TESTS}" ]; then
@@ -55,7 +52,7 @@ GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
   COMPRESSORS=${COMPRESSORS} \
   AUTH=${AUTH} \
   SSL=${SSL} \
-  TEST_DATA_LAKE=${TEST_DATA_LAKE} \
+  TEST_DATA_LAKE=${TEST_DATA_LAKE:-} \
   TEST_SUITES=${TEST_SUITES} \
   MONGODB_API_VERSION=${MONGODB_API_VERSION} \
   SKIP_HATCH=${SKIP_HATCH} \
