@@ -48,6 +48,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
           ref: ${{ inputs.ref }}
 
       - uses: actions/setup-python@v5
@@ -106,6 +107,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
           ref: ${{ inputs.ref }}
 
       - uses: actions/setup-python@v5
