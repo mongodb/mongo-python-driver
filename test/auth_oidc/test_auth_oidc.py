@@ -38,11 +38,17 @@ from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._gcp_helpers import _get_gcp_response
 from pymongo.auth_oidc_shared import _get_k8s_token
+from pymongo.auth_shared import _build_credentials_tuple
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.operations import InsertOne
-from pymongo.synchronous.auth_oidc import OIDCCallback, OIDCCallbackContext, OIDCCallbackResult
+from pymongo.synchronous.auth_oidc import (
+    OIDCCallback,
+    OIDCCallbackContext,
+    OIDCCallbackResult,
+    _get_authenticator,
+)
 from pymongo.uri_parser import parse_uri
 
 ROOT = Path(__file__).parent.parent.resolve()
@@ -103,7 +109,6 @@ class OIDCTestBase(PyMongoTestCase):
             client.close()
 
 
-@pytest.mark.auth_oidc
 class TestAuthOIDCHuman(OIDCTestBase):
     uri: str
 
@@ -838,11 +843,34 @@ class TestAuthOIDCMachine(OIDCTestBase):
             self.create_client(authmechanismproperties=props)
 
     def test_2_5_invalid_use_of_ALLOWED_HOSTS(self):
-        # Create an OIDC configured client with auth mechanism properties `{"ENVIRONMENT": "azure", "ALLOWED_HOSTS": []}`.
-        props: Dict = {"ENVIRONMENT": "azure", "ALLOWED_HOSTS": []}
+        # Create an OIDC configured client with auth mechanism properties `{"ENVIRONMENT": "test", "ALLOWED_HOSTS": []}`.
+        props: Dict = {"ENVIRONMENT": "test", "ALLOWED_HOSTS": []}
         # Assert it returns a client configuration error.
         with self.assertRaises(ConfigurationError):
             self.create_client(authmechanismproperties=props)
+
+        # Create an OIDC configured client with auth mechanism properties `{"OIDC_CALLBACK": "<my_callback>", "ALLOWED_HOSTS": []}`.
+        props: Dict = {"OIDC_CALLBACK": self.create_request_cb(), "ALLOWED_HOSTS": []}
+        # Assert it returns a client configuration error.
+        with self.assertRaises(ConfigurationError):
+            self.create_client(authmechanismproperties=props)
+
+    def test_2_6_ALLOWED_HOSTS_defaults_ignored(self):
+        # Create a MongoCredential for OIDC with a machine callback.
+        props = {"OIDC_CALLBACK": self.create_request_cb()}
+        extra = dict(authmechanismproperties=props)
+        mongo_creds = _build_credentials_tuple("MONGODB-OIDC", None, "foo", None, extra, "test")
+        # Assert that creating an authenticator for example.com does not result in an error.
+        authenticator = _get_authenticator(mongo_creds, ("example.com", 30))
+        assert authenticator.properties.username == "foo"
+
+        # Create a MongoCredential for OIDC with an ENVIRONMENT.
+        props = {"ENVIRONMENT": "test"}
+        extra = dict(authmechanismproperties=props)
+        mongo_creds = _build_credentials_tuple("MONGODB-OIDC", None, None, None, extra, "test")
+        # Assert that creating an authenticator for example.com does not result in an error.
+        authenticator = _get_authenticator(mongo_creds, ("example.com", 30))
+        assert authenticator.properties.username == ""
 
     def test_3_1_authentication_failure_with_cached_tokens_fetch_a_new_token_and_retry(self):
         # Create a MongoClient and an OIDC callback that implements the provider logic.
@@ -909,7 +937,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Assert that the callback has been called once.
         self.assertEqual(self.request_called, 1)
 
-    def test_4_1_reauthentication_succeds(self):
+    def test_4_1_reauthentication_succeeds(self):
         # Create a ``MongoClient`` configured with a custom OIDC callback that
         # implements the provider logic.
         client = self.create_client()
