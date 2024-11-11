@@ -132,7 +132,9 @@ def create_variant(
         expansions["VERSION"] = version
     if python:
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
-    return create_variant_generic(task_names, display_name, version=version, host=host, **kwargs)
+    return create_variant_generic(
+        task_names, display_name, version=version, host=host, expansions=expansions, **kwargs
+    )
 
 
 def get_python_binary(python: str, host: Host) -> str:
