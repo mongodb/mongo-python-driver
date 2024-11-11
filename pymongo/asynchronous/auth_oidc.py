@@ -55,7 +55,7 @@ def _get_authenticator(
     properties = credentials.mechanism_properties
 
     # Validate that the address is allowed.
-    if not properties.environment:
+    if properties.human_callback is not None:
         found = False
         allowed_hosts = properties.allowed_hosts
         for patt in allowed_hosts:
