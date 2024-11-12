@@ -149,6 +149,7 @@ class Monitor(MonitorBase):
         self._listeners = self._settings._pool_options._event_listeners
         self._publish = self._listeners is not None and self._listeners.enabled_for_server_heartbeat
         self._cancel_context: Optional[_CancellationContext] = None
+        self._conn_id: Optional[int] = None
         self._rtt_monitor = _RttMonitor(
             topology,
             topology_settings,
@@ -243,6 +244,7 @@ class Monitor(MonitorBase):
 
         Returns a ServerDescription.
         """
+        self._conn_id = None
         start = time.monotonic()
         try:
             try:
@@ -272,6 +274,7 @@ class Monitor(MonitorBase):
                     awaited=awaited,
                     durationMS=duration * 1000,
                     failure=error,
+                    driverConnectionId=self._conn_id,
                     message=_SDAMStatusMessage.HEARTBEAT_FAIL,
                 )
             await self._reset_connection()
@@ -314,6 +317,8 @@ class Monitor(MonitorBase):
                 )
 
             self._cancel_context = conn.cancel_context
+            # Record the connection id so we can later attach it to the failed log message.
+            self._conn_id = conn.id
             response, round_trip_time = await self._check_with_socket(conn)
             if not response.awaitable:
                 await self._rtt_monitor.add_sample(round_trip_time)
