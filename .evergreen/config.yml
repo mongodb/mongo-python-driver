@@ -228,7 +228,7 @@ functions:
     - command: subprocess.exec
       params:
         binary: bash
-        include_expansions_in_env: ["VERSION", "TOPOLOGY", "ORCHESTRATION_FILE"]
+        include_expansions_in_env: ["VERSION", "TOPOLOGY", "ORCHESTRATION_FILE", "LOAD_BALANCER"]
         args:
           - src/.evergreen/scripts/run-with-env.sh
           - src/.evergreen/scripts/bootstrap-mongo-orchestration.sh
