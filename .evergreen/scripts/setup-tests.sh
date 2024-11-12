@@ -10,7 +10,6 @@ if [ -f "$SCRIPT_DIR/test-env.sh" ]; then
 fi
 
 cat <<EOT > "$SCRIPT_DIR"/test-env.sh
-echo "Sourcing test-env.sh now, ORCHESTRATION_FILE: $ORCHESTRATION_FILE"
 export test_encryption="${test_encryption:-}"
 export test_encryption_pyopenssl="${test_encryption_pyopenssl:-}"
 export test_crypt_shared="${test_crypt_shared:-}"
