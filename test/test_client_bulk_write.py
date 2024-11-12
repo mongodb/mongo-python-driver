@@ -18,6 +18,9 @@ from __future__ import annotations
 import os
 import sys
 
+from bson import encode
+from bson.raw_bson import RawBSONDocument
+
 sys.path[0:0] = [""]
 
 from test import (
@@ -81,6 +84,17 @@ class TestClientBulkWrite(IntegrationTest):
         write_error = context.exception.write_errors[0]
         self.assertEqual(write_error["idx"], 1)
         self.assertEqual(write_error["op"], {"insert": 0, "document": {"_id": 1}})
+
+    @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
+    def test_raw_bson_not_inflated(self):
+        doc = RawBSONDocument(encode({"a": "b" * 100}))
+        models = [
+            InsertOne(namespace="db.coll", document=doc),
+        ]
+        self.client.bulk_write(models=models)
+
+        self.assertIsNone(doc._RawBSONDocument__inflated_doc)
 
 
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
