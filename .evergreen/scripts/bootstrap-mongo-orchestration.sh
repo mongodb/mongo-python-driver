@@ -33,10 +33,10 @@ if [ -n "${skip_crypt_shared}" ]; then
     export SKIP_CRYPT_SHARED=1
 fi
 
-MONGODB_VERSION=${VERSION:-} \
-    TOPOLOGY=${TOPOLOGY:-} \
-    AUTH=${AUTH:-noauth} \
-    SSL=${SSL:-nossl} \
+MONGODB_VERSION=${VERSION} \
+    TOPOLOGY=${TOPOLOGY} \
+    AUTH=${AUTH} \
+    SSL=${SSL} \
     STORAGE_ENGINE=${STORAGE_ENGINE:-} \
     DISABLE_TEST_COMMANDS=${DISABLE_TEST_COMMANDS:-} \
     ORCHESTRATION_FILE=${ORCHESTRATION_FILE:-} \
