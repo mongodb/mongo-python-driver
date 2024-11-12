@@ -1,9 +1,5 @@
 #!/bin/bash
 
-if [ -n "${test_encryption}" ]; then
-  ./.evergreen/hatch.sh encryption:setup &
-fi
-
 set +x
 if [ -n "${MONGODB_STARTED}" ]; then
   export PYMONGO_MUST_CONNECT=true
