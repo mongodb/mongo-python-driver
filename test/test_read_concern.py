@@ -21,7 +21,7 @@ import unittest
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context
-from test.utils import OvertCommandListener, rs_or_single_client
+from test.utils import OvertCommandListener
 
 from bson.son import SON
 from pymongo.errors import OperationFailure
@@ -36,7 +36,7 @@ class TestReadConcern(IntegrationTest):
     def setUpClass(cls):
         super().setUpClass()
         cls.listener = OvertCommandListener()
-        cls.client = rs_or_single_client(event_listeners=[cls.listener])
+        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
         client_context.client.pymongo_test.create_collection("coll")
 
@@ -67,7 +67,7 @@ class TestReadConcern(IntegrationTest):
 
     def test_read_concern_uri(self):
         uri = f"mongodb://{client_context.pair}/?readConcernLevel=majority"
-        client = rs_or_single_client(uri, connect=False)
+        client = self.rs_or_single_client(uri, connect=False)
         self.assertEqual(ReadConcern("majority"), client.read_concern)
 
     def test_invalid_read_concern(self):

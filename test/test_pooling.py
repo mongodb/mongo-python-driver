@@ -31,7 +31,7 @@ from pymongo.hello import HelloCompat
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import delay, get_pool, joinall, rs_or_single_client
+from test.utils import delay, get_pool, joinall
 
 from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.pool import Pool, PoolOptions
@@ -151,7 +151,7 @@ class _TestPoolingBase(IntegrationTest):
 
     def setUp(self):
         super().setUp()
-        self.c = rs_or_single_client()
+        self.c = self.rs_or_single_client()
         db = self.c[DB]
         db.unique.drop()
         db.test.drop()
@@ -378,7 +378,7 @@ class TestPooling(_TestPoolingBase):
             socket_info.close_conn(None)
 
     def test_maxConnecting(self):
-        client = rs_or_single_client()
+        client = self.rs_or_single_client()
         self.addCleanup(client.close)
         self.client.test.test.insert_one({})
         self.addCleanup(self.client.test.test.delete_many, {})
@@ -415,7 +415,7 @@ class TestPooling(_TestPoolingBase):
 
     @client_context.require_failCommand_appName
     def test_csot_timeout_message(self):
-        client = rs_or_single_client(appName="connectionTimeoutApp")
+        client = self.rs_or_single_client(appName="connectionTimeoutApp")
         self.addCleanup(client.close)
         # Mock an operation failing due to pymongo.timeout().
         mock_connection_timeout = {
@@ -440,7 +440,7 @@ class TestPooling(_TestPoolingBase):
 
     @client_context.require_failCommand_appName
     def test_socket_timeout_message(self):
-        client = rs_or_single_client(socketTimeoutMS=500, appName="connectionTimeoutApp")
+        client = self.rs_or_single_client(socketTimeoutMS=500, appName="connectionTimeoutApp")
         self.addCleanup(client.close)
         # Mock an operation failing due to socketTimeoutMS.
         mock_connection_timeout = {
@@ -479,7 +479,7 @@ class TestPooling(_TestPoolingBase):
             },
         }
 
-        client = rs_or_single_client(
+        client = self.rs_or_single_client(
             connectTimeoutMS=500,
             socketTimeoutMS=500,
             appName="connectionTimeoutApp",
@@ -502,7 +502,7 @@ class TestPooling(_TestPoolingBase):
 class TestPoolMaxSize(_TestPoolingBase):
     def test_max_pool_size(self):
         max_pool_size = 4
-        c = rs_or_single_client(maxPoolSize=max_pool_size)
+        c = self.rs_or_single_client(maxPoolSize=max_pool_size)
         self.addCleanup(c.close)
         collection = c[DB].test
 
@@ -538,7 +538,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         self.assertEqual(0, cx_pool.requests)
 
     def test_max_pool_size_none(self):
-        c = rs_or_single_client(maxPoolSize=None)
+        c = self.rs_or_single_client(maxPoolSize=None)
         self.addCleanup(c.close)
         collection = c[DB].test
 
@@ -570,7 +570,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         self.assertEqual(cx_pool.max_pool_size, float("inf"))
 
     def test_max_pool_size_zero(self):
-        c = rs_or_single_client(maxPoolSize=0)
+        c = self.rs_or_single_client(maxPoolSize=0)
         self.addCleanup(c.close)
         pool = get_pool(c)
         self.assertEqual(pool.max_pool_size, float("inf"))

@@ -422,6 +422,11 @@
     },
     {
       "description": "commit is not retried after MaxTimeMSExpired error",
+      "runOnRequirements": [
+        {
+          "serverless": "forbid"
+        }
+      ],
       "operations": [
         {
           "name": "failPoint",

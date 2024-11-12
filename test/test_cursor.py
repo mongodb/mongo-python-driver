@@ -34,8 +34,8 @@ from test.utils import (
     AllowListEventListener,
     EventListener,
     OvertCommandListener,
+    delay,
     ignore_deprecations,
-    rs_or_single_client,
     wait_until,
 )
 
@@ -43,7 +43,7 @@ from bson import decode_all
 from bson.code import Code
 from pymongo import ASCENDING, DESCENDING
 from pymongo.collation import Collation
-from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure
+from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure, PyMongoError
 from pymongo.operations import _IndexList
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
@@ -230,7 +230,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(90, cursor._max_await_time_ms)
 
         listener = AllowListEventListener("find", "getMore")
-        coll = (rs_or_single_client(event_listeners=[listener]))[self.db.name].pymongo_test
+        coll = (self.rs_or_single_client(event_listeners=[listener]))[self.db.name].pymongo_test
 
         # Tailable_defaults.
         coll.find(cursor_type=CursorType.TAILABLE_AWAIT).to_list()
@@ -345,8 +345,7 @@ class TestCursor(IntegrationTest):
     def test_explain_with_read_concern(self):
         # Do not add readConcern level to explain.
         listener = AllowListEventListener("explain")
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
         coll = client.pymongo_test.test.with_options(read_concern=ReadConcern(level="local"))
         self.assertTrue(coll.find().explain())
         started = listener.started_events
@@ -1252,8 +1251,7 @@ class TestCursor(IntegrationTest):
         self.client._process_periodic_tasks()
 
         listener = AllowListEventListener("killCursors")
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
         coll = client[self.db.name].test_close_kills_cursors
 
         # Add some test data.
@@ -1291,8 +1289,7 @@ class TestCursor(IntegrationTest):
     @client_context.require_failCommand_appName
     def test_timeout_kills_cursor_synchronously(self):
         listener = AllowListEventListener("killCursors")
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
         coll = client[self.db.name].test_timeout_kills_cursor
 
         # Add some test data.
@@ -1349,8 +1346,7 @@ class TestCursor(IntegrationTest):
 
     def test_getMore_does_not_send_readPreference(self):
         listener = AllowListEventListener("find", "getMore")
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
         # We never send primary read preference so override the default.
         coll = client[self.db.name].get_collection(
             "test", read_preference=ReadPreference.PRIMARY_PREFERRED
@@ -1406,6 +1402,17 @@ class TestCursor(IntegrationTest):
         docs = c.to_list(3)
         self.assertEqual(len(docs), 2)
 
+    def test_to_list_csot_applied(self):
+        client = self.single_client(timeoutMS=500, w=1)
+        coll = client.pymongo.test
+        # Initialize the client with a larger timeout to help make test less flakey
+        with pymongo.timeout(10):
+            coll.insert_many([{} for _ in range(5)])
+        cursor = coll.find({"$where": delay(1)})
+        with self.assertRaises(PyMongoError) as ctx:
+            cursor.to_list()
+        self.assertTrue(ctx.exception.timeout)
+
     @client_context.require_change_streams
     def test_command_cursor_to_list(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
@@ -1435,6 +1442,24 @@ class TestCursor(IntegrationTest):
         result = db.test.aggregate([pipeline])
         self.assertEqual(len(result.to_list(1)), 1)
 
+    @client_context.require_failCommand_blockConnection
+    def test_command_cursor_to_list_csot_applied(self):
+        client = self.single_client(timeoutMS=500, w=1)
+        coll = client.pymongo.test
+        # Initialize the client with a larger timeout to help make test less flakey
+        with pymongo.timeout(10):
+            coll.insert_many([{} for _ in range(5)])
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 5},
+            "data": {"failCommands": ["getMore"], "blockConnection": True, "blockTimeMS": 1000},
+        }
+        cursor = coll.aggregate([], batchSize=1)
+        with self.fail_point(fail_command):
+            with self.assertRaises(PyMongoError) as ctx:
+                cursor.to_list()
+            self.assertTrue(ctx.exception.timeout)
+
 
 class TestRawBatchCursor(IntegrationTest):
     def test_find_raw(self):
@@ -1454,7 +1479,7 @@ class TestRawBatchCursor(IntegrationTest):
         c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         with client.start_session() as session:
             with session.start_transaction():
                 batches = (
@@ -1484,7 +1509,7 @@ class TestRawBatchCursor(IntegrationTest):
         c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = self.rs_or_single_client(event_listeners=[listener], retryReads=True)
         with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["find"], "closeConnection": True}}
         ):
@@ -1505,7 +1530,7 @@ class TestRawBatchCursor(IntegrationTest):
         c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = self.rs_or_single_client(event_listeners=[listener], retryReads=True)
         db = client[self.db.name]
         with client.start_session(snapshot=True) as session:
             db.test.distinct("x", {}, session=session)
@@ -1565,8 +1590,8 @@ class TestRawBatchCursor(IntegrationTest):
         next(c.find_raw_batches())
 
     def test_monitoring(self):
-        listener = EventListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        listener = OvertCommandListener()
+        client = self.rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         c.drop()
         c.insert_many([{"_id": i} for i in range(10)])
@@ -1632,7 +1657,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
         c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.rs_or_single_client(event_listeners=[listener])
         with client.start_session() as session:
             with session.start_transaction():
                 batches = (
@@ -1663,7 +1688,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
         c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = self.rs_or_single_client(event_listeners=[listener], retryReads=True)
         with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["aggregate"], "closeConnection": True}}
         ):
@@ -1687,7 +1712,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
         c.insert_many(docs)
 
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener], retryReads=True)
+        client = self.rs_or_single_client(event_listeners=[listener], retryReads=True)
         db = client[self.db.name]
         with client.start_session(snapshot=True) as session:
             db.test.distinct("x", {}, session=session)
@@ -1732,8 +1757,8 @@ class TestRawBatchCommandCursor(IntegrationTest):
         next(self.db.test.aggregate_raw_batches([], collation=Collation("en_US")))
 
     def test_monitoring(self):
-        listener = EventListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        listener = OvertCommandListener()
+        client = self.rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         c.drop()
         c.insert_many([{"_id": i} for i in range(10)])
@@ -1777,8 +1802,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
     @client_context.require_no_mongos
     def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         c.delete_many({})
         c.insert_many([{"_id": i} for i in range(3)])

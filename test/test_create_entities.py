@@ -21,6 +21,8 @@ sys.path[0:0] = [""]
 from test import IntegrationTest
 from test.unified_format import UnifiedSpecTestMixinV1
 
+_IS_SYNC = True
+
 
 class TestCreateEntities(IntegrationTest):
     def test_store_events_as_entities(self):

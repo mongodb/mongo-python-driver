@@ -27,7 +27,6 @@ sys.path[0:0] = [""]
 
 from test import client_context, unittest
 from test.test_client import IntegrationTest
-from test.utils import rs_client
 
 from bson import (
     _BUILT_IN_TYPES,
@@ -971,7 +970,7 @@ class TestClusterChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustom
         if codec_options:
             kwargs["type_registry"] = codec_options.type_registry
             kwargs["document_class"] = codec_options.document_class
-        self.watched_target = rs_client(*args, **kwargs)
+        self.watched_target = self.rs_client(*args, **kwargs)
         self.addCleanup(self.watched_target.close)
         self.input_target = self.watched_target[self.db.name].test
         # Insert a record to ensure db, coll are created.

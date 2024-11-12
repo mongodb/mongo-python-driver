@@ -36,9 +36,8 @@ from test.asynchronous import (
 from test.utils import (
     EventListener,
     ExceptionCatchingThread,
-    async_rs_or_single_client,
+    OvertCommandListener,
     async_wait_until,
-    rs_or_single_client,
     wait_until,
 )
 
@@ -90,7 +89,7 @@ class TestSession(AsyncIntegrationTest):
         await super()._setup_class()
         # Create a second client so we can make sure clients cannot share
         # sessions.
-        cls.client2 = await async_rs_or_single_client()
+        cls.client2 = await cls.unmanaged_async_rs_or_single_client()
 
         # Redact no commands, so we can test user-admin commands have "lsid".
         cls.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
@@ -105,7 +104,7 @@ class TestSession(AsyncIntegrationTest):
     async def asyncSetUp(self):
         self.listener = SessionTestListener()
         self.session_checker_listener = SessionTestListener()
-        self.client = await async_rs_or_single_client(
+        self.client = await self.async_rs_or_single_client(
             event_listeners=[self.listener, self.session_checker_listener]
         )
         self.addAsyncCleanup(self.client.close)
@@ -201,8 +200,8 @@ class TestSession(AsyncIntegrationTest):
         lsid_set = set()
         failures = 0
         for _ in range(5):
-            listener = EventListener()
-            client = async_rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
+            listener = OvertCommandListener()
+            client = self.async_rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
             cursor = client.db.test.find({})
             ops: List[Tuple[Callable, List[Any]]] = [
                 (client.db.test.find_one, [{"_id": 1}]),
@@ -285,7 +284,7 @@ class TestSession(AsyncIntegrationTest):
     async def test_end_sessions(self):
         # Use a new client so that the tearDown hook does not error.
         listener = SessionTestListener()
-        client = await async_rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         # Start many sessions.
         sessions = [client.start_session() for _ in range(_MAX_END_SESSIONS + 1)]
         for s in sessions:
@@ -789,8 +788,7 @@ class TestSession(AsyncIntegrationTest):
     async def test_unacknowledged_writes(self):
         # Ensure the collection exists.
         await self.client.pymongo_test.test_unacked_writes.insert_one({})
-        client = await async_rs_or_single_client(w=0, event_listeners=[self.listener])
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(w=0, event_listeners=[self.listener])
         db = client.pymongo_test
         coll = db.test_unacked_writes
         ops: list = [
@@ -838,7 +836,7 @@ class TestCausalConsistency(AsyncUnitTest):
     @classmethod
     async def _setup_class(cls):
         cls.listener = SessionTestListener()
-        cls.client = await async_rs_or_single_client(event_listeners=[cls.listener])
+        cls.client = await cls.unmanaged_async_rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     async def _tearDown_class(cls):
@@ -1153,10 +1151,9 @@ class TestClusterTime(AsyncIntegrationTest):
     async def test_cluster_time(self):
         listener = SessionTestListener()
         # Prevent heartbeats from updating $clusterTime between operations.
-        client = await async_rs_or_single_client(
+        client = await self.async_rs_or_single_client(
             event_listeners=[listener], heartbeatFrequencyMS=999999
         )
-        self.addAsyncCleanup(client.close)
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
         await collection.insert_many([{} for _ in range(10)])

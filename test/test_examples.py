@@ -22,7 +22,7 @@ import threading
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import rs_client, wait_until
+from test.utils import wait_until
 
 import pymongo
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -1128,7 +1128,7 @@ class TestTransactionExamples(IntegrationTest):
         self.assertEqual(employee["status"], "Inactive")
 
         def MongoClient(_):
-            return rs_client()
+            return self.rs_client()
 
         uriString = None
 
@@ -1220,7 +1220,7 @@ class TestVersionedApiExamples(IntegrationTest):
     def test_versioned_api(self):
         # Versioned API examples
         def MongoClient(_, server_api):
-            return rs_client(server_api=server_api, connect=False)
+            return self.rs_client(server_api=server_api, connect=False)
 
         uri = None
 
@@ -1251,7 +1251,7 @@ class TestVersionedApiExamples(IntegrationTest):
         ):
             self.skipTest("This test needs MongoDB 5.0.2 or newer")
 
-        client = rs_client(server_api=ServerApi("1", strict=True))
+        client = self.rs_client(server_api=ServerApi("1", strict=True))
         client.db.sales.drop()
 
         # Start Versioned API Example 5

@@ -3,7 +3,7 @@
 [![PyPI Version](https://img.shields.io/pypi/v/pymongo)](https://pypi.org/project/pymongo)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pymongo)](https://pypi.org/project/pymongo)
 [![Monthly Downloads](https://static.pepy.tech/badge/pymongo/month)](https://pepy.tech/project/pymongo)
-[![Documentation Status](https://readthedocs.org/projects/pymongo/badge/?version=stable)](http://pymongo.readthedocs.io/en/stable/?badge=stable)
+[![API Documentation Status](https://readthedocs.org/projects/pymongo/badge/?version=stable)](http://pymongo.readthedocs.io/en/stable/api?badge=stable)
 
 ## About
 
@@ -11,10 +11,10 @@ The PyMongo distribution contains tools for interacting with MongoDB
 database from Python. The `bson` package is an implementation of the
 [BSON format](http://bsonspec.org) for Python. The `pymongo` package is
 a native Python driver for MongoDB. The `gridfs` package is a
-[gridfs](https://github.com/mongodb/specifications/blob/master/source/gridfs/gridfs-spec.rst/)
+[gridfs](https://github.com/mongodb/specifications/blob/master/source/gridfs/gridfs-spec.md/)
 implementation on top of `pymongo`.
 
-PyMongo supports MongoDB 3.6, 4.0, 4.2, 4.4, 5.0, 6.0, 7.0, and 8.0.
+PyMongo supports MongoDB 4.0, 4.2, 4.4, 5.0, 6.0, 7.0, and 8.0.
 
 ## Support / Feedback
 
@@ -90,7 +90,7 @@ package that is incompatible with PyMongo.
 
 ## Dependencies
 
-PyMongo supports CPython 3.8+ and PyPy3.9+.
+PyMongo supports CPython 3.9+ and PyPy3.9+.
 
 Required dependencies:
 

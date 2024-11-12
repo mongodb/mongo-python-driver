@@ -33,7 +33,7 @@ from test import IntegrationTest, client_context, unittest
 from test.utils import (
     EventListener,
     FunctionCallRecorder,
-    rs_or_single_client,
+    OvertCommandListener,
     wait_until,
 )
 from test.utils_selection_tests import (
@@ -75,8 +75,10 @@ class TestCustomServerSelectorFunction(IntegrationTest):
             return [servers[idx]]
 
         # Initialize client with appropriate listeners.
-        listener = EventListener()
-        client = rs_or_single_client(server_selector=custom_selector, event_listeners=[listener])
+        listener = OvertCommandListener()
+        client = self.rs_or_single_client(
+            server_selector=custom_selector, event_listeners=[listener]
+        )
         self.addCleanup(client.close)
         coll = client.get_database("testdb", read_preference=ReadPreference.NEAREST).coll
         self.addCleanup(client.drop_database, "testdb")
@@ -117,7 +119,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         selector = FunctionCallRecorder(lambda x: x)
 
         # Client setup.
-        mongo_client = rs_or_single_client(server_selector=selector)
+        mongo_client = self.rs_or_single_client(server_selector=selector)
         test_collection = mongo_client.testdb.test_collection
         self.addCleanup(mongo_client.close)
         self.addCleanup(mongo_client.drop_database, "testdb")

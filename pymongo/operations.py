@@ -325,16 +325,18 @@ class ReplaceOne(Generic[_DocumentType]):
         "_collation",
         "_hint",
         "_namespace",
+        "_sort",
     )
 
     def __init__(
         self,
         filter: Mapping[str, Any],
         replacement: Union[_DocumentType, RawBSONDocument],
-        upsert: bool = False,
+        upsert: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         namespace: Optional[str] = None,
+        sort: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Create a ReplaceOne instance.
 
@@ -353,8 +355,12 @@ class ReplaceOne(Generic[_DocumentType]):
             :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.2 and above.
+        :param sort: Specify which document the operation updates if the query matches
+            multiple documents. The first document matched by the sort order will be updated.
         :param namespace: (optional) The namespace in which to replace a document.
 
+        .. versionchanged:: 4.10
+            Added ``sort`` option.
         .. versionchanged:: 4.9
            Added the `namespace` option to support `MongoClient.bulk_write`.
         .. versionchanged:: 3.11
@@ -371,6 +377,7 @@ class ReplaceOne(Generic[_DocumentType]):
         else:
             self._hint = hint
 
+        self._sort = sort
         self._filter = filter
         self._doc = replacement
         self._upsert = upsert
@@ -385,6 +392,7 @@ class ReplaceOne(Generic[_DocumentType]):
             self._upsert,
             collation=validate_collation_or_none(self._collation),
             hint=self._hint,
+            sort=self._sort,
         )
 
     def _add_to_client_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
@@ -400,6 +408,7 @@ class ReplaceOne(Generic[_DocumentType]):
             self._upsert,
             collation=validate_collation_or_none(self._collation),
             hint=self._hint,
+            sort=self._sort,
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -411,99 +420,15 @@ class ReplaceOne(Generic[_DocumentType]):
                 other._collation,
                 other._hint,
                 other._namespace,
+                other._sort,
             ) == (
-                self._filter,
-                self._doc,
-                self._upsert,
-                self._collation,
-                other._hint,
-                self._namespace,
-            )
-        return NotImplemented
-
-    def __ne__(self, other: Any) -> bool:
-        return not self == other
-
-    def __repr__(self) -> str:
-        if self._namespace:
-            return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
-                self.__class__.__name__,
                 self._filter,
                 self._doc,
                 self._upsert,
                 self._collation,
                 self._hint,
                 self._namespace,
-            )
-        return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__,
-            self._filter,
-            self._doc,
-            self._upsert,
-            self._collation,
-            self._hint,
-        )
-
-
-class _UpdateOp:
-    """Private base class for update operations."""
-
-    __slots__ = (
-        "_filter",
-        "_doc",
-        "_upsert",
-        "_collation",
-        "_array_filters",
-        "_hint",
-        "_namespace",
-    )
-
-    def __init__(
-        self,
-        filter: Mapping[str, Any],
-        doc: Union[Mapping[str, Any], _Pipeline],
-        upsert: Optional[bool],
-        collation: Optional[_CollationIn],
-        array_filters: Optional[list[Mapping[str, Any]]],
-        hint: Optional[_IndexKeyHint],
-        namespace: Optional[str],
-    ):
-        if filter is not None:
-            validate_is_mapping("filter", filter)
-        if upsert is not None:
-            validate_boolean("upsert", upsert)
-        if array_filters is not None:
-            validate_list("array_filters", array_filters)
-        if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, dict[str, Any], None] = helpers_shared._index_document(hint)
-        else:
-            self._hint = hint
-
-        self._filter = filter
-        self._doc = doc
-        self._upsert = upsert
-        self._collation = collation
-        self._array_filters = array_filters
-        self._namespace = namespace
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return (
-                other._filter,
-                other._doc,
-                other._upsert,
-                other._collation,
-                other._array_filters,
-                other._hint,
-                other._namespace,
-            ) == (
-                self._filter,
-                self._doc,
-                self._upsert,
-                self._collation,
-                self._array_filters,
-                self._hint,
-                self._namespace,
+                self._sort,
             )
         return NotImplemented
 
@@ -518,9 +443,9 @@ class _UpdateOp:
                 self._doc,
                 self._upsert,
                 self._collation,
-                self._array_filters,
                 self._hint,
                 self._namespace,
+                self._sort,
             )
         return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__,
@@ -528,8 +453,102 @@ class _UpdateOp:
             self._doc,
             self._upsert,
             self._collation,
+            self._hint,
+            self._sort,
+        )
+
+
+class _UpdateOp:
+    """Private base class for update operations."""
+
+    __slots__ = (
+        "_filter",
+        "_doc",
+        "_upsert",
+        "_collation",
+        "_array_filters",
+        "_hint",
+        "_namespace",
+        "_sort",
+    )
+
+    def __init__(
+        self,
+        filter: Mapping[str, Any],
+        doc: Union[Mapping[str, Any], _Pipeline],
+        upsert: Optional[bool],
+        collation: Optional[_CollationIn],
+        array_filters: Optional[list[Mapping[str, Any]]],
+        hint: Optional[_IndexKeyHint],
+        namespace: Optional[str],
+        sort: Optional[Mapping[str, Any]],
+    ):
+        if filter is not None:
+            validate_is_mapping("filter", filter)
+        if upsert is not None:
+            validate_boolean("upsert", upsert)
+        if array_filters is not None:
+            validate_list("array_filters", array_filters)
+        if hint is not None and not isinstance(hint, str):
+            self._hint: Union[str, dict[str, Any], None] = helpers_shared._index_document(hint)
+        else:
+            self._hint = hint
+        self._filter = filter
+        self._doc = doc
+        self._upsert = upsert
+        self._collation = collation
+        self._array_filters = array_filters
+        self._namespace = namespace
+        self._sort = sort
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return (
+                other._filter,
+                other._doc,
+                other._upsert,
+                other._collation,
+                other._array_filters,
+                other._hint,
+                other._namespace,
+                other._sort,
+            ) == (
+                self._filter,
+                self._doc,
+                self._upsert,
+                self._collation,
+                self._array_filters,
+                self._hint,
+                self._namespace,
+                self._sort,
+            )
+        return NotImplemented
+
+    def __ne__(self, other: Any) -> bool:
+        return not self == other
+
+    def __repr__(self) -> str:
+        if self._namespace:
+            return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
+                self.__class__.__name__,
+                self._filter,
+                self._doc,
+                self._upsert,
+                self._collation,
+                self._array_filters,
+                self._hint,
+                self._namespace,
+                self._sort,
+            )
+        return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
+            self.__class__.__name__,
+            self._filter,
+            self._doc,
+            self._upsert,
+            self._collation,
             self._array_filters,
             self._hint,
+            self._sort,
         )
 
 
@@ -547,6 +566,7 @@ class UpdateOne(_UpdateOp):
         array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         namespace: Optional[str] = None,
+        sort: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Represents an update_one operation.
 
@@ -567,8 +587,12 @@ class UpdateOne(_UpdateOp):
             :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.2 and above.
-        :param namespace: (optional) The namespace in which to update a document.
+        :param namespace: The namespace in which to update a document.
+        :param sort: Specify which document the operation updates if the query matches
+            multiple documents. The first document matched by the sort order will be updated.
 
+        .. versionchanged:: 4.10
+            Added ``sort`` option.
         .. versionchanged:: 4.9
            Added the `namespace` option to support `MongoClient.bulk_write`.
         .. versionchanged:: 3.11
@@ -580,7 +604,7 @@ class UpdateOne(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super().__init__(filter, update, upsert, collation, array_filters, hint, namespace)
+        super().__init__(filter, update, upsert, collation, array_filters, hint, namespace, sort)
 
     def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
@@ -592,6 +616,7 @@ class UpdateOne(_UpdateOp):
             collation=validate_collation_or_none(self._collation),
             array_filters=self._array_filters,
             hint=self._hint,
+            sort=self._sort,
         )
 
     def _add_to_client_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
@@ -609,6 +634,7 @@ class UpdateOne(_UpdateOp):
             collation=validate_collation_or_none(self._collation),
             array_filters=self._array_filters,
             hint=self._hint,
+            sort=self._sort,
         )
 
 
@@ -659,7 +685,7 @@ class UpdateMany(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super().__init__(filter, update, upsert, collation, array_filters, hint, namespace)
+        super().__init__(filter, update, upsert, collation, array_filters, hint, namespace, None)
 
     def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
@@ -667,7 +693,7 @@ class UpdateMany(_UpdateOp):
             self._filter,
             self._doc,
             True,
-            bool(self._upsert),
+            self._upsert,
             collation=validate_collation_or_none(self._collation),
             array_filters=self._array_filters,
             hint=self._hint,
@@ -773,6 +799,13 @@ class IndexModel:
         """
         return self.__document
 
+    def __repr__(self) -> str:
+        return "{}({}{})".format(
+            self.__class__.__name__,
+            self.document["key"],
+            "".join([f", {key}={value!r}" for key, value in self.document.items() if key != "key"]),
+        )
+
 
 class SearchIndexModel:
     """Represents a search index to create."""
@@ -812,3 +845,9 @@ class SearchIndexModel:
     def document(self) -> Mapping[str, Any]:
         """The document for this index."""
         return self.__document
+
+    def __repr__(self) -> str:
+        return "{}({})".format(
+            self.__class__.__name__,
+            ", ".join([f"{key}={value!r}" for key, value in self.document.items()]),
+        )

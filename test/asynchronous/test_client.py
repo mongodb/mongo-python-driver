@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import _thread as thread
 import asyncio
+import base64
 import contextlib
 import copy
 import datetime
@@ -31,12 +32,15 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Iterable, Type, no_type_check
+import uuid
+from typing import Any, Iterable, Type, no_type_check
 from unittest import mock
 from unittest.mock import patch
 
 import pytest
+import pytest_asyncio
 
+from bson.binary import CSHARP_LEGACY, JAVA_LEGACY, PYTHON_LEGACY, Binary, UuidRepresentation
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
@@ -56,15 +60,12 @@ from test.asynchronous import (
     unittest,
 )
 from test.asynchronous.pymongo_mocks import AsyncMockClient
+from test.test_binary import BinaryData
 from test.utils import (
     NTHREADS,
     CMAPListener,
     FunctionCallRecorder,
     async_get_pool,
-    async_rs_client,
-    async_rs_or_single_client,
-    async_rs_or_single_client_noauth,
-    async_single_client,
     async_wait_until,
     asyncAssertRaisesExactly,
     delay,
@@ -72,7 +73,6 @@ from test.utils import (
     is_greenthread_patched,
     lazy_client_trial,
     one,
-    rs_or_single_client,
     wait_until,
 )
 
@@ -99,7 +99,7 @@ from pymongo.asynchronous.pool import (
 from pymongo.asynchronous.settings import TOPOLOGY_TYPE
 from pymongo.asynchronous.topology import _ErrorContext
 from pymongo.client_options import ClientOptions
-from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT
+from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT, MIN_SUPPORTED_WIRE_VERSION, has_c
 from pymongo.compression_support import _have_snappy, _have_zstd
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
@@ -133,7 +133,9 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     @classmethod
     async def _setup_class(cls):
-        cls.client = await async_rs_or_single_client(connect=False, serverSelectionTimeoutMS=100)
+        cls.client = await cls.unmanaged_async_rs_or_single_client(
+            connect=False, serverSelectionTimeoutMS=100
+        )
 
     @classmethod
     async def _tearDown_class(cls):
@@ -143,8 +145,8 @@ class AsyncClientUnitTest(AsyncUnitTest):
     def inject_fixtures(self, caplog):
         self._caplog = caplog
 
-    def test_keyword_arg_defaults(self):
-        client = AsyncMongoClient(
+    async def test_keyword_arg_defaults(self):
+        client = self.simple_client(
             socketTimeoutMS=None,
             connectTimeoutMS=20000,
             waitQueueTimeoutMS=None,
@@ -169,16 +171,18 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
         self.assertAlmostEqual(12, client.options.server_selection_timeout)
 
-    def test_connect_timeout(self):
-        client = AsyncMongoClient(connect=False, connectTimeoutMS=None, socketTimeoutMS=None)
+    async def test_connect_timeout(self):
+        client = self.simple_client(connect=False, connectTimeoutMS=None, socketTimeoutMS=None)
         pool_opts = client.options.pool_options
         self.assertEqual(None, pool_opts.socket_timeout)
         self.assertEqual(None, pool_opts.connect_timeout)
-        client = AsyncMongoClient(connect=False, connectTimeoutMS=0, socketTimeoutMS=0)
+
+        client = self.simple_client(connect=False, connectTimeoutMS=0, socketTimeoutMS=0)
         pool_opts = client.options.pool_options
         self.assertEqual(None, pool_opts.socket_timeout)
         self.assertEqual(None, pool_opts.connect_timeout)
-        client = AsyncMongoClient(
+
+        client = self.simple_client(
             "mongodb://localhost/?connectTimeoutMS=0&socketTimeoutMS=0", connect=False
         )
         pool_opts = client.options.pool_options
@@ -194,8 +198,8 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
         self.assertRaises(ConfigurationError, AsyncMongoClient, [])
 
-    def test_max_pool_size_zero(self):
-        AsyncMongoClient(maxPoolSize=0)
+    async def test_max_pool_size_zero(self):
+        self.simple_client(maxPoolSize=0)
 
     def test_uri_detection(self):
         self.assertRaises(ConfigurationError, AsyncMongoClient, "/foo")
@@ -260,7 +264,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertNotIsInstance(client, Iterable)
 
     async def test_get_default_database(self):
-        c = await async_rs_or_single_client(
+        c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/foo"
             % (await async_client_context.host, await async_client_context.port),
             connect=False,
@@ -277,7 +281,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertEqual(ReadPreference.SECONDARY, db.read_preference)
         self.assertEqual(write_concern, db.write_concern)
 
-        c = await async_rs_or_single_client(
+        c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/" % (await async_client_context.host, await async_client_context.port),
             connect=False,
         )
@@ -285,7 +289,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     async def test_get_default_database_error(self):
         # URI with no database.
-        c = await async_rs_or_single_client(
+        c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/" % (await async_client_context.host, await async_client_context.port),
             connect=False,
         )
@@ -297,11 +301,11 @@ class AsyncClientUnitTest(AsyncUnitTest):
             await async_client_context.host,
             await async_client_context.port,
         )
-        c = await async_rs_or_single_client(uri, connect=False)
+        c = await self.async_rs_or_single_client(uri, connect=False)
         self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database())
 
     async def test_get_database_default(self):
-        c = await async_rs_or_single_client(
+        c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/foo"
             % (await async_client_context.host, await async_client_context.port),
             connect=False,
@@ -310,7 +314,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     async def test_get_database_default_error(self):
         # URI with no database.
-        c = await async_rs_or_single_client(
+        c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/" % (await async_client_context.host, await async_client_context.port),
             connect=False,
         )
@@ -322,47 +326,59 @@ class AsyncClientUnitTest(AsyncUnitTest):
             await async_client_context.host,
             await async_client_context.port,
         )
-        c = await async_rs_or_single_client(uri, connect=False)
+        c = await self.async_rs_or_single_client(uri, connect=False)
         self.assertEqual(AsyncDatabase(c, "foo"), c.get_database())
 
-    def test_primary_read_pref_with_tags(self):
+    async def test_primary_read_pref_with_tags(self):
         # No tags allowed with "primary".
         with self.assertRaises(ConfigurationError):
-            AsyncMongoClient("mongodb://host/?readpreferencetags=dc:east")
+            await self.async_single_client("mongodb://host/?readpreferencetags=dc:east")
 
         with self.assertRaises(ConfigurationError):
-            AsyncMongoClient("mongodb://host/?readpreference=primary&readpreferencetags=dc:east")
+            await self.async_single_client(
+                "mongodb://host/?readpreference=primary&readpreferencetags=dc:east"
+            )
 
     async def test_read_preference(self):
-        c = await async_rs_or_single_client(
+        c = await self.async_rs_or_single_client(
             "mongodb://host", connect=False, readpreference=ReadPreference.NEAREST.mongos_mode
         )
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
-    def test_metadata(self):
+    async def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
-        metadata["driver"]["name"] = "PyMongo|async"
+        if has_c():
+            metadata["driver"]["name"] = "PyMongo|c|async"
+        else:
+            metadata["driver"]["name"] = "PyMongo|async"
         metadata["application"] = {"name": "foobar"}
-        client = AsyncMongoClient("mongodb://foo:27017/?appname=foobar&connect=false")
+        client = self.simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
-        client = AsyncMongoClient("foo", 27017, appname="foobar", connect=False)
+        client = self.simple_client("foo", 27017, appname="foobar", connect=False)
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         # No error
-        AsyncMongoClient(appname="x" * 128)
-        self.assertRaises(ValueError, AsyncMongoClient, appname="x" * 129)
+        self.simple_client(appname="x" * 128)
+        with self.assertRaises(ValueError):
+            self.simple_client(appname="x" * 129)
         # Bad "driver" options.
         self.assertRaises(TypeError, DriverInfo, "Foo", 1, "a")
         self.assertRaises(TypeError, DriverInfo, version="1", platform="a")
         self.assertRaises(TypeError, DriverInfo)
-        self.assertRaises(TypeError, AsyncMongoClient, driver=1)
-        self.assertRaises(TypeError, AsyncMongoClient, driver="abc")
-        self.assertRaises(TypeError, AsyncMongoClient, driver=("Foo", "1", "a"))
+        with self.assertRaises(TypeError):
+            self.simple_client(driver=1)
+        with self.assertRaises(TypeError):
+            self.simple_client(driver="abc")
+        with self.assertRaises(TypeError):
+            self.simple_client(driver=("Foo", "1", "a"))
         # Test appending to driver info.
-        metadata["driver"]["name"] = "PyMongo|async|FooDriver"
+        if has_c():
+            metadata["driver"]["name"] = "PyMongo|c|async|FooDriver"
+        else:
+            metadata["driver"]["name"] = "PyMongo|async|FooDriver"
         metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
-        client = AsyncMongoClient(
+        client = self.simple_client(
             "foo",
             27017,
             appname="foobar",
@@ -372,7 +388,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         metadata["platform"] = "{}|FooPlatform".format(_METADATA["platform"])
-        client = AsyncMongoClient(
+        client = self.simple_client(
             "foo",
             27017,
             appname="foobar",
@@ -382,7 +398,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
         # Test truncating driver info metadata.
-        client = AsyncMongoClient(
+        client = self.simple_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE),
             connect=False,
         )
@@ -391,7 +407,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
             len(bson.encode(options.pool_options.metadata)),
             _MAX_METADATA_SIZE,
         )
-        client = AsyncMongoClient(
+        client = self.simple_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE, version="s" * _MAX_METADATA_SIZE),
             connect=False,
         )
@@ -407,11 +423,11 @@ class AsyncClientUnitTest(AsyncUnitTest):
         metadata["driver"]["name"] = "PyMongo|async"
         metadata["env"] = {}
         metadata["env"]["container"] = {"orchestrator": "kubernetes"}
-        client = AsyncMongoClient("mongodb://foo:27017/?appname=foobar&connect=false")
+        client = self.simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
         self.assertEqual(options.pool_options.metadata["env"], metadata["env"])
 
-    def test_kwargs_codec_options(self):
+    async def test_kwargs_codec_options(self):
         class MyFloatType:
             def __init__(self, x):
                 self.__x = x
@@ -433,7 +449,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         uuid_representation_label = "javaLegacy"
         unicode_decode_error_handler = "ignore"
         tzinfo = utc
-        c = AsyncMongoClient(
+        c = self.simple_client(
             document_class=document_class,
             type_registry=type_registry,
             tz_aware=tz_aware,
@@ -442,12 +458,12 @@ class AsyncClientUnitTest(AsyncUnitTest):
             tzinfo=tzinfo,
             connect=False,
         )
-
         self.assertEqual(c.codec_options.document_class, document_class)
         self.assertEqual(c.codec_options.type_registry, type_registry)
         self.assertEqual(c.codec_options.tz_aware, tz_aware)
         self.assertEqual(
-            c.codec_options.uuid_representation, _UUID_REPRESENTATIONS[uuid_representation_label]
+            c.codec_options.uuid_representation,
+            _UUID_REPRESENTATIONS[uuid_representation_label],
         )
         self.assertEqual(c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler)
         self.assertEqual(c.codec_options.tzinfo, tzinfo)
@@ -469,11 +485,11 @@ class AsyncClientUnitTest(AsyncUnitTest):
                 datetime_conversion,
             )
         )
-        c = AsyncMongoClient(uri, connect=False)
-
+        c = self.simple_client(uri, connect=False)
         self.assertEqual(c.codec_options.tz_aware, True)
         self.assertEqual(
-            c.codec_options.uuid_representation, _UUID_REPRESENTATIONS[uuid_representation_label]
+            c.codec_options.uuid_representation,
+            _UUID_REPRESENTATIONS[uuid_representation_label],
         )
         self.assertEqual(c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler)
         self.assertEqual(
@@ -482,16 +498,15 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
         # Change the passed datetime_conversion to a number and re-assert.
         uri = uri.replace(datetime_conversion, f"{int(DatetimeConversion[datetime_conversion])}")
-        c = AsyncMongoClient(uri, connect=False)
-
+        c = self.simple_client(uri, connect=False)
         self.assertEqual(
             c.codec_options.datetime_conversion, DatetimeConversion[datetime_conversion]
         )
 
-    def test_uri_option_precedence(self):
+    async def test_uri_option_precedence(self):
         # Ensure kwarg options override connection string options.
         uri = "mongodb://localhost/?ssl=true&replicaSet=name&readPreference=primary"
-        c = AsyncMongoClient(
+        c = self.simple_client(
             uri, ssl=False, replicaSet="newname", readPreference="secondaryPreferred"
         )
         clopts = c.options
@@ -501,7 +516,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertEqual(clopts.replica_set_name, "newname")
         self.assertEqual(clopts.read_preference, ReadPreference.SECONDARY_PREFERRED)
 
-    def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
+    async def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
         # Patch the resolver.
         from pymongo.srv_resolver import _resolve
 
@@ -520,37 +535,37 @@ class AsyncClientUnitTest(AsyncUnitTest):
         uri_with_timeout = base_uri + "/?connectTimeoutMS=6000"
         expected_uri_value = 6.0
 
-        def test_scenario(args, kwargs, expected_value):
+        async def test_scenario(args, kwargs, expected_value):
             patched_resolver.reset()
-            AsyncMongoClient(*args, **kwargs)
+            self.simple_client(*args, **kwargs)
             for _, kw in patched_resolver.call_list():
                 self.assertAlmostEqual(kw["lifetime"], expected_value)
 
         # No timeout specified.
-        test_scenario((base_uri,), {}, CONNECT_TIMEOUT)
+        await test_scenario((base_uri,), {}, CONNECT_TIMEOUT)
 
         # Timeout only specified in connection string.
-        test_scenario((uri_with_timeout,), {}, expected_uri_value)
+        await test_scenario((uri_with_timeout,), {}, expected_uri_value)
 
         # Timeout only specified in keyword arguments.
         kwarg = {"connectTimeoutMS": connectTimeoutMS}
-        test_scenario((base_uri,), kwarg, expected_kw_value)
+        await test_scenario((base_uri,), kwarg, expected_kw_value)
 
         # Timeout specified in both kwargs and connection string.
-        test_scenario((uri_with_timeout,), kwarg, expected_kw_value)
+        await test_scenario((uri_with_timeout,), kwarg, expected_kw_value)
 
-    def test_uri_security_options(self):
+    async def test_uri_security_options(self):
         # Ensure that we don't silently override security-related options.
         with self.assertRaises(InvalidURI):
-            AsyncMongoClient("mongodb://localhost/?ssl=true", tls=False, connect=False)
+            self.simple_client("mongodb://localhost/?ssl=true", tls=False, connect=False)
 
         # Matching SSL and TLS options should not cause errors.
-        c = AsyncMongoClient("mongodb://localhost/?ssl=false", tls=False, connect=False)
+        c = self.simple_client("mongodb://localhost/?ssl=false", tls=False, connect=False)
         self.assertEqual(c.options._options["tls"], False)
 
         # Conflicting tlsInsecure options should raise an error.
         with self.assertRaises(InvalidURI):
-            AsyncMongoClient(
+            self.simple_client(
                 "mongodb://localhost/?tlsInsecure=true",
                 connect=False,
                 tlsAllowInvalidHostnames=True,
@@ -558,7 +573,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
         # Conflicting legacy tlsInsecure options should also raise an error.
         with self.assertRaises(InvalidURI):
-            AsyncMongoClient(
+            self.simple_client(
                 "mongodb://localhost/?tlsInsecure=true",
                 connect=False,
                 tlsAllowInvalidCertificates=False,
@@ -566,10 +581,10 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
         # Conflicting kwargs should raise InvalidURI
         with self.assertRaises(InvalidURI):
-            AsyncMongoClient(ssl=True, tls=False)
+            self.simple_client(ssl=True, tls=False)
 
-    def test_event_listeners(self):
-        c = AsyncMongoClient(event_listeners=[], connect=False)
+    async def test_event_listeners(self):
+        c = self.simple_client(event_listeners=[], connect=False)
         self.assertEqual(c.options.event_listeners, [])
         listeners = [
             event_loggers.CommandLogger(),
@@ -578,11 +593,11 @@ class AsyncClientUnitTest(AsyncUnitTest):
             event_loggers.TopologyLogger(),
             event_loggers.ConnectionPoolLogger(),
         ]
-        c = AsyncMongoClient(event_listeners=listeners, connect=False)
+        c = self.simple_client(event_listeners=listeners, connect=False)
         self.assertEqual(c.options.event_listeners, listeners)
 
-    def test_client_options(self):
-        c = AsyncMongoClient(connect=False)
+    async def test_client_options(self):
+        c = self.simple_client(connect=False)
         self.assertIsInstance(c.options, ClientOptions)
         self.assertIsInstance(c.options.pool_options, PoolOptions)
         self.assertEqual(c.options.server_selection_timeout, 30)
@@ -612,16 +627,16 @@ class AsyncClientUnitTest(AsyncUnitTest):
         )
         with self.assertLogs("pymongo", level="INFO") as cm:
             for host in normal_hosts:
-                AsyncMongoClient(host)
+                AsyncMongoClient(host, connect=False)
             for host in srv_hosts:
                 mock_get_hosts.return_value = [(host, 1)]
-                AsyncMongoClient(host)
-            AsyncMongoClient(multi_host)
+                AsyncMongoClient(host, connect=False)
+            AsyncMongoClient(multi_host, connect=False)
             logs = [record.getMessage() for record in cm.records if record.name == "pymongo.client"]
             self.assertEqual(len(logs), 7)
 
     @patch("pymongo.srv_resolver._SrvResolver.get_hosts")
-    def test_detected_environment_warning(self, mock_get_hosts):
+    async def test_detected_environment_warning(self, mock_get_hosts):
         with self._caplog.at_level(logging.WARN):
             normal_hosts = [
                 "host.cosmos.azure.com",
@@ -634,13 +649,13 @@ class AsyncClientUnitTest(AsyncUnitTest):
             )
             for host in normal_hosts:
                 with self.assertWarns(UserWarning):
-                    AsyncMongoClient(host)
+                    self.simple_client(host)
             for host in srv_hosts:
                 mock_get_hosts.return_value = [(host, 1)]
                 with self.assertWarns(UserWarning):
-                    AsyncMongoClient(host)
+                    self.simple_client(host)
             with self.assertWarns(UserWarning):
-                AsyncMongoClient(multi_host)
+                self.simple_client(multi_host)
 
 
 class TestClient(AsyncIntegrationTest):
@@ -657,7 +672,7 @@ class TestClient(AsyncIntegrationTest):
     async def test_max_idle_time_reaper_default(self):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper doesn't remove connections when maxIdleTimeMS not set
-            client = await async_rs_or_single_client()
+            client = await self.async_rs_or_single_client()
             server = await (await client._get_topology()).select_server(
                 readable_server_selector, _Op.TEST
             )
@@ -665,12 +680,11 @@ class TestClient(AsyncIntegrationTest):
                 pass
             self.assertEqual(1, len(server._pool.conns))
             self.assertTrue(conn in server._pool.conns)
-            await client.close()
 
     async def test_max_idle_time_reaper_removes_stale_minPoolSize(self):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper removes idle socket and replaces it with a new one
-            client = await async_rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1)
+            client = await self.async_rs_or_single_client(maxIdleTimeMS=500, minPoolSize=1)
             server = await (await client._get_topology()).select_server(
                 readable_server_selector, _Op.TEST
             )
@@ -681,12 +695,11 @@ class TestClient(AsyncIntegrationTest):
             self.assertGreaterEqual(len(server._pool.conns), 1)
             wait_until(lambda: conn not in server._pool.conns, "remove stale socket")
             wait_until(lambda: len(server._pool.conns) >= 1, "replace stale socket")
-            await client.close()
 
     async def test_max_idle_time_reaper_does_not_exceed_maxPoolSize(self):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper respects maxPoolSize when adding new connections.
-            client = await async_rs_or_single_client(
+            client = await self.async_rs_or_single_client(
                 maxIdleTimeMS=500, minPoolSize=1, maxPoolSize=1
             )
             server = await (await client._get_topology()).select_server(
@@ -699,12 +712,11 @@ class TestClient(AsyncIntegrationTest):
             self.assertEqual(1, len(server._pool.conns))
             wait_until(lambda: conn not in server._pool.conns, "remove stale socket")
             wait_until(lambda: len(server._pool.conns) == 1, "replace stale socket")
-            await client.close()
 
     async def test_max_idle_time_reaper_removes_stale(self):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper has removed idle socket and NOT replaced it
-            client = await async_rs_or_single_client(maxIdleTimeMS=500)
+            client = await self.async_rs_or_single_client(maxIdleTimeMS=500)
             server = await (await client._get_topology()).select_server(
                 readable_server_selector, _Op.TEST
             )
@@ -719,18 +731,17 @@ class TestClient(AsyncIntegrationTest):
                 lambda: len(server._pool.conns) == 0,
                 "stale socket reaped and new one NOT added to the pool",
             )
-            await client.close()
 
     async def test_min_pool_size(self):
         with client_knobs(kill_cursor_frequency=0.1):
-            client = await async_rs_or_single_client()
+            client = await self.async_rs_or_single_client()
             server = await (await client._get_topology()).select_server(
                 readable_server_selector, _Op.TEST
             )
             self.assertEqual(0, len(server._pool.conns))
 
             # Assert that pool started up at minPoolSize
-            client = await async_rs_or_single_client(minPoolSize=10)
+            client = await self.async_rs_or_single_client(minPoolSize=10)
             server = await (await client._get_topology()).select_server(
                 readable_server_selector, _Op.TEST
             )
@@ -751,7 +762,7 @@ class TestClient(AsyncIntegrationTest):
     async def test_max_idle_time_checkout(self):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
-            client = await async_rs_or_single_client(maxIdleTimeMS=500)
+            client = await self.async_rs_or_single_client(maxIdleTimeMS=500)
             server = await (await client._get_topology()).select_server(
                 readable_server_selector, _Op.TEST
             )
@@ -767,7 +778,7 @@ class TestClient(AsyncIntegrationTest):
             self.assertTrue(new_con in server._pool.conns)
 
             # Test that connections are reused if maxIdleTimeMS is not set.
-            client = await async_rs_or_single_client()
+            client = await self.async_rs_or_single_client()
             server = await (await client._get_topology()).select_server(
                 readable_server_selector, _Op.TEST
             )
@@ -793,40 +804,40 @@ class TestClient(AsyncIntegrationTest):
         AsyncMongoClient.HOST = "somedomainthatdoesntexist.org"
         AsyncMongoClient.PORT = 123456789
         with self.assertRaises(AutoReconnect):
-            await connected(AsyncMongoClient(serverSelectionTimeoutMS=10, **kwargs))
+            c = self.simple_client(serverSelectionTimeoutMS=10, **kwargs)
+            await connected(c)
 
+        c = self.simple_client(host, port, **kwargs)
         # Override the defaults. No error.
-        await connected(AsyncMongoClient(host, port, **kwargs))
+        await connected(c)
 
         # Set good defaults.
         AsyncMongoClient.HOST = host
         AsyncMongoClient.PORT = port
 
         # No error.
-        await connected(AsyncMongoClient(**kwargs))
+        c = self.simple_client(**kwargs)
+        await connected(c)
 
     async def test_init_disconnected(self):
         host, port = await async_client_context.host, await async_client_context.port
-        c = await async_rs_or_single_client(connect=False)
+        c = await self.async_rs_or_single_client(connect=False)
         # is_primary causes client to block until connected
         self.assertIsInstance(await c.is_primary, bool)
-
-        c = await async_rs_or_single_client(connect=False)
+        c = await self.async_rs_or_single_client(connect=False)
         self.assertIsInstance(await c.is_mongos, bool)
-        c = await async_rs_or_single_client(connect=False)
+        c = await self.async_rs_or_single_client(connect=False)
         self.assertIsInstance(c.options.pool_options.max_pool_size, int)
         self.assertIsInstance(c.nodes, frozenset)
 
-        c = await async_rs_or_single_client(connect=False)
+        c = await self.async_rs_or_single_client(connect=False)
         self.assertEqual(c.codec_options, CodecOptions())
-        c = await async_rs_or_single_client(connect=False)
+        c = await self.async_rs_or_single_client(connect=False)
         self.assertFalse(await c.primary)
         self.assertFalse(await c.secondaries)
-        c = await async_rs_or_single_client(connect=False)
+        c = await self.async_rs_or_single_client(connect=False)
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
-        self.assertIsNone(await c.address)  # PYTHON-2981
-        await c.admin.command("ping")  # connect
         if async_client_context.is_rs:
             # The primary's host and port are from the replica set config.
             self.assertIsNotNone(await c.address)
@@ -834,45 +845,44 @@ class TestClient(AsyncIntegrationTest):
             self.assertEqual(await c.address, (host, port))
 
         bad_host = "somedomainthatdoesntexist.org"
-        c = AsyncMongoClient(bad_host, port, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
+        c = self.simple_client(bad_host, port, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
         with self.assertRaises(ConnectionFailure):
             await c.pymongo_test.test.find_one()
 
     async def test_init_disconnected_with_auth(self):
         uri = "mongodb://user:pass@somedomainthatdoesntexist"
-        c = AsyncMongoClient(uri, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
+        c = self.simple_client(uri, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
         with self.assertRaises(ConnectionFailure):
             await c.pymongo_test.test.find_one()
 
     async def test_equality(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
-        c = await async_rs_or_single_client(seed, connect=False)
-        self.addAsyncCleanup(c.close)
+        c = await self.async_rs_or_single_client(seed, connect=False)
         self.assertEqual(async_client_context.client, c)
         # Explicitly test inequality
         self.assertFalse(async_client_context.client != c)
 
-        c = await async_rs_or_single_client("invalid.com", connect=False)
-        self.addAsyncCleanup(c.close)
+        c = await self.async_rs_or_single_client("invalid.com", connect=False)
         self.assertNotEqual(async_client_context.client, c)
         self.assertTrue(async_client_context.client != c)
+
+        c1 = self.simple_client("a", connect=False)
+        c2 = self.simple_client("b", connect=False)
+
         # Seeds differ:
-        self.assertNotEqual(
-            AsyncMongoClient("a", connect=False), AsyncMongoClient("b", connect=False)
-        )
+        self.assertNotEqual(c1, c2)
+
+        c1 = self.simple_client(["a", "b", "c"], connect=False)
+        c2 = self.simple_client(["c", "a", "b"], connect=False)
+
         # Same seeds but out of order still compares equal:
-        self.assertEqual(
-            AsyncMongoClient(["a", "b", "c"], connect=False),
-            AsyncMongoClient(["c", "a", "b"], connect=False),
-        )
+        self.assertEqual(c1, c2)
 
     async def test_hashable(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
-        c = await async_rs_or_single_client(seed, connect=False)
-        self.addAsyncCleanup(c.close)
+        c = await self.async_rs_or_single_client(seed, connect=False)
         self.assertIn(c, {async_client_context.client})
-        c = await async_rs_or_single_client("invalid.com", connect=False)
-        self.addAsyncCleanup(c.close)
+        c = await self.async_rs_or_single_client("invalid.com", connect=False)
         self.assertNotIn(c, {async_client_context.client})
 
     async def test_host_w_port(self):
@@ -886,7 +896,7 @@ class TestClient(AsyncIntegrationTest):
                 )
             )
 
-    def test_repr(self):
+    async def test_repr(self):
         # Used to test 'eval' below.
         import bson
 
@@ -905,9 +915,10 @@ class TestClient(AsyncIntegrationTest):
         self.assertIn("w=1", the_repr)
         self.assertIn("wtimeoutms=100", the_repr)
 
-        self.assertEqual(eval(the_repr), client)
+        async with eval(the_repr) as client_two:
+            self.assertEqual(client_two, client)
 
-        client = AsyncMongoClient(
+        client = self.simple_client(
             "localhost:27017,localhost:27018",
             replicaSet="replset",
             connectTimeoutMS=12345,
@@ -925,7 +936,8 @@ class TestClient(AsyncIntegrationTest):
         self.assertIn("w=1", the_repr)
         self.assertIn("wtimeoutms=100", the_repr)
 
-        self.assertEqual(eval(the_repr), client)
+        async with eval(the_repr) as client_two:
+            self.assertEqual(client_two, client)
 
     def test_getters(self):
         wait_until(lambda: async_client_context.nodes == self.client.nodes, "find all nodes")
@@ -941,8 +953,7 @@ class TestClient(AsyncIntegrationTest):
         for helper_doc, cmd_doc in zip(helper_docs, cmd_docs):
             self.assertIs(type(helper_doc), dict)
             self.assertEqual(helper_doc.keys(), cmd_doc.keys())
-        client = await async_rs_or_single_client(document_class=SON)
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(document_class=SON)
         async for doc in await client.list_databases():
             self.assertIs(type(doc), dict)
 
@@ -981,7 +992,7 @@ class TestClient(AsyncIntegrationTest):
         await self.client.drop_database("pymongo_test")
 
         if async_client_context.is_rs:
-            wc_client = await async_rs_or_single_client(w=len(async_client_context.nodes) + 1)
+            wc_client = await self.async_rs_or_single_client(w=len(async_client_context.nodes) + 1)
             with self.assertRaises(WriteConcernError):
                 await wc_client.drop_database("pymongo_test2")
 
@@ -991,7 +1002,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertNotIn("pymongo_test2", dbs)
 
     async def test_close(self):
-        test_client = await async_rs_or_single_client()
+        test_client = await self.async_rs_or_single_client()
         coll = test_client.pymongo_test.bar
         await test_client.close()
         with self.assertRaises(InvalidOperation):
@@ -1001,7 +1012,7 @@ class TestClient(AsyncIntegrationTest):
         if sys.platform.startswith("java"):
             # We can't figure out how to make this test reliable with Jython.
             raise SkipTest("Can't test with Jython")
-        test_client = await async_rs_or_single_client()
+        test_client = await self.async_rs_or_single_client()
         # Kill any cursors possibly queued up by previous tests.
         gc.collect()
         await test_client._process_periodic_tasks()
@@ -1028,13 +1039,13 @@ class TestClient(AsyncIntegrationTest):
         self.assertTrue(test_client._topology._opened)
         await test_client.close()
         self.assertFalse(test_client._topology._opened)
-        test_client = await async_rs_or_single_client()
+        test_client = await self.async_rs_or_single_client()
         # The killCursors task should not need to re-open the topology.
         await test_client._process_periodic_tasks()
         self.assertTrue(test_client._topology._opened)
 
     async def test_close_stops_kill_cursors_thread(self):
-        client = await async_rs_client()
+        client = await self.async_rs_client()
         await client.test.test.find_one()
         self.assertFalse(client._kill_cursors_executor._stopped)
 
@@ -1050,7 +1061,7 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_uri_connect_option(self):
         # Ensure that topology is not opened if connect=False.
-        client = await async_rs_client(connect=False)
+        client = await self.async_rs_client(connect=False)
         self.assertFalse(client._topology._opened)
 
         # Ensure kill cursors thread has not been started.
@@ -1063,19 +1074,15 @@ class TestClient(AsyncIntegrationTest):
         kc_thread = client._kill_cursors_executor._thread
         self.assertTrue(kc_thread and kc_thread.is_alive())
 
-        # Tear down.
-        await client.close()
-
     async def test_close_does_not_open_servers(self):
-        client = await async_rs_client(connect=False)
+        client = await self.async_rs_client(connect=False)
         topology = client._topology
         self.assertEqual(topology._servers, {})
         await client.close()
         self.assertEqual(topology._servers, {})
 
     async def test_close_closes_sockets(self):
-        client = await async_rs_client()
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_client()
         await client.test.test.find_one()
         topology = client._topology
         await client.close()
@@ -1104,35 +1111,35 @@ class TestClient(AsyncIntegrationTest):
 
         with self.assertRaises(OperationFailure):
             await connected(
-                await async_rs_or_single_client_noauth("mongodb://a:b@%s:%d" % (host, port))
+                await self.async_rs_or_single_client_noauth("mongodb://a:b@%s:%d" % (host, port))
             )
 
         # No error.
         await connected(
-            await async_rs_or_single_client_noauth("mongodb://admin:pass@%s:%d" % (host, port))
+            await self.async_rs_or_single_client_noauth("mongodb://admin:pass@%s:%d" % (host, port))
         )
 
         # Wrong database.
         uri = "mongodb://admin:pass@%s:%d/pymongo_test" % (host, port)
         with self.assertRaises(OperationFailure):
-            await connected(await async_rs_or_single_client_noauth(uri))
+            await connected(await self.async_rs_or_single_client_noauth(uri))
 
         # No error.
         await connected(
-            await async_rs_or_single_client_noauth(
+            await self.async_rs_or_single_client_noauth(
                 "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)
             )
         )
 
         # Auth with lazy connection.
         await (
-            await async_rs_or_single_client_noauth(
+            await self.async_rs_or_single_client_noauth(
                 "mongodb://user:pass@%s:%d/pymongo_test" % (host, port), connect=False
             )
         ).pymongo_test.test.find_one()
 
         # Wrong password.
-        bad_client = await async_rs_or_single_client_noauth(
+        bad_client = await self.async_rs_or_single_client_noauth(
             "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port), connect=False
         )
 
@@ -1144,7 +1151,7 @@ class TestClient(AsyncIntegrationTest):
         await async_client_context.create_user("admin", "ad min", "pa/ss")
         self.addAsyncCleanup(async_client_context.drop_user, "admin", "ad min")
 
-        c = await async_rs_or_single_client_noauth(username="ad min", password="pa/ss")
+        c = await self.async_rs_or_single_client_noauth(username="ad min", password="pa/ss")
 
         # Username and password aren't in strings that will likely be logged.
         self.assertNotIn("ad min", repr(c))
@@ -1157,14 +1164,14 @@ class TestClient(AsyncIntegrationTest):
 
         with self.assertRaises(OperationFailure):
             await (
-                await async_rs_or_single_client_noauth(username="ad min", password="foo")
+                await self.async_rs_or_single_client_noauth(username="ad min", password="foo")
             ).server_info()
 
     @async_client_context.require_auth
     @async_client_context.require_no_fips
     async def test_lazy_auth_raises_operation_failure(self):
         host = await async_client_context.host
-        lazy_client = await async_rs_or_single_client_noauth(
+        lazy_client = await self.async_rs_or_single_client_noauth(
             f"mongodb://user:wrong@{host}/pymongo_test", connect=False
         )
 
@@ -1182,8 +1189,7 @@ class TestClient(AsyncIntegrationTest):
 
         uri = "mongodb://%s" % encoded_socket
         # Confirm we can do operations via the socket.
-        client = await async_rs_or_single_client(uri)
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(uri)
         await client.pymongo_test.test.insert_one({"dummy": "object"})
         dbs = await client.list_database_names()
         self.assertTrue("pymongo_test" in dbs)
@@ -1192,11 +1198,10 @@ class TestClient(AsyncIntegrationTest):
 
         # Confirm it fails with a missing socket.
         with self.assertRaises(ConnectionFailure):
-            await connected(
-                AsyncMongoClient(
-                    "mongodb://%2Ftmp%2Fnon-existent.sock", serverSelectionTimeoutMS=100
-                ),
+            c = self.simple_client(
+                "mongodb://%2Ftmp%2Fnon-existent.sock", serverSelectionTimeoutMS=100
             )
+            await connected(c)
 
     async def test_document_class(self):
         c = self.client
@@ -1207,15 +1212,15 @@ class TestClient(AsyncIntegrationTest):
         self.assertTrue(isinstance(await db.test.find_one(), dict))
         self.assertFalse(isinstance(await db.test.find_one(), SON))
 
-        c = await async_rs_or_single_client(document_class=SON)
-        self.addAsyncCleanup(c.close)
+        c = await self.async_rs_or_single_client(document_class=SON)
+
         db = c.pymongo_test
 
         self.assertEqual(SON, c.codec_options.document_class)
         self.assertTrue(isinstance(await db.test.find_one(), SON))
 
     async def test_timeouts(self):
-        client = await async_rs_or_single_client(
+        client = await self.async_rs_or_single_client(
             connectTimeoutMS=10500,
             socketTimeoutMS=10500,
             maxIdleTimeMS=10500,
@@ -1228,28 +1233,31 @@ class TestClient(AsyncIntegrationTest):
         self.assertEqual(10.5, client.options.server_selection_timeout)
 
     async def test_socket_timeout_ms_validation(self):
-        c = await async_rs_or_single_client(socketTimeoutMS=10 * 1000)
+        c = await self.async_rs_or_single_client(socketTimeoutMS=10 * 1000)
         self.assertEqual(10, (await async_get_pool(c)).opts.socket_timeout)
 
-        c = await connected(await async_rs_or_single_client(socketTimeoutMS=None))
+        c = await connected(await self.async_rs_or_single_client(socketTimeoutMS=None))
         self.assertEqual(None, (await async_get_pool(c)).opts.socket_timeout)
 
-        c = await connected(await async_rs_or_single_client(socketTimeoutMS=0))
+        c = await connected(await self.async_rs_or_single_client(socketTimeoutMS=0))
         self.assertEqual(None, (await async_get_pool(c)).opts.socket_timeout)
 
         with self.assertRaises(ValueError):
-            await async_rs_or_single_client(socketTimeoutMS=-1)
+            async with await self.async_rs_or_single_client(socketTimeoutMS=-1):
+                pass
 
         with self.assertRaises(ValueError):
-            await async_rs_or_single_client(socketTimeoutMS=1e10)
+            async with await self.async_rs_or_single_client(socketTimeoutMS=1e10):
+                pass
 
         with self.assertRaises(ValueError):
-            await async_rs_or_single_client(socketTimeoutMS="foo")
+            async with await self.async_rs_or_single_client(socketTimeoutMS="foo"):
+                pass
 
     async def test_socket_timeout(self):
         no_timeout = self.client
         timeout_sec = 1
-        timeout = await async_rs_or_single_client(socketTimeoutMS=1000 * timeout_sec)
+        timeout = await self.async_rs_or_single_client(socketTimeoutMS=1000 * timeout_sec)
         self.addAsyncCleanup(timeout.close)
 
         await no_timeout.pymongo_test.drop_collection("test")
@@ -1266,7 +1274,7 @@ class TestClient(AsyncIntegrationTest):
         with self.assertRaises(NetworkTimeout):
             await get_x(timeout.pymongo_test)
 
-    def test_server_selection_timeout(self):
+    async def test_server_selection_timeout(self):
         client = AsyncMongoClient(serverSelectionTimeoutMS=100, connect=False)
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
 
@@ -1298,7 +1306,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
 
     async def test_waitQueueTimeoutMS(self):
-        client = await async_rs_or_single_client(waitQueueTimeoutMS=2000)
+        client = await self.async_rs_or_single_client(waitQueueTimeoutMS=2000)
         self.assertEqual((await async_get_pool(client)).opts.wait_queue_timeout, 2)
 
     async def test_socketKeepAlive(self):
@@ -1311,7 +1319,7 @@ class TestClient(AsyncIntegrationTest):
     async def test_tz_aware(self):
         self.assertRaises(ValueError, AsyncMongoClient, tz_aware="foo")
 
-        aware = await async_rs_or_single_client(tz_aware=True)
+        aware = await self.async_rs_or_single_client(tz_aware=True)
         self.addAsyncCleanup(aware.close)
         naive = self.client
         await aware.pymongo_test.drop_collection("test")
@@ -1341,8 +1349,7 @@ class TestClient(AsyncIntegrationTest):
         if async_client_context.is_rs:
             uri += "/?replicaSet=" + (async_client_context.replica_set_name or "")
 
-        client = await async_rs_or_single_client_noauth(uri)
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client_noauth(uri)
         await client.pymongo_test.test.insert_one({"dummy": "object"})
         await client.pymongo_test_bernie.test.insert_one({"dummy": "object"})
 
@@ -1351,7 +1358,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertTrue("pymongo_test_bernie" in dbs)
 
     async def test_contextlib(self):
-        client = await async_rs_or_single_client()
+        client = await self.async_rs_or_single_client()
         await client.pymongo_test.drop_collection("test")
         await client.pymongo_test.test.insert_one({"foo": "bar"})
 
@@ -1365,7 +1372,7 @@ class TestClient(AsyncIntegrationTest):
                 self.assertEqual("bar", (await client.pymongo_test.test.find_one())["foo"])
             with self.assertRaises(InvalidOperation):
                 await client.pymongo_test.test.find_one()
-            client = await async_rs_or_single_client()
+            client = await self.async_rs_or_single_client()
             async with client as client:
                 self.assertEqual("bar", (await client.pymongo_test.test.find_one())["foo"])
             with self.assertRaises(InvalidOperation):
@@ -1443,8 +1450,7 @@ class TestClient(AsyncIntegrationTest):
         # response to getLastError. PYTHON-395. We need a new client here
         # to avoid race conditions caused by replica set failover or idle
         # socket reaping.
-        client = await async_single_client()
-        self.addAsyncCleanup(client.close)
+        client = await self.async_single_client()
         await client.pymongo_test.test.find_one()
         pool = await async_get_pool(client)
         socket_count = len(pool.conns)
@@ -1468,8 +1474,7 @@ class TestClient(AsyncIntegrationTest):
         await async_client_context.client.drop_database("test_lazy_connect_w0")
         self.addAsyncCleanup(async_client_context.client.drop_database, "test_lazy_connect_w0")
 
-        client = await async_rs_or_single_client(connect=False, w=0)
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(connect=False, w=0)
         await client.test_lazy_connect_w0.test.insert_one({})
 
         async def predicate():
@@ -1477,8 +1482,7 @@ class TestClient(AsyncIntegrationTest):
 
         await async_wait_until(predicate, "find one document")
 
-        client = await async_rs_or_single_client(connect=False, w=0)
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(connect=False, w=0)
         await client.test_lazy_connect_w0.test.update_one({}, {"$set": {"x": 1}})
 
         async def predicate():
@@ -1486,8 +1490,7 @@ class TestClient(AsyncIntegrationTest):
 
         await async_wait_until(predicate, "update one document")
 
-        client = await async_rs_or_single_client(connect=False, w=0)
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(connect=False, w=0)
         await client.test_lazy_connect_w0.test.delete_one({})
 
         async def predicate():
@@ -1499,8 +1502,7 @@ class TestClient(AsyncIntegrationTest):
     async def test_exhaust_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
-        client = await async_rs_or_single_client(maxPoolSize=1, retryReads=False)
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(maxPoolSize=1, retryReads=False)
         collection = client.pymongo_test.test
         pool = await async_get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -1527,7 +1529,9 @@ class TestClient(AsyncIntegrationTest):
 
         # Get a client with one socket so we detect if it's leaked.
         c = await connected(
-            await async_rs_or_single_client(maxPoolSize=1, waitQueueTimeoutMS=1, retryReads=False)
+            await self.async_rs_or_single_client(
+                maxPoolSize=1, waitQueueTimeoutMS=1, retryReads=False
+            )
         )
 
         # Cause a network error on the actual socket.
@@ -1545,8 +1549,7 @@ class TestClient(AsyncIntegrationTest):
 
     @async_client_context.require_no_replica_set
     async def test_connect_to_standalone_using_replica_set_name(self):
-        client = await async_single_client(replicaSet="anything", serverSelectionTimeoutMS=100)
-
+        client = await self.async_single_client(replicaSet="anything", serverSelectionTimeoutMS=100)
         with self.assertRaises(AutoReconnect):
             await client.test.test.find_one()
 
@@ -1556,7 +1559,7 @@ class TestClient(AsyncIntegrationTest):
         # the topology before the getMore message is sent. Test that
         # AsyncMongoClient._run_operation_with_response handles the error.
         with self.assertRaises(AutoReconnect):
-            client = await async_rs_client(connect=False, serverSelectionTimeoutMS=100)
+            client = await self.async_rs_client(connect=False, serverSelectionTimeoutMS=100)
             await client._run_operation(
                 operation=message._GetMore(
                     "pymongo_test",
@@ -1604,7 +1607,7 @@ class TestClient(AsyncIntegrationTest):
                 await async_client_context.host,
                 await async_client_context.port,
             )
-            client = await async_single_client(uri, event_listeners=[listener])
+            await self.async_single_client(uri, event_listeners=[listener])
             wait_until(
                 lambda: len(listener.results) >= 2, "record two ServerHeartbeatStartedEvents"
             )
@@ -1613,7 +1616,6 @@ class TestClient(AsyncIntegrationTest):
             # closer to 0.5 sec with heartbeatFrequencyMS configured.
             self.assertAlmostEqual(heartbeat_times[1] - heartbeat_times[0], 0.5, delta=2)
 
-            await client.close()
         finally:
             ServerHeartbeatStartedEvent.__init__ = old_init  # type: ignore
 
@@ -1630,31 +1632,31 @@ class TestClient(AsyncIntegrationTest):
             return pool_options._compression_settings
 
         uri = "mongodb://localhost:27017/?compressors=zlib"
-        client = AsyncMongoClient(uri, connect=False)
+        client = self.simple_client(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=4"
-        client = AsyncMongoClient(uri, connect=False)
+        client = self.simple_client(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, 4)
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=-1"
-        client = AsyncMongoClient(uri, connect=False)
+        client = self.simple_client(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017"
-        client = AsyncMongoClient(uri, connect=False)
+        client = self.simple_client(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, [])
         self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=foobar"
-        client = AsyncMongoClient(uri, connect=False)
+        client = self.simple_client(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, [])
         self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=foobar,zlib"
-        client = AsyncMongoClient(uri, connect=False)
+        client = self.simple_client(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, -1)
@@ -1662,56 +1664,56 @@ class TestClient(AsyncIntegrationTest):
         # According to the connection string spec, unsupported values
         # just raise a warning and are ignored.
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=10"
-        client = AsyncMongoClient(uri, connect=False)
+        client = self.simple_client(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=-2"
-        client = AsyncMongoClient(uri, connect=False)
+        client = self.simple_client(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, -1)
 
         if not _have_snappy():
             uri = "mongodb://localhost:27017/?compressors=snappy"
-            client = AsyncMongoClient(uri, connect=False)
+            client = self.simple_client(uri, connect=False)
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, [])
         else:
             uri = "mongodb://localhost:27017/?compressors=snappy"
-            client = AsyncMongoClient(uri, connect=False)
+            client = self.simple_client(uri, connect=False)
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, ["snappy"])
             uri = "mongodb://localhost:27017/?compressors=snappy,zlib"
-            client = AsyncMongoClient(uri, connect=False)
+            client = self.simple_client(uri, connect=False)
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, ["snappy", "zlib"])
 
         if not _have_zstd():
             uri = "mongodb://localhost:27017/?compressors=zstd"
-            client = AsyncMongoClient(uri, connect=False)
+            client = self.simple_client(uri, connect=False)
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, [])
         else:
             uri = "mongodb://localhost:27017/?compressors=zstd"
-            client = AsyncMongoClient(uri, connect=False)
+            client = self.simple_client(uri, connect=False)
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, ["zstd"])
             uri = "mongodb://localhost:27017/?compressors=zstd,zlib"
-            client = AsyncMongoClient(uri, connect=False)
+            client = self.simple_client(uri, connect=False)
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, ["zstd", "zlib"])
 
         options = async_client_context.default_client_options
         if "compressors" in options and "zlib" in options["compressors"]:
             for level in range(-1, 10):
-                client = await async_single_client(zlibcompressionlevel=level)
+                client = await self.async_single_client(zlibcompressionlevel=level)
                 # No error
                 await client.pymongo_test.test.find_one()
 
+    @async_client_context.require_sync
     async def test_reset_during_update_pool(self):
-        client = await async_rs_or_single_client(minPoolSize=10)
-        self.addAsyncCleanup(client.close)
+        client = await self.async_rs_or_single_client(minPoolSize=10)
         await client.admin.command("ping")
         pool = await async_get_pool(client)
         generation = pool.gen.get_overall()
@@ -1734,10 +1736,7 @@ class TestClient(AsyncIntegrationTest):
                     await asyncio.sleep(0.001)
 
             def run(self):
-                if _IS_SYNC:
-                    self._run()
-                else:
-                    asyncio.run(self._run())
+                self._run()
 
         t = ResetPoolThread(pool)
         t.start()
@@ -1757,11 +1756,9 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_background_connections_do_not_hold_locks(self):
         min_pool_size = 10
-        client = await async_rs_or_single_client(
+        client = await self.async_rs_or_single_client(
             serverSelectionTimeoutMS=3000, minPoolSize=min_pool_size, connect=False
         )
-        self.addAsyncCleanup(client.close)
-
         # Create a single connection in the pool.
         await client.admin.command("ping")
 
@@ -1791,21 +1788,19 @@ class TestClient(AsyncIntegrationTest):
     @async_client_context.require_replica_set
     async def test_direct_connection(self):
         # direct_connection=True should result in Single topology.
-        client = await async_rs_or_single_client(directConnection=True)
+        client = await self.async_rs_or_single_client(directConnection=True)
         await client.admin.command("ping")
         self.assertEqual(len(client.nodes), 1)
         self.assertEqual(client._topology_settings.get_topology_type(), TOPOLOGY_TYPE.Single)
-        await client.close()
 
         # direct_connection=False should result in RS topology.
-        client = await async_rs_or_single_client(directConnection=False)
+        client = await self.async_rs_or_single_client(directConnection=False)
         await client.admin.command("ping")
         self.assertGreaterEqual(len(client.nodes), 1)
         self.assertIn(
             client._topology_settings.get_topology_type(),
             [TOPOLOGY_TYPE.ReplicaSetNoPrimary, TOPOLOGY_TYPE.ReplicaSetWithPrimary],
         )
-        await client.close()
 
         # directConnection=True, should error with multiple hosts as a list.
         with self.assertRaises(ConfigurationError):
@@ -1825,11 +1820,10 @@ class TestClient(AsyncIntegrationTest):
 
         gc.collect()
         with client_knobs(min_heartbeat_interval=0.003):
-            client = AsyncMongoClient(
+            client = self.simple_client(
                 "invalid:27017", heartbeatFrequencyMS=3, serverSelectionTimeoutMS=150
             )
             initial_count = server_description_count()
-            self.addAsyncCleanup(client.close)
             with self.assertRaises(ServerSelectionTimeoutError):
                 await client.test.test.find_one()
             gc.collect()
@@ -1842,8 +1836,7 @@ class TestClient(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_fail_point
     async def test_network_error_message(self):
-        client = await async_single_client(retryReads=False)
-        self.addAsyncCleanup(client.close)
+        client = await self.async_single_client(retryReads=False)
         await client.admin.command("ping")  # connect
         async with self.fail_point(
             {"mode": {"times": 1}, "data": {"closeConnection": True, "failCommands": ["find"]}}
@@ -1855,7 +1848,7 @@ class TestClient(AsyncIntegrationTest):
 
     @unittest.skipIf("PyPy" in sys.version, "PYTHON-2938 could fail on PyPy")
     async def test_process_periodic_tasks(self):
-        client = await async_rs_or_single_client()
+        client = await self.async_rs_or_single_client()
         coll = client.db.collection
         await coll.insert_many([{} for _ in range(5)])
         cursor = coll.find(batch_size=2)
@@ -1873,7 +1866,7 @@ class TestClient(AsyncIntegrationTest):
         with self.assertRaises(InvalidOperation):
             await coll.insert_many([{} for _ in range(5)])
 
-    def test_service_name_from_kwargs(self):
+    async def test_service_name_from_kwargs(self):
         client = AsyncMongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc",
             srvServiceName="customname",
@@ -1893,12 +1886,12 @@ class TestClient(AsyncIntegrationTest):
         )
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
 
-    def test_srv_max_hosts_kwarg(self):
-        client = AsyncMongoClient("mongodb+srv://test1.test.build.10gen.cc/")
+    async def test_srv_max_hosts_kwarg(self):
+        client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/")
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
-        client = AsyncMongoClient("mongodb+srv://test1.test.build.10gen.cc/", srvmaxhosts=1)
+        client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/", srvmaxhosts=1)
         self.assertEqual(len(client.topology_description.server_descriptions()), 1)
-        client = AsyncMongoClient(
+        client = self.simple_client(
             "mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1", srvmaxhosts=2
         )
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
@@ -1940,16 +1933,19 @@ class TestClient(AsyncIntegrationTest):
     async def _test_handshake(self, env_vars, expected_env):
         with patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
-            metadata["driver"]["name"] = "PyMongo|async"
+            if has_c():
+                metadata["driver"]["name"] = "PyMongo|c|async"
+            else:
+                metadata["driver"]["name"] = "PyMongo|async"
             if expected_env is not None:
                 metadata["env"] = expected_env
 
                 if "AWS_REGION" not in env_vars:
                     os.environ["AWS_REGION"] = ""
-            async with await async_rs_or_single_client(serverSelectionTimeoutMS=10000) as client:
-                await client.admin.command("ping")
-                options = client.options
-                self.assertEqual(options.pool_options.metadata, metadata)
+            client = await self.async_rs_or_single_client(serverSelectionTimeoutMS=10000)
+            await client.admin.command("ping")
+            options = client.options
+            self.assertEqual(options.pool_options.metadata, metadata)
 
     async def test_handshake_01_aws(self):
         await self._test_handshake(
@@ -2021,6 +2017,22 @@ class TestClient(AsyncIntegrationTest):
             None,
         )
 
+    async def test_handshake_09_container_with_provider(self):
+        await self._test_handshake(
+            {
+                ENV_VAR_K8S: "1",
+                "AWS_LAMBDA_RUNTIME_API": "1",
+                "AWS_REGION": "us-east-1",
+                "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": "256",
+            },
+            {
+                "container": {"orchestrator": "kubernetes"},
+                "name": "aws.lambda",
+                "region": "us-east-1",
+                "memory_mb": 256,
+            },
+        )
+
     def test_dict_hints(self):
         self.db.t.find(hint={"x": 1})
 
@@ -2032,6 +2044,75 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_dict_hints_create_index(self):
         await self.db.t.create_index({"x": pymongo.ASCENDING})
+
+    async def test_legacy_java_uuid_roundtrip(self):
+        data = BinaryData.java_data
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
+
+        await async_client_context.client.pymongo_test.drop_collection("java_uuid")
+        db = async_client_context.client.pymongo_test
+        coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=JAVA_LEGACY))
+
+        await coll.insert_many(docs)
+        self.assertEqual(5, await coll.count_documents({}))
+        async for d in coll.find():
+            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
+
+        coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
+        async for d in coll.find():
+            self.assertNotEqual(d["newguid"], d["newguidstring"])
+        await async_client_context.client.pymongo_test.drop_collection("java_uuid")
+
+    async def test_legacy_csharp_uuid_roundtrip(self):
+        data = BinaryData.csharp_data
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
+
+        await async_client_context.client.pymongo_test.drop_collection("csharp_uuid")
+        db = async_client_context.client.pymongo_test
+        coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=CSHARP_LEGACY))
+
+        await coll.insert_many(docs)
+        self.assertEqual(5, await coll.count_documents({}))
+        async for d in coll.find():
+            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
+
+        coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
+        async for d in coll.find():
+            self.assertNotEqual(d["newguid"], d["newguidstring"])
+        await async_client_context.client.pymongo_test.drop_collection("csharp_uuid")
+
+    async def test_uri_to_uuid(self):
+        uri = "mongodb://foo/?uuidrepresentation=csharpLegacy"
+        client = await self.async_single_client(uri, connect=False)
+        self.assertEqual(client.pymongo_test.test.codec_options.uuid_representation, CSHARP_LEGACY)
+
+    async def test_uuid_queries(self):
+        db = async_client_context.client.pymongo_test
+        coll = db.test
+        await coll.drop()
+
+        uu = uuid.uuid4()
+        await coll.insert_one({"uuid": Binary(uu.bytes, 3)})
+        self.assertEqual(1, await coll.count_documents({}))
+
+        # Test regular UUID queries (using subtype 4).
+        coll = db.get_collection(
+            "test", CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        )
+        self.assertEqual(0, await coll.count_documents({"uuid": uu}))
+        await coll.insert_one({"uuid": uu})
+        self.assertEqual(2, await coll.count_documents({}))
+        docs = await coll.find({"uuid": uu}).to_list()
+        self.assertEqual(1, len(docs))
+        self.assertEqual(uu, docs[0]["uuid"])
+
+        # Test both.
+        uu_legacy = Binary.from_uuid(uu, UuidRepresentation.PYTHON_LEGACY)
+        predicate = {"uuid": {"$in": [uu, uu_legacy]}}
+        self.assertEqual(2, await coll.count_documents(predicate))
+        docs = await coll.find(predicate).to_list()
+        self.assertEqual(2, len(docs))
+        await coll.drop()
 
 
 class TestExhaustCursor(AsyncIntegrationTest):
@@ -2045,7 +2126,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
     async def test_exhaust_query_server_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
-        client = await connected(await async_rs_or_single_client(maxPoolSize=1))
+        client = await connected(await self.async_rs_or_single_client(maxPoolSize=1))
 
         collection = client.pymongo_test.test
         pool = await async_get_pool(client)
@@ -2068,7 +2149,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
     async def test_exhaust_getmore_server_error(self):
         # When doing a getmore on an exhaust cursor, the socket stays checked
         # out on success but it's checked in on error to avoid semaphore leaks.
-        client = await async_rs_or_single_client(maxPoolSize=1)
+        client = await self.async_rs_or_single_client(maxPoolSize=1)
         collection = client.pymongo_test.test
         await collection.drop()
 
@@ -2107,7 +2188,9 @@ class TestExhaustCursor(AsyncIntegrationTest):
     async def test_exhaust_query_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
-        client = await connected(await async_rs_or_single_client(maxPoolSize=1, retryReads=False))
+        client = await connected(
+            await self.async_rs_or_single_client(maxPoolSize=1, retryReads=False)
+        )
         collection = client.pymongo_test.test
         pool = await async_get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -2128,7 +2211,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
     async def test_exhaust_getmore_network_error(self):
         # When doing a getmore on an exhaust cursor, the socket stays checked
         # out on success but it's checked in on error to avoid semaphore leaks.
-        client = await async_rs_or_single_client(maxPoolSize=1)
+        client = await self.async_rs_or_single_client(maxPoolSize=1)
         collection = client.pymongo_test.test
         await collection.drop()
         await collection.insert_many([{} for _ in range(200)])  # More than one batch.
@@ -2177,7 +2260,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
             raise SkipTest("Must be running monkey patched by gevent")
         from gevent import Timeout, spawn
 
-        client = rs_or_single_client(maxPoolSize=1)
+        client = self.async_rs_or_single_client(maxPoolSize=1)
         coll = client.pymongo_test.test
         coll.insert_one({})
 
@@ -2209,7 +2292,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
             raise SkipTest("Must be running monkey patched by gevent")
         from gevent import Timeout, spawn
 
-        client = rs_or_single_client()
+        client = self.async_rs_or_single_client()
         self.addCleanup(client.close)
         coll = client.pymongo_test.test
         pool = async_get_pool(client)
@@ -2246,7 +2329,7 @@ class TestClientLazyConnect(AsyncIntegrationTest):
     """Test concurrent operations on a lazily-connecting MongoClient."""
 
     def _get_client(self):
-        return rs_or_single_client(connect=False)
+        return self.async_rs_or_single_client(connect=False)
 
     @async_client_context.require_sync
     def test_insert_one(self):
@@ -2362,7 +2445,9 @@ class TestMongoClientFailover(AsyncMockClientTest):
 
         # But it can reconnect.
         c.revive_host("a:1")
-        await (await c._get_topology()).select_servers(writable_server_selector, _Op.TEST)
+        await (await c._get_topology()).select_servers(
+            writable_server_selector, _Op.TEST, server_selection_timeout=10
+        )
         self.assertEqual(await c.address, ("a", 1))
 
     async def _test_network_error(self, operation_callback):
@@ -2380,11 +2465,12 @@ class TestMongoClientFailover(AsyncMockClientTest):
                 retryReads=False,
                 serverSelectionTimeoutMS=1000,
             )
+
             self.addAsyncCleanup(c.close)
 
             # Set host-specific information so we can test whether it is reset.
-            c.set_wire_version_range("a:1", 2, 6)
-            c.set_wire_version_range("b:2", 2, 7)
+            c.set_wire_version_range("a:1", 2, MIN_SUPPORTED_WIRE_VERSION)
+            c.set_wire_version_range("b:2", 2, MIN_SUPPORTED_WIRE_VERSION + 1)
             await (await c._get_topology()).select_servers(writable_server_selector, _Op.TEST)
             wait_until(lambda: len(c.nodes) == 2, "connect")
 
@@ -2408,7 +2494,7 @@ class TestMongoClientFailover(AsyncMockClientTest):
             sd_b = server_b.description
             self.assertEqual(SERVER_TYPE.RSSecondary, sd_b.server_type)
             self.assertEqual(2, sd_b.min_wire_version)
-            self.assertEqual(7, sd_b.max_wire_version)
+            self.assertEqual(MIN_SUPPORTED_WIRE_VERSION + 1, sd_b.max_wire_version)
 
     async def test_network_error_on_query(self):
         async def callback(client):

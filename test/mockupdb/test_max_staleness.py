@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import unittest
+from test import PyMongoTestCase
 
 import pytest
 
@@ -25,23 +26,24 @@ except ImportError:
     _HAVE_MOCKUPDB = False
 
 
-from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 
 pytestmark = pytest.mark.mockupdb
 
 
-class TestMaxStalenessMongos(unittest.TestCase):
+class TestMaxStalenessMongos(PyMongoTestCase):
     def test_mongos(self):
         mongos = MockupDB()
-        mongos.autoresponds("ismaster", maxWireVersion=6, ismaster=True, msg="isdbgrid")
+        mongos.autoresponds(
+            "ismaster", maxWireVersion=MIN_SUPPORTED_WIRE_VERSION, ismaster=True, msg="isdbgrid"
+        )
         mongos.run()
         self.addCleanup(mongos.stop)
 
         # No maxStalenessSeconds.
         uri = "mongodb://localhost:%d/?readPreference=secondary" % mongos.port
 
-        client = MongoClient(uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(uri)
         with going(client.db.coll.find_one) as future:
             request = mongos.receives()
             self.assertNotIn("maxStalenessSeconds", request.doc["$readPreference"])
@@ -60,8 +62,7 @@ class TestMaxStalenessMongos(unittest.TestCase):
             "&maxStalenessSeconds=1" % mongos.port
         )
 
-        client = MongoClient(uri)
-        self.addCleanup(client.close)
+        client = self.simple_client(uri)
         with going(client.db.coll.find_one) as future:
             request = mongos.receives()
             self.assertEqual(1, request.doc["$readPreference"]["maxStalenessSeconds"])

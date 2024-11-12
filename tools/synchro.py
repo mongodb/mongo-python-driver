@@ -23,7 +23,7 @@ import re
 from os import listdir
 from pathlib import Path
 
-from unasync import Rule, unasync_files  # type: ignore[import]
+from unasync import Rule, unasync_files  # type: ignore[import-not-found]
 
 replacements = {
     "AsyncCollection": "Collection",
@@ -43,6 +43,7 @@ replacements = {
     "AsyncConnection": "Connection",
     "async_command": "command",
     "async_receive_message": "receive_message",
+    "async_receive_data": "receive_data",
     "async_sendall": "sendall",
     "asynchronous": "synchronous",
     "Asynchronous": "Synchronous",
@@ -101,8 +102,14 @@ replacements = {
     "default_async": "default",
     "aclose": "close",
     "PyMongo|async": "PyMongo",
+    "PyMongo|c|async": "PyMongo|c",
     "AsyncTestGridFile": "TestGridFile",
     "AsyncTestGridFileNoConnect": "TestGridFileNoConnect",
+    "AsyncTestSpec": "TestSpec",
+    "AsyncSpecTestCreator": "SpecTestCreator",
+    "async_set_fail_point": "set_fail_point",
+    "async_ensure_all_connected": "ensure_all_connected",
+    "async_repl_set_step_down": "repl_set_step_down",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -117,6 +124,10 @@ docstring_replacements: dict[tuple[str, str], str] = {
             the create collection command.""",
     ("Collection", "kwargs"): """Additional keyword arguments will
             be passed as options for the create collection command.""",
+}
+
+docstring_removals: set[str] = {
+    ".. warning:: This API is currently in beta, meaning the classes, methods, and behaviors described within may change before the full release."
 }
 
 type_replacements = {"_Condition": "threading.Condition"}
@@ -140,7 +151,17 @@ gridfs_files = [
     _gridfs_base + f for f in listdir(_gridfs_base) if (Path(_gridfs_base) / f).is_file()
 ]
 
-test_files = [_test_base + f for f in listdir(_test_base) if (Path(_test_base) / f).is_file()]
+
+def async_only_test(f: str) -> bool:
+    """Return True for async tests that should not be converted to sync."""
+    return f in ["test_locks.py", "test_concurrency.py"]
+
+
+test_files = [
+    _test_base + f
+    for f in listdir(_test_base)
+    if (Path(_test_base) / f).is_file() and not async_only_test(f)
+]
 
 sync_files = [
     _pymongo_dest_base + f
@@ -158,23 +179,41 @@ sync_gridfs_files = [
 converted_tests = [
     "__init__.py",
     "conftest.py",
+    "helpers.py",
     "pymongo_mocks.py",
     "utils_spec_runner.py",
     "qcheck.py",
+    "test_auth.py",
     "test_auth_spec.py",
     "test_bulk.py",
+    "test_change_stream.py",
     "test_client.py",
     "test_client_bulk_write.py",
+    "test_client_context.py",
+    "test_collation.py",
     "test_collection.py",
+    "test_collection_management.py",
+    "test_command_logging.py",
+    "test_command_logging.py",
+    "test_command_monitoring.py",
+    "test_comment.py",
+    "test_common.py",
+    "test_connection_logging.py",
+    "test_connections_survive_primary_stepdown_spec.py",
+    "test_create_entities.py",
+    "test_crud_unified.py",
     "test_cursor.py",
     "test_database.py",
     "test_encryption.py",
     "test_grid_file.py",
     "test_logger.py",
+    "test_monitoring.py",
+    "test_raw_bson.py",
+    "test_retryable_reads.py",
+    "test_retryable_writes.py",
     "test_session.py",
     "test_transactions.py",
-    "test_client_context.py",
-    "test_monitoring.py",
+    "unified_format.py",
 ]
 
 sync_test_files = [
@@ -234,7 +273,7 @@ def translate_locks(lines: list[str]) -> list[str]:
     lock_lines = [line for line in lines if "_Lock(" in line]
     cond_lines = [line for line in lines if "_Condition(" in line]
     for line in lock_lines:
-        res = re.search(r"_Lock\(([^()]*\(\))\)", line)
+        res = re.search(r"_Lock\(([^()]*\([^()]*\))\)", line)
         if res:
             old = res[0]
             index = lines.index(line)
@@ -320,7 +359,12 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                     docstring_replacements[k],  # type: ignore[index]
                 )
 
-    return lines
+        for line in docstring_removals:
+            if line in lines[i]:
+                lines[i] = "DOCSTRING_REMOVED"
+                lines[i + 1] = "DOCSTRING_REMOVED"
+
+    return [line for line in lines if line != "DOCSTRING_REMOVED"]
 
 
 def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[str, str]) -> None:

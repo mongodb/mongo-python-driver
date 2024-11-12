@@ -45,7 +45,7 @@ struct module_state {
  *
  * Returns a new ref */
 static PyObject* _error(char* name) {
-    PyObject* error;
+    PyObject* error = NULL;
     PyObject* errors = PyImport_ImportModule("pymongo.errors");
     if (!errors) {
         return NULL;
@@ -75,9 +75,9 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     int begin, cur_size, max_size = 0;
     int num_to_skip;
     int num_to_return;
-    PyObject* query;
-    PyObject* field_selector;
-    PyObject* options_obj;
+    PyObject* query = NULL;
+    PyObject* field_selector = NULL;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer = NULL;
     int length_location, message_length;
@@ -221,12 +221,12 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     /* NOTE just using a random number as the request_id */
     int request_id = rand();
     unsigned int flags;
-    PyObject* command;
+    PyObject* command = NULL;
     char* identifier = NULL;
     Py_ssize_t identifier_length = 0;
-    PyObject* docs;
-    PyObject* doc;
-    PyObject* options_obj;
+    PyObject* docs = NULL;
+    PyObject* doc = NULL;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer = NULL;
     int length_location, message_length;
@@ -535,12 +535,12 @@ static PyObject*
 _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
     unsigned char op;
     unsigned char ack;
-    PyObject* command;
-    PyObject* docs;
+    PyObject* command = NULL;
+    PyObject* docs = NULL;
     PyObject* ctx = NULL;
     PyObject* to_publish = NULL;
     PyObject* result = NULL;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
@@ -592,12 +592,12 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
     unsigned char ack;
     int request_id;
     int position;
-    PyObject* command;
-    PyObject* docs;
+    PyObject* command = NULL;
+    PyObject* docs = NULL;
     PyObject* ctx = NULL;
     PyObject* to_publish = NULL;
     PyObject* result = NULL;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
@@ -868,12 +868,12 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
     char *ns = NULL;
     unsigned char op;
     Py_ssize_t ns_len;
-    PyObject* command;
-    PyObject* docs;
+    PyObject* command = NULL;
+    PyObject* docs = NULL;
     PyObject* ctx = NULL;
     PyObject* to_publish = NULL;
     PyObject* result = NULL;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
@@ -1022,6 +1022,9 @@ static PyModuleDef_Slot _cmessage_slots[] = {
     {Py_mod_exec, _cmessage_exec},
 #ifdef Py_MOD_MULTIPLE_INTERPRETERS_SUPPORTED
     {Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_SUPPORTED},
+#endif
+#if PY_VERSION_HEX >= 0x030D0000
+    {Py_mod_gil, Py_MOD_GIL_NOT_USED},
 #endif
     {0, NULL},
 };

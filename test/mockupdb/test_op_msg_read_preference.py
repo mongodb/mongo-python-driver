@@ -16,6 +16,7 @@ from __future__ import annotations
 import copy
 import itertools
 import unittest
+from test import PyMongoTestCase
 from typing import Any
 
 import pytest
@@ -29,7 +30,8 @@ except ImportError:
 
 from operations import operations  # type: ignore[import]
 
-from pymongo import MongoClient, ReadPreference
+from pymongo import ReadPreference
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.read_preferences import (
     _MONGOS_MODES,
     make_read_preference,
@@ -39,7 +41,7 @@ from pymongo.read_preferences import (
 pytestmark = pytest.mark.mockupdb
 
 
-class OpMsgReadPrefBase(unittest.TestCase):
+class OpMsgReadPrefBase(PyMongoTestCase):
     single_mongod = False
     primary: MockupDB
     secondary: MockupDB
@@ -53,8 +55,7 @@ class OpMsgReadPrefBase(unittest.TestCase):
         setattr(cls, test_name, test)
 
     def setup_client(self, read_preference):
-        client = MongoClient(self.primary.uri, read_preference=read_preference)
-        self.addCleanup(client.close)
+        client = self.simple_client(self.primary.uri, read_preference=read_preference)
         return client
 
 
@@ -66,7 +67,7 @@ class TestOpMsgMongos(OpMsgReadPrefBase):
             "ismaster": True,
             "msg": "isdbgrid",  # Mongos.
             "minWireVersion": 2,
-            "maxWireVersion": 6,
+            "maxWireVersion": MIN_SUPPORTED_WIRE_VERSION,
         }
         cls.primary = MockupDB(auto_ismaster=auto_ismaster)
         cls.primary.run()
@@ -93,7 +94,7 @@ class TestOpMsgReplicaSet(OpMsgReadPrefBase):
             "setName": "rs",
             "hosts": hosts,
             "minWireVersion": 2,
-            "maxWireVersion": 6,
+            "maxWireVersion": MIN_SUPPORTED_WIRE_VERSION,
         }
         cls.primary.autoresponds(CommandBase("ismaster"), primary_ismaster)
         secondary_ismaster = copy.copy(primary_ismaster)
@@ -115,12 +116,13 @@ class TestOpMsgReplicaSet(OpMsgReadPrefBase):
             setattr(cls, test_name, test)
 
     def setup_client(self, read_preference):
-        client = MongoClient(self.primary.uri, replicaSet="rs", read_preference=read_preference)
+        client = self.simple_client(
+            self.primary.uri, replicaSet="rs", read_preference=read_preference
+        )
 
         # Run a command on a secondary to discover the topology. This ensures
         # that secondaryPreferred commands will select the secondary.
         client.admin.command("ismaster", read_preference=ReadPreference.SECONDARY)
-        self.addCleanup(client.close)
         return client
 
 
@@ -133,7 +135,7 @@ class TestOpMsgSingle(OpMsgReadPrefBase):
         auto_ismaster = {
             "ismaster": True,
             "minWireVersion": 2,
-            "maxWireVersion": 6,
+            "maxWireVersion": MIN_SUPPORTED_WIRE_VERSION,
         }
         cls.primary = MockupDB(auto_ismaster=auto_ismaster)
         cls.primary.run()

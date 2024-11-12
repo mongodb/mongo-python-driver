@@ -223,7 +223,7 @@ class Decimal128:
                     "from list or tuple. Must have exactly 2 "
                     "elements."
                 )
-            self.__high, self.__low = value  # type: ignore
+            self.__high, self.__low = value
         else:
             raise TypeError(f"Cannot convert {value!r} to Decimal128")
 

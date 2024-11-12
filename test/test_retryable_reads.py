@@ -34,7 +34,6 @@ from test import (
 from test.utils import (
     CMAPListener,
     OvertCommandListener,
-    rs_or_single_client,
     set_fail_point,
 )
 
@@ -44,27 +43,25 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     PoolClearedEvent,
 )
-from pymongo.synchronous.mongo_client import MongoClient
 
-# Location of JSON test specifications.
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_reads", "legacy")
+_IS_SYNC = True
 
 
 class TestClientOptions(PyMongoTestCase):
     def test_default(self):
-        client = MongoClient(connect=False)
+        client = self.simple_client(connect=False)
         self.assertEqual(client.options.retry_reads, True)
 
     def test_kwargs(self):
-        client = MongoClient(retryReads=True, connect=False)
+        client = self.simple_client(retryReads=True, connect=False)
         self.assertEqual(client.options.retry_reads, True)
-        client = MongoClient(retryReads=False, connect=False)
+        client = self.simple_client(retryReads=False, connect=False)
         self.assertEqual(client.options.retry_reads, False)
 
     def test_uri(self):
-        client = MongoClient("mongodb://h/?retryReads=true", connect=False)
+        client = self.simple_client("mongodb://h/?retryReads=true", connect=False)
         self.assertEqual(client.options.retry_reads, True)
-        client = MongoClient("mongodb://h/?retryReads=false", connect=False)
+        client = self.simple_client("mongodb://h/?retryReads=false", connect=False)
         self.assertEqual(client.options.retry_reads, False)
 
 
@@ -85,6 +82,7 @@ class TestPoolPausedError(IntegrationTest):
     RUN_ON_LOAD_BALANCER = False
     RUN_ON_SERVERLESS = False
 
+    @client_context.require_sync
     @client_context.require_failCommand_blockConnection
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     def test_pool_paused_error_is_retryable(self):
@@ -93,8 +91,9 @@ class TestPoolPausedError(IntegrationTest):
             self.skipTest("Test is flakey on PyPy")
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()
-        client = rs_or_single_client(maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener])
-        self.addCleanup(client.close)
+        client = self.rs_or_single_client(
+            maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener]
+        )
         for _ in range(10):
             cmap_listener.reset()
             cmd_listener.reset()
@@ -163,13 +162,12 @@ class TestRetryableReads(IntegrationTest):
         mongos_clients = []
 
         for mongos in client_context.mongos_seeds().split(","):
-            client = rs_or_single_client(mongos)
+            client = self.rs_or_single_client(mongos)
             set_fail_point(client, fail_command)
-            self.addCleanup(client.close)
             mongos_clients.append(client)
 
         listener = OvertCommandListener()
-        client = rs_or_single_client(
+        client = self.rs_or_single_client(
             client_context.mongos_seeds(),
             appName="retryableReadTest",
             event_listeners=[listener],

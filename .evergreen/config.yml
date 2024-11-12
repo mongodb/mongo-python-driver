@@ -25,6 +25,10 @@ timeout:
       script: |
         ls -la
 
+include:
+  - filename: .evergreen/generated_configs/tasks.yml
+  - filename: .evergreen/generated_configs/variants.yml
+
 functions:
   "fetch source":
     # Executes clone and applies the submitted patch, if any
@@ -409,6 +413,7 @@ functions:
             AUTH=${AUTH} \
             SSL=${SSL} \
             TEST_DATA_LAKE=${TEST_DATA_LAKE} \
+            TEST_SUITES=${TEST_SUITES} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
             SKIP_HATCH=${SKIP_HATCH} \
             bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
@@ -514,6 +519,18 @@ functions:
         include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         args:
           - .evergreen/run-mongodb-oidc-test.sh
+
+  "run oidc k8s auth test":
+    - command: subprocess.exec
+      type: test
+      params:
+        binary: bash
+        working_dir: src
+        env:
+          OIDC_ENV: k8s
+        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "K8S_VARIANT"]
+        args:
+          - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -651,63 +668,16 @@ functions:
           CA_FILE="${DRIVERS_TOOLS}/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
           bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
+          bash ${DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh
 
-  run-valid-ocsp-server:
-    - command: shell.exec
+  "run-ocsp-server":
+    - command: subprocess.exec
       params:
         background: true
-        script: |
-          . src/.evergreen/scripts/env.sh
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          . ./activate-ocspvenv.sh
-          python ocsp_mock.py \
-          --ca_file ${OCSP_ALGORITHM}/ca.pem \
-          --ocsp_responder_cert ${OCSP_ALGORITHM}/ca.crt \
-          --ocsp_responder_key ${OCSP_ALGORITHM}/ca.key \
-          -p 8100 -v
-  run-revoked-ocsp-server:
-    - command: shell.exec
-      params:
-        background: true
-        script: |
-          . src/.evergreen/scripts/env.sh
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          . ./activate-ocspvenv.sh
-          python ocsp_mock.py \
-          --ca_file ${OCSP_ALGORITHM}/ca.pem \
-          --ocsp_responder_cert ${OCSP_ALGORITHM}/ca.crt \
-          --ocsp_responder_key ${OCSP_ALGORITHM}/ca.key \
-          -p 8100 \
-          -v \
-          --fault revoked
-  run-valid-delegate-ocsp-server:
-    - command: shell.exec
-      params:
-        background: true
-        script: |
-          . src/.evergreen/scripts/env.sh
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          . ./activate-ocspvenv.sh
-          python ocsp_mock.py \
-          --ca_file ${OCSP_ALGORITHM}/ca.pem \
-          --ocsp_responder_cert ${OCSP_ALGORITHM}/ocsp-responder.crt \
-          --ocsp_responder_key ${OCSP_ALGORITHM}/ocsp-responder.key \
-          -p 8100 -v
-  run-revoked-delegate-ocsp-server:
-    - command: shell.exec
-      params:
-        background: true
-        script: |
-          . src/.evergreen/scripts/env.sh
-          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          . ./activate-ocspvenv.sh
-          python ocsp_mock.py \
-          --ca_file ${OCSP_ALGORITHM}/ca.pem \
-          --ocsp_responder_cert ${OCSP_ALGORITHM}/ocsp-responder.crt \
-          --ocsp_responder_key ${OCSP_ALGORITHM}/ocsp-responder.key \
-          -p 8100 \
-          -v \
-          --fault revoked
+        binary: bash
+        include_expansions_in_env: [SERVER_TYPE, OCSP_ALGORITHM]
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh
 
   "run load-balancer":
     - command: shell.exec
@@ -915,6 +885,32 @@ task_groups:
     tasks:
       - oidc-auth-test-gcp
 
+  - name: testk8soidc_task_group
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: ec2.assume_role
+        params:
+          role_arn: ${aws_test_secrets_role}
+          duration_seconds: 1800
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/k8s/setup.sh
+    teardown_task:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/k8s/teardown.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+      - oidc-auth-test-k8s
+
   - name: testoidc_task_group
     setup_group:
       - func: fetch source
@@ -1013,276 +1009,6 @@ tasks:
             VERSION: "latest"
             TOPOLOGY: "server"
         - func: "run doctests"
-
-    - name: "test-3.6-standalone"
-      tags: ["3.6", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.6"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-3.6-replica_set"
-      tags: ["3.6", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.6"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-3.6-sharded_cluster"
-      tags: ["3.6", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.6"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-4.0-standalone"
-      tags: ["4.0", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "4.0"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-4.0-replica_set"
-      tags: ["4.0", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "4.0"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-4.0-sharded_cluster"
-      tags: ["4.0", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "4.0"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-4.2-standalone"
-      tags: ["4.2", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "4.2"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-4.2-replica_set"
-      tags: ["4.2", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "4.2"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-4.2-sharded_cluster"
-      tags: ["4.2", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "4.2"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-4.4-standalone"
-      tags: ["4.4", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "4.4"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-4.4-replica_set"
-      tags: ["4.4", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "4.4"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-4.4-sharded_cluster"
-      tags: ["4.4", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "4.4"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-5.0-standalone"
-      tags: ["5.0", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "5.0"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-5.0-replica_set"
-      tags: ["5.0", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "5.0"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-5.0-sharded_cluster"
-      tags: ["5.0", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "5.0"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-6.0-standalone"
-      tags: ["6.0", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "6.0"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-6.0-replica_set"
-      tags: ["6.0", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "6.0"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-6.0-sharded_cluster"
-      tags: ["6.0", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "6.0"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-8.0-standalone"
-      tags: ["8.0", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "8.0"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-8.0-replica_set"
-      tags: ["8.0", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "8.0"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-8.0-sharded_cluster"
-      tags: ["8.0", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "8.0"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-7.0-standalone"
-      tags: ["7.0", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "7.0"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-7.0-replica_set"
-      tags: ["7.0", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "7.0"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-7.0-sharded_cluster"
-      tags: ["7.0", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "7.0"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-latest-standalone"
-      tags: ["latest", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "latest"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-latest-replica_set"
-      tags: ["latest", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "latest"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-latest-sharded_cluster"
-      tags: ["latest", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "latest"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-rapid-standalone"
-      tags: ["rapid", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "rapid"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-rapid-replica_set"
-      tags: ["rapid", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "rapid"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-rapid-sharded_cluster"
-      tags: ["rapid", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "rapid"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
 
     - name: "test-serverless"
       tags: ["serverless"]
@@ -1387,9 +1113,10 @@ tasks:
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
       commands:
-        - func: run-valid-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: "valid"
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
@@ -1401,9 +1128,10 @@ tasks:
     - name: test-ocsp-rsa-invalid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: "revoked"
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
@@ -1415,9 +1143,10 @@ tasks:
     - name: test-ocsp-rsa-valid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-valid-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: valid
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
@@ -1429,9 +1158,10 @@ tasks:
     - name: test-ocsp-rsa-invalid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: revoked
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
@@ -1454,9 +1184,10 @@ tasks:
     - name: test-ocsp-rsa-malicious-invalid-cert-mustStaple-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: revoked
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
@@ -1479,9 +1210,10 @@ tasks:
     - name: test-ocsp-rsa-delegate-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
       commands:
-        - func: run-valid-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: valid-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
@@ -1493,9 +1225,10 @@ tasks:
     - name: test-ocsp-rsa-delegate-invalid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: revoked-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
@@ -1507,9 +1240,10 @@ tasks:
     - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-valid-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: valid-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
@@ -1521,9 +1255,10 @@ tasks:
     - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: revoked-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
@@ -1535,9 +1270,10 @@ tasks:
     - name: test-ocsp-rsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
       tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "rsa"
+            SERVER_TYPE: revoked-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
@@ -1549,9 +1285,10 @@ tasks:
     - name: test-ocsp-ecdsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
       commands:
-        - func: run-valid-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: valid
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
@@ -1563,9 +1300,10 @@ tasks:
     - name: test-ocsp-ecdsa-invalid-cert-server-staples
       tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: revoked
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
@@ -1577,9 +1315,10 @@ tasks:
     - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-valid-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: valid
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
@@ -1591,9 +1330,10 @@ tasks:
     - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: revoked
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
@@ -1616,9 +1356,10 @@ tasks:
     - name: test-ocsp-ecdsa-malicious-invalid-cert-mustStaple-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-revoked-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: revoked
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
@@ -1641,9 +1382,10 @@ tasks:
     - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples
       tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
       commands:
-        - func: run-valid-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: valid-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
@@ -1655,9 +1397,10 @@ tasks:
     - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples
       tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: revoked-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
@@ -1669,9 +1412,10 @@ tasks:
     - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-valid-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: valid-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
@@ -1683,9 +1427,10 @@ tasks:
     - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: revoked-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
@@ -1697,9 +1442,10 @@ tasks:
     - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
       tags: ["ocsp", "ocsp-ecdsa"]
       commands:
-        - func: run-revoked-delegate-ocsp-server
+        - func: run-ocsp-server
           vars:
             OCSP_ALGORITHM: "ecdsa"
+            SERVER_TYPE: valid-delegate
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
@@ -1834,64 +1580,47 @@ tasks:
         - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
-    - name: load-balancer-test
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            TOPOLOGY: "sharded_cluster"
-            LOAD_BALANCER: true
-        - func: "run load-balancer"
-        - func: "run tests"
-
     - name: "oidc-auth-test"
       commands:
       - func: "run oidc auth test with test credentials"
 
     - name: "oidc-auth-test-azure"
       commands:
-      - command: shell.exec
+      - command: subprocess.exec
         type: test
         params:
-          shell: bash
-          script: |-
-            set -o errexit
-            . src/.evergreen/scripts/env.sh
-            cd src
-            git add .
-            git commit -m "add files"
-            export AZUREOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
-            git archive -o $AZUREOIDC_DRIVERS_TAR_FILE HEAD
-            export AZUREOIDC_TEST_CMD="OIDC_ENV=azure ./.evergreen/run-mongodb-oidc-test.sh"
-            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
+          binary: bash
+          working_dir: src
+          env:
+            OIDC_ENV: azure
+          include_expansions_in_env: ["DRIVERS_TOOLS"]
+          args:
+            - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
     - name: "oidc-auth-test-gcp"
       commands:
-      - command: shell.exec
+      - command: subprocess.exec
         type: test
         params:
-          shell: bash
-          script: |-
-            set -o errexit
-            . src/.evergreen/scripts/env.sh
-            cd src
-            git add .
-            git commit -m "add files"
-            export GCPOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
-            git archive -o $GCPOIDC_DRIVERS_TAR_FILE HEAD
-            # Define the command to run on the VM.
-            # Ensure that we source the environment file created for us, set up any other variables we need,
-            # and then run our test suite on the vm.
-            export GCPOIDC_TEST_CMD="OIDC_ENV=gcp ./.evergreen/run-mongodb-oidc-test.sh"
-            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/gcp/run-driver-test.sh
+          binary: bash
+          working_dir: src
+          env:
+            OIDC_ENV: gcp
+          include_expansions_in_env: ["DRIVERS_TOOLS"]
+          args:
+            - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
-    - name: "test-fips-standalone"
-      tags: ["fips"]
+    - name: "oidc-auth-test-k8s"
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run oidc k8s auth test"
           vars:
-            VERSION: "latest"
-            TOPOLOGY: "server"
-        - func: "run tests"
+            K8S_VARIANT: eks
+        - func: "run oidc k8s auth test"
+          vars:
+            K8S_VARIANT: gke
+        - func: "run oidc k8s auth test"
+          vars:
+            K8S_VARIANT: aks
 # }}}
     - name: "coverage-report"
       tags: ["coverage"]
@@ -2007,23 +1736,6 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
-    - name: "assign-pr-reviewer"
-      tags: ["pr"]
-      allowed_requesters: ["patch", "github_pr"]
-      commands:
-        - command: shell.exec
-          type: test
-          params:
-            shell: "bash"
-            working_dir: src
-            script: |
-              . .evergreen/scripts/env.sh
-              set -x
-              export CONFIG=$PROJECT_DIRECTORY/.github/reviewers.txt
-              export SCRIPT="$DRIVERS_TOOLS/.evergreen/github_app/assign-reviewer.sh"
-              bash $SCRIPT -p $CONFIG -h ${github_commit} -o "mongodb" -n "mongo-python-driver"
-              echo '{"results": [{ "status": "PASS", "test_file": "Build", "log_raw": "Test completed"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
-
     - name: "check-import-time"
       tags: ["pr"]
       commands:
@@ -2039,782 +1751,22 @@ tasks:
               export HEAD_SHA=${github_commit}
               bash .evergreen/run-import-time-test.sh
 
-axes:
-  # Choice of distro
-  - id: platform
-    display_name: OS
-    values:
-      - id: macos
-        display_name: "macOS"
-        run_on: macos-14
-        variables:
-          skip_EC2_auth_test: true
-          skip_ECS_auth_test: true
-          skip_web_identity_auth_test: true
-          # CSOT tests are unreliable on our slow macOS hosts.
-          SKIP_CSOT_TESTS: true
-      - id: macos-arm64
-        display_name: "macOS Arm64"
-        run_on: macos-14-arm64
-        variables:
-          skip_EC2_auth_test: true
-          skip_ECS_auth_test: true
-          skip_web_identity_auth_test: true
-          # CSOT tests are unreliable on our slow macOS hosts.
-          SKIP_CSOT_TESTS: true
-      - id: rhel7
-        display_name: "RHEL 7.x"
-        run_on: rhel79-small
-        batchtime: 10080  # 7 days
-      - id: rhel8
-        display_name: "RHEL 8.x"
-        run_on: rhel87-small
-        batchtime: 10080  # 7 days
-      - id: rhel92-fips
-        display_name: "RHEL 9.2 FIPS"
-        run_on: rhel92-fips
-        batchtime: 10080  # 7 days
-      - id: ubuntu-22.04
-        display_name: "Ubuntu 22.04"
-        run_on: ubuntu2204-small
-        batchtime: 10080  # 7 days
-      - id: ubuntu-20.04
-        display_name: "Ubuntu 20.04"
-        run_on: ubuntu2004-small
-        batchtime: 10080  # 7 days
-      - id: rhel83-zseries
-        display_name: "RHEL 8.3 (zSeries)"
-        run_on: rhel83-zseries-small
-        batchtime: 10080  # 7 days
-        variables:
-          SKIP_HATCH: true
-      - id: rhel81-power8
-        display_name: "RHEL 8.1 (POWER8)"
-        run_on: rhel81-power8-small
-        batchtime: 10080  # 7 days
-        variables:
-          SKIP_HATCH: true
-      - id: rhel82-arm64
-        display_name: "RHEL 8.2 (ARM64)"
-        run_on: rhel82-arm64-small
-        batchtime: 10080  # 7 days
-        variables:
-      - id: windows-64-vsMulti-small
-        display_name: "Windows 64"
-        run_on: windows-64-vsMulti-small
-        batchtime: 10080  # 7 days
-        variables:
-          skip_ECS_auth_test: true
-          skip_EC2_auth_test: true
-          skip_web_identity_auth_test: true
-          venv_bin_dir: "Scripts"
-          # CSOT tests are unreliable on our slow Windows hosts.
-          SKIP_CSOT_TESTS: true
-
-  # Test with authentication?
-  - id: auth
-    display_name: Authentication
-    values:
-      - id: auth
-        display_name: Auth
-        variables:
-           AUTH: "auth"
-      - id: noauth
-        display_name: NoAuth
-        variables:
-           AUTH: "noauth"
-
-  # Test with SSL?
-  - id: ssl
-    display_name: SSL
-    values:
-      - id: ssl
-        display_name: SSL
-        variables:
-           SSL: "ssl"
-      - id: nossl
-        display_name: NoSSL
-        variables:
-           SSL: "nossl"
-
-  # Test with Auth + SSL (combined for convenience)?
-  - id: auth-ssl
-    display_name: Auth SSL
-    values:
-      - id: auth-ssl
-        display_name: Auth SSL
-        variables:
-           AUTH: "auth"
-           SSL: "ssl"
-      - id: noauth-nossl
-        display_name: NoAuth NoSSL
-        variables:
-           AUTH: "noauth"
-           SSL: "nossl"
-
-  # Choice of wire protocol compression support
-  - id: compression
-    display_name: Compression
-    values:
-      - id: snappy
-        display_name: snappy compression
-        variables:
-            COMPRESSORS: "snappy"
-      - id: zlib
-        display_name: zlib compression
-        variables:
-            COMPRESSORS: "zlib"
-      - id: zstd
-        display_name: zstd compression
-        variables:
-            COMPRESSORS: "zstd"
-
-  # Choice of MongoDB server version
-  - id: mongodb-version
-    display_name: "MongoDB"
-    values:
-      - id: "3.6"
-        display_name: "MongoDB 3.6"
-        variables:
-          VERSION: "3.6"
-      - id: "4.0"
-        display_name: "MongoDB 4.0"
-        variables:
-          VERSION: "4.0"
-      - id: "4.2"
-        display_name: "MongoDB 4.2"
-        variables:
-          VERSION: "4.2"
-      - id: "4.4"
-        display_name: "MongoDB 4.4"
-        variables:
-          VERSION: "4.4"
-      - id: "5.0"
-        display_name: "MongoDB 5.0"
-        variables:
-          VERSION: "5.0"
-      - id: "6.0"
-        display_name: "MongoDB 6.0"
-        variables:
-          VERSION: "6.0"
-      - id: "7.0"
-        display_name: "MongoDB 7.0"
-        variables:
-          VERSION: "7.0"
-      - id: "8.0"
-        display_name: "MongoDB 8.0"
-        variables:
-          VERSION: "8.0"
-      - id: "latest"
-        display_name: "MongoDB latest"
-        variables:
-          VERSION: "latest"
-      - id: "rapid"
-        display_name: "MongoDB rapid"
-        variables:
-          VERSION: "rapid"
-
-  # Choice of Python runtime version
-  - id: python-version
-    display_name: "Python"
-    values:
-      # Note: always display platform with python-version to avoid ambiguous display names.
-      # Linux
-      - id: "3.8"
-        display_name: "Python 3.8"
-        variables:
-          PYTHON_BINARY: "/opt/python/3.8/bin/python3"
-      - id: "3.9"
-        display_name: "Python 3.9"
-        variables:
-          PYTHON_BINARY: "/opt/python/3.9/bin/python3"
-      - id: "3.10"
-        display_name: "Python 3.10"
-        variables:
-          PYTHON_BINARY: "/opt/python/3.10/bin/python3"
-      - id: "3.11"
-        display_name: "Python 3.11"
-        variables:
-          PYTHON_BINARY: "/opt/python/3.11/bin/python3"
-      - id: "3.12"
-        display_name: "Python 3.12"
-        variables:
-          PYTHON_BINARY: "/opt/python/3.12/bin/python3"
-      - id: "pypy3.9"
-        display_name: "PyPy 3.9"
-        variables:
-           PYTHON_BINARY: "/opt/python/pypy3.9/bin/pypy3"
-      - id: "pypy3.10"
-        display_name: "PyPy 3.10"
-        variables:
-           PYTHON_BINARY: "/opt/python/pypy3.10/bin/pypy3"
-
-  - id: python-version-windows
-    display_name: "Python"
-    values:
-      - id: "3.8"
-        display_name: "Python 3.8"
-        variables:
-          PYTHON_BINARY: "C:/python/Python38/python.exe"
-      - id: "3.9"
-        display_name: "Python 3.9"
-        variables:
-          PYTHON_BINARY: "C:/python/Python39/python.exe"
-      - id: "3.10"
-        display_name: "Python 3.10"
-        variables:
-          PYTHON_BINARY: "C:/python/Python310/python.exe"
-      - id: "3.11"
-        display_name: "Python 3.11"
-        variables:
-          PYTHON_BINARY: "C:/python/Python311/python.exe"
-      - id: "3.12"
-        display_name: "Python 3.12"
-        variables:
-          PYTHON_BINARY: "C:/python/Python312/python.exe"
-
-  - id: python-version-windows-32
-    display_name: "Python"
-    values:
-      - id: "3.8"
-        display_name: "32-bit Python 3.8"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python38/python.exe"
-      - id: "3.9"
-        display_name: "32-bit Python 3.9"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python39/python.exe"
-      - id: "3.10"
-        display_name: "32-bit Python 3.10"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python310/python.exe"
-      - id: "3.11"
-        display_name: "32-bit Python 3.11"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python311/python.exe"
-      - id: "3.12"
-        display_name: "32-bit Python 3.12"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python312/python.exe"
-
-  # Choice of mod_wsgi version
-  - id: mod-wsgi-version
-    display_name: "mod_wsgi version"
-    values:
-      - id: "4"
-        display_name: "mod_wsgi 4.x"
-        variables:
-          MOD_WSGI_VERSION: "4"
-
-  # Choice of Python async framework
-  - id: green-framework
-    display_name: "Green Framework"
-    values:
-      - id: "eventlet"
-        display_name: "Eventlet"
-        variables:
-          GREEN_FRAMEWORK: "eventlet"
-      - id: "gevent"
-        display_name: "Gevent"
-        variables:
-          GREEN_FRAMEWORK: "gevent"
-
-  # Install and use the driver's C-extensions?
-  - id: c-extensions
-    display_name: "C Extensions"
-    values:
-      - id: "without-c-extensions"
-        display_name: "Without C Extensions"
-        variables:
-          NO_EXT: "1"
-      - id: "with-c-extensions"
-        display_name: "With C Extensions"
-        variables:
-          NO_EXT: ""
-
-  # Choice of MongoDB storage engine
-  - id: storage-engine
-    display_name: Storage
-    values:
-      - id: mmapv1
-        display_name: MMAPv1
-        variables:
-           STORAGE_ENGINE: "mmapv1"
-      - id: inmemory
-        display_name: InMemory
-        variables:
-           STORAGE_ENGINE: "inmemory"
-
-  # Run with test commands disabled on server?
-  - id: disableTestCommands
-    display_name: Disable test commands
-    values:
-      - id: disabled
-        display_name: disabled
-        variables:
-           DISABLE_TEST_COMMANDS: "1"
-
-  # Generate coverage report?
-  - id: coverage
-    display_name: "Coverage"
-    values:
-      - id: "coverage"
-        display_name: "Coverage"
-        tags: ["coverage_tag"]
-        variables:
-           COVERAGE: "coverage"
-
-  # Run encryption tests?
-  - id: encryption
-    display_name: "Encryption"
-    values:
-      - id: "encryption"
-        display_name: "Encryption"
-        tags: ["encryption_tag"]
-        variables:
-          test_encryption: true
-        batchtime: 10080  # 7 days
-      - id: "encryption_pyopenssl"
-        display_name: "Encryption PyOpenSSL"
-        tags: ["encryption_tag"]
-        variables:
-          test_encryption: true
-          test_encryption_pyopenssl: true
-        batchtime: 10080  # 7 days
-      # The path to crypt_shared is stored in the $CRYPT_SHARED_LIB_PATH expansion.
-      - id: "encryption_crypt_shared"
-        display_name: "Encryption shared lib"
-        tags: ["encryption_tag"]
-        variables:
-          test_encryption: true
-          test_crypt_shared: true
-        batchtime: 10080  # 7 days
-
-  # Run pyopenssl tests?
-  - id: pyopenssl
-    display_name: "PyOpenSSL"
-    values:
-      - id: "enabled"
-        display_name: "PyOpenSSL"
-        variables:
-          test_pyopenssl: true
-        batchtime: 10080  # 7 days
-
-  - id: versionedApi
-    display_name: "versionedApi"
-    values:
-      # Test against a cluster with requireApiVersion=1.
-      - id: "requireApiVersion1"
-        display_name: "requireApiVersion1"
-        tags: [ "versionedApi_tag" ]
-        variables:
-          # REQUIRE_API_VERSION is set to make drivers-evergreen-tools
-          # start a cluster with the requireApiVersion parameter.
-          REQUIRE_API_VERSION: "1"
-          # MONGODB_API_VERSION is the apiVersion to use in the test suite.
-          MONGODB_API_VERSION: "1"
-      # Test against a cluster with acceptApiVersion2 but without
-      # requireApiVersion, and don't automatically add apiVersion to
-      # clients created in the test suite.
-      - id: "acceptApiVersion2"
-        display_name: "acceptApiVersion2"
-        tags: [ "versionedApi_tag" ]
-        variables:
-          ORCHESTRATION_FILE: "versioned-api-testing.json"
-
-  # Run load balancer tests?
-  - id: loadbalancer
-    display_name: "Load Balancer"
-    values:
-      - id: "enabled"
-        display_name: "Load Balancer"
-        variables:
-          test_loadbalancer: true
-        batchtime: 10080  # 7 days
-
-  - id: serverless
-    display_name: "Serverless"
-    values:
-      - id: "enabled"
-        display_name: "Serverless"
-        variables:
-          test_serverless: true
-        batchtime: 10080  # 7 days
+    - name: "backport-pr"
+      allowed_requesters: ["commit"]
+      commands:
+      - command: subprocess.exec
+        type: test
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/github_app/backport-pr.sh
+            - mongodb
+            - mongo-python-driver
+            - ${github_commit}
 
 buildvariants:
-- matrix_name: "tests-fips"
-  matrix_spec:
-    platform:
-      - rhel92-fips
-    auth: "auth"
-    ssl: "ssl"
-  display_name: "${platform} ${auth} ${ssl}"
-  tasks:
-    - "test-fips-standalone"
-
-- matrix_name: "test-macos"
-  matrix_spec:
-    platform:
-      # MacOS introduced SSL support with MongoDB >= 3.2.
-      # Older server versions (2.6, 3.0) are supported without SSL.
-      - macos
-    auth: "*"
-    ssl: "*"
-  exclude_spec:
-    # No point testing with SSL without auth.
-    - platform: macos
-      auth: "noauth"
-      ssl: "ssl"
-  display_name: "${platform} ${auth} ${ssl}"
-  tasks:
-    - ".latest"
-    - ".8.0"
-    - ".7.0"
-    - ".6.0"
-    - ".5.0"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
-    - ".3.6"
-
-- matrix_name: "test-macos-arm64"
-  matrix_spec:
-    platform:
-      - macos-arm64
-    auth-ssl: "*"
-  display_name: "${platform} ${auth-ssl}"
-  tasks:
-    - ".latest"
-    - ".8.0"
-    - ".7.0"
-    - ".6.0"
-    - ".5.0"
-    - ".4.4"
-
-- matrix_name: "test-macos-encryption"
-  matrix_spec:
-    platform:
-      - macos
-    auth: "auth"
-    ssl: "nossl"
-    encryption: "*"
-  display_name: "${encryption} ${platform} ${auth} ${ssl}"
-  tasks: "test-latest-replica_set"
-  rules:
-    - if:
-        encryption: ["encryption", "encryption_crypt_shared"]
-        platform: macos
-        auth: "auth"
-        ssl: "nossl"
-      then:
-        add_tasks: &encryption-server-versions
-          - ".rapid"
-          - ".latest"
-          - ".8.0"
-          - ".7.0"
-          - ".6.0"
-          - ".5.0"
-          - ".4.4"
-          - ".4.2"
-          - ".4.0"
-
-# Test one server version with zSeries, POWER8, and ARM.
-- matrix_name: "test-different-cpu-architectures"
-  matrix_spec:
-    platform:
-      - rhel83-zseries  # Added in 5.0.8 (SERVER-44074)
-      - rhel81-power8 # Added in 4.2.7 (SERVER-44072)
-      - rhel82-arm64 # Added in 4.4.2 (SERVER-48282)
-    auth-ssl: "*"
-  display_name: "${platform} ${auth-ssl}"
-  tasks:
-    - ".6.0"
-
-- matrix_name: "tests-python-version-rhel8-test-ssl"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    auth-ssl: "*"
-    coverage: "*"
-  display_name: "${python-version} ${platform} ${auth-ssl} ${coverage}"
-  tasks: &all-server-versions
-    - ".rapid"
-    - ".latest"
-    - ".8.0"
-    - ".7.0"
-    - ".6.0"
-    - ".5.0"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
-    - ".3.6"
-
-- matrix_name: "tests-pyopenssl"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    auth: "*"
-    ssl: "ssl"
-    pyopenssl: "*"
-  # Only test "noauth" with Python 3.8.
-  exclude_spec:
-    platform: rhel8
-    python-version: ["3.9", "3.10", "pypy3.9", "pypy3.10"]
-    auth: "noauth"
-    ssl: "ssl"
-    pyopenssl: "*"
-  display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
-  tasks:
-    - '.replica_set'
-    # Test standalone and sharded only on 7.0.
-    - '.7.0'
-
-- matrix_name: "tests-pyopenssl-macOS"
-  matrix_spec:
-    platform: macos
-    auth: "auth"
-    ssl: "ssl"
-    pyopenssl: "*"
-  display_name: "PyOpenSSL ${platform} ${auth}"
-  tasks:
-    - '.replica_set'
-
-- matrix_name: "tests-pyopenssl-windows"
-  matrix_spec:
-    platform: windows-64-vsMulti-small
-    python-version-windows: "*"
-    auth: "auth"
-    ssl: "ssl"
-    pyopenssl: "*"
-  display_name: "PyOpenSSL ${platform} ${python-version-windows} ${auth}"
-  tasks:
-    - '.replica_set'
-
-- matrix_name: "tests-python-version-rhel8-test-encryption"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    auth-ssl: noauth-nossl
-# TODO: dependency error for 'coverage-report' task:
-# dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
-#    coverage: "*"
-    encryption: "*"
-  display_name: "${encryption} ${python-version} ${platform} ${auth-ssl}"
-  tasks: "test-latest-replica_set"
-  rules:
-    - if:
-        encryption: ["encryption", "encryption_crypt_shared"]
-        platform: rhel8
-        auth-ssl: noauth-nossl
-        python-version: "*"
-      then:
-        add_tasks: *encryption-server-versions
-
-- matrix_name: "tests-python-version-rhel8-without-c-extensions"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    c-extensions: without-c-extensions
-    auth-ssl: noauth-nossl
-    coverage: "*"
-  exclude_spec:
-   # These interpreters are always tested without extensions.
-   - platform: rhel8
-     python-version: ["pypy3.9", "pypy3.10"]
-     c-extensions: "*"
-     auth-ssl: "*"
-     coverage: "*"
-  display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
-  tasks: *all-server-versions
-
-- matrix_name: "tests-python-version-rhel8-compression"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    c-extensions: "*"
-    compression: "*"
-  exclude_spec:
-   # These interpreters are always tested without extensions.
-   - platform: rhel8
-     python-version: ["pypy3.9", "pypy3.10"]
-     c-extensions: "with-c-extensions"
-     compression: "*"
-  display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
-  tasks:
-    - "test-latest-standalone"
-    - "test-5.0-standalone"
-    - "test-4.4-standalone"
-    - "test-4.2-standalone"
-  rules:
-    # Server versions 3.6 and 4.0 support snappy and zlib.
-    - if:
-        python-version: "*"
-        c-extensions: "*"
-        compression: ["snappy", "zlib"]
-      then:
-        add_tasks:
-          - "test-4.0-standalone"
-          - "test-3.6-standalone"
-
-- matrix_name: "tests-python-version-green-framework-rhel8"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    green-framework: "*"
-    auth-ssl: "*"
-  exclude_spec:
-   # Don't test green frameworks on these Python versions.
-   - platform: rhel8
-     python-version: ["pypy3.9", "pypy3.10"]
-     green-framework: "*"
-     auth-ssl: "*"
-  display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
-  tasks: *all-server-versions
-
-- matrix_name: "tests-windows-python-version"
-  matrix_spec:
-    platform: windows-64-vsMulti-small
-    python-version-windows: "*"
-    auth-ssl: "*"
-  display_name: "${platform} ${python-version-windows} ${auth-ssl}"
-  tasks: *all-server-versions
-
-- matrix_name: "tests-windows-python-version-32-bit"
-  matrix_spec:
-    platform: windows-64-vsMulti-small
-    python-version-windows-32: "*"
-    auth-ssl: "*"
-  display_name: "${platform} ${python-version-windows-32} ${auth-ssl}"
-  tasks: *all-server-versions
-
-- matrix_name: "tests-python-version-supports-openssl-102-test-ssl"
-  matrix_spec:
-    platform: rhel7
-    # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: ["3.8", "3.9"]
-    auth-ssl: "*"
-  display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
-  tasks:
-     - ".5.0"
-
-- matrix_name: "tests-windows-encryption"
-  matrix_spec:
-    platform: windows-64-vsMulti-small
-    python-version-windows: "*"
-    auth-ssl: "*"
-    encryption: "*"
-  display_name: "${encryption} ${platform} ${python-version-windows} ${auth-ssl}"
-  tasks: "test-latest-replica_set"
-  rules:
-    - if:
-        encryption: ["encryption", "encryption_crypt_shared"]
-        platform: windows-64-vsMulti-small
-        python-version-windows: "*"
-        auth-ssl: "*"
-      then:
-        add_tasks: *encryption-server-versions
-
-# Storage engine tests on RHEL 8.4 (x86_64) with Python 3.8.
-- matrix_name: "tests-storage-engines"
-  matrix_spec:
-    platform: rhel8
-    storage-engine: "*"
-    python-version: 3.8
-  display_name: "Storage ${storage-engine} ${python-version} ${platform}"
-  rules:
-    - if:
-        platform: rhel8
-        storage-engine: ["inmemory"]
-        python-version: "*"
-      then:
-        add_tasks:
-          - "test-latest-standalone"
-          - "test-8.0-standalone"
-          - "test-7.0-standalone"
-          - "test-6.0-standalone"
-          - "test-5.0-standalone"
-          - "test-4.4-standalone"
-          - "test-4.2-standalone"
-          - "test-4.0-standalone"
-          - "test-3.6-standalone"
-    - if:
-        # MongoDB 4.2 drops support for MMAPv1
-        platform: rhel8
-        storage-engine: ["mmapv1"]
-        python-version: "*"
-      then:
-        add_tasks:
-          - "test-4.0-standalone"
-          - "test-4.0-replica_set"
-          - "test-3.6-standalone"
-          - "test-3.6-replica_set"
-
-# enableTestCommands=0 tests on RHEL 8.4 (x86_64) with Python 3.8.
-- matrix_name: "test-disableTestCommands"
-  matrix_spec:
-    platform: rhel8
-    disableTestCommands: "*"
-    python-version: "3.8"
-  display_name: "Disable test commands ${python-version} ${platform}"
-  tasks:
-     - ".latest"
-
-- matrix_name: "test-linux-enterprise-auth"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    auth: "auth"
-  display_name: "Enterprise ${auth} ${platform} ${python-version}"
-  tasks:
-     - name: "test-enterprise-auth"
-
-- matrix_name: "tests-windows-enterprise-auth"
-  matrix_spec:
-    platform: windows-64-vsMulti-small
-    python-version-windows: "*"
-    auth: "auth"
-  display_name: "Enterprise ${auth} ${platform} ${python-version-windows}"
-  tasks:
-     - name: "test-enterprise-auth"
-
-- matrix_name: "test-search-index-helpers"
-  matrix_spec:
-    platform: rhel8
-    python-version: "3.8"
-  display_name: "Search Index Helpers ${platform}"
-  tasks:
-     - name: "test_atlas_task_group_search_indexes"
-
-- matrix_name: "tests-mod-wsgi"
-  matrix_spec:
-    platform: ubuntu-22.04
-    python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-    mod-wsgi-version: "*"
-  display_name: "${mod-wsgi-version} ${python-version} ${platform}"
-  tasks:
-     - name: "mod-wsgi-standalone"
-     - name: "mod-wsgi-replica-set"
-     - name: "mod-wsgi-embedded-mode-standalone"
-     - name: "mod-wsgi-embedded-mode-replica-set"
-
-- matrix_name: "mockupdb-tests"
-  matrix_spec:
-    platform: rhel8
-    python-version: 3.8
-  display_name: "MockupDB Tests"
-  tasks:
-     - name: "mockupdb"
-
-- matrix_name: "tests-doctests"
-  matrix_spec:
-    platform: rhel8
-    python-version: ["3.8"]
-  display_name: "Doctests ${python-version} ${platform}"
-  tasks:
-     - name: "doctests"
-
 - name: "no-server"
-  display_name: "No server test"
+  display_name: "No server"
   run_on:
     - rhel84-small
   tasks:
@@ -2827,195 +1779,39 @@ buildvariants:
   tasks:
      - name: "coverage-report"
 
-- matrix_name: "atlas-connect"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-  display_name: "Atlas connect ${python-version} ${platform}"
-  tasks:
-    - name: "atlas-connect"
-
-- matrix_name: "serverless"
-  matrix_spec:
-    platform: rhel8
-    python-version: "*"
-    auth-ssl: auth-ssl
-    serverless: "enabled"
-  display_name: "${serverless} ${python-version} ${platform}"
-  tasks:
-    - "serverless_task_group"
-
-- matrix_name: "data-lake-spec-tests"
-  matrix_spec:
-    platform: ubuntu-22.04
-    python-version: ["3.8", "3.10"]
-    auth: "auth"
-    c-extensions: "*"
-  display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
-  tasks:
-    - name: atlas-data-lake-tests
-
-- matrix_name: "stable-api-tests"
-  matrix_spec:
-    platform: rhel8
-    python-version: ["3.8", "3.10"]
-    auth: "auth"
-    versionedApi: "*"
-  display_name: "Versioned API ${versionedApi} ${python-version}"
-  batchtime: 10080  # 7 days
-  tasks:
-    # Versioned API was introduced in MongoDB 4.7
-    - "test-latest-standalone"
-    - "test-5.0-standalone"
-
-- matrix_name: "ocsp-test"
-  matrix_spec:
-    platform: rhel8
-    python-version: ["3.8", "3.10", "pypy3.9", "pypy3.10"]
-    mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
-    auth: "noauth"
-    ssl: "ssl"
-  display_name: "OCSP test ${platform} ${python-version} ${mongodb-version}"
-  batchtime: 20160 # 14 days
-  tasks:
-    - name: ".ocsp"
-
-- matrix_name: "ocsp-test-windows"
-  matrix_spec:
-    platform: windows-64-vsMulti-small
-    python-version-windows: ["3.8", "3.10"]
-    mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
-    auth: "noauth"
-    ssl: "ssl"
-  display_name: "OCSP test ${platform} ${python-version-windows} ${mongodb-version}"
-  batchtime: 20160 # 14 days
-  tasks:
-    # Windows MongoDB servers do not staple OCSP responses and only support RSA.
-    - name: ".ocsp-rsa !.ocsp-staple"
-
-- matrix_name: "ocsp-test-macos"
-  matrix_spec:
-    platform: macos
-    mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0", "latest"]
-    auth: "noauth"
-    ssl: "ssl"
-  display_name: "OCSP test ${platform} ${mongodb-version}"
-  batchtime: 20160 # 14 days
-  tasks:
-    # macOS MongoDB servers do not staple OCSP responses and only support RSA.
-    - name: ".ocsp-rsa !.ocsp-staple"
-
-- matrix_name: "oidc-auth-test"
-  matrix_spec:
-    platform: [ rhel8, macos, windows-64-vsMulti-small ]
-  display_name: "OIDC Auth ${platform}"
-  tasks:
-    - name: testoidc_task_group
-      batchtime: 20160 # 14 days
-
-- name: testazureoidc-variant
-  display_name: "OIDC Auth Azure"
-  run_on: ubuntu2204-small
-  tasks:
-    - name: testazureoidc_task_group
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
-
-- name: testgcpoidc-variant
-  display_name: "OIDC Auth GCP"
-  run_on: ubuntu2204-small
-  tasks:
-    - name: testgcpoidc_task_group
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
-
-- matrix_name: "aws-auth-test"
-  matrix_spec:
-    platform: [ubuntu-20.04]
-    python-version: ["3.9"]
-  display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
-  tasks:
-    - name: "aws-auth-test-4.4"
-    - name: "aws-auth-test-5.0"
-    - name: "aws-auth-test-6.0"
-    - name: "aws-auth-test-7.0"
-    - name: "aws-auth-test-8.0"
-    - name: "aws-auth-test-rapid"
-    - name: "aws-auth-test-latest"
-
-- matrix_name: "aws-auth-test-mac"
-  matrix_spec:
-    platform: [macos]
-  display_name: "MONGODB-AWS Auth ${platform} ${python-version-mac}"
-  tasks:
-    - name: "aws-auth-test-4.4"
-    - name: "aws-auth-test-5.0"
-    - name: "aws-auth-test-6.0"
-    - name: "aws-auth-test-7.0"
-    - name: "aws-auth-test-8.0"
-    - name: "aws-auth-test-rapid"
-    - name: "aws-auth-test-latest"
-
-- matrix_name: "aws-auth-test-windows"
-  matrix_spec:
-    platform: [windows-64-vsMulti-small]
-    python-version-windows: "*"
-  display_name: "MONGODB-AWS Auth ${platform} ${python-version-windows}"
-  tasks:
-    - name: "aws-auth-test-4.4"
-    - name: "aws-auth-test-5.0"
-    - name: "aws-auth-test-6.0"
-    - name: "aws-auth-test-7.0"
-    - name: "aws-auth-test-8.0"
-    - name: "aws-auth-test-rapid"
-    - name: "aws-auth-test-latest"
-
-- matrix_name: "load-balancer"
-  matrix_spec:
-    platform: rhel8
-    mongodb-version: ["6.0", "7.0", "8.0", "rapid", "latest"]
-    auth-ssl: "*"
-    python-version: "*"
-    loadbalancer: "*"
-  display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
-  tasks:
-    - name: "load-balancer-test"
-
-- name: testgcpkms-variant
-  display_name: "GCP KMS"
+- name: testkms-variant
+  display_name: "KMS"
   run_on:
     - debian11-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
     - testgcpkms-fail-task
-
-- name: testazurekms-variant
-  display_name: "Azure KMS"
-  run_on: debian11-small
-  tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
     - testazurekms-fail-task
 
 - name: rhel8-test-lambda
-  display_name: AWS Lambda handler tests
+  display_name: FaaS Lambda
   run_on: rhel87-small
   tasks:
     - name: test_aws_lambda_task_group
 
-- name: rhel8-pr-assign-reviewer
-  display_name: Assign PR Reviewer
-  run_on: rhel87-small
-  tasks:
-    - name: "assign-pr-reviewer"
-
 - name: rhel8-import-time
-  display_name: Import Time Check
+  display_name: Import Time
   run_on: rhel87-small
   tasks:
     - name: "check-import-time"
 
+- name: backport-pr
+  display_name: "Backport PR"
+  run_on:
+    - rhel8.7-small
+  tasks:
+    - name: "backport-pr"
+
 - name: "perf-tests"
-  display_name: "Performance Benchmark Tests"
+  display_name: "Performance Benchmarks"
   batchtime: 10080  # 7 days
   run_on: rhel90-dbx-perf-large
   tasks:

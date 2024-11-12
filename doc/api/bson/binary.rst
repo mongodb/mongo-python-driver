@@ -21,6 +21,14 @@
    .. autoclass:: UuidRepresentation
       :members:
 
+   .. autoclass:: BinaryVectorDtype
+      :members:
+      :show-inheritance:
+
+   .. autoclass:: BinaryVector
+      :members:
+
+
    .. autoclass:: Binary(data, subtype=BINARY_SUBTYPE)
       :members:
       :show-inheritance:

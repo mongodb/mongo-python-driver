@@ -24,23 +24,14 @@ from pymongo.asynchronous.mongo_client import AsyncMongoClient
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, remove_all_users, unittest
-from test.utils import (
-    async_rs_or_single_client_noauth,
-    async_single_client,
-    async_wait_until,
-)
+from test.utils import async_wait_until
 
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.common import partition_node
-from pymongo.errors import (
-    BulkWriteError,
-    ConfigurationError,
-    InvalidOperation,
-    OperationFailure,
-)
+from pymongo.errors import BulkWriteError, ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import *
 from pymongo.write_concern import WriteConcern
 
@@ -915,7 +906,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
     async def test_readonly(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = await async_rs_or_single_client_noauth(
+        cli = await self.async_rs_or_single_client_noauth(
             username="readonly", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
@@ -926,7 +917,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
     async def test_no_remove(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = await async_rs_or_single_client_noauth(
+        cli = await self.async_rs_or_single_client_noauth(
             username="noremove", password="pw", authSource="pymongo_test"
         )
         coll = cli.pymongo_test.test
@@ -954,7 +945,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
         if cls.w is not None and cls.w > 1:
             for member in (await async_client_context.hello)["hosts"]:
                 if member != (await async_client_context.hello)["primary"]:
-                    cls.secondary = await async_single_client(*partition_node(member))
+                    cls.secondary = await cls.unmanaged_async_single_client(*partition_node(member))
                     break
 
     @classmethod
@@ -980,6 +971,9 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     async def test_write_concern_failure_ordered(self):
+        self.skipTest("Skipping until PYTHON-4865 is resolved.")
+        details = None
+
         # Ensure we don't raise on wnote.
         coll_ww = self.coll.with_options(write_concern=WriteConcern(w=self.w))
         result = await coll_ww.bulk_write([DeleteOne({"something": "that does no exist"})])
@@ -1060,6 +1054,9 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     async def test_write_concern_failure_unordered(self):
+        self.skipTest("Skipping until PYTHON-4865 is resolved.")
+        details = None
+
         # Ensure we don't raise on wnote.
         coll_ww = self.coll.with_options(write_concern=WriteConcern(w=self.w))
         result = await coll_ww.bulk_write(

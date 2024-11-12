@@ -20,6 +20,7 @@ import json
 import os
 import sys
 import warnings
+from test import PyMongoTestCase
 
 sys.path[0:0] = [""]
 
@@ -34,7 +35,7 @@ _IS_SYNC = True
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "auth")
 
 
-class TestAuthSpec(unittest.TestCase):
+class TestAuthSpec(PyMongoTestCase):
     pass
 
 
@@ -54,7 +55,7 @@ def create_test(test_case):
                 warnings.simplefilter("default")
                 self.assertRaises(Exception, MongoClient, uri, connect=False)
         else:
-            client = MongoClient(uri, connect=False)
+            client = self.simple_client(uri, connect=False)
             credentials = client.options.pool_options._credentials
             if credential is None:
                 self.assertIsNone(credentials)
