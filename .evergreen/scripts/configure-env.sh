@@ -64,6 +64,11 @@ export PROJECT="$project"
 export PIP_QUIET=1
 EOT
 
+# Skip CSOT tests on non-linux platforms.
+if [ "$(uname -s)" != "Linux" ]; then
+    echo "export SKIP_CSOT_TESTS=1" >> $SCRIPT_DIR/env.sh
+fi
+
 # Add these expansions to make it easier to call out tests scripts from the EVG yaml
 cat <<EOT > expansion.yml
 DRIVERS_TOOLS: "$DRIVERS_TOOLS"
