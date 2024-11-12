@@ -44,9 +44,6 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
     listener: CMAPListener
     coll: Collection
 
-    def tearDown(self):
-        reset_client_context()
-
     @client_context.require_replica_set
     def setUp(self):
         self.listener = CMAPListener()

@@ -35,7 +35,7 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
-from test.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     EventListener,
