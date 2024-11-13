@@ -162,6 +162,17 @@ functions:
         permissions: public-read
         content_type: ${content_type|application/x-gzip}
         display_name: "mongodb-logs.tar.gz"
+    - command: s3.put
+      params:
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        local_file: ${DRIVERS_TOOLS}/.evergreen/test_logs.tar.gz
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-drivers-tools-logs.tar.gz
+        bucket: ${aws_bucket}
+        permissions: public-read
+        content_type: ${content_type|application/x-gzip}
+        display_name: "drivers-tools-logs.tar.gz"
 
   "upload working dir":
     - command: ec2.assume_role
@@ -512,6 +523,15 @@ functions:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/cleanup.sh
 
+  "teardown":
+    - command: subprocess.exec
+      params:
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - $DRIVERS_TOOLS/.evergreen/teardown.sh
+
   "fix absolute paths":
     - command: subprocess.exec
       params:
@@ -669,6 +689,7 @@ pre:
 post:
   # Disabled, causing timeouts
   # - func: "upload working dir"
+  - func: "teardown"
   - func: "upload coverage"
   - func: "upload mo artifacts"
   - func: "upload test results"
