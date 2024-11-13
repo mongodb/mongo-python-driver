@@ -81,11 +81,11 @@ functions:
         role_arn: ${assume_role_arn}
     - command: subprocess.exec
       params:
+        silent: true
         binary: bash
         working_dir: "src"
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
         args:
-          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/download-and-merge-coverage.sh
           - ${bucket_name}
           - ${revision}
