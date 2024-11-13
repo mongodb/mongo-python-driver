@@ -130,6 +130,7 @@ functions:
       params:
         binary: bash
         args:
+          - src/.evergreen/scripts/run-with-env.sh
           - src/.evergreen/scripts/archive-mongodb-logs.sh
 
     - command: archive.targz_pack
