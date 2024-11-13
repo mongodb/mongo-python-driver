@@ -132,7 +132,6 @@ functions:
         args:
           - src/.evergreen/scripts/run-with-env.sh
           - src/.evergreen/scripts/archive-mongodb-logs.sh
-
     - command: archive.targz_pack
       params:
         target: "mongo-coredumps.tgz"
@@ -163,17 +162,6 @@ functions:
         permissions: public-read
         content_type: ${content_type|application/x-gzip}
         display_name: "mongodb-logs.tar.gz"
-    - command: s3.put
-      params:
-        aws_key: ${AWS_ACCESS_KEY_ID}
-        aws_secret: ${AWS_SECRET_ACCESS_KEY}
-        aws_session_token: ${AWS_SESSION_TOKEN}
-        local_file: drivers-tools/.evergreen/orchestration/server.log
-        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-orchestration.log
-        bucket: ${bucket_name}
-        permissions: public-read
-        content_type: ${content_type|text/plain}
-        display_name: "orchestration.log"
 
   "upload working dir":
     - command: ec2.assume_role
