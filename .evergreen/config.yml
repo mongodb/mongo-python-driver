@@ -512,8 +512,7 @@ functions:
         binary: bash
         working_dir: "src"
         args:
-          - .evergreen/scripts/run-with-env.sh
-          - $DRIVERS_TOOLS/.evergreen/teardown.sh
+          - ${DRIVERS_TOOLS}/.evergreen/teardown.sh
 
   "fix absolute paths":
     - command: subprocess.exec
