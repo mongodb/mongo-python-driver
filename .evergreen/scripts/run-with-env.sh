@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash -u
 
 # Example use: bash run-with-env.sh run-tests.sh {args...}
 
@@ -15,7 +15,7 @@ else
   fi
 fi
 
-set -eu
+set -u
 
 # shellcheck source=/dev/null
 . "$1" "${@:2}"

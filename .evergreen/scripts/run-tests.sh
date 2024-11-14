@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Disable xtrace
 set +x
 if [ -n "${MONGODB_STARTED}" ]; then
   export PYMONGO_MUST_CONNECT=true
@@ -40,7 +41,6 @@ fi
 if [ -n "${SKIP_CSOT_TESTS}" ]; then
   export SKIP_CSOT_TESTS=1
 fi
-
 GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
   PYTHON_BINARY=${PYTHON_BINARY} \
   NO_EXT=${NO_EXT} \
