@@ -294,6 +294,7 @@ functions:
             - .evergreen/scripts/run-with-env.sh
             - .evergreen/scripts/setup-encryption.sh
     - command: subprocess.exec
+      type: test
       params:
         working_dir: "src"
         binary: bash
