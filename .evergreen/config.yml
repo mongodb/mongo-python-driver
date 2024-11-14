@@ -152,7 +152,7 @@ functions:
         aws_session_token: ${AWS_SESSION_TOKEN}
         local_file: ${DRIVERS_TOOLS}/.evergreen/test_logs.tar.gz
         remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-drivers-tools-logs.tar.gz
-        bucket: ${aws_bucket}
+        bucket: ${bucket_name}
         permissions: public-read
         content_type: ${content_type|application/x-gzip}
         display_name: "drivers-tools-logs.tar.gz"
