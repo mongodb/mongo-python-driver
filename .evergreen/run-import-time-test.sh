@@ -25,7 +25,7 @@ function get_import_time() {
 }
 
 get_import_time $HEAD_SHA
-git stash
+git -c user.name=evergreen -c user.email=evergreen@test.com stash
 git checkout $BASE_SHA
 get_import_time $BASE_SHA
 git checkout $HEAD_SHA
