@@ -1798,14 +1798,8 @@ buildvariants:
     - name: test_aws_lambda_task_group
 
 - name: rhel8-import-time
-  display_name: Import Time Linux
+  display_name: Import Time
   run_on: rhel87-small
-  tasks:
-    - name: "check-import-time"
-
-- name: windows-import-time
-  display_name: Import Time Windows
-  run_on: windows-64-vsMulti-small
   tasks:
     - name: "check-import-time"
 
