@@ -89,8 +89,6 @@ _AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 
 def _validate_canonicalize_host_name(value: str | bool) -> str | bool:
     valid_names = [False, True, "none", "forward", "forwardAndReverse"]
-    if value == "none":
-        value = False
     if value in ["true", "false", True, False]:
         return value in ["true", True]
 

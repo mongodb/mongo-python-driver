@@ -180,7 +180,7 @@ def _auth_key(nonce: str, username: str, password: str) -> str:
 def _canonicalize_hostname(hostname: str, option: str | bool) -> str:
     """Canonicalize hostname following MIT-krb5 behavior."""
     # https://github.com/krb5/krb5/blob/d406afa363554097ac48646a29249c04f498c88e/src/util/k5test.py#L505-L520
-    if option in [False, None]:
+    if option in [False, "none"]:
         return hostname
 
     af, socktype, proto, canonname, sockaddr = socket.getaddrinfo(
