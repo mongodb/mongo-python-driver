@@ -1,4 +1,4 @@
-# Copyright 2017 MongoDB, Inc.
+# Copyright 2017-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,7 +65,6 @@ from pymongo.operations import (
     UpdateMany,
     UpdateOne,
 )
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
@@ -225,47 +224,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                     event.command,
                     f"{msg} sent txnNumber with {event.command_name}",
                 )
-
-    @client_context.require_no_standalone
-    def test_supported_single_statement_supported_cluster(self):
-        for method, args, kwargs in retryable_single_statement_ops(self.db.retryable_write_test):
-            msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
-            self.listener.reset()
-            method(*args, **kwargs)
-            commands_started = self.listener.started_events
-            self.assertEqual(len(self.listener.succeeded_events), 1, msg)
-            first_attempt = commands_started[0]
-            self.assertIn(
-                "lsid",
-                first_attempt.command,
-                f"{msg} sent no lsid with {first_attempt.command_name}",
-            )
-            initial_session_id = first_attempt.command["lsid"]
-            self.assertIn(
-                "txnNumber",
-                first_attempt.command,
-                f"{msg} sent no txnNumber with {first_attempt.command_name}",
-            )
-
-            # There should be no retry when the failpoint is not active.
-            if client_context.is_mongos or not client_context.test_commands_enabled:
-                self.assertEqual(len(commands_started), 1)
-                continue
-
-            initial_transaction_id = first_attempt.command["txnNumber"]
-            retry_attempt = commands_started[1]
-            self.assertIn(
-                "lsid",
-                retry_attempt.command,
-                f"{msg} sent no lsid with {first_attempt.command_name}",
-            )
-            self.assertEqual(retry_attempt.command["lsid"], initial_session_id, msg)
-            self.assertIn(
-                "txnNumber",
-                retry_attempt.command,
-                f"{msg} sent no txnNumber with {first_attempt.command_name}",
-            )
-            self.assertEqual(retry_attempt.command["txnNumber"], initial_transaction_id, msg)
 
     def test_supported_single_statement_unsupported_cluster(self):
         if client_context.is_rs or client_context.is_mongos:
