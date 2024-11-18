@@ -26,6 +26,7 @@ from bson import Binary
 from pymongo.auth_oidc_shared import (
     _OIDCAzureCallback,
     _OIDCGCPCallback,
+    _OIDCK8SCallback,
     _OIDCProperties,
     _OIDCTestCallback,
 )
@@ -99,8 +100,8 @@ def _validate_canonicalize_host_name(value: str | bool) -> str | bool:
 def _build_credentials_tuple(
     mech: str,
     source: Optional[str],
-    user: str,
-    passwd: str,
+    user: Optional[str],
+    passwd: Optional[str],
     extra: Mapping[str, Any],
     database: Optional[str],
 ) -> MongoCredential:
@@ -160,6 +161,8 @@ def _build_credentials_tuple(
             "::1",
         ]
         allowed_hosts = properties.get("ALLOWED_HOSTS", default_allowed)
+        if properties.get("ALLOWED_HOSTS", None) is not None and human_callback is None:
+            raise ConfigurationError("ALLOWED_HOSTS is only valid with OIDC_HUMAN_CALLBACK")
         msg = (
             "authentication with MONGODB-OIDC requires providing either a callback or a environment"
         )
@@ -192,6 +195,9 @@ def _build_credentials_tuple(
                         "GCP provider for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
                     )
                 callback = _OIDCGCPCallback(token_resource)
+            elif environ == "k8s":
+                passwd = None
+                callback = _OIDCK8SCallback()
             else:
                 raise ConfigurationError(f"unrecognized ENVIRONMENT for MONGODB-OIDC: {environ}")
         else:
@@ -203,7 +209,7 @@ def _build_credentials_tuple(
             environment=environ,
             allowed_hosts=allowed_hosts,
             token_resource=token_resource,
-            username=user,
+            username=user or "",
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, _Cache())
 

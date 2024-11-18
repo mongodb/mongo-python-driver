@@ -858,7 +858,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return target.create_data_key(*args, **kwargs)
 
     def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
-        return (target.get_keys(*args, **kwargs)).to_list()
+        return target.get_keys(*args, **kwargs).to_list()
 
     def _clientEncryptionOperation_deleteKey(self, target, *args, **kwargs):
         result = target.delete_key(*args, **kwargs)
@@ -1314,8 +1314,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 if log.module == "ocsp_support":
                     continue
                 data = json_util.loads(log.getMessage())
-                client = data.pop("clientId") if "clientId" in data else data.pop("topologyId")
-                client_to_log[client].append(
+                client_id = data.get("clientId", data.get("topologyId"))
+                client_to_log[client_id].append(
                     {
                         "level": log.levelname.lower(),
                         "component": log.name.replace("pymongo.", "", 1),
