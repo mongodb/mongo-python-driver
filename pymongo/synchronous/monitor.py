@@ -238,6 +238,9 @@ class Monitor(MonitorBase):
         except ReferenceError:
             # Topology was garbage-collected.
             self.close()
+        finally:
+            if self._executor._stopped:
+                self._rtt_monitor.close()
 
     def _check_server(self) -> ServerDescription:
         """Call hello or read the next streaming response.
@@ -254,6 +257,8 @@ class Monitor(MonitorBase):
                 details = cast(Mapping[str, Any], exc.details)
                 self._topology.receive_cluster_time(details.get("$clusterTime"))
                 raise
+        except asyncio.CancelledError:
+            raise
         except ReferenceError:
             raise
         except Exception as error:

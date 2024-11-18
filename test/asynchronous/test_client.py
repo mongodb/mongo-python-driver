@@ -1280,6 +1280,7 @@ class TestClient(AsyncIntegrationTest):
     async def test_server_selection_timeout(self):
         client = AsyncMongoClient(serverSelectionTimeoutMS=100, connect=False)
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
+        await client.close()
 
         client = AsyncMongoClient(serverSelectionTimeoutMS=0, connect=False)
 
@@ -1292,18 +1293,22 @@ class TestClient(AsyncIntegrationTest):
         self.assertRaises(
             ConfigurationError, AsyncMongoClient, serverSelectionTimeoutMS=None, connect=False
         )
+        await client.close()
 
         client = AsyncMongoClient(
             "mongodb://localhost/?serverSelectionTimeoutMS=100", connect=False
         )
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
+        await client.close()
 
         client = AsyncMongoClient("mongodb://localhost/?serverSelectionTimeoutMS=0", connect=False)
         self.assertAlmostEqual(0, client.options.server_selection_timeout)
+        await client.close()
 
         # Test invalid timeout in URI ignored and set to default.
         client = AsyncMongoClient("mongodb://localhost/?serverSelectionTimeoutMS=-1", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
+        await client.close()
 
         client = AsyncMongoClient("mongodb://localhost/?serverSelectionTimeoutMS=", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
