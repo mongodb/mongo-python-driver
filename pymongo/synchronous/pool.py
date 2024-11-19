@@ -1243,6 +1243,9 @@ class Pool:
         with self.lock:
             conn_id = self.next_connection_id
             self.next_connection_id += 1
+            # Use a temporary context so that interrupt_connections can cancel creating the socket.
+            tmp_context = _CancellationContext()
+            self.active_contexts.add(tmp_context)
 
         listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
@@ -1261,6 +1264,8 @@ class Pool:
         try:
             sock = _configured_socket(self.address, self.opts)
         except BaseException as error:
+            with self.lock:
+                self.active_contexts.discard(tmp_context)
             if self.enabled_for_cmap:
                 assert listeners is not None
                 listeners.publish_connection_closed(
@@ -1285,7 +1290,10 @@ class Pool:
 
         conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
         with self.lock:
+            self.active_contexts.discard(tmp_context)
             self.active_contexts.add(conn.cancel_context)
+        if tmp_context.cancelled:
+            conn.cancel_context.cancel()
         try:
             if self.handshake:
                 conn.hello()
@@ -1295,6 +1303,8 @@ class Pool:
 
             conn.authenticate()
         except BaseException:
+            with self.lock:
+                self.active_contexts.discard(conn.cancel_context)
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
