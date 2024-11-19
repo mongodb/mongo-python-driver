@@ -19,6 +19,8 @@ export test_serverless="${test_serverless:-}"
 export TEST_INDEX_MANAGEMENT="${TEST_INDEX_MANAGEMENT:-}"
 export TEST_DATA_LAKE="${TEST_DATA_LAKE:-}"
 export ORCHESTRATION_FILE="${ORCHESTRATION_FILE:-}"
+export AUTH="${AUTH:-noauth}"
+export SSL="${SSL:-nossl}"
 EOT
 
 chmod +x "$SCRIPT_DIR"/test-env.sh
