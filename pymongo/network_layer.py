@@ -29,6 +29,7 @@ from typing import (
 )
 
 from pymongo import _csot, ssl_support
+from pymongo._asyncio_task import create_task
 from pymongo.errors import _OperationCancelled
 from pymongo.socket_checker import _errno_from_exception
 
@@ -259,12 +260,12 @@ async def async_receive_data(
 
     sock.settimeout(0.0)
     loop = asyncio.get_event_loop()
-    cancellation_task = asyncio.create_task(_poll_cancellation(conn))
+    cancellation_task = create_task(_poll_cancellation(conn))
     try:
         if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
-            read_task = asyncio.create_task(_async_receive_ssl(sock, length, loop))  # type: ignore[arg-type]
+            read_task = create_task(_async_receive_ssl(sock, length, loop))  # type: ignore[arg-type]
         else:
-            read_task = asyncio.create_task(_async_receive(sock, length, loop))  # type: ignore[arg-type]
+            read_task = create_task(_async_receive(sock, length, loop))  # type: ignore[arg-type]
         tasks = [read_task, cancellation_task]
         done, pending = await asyncio.wait(
             tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED
