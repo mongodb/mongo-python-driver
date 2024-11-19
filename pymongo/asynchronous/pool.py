@@ -1296,8 +1296,8 @@ class Pool:
 
         conn = AsyncConnection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
         async with self.lock:
-            self.active_contexts.discard(tmp_context)
             self.active_contexts.add(conn.cancel_context)
+            self.active_contexts.discard(tmp_context)
         if tmp_context.cancelled:
             conn.cancel_context.cancel()
         try:
