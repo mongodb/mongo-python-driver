@@ -76,6 +76,7 @@ from pymongo.asynchronous.encryption import AsyncClientEncryption
 from pymongo.asynchronous.helpers import anext
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
+    AutoReconnect,
     BulkWriteError,
     ClientBulkWriteException,
     ConfigurationError,
@@ -755,9 +756,10 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         for client in clients:
             try:
                 await client.admin.command("killAllSessions", [])
-            except OperationFailure:
+            except (OperationFailure, AutoReconnect):
                 # "operation was interrupted" by killing the command's
                 # own session.
+                # On 8.0+ killAllSessions sometimes returns a network error.
                 pass
 
     async def _databaseOperation_listCollections(self, target, *args, **kwargs):
