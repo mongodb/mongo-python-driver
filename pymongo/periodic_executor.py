@@ -23,7 +23,7 @@ import time
 import weakref
 from typing import Any, Optional
 
-from pymongo._asyncio_task import _Task, create_task
+from pymongo._asyncio_task import create_task
 from pymongo.lock import _create_lock
 
 _IS_SYNC = False
@@ -52,7 +52,7 @@ class AsyncPeriodicExecutor:
         self._min_interval = min_interval
         self._target = target
         self._stopped = False
-        self._task: Optional[_Task] = None
+        self._task: Optional[asyncio.Task] = None
         self._name = name
         self._skip_sleep = False
 
@@ -64,7 +64,7 @@ class AsyncPeriodicExecutor:
         self._stopped = False
 
         if self._task is None or (
-            self._task.done() and not self._task.cancelled() and not self._task.is_cancelled()
+            self._task.done() and not self._task.cancelled() and not self._task.cancelling()  # type: ignore[unused-ignore, attr-defined]
         ):
             self._task = create_task(self._run(), name=self._name)
 
@@ -99,7 +99,7 @@ class AsyncPeriodicExecutor:
 
     async def _run(self) -> None:
         while not self._stopped:
-            if self._task and self._task.is_cancelled():
+            if self._task and self._task.cancelling():  # type: ignore[unused-ignore, attr-defined]
                 raise asyncio.CancelledError
             try:
                 if not await self._target():

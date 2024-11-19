@@ -19,9 +19,11 @@ Can be removed once we drop Python 3.10 support in favor of asyncio.Task.cancell
 from __future__ import annotations
 
 import asyncio
+import sys
 from typing import Any, Coroutine, Optional
 
 
+# TODO (https://jira.mongodb.org/browse/PYTHON-4981): Revisit once the underlying cause of the swallowed cancellations is uncovered
 class _Task(asyncio.Task):
     def __init__(self, coro: Coroutine[Any, Any, Any], *, name: Optional[str] = None) -> None:
         super().__init__(coro, name=name)
@@ -32,9 +34,11 @@ class _Task(asyncio.Task):
         self._cancelled = True
         return super().cancel(msg=msg)
 
-    def is_cancelled(self) -> bool:
+    def cancelling(self) -> bool:
         return self._cancelled
 
 
-def create_task(coro: Coroutine[Any, Any, Any], *, name: Optional[str] = None) -> _Task:
+def create_task(coro: Coroutine[Any, Any, Any], *, name: Optional[str] = None) -> asyncio.Task:
+    if sys.version_info >= (3, 11):
+        return asyncio.create_task(coro, name=name)
     return _Task(coro, name=name)
