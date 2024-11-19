@@ -925,35 +925,6 @@ def parse_spec_options(opts):
     if "maxCommitTimeMS" in opts:
         opts["max_commit_time_ms"] = opts.pop("maxCommitTimeMS")
 
-    if "hint" in opts:
-        hint = opts.pop("hint")
-        if not isinstance(hint, str):
-            hint = list(hint.items())
-        opts["hint"] = hint
-
-    # Properly format 'hint' arguments for the Bulk API tests.
-    if "requests" in opts:
-        reqs = opts.pop("requests")
-        for req in reqs:
-            if "name" in req:
-                # CRUD v2 format
-                args = req.pop("arguments", {})
-                if "hint" in args:
-                    hint = args.pop("hint")
-                    if not isinstance(hint, str):
-                        hint = list(hint.items())
-                    args["hint"] = hint
-                req["arguments"] = args
-            else:
-                # Unified test format
-                bulk_model, spec = next(iter(req.items()))
-                if "hint" in spec:
-                    hint = spec.pop("hint")
-                    if not isinstance(hint, str):
-                        hint = list(hint.items())
-                    spec["hint"] = hint
-        opts["requests"] = reqs
-
     return dict(opts)
 
 
