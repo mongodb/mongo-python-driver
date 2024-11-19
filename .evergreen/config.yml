@@ -40,7 +40,7 @@ functions:
     # Make an evergreen expansion file with dynamic values
     - command: subprocess.exec
       params:
-        include_expansions_in_env: ["is_patch", "project", "version_id", "AUTH", "SSL", "PYTHON_BINARY", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "SETDEFAULTENCODING", "test_loadbalancer", "test_serverless", "SKIP_CSOT_TESTS", "MONGODB_STARTED", "DISABLE_TEST_COMMANDS", "GREEN_FRAMEWORK", "NO_EXT", "COVERAGE", "COMPRESSORS", "TEST_SUITES", "MONGODB_API_VERSION", "SKIP_HATCH", "skip_crypt_shared", "VERSION", "TOPOLOGY", "STORAGE_ENGINE", "ORCHESTRATION_FILE", "REQUIRE_API_VERSION", "LOAD_BALANCER"]
+        include_expansions_in_env: ["is_patch", "project", "version_id", "AUTH", "SSL", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "SETDEFAULTENCODING", "test_loadbalancer", "test_serverless", "SKIP_CSOT_TESTS", "MONGODB_STARTED", "DISABLE_TEST_COMMANDS", "GREEN_FRAMEWORK", "NO_EXT", "COVERAGE", "COMPRESSORS", "TEST_SUITES", "MONGODB_API_VERSION", "SKIP_HATCH", "skip_crypt_shared", "VERSION", "TOPOLOGY", "STORAGE_ENGINE", "ORCHESTRATION_FILE", "REQUIRE_API_VERSION", "LOAD_BALANCER"]
         binary: bash
         working_dir: "src"
         args:
@@ -249,7 +249,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: [MOD_WSGI_VERSION, MOD_WSGI_EMBEDDED]
+        include_expansions_in_env: [MOD_WSGI_VERSION, MOD_WSGI_EMBEDDED, "PYTHON_BINARY"]
         working_dir: "src"
         binary: bash
         args:
@@ -260,6 +260,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
+        include_expansions_in_env: ["PYTHON_BINARY"]
         working_dir: "src"
         binary: bash
         args:
@@ -270,6 +271,7 @@ functions:
      - command: subprocess.exec
        type: test
        params:
+         include_expansions_in_env: [ "PYTHON_BINARY" ]
          working_dir: "src"
          binary: bash
          args:
@@ -298,7 +300,7 @@ functions:
       params:
         working_dir: "src"
         binary: bash
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "SINGLE_MONGOS_LB_URI", "MULTI_MONGOS_LB_URI", "TEST_SUITES"]
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY", "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "SINGLE_MONGOS_LB_URI", "MULTI_MONGOS_LB_URI", "TEST_SUITES"]
         args:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-tests.sh
@@ -309,7 +311,7 @@ functions:
       params:
         binary: bash
         working_dir: "src"
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
         args:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-enterprise-auth-tests.sh
@@ -319,7 +321,7 @@ functions:
       type: test
       params:
         binary: bash
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
         working_dir: "src"
         args:
           - .evergreen/scripts/run-with-env.sh
@@ -418,7 +420,8 @@ functions:
         working_dir: "src"
         args:
           - .evergreen/scripts/run-with-env.sh
-          - AWS_ROLE_SESSION_NAME="test" .evergreen/scripts/run-mongodb-aws-test.sh
+          - AWS_ROLE_SESSION_NAME="test"
+          - .evergreen/scripts/run-mongodb-aws-test.sh
           - web-identity
 
   "run aws auth test with aws credentials as environment variables":
@@ -582,7 +585,7 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED"]
+        include_expansions_in_env: ["OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED", "PYTHON_BINARY"]
         binary: bash
         working_dir: "src"
         args:
@@ -1564,6 +1567,7 @@ tasks:
         - command: subprocess.exec
           type: test
           params:
+            include_expansions_in_env: ["PYTHON_BINARY"]
             working_dir: "src"
             binary: "bash"
             args:
