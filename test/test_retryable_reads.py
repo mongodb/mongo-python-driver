@@ -174,9 +174,8 @@ class TestRetryableReads(IntegrationTest):
             retryReads=True,
         )
 
-        with self.fail_point(fail_command):
-            with self.assertRaises(AutoReconnect):
-                client.t.t.find_one({})
+        with self.assertRaises(AutoReconnect):
+            client.t.t.find_one({})
 
         # Disable failpoints on each mongos
         for client in mongos_clients:
