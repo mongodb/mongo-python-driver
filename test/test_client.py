@@ -1243,6 +1243,7 @@ class TestClient(IntegrationTest):
     def test_server_selection_timeout(self):
         client = MongoClient(serverSelectionTimeoutMS=100, connect=False)
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
+        client.close()
 
         client = MongoClient(serverSelectionTimeoutMS=0, connect=False)
 
@@ -1253,16 +1254,20 @@ class TestClient(IntegrationTest):
         self.assertRaises(
             ConfigurationError, MongoClient, serverSelectionTimeoutMS=None, connect=False
         )
+        client.close()
 
         client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=100", connect=False)
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
+        client.close()
 
         client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=0", connect=False)
         self.assertAlmostEqual(0, client.options.server_selection_timeout)
+        client.close()
 
         # Test invalid timeout in URI ignored and set to default.
         client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=-1", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
+        client.close()
 
         client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
