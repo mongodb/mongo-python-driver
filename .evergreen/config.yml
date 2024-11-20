@@ -37,6 +37,8 @@ functions:
     # Applies the subitted patch, if any
     # Deprecated. Should be removed. But still needed for certain agents (ZAP)
     - command: git.apply_patch
+
+  "setup system":
     # Make an evergreen expansion file with dynamic values
     - command: subprocess.exec
       params:
@@ -49,13 +51,19 @@ functions:
     - command: expansions.update
       params:
         file: src/expansion.yml
-
-  "prepare resources":
     - command: subprocess.exec
       params:
+        include_expansions_in_env: ["PROJECT_DIRECTORY", "DRIVERS_TOOLS"]
         binary: bash
         args:
           - src/.evergreen/scripts/prepare-resources.sh
+    # Run drivers-evergreen-tools system setup
+    - command: subprocess.exec
+      params:
+        include_expansions_in_env: ["PROJECT_DIRECTORY", "DRIVERS_TOOLS"]
+        binary: bash
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/setup.sh
 
   "upload coverage" :
     - command: ec2.assume_role
@@ -519,34 +527,6 @@ functions:
         args:
           - ${DRIVERS_TOOLS}/.evergreen/teardown.sh
 
-  "fix absolute paths":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - src/.evergreen/scripts/fix-absolute-paths.sh
-
-  "windows fix":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - src/.evergreen/scripts/windows-fix.sh
-
-  "make files executable":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - src/.evergreen/scripts/make-files-executable.sh
-
-  "init test-results":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - src/.evergreen/scripts/init-test-results.sh
-
   "install dependencies":
     - command: subprocess.exec
       params:
@@ -665,11 +645,7 @@ functions:
 
 pre:
   - func: "fetch source"
-  - func: "prepare resources"
-  - func: "windows fix"
-  - func: "fix absolute paths"
-  - func: "init test-results"
-  - func: "make files executable"
+  - func: "setup system"
   - func: "install dependencies"
   - func: "assume ec2 role"
 
@@ -691,7 +667,7 @@ task_groups:
     setup_group_timeout_secs: 1800 # 30 minutes
     setup_group:
       - func: "fetch source"
-      - func: "prepare resources"
+      - func: "setup system"
       - command: subprocess.exec
         params:
           binary: bash
@@ -714,9 +690,7 @@ task_groups:
     setup_group_timeout_secs: 1800 # 30 minutes
     setup_group:
       - func: fetch source
-      - func: prepare resources
-      - func: fix absolute paths
-      - func: make files executable
+      - func: setup system
       - command: subprocess.exec
         params:
           binary: bash
@@ -735,9 +709,7 @@ task_groups:
   - name: testazurekms_task_group
     setup_group:
       - func: fetch source
-      - func: prepare resources
-      - func: fix absolute paths
-      - func: make files executable
+      - func: setup system
       - command: subprocess.exec
         params:
           binary: bash
@@ -761,9 +733,7 @@ task_groups:
   - name: testazureoidc_task_group
     setup_group:
       - func: fetch source
-      - func: prepare resources
-      - func: fix absolute paths
-      - func: make files executable
+      - func: setup system
       - command: subprocess.exec
         params:
           binary: bash
@@ -785,9 +755,7 @@ task_groups:
   - name: testgcpoidc_task_group
     setup_group:
       - func: fetch source
-      - func: prepare resources
-      - func: fix absolute paths
-      - func: make files executable
+      - func: setup system
       - command: subprocess.exec
         params:
           binary: bash
@@ -809,9 +777,7 @@ task_groups:
   - name: testk8soidc_task_group
     setup_group:
       - func: fetch source
-      - func: prepare resources
-      - func: fix absolute paths
-      - func: make files executable
+      - func: setup system
       - command: ec2.assume_role
         params:
           role_arn: ${aws_test_secrets_role}
@@ -835,9 +801,7 @@ task_groups:
   - name: testoidc_task_group
     setup_group:
       - func: fetch source
-      - func: prepare resources
-      - func: fix absolute paths
-      - func: make files executable
+      - func: setup system
       - func: "assume ec2 role"
       - command: subprocess.exec
         params:
@@ -859,7 +823,7 @@ task_groups:
   - name: test_aws_lambda_task_group
     setup_group:
       - func: fetch source
-      - func: prepare resources
+      - func: setup system
       - func: setup atlas
     teardown_task:
       - func: teardown atlas
@@ -871,9 +835,7 @@ task_groups:
   - name: test_atlas_task_group_search_indexes
     setup_group:
       - func: fetch source
-      - func: prepare resources
-      - func: fix absolute paths
-      - func: make files executable
+      - func: setup system
       - func: setup atlas
     teardown_task:
       - func: teardown atlas
@@ -1584,7 +1546,7 @@ tasks:
     - name: testazurekms-fail-task
       commands:
       - func: fetch source
-      - func: make files executable
+      - func: setup system
       - func: "bootstrap mongo-orchestration"
         vars:
           VERSION: "latest"
