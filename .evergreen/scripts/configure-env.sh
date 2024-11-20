@@ -51,6 +51,8 @@ export SKIP_HATCH="${SKIP_HATCH:-}"
 export skip_crypt_shared="${skip_crypt_shared:-}"
 export STORAGE_ENGINE="${STORAGE_ENGINE:-}"
 export REQUIRE_API_VERSION="${REQUIRE_API_VERSION:-}"
+export skip_web_identity_auth_test="${skip_web_identity_auth_test:-}"
+export skip_ECS_auth_test="${skip_ECS_auth_test:-}"
 
 export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
 export PATH="$MONGODB_BINARIES:$PATH"

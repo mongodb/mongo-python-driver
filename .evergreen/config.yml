@@ -40,7 +40,7 @@ functions:
     # Make an evergreen expansion file with dynamic values
     - command: subprocess.exec
       params:
-        include_expansions_in_env: ["is_patch", "project", "version_id", "AUTH", "SSL", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "SETDEFAULTENCODING", "test_loadbalancer", "test_serverless", "SKIP_CSOT_TESTS", "MONGODB_STARTED", "DISABLE_TEST_COMMANDS", "GREEN_FRAMEWORK", "NO_EXT", "COVERAGE", "COMPRESSORS", "TEST_SUITES", "MONGODB_API_VERSION", "SKIP_HATCH", "skip_crypt_shared", "VERSION", "TOPOLOGY", "STORAGE_ENGINE", "ORCHESTRATION_FILE", "REQUIRE_API_VERSION", "LOAD_BALANCER"]
+        include_expansions_in_env: ["is_patch", "project", "version_id", "AUTH", "SSL", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "SETDEFAULTENCODING", "test_loadbalancer", "test_serverless", "SKIP_CSOT_TESTS", "MONGODB_STARTED", "DISABLE_TEST_COMMANDS", "GREEN_FRAMEWORK", "NO_EXT", "COVERAGE", "COMPRESSORS", "TEST_SUITES", "MONGODB_API_VERSION", "SKIP_HATCH", "skip_crypt_shared", "VERSION", "TOPOLOGY", "STORAGE_ENGINE", "ORCHESTRATION_FILE", "REQUIRE_API_VERSION", "LOAD_BALANCER", "skip_web_identity_auth_test", "skip_ECS_auth_test"]
         binary: bash
         working_dir: "src"
         args:
@@ -418,9 +418,10 @@ functions:
         include_expansions_in_env: [ "DRIVERS_TOOLS", "skip_EC2_auth_test" ]
         binary: bash
         working_dir: "src"
+        env:
+          AWS_ROLE_SESSION_NAME: test
         args:
           - .evergreen/scripts/run-with-env.sh
-          - AWS_ROLE_SESSION_NAME="test"
           - .evergreen/scripts/run-mongodb-aws-test.sh
           - web-identity
 
