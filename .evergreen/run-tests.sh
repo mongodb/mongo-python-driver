@@ -53,18 +53,18 @@ if [ -z "${NO_EXT:-}" ]; then
 fi
 
 if [ "$AUTH" != "noauth" ]; then
-    if [ ! -z "$TEST_DATA_LAKE" ]; then
+    if [ -n "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
-    elif [ ! -z "$TEST_SERVERLESS" ]; then
-        source ${DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh
+    elif [ -n "$TEST_SERVERLESS" ]; then
+        source "${DRIVERS_TOOLS}"/.evergreen/serverless/secrets-export.sh
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
         export MONGODB_URI="$SERVERLESS_URI"
         echo "MONGODB_URI=$MONGODB_URI"
         export SINGLE_MONGOS_LB_URI=$MONGODB_URI
         export MULTI_MONGOS_LB_URI=$MONGODB_URI
-    elif [ ! -z "$TEST_AUTH_OIDC" ]; then
+    elif [ -n "$TEST_AUTH_OIDC" ]; then
         export DB_USER=$OIDC_ADMIN_USER
         export DB_PASSWORD=$OIDC_ADMIN_PWD
         export DB_IP="$MONGODB_URI"

@@ -20,10 +20,9 @@ exec_timeout_secs: 3600 # 60 minutes is the longest we'll ever run (primarily
 
 # What to do when evergreen hits the timeout (`post:` tasks are run automatically)
 timeout:
-  - command: shell.exec
+  - command: subprocess.exec
     params:
-      script: |
-        ls -la
+      binary: ls -la
 
 include:
   - filename: .evergreen/generated_configs/tasks.yml
@@ -41,7 +40,7 @@ functions:
     # Make an evergreen expansion file with dynamic values
     - command: subprocess.exec
       params:
-        include_expansions_in_env: ["is_patch", "project", "version_id"]
+        include_expansions_in_env: ["is_patch", "project", "version_id", "AUTH", "SSL", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "SETDEFAULTENCODING", "test_loadbalancer", "test_serverless", "SKIP_CSOT_TESTS", "MONGODB_STARTED", "DISABLE_TEST_COMMANDS", "GREEN_FRAMEWORK", "NO_EXT", "COVERAGE", "COMPRESSORS", "TEST_SUITES", "MONGODB_API_VERSION", "SKIP_HATCH", "skip_crypt_shared", "VERSION", "TOPOLOGY", "STORAGE_ENGINE", "ORCHESTRATION_FILE", "REQUIRE_API_VERSION", "LOAD_BALANCER", "skip_web_identity_auth_test", "skip_ECS_auth_test"]
         binary: bash
         working_dir: "src"
         args:
@@ -52,19 +51,11 @@ functions:
         file: src/expansion.yml
 
   "prepare resources":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          . src/.evergreen/scripts/env.sh
-          set -o xtrace
-          rm -rf $DRIVERS_TOOLS
-          if [ "$PROJECT" = "drivers-tools" ]; then
-            # If this was a patch build, doing a fresh clone would not actually test the patch
-            cp -R ${PROJECT_DIRECTORY}/ ${DRIVERS_TOOLS}
-          else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git ${DRIVERS_TOOLS}
-          fi
-          echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
+        binary: bash
+        args:
+          - src/.evergreen/scripts/prepare-resources.sh
 
   "upload coverage" :
     - command: ec2.assume_role
@@ -88,14 +79,17 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${assume_role_arn}
-    - command: shell.exec
+    - command: subprocess.exec
       params:
         silent: true
+        binary: bash
         working_dir: "src"
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-        script: |
-          # Download all the task coverage files.
-          aws s3 cp --recursive s3://${bucket_name}/coverage/${revision}/${version_id}/coverage/ coverage/
+        args:
+          - .evergreen/scripts/download-and-merge-coverage.sh
+          - ${bucket_name}
+          - ${revision}
+          - ${version_id}
     - command: subprocess.exec
       params:
         working_dir: "src"
@@ -103,13 +97,17 @@ functions:
         args:
           - .evergreen/combine-coverage.sh
     # Upload the resulting html coverage report.
-    - command: shell.exec
+    - command: subprocess.exec
       params:
         silent: true
+        binary: bash
         working_dir: "src"
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-        script: |
-           aws s3 cp htmlcov/ s3://${bucket_name}/coverage/${revision}/${version_id}/htmlcov/ --recursive --acl public-read --region us-east-1
+        args:
+          - .evergreen/scripts/upload-coverage-report.sh
+          - ${bucket_name}
+          - ${revision}
+          - ${version_id}
     # Attach the index.html with s3.put so it shows up in the Evergreen UI.
     - command: s3.put
       params:
@@ -128,15 +126,6 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${assume_role_arn}
-    - command: shell.exec
-      params:
-        script: |
-          . src/.evergreen/scripts/env.sh
-          set -o xtrace
-          mkdir out_dir
-          find $MONGO_ORCHESTRATION_HOME -name \*.log -exec sh -c 'x="{}"; mv $x $PWD/out_dir/$(basename $(dirname $x))_$(basename $x)' \;
-          tar zcvf mongodb-logs.tar.gz -C out_dir/ .
-          rm -rf out_dir
     - command: archive.targz_pack
       params:
         target: "mongo-coredumps.tgz"
@@ -161,23 +150,12 @@ functions:
         aws_key: ${AWS_ACCESS_KEY_ID}
         aws_secret: ${AWS_SECRET_ACCESS_KEY}
         aws_session_token: ${AWS_SESSION_TOKEN}
-        local_file: mongodb-logs.tar.gz
-        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-mongodb-logs.tar.gz
+        local_file: ${DRIVERS_TOOLS}/.evergreen/test_logs.tar.gz
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-drivers-tools-logs.tar.gz
         bucket: ${bucket_name}
         permissions: public-read
         content_type: ${content_type|application/x-gzip}
-        display_name: "mongodb-logs.tar.gz"
-    - command: s3.put
-      params:
-        aws_key: ${AWS_ACCESS_KEY_ID}
-        aws_secret: ${AWS_SECRET_ACCESS_KEY}
-        aws_session_token: ${AWS_SESSION_TOKEN}
-        local_file: drivers-tools/.evergreen/orchestration/server.log
-        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-orchestration.log
-        bucket: ${bucket_name}
-        permissions: public-read
-        content_type: ${content_type|text/plain}
-        display_name: "orchestration.log"
+        display_name: "drivers-tools-logs.tar.gz"
 
   "upload working dir":
     - command: ec2.assume_role
@@ -230,54 +208,13 @@ functions:
         file: "src/xunit-results/TEST-*.xml"
 
   "bootstrap mongo-orchestration":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          . src/.evergreen/scripts/env.sh
-          set -o xtrace
-
-          # Enable core dumps if enabled on the machine
-          # Copied from https://github.com/mongodb/mongo/blob/master/etc/evergreen.yml
-          if [ -f /proc/self/coredump_filter ]; then
-            # Set the shell process (and its children processes) to dump ELF headers (bit 4),
-            # anonymous shared mappings (bit 1), and anonymous private mappings (bit 0).
-            echo 0x13 > /proc/self/coredump_filter
-
-            if [ -f /sbin/sysctl ]; then
-              # Check that the core pattern is set explicitly on our distro image instead
-              # of being the OS's default value. This ensures that coredump names are consistent
-              # across distros and can be picked up by Evergreen.
-              core_pattern=$(/sbin/sysctl -n "kernel.core_pattern")
-              if [ "$core_pattern" = "dump_%e.%p.core" ]; then
-                echo "Enabling coredumps"
-                ulimit -c unlimited
-              fi
-            fi
-          fi
-
-          if [ $(uname -s) = "Darwin" ]; then
-              core_pattern_mac=$(/usr/sbin/sysctl -n "kern.corefile")
-              if [ "$core_pattern_mac" = "dump_%N.%P.core" ]; then
-                echo "Enabling coredumps"
-                ulimit -c unlimited
-              fi
-          fi
-
-          if [ -n "${skip_crypt_shared}" ]; then
-            export SKIP_CRYPT_SHARED=1
-          fi
-
-          MONGODB_VERSION=${VERSION} \
-            TOPOLOGY=${TOPOLOGY} \
-            AUTH=${AUTH} \
-            SSL=${SSL} \
-            STORAGE_ENGINE=${STORAGE_ENGINE} \
-            DISABLE_TEST_COMMANDS=${DISABLE_TEST_COMMANDS} \
-            ORCHESTRATION_FILE=${ORCHESTRATION_FILE} \
-            REQUIRE_API_VERSION=${REQUIRE_API_VERSION} \
-            LOAD_BALANCER=${LOAD_BALANCER} \
-            bash ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
-    # run-orchestration generates expansion file with the MONGODB_URI for the cluster
+        binary: bash
+        include_expansions_in_env: ["VERSION", "TOPOLOGY", "AUTH", "SSL", "ORCHESTRATION_FILE", "LOAD_BALANCER"]
+        args:
+          - src/.evergreen/scripts/run-with-env.sh
+          - src/.evergreen/scripts/bootstrap-mongo-orchestration.sh
     - command: expansions.update
       params:
         file: mo-expansion.yml
@@ -288,167 +225,107 @@ functions:
             value: "1"
 
   "bootstrap data lake":
-    - command: shell.exec
+    - command: subprocess.exec
       type: setup
       params:
-        script: |
-          . src/.evergreen/scripts/env.sh
-          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
-    - command: shell.exec
+        binary: bash
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
+    - command: subprocess.exec
       type: setup
       params:
-        script: |
-          . src/.evergreen/scripts/env.sh
-          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
-          sleep 1
-          docker ps
+        binary: bash
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
 
   "stop mongo-orchestration":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          . src/.evergreen/scripts/env.sh
-          set -o xtrace
-          bash ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
+        binary: bash
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
   "run mod_wsgi tests":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
+        include_expansions_in_env: [MOD_WSGI_VERSION, MOD_WSGI_EMBEDDED, "PYTHON_BINARY"]
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          set -o xtrace
-          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} \
-            MOD_WSGI_EMBEDDED=${MOD_WSGI_EMBEDDED} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} \
-            bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
+        binary: bash
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-mod-wsgi-tests.sh
 
   "run mockupdb tests":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
+        include_expansions_in_env: ["PYTHON_BINARY"]
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          set -o xtrace
-          export PYTHON_BINARY=${PYTHON_BINARY}
-          bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-mockupdb
+        binary: bash
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-mockupdb-tests.sh
 
   "run doctests":
-     - command: shell.exec
+     - command: subprocess.exec
        type: test
        params:
+         include_expansions_in_env: [ "PYTHON_BINARY" ]
          working_dir: "src"
-         script: |
-           . .evergreen/scripts/env.sh
-           set -o xtrace
-           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh doctest:test
+         binary: bash
+         args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-doctests.sh
 
   "run tests":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
+        include_expansions_in_env: ["TEST_DATA_LAKE", "AUTH", "SSL", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE"]
+        binary: bash
         working_dir: "src"
-        shell: bash
-        background: true
-        include_expansions_in_env:  ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-        script: |
-          . .evergreen/scripts/env.sh
-          if [ -n "${test_encryption}" ]; then
-            ./.evergreen/hatch.sh encryption:setup
-          fi
-    - command: shell.exec
+        args:
+          - .evergreen/scripts/setup-tests.sh
+    - command: subprocess.exec
+      params:
+          working_dir: "src"
+          binary: bash
+          background: true
+          include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+          args:
+            - .evergreen/scripts/run-with-env.sh
+            - .evergreen/scripts/setup-encryption.sh
+    - command: subprocess.exec
       type: test
       params:
         working_dir: "src"
-        shell: bash
-        script: |
-          # Disable xtrace
-          set +x
-          . .evergreen/scripts/env.sh
-          if [ -n "${MONGODB_STARTED}" ]; then
-            export PYMONGO_MUST_CONNECT=true
-          fi
-          if [ -n "${DISABLE_TEST_COMMANDS}" ]; then
-            export PYMONGO_DISABLE_TEST_COMMANDS=1
-          fi
-          if [ -n "${test_encryption}" ]; then
-            # Disable xtrace (just in case it was accidentally set).
-            set +x
-            bash ${DRIVERS_TOOLS}/.evergreen/csfle/await-servers.sh
-            export TEST_ENCRYPTION=1
-            if [ -n "${test_encryption_pyopenssl}" ]; then
-              export TEST_ENCRYPTION_PYOPENSSL=1
-            fi
-          fi
-          if [ -n "${test_crypt_shared}" ]; then
-            export TEST_CRYPT_SHARED=1
-            export CRYPT_SHARED_LIB_PATH=${CRYPT_SHARED_LIB_PATH}
-          fi
-          if [ -n "${test_pyopenssl}" ]; then
-            export TEST_PYOPENSSL=1
-          fi
-          if [ -n "${SETDEFAULTENCODING}" ]; then
-            export SETDEFAULTENCODING="${SETDEFAULTENCODING}"
-          fi
-          if [ -n "${test_loadbalancer}" ]; then
-            export TEST_LOADBALANCER=1
-            export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
-            export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
-          fi
-          if [ -n "${test_serverless}" ]; then
-            export TEST_SERVERLESS=1
-          fi
-          if [ -n "${TEST_INDEX_MANAGEMENT}" ]; then
-            export TEST_INDEX_MANAGEMENT=1
-          fi
-          if [ -n "${SKIP_CSOT_TESTS}" ]; then
-            export SKIP_CSOT_TESTS=1
-          fi
-
-          GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
-            PYTHON_BINARY=${PYTHON_BINARY} \
-            NO_EXT=${NO_EXT} \
-            COVERAGE=${COVERAGE} \
-            COMPRESSORS=${COMPRESSORS} \
-            AUTH=${AUTH} \
-            SSL=${SSL} \
-            TEST_DATA_LAKE=${TEST_DATA_LAKE} \
-            TEST_SUITES=${TEST_SUITES} \
-            MONGODB_API_VERSION=${MONGODB_API_VERSION} \
-            SKIP_HATCH=${SKIP_HATCH} \
-            bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
+        binary: bash
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY", "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "SINGLE_MONGOS_LB_URI", "MULTI_MONGOS_LB_URI", "TEST_SUITES"]
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-tests.sh
 
   "run enterprise auth tests":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
+        binary: bash
         working_dir: "src"
-        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-        script: |
-          # Disable xtrace for security reasons (just in case it was accidentally set).
-          set +x
-          bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/enterprise_auth
-          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
-            PYTHON_BINARY="${PYTHON_BINARY}" \
-            TEST_ENTERPRISE_AUTH=1 \
-            AUTH=auth \
-            bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-enterprise-auth-tests.sh
 
   "run atlas tests":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+        binary: bash
+        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
         working_dir: "src"
-        script: |
-          # Disable xtrace for security reasons (just in case it was accidentally set).
-          set +x
-          set -o errexit
-          bash ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup_secrets.sh drivers/atlas_connect
-          PROJECT_DIRECTORY="${PROJECT_DIRECTORY}" \
-            PYTHON_BINARY="${PYTHON_BINARY}" \
-            TEST_ATLAS=1 \
-            bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-atlas-tests.sh
 
   "get aws auth secrets":
     - command: subprocess.exec
@@ -460,57 +337,140 @@ functions:
           - ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup-secrets.sh
 
   "run aws auth test with regular aws credentials":
-    - command: shell.exec
+    - command: subprocess.exec
+      params:
+        include_expansions_in_env: ["TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE"]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/setup-tests.sh
+    - command: subprocess.exec
       type: test
       params:
-        shell: "bash"
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
+        binary: bash
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          .evergreen/run-mongodb-aws-test.sh regular
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - regular
 
   "run aws auth test with assume role credentials":
-    - command: shell.exec
+    - command: subprocess.exec
+      params:
+        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/setup-tests.sh
+    - command: subprocess.exec
       type: test
       params:
-        shell: "bash"
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
+        binary: bash
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          .evergreen/run-mongodb-aws-test.sh assume-role
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - assume-role
 
   "run aws auth test with aws EC2 credentials":
-    - command: shell.exec
+    - command: subprocess.exec
+      params:
+        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/setup-tests.sh
+    - command: subprocess.exec
       type: test
       params:
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
+        binary: bash
         working_dir: "src"
-        shell: "bash"
-        script: |
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support the EC2 auth test, skipping..."
-             exit 0
-          fi
-          . .evergreen/scripts/env.sh
-          .evergreen/run-mongodb-aws-test.sh ec2
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - ec2
 
   "run aws auth test with aws web identity credentials":
-    - command: shell.exec
+    - command: subprocess.exec
+      params:
+        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/setup-tests.sh
+    - # Test with and without AWS_ROLE_SESSION_NAME set.
+    - command: subprocess.exec
       type: test
       params:
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
+        binary: bash
         working_dir: "src"
-        shell: "bash"
-        script: |
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
-             echo "This platform does not support the web identity auth test, skipping..."
-             exit 0
-          fi
-          . .evergreen/scripts/env.sh
-          # Test with and without AWS_ROLE_SESSION_NAME set.
-          .evergreen/run-mongodb-aws-test.sh web-identity
-          AWS_ROLE_SESSION_NAME="test" \
-            .evergreen/run-mongodb-aws-test.sh web-identity
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - web-identity
+    - command: subprocess.exec
+      type: test
+      params:
+        include_expansions_in_env: [ "DRIVERS_TOOLS", "skip_EC2_auth_test" ]
+        binary: bash
+        working_dir: "src"
+        env:
+          AWS_ROLE_SESSION_NAME: test
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - web-identity
+
+  "run aws auth test with aws credentials as environment variables":
+    - command: subprocess.exec
+      params:
+        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/setup-tests.sh
+    - command: subprocess.exec
+      type: test
+      params:
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - env-creds
+
+  "run aws auth test with aws credentials and session token as environment variables":
+    - command: subprocess.exec
+      params:
+        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/setup-tests.sh
+    - command: subprocess.exec
+      type: test
+      params:
+        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-mongodb-aws-test.sh
+          - session-creds
 
   "run oidc auth test with test credentials":
+    - command: subprocess.exec
+      params:
+        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/setup-tests.sh
     - command: subprocess.exec
       type: test
       params:
@@ -532,110 +492,69 @@ functions:
         args:
           - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
-  "run aws auth test with aws credentials as environment variables":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        shell: bash
-        script: |
-          . .evergreen/scripts/env.sh
-          .evergreen/run-mongodb-aws-test.sh env-creds
-
-  "run aws auth test with aws credentials and session token as environment variables":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        shell: bash
-        script: |
-          . .evergreen/scripts/env.sh
-          .evergreen/run-mongodb-aws-test.sh session-creds
-
   "run aws ECS auth test":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
-        shell: "bash"
+        binary: bash
         working_dir: "src"
-        script: |
-          if [ "${skip_ECS_auth_test}" = "true" ]; then
-             echo "This platform does not support the ECS auth test, skipping..."
-             exit 0
-          fi
-          . .evergreen/scripts/env.sh
-          set -ex
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate-authawsvenv.sh
-          . aws_setup.sh ecs
-          export MONGODB_BINARIES="$MONGODB_BINARIES";
-          export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
-          python aws_tester.py ecs
-          cd -
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-aws-ecs-auth-test.sh
 
   "cleanup":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
+        binary: bash
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          if [ -f $DRIVERS_TOOLS/.evergreen/csfle/secrets-export.sh ]; then
-            . .evergreen/hatch.sh encryption:teardown
-          fi
-          rm -rf ${DRIVERS_TOOLS} || true
-          rm -f ./secrets-export.sh || true
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/cleanup.sh
+
+  "teardown":
+    - command: subprocess.exec
+      params:
+        binary: bash
+        working_dir: "src"
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/teardown.sh
 
   "fix absolute paths":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          set +x
-          . src/.evergreen/scripts/env.sh
-          for filename in $(find ${DRIVERS_TOOLS} -name \*.json); do
-            perl -p -i -e "s|ABSOLUTE_PATH_REPLACEMENT_TOKEN|${DRIVERS_TOOLS}|g" $filename
-          done
+        binary: bash
+        args:
+          - src/.evergreen/scripts/fix-absolute-paths.sh
 
   "windows fix":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          set +x
-          . src/.evergreen/scripts/env.sh
-          for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
-            cat $i | tr -d '\r' > $i.new
-            mv $i.new $i
-          done
-          # Copy client certificate because symlinks do not work on Windows.
-          cp ${DRIVERS_TOOLS}/.evergreen/x509gen/client.pem $MONGO_ORCHESTRATION_HOME/lib/client.pem
+        binary: bash
+        args:
+          - src/.evergreen/scripts/windows-fix.sh
 
   "make files executable":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          set +x
-          . src/.evergreen/scripts/env.sh
-          for i in $(find ${DRIVERS_TOOLS}/.evergreen ${PROJECT_DIRECTORY}/.evergreen -name \*.sh); do
-            chmod +x $i
-          done
+        binary: bash
+        args:
+          - src/.evergreen/scripts/make-files-executable.sh
 
   "init test-results":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          set +x
-          . src/.evergreen/scripts/env.sh
-          echo '{"results": [{ "status": "FAIL", "test_file": "Build", "log_raw": "No test-results.json found was created"  } ]}' > ${PROJECT_DIRECTORY}/test-results.json
+        binary: bash
+        args:
+          - src/.evergreen/scripts/init-test-results.sh
 
   "install dependencies":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
+        binary: bash
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          set -o xtrace
-          file="${PROJECT_DIRECTORY}/.evergreen/install-dependencies.sh"
-          # Don't use ${file} syntax here because evergreen treats it as an empty expansion.
-          [ -f "$file" ] && bash $file || echo "$file not available, skipping"
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/install-dependencies.sh
 
   "assume ec2 role":
     - command: ec2.assume_role
@@ -657,18 +576,22 @@ functions:
         file: atlas-expansion.yml
 
   "run-ocsp-test":
-    - command: shell.exec
+    - command: subprocess.exec
+      params:
+        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
+        binary: bash
+        working_dir: "src"
+        args:
+          - .evergreen/scripts/setup-tests.sh
+    - command: subprocess.exec
       type: test
       params:
+        include_expansions_in_env: ["OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED", "PYTHON_BINARY"]
+        binary: bash
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          TEST_OCSP=1 \
-          PYTHON_BINARY=${PYTHON_BINARY} \
-          CA_FILE="${DRIVERS_TOOLS}/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
-          OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
-          bash ${PROJECT_DIRECTORY}/.evergreen/hatch.sh test:test-eg
-          bash ${DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-ocsp-test.sh
 
   "run-ocsp-server":
     - command: subprocess.exec
@@ -680,42 +603,38 @@ functions:
           - ${DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh
 
   "run load-balancer":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          DRIVERS_TOOLS=${DRIVERS_TOOLS} MONGODB_URI=${MONGODB_URI} bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh start
+        binary: bash
+        include_expansions_in_env: ["MONGODB_URI"]
+        args:
+          - src/.evergreen/scripts/run-with-env.sh
+          - src/.evergreen/scripts/run-load-balancer.sh
     - command: expansions.update
       params:
         file: lb-expansion.yml
 
   "stop load-balancer":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          cd ${DRIVERS_TOOLS}/.evergreen
-          DRIVERS_TOOLS=${DRIVERS_TOOLS} bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh stop
+        binary: bash
+        args:
+          - src/.evergreen/scripts/stop-load-balancer.sh
 
   "teardown_docker":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        script: |
-          # Remove all Docker images
-          DOCKER=$(command -v docker) || true
-          if [ -n "$DOCKER" ]; then
-            docker rmi -f $(docker images -a -q) &> /dev/null || true
-          fi
+        binary: bash
+        args:
+          - src/.evergreen/scripts/teardown-docker.sh
 
   "teardown_aws":
-    - command: shell.exec
+    - command: subprocess.exec
       params:
-        shell: "bash"
-        script: |
-          . src/.evergreen/scripts/env.sh
-          cd "${DRIVERS_TOOLS}/.evergreen/auth_aws"
-          if [ -f "./aws_e2e_setup.json" ]; then
-            . ./activate-authawsvenv.sh
-            python ./lib/aws_assign_instance_profile.py
-          fi
+        binary: bash
+        args:
+          - src/.evergreen/scripts/run-with-env.sh
+          - src/.evergreen/scripts/teardown-aws.sh
 
   "teardown atlas":
     - command: subprocess.exec
@@ -725,13 +644,14 @@ functions:
           - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
 
   "run perf tests":
-    - command: shell.exec
+    - command: subprocess.exec
       type: test
       params:
         working_dir: "src"
-        script: |
-          . .evergreen/scripts/env.sh
-          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-perf-tests.sh
+        binary: bash
+        args:
+          - .evergreen/scripts/run-with-env.sh
+          - .evergreen/scripts/run-perf-tests.sh
 
   "attach benchmark test results":
     - command: attach.results
@@ -756,6 +676,7 @@ pre:
 post:
   # Disabled, causing timeouts
   # - func: "upload working dir"
+  - func: "teardown"
   - func: "upload coverage"
   - func: "upload mo artifacts"
   - func: "upload test results"
@@ -798,13 +719,13 @@ task_groups:
       - func: make files executable
       - command: subprocess.exec
         params:
-          binary: "bash"
+          binary: bash
           args:
             - ${DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
     teardown_task:
       - command: subprocess.exec
         params:
-          binary: "bash"
+          binary: bash
           args:
             - ${DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/delete-instance.sh
       - func: "upload test results"
@@ -966,31 +887,12 @@ tasks:
     # Throw it here, and execute this task on all buildvariants
     - name: getdata
       commands:
-        - command: shell.exec
+        - command: subprocess.exec
+          binary: bash
           type: test
           params:
-            script: |
-               set -o xtrace
-               . ${DRIVERS_TOOLS}/.evergreen/download-mongodb.sh || true
-               get_distro || true
-               echo $DISTRO
-               echo $MARCH
-               echo $OS
-               uname -a || true
-               ls /etc/*release* || true
-               cc --version || true
-               gcc --version || true
-               clang --version || true
-               gcov --version || true
-               lcov --version || true
-               llvm-cov --version || true
-               echo $PATH
-               ls -la /usr/local/Cellar/llvm/*/bin/ || true
-               ls -la /usr/local/Cellar/ || true
-               scan-build --version || true
-               genhtml --version || true
-               valgrind --version || true
-
+            args:
+              - src/.evergreen/scripts/run-getdata.sh
 # Standard test tasks {{{
 
     - name: "mockupdb"
@@ -1647,7 +1549,7 @@ tasks:
           type: setup
           params:
             working_dir: "src"
-            binary: "bash"
+            binary: bash
             include_expansions_in_env: ["DRIVERS_TOOLS"]
             args:
               - .evergreen/run-gcpkms-test.sh
@@ -1660,17 +1562,14 @@ tasks:
           vars:
             VERSION: "latest"
             TOPOLOGY: "server"
-        - command: shell.exec
+        - command: subprocess.exec
           type: test
           params:
+            include_expansions_in_env: ["PYTHON_BINARY"]
             working_dir: "src"
-            shell: "bash"
-            script: |
-              . .evergreen/scripts/env.sh
-              export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
-              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
-              SKIP_SERVERS=1 bash ./.evergreen/setup-encryption.sh
-              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/hatch.sh test:test-eg
+            binary: "bash"
+            args:
+              - .evergreen/scripts/run-gcpkms-fail-test.sh
 
     - name: testazurekms-task
       commands:
@@ -1736,18 +1635,15 @@ tasks:
     - name: "check-import-time"
       tags: ["pr"]
       commands:
-        - command: shell.exec
+        - command: subprocess.exec
           type: test
           params:
-            shell: "bash"
+            binary: bash
             working_dir: src
-            script: |
-              . .evergreen/scripts/env.sh
-              set -x
-              export BASE_SHA=${revision}
-              export HEAD_SHA=${github_commit}
-              bash .evergreen/run-import-time-test.sh
-
+            args:
+              - .evergreen/scripts/check-import-time.sh
+              - ${revision}
+              - ${github_commit}
     - name: "backport-pr"
       allowed_requesters: ["commit"]
       commands:
