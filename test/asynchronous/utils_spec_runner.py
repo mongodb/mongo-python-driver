@@ -46,7 +46,7 @@ from gridfs.asynchronous.grid_file import AsyncGridFSBucket
 from pymongo.asynchronous import client_session
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
-from pymongo.errors import BulkWriteError, OperationFailure, PyMongoError
+from pymongo.errors import AutoReconnect, BulkWriteError, OperationFailure, PyMongoError
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
@@ -335,9 +335,10 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         for client in clients:
             try:
                 await client.admin.command("killAllSessions", [])
-            except OperationFailure:
+            except (OperationFailure, AutoReconnect):
                 # "operation was interrupted" by killing the command's
                 # own session.
+                # On 8.0+ killAllSessions sometimes returns a network error.
                 pass
 
     def check_command_result(self, expected_result, result):

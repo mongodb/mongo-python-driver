@@ -13,7 +13,10 @@
     {
       "client": {
         "id": "client0",
-        "useMultipleMongoses": false
+        "useMultipleMongoses": false,
+        "observeEvents": [
+          "commandStartedEvent"
+        ]
       }
     },
     {
@@ -118,6 +121,53 @@
             {
               "_id": 2,
               "x": 23
+            }
+          ]
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "insert",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": true
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "commandName": "insert",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": true
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "commandName": "update",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": true
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "commandName": "delete",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": true
+                  }
+                }
+              }
             }
           ]
         }
@@ -507,6 +557,33 @@
             {
               "_id": 3,
               "x": 33
+            }
+          ]
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "insert",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": true
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "commandName": "insert",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": true
+                  }
+                }
+              }
             }
           ]
         }
@@ -922,6 +999,81 @@
             {
               "_id": 2,
               "x": 22
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "collection bulkWrite with updateMany does not set txnNumber",
+      "operations": [
+        {
+          "object": "collection0",
+          "name": "bulkWrite",
+          "arguments": {
+            "requests": [
+              {
+                "updateMany": {
+                  "filter": {},
+                  "update": {
+                    "$set": {
+                      "x": 1
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "update",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": false
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "collection bulkWrite with deleteMany does not set txnNumber",
+      "operations": [
+        {
+          "object": "collection0",
+          "name": "bulkWrite",
+          "arguments": {
+            "requests": [
+              {
+                "deleteMany": {
+                  "filter": {}
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "delete",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": false
+                  }
+                }
+              }
             }
           ]
         }

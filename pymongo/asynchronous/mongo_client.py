@@ -1200,7 +1200,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     ResourceWarning,
                     stacklevel=2,
                 )
-        except AttributeError:
+        except (AttributeError, TypeError):
+            # Ignore errors at interpreter exit.
             pass
 
     def _close_cursor_soon(

@@ -43,7 +43,7 @@ from bson.int64 import Int64
 from bson.son import SON
 from gridfs import GridFSBucket
 from gridfs.synchronous.grid_file import GridFSBucket
-from pymongo.errors import BulkWriteError, OperationFailure, PyMongoError
+from pymongo.errors import AutoReconnect, BulkWriteError, OperationFailure, PyMongoError
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
@@ -335,9 +335,10 @@ class SpecRunner(IntegrationTest):
         for client in clients:
             try:
                 client.admin.command("killAllSessions", [])
-            except OperationFailure:
+            except (OperationFailure, AutoReconnect):
                 # "operation was interrupted" by killing the command's
                 # own session.
+                # On 8.0+ killAllSessions sometimes returns a network error.
                 pass
 
     def check_command_result(self, expected_result, result):

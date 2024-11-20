@@ -1,0 +1,77 @@
+{
+  "description": "unacknowledged write does not set txnNumber",
+  "schemaVersion": "1.3",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "3.6",
+      "topologies": [
+        "replicaset",
+        "sharded",
+        "load-balanced"
+      ]
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "observeEvents": [
+          "commandStartedEvent"
+        ]
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "retryable-writes-tests"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "coll0",
+        "collectionOptions": {
+          "writeConcern": {
+            "w": 0
+          }
+        }
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "unacknowledged write does not set txnNumber",
+      "operations": [
+        {
+          "object": "collection0",
+          "name": "insertOne",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": 11
+            }
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "insert",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": false
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

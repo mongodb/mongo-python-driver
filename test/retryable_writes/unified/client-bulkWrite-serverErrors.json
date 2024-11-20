@@ -428,7 +428,10 @@
                     {
                       "ns": "retryable-writes-tests.coll0"
                     }
-                  ]
+                  ],
+                  "txnNumber": {
+                    "$$exists": false
+                  }
                 }
               }
             }
@@ -779,7 +782,10 @@
                     {
                       "ns": "retryable-writes-tests.coll0"
                     }
-                  ]
+                  ],
+                  "txnNumber": {
+                    "$$exists": false
+                  }
                 }
               }
             }
@@ -861,7 +867,10 @@
                     {
                       "ns": "retryable-writes-tests.coll0"
                     }
-                  ]
+                  ],
+                  "txnNumber": {
+                    "$$exists": false
+                  }
                 }
               }
             }
