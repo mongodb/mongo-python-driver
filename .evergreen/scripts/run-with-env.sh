@@ -18,4 +18,4 @@ fi
 set -eu
 
 # shellcheck source=/dev/null
-. "$1" "${@:2}"
+. "$@"
