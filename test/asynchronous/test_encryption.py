@@ -1483,6 +1483,7 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
     client: AsyncMongoClient
 
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.client = self.simple_client()
         keyvault = self.client.get_database(self.KEYVAULT_DB).get_collection(self.KEYVAULT_COLL)
         await create_key_vault(keyvault, self.DEK)

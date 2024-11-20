@@ -1477,6 +1477,7 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
     client: MongoClient
 
     def setUp(self):
+        super().setUp()
         self.client = self.simple_client()
         keyvault = self.client.get_database(self.KEYVAULT_DB).get_collection(self.KEYVAULT_COLL)
         create_key_vault(keyvault, self.DEK)
