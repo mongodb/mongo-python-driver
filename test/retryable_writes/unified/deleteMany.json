@@ -15,7 +15,10 @@
     {
       "client": {
         "id": "client0",
-        "useMultipleMongoses": true
+        "useMultipleMongoses": true,
+        "observeEvents": [
+          "commandStartedEvent"
+        ]
       }
     },
     {
@@ -69,6 +72,23 @@
           "collectionName": "coll",
           "databaseName": "retryable-writes-tests",
           "documents": []
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "delete",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": false
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
     }

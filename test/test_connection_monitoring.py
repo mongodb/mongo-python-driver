@@ -216,11 +216,6 @@ class TestCMAP(IntegrationTest):
 
     def run_scenario(self, scenario_def, test):
         """Run a CMAP spec test."""
-        if (
-            scenario_def["description"]
-            == "clear with interruptInUseConnections = true closes pending connections"
-        ):
-            self.skipTest("Skip pending PYTHON-4414")
         self.logs: list = []
         self.assertEqual(scenario_def["version"], 1)
         self.assertIn(scenario_def["style"], ["unit", "integration"])

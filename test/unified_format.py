@@ -69,6 +69,7 @@ from gridfs import GridFSBucket, GridOut
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
+    AutoReconnect,
     BulkWriteError,
     ClientBulkWriteException,
     ConfigurationError,
@@ -543,15 +544,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 or "Cancel server check" in spec["description"]
             ):
                 self.skipTest("MMAPv1 does not support retryWrites=True")
-        if (
-            "Database-level aggregate with $out includes read preference for 5.0+ server"
-            in spec["description"]
-        ):
-            if client_context.version[0] == 8:
-                self.skipTest("waiting on PYTHON-4356")
-        if "Aggregate with $out includes read preference for 5.0+ server" in spec["description"]:
-            if client_context.version[0] == 8:
-                self.skipTest("waiting on PYTHON-4356")
         if "Client side error in command starting transaction" in spec["description"]:
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
@@ -760,9 +752,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         for client in clients:
             try:
                 client.admin.command("killAllSessions", [])
-            except OperationFailure:
+            except (OperationFailure, AutoReconnect):
                 # "operation was interrupted" by killing the command's
                 # own session.
+                # On 8.0+ killAllSessions sometimes returns a network error.
                 pass
 
     def _databaseOperation_listCollections(self, target, *args, **kwargs):
