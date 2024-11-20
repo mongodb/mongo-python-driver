@@ -47,6 +47,11 @@ else
   echo "Not sourcing secrets"
 fi
 
+# Ensure C extensions have compiled.
+if [ -z "${NO_EXT:-}" ]; then
+    python tools/fail_if_no_c.py
+fi
+
 if [ "$AUTH" != "noauth" ]; then
     if [ ! -z "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
