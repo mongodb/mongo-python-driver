@@ -27,15 +27,20 @@ from typing import Any, Coroutine, Optional
 class _Task(asyncio.Task):
     def __init__(self, coro: Coroutine[Any, Any, Any], *, name: Optional[str] = None) -> None:
         super().__init__(coro, name=name)
-        self._cancelled: bool = False
+        self._cancel_requests = 0
         asyncio._register_task(self)
 
     def cancel(self, msg: Optional[str] = None) -> bool:
-        self._cancelled = True
+        self._cancel_requests += 1
         return super().cancel(msg=msg)
 
-    def cancelling(self) -> bool:
-        return self._cancelled
+    def uncancel(self) -> int:
+        if self._cancel_requests > 0:
+            self._cancel_requests -= 1
+        return self._cancel_requests
+
+    def cancelling(self) -> int:
+        return self._cancel_requests
 
 
 def create_task(coro: Coroutine[Any, Any, Any], *, name: Optional[str] = None) -> asyncio.Task:
