@@ -924,7 +924,7 @@ task_groups:
           include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
           env:
             # PYTHON-4447
-            MONGODB_VERSION: "8.0"
+            MONGODB_VERSION: "latest"
           args:
             - ${DRIVERS_TOOLS}/.evergreen/auth_oidc/setup.sh
     teardown_task:
