@@ -78,6 +78,7 @@ testinstall () {
     PYTHON=$1
     RELEASE=$2
     NO_VIRTUALENV=$3
+    PYTHON_IMPL=$(python -c "import platform; print(platform.python_implementation())")
 
     if [ -z "$NO_VIRTUALENV" ]; then
         createvirtualenv $PYTHON venvtestinstall
@@ -86,7 +87,11 @@ testinstall () {
 
     $PYTHON -m pip install --upgrade $RELEASE
     cd tools
-    $PYTHON fail_if_no_c.py
+
+    if [ "$PYTHON_IMPL" = "CPython" ]; then
+        $PYTHON fail_if_no_c.py
+    fi
+
     $PYTHON -m pip uninstall -y pymongo
     cd ..
 
