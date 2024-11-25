@@ -519,7 +519,7 @@ functions:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/cleanup.sh
 
-  "teardown":
+  "teardown system":
     - command: subprocess.exec
       params:
         binary: bash
@@ -601,20 +601,13 @@ functions:
         args:
           - src/.evergreen/scripts/stop-load-balancer.sh
 
-  "teardown_docker":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - src/.evergreen/scripts/teardown-docker.sh
-
-  "teardown_aws":
+  "teardown":
     - command: subprocess.exec
       params:
         binary: bash
         args:
           - src/.evergreen/scripts/run-with-env.sh
-          - src/.evergreen/scripts/teardown-aws.sh
+          - src/.evergreen/scripts/teardown.sh
 
   "teardown atlas":
     - command: subprocess.exec
@@ -652,14 +645,13 @@ pre:
 post:
   # Disabled, causing timeouts
   # - func: "upload working dir"
+  - func: "teardown system"
   - func: "teardown"
   - func: "upload coverage"
   - func: "upload mo artifacts"
   - func: "upload test results"
   - func: "stop mongo-orchestration"
-  - func: "teardown_aws"
   - func: "cleanup"
-  - func: "teardown_docker"
 
 task_groups:
   - name: serverless_task_group
@@ -1602,6 +1594,7 @@ tasks:
           params:
             binary: bash
             working_dir: src
+            include_expansions_in_env: ["PYTHON_BINARY"]
             args:
               - .evergreen/scripts/check-import-time.sh
               - ${revision}
