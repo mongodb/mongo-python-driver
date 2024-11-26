@@ -29,7 +29,7 @@ from test.utils import (
     wait_until,
 )
 
-from pymongo.synchronous.periodic_executor import _EXECUTORS
+from pymongo.periodic_executor import _EXECUTORS
 
 
 def unregistered(ref):

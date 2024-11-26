@@ -42,15 +42,11 @@ class AsyncBulkTestBase(AsyncIntegrationTest):
     coll: AsyncCollection
     coll_w0: AsyncCollection
 
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.coll = cls.db.test
-        cls.coll_w0 = cls.coll.with_options(write_concern=WriteConcern(w=0))
-
     async def asyncSetUp(self):
-        super().setUp()
+        await super().asyncSetUp()
+        self.coll = self.db.test
         await self.coll.drop()
+        self.coll_w0 = self.coll.with_options(write_concern=WriteConcern(w=0))
 
     def assertEqualResponse(self, expected, actual):
         """Compare response from bulk.execute() to expected response."""
@@ -787,14 +783,10 @@ class AsyncTestBulk(AsyncBulkTestBase):
 
 
 class AsyncBulkAuthorizationTestBase(AsyncBulkTestBase):
-    @classmethod
     @async_client_context.require_auth
     @async_client_context.require_no_api_version
-    async def _setup_class(cls):
-        await super()._setup_class()
-
     async def asyncSetUp(self):
-        super().setUp()
+        await super().asyncSetUp()
         await async_client_context.create_user(self.db.name, "readonly", "pw", ["read"])
         await self.db.command(
             "createRole",
@@ -937,21 +929,19 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
     w: Optional[int]
     secondary: AsyncMongoClient
 
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.w = async_client_context.w
-        cls.secondary = None
-        if cls.w is not None and cls.w > 1:
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.w = async_client_context.w
+        self.secondary = None
+        if self.w is not None and self.w > 1:
             for member in (await async_client_context.hello)["hosts"]:
                 if member != (await async_client_context.hello)["primary"]:
-                    cls.secondary = await cls.unmanaged_async_single_client(*partition_node(member))
+                    self.secondary = await self.async_single_client(*partition_node(member))
                     break
 
-    @classmethod
-    async def async_tearDownClass(cls):
-        if cls.secondary:
-            await cls.secondary.close()
+    async def asyncTearDown(self):
+        if self.secondary:
+            await self.secondary.close()
 
     async def cause_wtimeout(self, requests, ordered):
         if not async_client_context.test_commands_enabled:

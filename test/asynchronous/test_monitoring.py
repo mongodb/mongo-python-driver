@@ -52,22 +52,16 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
     listener: EventListener
 
     @classmethod
-    @async_client_context.require_connection
-    async def _setup_class(cls):
-        await super()._setup_class()
+    def setUpClass(cls) -> None:
         cls.listener = OvertCommandListener()
-        cls.client = await cls.unmanaged_async_rs_or_single_client(
-            event_listeners=[cls.listener], retryWrites=False
-        )
 
-    @classmethod
-    async def _tearDown_class(cls):
-        await cls.client.close()
-        await super()._tearDown_class()
-
-    async def asyncTearDown(self):
+    @async_client_context.require_connection
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
         self.listener.reset()
-        await super().asyncTearDown()
+        self.client = await self.async_rs_or_single_client(
+            event_listeners=[self.listener], retryWrites=False
+        )
 
     async def test_started_simple(self):
         await self.client.pymongo_test.command("ping")
@@ -1140,26 +1134,23 @@ class AsyncTestGlobalListener(AsyncIntegrationTest):
     saved_listeners: Any
 
     @classmethod
-    @async_client_context.require_connection
-    async def _setup_class(cls):
-        await super()._setup_class()
+    def setUpClass(cls) -> None:
         cls.listener = OvertCommandListener()
         # We plan to call register(), which internally modifies _LISTENERS.
         cls.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
         monitoring.register(cls.listener)
-        cls.client = await cls.unmanaged_async_single_client()
-        # Get one (authenticated) socket in the pool.
-        await cls.client.pymongo_test.command("ping")
 
-    @classmethod
-    async def _tearDown_class(cls):
-        monitoring._LISTENERS = cls.saved_listeners
-        await cls.client.close()
-        await super()._tearDown_class()
-
+    @async_client_context.require_connection
     async def asyncSetUp(self):
         await super().asyncSetUp()
         self.listener.reset()
+        self.client = await self.async_single_client()
+        # Get one (authenticated) socket in the pool.
+        await self.client.pymongo_test.command("ping")
+
+    @classmethod
+    def tearDownClass(cls):
+        monitoring._LISTENERS = cls.saved_listeners
 
     async def test_simple(self):
         await self.client.pymongo_test.command("ping")

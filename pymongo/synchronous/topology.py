@@ -27,7 +27,7 @@ import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
-from pymongo import _csot, common, helpers_shared
+from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo.errors import (
     ConnectionFailure,
     InvalidOperation,
@@ -39,7 +39,11 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.hello import Hello
-from pymongo.lock import _create_lock, _Lock
+from pymongo.lock import (
+    _cond_wait,
+    _create_condition,
+    _create_lock,
+)
 from pymongo.logger import (
     _SDAM_LOGGER,
     _SERVER_SELECTION_LOGGER,
@@ -56,7 +60,6 @@ from pymongo.server_selectors import (
     secondary_server_selector,
     writable_server_selector,
 )
-from pymongo.synchronous import periodic_executor
 from pymongo.synchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.synchronous.monitor import SrvMonitor
 from pymongo.synchronous.pool import Pool
@@ -170,9 +173,10 @@ class Topology:
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
         self._closed = False
-        _lock = _create_lock()
-        self._lock = _Lock(_lock)
-        self._condition = self._settings.condition_class(_lock)
+        self._lock = _create_lock()
+        self._condition = _create_condition(
+            self._lock, self._settings.condition_class if _IS_SYNC else None
+        )
         self._servers: dict[_Address, Server] = {}
         self._pid: Optional[int] = None
         self._max_cluster_time: Optional[ClusterTime] = None
@@ -354,7 +358,7 @@ class Topology:
             # change, or for a timeout. We won't miss any changes that
             # came after our most recent apply_selector call, since we've
             # held the lock until now.
-            self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
+            _cond_wait(self._condition, common.MIN_HEARTBEAT_INTERVAL)
             self._description.check_compatible()
             now = time.monotonic()
             server_descriptions = self._description.apply_selector(
@@ -652,7 +656,7 @@ class Topology:
         """Wake all monitors, wait for at least one to check its server."""
         with self._lock:
             self._request_check_all()
-            self._condition.wait(wait_time)
+            _cond_wait(self._condition, wait_time)
 
     def data_bearing_servers(self) -> list[ServerDescription]:
         """Return a list of all data-bearing servers.

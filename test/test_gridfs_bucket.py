@@ -79,13 +79,10 @@ class TestGridfs(IntegrationTest):
     fs: gridfs.GridFSBucket
     alt: gridfs.GridFSBucket
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.fs = gridfs.GridFSBucket(cls.db)
-        cls.alt = gridfs.GridFSBucket(cls.db, bucket_name="alt")
-
     def setUp(self):
+        super().setUp()
+        self.fs = gridfs.GridFSBucket(self.db)
+        self.alt = gridfs.GridFSBucket(self.db, bucket_name="alt")
         self.cleanup_colls(
             self.db.fs.files, self.db.fs.chunks, self.db.alt.files, self.db.alt.chunks
         )
@@ -479,10 +476,9 @@ class TestGridfs(IntegrationTest):
 
 
 class TestGridfsBucketReplicaSet(IntegrationTest):
-    @classmethod
     @client_context.require_secondaries_count(1)
-    def setUpClass(cls):
-        super().setUpClass()
+    def setUp(self):
+        super().setUp()
 
     @classmethod
     def tearDownClass(cls):

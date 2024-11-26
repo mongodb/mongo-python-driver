@@ -27,8 +27,7 @@ import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
 
-from pymongo import _csot, common, helpers_shared
-from pymongo.asynchronous import periodic_executor
+from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import SrvMonitor
 from pymongo.asynchronous.pool import Pool
@@ -44,7 +43,11 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.hello import Hello
-from pymongo.lock import _ACondition, _ALock, _create_lock
+from pymongo.lock import (
+    _async_cond_wait,
+    _async_create_condition,
+    _async_create_lock,
+)
 from pymongo.logger import (
     _SDAM_LOGGER,
     _SERVER_SELECTION_LOGGER,
@@ -170,9 +173,10 @@ class Topology:
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
         self._closed = False
-        _lock = _create_lock()
-        self._lock = _ALock(_lock)
-        self._condition = _ACondition(self._settings.condition_class(_lock))
+        self._lock = _async_create_lock()
+        self._condition = _async_create_condition(
+            self._lock, self._settings.condition_class if _IS_SYNC else None
+        )
         self._servers: dict[_Address, Server] = {}
         self._pid: Optional[int] = None
         self._max_cluster_time: Optional[ClusterTime] = None
@@ -185,7 +189,7 @@ class Topology:
             async def target() -> bool:
                 return process_events_queue(weak)
 
-            executor = periodic_executor.PeriodicExecutor(
+            executor = periodic_executor.AsyncPeriodicExecutor(
                 interval=common.EVENTS_QUEUE_FREQUENCY,
                 min_interval=common.MIN_HEARTBEAT_INTERVAL,
                 target=target,
@@ -354,7 +358,7 @@ class Topology:
             # change, or for a timeout. We won't miss any changes that
             # came after our most recent apply_selector call, since we've
             # held the lock until now.
-            await self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
+            await _async_cond_wait(self._condition, common.MIN_HEARTBEAT_INTERVAL)
             self._description.check_compatible()
             now = time.monotonic()
             server_descriptions = self._description.apply_selector(
@@ -654,7 +658,7 @@ class Topology:
         """Wake all monitors, wait for at least one to check its server."""
         async with self._lock:
             self._request_check_all()
-            await self._condition.wait(wait_time)
+            await _async_cond_wait(self._condition, wait_time)
 
     def data_bearing_servers(self) -> list[ServerDescription]:
         """Return a list of all data-bearing servers.
@@ -742,7 +746,7 @@ class Topology:
         if self._publish_server or self._publish_tp:
             # Make sure the events executor thread is fully closed before publishing the remaining events
             self.__events_executor.close()
-            self.__events_executor.join(1)
+            await self.__events_executor.join(1)
             process_events_queue(weakref.ref(self._events))  # type: ignore[arg-type]
 
     @property

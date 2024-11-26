@@ -82,36 +82,27 @@ class TestSession(IntegrationTest):
     client2: MongoClient
     sensitive_commands: Set[str]
 
-    @classmethod
     @client_context.require_sessions
-    def _setup_class(cls):
-        super()._setup_class()
+    def setUp(self):
+        super().setUp()
         # Create a second client so we can make sure clients cannot share
         # sessions.
-        cls.client2 = cls.unmanaged_rs_or_single_client()
+        self.client2 = self.rs_or_single_client()
 
         # Redact no commands, so we can test user-admin commands have "lsid".
-        cls.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
+        self.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
         monitoring._SENSITIVE_COMMANDS.clear()
 
-    @classmethod
-    def _tearDown_class(cls):
-        monitoring._SENSITIVE_COMMANDS.update(cls.sensitive_commands)
-        cls.client2.close()
-        super()._tearDown_class()
-
-    def setUp(self):
         self.listener = SessionTestListener()
         self.session_checker_listener = SessionTestListener()
         self.client = self.rs_or_single_client(
             event_listeners=[self.listener, self.session_checker_listener]
         )
-        self.addCleanup(self.client.close)
         self.db = self.client.pymongo_test
         self.initial_lsids = {s["id"] for s in session_ids(self.client)}
 
     def tearDown(self):
-        """All sessions used in the test must be returned to the pool."""
+        monitoring._SENSITIVE_COMMANDS.update(self.sensitive_commands)
         self.client.drop_database("pymongo_test")
         used_lsids = self.initial_lsids.copy()
         for event in self.session_checker_listener.started_events:
@@ -120,6 +111,8 @@ class TestSession(IntegrationTest):
 
         current_lsids = {s["id"] for s in session_ids(self.client)}
         self.assertLessEqual(used_lsids, current_lsids)
+
+        super().tearDown()
 
     def _test_ops(self, client, *ops):
         listener = client.options.event_listeners[0]
@@ -832,18 +825,11 @@ class TestCausalConsistency(UnitTest):
     listener: SessionTestListener
     client: MongoClient
 
-    @classmethod
-    def _setup_class(cls):
-        cls.listener = SessionTestListener()
-        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
-
-    @classmethod
-    def _tearDown_class(cls):
-        cls.client.close()
-
     @client_context.require_sessions
     def setUp(self):
         super().setUp()
+        self.listener = SessionTestListener()
+        self.client = self.rs_or_single_client(event_listeners=[self.listener])
 
     @client_context.require_no_standalone
     def test_core(self):
