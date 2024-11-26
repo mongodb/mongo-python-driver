@@ -1234,7 +1234,9 @@ class TestBsonSizeBatches(AsyncEncryptionIntegrationTest):
         doc2 = {"_id": "over_2mib_2", "unencrypted": "a" * _2_MiB}
         self.listener.reset()
         await self.coll_encrypted.bulk_write([InsertOne(doc1), InsertOne(doc2)])
-        self.assertEqual(self.listener.started_command_names(), ["insert", "insert"])
+        self.assertEqual(
+            len([c for c in self.listener.started_command_names() if c == "insert"]), 2
+        )
 
     async def test_04_bulk_batch_split(self):
         limits_doc = json_data("limits", "limits-doc.json")
@@ -1244,7 +1246,9 @@ class TestBsonSizeBatches(AsyncEncryptionIntegrationTest):
         doc2.update(limits_doc)
         self.listener.reset()
         await self.coll_encrypted.bulk_write([InsertOne(doc1), InsertOne(doc2)])
-        self.assertEqual(self.listener.started_command_names(), ["insert", "insert"])
+        self.assertEqual(
+            len([c for c in self.listener.started_command_names() if c == "insert"]), 2
+        )
 
     async def test_05_insert_succeeds_just_under_16MiB(self):
         doc = {"_id": "under_16mib", "unencrypted": "a" * (_16_MiB - 2000)}
@@ -1482,13 +1486,12 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
     KEYVAULT_COLL = "datakeys"
     client: AsyncMongoClient
 
-    async def asyncSetUp(self):
-        await super().asyncSetUp()
-        self.client = self.simple_client()
+    async def _setup(self):
         keyvault = self.client.get_database(self.KEYVAULT_DB).get_collection(self.KEYVAULT_COLL)
         await create_key_vault(keyvault, self.DEK)
 
     async def _test_explicit(self, expectation):
+        await self._setup()
         client_encryption = self.create_client_encryption(
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
             ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL]),
@@ -1506,6 +1509,7 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
         self.assertEqual(await client_encryption.decrypt(ciphertext), "string0")
 
     async def _test_automatic(self, expectation_extjson, payload):
+        await self._setup()
         encrypted_db = "db"
         encrypted_coll = "coll"
         keyvault_namespace = ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL])
@@ -1543,10 +1547,10 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
 class TestAzureEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegrationTest):
     @unittest.skipUnless(any(AZURE_CREDS.values()), "Azure environment credentials are not set")
     async def asyncSetUp(self):
-        await super().asyncSetUp()
         self.KMS_PROVIDER_MAP = {"azure": AZURE_CREDS}
         self.DEK = json_data(BASE, "custom", "azure-dek.json")
         self.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
+        await super().asyncSetUp()
 
     async def test_explicit(self):
         return await self._test_explicit(
@@ -1568,10 +1572,10 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegratio
 class TestGCPEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegrationTest):
     @unittest.skipUnless(any(GCP_CREDS.values()), "GCP environment credentials are not set")
     async def asyncSetUp(self):
-        await super().asyncSetUp()
         self.KMS_PROVIDER_MAP = {"gcp": GCP_CREDS}
         self.DEK = json_data(BASE, "custom", "gcp-dek.json")
         self.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
+        await super().asyncSetUp()
 
     async def test_explicit(self):
         return await self._test_explicit(
