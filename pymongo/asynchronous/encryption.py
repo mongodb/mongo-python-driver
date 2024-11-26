@@ -72,7 +72,6 @@ from pymongo.errors import (
     EncryptedCollectionError,
     EncryptionError,
     InvalidOperation,
-    PyMongoError,
     ServerSelectionTimeoutError,
 )
 from pymongo.network_layer import BLOCKING_IO_ERRORS, async_sendall
@@ -176,6 +175,9 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             ssl_context=ctx,
         )
         host, port = parse_host(endpoint, _HTTPS_PORT)
+        sleep_usec = kms_context.usleep
+        if sleep_usec:
+            await asyncio.sleep(float(sleep_usec) / 1e6)
         try:
             conn = await _configured_socket((host, port), opts)
             try:
@@ -201,13 +203,15 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 raise socket.timeout("timed out") from None
             finally:
                 conn.close()
-        except (PyMongoError, MongoCryptError):
-            raise  # Propagate pymongo errors directly.
-        except asyncio.CancelledError:
-            raise
-        except Exception as error:
-            # Wrap I/O errors in PyMongo exceptions.
-            _raise_connection_failure((host, port), error)
+        except MongoCryptError:
+            raise  # Propagate MongoCryptError errors directly.
+        except Exception as exc:
+            remaining = _csot.remaining()
+            if remaining is not None and remaining <= 0:
+                # Wrap I/O errors in PyMongo exceptions.
+                _raise_connection_failure((host, port), exc)
+            # Mark this attempt as failed and defer to libmongocrypt to retry.
+            kms_context.fail()
 
     async def collection_info(self, database: str, filter: bytes) -> Optional[bytes]:
         """Get the collection info for a namespace.
