@@ -1495,7 +1495,6 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
             async_client_context.client,
             OPTS,
         )
-        self.addAsyncCleanup(client_encryption.close)
 
         ciphertext = await client_encryption.encrypt(
             "string0",
@@ -1521,7 +1520,6 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
         client = await self.async_rs_or_single_client(
             auto_encryption_opts=encryption_opts, event_listeners=[insert_listener]
         )
-        self.addAsyncCleanup(client.aclose)
 
         coll = client.get_database(encrypted_db).get_collection(
             encrypted_coll, codec_options=OPTS, write_concern=WriteConcern("majority")
@@ -1545,10 +1543,10 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
 class TestAzureEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegrationTest):
     @unittest.skipUnless(any(AZURE_CREDS.values()), "Azure environment credentials are not set")
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.KMS_PROVIDER_MAP = {"azure": AZURE_CREDS}
         self.DEK = json_data(BASE, "custom", "azure-dek.json")
         self.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
-        await super().asyncSetUp()
 
     async def test_explicit(self):
         return await self._test_explicit(
@@ -1570,10 +1568,10 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegratio
 class TestGCPEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegrationTest):
     @unittest.skipUnless(any(GCP_CREDS.values()), "GCP environment credentials are not set")
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.KMS_PROVIDER_MAP = {"gcp": GCP_CREDS}
         self.DEK = json_data(BASE, "custom", "gcp-dek.json")
         self.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
-        await super().asyncSetUp()
 
     async def test_explicit(self):
         return await self._test_explicit(
@@ -1595,6 +1593,7 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegrationT
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#deadlock-tests
 class TestDeadlockProse(AsyncEncryptionIntegrationTest):
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.client_test = await self.async_rs_or_single_client(
             maxPoolSize=1, readConcernLevel="majority", w="majority", uuidRepresentation="standard"
         )
@@ -1627,7 +1626,6 @@ class TestDeadlockProse(AsyncEncryptionIntegrationTest):
         self.ciphertext = await client_encryption.encrypt(
             "string0", Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_alt_name="local"
         )
-        await client_encryption.close()
 
         self.client_listener = OvertCommandListener()
         self.topology_listener = TopologyEventListener()
@@ -1822,6 +1820,7 @@ class TestDeadlockProse(AsyncEncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#14-decryption-events
 class TestDecryptProse(AsyncEncryptionIntegrationTest):
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.client = async_client_context.client
         await self.client.db.drop_collection("decryption_events")
         await create_key_vault(self.client.keyvault.datakeys)
@@ -2257,6 +2256,7 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.md#unique-index-on-keyaltnames
 class TestUniqueIndexOnKeyAltNamesProse(AsyncEncryptionIntegrationTest):
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.client = async_client_context.client
         await create_key_vault(self.client.keyvault.datakeys)
         kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
@@ -2605,8 +2605,6 @@ class TestQueryableEncryptionDocsExample(AsyncEncryptionIntegrationTest):
         assert res is not None
         assert isinstance(res["encrypted_indexed"], Binary)
         assert isinstance(res["encrypted_unindexed"], Binary)
-
-        await client_encryption.close()
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#22-range-explicit-encryption

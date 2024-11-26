@@ -1489,7 +1489,6 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
             client_context.client,
             OPTS,
         )
-        self.addCleanup(client_encryption.close)
 
         ciphertext = client_encryption.encrypt(
             "string0",
@@ -1515,7 +1514,6 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
         client = self.rs_or_single_client(
             auto_encryption_opts=encryption_opts, event_listeners=[insert_listener]
         )
-        self.addCleanup(client.close)
 
         coll = client.get_database(encrypted_db).get_collection(
             encrypted_coll, codec_options=OPTS, write_concern=WriteConcern("majority")
@@ -1539,10 +1537,10 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
 class TestAzureEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest):
     @unittest.skipUnless(any(AZURE_CREDS.values()), "Azure environment credentials are not set")
     def setUp(self):
+        super().setUp()
         self.KMS_PROVIDER_MAP = {"azure": AZURE_CREDS}
         self.DEK = json_data(BASE, "custom", "azure-dek.json")
         self.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
-        super().setUp()
 
     def test_explicit(self):
         return self._test_explicit(
@@ -1564,10 +1562,10 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest
 class TestGCPEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest):
     @unittest.skipUnless(any(GCP_CREDS.values()), "GCP environment credentials are not set")
     def setUp(self):
+        super().setUp()
         self.KMS_PROVIDER_MAP = {"gcp": GCP_CREDS}
         self.DEK = json_data(BASE, "custom", "gcp-dek.json")
         self.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
-        super().setUp()
 
     def test_explicit(self):
         return self._test_explicit(
@@ -1589,6 +1587,7 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#deadlock-tests
 class TestDeadlockProse(EncryptionIntegrationTest):
     def setUp(self):
+        super().setUp()
         self.client_test = self.rs_or_single_client(
             maxPoolSize=1, readConcernLevel="majority", w="majority", uuidRepresentation="standard"
         )
@@ -1619,7 +1618,6 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self.ciphertext = client_encryption.encrypt(
             "string0", Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_alt_name="local"
         )
-        client_encryption.close()
 
         self.client_listener = OvertCommandListener()
         self.topology_listener = TopologyEventListener()
@@ -1814,6 +1812,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#14-decryption-events
 class TestDecryptProse(EncryptionIntegrationTest):
     def setUp(self):
+        super().setUp()
         self.client = client_context.client
         self.client.db.drop_collection("decryption_events")
         create_key_vault(self.client.keyvault.datakeys)
@@ -2249,6 +2248,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.md#unique-index-on-keyaltnames
 class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
     def setUp(self):
+        super().setUp()
         self.client = client_context.client
         create_key_vault(self.client.keyvault.datakeys)
         kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
@@ -2589,8 +2589,6 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         assert res is not None
         assert isinstance(res["encrypted_indexed"], Binary)
         assert isinstance(res["encrypted_unindexed"], Binary)
-
-        client_encryption.close()
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#22-range-explicit-encryption
