@@ -38,6 +38,7 @@ export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
 set +x
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
+PYTHON_IMPL=$(python -c "import platform; print(platform.python_implementation())")
 
 # Try to source local Drivers Secrets
 if [ -f ./secrets-export.sh ]; then
@@ -48,7 +49,7 @@ else
 fi
 
 # Ensure C extensions have compiled.
-if [ -z "${NO_EXT:-}" ]; then
+if [ -z "${NO_EXT:-}" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     python tools/fail_if_no_c.py
 fi
 
@@ -245,7 +246,6 @@ python -c 'import sys; print(sys.version)'
 
 # Run the tests with coverage if requested and coverage is installed.
 # Only cover CPython. PyPy reports suspiciously low coverage.
-PYTHON_IMPL=$(python -c "import platform; print(platform.python_implementation())")
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     # Keep in sync with combine-coverage.sh.
     # coverage >=5 is needed for relative_files=true.
