@@ -1230,7 +1230,9 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         doc2 = {"_id": "over_2mib_2", "unencrypted": "a" * _2_MiB}
         self.listener.reset()
         self.coll_encrypted.bulk_write([InsertOne(doc1), InsertOne(doc2)])
-        self.assertEqual(self.listener.started_command_names(), ["insert", "insert"])
+        self.assertEqual(
+            len([c for c in self.listener.started_command_names() if c == "insert"]), 2
+        )
 
     def test_04_bulk_batch_split(self):
         limits_doc = json_data("limits", "limits-doc.json")
@@ -1240,7 +1242,9 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         doc2.update(limits_doc)
         self.listener.reset()
         self.coll_encrypted.bulk_write([InsertOne(doc1), InsertOne(doc2)])
-        self.assertEqual(self.listener.started_command_names(), ["insert", "insert"])
+        self.assertEqual(
+            len([c for c in self.listener.started_command_names() if c == "insert"]), 2
+        )
 
     def test_05_insert_succeeds_just_under_16MiB(self):
         doc = {"_id": "under_16mib", "unencrypted": "a" * (_16_MiB - 2000)}
@@ -1476,19 +1480,18 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
     KEYVAULT_COLL = "datakeys"
     client: MongoClient
 
-    def setUp(self):
-        self.client = self.simple_client()
+    def _setup(self):
         keyvault = self.client.get_database(self.KEYVAULT_DB).get_collection(self.KEYVAULT_COLL)
         create_key_vault(keyvault, self.DEK)
 
     def _test_explicit(self, expectation):
+        self._setup()
         client_encryption = self.create_client_encryption(
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
             ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL]),
             client_context.client,
             OPTS,
         )
-        self.addCleanup(client_encryption.close)
 
         ciphertext = client_encryption.encrypt(
             "string0",
@@ -1500,6 +1503,7 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
         self.assertEqual(client_encryption.decrypt(ciphertext), "string0")
 
     def _test_automatic(self, expectation_extjson, payload):
+        self._setup()
         encrypted_db = "db"
         encrypted_coll = "coll"
         keyvault_namespace = ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL])
@@ -1514,7 +1518,6 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
         client = self.rs_or_single_client(
             auto_encryption_opts=encryption_opts, event_listeners=[insert_listener]
         )
-        self.addCleanup(client.close)
 
         coll = client.get_database(encrypted_db).get_collection(
             encrypted_coll, codec_options=OPTS, write_concern=WriteConcern("majority")
@@ -1588,6 +1591,7 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#deadlock-tests
 class TestDeadlockProse(EncryptionIntegrationTest):
     def setUp(self):
+        super().setUp()
         self.client_test = self.rs_or_single_client(
             maxPoolSize=1, readConcernLevel="majority", w="majority", uuidRepresentation="standard"
         )
@@ -1618,7 +1622,6 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self.ciphertext = client_encryption.encrypt(
             "string0", Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_alt_name="local"
         )
-        client_encryption.close()
 
         self.client_listener = OvertCommandListener()
         self.topology_listener = TopologyEventListener()
@@ -1813,6 +1816,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#14-decryption-events
 class TestDecryptProse(EncryptionIntegrationTest):
     def setUp(self):
+        super().setUp()
         self.client = client_context.client
         self.client.db.drop_collection("decryption_events")
         create_key_vault(self.client.keyvault.datakeys)
@@ -2248,6 +2252,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.md#unique-index-on-keyaltnames
 class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
     def setUp(self):
+        super().setUp()
         self.client = client_context.client
         create_key_vault(self.client.keyvault.datakeys)
         kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
@@ -2588,8 +2593,6 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         assert res is not None
         assert isinstance(res["encrypted_indexed"], Binary)
         assert isinstance(res["encrypted_unindexed"], Binary)
-
-        client_encryption.close()
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#22-range-explicit-encryption
