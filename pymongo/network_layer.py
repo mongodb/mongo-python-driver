@@ -325,29 +325,30 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
     # could close the socket but that does not reliably cancel recv() calls
     # on all OSes.
     orig_timeout = conn.conn.gettimeout()
-    if deadline is not None:
-        # CSOT: Update timeout. When the timeout has expired perform one
-        # final non-blocking recv. This helps avoid spurious timeouts when
-        # the response is actually already buffered on the client.
-        short_timeout = min(max(deadline - time.monotonic(), 0), _POLL_TIMEOUT)
-    else:
-        short_timeout = _POLL_TIMEOUT
-    conn.conn.settimeout(short_timeout)
     try:
         while bytes_read < length:
+            if deadline is not None:
+                # CSOT: Update timeout. When the timeout has expired perform one
+                # final non-blocking recv. This helps avoid spurious timeouts when
+                # the response is actually already buffered on the client.
+                short_timeout = min(max(deadline - time.monotonic(), 0), _POLL_TIMEOUT)
+            else:
+                short_timeout = _POLL_TIMEOUT
+            conn.set_conn_timeout(short_timeout)
             try:
                 chunk_length = conn.conn.recv_into(mv[bytes_read:])
             except BLOCKING_IO_ERRORS:
-                raise socket.timeout("timed out") from None
-            except socket.timeout:
-                if deadline is not None and time.monotonic() >= deadline:
-                    # We reached the true deadline.
-                    raise
                 if conn.cancel_context.cancelled:
                     raise _OperationCancelled("operation cancelled") from None
-                # Intermediate timeout, keep trying.
+                # We reached the true deadline.
+                raise socket.timeout("timed out") from None
+            except socket.timeout:
+                if conn.cancel_context.cancelled:
+                    raise _OperationCancelled("operation cancelled") from None
                 continue
             except OSError as exc:
+                if conn.cancel_context.cancelled:
+                    raise _OperationCancelled("operation cancelled") from None
                 if _errno_from_exception(exc) == errno.EINTR:
                     continue
                 raise
@@ -356,6 +357,6 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
 
             bytes_read += chunk_length
     finally:
-        conn.conn.settimeout(orig_timeout)
+        conn.set_conn_timeout(orig_timeout)
 
     return mv
