@@ -1297,7 +1297,7 @@ class Cursor(Generic[_DocumentType]):
 
           >>> cursor.to_list()
 
-        Or, so read at most n items from the cursor::
+        Or, to read at most n items from the cursor::
 
           >>> cursor.to_list(n)
 
