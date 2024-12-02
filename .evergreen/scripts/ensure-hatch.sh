@@ -16,6 +16,10 @@ if [ ! -x "$(command -v hatch)" ]; then
     echo "Creating virtual environment..."
     createvirtualenv "$PYTHON_BINARY" .venv
     echo "Creating virtual environment... done."
+  elif [ -f . $VENV_DIR/Scripts/activate ]; then
+    . $VENV_DIR/Scripts/activate
+  else
+    . $VENV_DIR/bin/activate
   fi
 
   venvactivate $VENV_DIR
