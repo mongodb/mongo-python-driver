@@ -3069,11 +3069,11 @@ def start_mongocryptd(port) -> None:
     _spawn_daemon(args)
 
 
+@unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
 class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
     mongocryptd_client: AsyncMongoClient
     MONGOCRYPTD_PORT = 27020
 
-    @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         start_mongocryptd(self.MONGOCRYPTD_PORT)
