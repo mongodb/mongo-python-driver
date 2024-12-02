@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eu
 
-. ${DRIVERS_TOOLS}/.evergreen/venv-utils.sh
-venvactivate .venv
-python -m hatch run "$@"
+if [ ! -x "$(command -v hatch)" ]; then
+  . ${DRIVERS_TOOLS}/.evergreen/venv-utils.sh
+  venvactivate .venv
+fi
+hatch run "$@"
