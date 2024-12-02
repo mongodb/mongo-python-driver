@@ -22,7 +22,6 @@ if [ ! -x "$(command -v hatch)" ]; then
     . $VENV_DIR/bin/activate
   fi
 
-  venvactivate $VENV_DIR
   python --version
 
   echo "Installing hatch..."
