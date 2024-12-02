@@ -8,7 +8,7 @@ if [ ! -x "$(command -v hatch)" ]; then
   # Ensure there is a python venv.
   . .evergreen/utils.sh
 
-  if [ -z "$PYTHON_BINARY" ]; then
+  if [ -z "${PYTHON_BINARY:-}" ]; then
       PYTHON_BINARY=$(find_python3)
   fi
   VENV_DIR=.venv
