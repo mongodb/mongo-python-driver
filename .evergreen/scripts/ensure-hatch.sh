@@ -2,16 +2,19 @@
 
 set -eu
 
-# Install a virtual env with "hatch"
-# Ensure there is a python venv.
+# Ensure hatch is available.
 if [ ! -x "$(command -v hatch)" ]; then
-  . ${DRIVERS_TOOLS}/.evergreen/venv-utils.sh
+  # Install a virtual env with "hatch"
+  # Ensure there is a python venv.
+  . .evergreen/utils.sh
+
+  if [ -z "$PYTHON_BINARY" ]; then
+      PYTHON_BINARY=$(find_python3)
+  fi
   VENV_DIR=.venv
   if [ ! -d $VENV_DIR ]; then
     echo "Creating virtual environment..."
-    . ${DRIVERS_TOOLS}/.evergreen/find-python3.sh
-    PYTHON_BINARY=$(ensure_python3)
-    venvcreate $PYTHON_BINARY $VENV_DIR
+    createvirtualenv "$PYTHON_BINARY" .venv
     echo "Creating virtual environment... done."
   fi
 
