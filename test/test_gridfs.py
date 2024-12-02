@@ -75,9 +75,9 @@ class JustRead(threading.Thread):
 class TestGridfsNoConnect(unittest.TestCase):
     db: Database
 
-    @classmethod
-    def setUpClass(cls):
-        cls.db = MongoClient(connect=False).pymongo_test
+    def setUp(self):
+        super().setUp()
+        self.db = MongoClient(connect=False).pymongo_test
 
     def test_gridfs(self):
         self.assertRaises(TypeError, gridfs.GridFS, "foo")
@@ -88,13 +88,10 @@ class TestGridfs(IntegrationTest):
     fs: gridfs.GridFS
     alt: gridfs.GridFS
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.fs = gridfs.GridFS(cls.db)
-        cls.alt = gridfs.GridFS(cls.db, "alt")
-
     def setUp(self):
+        super().setUp()
+        self.fs = gridfs.GridFS(self.db)
+        self.alt = gridfs.GridFS(self.db, "alt")
         self.cleanup_colls(
             self.db.fs.files, self.db.fs.chunks, self.db.alt.files, self.db.alt.chunks
         )
@@ -509,10 +506,9 @@ class TestGridfs(IntegrationTest):
 
 
 class TestGridfsReplicaSet(IntegrationTest):
-    @classmethod
     @client_context.require_secondaries_count(1)
-    def setUpClass(cls):
-        super().setUpClass()
+    def setUp(self):
+        super().setUp()
 
     @classmethod
     def tearDownClass(cls):

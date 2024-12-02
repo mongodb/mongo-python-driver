@@ -107,4 +107,4 @@ Automation
 At MongoDB, Inc. we use a continuous integration job that tests each
 combination in the matrix. The job starts up Apache, starts a single server
 or replica set, and runs ``test_client.py`` with the proper arguments.
-See `run-mod-wsgi-tests.sh <https://github.com/mongodb/mongo-python-driver/blob/master/.evergreen/run-mod-wsgi-tests.sh>`_
+See `run-mod-wsgi-tests.sh <https://github.com/mongodb/mongo-python-driver/blob/master/.evergreen/scripts/run-mod-wsgi-tests.sh>`_

@@ -32,6 +32,7 @@ access:
 """
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import os
 import warnings
@@ -58,7 +59,7 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, common, helpers_shared, uri_parser
+from pymongo import _csot, common, helpers_shared, periodic_executor, uri_parser
 from pymongo.client_options import ClientOptions
 from pymongo.errors import (
     AutoReconnect,
@@ -74,7 +75,11 @@ from pymongo.errors import (
     WaitQueueTimeoutError,
     WriteConcernError,
 )
-from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
+from pymongo.lock import (
+    _HAS_REGISTER_AT_FORK,
+    _create_lock,
+    _release_locks,
+)
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason
@@ -91,7 +96,7 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import ClientBulkWriteResult
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import client_session, database, periodic_executor
+from pymongo.synchronous import client_session, database
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _EmptyServerSession
@@ -1716,7 +1721,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 address=address,
             )
 
-            with operation.conn_mgr._alock:
+            with operation.conn_mgr._lock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
                     return server.run_operation(
@@ -1964,7 +1969,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         try:
             if conn_mgr:
-                with conn_mgr._alock:
+                with conn_mgr._lock:
                     # Cursor is pinned to LB outside of a transaction.
                     assert address is not None
                     assert conn_mgr.conn is not None
@@ -2027,6 +2032,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         for address, cursor_id, conn_mgr in pinned_cursors:
             try:
                 self._cleanup_cursor_lock(cursor_id, address, conn_mgr, None, False)
+            except asyncio.CancelledError:
+                raise
             except Exception as exc:
                 if isinstance(exc, InvalidOperation) and self._topology._closed:
                     # Raise the exception when client is closed so that it
@@ -2041,6 +2048,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
                     self._kill_cursors(cursor_ids, address, topology, session=None)
+                except asyncio.CancelledError:
+                    raise
                 except Exception as exc:
                     if isinstance(exc, InvalidOperation) and self._topology._closed:
                         raise
@@ -2055,6 +2064,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         try:
             self._process_kill_cursors()
             self._topology.update_pool()
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             if isinstance(exc, InvalidOperation) and self._topology._closed:
                 return

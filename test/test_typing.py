@@ -114,10 +114,9 @@ class TestMypyFails(unittest.TestCase):
 class TestPymongo(IntegrationTest):
     coll: Collection
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.coll = cls.client.test.test
+    def setUp(self):
+        super().setUp()
+        self.coll = self.client.test.test
 
     def test_insert_find(self) -> None:
         doc = {"my": "doc"}
