@@ -395,19 +395,12 @@ class PatchSessionTimeout:
 
 
 class TestTransactionsConvenientAPI(TransactionsBase):
-    @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.mongos_clients = []
+    def setUp(self) -> None:
+        super().setUp()
+        self.mongos_clients = []
         if client_context.supports_transactions():
             for address in client_context.mongoses:
-                cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
-
-    @classmethod
-    def _tearDown_class(cls):
-        for client in cls.mongos_clients:
-            client.close()
-        super()._tearDown_class()
+                self.mongos_clients.append(self.single_client("{}:{}".format(*address)))
 
     def _set_fail_point(self, client, command_args):
         cmd = {"configureFailPoint": "failCommand"}

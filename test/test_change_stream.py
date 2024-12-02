@@ -820,18 +820,16 @@ class ProseSpecTestsMixin:
 class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
     dbs: list
 
-    @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
     @client_context.require_change_streams
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.dbs = [cls.db, cls.client.pymongo_test_2]
+    def setUp(self) -> None:
+        super().setUp()
+        self.dbs = [self.db, self.client.pymongo_test_2]
 
-    @classmethod
-    def _tearDown_class(cls):
-        for db in cls.dbs:
-            cls.client.drop_database(db)
-        super()._tearDown_class()
+    def tearDown(self):
+        for db in self.dbs:
+            self.client.drop_database(db)
+        super().tearDown()
 
     def change_stream_with_client(self, client, *args, **kwargs):
         return client.watch(*args, **kwargs)
@@ -882,11 +880,10 @@ class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
 
 
 class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
-    @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
     @client_context.require_change_streams
-    def _setup_class(cls):
-        super()._setup_class()
+    def setUp(self) -> None:
+        super().setUp()
 
     def change_stream_with_client(self, client, *args, **kwargs):
         return client[self.db.name].watch(*args, **kwargs)
@@ -968,12 +965,9 @@ class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
 
 
 class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin, ProseSpecTestsMixin):
-    @classmethod
     @client_context.require_change_streams
-    def _setup_class(cls):
-        super()._setup_class()
-
     def setUp(self):
+        super().setUp()
         # Use a new collection for each test.
         self.watched_collection().drop()
         self.watched_collection().insert_one({})
@@ -1111,20 +1105,11 @@ class TestAllLegacyScenarios(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     listener: AllowListEventListener
 
-    @classmethod
     @client_context.require_connection
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.listener = AllowListEventListener("aggregate", "getMore")
-        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
-
-    @classmethod
-    def _tearDown_class(cls):
-        cls.client.close()
-        super()._tearDown_class()
-
     def setUp(self):
         super().setUp()
+        self.listener = AllowListEventListener("aggregate", "getMore")
+        self.client = self.rs_or_single_client(event_listeners=[self.listener])
         self.listener.reset()
 
     def setUpCluster(self, scenario_dict):

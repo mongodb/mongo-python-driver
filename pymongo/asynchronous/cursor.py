@@ -45,7 +45,7 @@ from pymongo.common import (
 )
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _ALock, _create_lock
+from pymongo.lock import _async_create_lock
 from pymongo.message import (
     _CursorAddress,
     _GetMore,
@@ -77,7 +77,7 @@ class _ConnectionManager:
     def __init__(self, conn: AsyncConnection, more_to_come: bool):
         self.conn: Optional[AsyncConnection] = conn
         self.more_to_come = more_to_come
-        self._alock = _ALock(_create_lock())
+        self._lock = _async_create_lock()
 
     def update_exhaust(self, more_to_come: bool) -> None:
         self.more_to_come = more_to_come

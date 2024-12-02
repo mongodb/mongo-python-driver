@@ -15,6 +15,7 @@
 """Support for explicit client-side field level encryption."""
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import enum
 import socket
@@ -111,6 +112,8 @@ def _wrap_encryption_errors() -> Iterator[None]:
         # BSON encoding/decoding errors are unrelated to encryption so
         # we should propagate them unchanged.
         raise
+    except asyncio.CancelledError:
+        raise
     except Exception as exc:
         raise EncryptionError(exc) from exc
 
@@ -200,6 +203,8 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                 conn.close()
         except (PyMongoError, MongoCryptError):
             raise  # Propagate pymongo errors directly.
+        except asyncio.CancelledError:
+            raise
         except Exception as error:
             # Wrap I/O errors in PyMongo exceptions.
             _raise_connection_failure((host, port), error)
@@ -716,6 +721,8 @@ class ClientEncryption(Generic[_DocumentType]):
                 database.create_collection(name=name, **kwargs),
                 encrypted_fields,
             )
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             raise EncryptedCollectionError(exc, encrypted_fields) from exc
 
