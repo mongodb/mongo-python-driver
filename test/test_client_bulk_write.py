@@ -102,6 +102,7 @@ class TestClientBulkWrite(IntegrationTest):
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
 class TestClientBulkWriteCRUD(IntegrationTest):
     def setUp(self):
+        super().setUp()
         self.max_write_batch_size = client_context.max_write_batch_size
         self.max_bson_object_size = client_context.max_bson_size
         self.max_message_size_bytes = client_context.max_message_size_bytes
@@ -648,6 +649,7 @@ class TestClientBulkWriteCSOT(IntegrationTest):
     def setUp(self):
         if os.environ.get("SKIP_CSOT_TESTS", ""):
             raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
+        super().setUp()
         self.max_write_batch_size = client_context.max_write_batch_size
         self.max_bson_object_size = client_context.max_bson_size
         self.max_message_size_bytes = client_context.max_message_size_bytes

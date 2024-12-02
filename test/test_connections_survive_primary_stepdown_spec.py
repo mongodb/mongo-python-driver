@@ -46,6 +46,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
 
     @client_context.require_replica_set
     def setUp(self):
+        super().setUp()
         self.listener = CMAPListener()
         self.client = self.rs_or_single_client(
             event_listeners=[self.listener], retryWrites=False, heartbeatFrequencyMS=500
