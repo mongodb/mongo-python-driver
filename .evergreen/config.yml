@@ -525,6 +525,25 @@ functions:
         binary: bash
         working_dir: "src"
         args:
+          # Ensure the instance profile is reassigned for aws tests.
+          - ${DRIVERS_TOOLS}/.evergreen/auth_aws/teardown.sh
+    - command: subprocess.exec
+      params:
+        binary: bash
+        working_dir: "src"
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/csfle/teardown.sh
+    - command: subprocess.exec
+      params:
+        binary: bash
+        working_dir: "src"
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh
+    - command: subprocess.exec
+      params:
+        binary: bash
+        working_dir: "src"
+        args:
           - ${DRIVERS_TOOLS}/.evergreen/teardown.sh
 
   "install dependencies":
@@ -601,14 +620,6 @@ functions:
         args:
           - src/.evergreen/scripts/stop-load-balancer.sh
 
-  "teardown":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - src/.evergreen/scripts/run-with-env.sh
-          - src/.evergreen/scripts/teardown.sh
-
   "teardown atlas":
     - command: subprocess.exec
       params:
@@ -646,7 +657,6 @@ post:
   # Disabled, causing timeouts
   # - func: "upload working dir"
   - func: "teardown system"
-  - func: "teardown"
   - func: "upload coverage"
   - func: "upload mo artifacts"
   - func: "upload test results"
