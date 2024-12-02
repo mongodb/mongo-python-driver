@@ -23,6 +23,7 @@ secrets-export.sh
 libmongocrypt.tar.gz
 libmongocrypt/
 libmongocrypt_git/
+hatch_config.toml
 
 # Lambda temp files
 test/lambda/.aws-sam
