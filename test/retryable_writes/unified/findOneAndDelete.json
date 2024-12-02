@@ -13,7 +13,10 @@
     {
       "client": {
         "id": "client0",
-        "useMultipleMongoses": false
+        "useMultipleMongoses": false,
+        "observeEvents": [
+          "commandStartedEvent"
+        ]
       }
     },
     {
@@ -91,6 +94,33 @@
             {
               "_id": 2,
               "x": 22
+            }
+          ]
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "findAndModify",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": true
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "commandName": "findAndModify",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": true
+                  }
+                }
+              }
             }
           ]
         }

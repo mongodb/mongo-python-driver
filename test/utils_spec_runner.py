@@ -43,7 +43,7 @@ from bson.int64 import Int64
 from bson.son import SON
 from gridfs import GridFSBucket
 from gridfs.synchronous.grid_file import GridFSBucket
-from pymongo.errors import BulkWriteError, OperationFailure, PyMongoError
+from pymongo.errors import AutoReconnect, BulkWriteError, OperationFailure, PyMongoError
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
@@ -249,29 +249,21 @@ class SpecRunner(IntegrationTest):
     knobs: client_knobs
     listener: EventListener
 
-    @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.mongos_clients = []
+    def setUp(self) -> None:
+        super().setUp()
+        self.mongos_clients = []
 
         # Speed up the tests by decreasing the heartbeat frequency.
-        cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
-        cls.knobs.enable()
-
-    @classmethod
-    def _tearDown_class(cls):
-        cls.knobs.disable()
-        for client in cls.mongos_clients:
-            client.close()
-        super()._tearDown_class()
-
-    def setUp(self):
-        super().setUp()
+        self.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
+        self.knobs.enable()
         self.targets = {}
         self.listener = None  # type: ignore
         self.pool_listener = None
         self.server_listener = None
         self.maxDiff = None
+
+    def tearDown(self) -> None:
+        self.knobs.disable()
 
     def _set_fail_point(self, client, command_args):
         cmd = SON([("configureFailPoint", "failCommand")])
@@ -343,9 +335,10 @@ class SpecRunner(IntegrationTest):
         for client in clients:
             try:
                 client.admin.command("killAllSessions", [])
-            except OperationFailure:
+            except (OperationFailure, AutoReconnect):
                 # "operation was interrupted" by killing the command's
                 # own session.
+                # On 8.0+ killAllSessions sometimes returns a network error.
                 pass
 
     def check_command_result(self, expected_result, result):
@@ -696,8 +689,6 @@ class SpecRunner(IntegrationTest):
         self.listener = listener
         self.pool_listener = pool_listener
         self.server_listener = server_listener
-        # Close the client explicitly to avoid having too many threads open.
-        self.addCleanup(client.close)
 
         # Create session0 and session1.
         sessions = {}

@@ -717,7 +717,8 @@ class TestDatabase(AsyncIntegrationTest):
 
 
 class TestDatabaseAggregation(AsyncIntegrationTest):
-    def setUp(self):
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.pipeline: List[Mapping[str, Any]] = [
             {"$listLocalSessions": {}},
             {"$limit": 1},

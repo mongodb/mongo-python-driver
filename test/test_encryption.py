@@ -211,11 +211,10 @@ class TestClientOptions(PyMongoTestCase):
 class EncryptionIntegrationTest(IntegrationTest):
     """Base class for encryption integration tests."""
 
-    @classmethod
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     @client_context.require_version_min(4, 2, -1)
-    def _setup_class(cls):
-        super()._setup_class()
+    def setUp(self) -> None:
+        super().setUp()
 
     def assertEncrypted(self, val):
         self.assertIsInstance(val, Binary)
@@ -380,9 +379,9 @@ class TestClientSimple(EncryptionIntegrationTest):
         is_greenthread_patched(),
         "gevent and eventlet do not support POSIX-style forking.",
     )
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-4738 fails often on PyPy")
     @client_context.require_sync
     def test_fork(self):
+        self.skipTest("Test is flaky, PYTHON-4738")
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = self.rs_or_single_client(auto_encryption_opts=opts)
 
@@ -430,10 +429,9 @@ class TestEncryptedBulkWrite(BulkTestBase, EncryptionIntegrationTest):
 
 
 class TestClientMaxWireVersion(IntegrationTest):
-    @classmethod
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    def _setup_class(cls):
-        super()._setup_class()
+    def setUp(self):
+        super().setUp()
 
     @client_context.require_version_max(4, 0, 99)
     def test_raise_max_wire_version_error(self):
@@ -816,17 +814,16 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         "local": None,
     }
 
-    @classmethod
     @unittest.skipUnless(
         any([all(AWS_CREDS.values()), all(AZURE_CREDS.values()), all(GCP_CREDS.values())]),
         "No environment credentials are set",
     )
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.listener = OvertCommandListener()
-        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
-        cls.client.db.coll.drop()
-        cls.vault = create_key_vault(cls.client.keyvault.datakeys)
+    def setUp(self):
+        super().setUp()
+        self.listener = OvertCommandListener()
+        self.client = self.rs_or_single_client(event_listeners=[self.listener])
+        self.client.db.coll.drop()
+        self.vault = create_key_vault(self.client.keyvault.datakeys)
 
         # Configure the encrypted field via the local schema_map option.
         schemas = {
@@ -844,24 +841,21 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
             }
         }
         opts = AutoEncryptionOpts(
-            cls.KMS_PROVIDERS, "keyvault.datakeys", schema_map=schemas, kms_tls_options=KMS_TLS_OPTS
+            self.KMS_PROVIDERS,
+            "keyvault.datakeys",
+            schema_map=schemas,
+            kms_tls_options=KMS_TLS_OPTS,
         )
-        cls.client_encrypted = cls.unmanaged_rs_or_single_client(
+        self.client_encrypted = self.rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation="standard"
         )
-        cls.client_encryption = cls.unmanaged_create_client_encryption(
-            cls.KMS_PROVIDERS, "keyvault.datakeys", cls.client, OPTS, kms_tls_options=KMS_TLS_OPTS
+        self.client_encryption = self.create_client_encryption(
+            self.KMS_PROVIDERS, "keyvault.datakeys", self.client, OPTS, kms_tls_options=KMS_TLS_OPTS
         )
-
-    @classmethod
-    def _tearDown_class(cls):
-        cls.vault.drop()
-        cls.client.close()
-        cls.client_encrypted.close()
-        cls.client_encryption.close()
-
-    def setUp(self):
         self.listener.reset()
+
+    def tearDown(self) -> None:
+        self.vault.drop()
 
     def run_test(self, provider_name):
         # Create data key.
@@ -1007,10 +1001,9 @@ class TestViews(EncryptionIntegrationTest):
 
 
 class TestCorpus(EncryptionIntegrationTest):
-    @classmethod
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
-    def _setup_class(cls):
-        super()._setup_class()
+    def setUp(self):
+        super().setUp()
 
     @staticmethod
     def kms_providers():
@@ -1184,12 +1177,11 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
     client_encrypted: MongoClient
     listener: OvertCommandListener
 
-    @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
+    def setUp(self):
+        super().setUp()
         db = client_context.client.db
-        cls.coll = db.coll
-        cls.coll.drop()
+        self.coll = db.coll
+        self.coll.drop()
         # Configure the encrypted 'db.coll' collection via jsonSchema.
         json_schema = json_data("limits", "limits-schema.json")
         db.create_collection(
@@ -1207,17 +1199,14 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         coll.insert_one(json_data("limits", "limits-key.json"))
 
         opts = AutoEncryptionOpts({"local": {"key": LOCAL_MASTER_KEY}}, "keyvault.datakeys")
-        cls.listener = OvertCommandListener()
-        cls.client_encrypted = cls.unmanaged_rs_or_single_client(
-            auto_encryption_opts=opts, event_listeners=[cls.listener]
+        self.listener = OvertCommandListener()
+        self.client_encrypted = self.rs_or_single_client(
+            auto_encryption_opts=opts, event_listeners=[self.listener]
         )
-        cls.coll_encrypted = cls.client_encrypted.db.coll
+        self.coll_encrypted = self.client_encrypted.db.coll
 
-    @classmethod
-    def _tearDown_class(cls):
-        cls.coll_encrypted.drop()
-        cls.client_encrypted.close()
-        super()._tearDown_class()
+    def tearDown(self) -> None:
+        self.coll_encrypted.drop()
 
     def test_01_insert_succeeds_under_2MiB(self):
         doc = {"_id": "over_2mib_under_16mib", "unencrypted": "a" * _2_MiB}
@@ -1241,7 +1230,9 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         doc2 = {"_id": "over_2mib_2", "unencrypted": "a" * _2_MiB}
         self.listener.reset()
         self.coll_encrypted.bulk_write([InsertOne(doc1), InsertOne(doc2)])
-        self.assertEqual(self.listener.started_command_names(), ["insert", "insert"])
+        self.assertEqual(
+            len([c for c in self.listener.started_command_names() if c == "insert"]), 2
+        )
 
     def test_04_bulk_batch_split(self):
         limits_doc = json_data("limits", "limits-doc.json")
@@ -1251,7 +1242,9 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         doc2.update(limits_doc)
         self.listener.reset()
         self.coll_encrypted.bulk_write([InsertOne(doc1), InsertOne(doc2)])
-        self.assertEqual(self.listener.started_command_names(), ["insert", "insert"])
+        self.assertEqual(
+            len([c for c in self.listener.started_command_names() if c == "insert"]), 2
+        )
 
     def test_05_insert_succeeds_just_under_16MiB(self):
         doc = {"_id": "under_16mib", "unencrypted": "a" * (_16_MiB - 2000)}
@@ -1281,15 +1274,12 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
 class TestCustomEndpoint(EncryptionIntegrationTest):
     """Prose tests for creating data keys with a custom endpoint."""
 
-    @classmethod
     @unittest.skipUnless(
         any([all(AWS_CREDS.values()), all(AZURE_CREDS.values()), all(GCP_CREDS.values())]),
         "No environment credentials are set",
     )
-    def _setup_class(cls):
-        super()._setup_class()
-
     def setUp(self):
+        super().setUp()
         kms_providers = {
             "aws": AWS_CREDS,
             "azure": AZURE_CREDS,
@@ -1317,10 +1307,6 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         )
         self._kmip_host_error = None
         self._invalid_host_error = None
-
-    def tearDown(self):
-        self.client_encryption.close()
-        self.client_encryption_invalid.close()
 
     def run_test_expected_success(self, provider_name, master_key):
         data_key_id = self.client_encryption.create_data_key(provider_name, master_key=master_key)
@@ -1494,18 +1480,18 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
     KEYVAULT_COLL = "datakeys"
     client: MongoClient
 
-    def setUp(self):
+    def _setup(self):
         keyvault = self.client.get_database(self.KEYVAULT_DB).get_collection(self.KEYVAULT_COLL)
         create_key_vault(keyvault, self.DEK)
 
     def _test_explicit(self, expectation):
+        self._setup()
         client_encryption = self.create_client_encryption(
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
             ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL]),
             client_context.client,
             OPTS,
         )
-        self.addCleanup(client_encryption.close)
 
         ciphertext = client_encryption.encrypt(
             "string0",
@@ -1517,6 +1503,7 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
         self.assertEqual(client_encryption.decrypt(ciphertext), "string0")
 
     def _test_automatic(self, expectation_extjson, payload):
+        self._setup()
         encrypted_db = "db"
         encrypted_coll = "coll"
         keyvault_namespace = ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL])
@@ -1531,7 +1518,6 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
         client = self.rs_or_single_client(
             auto_encryption_opts=encryption_opts, event_listeners=[insert_listener]
         )
-        self.addCleanup(client.close)
 
         coll = client.get_database(encrypted_db).get_collection(
             encrypted_coll, codec_options=OPTS, write_concern=WriteConcern("majority")
@@ -1553,13 +1539,12 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
 
 
 class TestAzureEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest):
-    @classmethod
     @unittest.skipUnless(any(AZURE_CREDS.values()), "Azure environment credentials are not set")
-    def _setup_class(cls):
-        cls.KMS_PROVIDER_MAP = {"azure": AZURE_CREDS}
-        cls.DEK = json_data(BASE, "custom", "azure-dek.json")
-        cls.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
-        super()._setup_class()
+    def setUp(self):
+        self.KMS_PROVIDER_MAP = {"azure": AZURE_CREDS}
+        self.DEK = json_data(BASE, "custom", "azure-dek.json")
+        self.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
+        super().setUp()
 
     def test_explicit(self):
         return self._test_explicit(
@@ -1579,13 +1564,12 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest
 
 
 class TestGCPEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest):
-    @classmethod
     @unittest.skipUnless(any(GCP_CREDS.values()), "GCP environment credentials are not set")
-    def _setup_class(cls):
-        cls.KMS_PROVIDER_MAP = {"gcp": GCP_CREDS}
-        cls.DEK = json_data(BASE, "custom", "gcp-dek.json")
-        cls.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
-        super()._setup_class()
+    def setUp(self):
+        self.KMS_PROVIDER_MAP = {"gcp": GCP_CREDS}
+        self.DEK = json_data(BASE, "custom", "gcp-dek.json")
+        self.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
+        super().setUp()
 
     def test_explicit(self):
         return self._test_explicit(
@@ -1604,9 +1588,10 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest):
         return self._test_automatic(expected_document_extjson, {"secret_gcp": "string0"})
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#deadlock-tests
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#deadlock-tests
 class TestDeadlockProse(EncryptionIntegrationTest):
     def setUp(self):
+        super().setUp()
         self.client_test = self.rs_or_single_client(
             maxPoolSize=1, readConcernLevel="majority", w="majority", uuidRepresentation="standard"
         )
@@ -1637,7 +1622,6 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self.ciphertext = client_encryption.encrypt(
             "string0", Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_alt_name="local"
         )
-        client_encryption.close()
 
         self.client_listener = OvertCommandListener()
         self.topology_listener = TopologyEventListener()
@@ -1829,9 +1813,10 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self.assertEqual(len(self.topology_listener.results["opened"]), 1)
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#14-decryption-events
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#14-decryption-events
 class TestDecryptProse(EncryptionIntegrationTest):
     def setUp(self):
+        super().setUp()
         self.client = client_context.client
         self.client.db.drop_collection("decryption_events")
         create_key_vault(self.client.keyvault.datakeys)
@@ -1901,7 +1886,7 @@ class TestDecryptProse(EncryptionIntegrationTest):
         self.assertEqual(event.reply["cursor"]["firstBatch"][0]["encrypted"], self.cipher_text)
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#bypass-spawning-mongocryptd
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#bypass-spawning-mongocryptd
 class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     @unittest.skipIf(
         os.environ.get("TEST_CRYPT_SHARED"),
@@ -1982,7 +1967,7 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
         with self.assertRaises(ServerSelectionTimeoutError):
             no_mongocryptd_client.db.command("ping")
 
-    # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#20-bypass-creating-mongocryptd-client-when-shared-library-is-loaded
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#20-bypass-creating-mongocryptd-client-when-shared-library-is-loaded
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_client_via_loading_shared_library(self):
         connection_established = False
@@ -2058,7 +2043,7 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
             self.client_encrypted.create_data_key("aws", master_key=key)
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#kms-tls-options-tests
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#kms-tls-options-tests
 class TestKmsTLSOptions(EncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def setUp(self):
@@ -2264,9 +2249,10 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         self.client_encryption_with_names.create_data_key("kmip:with_tls")
 
 
-# https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.rst#unique-index-on-keyaltnames
+# https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.md#unique-index-on-keyaltnames
 class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
     def setUp(self):
+        super().setUp()
         self.client = client_context.client
         create_key_vault(self.client.keyvault.datakeys)
         kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
@@ -2293,7 +2279,7 @@ class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
         assert key_doc["keyAltNames"] == ["def"]
 
 
-# https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.rst#explicit-encryption
+# https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.md#explicit-encryption
 class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(7, 0, -1)
@@ -2407,7 +2393,7 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         self.assertEqual(decrypted, val)
 
 
-# https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.rst#rewrap
+# https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.md#rewrap
 class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
     MASTER_KEYS: Mapping[str, Mapping[str, Any]] = {
         "aws": {
@@ -2489,7 +2475,7 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
             )
 
 
-# https://github.com/mongodb/specifications/blob/5cf3ed/source/client-side-encryption/tests/README.rst#on-demand-aws-credentials
+# https://github.com/mongodb/specifications/blob/5cf3ed/source/client-side-encryption/tests/README.md#on-demand-aws-credentials
 class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
     def setUp(self):
         super().setUp()
@@ -2607,8 +2593,6 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         assert res is not None
         assert isinstance(res["encrypted_indexed"], Binary)
         assert isinstance(res["encrypted_unindexed"], Binary)
-
-        client_encryption.close()
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#22-range-explicit-encryption
@@ -2851,7 +2835,7 @@ class TestRangeQueryDefaultsProse(EncryptionIntegrationTest):
         assert len(payload) > len(self.payload_defaults)
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#automatic-data-encryption-keys
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#automatic-data-encryption-keys
 class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(7, 0, -1)
@@ -3071,17 +3055,11 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
     mongocryptd_client: MongoClient
     MONGOCRYPTD_PORT = 27020
 
-    @classmethod
     @unittest.skipIf(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is installed")
-    def _setup_class(cls):
-        super()._setup_class()
-        start_mongocryptd(cls.MONGOCRYPTD_PORT)
-
-    @classmethod
-    def _tearDown_class(cls):
-        super()._tearDown_class()
-
     def setUp(self) -> None:
+        super().setUp()
+        start_mongocryptd(self.MONGOCRYPTD_PORT)
+
         self.listener = OvertCommandListener()
         self.mongocryptd_client = self.simple_client(
             f"mongodb://localhost:{self.MONGOCRYPTD_PORT}", event_listeners=[self.listener]

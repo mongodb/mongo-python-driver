@@ -30,7 +30,7 @@ set -o xtrace
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
-TEST_SUITES=""
+TEST_SUITES=${TEST_SUITES:-}
 TEST_ARGS="${*:1}"
 
 export PIP_QUIET=1  # Quiet by default
@@ -38,6 +38,7 @@ export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
 set +x
 python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
+PYTHON_IMPL=$(python -c "import platform; print(platform.python_implementation())")
 
 # Try to source local Drivers Secrets
 if [ -f ./secrets-export.sh ]; then
@@ -47,19 +48,24 @@ else
   echo "Not sourcing secrets"
 fi
 
+# Ensure C extensions have compiled.
+if [ -z "${NO_EXT:-}" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
+    python tools/fail_if_no_c.py
+fi
+
 if [ "$AUTH" != "noauth" ]; then
-    if [ ! -z "$TEST_DATA_LAKE" ]; then
+    if [ -n "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
-    elif [ ! -z "$TEST_SERVERLESS" ]; then
-        source ${DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh
+    elif [ -n "$TEST_SERVERLESS" ]; then
+        source "${DRIVERS_TOOLS}"/.evergreen/serverless/secrets-export.sh
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
         export MONGODB_URI="$SERVERLESS_URI"
         echo "MONGODB_URI=$MONGODB_URI"
         export SINGLE_MONGOS_LB_URI=$MONGODB_URI
         export MULTI_MONGOS_LB_URI=$MONGODB_URI
-    elif [ ! -z "$TEST_AUTH_OIDC" ]; then
+    elif [ -n "$TEST_AUTH_OIDC" ]; then
         export DB_USER=$OIDC_ADMIN_USER
         export DB_PASSWORD=$OIDC_ADMIN_PWD
         export DB_IP="$MONGODB_URI"
@@ -90,6 +96,8 @@ if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
     export GSSAPI_HOST=${SASL_HOST}
     export GSSAPI_PORT=${SASL_PORT}
     export GSSAPI_PRINCIPAL=${PRINCIPAL}
+
+    export TEST_SUITES="auth"
 fi
 
 if [ -n "$TEST_LOADBALANCER" ]; then
@@ -238,7 +246,6 @@ python -c 'import sys; print(sys.version)'
 
 # Run the tests with coverage if requested and coverage is installed.
 # Only cover CPython. PyPy reports suspiciously low coverage.
-PYTHON_IMPL=$(python -c "import platform; print(platform.python_implementation())")
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     # Keep in sync with combine-coverage.sh.
     # coverage >=5 is needed for relative_files=true.

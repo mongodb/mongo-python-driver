@@ -70,13 +70,14 @@ elif sys.platform == "darwin":
         "version": platform.mac_ver()[0],
     }
 elif sys.platform == "win32":
+    _ver = sys.getwindowsversion()
     _METADATA["os"] = {
-        "type": platform.system(),
-        # "Windows XP", "Windows 7", "Windows 10", etc.
-        "name": " ".join((platform.system(), platform.release())),
-        "architecture": platform.machine(),
-        # Windows patch level (e.g. 5.1.2600-SP3)
-        "version": "-".join(platform.win32_ver()[1:3]),
+        "type": "Windows",
+        "name": "Windows",
+        # Avoid using platform calls, see PYTHON-4455.
+        "architecture": os.environ.get("PROCESSOR_ARCHITECTURE") or platform.machine(),
+        # Windows patch level (e.g. 10.0.17763-SP0).
+        "version": ".".join(map(str, _ver[:3])) + f"-SP{_ver[-1] or '0'}",
     }
 elif sys.platform.startswith("java"):
     _name, _ver, _arch = platform.java_ver()[-1]
@@ -216,7 +217,7 @@ def _metadata_env() -> dict[str, Any]:
 _MAX_METADATA_SIZE = 512
 
 
-# See: https://github.com/mongodb/specifications/blob/5112bcc/source/mongodb-handshake/handshake.rst#limitations
+# See: https://github.com/mongodb/specifications/blob/master/source/mongodb-handshake/handshake.md#limitations
 def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     """Perform metadata truncation."""
     if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:

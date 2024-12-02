@@ -35,10 +35,11 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
-from test.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     EventListener,
+    OvertCommandListener,
     async_wait_until,
 )
 
@@ -179,7 +180,7 @@ class APITestsMixin:
 
     @no_type_check
     async def test_try_next_runs_one_getmore(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         await client.admin.command("ping")
@@ -237,7 +238,7 @@ class APITestsMixin:
 
     @no_type_check
     async def test_batch_size_is_honored(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         await client.admin.command("ping")
@@ -835,18 +836,16 @@ class ProseSpecTestsMixin:
 class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
     dbs: list
 
-    @classmethod
     @async_client_context.require_version_min(4, 0, 0, -1)
     @async_client_context.require_change_streams
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.dbs = [cls.db, cls.client.pymongo_test_2]
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.dbs = [self.db, self.client.pymongo_test_2]
 
-    @classmethod
-    async def _tearDown_class(cls):
-        for db in cls.dbs:
-            await cls.client.drop_database(db)
-        await super()._tearDown_class()
+    async def asyncTearDown(self):
+        for db in self.dbs:
+            await self.client.drop_database(db)
+        await super().asyncTearDown()
 
     async def change_stream_with_client(self, client, *args, **kwargs):
         return await client.watch(*args, **kwargs)
@@ -897,11 +896,10 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
 
 
 class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
-    @classmethod
     @async_client_context.require_version_min(4, 0, 0, -1)
     @async_client_context.require_change_streams
-    async def _setup_class(cls):
-        await super()._setup_class()
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
 
     async def change_stream_with_client(self, client, *args, **kwargs):
         return await client[self.db.name].watch(*args, **kwargs)
@@ -987,12 +985,9 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
 class TestAsyncCollectionAsyncChangeStream(
     TestAsyncChangeStreamBase, APITestsMixin, ProseSpecTestsMixin
 ):
-    @classmethod
     @async_client_context.require_change_streams
-    async def _setup_class(cls):
-        await super()._setup_class()
-
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         # Use a new collection for each test.
         await self.watched_collection().drop()
         await self.watched_collection().insert_one({})
@@ -1132,20 +1127,11 @@ class TestAllLegacyScenarios(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     listener: AllowListEventListener
 
-    @classmethod
     @async_client_context.require_connection
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.listener = AllowListEventListener("aggregate", "getMore")
-        cls.client = await cls.unmanaged_async_rs_or_single_client(event_listeners=[cls.listener])
-
-    @classmethod
-    async def _tearDown_class(cls):
-        await cls.client.close()
-        await super()._tearDown_class()
-
-    def asyncSetUp(self):
-        super().asyncSetUp()
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.listener = AllowListEventListener("aggregate", "getMore")
+        self.client = await self.async_rs_or_single_client(event_listeners=[self.listener])
         self.listener.reset()
 
     async def asyncSetUpCluster(self, scenario_dict):

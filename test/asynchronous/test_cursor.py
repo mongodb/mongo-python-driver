@@ -34,9 +34,9 @@ from test.utils import (
     AllowListEventListener,
     EventListener,
     OvertCommandListener,
+    async_wait_until,
     delay,
     ignore_deprecations,
-    wait_until,
 )
 
 from bson import decode_all
@@ -1324,8 +1324,8 @@ class TestCursor(AsyncIntegrationTest):
             with self.assertRaises(ExecutionTimeout):
                 await cursor.next()
 
-        def assertCursorKilled():
-            wait_until(
+        async def assertCursorKilled():
+            await async_wait_until(
                 lambda: len(listener.succeeded_events),
                 "find successful killCursors command",
             )
@@ -1335,7 +1335,7 @@ class TestCursor(AsyncIntegrationTest):
             self.assertEqual(1, len(listener.succeeded_events))
             self.assertEqual("killCursors", listener.succeeded_events[0].command_name)
 
-        assertCursorKilled()
+        await assertCursorKilled()
         listener.reset()
 
         cursor = await coll.aggregate([], batchSize=1)
@@ -1345,7 +1345,7 @@ class TestCursor(AsyncIntegrationTest):
             with self.assertRaises(ExecutionTimeout):
                 await cursor.next()
 
-        assertCursorKilled()
+        await assertCursorKilled()
 
     def test_delete_not_initialized(self):
         # Creating a cursor with invalid arguments will not run __init__
@@ -1601,7 +1601,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         await anext(c.find_raw_batches())
 
     async def test_monitoring(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         await c.drop()
@@ -1647,10 +1647,6 @@ class TestRawBatchCursor(AsyncIntegrationTest):
 
 
 class TestRawBatchCommandCursor(AsyncIntegrationTest):
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
-
     async def test_aggregate_raw(self):
         c = self.db.test
         await c.drop()
@@ -1768,7 +1764,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         await anext(await self.db.test.aggregate_raw_batches([], collation=Collation("en_US")))
 
     async def test_monitoring(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
         await c.drop()

@@ -36,8 +36,8 @@ from test.asynchronous import (
 from test.utils import (
     EventListener,
     ExceptionCatchingThread,
+    OvertCommandListener,
     async_wait_until,
-    wait_until,
 )
 
 from bson import DBRef
@@ -82,36 +82,27 @@ class TestSession(AsyncIntegrationTest):
     client2: AsyncMongoClient
     sensitive_commands: Set[str]
 
-    @classmethod
     @async_client_context.require_sessions
-    async def _setup_class(cls):
-        await super()._setup_class()
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
         # Create a second client so we can make sure clients cannot share
         # sessions.
-        cls.client2 = await cls.unmanaged_async_rs_or_single_client()
+        self.client2 = await self.async_rs_or_single_client()
 
         # Redact no commands, so we can test user-admin commands have "lsid".
-        cls.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
+        self.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
         monitoring._SENSITIVE_COMMANDS.clear()
 
-    @classmethod
-    async def _tearDown_class(cls):
-        monitoring._SENSITIVE_COMMANDS.update(cls.sensitive_commands)
-        await cls.client2.close()
-        await super()._tearDown_class()
-
-    async def asyncSetUp(self):
         self.listener = SessionTestListener()
         self.session_checker_listener = SessionTestListener()
         self.client = await self.async_rs_or_single_client(
             event_listeners=[self.listener, self.session_checker_listener]
         )
-        self.addAsyncCleanup(self.client.close)
         self.db = self.client.pymongo_test
         self.initial_lsids = {s["id"] for s in session_ids(self.client)}
 
     async def asyncTearDown(self):
-        """All sessions used in the test must be returned to the pool."""
+        monitoring._SENSITIVE_COMMANDS.update(self.sensitive_commands)
         await self.client.drop_database("pymongo_test")
         used_lsids = self.initial_lsids.copy()
         for event in self.session_checker_listener.started_events:
@@ -120,6 +111,8 @@ class TestSession(AsyncIntegrationTest):
 
         current_lsids = {s["id"] for s in session_ids(self.client)}
         self.assertLessEqual(used_lsids, current_lsids)
+
+        await super().asyncTearDown()
 
     async def _test_ops(self, client, *ops):
         listener = client.options.event_listeners[0]
@@ -199,7 +192,7 @@ class TestSession(AsyncIntegrationTest):
         lsid_set = set()
         failures = 0
         for _ in range(5):
-            listener = EventListener()
+            listener = OvertCommandListener()
             client = self.async_rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
             cursor = client.db.test.find({})
             ops: List[Tuple[Callable, List[Any]]] = [
@@ -832,18 +825,11 @@ class TestCausalConsistency(AsyncUnitTest):
     listener: SessionTestListener
     client: AsyncMongoClient
 
-    @classmethod
-    async def _setup_class(cls):
-        cls.listener = SessionTestListener()
-        cls.client = await cls.unmanaged_async_rs_or_single_client(event_listeners=[cls.listener])
-
-    @classmethod
-    async def _tearDown_class(cls):
-        await cls.client.close()
-
     @async_client_context.require_sessions
     async def asyncSetUp(self):
         await super().asyncSetUp()
+        self.listener = SessionTestListener()
+        self.client = await self.async_rs_or_single_client(event_listeners=[self.listener])
 
     @async_client_context.require_no_standalone
     async def test_core(self):

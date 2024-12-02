@@ -106,19 +106,13 @@ class _ClientBulk:
         self.bypass_doc_val = bypass_document_validation
         self.comment = comment
         self.verbose_results = verbose_results
-
         self.ops: list[tuple[str, Mapping[str, Any]]] = []
         self.namespaces: list[str] = []
         self.idx_offset: int = 0
         self.total_ops: int = 0
-
         self.executed = False
-        self.uses_upsert = False
         self.uses_collation = False
         self.uses_array_filters = False
-        self.uses_hint_update = False
-        self.uses_hint_delete = False
-
         self.is_retryable = self.client.options.retry_writes
         self.retrying = False
         self.started_retryable_write = False
@@ -143,11 +137,12 @@ class _ClientBulk:
         namespace: str,
         selector: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
-        multi: bool = False,
+        multi: bool,
         upsert: Optional[bool] = None,
         collation: Optional[Mapping[str, Any]] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Union[str, dict[str, Any], None] = None,
+        sort: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
@@ -158,17 +153,17 @@ class _ClientBulk:
             "multi": multi,
         }
         if upsert is not None:
-            self.uses_upsert = True
             cmd["upsert"] = upsert
         if array_filters is not None:
             self.uses_array_filters = True
             cmd["arrayFilters"] = array_filters
         if hint is not None:
-            self.uses_hint_update = True
             cmd["hint"] = hint
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
+        if sort is not None:
+            cmd["sort"] = sort
         if multi:
             # A bulk_write containing an update_many is not retryable.
             self.is_retryable = False
@@ -184,6 +179,7 @@ class _ClientBulk:
         upsert: Optional[bool] = None,
         collation: Optional[Mapping[str, Any]] = None,
         hint: Union[str, dict[str, Any], None] = None,
+        sort: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
@@ -194,14 +190,14 @@ class _ClientBulk:
             "multi": False,
         }
         if upsert is not None:
-            self.uses_upsert = True
             cmd["upsert"] = upsert
         if hint is not None:
-            self.uses_hint_update = True
             cmd["hint"] = hint
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
+        if sort is not None:
+            cmd["sort"] = sort
         self.ops.append(("replace", cmd))
         self.namespaces.append(namespace)
         self.total_ops += 1
@@ -217,7 +213,6 @@ class _ClientBulk:
         """Create a delete document and add it to the list of ops."""
         cmd = {"delete": -1, "filter": selector, "multi": multi}
         if hint is not None:
-            self.uses_hint_delete = True
             cmd["hint"] = hint
         if collation is not None:
             self.uses_collation = True
@@ -479,7 +474,6 @@ class _ClientBulk:
                         if op_type == "delete":
                             res = DeleteResult(doc, acknowledged=True)  # type: ignore[assignment]
                         full_result[f"{op_type}Results"][original_index] = res
-
             except Exception as exc:
                 # Attempt to close the cursor, then raise top-level error.
                 if cmd_cursor.alive:
@@ -670,11 +664,11 @@ class _ClientBulk:
             _throw_client_bulk_write_exception(full_result, self.verbose_results)
         return full_result
 
-    def execute_command_unack_unordered(
+    def execute_command_unack(
         self,
         conn: Connection,
     ) -> None:
-        """Execute commands with OP_MSG and w=0 writeConcern, unordered."""
+        """Execute commands with OP_MSG and w=0 writeConcern. Always unordered."""
         db_name = "admin"
         cmd_name = "bulkWrite"
         listeners = self.client._event_listeners
@@ -693,8 +687,8 @@ class _ClientBulk:
         while self.idx_offset < self.total_ops:
             # Construct the server command, specifying the relevant options.
             cmd = {"bulkWrite": 1}
-            cmd["errorsOnly"] = not self.verbose_results
-            cmd["ordered"] = self.ordered  # type: ignore[assignment]
+            cmd["errorsOnly"] = True
+            cmd["ordered"] = False
             if self.bypass_doc_val is not None:
                 cmd["bypassDocumentValidation"] = self.bypass_doc_val
             cmd["writeConcern"] = {"w": 0}  # type: ignore[assignment]
@@ -712,43 +706,6 @@ class _ClientBulk:
 
             self.idx_offset += len(to_send_ops)
 
-    def execute_command_unack_ordered(
-        self,
-        conn: Connection,
-    ) -> None:
-        """Execute commands with OP_MSG and w=0 WriteConcern, ordered."""
-        full_result: MutableMapping[str, Any] = {
-            "anySuccessful": False,
-            "error": None,
-            "writeErrors": [],
-            "writeConcernErrors": [],
-            "nInserted": 0,
-            "nUpserted": 0,
-            "nMatched": 0,
-            "nModified": 0,
-            "nDeleted": 0,
-            "insertResults": {},
-            "updateResults": {},
-            "deleteResults": {},
-        }
-        # Ordered bulk writes have to be acknowledged so that we stop
-        # processing at the first error, even when the application
-        # specified unacknowledged writeConcern.
-        initial_write_concern = WriteConcern()
-        op_id = _randint()
-        try:
-            self._execute_command(
-                initial_write_concern,
-                None,
-                conn,
-                op_id,
-                False,
-                full_result,
-                self.write_concern,
-            )
-        except OperationFailure:
-            pass
-
     def execute_no_results(
         self,
         conn: Connection,
@@ -764,9 +721,7 @@ class _ClientBulk:
                 "Cannot set bypass_document_validation with unacknowledged write concern"
             )
 
-        if self.ordered:
-            return self.execute_command_unack_ordered(conn)
-        return self.execute_command_unack_unordered(conn)
+        return self.execute_command_unack(conn)
 
     def execute(
         self,

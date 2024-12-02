@@ -18,6 +18,9 @@ from __future__ import annotations
 import os
 import sys
 
+from bson import encode
+from bson.raw_bson import RawBSONDocument
+
 sys.path[0:0] = [""]
 
 from test import (
@@ -83,6 +86,17 @@ class TestClientBulkWrite(IntegrationTest):
         write_error = context.exception.write_errors[0]
         self.assertEqual(write_error["idx"], 1)
         self.assertEqual(write_error["op"], {"insert": 0, "document": {"_id": 1}})
+
+    @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
+    def test_raw_bson_not_inflated(self):
+        doc = RawBSONDocument(encode({"a": "b" * 100}))
+        models = [
+            InsertOne(namespace="db.coll", document=doc),
+        ]
+        self.client.bulk_write(models=models)
+
+        self.assertIsNone(doc._RawBSONDocument__inflated_doc)
 
 
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
@@ -401,12 +415,12 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         # Insert document.
         models_insert = [InsertOne(namespace="db.coll", document={"a": b_repeated})]
         with self.assertRaises(DocumentTooLarge):
-            client.bulk_write(models=models_insert, write_concern=WriteConcern(w=0))
+            client.bulk_write(models=models_insert, ordered=False, write_concern=WriteConcern(w=0))
 
         # Replace document.
         models_replace = [ReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})]
         with self.assertRaises(DocumentTooLarge):
-            client.bulk_write(models=models_replace, write_concern=WriteConcern(w=0))
+            client.bulk_write(models=models_replace, ordered=False, write_concern=WriteConcern(w=0))
 
     def _setup_namespace_test_models(self):
         # See prose test specification below for details on these calculations.
@@ -589,6 +603,44 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertEqual(result.update_results[0].did_upsert, True)
         self.assertEqual(result.update_results[1].did_upsert, True)
         self.assertEqual(result.update_results[2].did_upsert, False)
+
+    @client_context.require_version_min(8, 0, 0, -24)
+    @client_context.require_no_serverless
+    def test_15_unacknowledged_write_across_batches(self):
+        listener = OvertCommandListener()
+        client = self.rs_or_single_client(event_listeners=[listener])
+
+        collection = client.db["coll"]
+        self.addCleanup(collection.drop)
+        collection.drop()
+        client.db.command({"create": "db.coll"})
+
+        b_repeated = "b" * (self.max_bson_object_size - 500)
+        models = [
+            InsertOne(namespace="db.coll", document={"a": b_repeated})
+            for _ in range(int(self.max_message_size_bytes / self.max_bson_object_size) + 1)
+        ]
+
+        listener.reset()
+
+        res = client.bulk_write(models, ordered=False, write_concern=WriteConcern(w=0))
+        self.assertEqual(False, res.acknowledged)
+
+        events = listener.started_events
+        self.assertEqual(2, len(events))
+        self.assertEqual(
+            int(self.max_message_size_bytes / self.max_bson_object_size),
+            len(events[0].command["ops"]),
+        )
+        self.assertEqual(1, len(events[1].command["ops"]))
+        self.assertEqual(events[0].operation_id, events[1].operation_id)
+        self.assertEqual({"w": 0}, events[0].command["writeConcern"])
+        self.assertEqual({"w": 0}, events[1].command["writeConcern"])
+
+        self.assertEqual(
+            int(self.max_message_size_bytes / self.max_bson_object_size) + 1,
+            collection.count_documents({}),
+        )
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#11-multi-batch-bulkwrites

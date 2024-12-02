@@ -218,15 +218,17 @@ class TestHandshake(unittest.TestCase):
                     request.ok(
                         "ismaster",
                         True,
-                        saslSupportedMechs=["SCRAM-SHA-256"],
+                        # Unsupported auth mech should be ignored.
+                        saslSupportedMechs=["SCRAM-SHA-256", "does_not_exist"],
                         speculativeAuthenticate=auth,
                         minWireVersion=2,
                         maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
                     )
                     # Authentication should immediately fail with:
                     # OperationFailure: Server returned an invalid nonce.
-                    with self.assertRaises(OperationFailure):
+                    with self.assertRaises(OperationFailure) as cm:
                         future()
+                    self.assertEqual(str(cm.exception), "Server returned an invalid nonce.")
                     return
 
     def test_handshake_load_balanced(self):

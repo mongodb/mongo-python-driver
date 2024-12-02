@@ -142,7 +142,6 @@ class TestURI(unittest.TestCase):
         self.assertEqual({"fsync": True}, split_options("fsync=true"))
         self.assertEqual({"fsync": False}, split_options("fsync=false"))
         self.assertEqual({"authmechanism": "GSSAPI"}, split_options("authMechanism=GSSAPI"))
-        self.assertEqual({"authmechanism": "MONGODB-CR"}, split_options("authMechanism=MONGODB-CR"))
         self.assertEqual(
             {"authmechanism": "SCRAM-SHA-1"}, split_options("authMechanism=SCRAM-SHA-1")
         )
@@ -295,30 +294,30 @@ class TestURI(unittest.TestCase):
 
         # Various authentication tests
         res = copy.deepcopy(orig)
-        res["options"] = {"authmechanism": "MONGODB-CR"}
+        res["options"] = {"authmechanism": "SCRAM-SHA-256"}
         res["username"] = "user"
         res["password"] = "password"
         self.assertEqual(
-            res, parse_uri("mongodb://user:password@localhost/?authMechanism=MONGODB-CR")
+            res, parse_uri("mongodb://user:password@localhost/?authMechanism=SCRAM-SHA-256")
         )
 
         res = copy.deepcopy(orig)
-        res["options"] = {"authmechanism": "MONGODB-CR", "authsource": "bar"}
+        res["options"] = {"authmechanism": "SCRAM-SHA-256", "authsource": "bar"}
         res["username"] = "user"
         res["password"] = "password"
         res["database"] = "foo"
         self.assertEqual(
             res,
             parse_uri(
-                "mongodb://user:password@localhost/foo?authSource=bar;authMechanism=MONGODB-CR"
+                "mongodb://user:password@localhost/foo?authSource=bar;authMechanism=SCRAM-SHA-256"
             ),
         )
 
         res = copy.deepcopy(orig)
-        res["options"] = {"authmechanism": "MONGODB-CR"}
+        res["options"] = {"authmechanism": "SCRAM-SHA-256"}
         res["username"] = "user"
         res["password"] = ""
-        self.assertEqual(res, parse_uri("mongodb://user:@localhost/?authMechanism=MONGODB-CR"))
+        self.assertEqual(res, parse_uri("mongodb://user:@localhost/?authMechanism=SCRAM-SHA-256"))
 
         res = copy.deepcopy(orig)
         res["username"] = "user@domain.com"

@@ -14,7 +14,7 @@
 
 """Unified test format runner.
 
-https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
+https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.md
 """
 from __future__ import annotations
 
@@ -69,6 +69,7 @@ from gridfs import GridFSBucket, GridOut
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
+    AutoReconnect,
     BulkWriteError,
     ClientBulkWriteException,
     ConfigurationError,
@@ -303,7 +304,6 @@ class EntityMapUtil:
                 kwargs["h"] = uri
             client = self.test.rs_or_single_client(**kwargs)
             self[spec["id"]] = client
-            self.test.addCleanup(client.close)
             return
         elif entity_type == "database":
             client = self[spec["client"]]
@@ -431,7 +431,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     """Mixin class to run test cases from test specification files.
 
     Assumes that tests conform to the `unified test format
-    <https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst>`_.
+    <https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.md>`_.
 
     Specification of the test suite being currently run is available as
     a class attribute ``TEST_SPEC``.
@@ -478,31 +478,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 db.create_collection(coll_name, write_concern=wc, **opts)
 
     @classmethod
-    def _setup_class(cls):
-        # super call creates internal client cls.client
-        super()._setup_class()
-        # process file-level runOnRequirements
-        run_on_spec = cls.TEST_SPEC.get("runOnRequirements", [])
-        if not cls.should_run_on(run_on_spec):
-            raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
-
-        # add any special-casing for skipping tests here
-        if client_context.storage_engine == "mmapv1":
-            if "retryable-writes" in cls.TEST_SPEC["description"] or "retryable_writes" in str(
-                cls.TEST_PATH
-            ):
-                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
-
-        # Handle mongos_clients for transactions tests.
-        cls.mongos_clients = []
-        if (
-            client_context.supports_transactions()
-            and not client_context.load_balancer
-            and not client_context.serverless
-        ):
-            for address in client_context.mongoses:
-                cls.mongos_clients.append(cls.unmanaged_single_client("{}:{}".format(*address)))
-
+    def setUpClass(cls) -> None:
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(
             heartbeat_frequency=0.1,
@@ -513,17 +489,36 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         cls.knobs.enable()
 
     @classmethod
-    def _tearDown_class(cls):
+    def tearDownClass(cls) -> None:
         cls.knobs.disable()
-        for client in cls.mongos_clients:
-            client.close()
-        super()._tearDown_class()
 
     def setUp(self):
+        # super call creates internal client cls.client
         super().setUp()
+        # process file-level runOnRequirements
+        run_on_spec = self.TEST_SPEC.get("runOnRequirements", [])
+        if not self.should_run_on(run_on_spec):
+            raise unittest.SkipTest(f"{self.__class__.__name__} runOnRequirements not satisfied")
+
+        # add any special-casing for skipping tests here
+        if client_context.storage_engine == "mmapv1":
+            if "retryable-writes" in self.TEST_SPEC["description"] or "retryable_writes" in str(
+                self.TEST_PATH
+            ):
+                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
+
+        # Handle mongos_clients for transactions tests.
+        self.mongos_clients = []
+        if (
+            client_context.supports_transactions()
+            and not client_context.load_balancer
+            and not client_context.serverless
+        ):
+            for address in client_context.mongoses:
+                self.mongos_clients.append(self.single_client("{}:{}".format(*address)))
+
         # process schemaVersion
         # note: we check major schema version during class generation
-        # note: we do this here because we cannot run assertions in setUpClass
         version = Version.from_string(self.TEST_SPEC["schemaVersion"])
         self.assertLessEqual(
             version,
@@ -543,15 +538,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 or "Cancel server check" in spec["description"]
             ):
                 self.skipTest("MMAPv1 does not support retryWrites=True")
-        if (
-            "Database-level aggregate with $out includes read preference for 5.0+ server"
-            in spec["description"]
-        ):
-            if client_context.version[0] == 8:
-                self.skipTest("waiting on PYTHON-4356")
-        if "Aggregate with $out includes read preference for 5.0+ server" in spec["description"]:
-            if client_context.version[0] == 8:
-                self.skipTest("waiting on PYTHON-4356")
         if "Client side error in command starting transaction" in spec["description"]:
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
@@ -760,9 +746,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         for client in clients:
             try:
                 client.admin.command("killAllSessions", [])
-            except OperationFailure:
+            except (OperationFailure, AutoReconnect):
                 # "operation was interrupted" by killing the command's
                 # own session.
+                # On 8.0+ killAllSessions sometimes returns a network error.
                 pass
 
     def _databaseOperation_listCollections(self, target, *args, **kwargs):
@@ -858,7 +845,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return target.create_data_key(*args, **kwargs)
 
     def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
-        return (target.get_keys(*args, **kwargs)).to_list()
+        return target.get_keys(*args, **kwargs).to_list()
 
     def _clientEncryptionOperation_deleteKey(self, target, *args, **kwargs):
         result = target.delete_key(*args, **kwargs)
@@ -1033,7 +1020,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             )
 
         client = self.single_client("{}:{}".format(*session._pinned_address))
-        self.addCleanup(client.close)
         self.__set_fail_point(client=client, command_args=spec["failPoint"])
 
     def _testOperation_createEntities(self, spec):
@@ -1314,8 +1300,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 if log.module == "ocsp_support":
                     continue
                 data = json_util.loads(log.getMessage())
-                client = data.pop("clientId") if "clientId" in data else data.pop("topologyId")
-                client_to_log[client].append(
+                client_id = data.get("clientId", data.get("topologyId"))
+                client_to_log[client_id].append(
                     {
                         "level": log.levelname.lower(),
                         "component": log.name.replace("pymongo.", "", 1),

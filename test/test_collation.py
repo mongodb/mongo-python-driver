@@ -18,7 +18,7 @@ from __future__ import annotations
 import functools
 import warnings
 from test import IntegrationTest, client_context, unittest
-from test.utils import EventListener
+from test.utils import EventListener, OvertCommandListener
 from typing import Any
 
 from pymongo.collation import (
@@ -97,26 +97,19 @@ class TestCollation(IntegrationTest):
     warn_context: Any
     collation: Collation
 
-    @classmethod
     @client_context.require_connection
-    def _setup_class(cls):
-        super()._setup_class()
-        cls.listener = EventListener()
-        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
-        cls.db = cls.client.pymongo_test
-        cls.collation = Collation("en_US")
-        cls.warn_context = warnings.catch_warnings()
-        cls.warn_context.__enter__()
-        warnings.simplefilter("ignore", DeprecationWarning)
+    def setUp(self) -> None:
+        super().setUp()
+        self.listener = OvertCommandListener()
+        self.client = self.rs_or_single_client(event_listeners=[self.listener])
+        self.db = self.client.pymongo_test
+        self.collation = Collation("en_US")
+        self.warn_context = warnings.catch_warnings()
+        self.warn_context.__enter__()
 
-    @classmethod
-    def _tearDown_class(cls):
-        cls.warn_context.__exit__()
-        cls.warn_context = None
-        cls.client.close()
-        super()._tearDown_class()
-
-    def tearDown(self):
+    def tearDown(self) -> None:
+        self.warn_context.__exit__()
+        self.warn_context = None
         self.listener.reset()
         super().tearDown()
 

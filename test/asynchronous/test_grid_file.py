@@ -33,7 +33,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 sys.path[0:0] = [""]
 
-from test.utils import EventListener
+from test.utils import OvertCommandListener
 
 from bson.objectid import ObjectId
 from gridfs.asynchronous.grid_file import (
@@ -97,6 +97,7 @@ class AsyncTestGridFileNoConnect(AsyncUnitTest):
 
 class AsyncTestGridFile(AsyncIntegrationTest):
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         await self.cleanup_colls(self.db.fs.files, self.db.fs.chunks)
 
     async def test_basic(self):
@@ -810,7 +811,7 @@ Bye"""
         # Use 102 batches to cause a single getMore.
         chunk_size = 1024
         data = b"d" * (102 * chunk_size)
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
         db = client.pymongo_test
         async with AsyncGridIn(db.fs, chunk_size=chunk_size) as infile:

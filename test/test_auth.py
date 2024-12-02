@@ -32,6 +32,8 @@ from test import (
 )
 from test.utils import AllowListEventListener, delay, ignore_deprecations
 
+import pytest
+
 from pymongo import MongoClient, monitoring
 from pymongo.auth_shared import _build_credentials_tuple
 from pymongo.errors import OperationFailure
@@ -41,6 +43,8 @@ from pymongo.saslprep import HAVE_STRINGPREP
 from pymongo.synchronous.auth import HAVE_KERBEROS
 
 _IS_SYNC = True
+
+pytestmark = pytest.mark.auth
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
 GSSAPI_HOST = os.environ.get("GSSAPI_HOST")
@@ -369,7 +373,7 @@ class TestSCRAMSHA1(IntegrationTest):
             db.command("dbstats")
 
 
-# https://github.com/mongodb/specifications/blob/master/source/auth/auth.rst#scram-sha-256-and-mechanism-negotiation
+# https://github.com/mongodb/specifications/blob/master/source/auth/auth.md#scram-sha-256-and-mechanism-negotiation
 class TestSCRAM(IntegrationTest):
     @client_context.require_auth
     @client_context.require_version_min(3, 7, 2)

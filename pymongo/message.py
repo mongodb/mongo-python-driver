@@ -24,6 +24,7 @@ from __future__ import annotations
 import datetime
 import random
 import struct
+from collections import ChainMap
 from io import BytesIO as _BytesIO
 from typing import (
     TYPE_CHECKING,
@@ -251,6 +252,10 @@ def _gen_find_command(
         if limit < 0:
             cmd["singleBatch"] = True
     if batch_size:
+        # When limit and batchSize are equal we increase batchSize by 1 to
+        # avoid an unnecessary killCursors.
+        if limit == batch_size:
+            batch_size += 1
         cmd["batchSize"] = batch_size
     if read_concern.level and not (session and session.in_transaction):
         cmd["readConcern"] = read_concern.document
@@ -1111,8 +1116,18 @@ def _client_batched_op_msg_impl(
         # key and the index of its namespace within ns_info as its value.
         op_doc[op_type] = ns_info[namespace]  # type: ignore[index]
 
+        # Since the data document itself is nested within the insert document
+        # it won't be automatically re-ordered by the BSON conversion.
+        # We use ChainMap here to make the _id field the first field instead.
+        doc_to_encode = op_doc
+        if real_op_type == "insert":
+            doc = op_doc["document"]
+            if not isinstance(doc, RawBSONDocument):
+                doc_to_encode = op_doc.copy()  # type: ignore[attr-defined] # Shallow copy
+                doc_to_encode["document"] = ChainMap(doc, {"_id": doc["_id"]})  # type: ignore[index]
+
         # Encode current operation doc and, if newly added, namespace doc.
-        op_doc_encoded = _dict_to_bson(op_doc, False, opts)
+        op_doc_encoded = _dict_to_bson(doc_to_encode, False, opts)
         op_length = len(op_doc_encoded)
         if ns_doc:
             ns_doc_encoded = _dict_to_bson(ns_doc, False, opts)

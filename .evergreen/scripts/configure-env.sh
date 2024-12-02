@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -eux
 
 # Get the current unique version of this checkout
 # shellcheck disable=SC2154
@@ -29,7 +29,7 @@ fi
 export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
 export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
 
-cat <<EOT > $SCRIPT_DIR/env.sh
+cat <<EOT > "$SCRIPT_DIR"/env.sh
 set -o errexit
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
 export CURRENT_VERSION="$CURRENT_VERSION"
@@ -38,6 +38,21 @@ export DRIVERS_TOOLS="$DRIVERS_TOOLS"
 export MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
 export MONGODB_BINARIES="$MONGODB_BINARIES"
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
+export SETDEFAULTENCODING="${SETDEFAULTENCODING:-}"
+export SKIP_CSOT_TESTS="${SKIP_CSOT_TESTS:-}"
+export MONGODB_STARTED="${MONGODB_STARTED:-}"
+export DISABLE_TEST_COMMANDS="${DISABLE_TEST_COMMANDS:-}"
+export GREEN_FRAMEWORK="${GREEN_FRAMEWORK:-}"
+export NO_EXT="${NO_EXT:-}"
+export COVERAGE="${COVERAGE:-}"
+export COMPRESSORS="${COMPRESSORS:-}"
+export MONGODB_API_VERSION="${MONGODB_API_VERSION:-}"
+export SKIP_HATCH="${SKIP_HATCH:-}"
+export skip_crypt_shared="${skip_crypt_shared:-}"
+export STORAGE_ENGINE="${STORAGE_ENGINE:-}"
+export REQUIRE_API_VERSION="${REQUIRE_API_VERSION:-}"
+export skip_web_identity_auth_test="${skip_web_identity_auth_test:-}"
+export skip_ECS_auth_test="${skip_ECS_auth_test:-}"
 
 export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
 export PATH="$MONGODB_BINARIES:$PATH"
@@ -45,6 +60,11 @@ export PATH="$MONGODB_BINARIES:$PATH"
 export PROJECT="$project"
 export PIP_QUIET=1
 EOT
+
+# Skip CSOT tests on non-linux platforms.
+if [ "$(uname -s)" != "Linux" ]; then
+    echo "export SKIP_CSOT_TESTS=1" >> $SCRIPT_DIR/env.sh
+fi
 
 # Add these expansions to make it easier to call out tests scripts from the EVG yaml
 cat <<EOT > expansion.yml

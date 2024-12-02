@@ -105,6 +105,7 @@ class Update(threading.Thread):
 
 class TestThreads(IntegrationTest):
     def setUp(self):
+        super().setUp()
         self.db = self.client.pymongo_test
 
     def test_threading(self):

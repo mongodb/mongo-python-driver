@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.9"
@@ -55,6 +57,8 @@ jobs:
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - if: ${{ matrix.python-version == '3.13t' }}
         name: Setup free-threaded Python
         uses: deadsnakes/action@v3.2.0
@@ -99,6 +103,8 @@ jobs:
     name: DocTest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -121,6 +127,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           cache: 'pip'
@@ -139,6 +147,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           cache: 'pip'
@@ -160,6 +170,8 @@ jobs:
         python: ["3.9", "3.11"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "${{matrix.python}}"
@@ -177,6 +189,8 @@ jobs:
     name: "Make an sdist"
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           cache: 'pip'

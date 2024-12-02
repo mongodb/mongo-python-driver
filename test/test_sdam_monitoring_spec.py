@@ -270,7 +270,7 @@ class TestSdamMonitoring(IntegrationTest):
     @classmethod
     @client_context.require_failCommand_fail_point
     def setUpClass(cls):
-        super().setUpClass()
+        super().setUp(cls)
         # Speed up the tests by decreasing the event publish frequency.
         cls.knobs = client_knobs(
             events_queue_frequency=0.1, heartbeat_frequency=0.1, min_heartbeat_interval=0.1

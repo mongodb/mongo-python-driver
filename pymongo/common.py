@@ -139,6 +139,9 @@ SRV_SERVICE_NAME = "mongodb"
 # Default value for serverMonitoringMode
 SERVER_MONITORING_MODE = "auto"  # poll/stream/auto
 
+# Auth mechanism properties that must raise an error instead of warning if they invalidate.
+_MECH_PROP_MUST_RAISE = ["CANONICALIZE_HOST_NAME"]
+
 
 def partition_node(node: str) -> tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""
@@ -423,6 +426,7 @@ def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]
 _MECHANISM_PROPS = frozenset(
     [
         "SERVICE_NAME",
+        "SERVICE_HOST",
         "CANONICALIZE_HOST_NAME",
         "SERVICE_REALM",
         "AWS_SESSION_TOKEN",
@@ -476,7 +480,9 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
             )
 
         if key == "CANONICALIZE_HOST_NAME":
-            props[key] = validate_boolean_or_string(key, val)
+            from pymongo.auth_shared import _validate_canonicalize_host_name
+
+            props[key] = _validate_canonicalize_host_name(val)
         else:
             props[key] = val
 
@@ -867,6 +873,12 @@ def get_validated_options(
             validator = _get_validator(opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key)
             validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
+            if (
+                normed_key == "authmechanismproperties"
+                and any(p in str(exc) for p in _MECH_PROP_MUST_RAISE)
+                and "is not a supported auth mechanism property" not in str(exc)
+            ):
+                raise
             if warn:
                 warnings.warn(str(exc), stacklevel=2)
             else:

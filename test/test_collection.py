@@ -36,6 +36,7 @@ from test import (  # TODO: fix sync imports in PYTHON-4528
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,
+    OvertCommandListener,
     get_pool,
     is_mongos,
     wait_until,
@@ -86,14 +87,10 @@ class TestCollectionNoConnect(UnitTest):
     db: Database
     client: MongoClient
 
-    @classmethod
-    def _setup_class(cls):
-        cls.client = MongoClient(connect=False)
-        cls.db = cls.client.pymongo_test
-
-    @classmethod
-    def _tearDown_class(cls):
-        cls.client.close()
+    def setUp(self) -> None:
+        super().setUp()
+        self.client = self.simple_client(connect=False)
+        self.db = self.client.pymongo_test
 
     def test_collection(self):
         self.assertRaises(TypeError, Collection, self.db, 5)
@@ -163,27 +160,14 @@ class TestCollectionNoConnect(UnitTest):
 class TestCollection(IntegrationTest):
     w: int
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.w = client_context.w  # type: ignore
-
-    @classmethod
-    def tearDownClass(cls):
-        if _IS_SYNC:
-            cls.db.drop_collection("test_large_limit")  # type: ignore[unused-coroutine]
-        else:
-            asyncio.run(cls.async_tearDownClass())
-
-    @classmethod
-    def async_tearDownClass(cls):
-        cls.db.drop_collection("test_large_limit")
-
     def setUp(self):
-        self.db.test.drop()
+        super().setUp()
+        self.w = client_context.w  # type: ignore
 
     def tearDown(self):
         self.db.test.drop()
+        self.db.drop_collection("test_large_limit")
+        super().tearDown()
 
     @contextlib.contextmanager
     def write_concern_collection(self):
@@ -1009,7 +993,10 @@ class TestCollection(IntegrationTest):
         db.test.insert_one({"y": 1}, bypass_document_validation=True)
         db_w0.test.replace_one({"y": 1}, {"x": 1}, bypass_document_validation=True)
 
-        wait_until(lambda: db_w0.test.find_one({"x": 1}), "find w:0 replaced document")
+        def predicate():
+            return db_w0.test.find_one({"x": 1})
+
+        wait_until(predicate, "find w:0 replaced document")
 
     def test_update_bypass_document_validation(self):
         db = self.db
@@ -2093,7 +2080,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(4, (c.find_one_and_update({}, {"$inc": {"i": 1}}, sort=sort))["j"])
 
     def test_find_one_and_write_concern(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         db = (self.single_client(event_listeners=[listener]))[self.db.name]
         # non-default WriteConcern.
         c_w0 = db.get_collection("test", write_concern=WriteConcern(w=0))

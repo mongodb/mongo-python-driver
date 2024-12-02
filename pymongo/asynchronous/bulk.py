@@ -109,6 +109,7 @@ class _AsyncBulk:
         self.uses_array_filters = False
         self.uses_hint_update = False
         self.uses_hint_delete = False
+        self.uses_sort = False
         self.is_retryable = True
         self.retrying = False
         self.started_retryable_write = False
@@ -139,17 +140,18 @@ class _AsyncBulk:
         self,
         selector: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
-        multi: bool = False,
-        upsert: bool = False,
+        multi: bool,
+        upsert: Optional[bool],
         collation: Optional[Mapping[str, Any]] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Union[str, dict[str, Any], None] = None,
+        sort: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
-        cmd: dict[str, Any] = dict(  # noqa: C406
-            [("q", selector), ("u", update), ("multi", multi), ("upsert", upsert)]
-        )
+        cmd: dict[str, Any] = {"q": selector, "u": update, "multi": multi}
+        if upsert is not None:
+            cmd["upsert"] = upsert
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -159,6 +161,9 @@ class _AsyncBulk:
         if hint is not None:
             self.uses_hint_update = True
             cmd["hint"] = hint
+        if sort is not None:
+            self.uses_sort = True
+            cmd["sort"] = sort
         if multi:
             # A bulk_write containing an update_many is not retryable.
             self.is_retryable = False
@@ -168,19 +173,25 @@ class _AsyncBulk:
         self,
         selector: Mapping[str, Any],
         replacement: Mapping[str, Any],
-        upsert: bool = False,
+        upsert: Optional[bool],
         collation: Optional[Mapping[str, Any]] = None,
         hint: Union[str, dict[str, Any], None] = None,
+        sort: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
-        cmd = {"q": selector, "u": replacement, "multi": False, "upsert": upsert}
+        cmd: dict[str, Any] = {"q": selector, "u": replacement}
+        if upsert is not None:
+            cmd["upsert"] = upsert
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
         if hint is not None:
             self.uses_hint_update = True
             cmd["hint"] = hint
+        if sort is not None:
+            self.uses_sort = True
+            cmd["sort"] = sort
         self.ops.append((_UPDATE, cmd))
 
     def add_delete(
@@ -191,7 +202,7 @@ class _AsyncBulk:
         hint: Union[str, dict[str, Any], None] = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
-        cmd = {"q": selector, "limit": limit}
+        cmd: dict[str, Any] = {"q": selector, "limit": limit}
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -698,6 +709,10 @@ class _AsyncBulk:
         if unack and self.uses_hint_update and conn.max_wire_version < 8:
             raise ConfigurationError(
                 "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
+            )
+        if unack and self.uses_sort and conn.max_wire_version < 25:
+            raise ConfigurationError(
+                "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."
             )
         # Cannot have both unacknowledged writes and bypass document validation.
         if self.bypass_doc_val:
