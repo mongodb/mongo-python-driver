@@ -1299,7 +1299,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
           >>> await cursor.to_list()
 
-        Or, so read at most n items from the cursor::
+        Or, to read at most n items from the cursor::
 
           >>> await cursor.to_list(n)
 
