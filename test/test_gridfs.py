@@ -511,6 +511,7 @@ class TestGridfsReplicaSet(IntegrationTest):
         super().setUp()
 
     @classmethod
+    @client_context.require_connection
     def tearDownClass(cls):
         client_context.client.drop_database("gfsreplica")
 

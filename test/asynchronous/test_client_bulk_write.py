@@ -102,6 +102,7 @@ class TestClientBulkWrite(AsyncIntegrationTest):
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
 class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.max_write_batch_size = await async_client_context.max_write_batch_size
         self.max_bson_object_size = await async_client_context.max_bson_size
         self.max_message_size_bytes = await async_client_context.max_message_size_bytes
@@ -652,6 +653,7 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
     async def asyncSetUp(self):
         if os.environ.get("SKIP_CSOT_TESTS", ""):
             raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
+        await super().asyncSetUp()
         self.max_write_batch_size = await async_client_context.max_write_batch_size
         self.max_bson_object_size = await async_client_context.max_bson_size
         self.max_message_size_bytes = await async_client_context.max_message_size_bytes

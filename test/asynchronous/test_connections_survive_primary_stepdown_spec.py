@@ -46,6 +46,7 @@ class TestAsyncConnectionsSurvivePrimaryStepDown(AsyncIntegrationTest):
 
     @async_client_context.require_replica_set
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.listener = CMAPListener()
         self.client = await self.async_rs_or_single_client(
             event_listeners=[self.listener], retryWrites=False, heartbeatFrequencyMS=500
