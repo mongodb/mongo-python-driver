@@ -2875,7 +2875,7 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
     async def http_post(self, path, data=None):
         # Note, the connection to the mock server needs to be closed after
         # each request because the server is single threaded.
-        ctx = get_ssl_context(
+        ctx: ssl.SSLContext = get_ssl_context(
             CLIENT_PEM,  # certfile
             None,  # passphrase
             CA_PEM,  # ca_certs
