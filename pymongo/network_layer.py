@@ -297,10 +297,17 @@ async def async_receive_data_socket(
 
 
 async def _async_receive_stream(reader: asyncio.StreamReader, length: int) -> memoryview:
-    bytes = await reader.read(length)
-    if len(bytes) == 0:
-        raise OSError("connection closed")
-    return memoryview(bytes)
+    mv = bytearray(length)
+    total_read = 0
+
+    while total_read < length:
+        bytes = await reader.read(length)
+        chunk_length = len(bytes)
+        if chunk_length == 0:
+            raise OSError("connection closed")
+        mv[total_read:] = bytes
+        total_read += chunk_length
+    return memoryview(mv)
 
 def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> memoryview:
     buf = bytearray(length)
