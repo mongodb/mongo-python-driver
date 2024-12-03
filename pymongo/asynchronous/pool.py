@@ -1409,56 +1409,38 @@ async def _configured_stream(
         # sock.settimeout(options.socket_timeout)
         return reader, writer
 
-    # host = address[0]
-    # try:
-    #     # We have to pass hostname / ip address to wrap_socket
-    #     # to use SSLContext.check_hostname.
-    #     if HAS_SNI:
-    #         if _IS_SYNC:
-    #             ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
-    #         else:
-    #             if hasattr(ssl_context, "a_wrap_socket"):
-    #                 ssl_sock = await ssl_context.a_wrap_socket(sock, server_hostname=host)  # type: ignore[assignment, misc]
-    #             else:
-    #                 loop = asyncio.get_running_loop()
-    #                 ssl_sock = await loop.run_in_executor(
-    #                     None,
-    #                     functools.partial(ssl_context.wrap_socket, sock, server_hostname=host),  # type: ignore[assignment, misc]
-    #                 )
-    #     else:
-    #         if _IS_SYNC:
-    #             ssl_sock = ssl_context.wrap_socket(sock)
-    #         else:
-    #             if hasattr(ssl_context, "a_wrap_socket"):
-    #                 ssl_sock = await ssl_context.a_wrap_socket(sock)  # type: ignore[assignment, misc]
-    #             else:
-    #                 loop = asyncio.get_running_loop()
-    #                 ssl_sock = await loop.run_in_executor(None, ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc]
-    # except _CertificateError:
-    #     sock.close()
-    #     # Raise _CertificateError directly like we do after match_hostname
-    #     # below.
-    #     raise
-    # except (OSError, SSLError) as exc:
-    #     sock.close()
-    #     # We raise AutoReconnect for transient and permanent SSL handshake
-    #     # failures alike. Permanent handshake failures, like protocol
-    #     # mismatch, will be turned into ServerSelectionTimeoutErrors later.
-    #     details = _get_timeout_details(options)
-    #     _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
-    # if (
-    #     ssl_context.verify_mode
-    #     and not ssl_context.check_hostname
-    #     and not options.tls_allow_invalid_hostnames
-    # ):
-    #     try:
-    #         ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined]
-    #     except _CertificateError:
-    #         ssl_sock.close()
-    #         raise
-    #
-    # ssl_sock.settimeout(options.socket_timeout)
-    # return ssl_sock
+    host = address[0]
+    try:
+        # We have to pass hostname / ip address to wrap_socket
+        # to use SSLContext.check_hostname.
+        await writer.start_tls(ssl_context, server_hostname=host)
+    except _CertificateError:
+        writer.close()
+        await writer.wait_closed()
+        # Raise _CertificateError directly like we do after match_hostname
+        # below.
+        raise
+    except (OSError, SSLError) as exc:
+        writer.close()
+        await writer.wait_closed()
+        # We raise AutoReconnect for transient and permanent SSL handshake
+        # failures alike. Permanent handshake failures, like protocol
+        # mismatch, will be turned into ServerSelectionTimeoutErrors later.
+        details = _get_timeout_details(options)
+        _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
+    if (
+        ssl_context.verify_mode
+        and not ssl_context.check_hostname
+        and not options.tls_allow_invalid_hostnames
+    ):
+        try:
+            ssl.match_hostname(writer.get_extra_info("peercert"), hostname=host)  # type:ignore[attr-defined]
+        except _CertificateError:
+            writer.close()
+            await writer.wait_closed()
+            raise
+
+    return reader, writer
 
 
 async def _configured_socket(
