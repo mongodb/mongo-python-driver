@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import os
 import re
-import subprocess
+import sys
 from os import listdir
 from pathlib import Path
 
@@ -358,10 +358,7 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 
 
 def main() -> None:
-    output = subprocess.check_output(["git", "status", "-s"]).decode("utf8")  # noqa:S603,S607
-    modified_files = set()
-    for line in output.splitlines():
-        modified_files.add("./" + line.strip().split(" ")[1])
+    modified_files = [f"./{f}" for f in sys.argv[1:]]
     errored = False
     for fname in async_files + gridfs_files:
         if str(fname) in modified_files:
@@ -371,9 +368,6 @@ def main() -> None:
             print(f"Refusing to overwrite {sync_name}")
             errored = True
     if errored:
-        import pdb
-
-        pdb.set_trace()
         raise ValueError("Aborting synchro due to errors")
 
     unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
