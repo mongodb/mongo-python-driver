@@ -174,561 +174,561 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         """Client for a MongoDB instance, a replica set, or a set of mongoses.
 
-            .. warning:: Starting in PyMongo 4.0, ``directConnection`` now has a default value of
-              False instead of None.
-              For more details, see the relevant section of the PyMongo 4.x migration guide:
-              :ref:`pymongo4-migration-direct-connection`.
-
-            The client object is thread-safe and has connection-pooling built in.
-            If an operation fails because of a network error,
-            :class:`~pymongo.errors.ConnectionFailure` is raised and the client
-            reconnects in the background. Application code should handle this
-            exception (recognizing that the operation failed) and then continue to
-            execute.
-
-            The `host` parameter can be a full `mongodb URI
-            <http://dochub.mongodb.org/core/connections>`_, in addition to
-            a simple hostname. It can also be a list of hostnames but no more
-            than one URI. Any port specified in the host string(s) will override
-            the `port` parameter. For username and
-            passwords reserved characters like ':', '/', '+' and '@' must be
-            percent encoded following RFC 2396::
-
-                from urllib.parse import quote_plus
-
-                uri = "mongodb://%s:%s@%s" % (
-                    quote_plus(user), quote_plus(password), host)
-                client = MongoClient(uri)
-
-            Unix domain sockets are also supported. The socket path must be percent
-            encoded in the URI::
-
-                uri = "mongodb://%s:%s@%s" % (
-                    quote_plus(user), quote_plus(password), quote_plus(socket_path))
-                client = MongoClient(uri)
-
-            But not when passed as a simple hostname::
-
-                client = MongoClient('/tmp/mongodb-27017.sock')
-
-            Starting with version 3.6, PyMongo supports mongodb+srv:// URIs. The
-            URI must include one, and only one, hostname. The hostname will be
-            resolved to one or more DNS `SRV records
-            <https://en.wikipedia.org/wiki/SRV_record>`_ which will be used
-            as the seed list for connecting to the MongoDB deployment. When using
-            SRV URIs, the `authSource` and `replicaSet` configuration options can
-            be specified using `TXT records
-            <https://en.wikipedia.org/wiki/TXT_record>`_. See the
-            `Initial DNS Seedlist Discovery spec
-            <https://github.com/mongodb/specifications/blob/master/source/
-            initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.md>`_
-            for more details. Note that the use of SRV URIs implicitly enables
-            TLS support. Pass tls=false in the URI to override.
-
-            .. note:: MongoClient creation will block waiting for answers from
-              DNS when mongodb+srv:// URIs are used.
-
-            .. note:: Starting with version 3.0 the :class:`MongoClient`
-              constructor no longer blocks while connecting to the server or
-              servers, and it no longer raises
-              :class:`~pymongo.errors.ConnectionFailure` if they are
-              unavailable, nor :class:`~pymongo.errors.ConfigurationError`
-              if the user's credentials are wrong. Instead, the constructor
-              returns immediately and launches the connection process on
-              background threads. You can check if the server is available
-              like this::
-
-                from pymongo.errors import ConnectionFailure
-                client = MongoClient()
-                try:
-                    # The ping command is cheap and does not require auth.
-                    client.admin.command('ping')
-                except ConnectionFailure:
-                    print("Server not available")
-
-            .. warning:: When using PyMongo in a multiprocessing context, please
-              read :ref:`multiprocessing` first.
-
-            .. note:: Many of the following options can be passed using a MongoDB
-              URI or keyword parameters. If the same option is passed in a URI and
-              as a keyword parameter the keyword parameter takes precedence.
-
-            :param host: hostname or IP address or Unix domain socket
-                path of a single mongod or mongos instance to connect to, or a
-                mongodb URI, or a list of hostnames (but no more than one mongodb
-                URI). If `host` is an IPv6 literal it must be enclosed in '['
-                and ']' characters
-                following the RFC2732 URL syntax (e.g. '[::1]' for localhost).
-                Multihomed and round robin DNS addresses are **not** supported.
-            :param port: port number on which to connect
-            :param document_class: default class to use for
-                documents returned from queries on this client
-            :param tz_aware: if ``True``,
-                :class:`~datetime.datetime` instances returned as values
-                in a document by this :class:`MongoClient` will be timezone
-                aware (otherwise they will be naive)
-            :param connect: If ``True`` (the default), immediately
-                begin connecting to MongoDB in the background. Otherwise connect
-                on the first operation.  The default value is ``False`` when
-                running in a Function-as-a-service environment.
-            :param type_registry: instance of
-                :class:`~bson.codec_options.TypeRegistry` to enable encoding
-                and decoding of custom types.
-            :param datetime_conversion: Specifies how UTC datetimes should be decoded
-                within BSON. Valid options include 'datetime_ms' to return as a
-                DatetimeMS, 'datetime' to return as a datetime.datetime and
-                raising a ValueError for out-of-range values, 'datetime_auto' to
-                return DatetimeMS objects when the underlying datetime is
-                out-of-range and 'datetime_clamp' to clamp to the minimum and
-                maximum possible datetimes. Defaults to 'datetime'. See
-                :ref:`handling-out-of-range-datetimes` for details.
-
-              | **Other optional parameters can be passed as keyword arguments:**
-
-              - `directConnection` (optional): if ``True``, forces this client to
-                 connect directly to the specified MongoDB host as a standalone.
-                 If ``false``, the client connects to the entire replica set of
-                 which the given MongoDB host(s) is a part. If this is ``True``
-                 and a mongodb+srv:// URI or a URI containing multiple seeds is
-                 provided, an exception will be raised.
-              - `maxPoolSize` (optional): The maximum allowable number of
-                concurrent connections to each connected server. Requests to a
-                server will block if there are `maxPoolSize` outstanding
-                connections to the requested server. Defaults to 100. Can be
-                either 0 or None, in which case there is no limit on the number
-                of concurrent connections.
-              - `minPoolSize` (optional): The minimum required number of concurrent
-                connections that the pool will maintain to each connected server.
-                Default is 0.
-              - `maxIdleTimeMS` (optional): The maximum number of milliseconds that
-                a connection can remain idle in the pool before being removed and
-                replaced. Defaults to `None` (no limit).
-              - `maxConnecting` (optional): The maximum number of connections that
-                each pool can establish concurrently. Defaults to `2`.
-              - `timeoutMS`: (integer or None) Controls how long (in
-                milliseconds) the driver will wait when executing an operation
-                (including retry attempts) before raising a timeout error.
-                ``0`` or ``None`` means no timeout.
-              - `socketTimeoutMS`: (integer or None) Controls how long (in
-                milliseconds) the driver will wait for a response after sending an
-                ordinary (non-monitoring) database operation before concluding that
-                a network error has occurred. ``0`` or ``None`` means no timeout.
-                Defaults to ``None`` (no timeout).
-              - `connectTimeoutMS`: (integer or None) Controls how long (in
-                milliseconds) the driver will wait during server monitoring when
-                connecting a new socket to a server before concluding the server
-                is unavailable. ``0`` or ``None`` means no timeout.
-                Defaults to ``20000`` (20 seconds).
-              - `server_selector`: (callable or None) Optional, user-provided
-                function that augments server selection rules. The function should
-                accept as an argument a list of
-                :class:`~pymongo.server_description.ServerDescription` objects and
-                return a list of server descriptions that should be considered
-                suitable for the desired operation.
-              - `serverSelectionTimeoutMS`: (integer) Controls how long (in
-                milliseconds) the driver will wait to find an available,
-                appropriate server to carry out a database operation; while it is
-                waiting, multiple server monitoring operations may be carried out,
-                each controlled by `connectTimeoutMS`. Defaults to ``30000`` (30
-                seconds).
-              - `waitQueueTimeoutMS`: (integer or None) How long (in milliseconds)
-                a thread will wait for a socket from the pool if the pool has no
-                free sockets. Defaults to ``None`` (no timeout).
-              - `heartbeatFrequencyMS`: (optional) The number of milliseconds
-                between periodic server checks, or None to accept the default
-                frequency of 10 seconds.
-              - `serverMonitoringMode`: (optional) The server monitoring mode to use.
-                Valid values are the strings: "auto", "stream", "poll". Defaults to "auto".
-              - `appname`: (string or None) The name of the application that
-                created this MongoClient instance. The server will log this value
-                upon establishing each connection. It is also recorded in the slow
-                query log and profile collections.
-              - `driver`: (pair or None) A driver implemented on top of PyMongo can
-                pass a :class:`~pymongo.driver_info.DriverInfo` to add its name,
-                version, and platform to the message printed in the server log when
-                establishing a connection.
-              - `event_listeners`: a list or tuple of event listeners. See
-                :mod:`~pymongo.monitoring` for details.
-              - `retryWrites`: (boolean) Whether supported write operations
-                executed within this MongoClient will be retried once after a
-                network error. Defaults to ``True``.
-                The supported write operations are:
-
-                  - :meth:`~pymongo.collection.Collection.bulk_write`, as long as
-                    :class:`~pymongo.operations.UpdateMany` or
-                    :class:`~pymongo.operations.DeleteMany` are not included.
-                  - :meth:`~pymongo.collection.Collection.delete_one`
-                  - :meth:`~pymongo.collection.Collection.insert_one`
-                  - :meth:`~pymongo.collection.Collection.insert_many`
-                  - :meth:`~pymongo.collection.Collection.replace_one`
-                  - :meth:`~pymongo.collection.Collection.update_one`
-                  - :meth:`~pymongo.collection.Collection.find_one_and_delete`
-                  - :meth:`~pymongo.collection.Collection.find_one_and_replace`
-                  - :meth:`~pymongo.collection.Collection.find_one_and_update`
-
-                Unsupported write operations include, but are not limited to,
-                :meth:`~pymongo.collection.Collection.aggregate` using the ``$out``
-                pipeline operator and any operation with an unacknowledged write
-                concern (e.g. {w: 0})). See
-                https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.md
-              - `retryReads`: (boolean) Whether supported read operations
-                executed within this MongoClient will be retried once after a
-                network error. Defaults to ``True``.
-                The supported read operations are:
-                :meth:`~pymongo.collection.Collection.find`,
-                :meth:`~pymongo.collection.Collection.find_one`,
-                :meth:`~pymongo.collection.Collection.aggregate` without ``$out``,
-                :meth:`~pymongo.collection.Collection.distinct`,
-                :meth:`~pymongo.collection.Collection.count`,
-                :meth:`~pymongo.collection.Collection.estimated_document_count`,
-                :meth:`~pymongo.collection.Collection.count_documents`,
-                :meth:`pymongo.collection.Collection.watch`,
-                :meth:`~pymongo.collection.Collection.list_indexes`,
-                :meth:`pymongo.database.Database.watch`,
-                :meth:`~pymongo.database.Database.list_collections`,
-                :meth:`pymongo.mongo_client.MongoClient.watch`,
-                and :meth:`~pymongo.mongo_client.MongoClient.list_databases`.
-
-                Unsupported read operations include, but are not limited to
-                :meth:`~pymongo.database.Database.command` and any getMore
-                operation on a cursor.
-
-                Enabling retryable reads makes applications more resilient to
-                transient errors such as network failures, database upgrades, and
-                replica set failovers. For an exact definition of which errors
-                trigger a retry, see the `retryable reads specification
-                <https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.md>`_.
-
-              - `compressors`: Comma separated list of compressors for wire
-                protocol compression. The list is used to negotiate a compressor
-                with the server. Currently supported options are "snappy", "zlib"
-                and "zstd". Support for snappy requires the
-                `python-snappy <https://pypi.org/project/python-snappy/>`_ package.
-                zlib support requires the Python standard library zlib module. zstd
-                requires the `zstandard <https://pypi.org/project/zstandard/>`_
-                package. By default no compression is used. Compression support
-                must also be enabled on the server. MongoDB 3.6+ supports snappy
-                and zlib compression. MongoDB 4.2+ adds support for zstd.
-                See :ref:`network-compression-example` for details.
-              - `zlibCompressionLevel`: (int) The zlib compression level to use
-                when zlib is used as the wire protocol compressor. Supported values
-                are -1 through 9. -1 tells the zlib library to use its default
-                compression level (usually 6). 0 means no compression. 1 is best
-                speed. 9 is best compression. Defaults to -1.
-              - `uuidRepresentation`: The BSON representation to use when encoding
-                from and decoding to instances of :class:`~uuid.UUID`. Valid
-                values are the strings: "standard", "pythonLegacy", "javaLegacy",
-                "csharpLegacy", and "unspecified" (the default). New applications
-                should consider setting this to "standard" for cross language
-                compatibility. See :ref:`handling-uuid-data-example` for details.
-              - `unicode_decode_error_handler`: The error handler to apply when
-                a Unicode-related error occurs during BSON decoding that would
-                otherwise raise :exc:`UnicodeDecodeError`. Valid options include
-                'strict', 'replace', 'backslashreplace', 'surrogateescape', and
-                'ignore'. Defaults to 'strict'.
-              - `srvServiceName`: (string) The SRV service name to use for
-                "mongodb+srv://" URIs. Defaults to "mongodb". Use it like so::
-
-                    MongoClient("mongodb+srv://example.com/?srvServiceName=customname")
-              - `srvMaxHosts`: (int) limits the number of mongos-like hosts a client will
-                connect to. More specifically, when a "mongodb+srv://" connection string
-                resolves to more than srvMaxHosts number of hosts, the client will randomly
-                choose an srvMaxHosts sized subset of hosts.
-
-
-              | **Write Concern options:**
-              | (Only set if passed. No default values.)
-
-              - `w`: (integer or string) If this is a replica set, write operations
-                will block until they have been replicated to the specified number
-                or tagged set of servers. `w=<int>` always includes the replica set
-                primary (e.g. w=3 means write to the primary and wait until
-                replicated to **two** secondaries). Passing w=0 **disables write
-                acknowledgement** and all other write concern options.
-              - `wTimeoutMS`: **DEPRECATED** (integer) Used in conjunction with `w`.
-                Specify a value in milliseconds to control how long to wait for write propagation
-                to complete. If replication does not complete in the given
-                timeframe, a timeout exception is raised. Passing wTimeoutMS=0
-                will cause **write operations to wait indefinitely**.
-              - `journal`: If ``True`` block until write operations have been
-                committed to the journal. Cannot be used in combination with
-                `fsync`. Write operations will fail with an exception if this
-                option is used when the server is running without journaling.
-              - `fsync`: If ``True`` and the server is running without journaling,
-                blocks until the server has synced all data files to disk. If the
-                server is running with journaling, this acts the same as the `j`
-                option, blocking until write operations have been committed to the
-                journal. Cannot be used in combination with `j`.
-
-              | **Replica set keyword arguments for connecting with a replica set
-                - either directly or via a mongos:**
-
-              - `replicaSet`: (string or None) The name of the replica set to
-                connect to. The driver will verify that all servers it connects to
-                match this name. Implies that the hosts specified are a seed list
-                and the driver should attempt to find all members of the set.
-                Defaults to ``None``.
-
-              | **Read Preference:**
-
-              - `readPreference`: The replica set read preference for this client.
-                One of ``primary``, ``primaryPreferred``, ``secondary``,
-                ``secondaryPreferred``, or ``nearest``. Defaults to ``primary``.
-              - `readPreferenceTags`: Specifies a tag set as a comma-separated list
-                of colon-separated key-value pairs. For example ``dc:ny,rack:1``.
-                Defaults to ``None``.
-              - `maxStalenessSeconds`: (integer) The maximum estimated
-                length of time a replica set secondary can fall behind the primary
-                in replication before it will no longer be selected for operations.
-                Defaults to ``-1``, meaning no maximum. If maxStalenessSeconds
-                is set, it must be a positive integer greater than or equal to
-                90 seconds.
-
-              .. seealso:: :doc:`/examples/server_selection`
-
-              | **Authentication:**
-
-              - `username`: A string.
-              - `password`: A string.
-
-                Although username and password must be percent-escaped in a MongoDB
-                URI, they must not be percent-escaped when passed as parameters. In
-                this example, both the space and slash special characters are passed
-                as-is::
-
-                  MongoClient(username="user name", password="pass/word")
-
-              - `authSource`: The database to authenticate on. Defaults to the
-                database specified in the URI, if provided, or to "admin".
-              - `authMechanism`: See :data:`~pymongo.auth.MECHANISMS` for options.
-                If no mechanism is specified, PyMongo automatically negotiates the
-                mechanism to use (SCRAM-SHA-1 or SCRAM-SHA-256) with the MongoDB server.
-              - `authMechanismProperties`: Used to specify authentication mechanism
-                specific options. To specify the service name for GSSAPI
-                authentication pass authMechanismProperties='SERVICE_NAME:<service
-                name>'.
-                To specify the session token for MONGODB-AWS authentication pass
-                ``authMechanismProperties='AWS_SESSION_TOKEN:<session token>'``.
-
-              .. seealso:: :doc:`/examples/authentication`
-
-              | **TLS/SSL configuration:**
-
-              - `tls`: (boolean) If ``True``, create the connection to the server
-                using transport layer security. Defaults to ``False``.
-              - `tlsInsecure`: (boolean) Specify whether TLS constraints should be
-                relaxed as much as possible. Setting ``tlsInsecure=True`` implies
-                ``tlsAllowInvalidCertificates=True`` and
-                ``tlsAllowInvalidHostnames=True``. Defaults to ``False``. Think
-                very carefully before setting this to ``True`` as it dramatically
-                reduces the security of TLS.
-              - `tlsAllowInvalidCertificates`: (boolean) If ``True``, continues
-                the TLS handshake regardless of the outcome of the certificate
-                verification process. If this is ``False``, and a value is not
-                provided for ``tlsCAFile``, PyMongo will attempt to load system
-                provided CA certificates. If the python version in use does not
-                support loading system CA certificates then the ``tlsCAFile``
-                parameter must point to a file of CA certificates.
-                ``tlsAllowInvalidCertificates=False`` implies ``tls=True``.
-                Defaults to ``False``. Think very carefully before setting this
-                to ``True`` as that could make your application vulnerable to
-                on-path attackers.
-              - `tlsAllowInvalidHostnames`: (boolean) If ``True``, disables TLS
-                hostname verification. ``tlsAllowInvalidHostnames=False`` implies
-                ``tls=True``. Defaults to ``False``. Think very carefully before
-                setting this to ``True`` as that could make your application
-                vulnerable to on-path attackers.
-              - `tlsCAFile`: A file containing a single or a bundle of
-                "certification authority" certificates, which are used to validate
-                certificates passed from the other end of the connection.
-                Implies ``tls=True``. Defaults to ``None``.
-              - `tlsCertificateKeyFile`: A file containing the client certificate
-                and private key. Implies ``tls=True``. Defaults to ``None``.
-              - `tlsCRLFile`: A file containing a PEM or DER formatted
-                certificate revocation list. Implies ``tls=True``. Defaults to
-                ``None``.
-              - `tlsCertificateKeyFilePassword`: The password or passphrase for
-                decrypting the private key in ``tlsCertificateKeyFile``. Only
-                necessary if the private key is encrypted. Defaults to ``None``.
-              - `tlsDisableOCSPEndpointCheck`: (boolean) If ``True``, disables
-                certificate revocation status checking via the OCSP responder
-                specified on the server certificate.
-                ``tlsDisableOCSPEndpointCheck=False`` implies ``tls=True``.
-                Defaults to ``False``.
-              - `ssl`: (boolean) Alias for ``tls``.
-
-              | **Read Concern options:**
-              | (If not set explicitly, this will use the server default)
-
-              - `readConcernLevel`: (string) The read concern level specifies the
-                level of isolation for read operations.  For example, a read
-                operation using a read concern level of ``majority`` will only
-                return data that has been written to a majority of nodes. If the
-                level is left unspecified, the server default will be used.
-
-              | **Client side encryption options:**
-              | (If not set explicitly, client side encryption will not be enabled.)
-        FOOFOOFOO
-              - `auto_encryption_opts`: A
-                :class:`~pymongo.encryption_options.AutoEncryptionOpts` which
-                configures this client to automatically encrypt collection commands
-                and automatically decrypt results. See
-                :ref:`automatic-client-side-encryption` for an example.
-                If a :class:`MongoClient` is configured with
-                ``auto_encryption_opts`` and a non-None ``maxPoolSize``, a
-                separate internal ``MongoClient`` is created if any of the
-                following are true:
-
-                  - A ``key_vault_client`` is not passed to
-                    :class:`~pymongo.encryption_options.AutoEncryptionOpts`
-                  - ``bypass_auto_encrpytion=False`` is passed to
-                    :class:`~pymongo.encryption_options.AutoEncryptionOpts`
-
-              | **Stable API options:**
-              | (If not set explicitly, Stable API will not be enabled.)
-
-              - `server_api`: A
-                :class:`~pymongo.server_api.ServerApi` which configures this
-                client to use Stable API. See :ref:`versioned-api-ref` for
-                details.
-
-            .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
-
-            .. versionchanged:: 4.5
-               Added the ``serverMonitoringMode`` keyword argument.
-
-            .. versionchanged:: 4.2
-               Added the ``timeoutMS`` keyword argument.
-
-            .. versionchanged:: 4.0
-
-                 - Removed the fsync, unlock, is_locked, database_names, and
-                   close_cursor methods.
-                   See the :ref:`pymongo4-migration-guide`.
-                 - Removed the ``waitQueueMultiple`` and ``socketKeepAlive``
-                   keyword arguments.
-                 - The default for `uuidRepresentation` was changed from
-                   ``pythonLegacy`` to ``unspecified``.
-                 - Added the ``srvServiceName``, ``maxConnecting``, and ``srvMaxHosts`` URI and
-                   keyword arguments.
-
-            .. versionchanged:: 3.12
-               Added the ``server_api`` keyword argument.
-               The following keyword arguments were deprecated:
-
-                 - ``ssl_certfile`` and ``ssl_keyfile`` were deprecated in favor
-                   of ``tlsCertificateKeyFile``.
-
-            .. versionchanged:: 3.11
-               Added the following keyword arguments and URI options:
-
-                 - ``tlsDisableOCSPEndpointCheck``
-                 - ``directConnection``
-
-            .. versionchanged:: 3.9
-               Added the ``retryReads`` keyword argument and URI option.
-               Added the ``tlsInsecure`` keyword argument and URI option.
-               The following keyword arguments and URI options were deprecated:
-
-                 - ``wTimeout`` was deprecated in favor of ``wTimeoutMS``.
-                 - ``j`` was deprecated in favor of ``journal``.
-                 - ``ssl_cert_reqs`` was deprecated in favor of
-                   ``tlsAllowInvalidCertificates``.
-                 - ``ssl_match_hostname`` was deprecated in favor of
-                   ``tlsAllowInvalidHostnames``.
-                 - ``ssl_ca_certs`` was deprecated in favor of ``tlsCAFile``.
-                 - ``ssl_certfile`` was deprecated in favor of
-                   ``tlsCertificateKeyFile``.
-                 - ``ssl_crlfile`` was deprecated in favor of ``tlsCRLFile``.
-                 - ``ssl_pem_passphrase`` was deprecated in favor of
-                   ``tlsCertificateKeyFilePassword``.
-
-            .. versionchanged:: 3.9
-               ``retryWrites`` now defaults to ``True``.
-
-            .. versionchanged:: 3.8
-               Added the ``server_selector`` keyword argument.
-               Added the ``type_registry`` keyword argument.
-
-            .. versionchanged:: 3.7
-               Added the ``driver`` keyword argument.
-
-            .. versionchanged:: 3.6
-               Added support for mongodb+srv:// URIs.
-               Added the ``retryWrites`` keyword argument and URI option.
-
-            .. versionchanged:: 3.5
-               Add ``username`` and ``password`` options. Document the
-               ``authSource``, ``authMechanism``, and ``authMechanismProperties``
-               options.
-               Deprecated the ``socketKeepAlive`` keyword argument and URI option.
-               ``socketKeepAlive`` now defaults to ``True``.
-
-            .. versionchanged:: 3.0
-               :class:`~pymongo.mongo_client.MongoClient` is now the one and only
-               client class for a standalone server, mongos, or replica set.
-               It includes the functionality that had been split into
-               :class:`~pymongo.mongo_client.MongoReplicaSetClient`: it can connect
-               to a replica set, discover all its members, and monitor the set for
-               stepdowns, elections, and reconfigs.
-
-               The :class:`~pymongo.mongo_client.MongoClient` constructor no
-               longer blocks while connecting to the server or servers, and it no
-               longer raises :class:`~pymongo.errors.ConnectionFailure` if they
-               are unavailable, nor :class:`~pymongo.errors.ConfigurationError`
-               if the user's credentials are wrong. Instead, the constructor
-               returns immediately and launches the connection process on
-               background threads.
-
-               Therefore the ``alive`` method is removed since it no longer
-               provides meaningful information; even if the client is disconnected,
-               it may discover a server in time to fulfill the next operation.
-
-               In PyMongo 2.x, :class:`~pymongo.MongoClient` accepted a list of
-               standalone MongoDB servers and used the first it could connect to::
-
-                   MongoClient(['host1.com:27017', 'host2.com:27017'])
-
-               A list of multiple standalones is no longer supported; if multiple
-               servers are listed they must be members of the same replica set, or
-               mongoses in the same sharded cluster.
-
-               The behavior for a list of mongoses is changed from "high
-               availability" to "load balancing". Before, the client connected to
-               the lowest-latency mongos in the list, and used it until a network
-               error prompted it to re-evaluate all mongoses' latencies and
-               reconnect to one of them. In PyMongo 3, the client monitors its
-               network latency to all the mongoses continuously, and distributes
-               operations evenly among those with the lowest latency. See
-               :ref:`mongos-load-balancing` for more information.
-
-               The ``connect`` option is added.
-
-               The ``start_request``, ``in_request``, and ``end_request`` methods
-               are removed, as well as the ``auto_start_request`` option.
-
-               The ``copy_database`` method is removed, see the
-               :doc:`copy_database examples </examples/copydb>` for alternatives.
-
-               The :meth:`MongoClient.disconnect` method is removed; it was a
-               synonym for :meth:`~pymongo.MongoClient.close`.
-
-               :class:`~pymongo.mongo_client.MongoClient` no longer returns an
-               instance of :class:`~pymongo.database.Database` for attribute names
-               with leading underscores. You must use dict-style lookups instead::
-
-                   client['__my_database__']
-
-               Not::
-
-                   client.__my_database__
-
-            .. versionchanged:: 4.7
-                Deprecated parameter ``wTimeoutMS``, use :meth:`~pymongo.timeout`.
-
-            .. versionchanged:: 4.9
-                The default value of ``connect`` is changed to ``False`` when running in a
-                Function-as-a-service environment.
+        .. warning:: Starting in PyMongo 4.0, ``directConnection`` now has a default value of
+          False instead of None.
+          For more details, see the relevant section of the PyMongo 4.x migration guide:
+          :ref:`pymongo4-migration-direct-connection`.
+
+        The client object is thread-safe and has connection-pooling built in.
+        If an operation fails because of a network error,
+        :class:`~pymongo.errors.ConnectionFailure` is raised and the client
+        reconnects in the background. Application code should handle this
+        exception (recognizing that the operation failed) and then continue to
+        execute.
+
+        The `host` parameter can be a full `mongodb URI
+        <http://dochub.mongodb.org/core/connections>`_, in addition to
+        a simple hostname. It can also be a list of hostnames but no more
+        than one URI. Any port specified in the host string(s) will override
+        the `port` parameter. For username and
+        passwords reserved characters like ':', '/', '+' and '@' must be
+        percent encoded following RFC 2396::
+
+            from urllib.parse import quote_plus
+
+            uri = "mongodb://%s:%s@%s" % (
+                quote_plus(user), quote_plus(password), host)
+            client = MongoClient(uri)
+
+        Unix domain sockets are also supported. The socket path must be percent
+        encoded in the URI::
+
+            uri = "mongodb://%s:%s@%s" % (
+                quote_plus(user), quote_plus(password), quote_plus(socket_path))
+            client = MongoClient(uri)
+
+        But not when passed as a simple hostname::
+
+            client = MongoClient('/tmp/mongodb-27017.sock')
+
+        Starting with version 3.6, PyMongo supports mongodb+srv:// URIs. The
+        URI must include one, and only one, hostname. The hostname will be
+        resolved to one or more DNS `SRV records
+        <https://en.wikipedia.org/wiki/SRV_record>`_ which will be used
+        as the seed list for connecting to the MongoDB deployment. When using
+        SRV URIs, the `authSource` and `replicaSet` configuration options can
+        be specified using `TXT records
+        <https://en.wikipedia.org/wiki/TXT_record>`_. See the
+        `Initial DNS Seedlist Discovery spec
+        <https://github.com/mongodb/specifications/blob/master/source/
+        initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.md>`_
+        for more details. Note that the use of SRV URIs implicitly enables
+        TLS support. Pass tls=false in the URI to override.
+
+        .. note:: MongoClient creation will block waiting for answers from
+          DNS when mongodb+srv:// URIs are used.
+
+        .. note:: Starting with version 3.0 the :class:`MongoClient`
+          constructor no longer blocks while connecting to the server or
+          servers, and it no longer raises
+          :class:`~pymongo.errors.ConnectionFailure` if they are
+          unavailable, nor :class:`~pymongo.errors.ConfigurationError`
+          if the user's credentials are wrong. Instead, the constructor
+          returns immediately and launches the connection process on
+          background threads. You can check if the server is available
+          like this::
+
+            from pymongo.errors import ConnectionFailure
+            client = MongoClient()
+            try:
+                # The ping command is cheap and does not require auth.
+                client.admin.command('ping')
+            except ConnectionFailure:
+                print("Server not available")
+
+        .. warning:: When using PyMongo in a multiprocessing context, please
+          read :ref:`multiprocessing` first.
+
+        .. note:: Many of the following options can be passed using a MongoDB
+          URI or keyword parameters. If the same option is passed in a URI and
+          as a keyword parameter the keyword parameter takes precedence.
+
+        :param host: hostname or IP address or Unix domain socket
+            path of a single mongod or mongos instance to connect to, or a
+            mongodb URI, or a list of hostnames (but no more than one mongodb
+            URI). If `host` is an IPv6 literal it must be enclosed in '['
+            and ']' characters
+            following the RFC2732 URL syntax (e.g. '[::1]' for localhost).
+            Multihomed and round robin DNS addresses are **not** supported.
+        :param port: port number on which to connect
+        :param document_class: default class to use for
+            documents returned from queries on this client
+        :param tz_aware: if ``True``,
+            :class:`~datetime.datetime` instances returned as values
+            in a document by this :class:`MongoClient` will be timezone
+            aware (otherwise they will be naive)
+        :param connect: If ``True`` (the default), immediately
+            begin connecting to MongoDB in the background. Otherwise connect
+            on the first operation.  The default value is ``False`` when
+            running in a Function-as-a-service environment.
+        :param type_registry: instance of
+            :class:`~bson.codec_options.TypeRegistry` to enable encoding
+            and decoding of custom types.
+        :param datetime_conversion: Specifies how UTC datetimes should be decoded
+            within BSON. Valid options include 'datetime_ms' to return as a
+            DatetimeMS, 'datetime' to return as a datetime.datetime and
+            raising a ValueError for out-of-range values, 'datetime_auto' to
+            return DatetimeMS objects when the underlying datetime is
+            out-of-range and 'datetime_clamp' to clamp to the minimum and
+            maximum possible datetimes. Defaults to 'datetime'. See
+            :ref:`handling-out-of-range-datetimes` for details.
+
+          | **Other optional parameters can be passed as keyword arguments:**
+
+          - `directConnection` (optional): if ``True``, forces this client to
+             connect directly to the specified MongoDB host as a standalone.
+             If ``false``, the client connects to the entire replica set of
+             which the given MongoDB host(s) is a part. If this is ``True``
+             and a mongodb+srv:// URI or a URI containing multiple seeds is
+             provided, an exception will be raised.
+          - `maxPoolSize` (optional): The maximum allowable number of
+            concurrent connections to each connected server. Requests to a
+            server will block if there are `maxPoolSize` outstanding
+            connections to the requested server. Defaults to 100. Can be
+            either 0 or None, in which case there is no limit on the number
+            of concurrent connections.
+          - `minPoolSize` (optional): The minimum required number of concurrent
+            connections that the pool will maintain to each connected server.
+            Default is 0.
+          - `maxIdleTimeMS` (optional): The maximum number of milliseconds that
+            a connection can remain idle in the pool before being removed and
+            replaced. Defaults to `None` (no limit).
+          - `maxConnecting` (optional): The maximum number of connections that
+            each pool can establish concurrently. Defaults to `2`.
+          - `timeoutMS`: (integer or None) Controls how long (in
+            milliseconds) the driver will wait when executing an operation
+            (including retry attempts) before raising a timeout error.
+            ``0`` or ``None`` means no timeout.
+          - `socketTimeoutMS`: (integer or None) Controls how long (in
+            milliseconds) the driver will wait for a response after sending an
+            ordinary (non-monitoring) database operation before concluding that
+            a network error has occurred. ``0`` or ``None`` means no timeout.
+            Defaults to ``None`` (no timeout).
+          - `connectTimeoutMS`: (integer or None) Controls how long (in
+            milliseconds) the driver will wait during server monitoring when
+            connecting a new socket to a server before concluding the server
+            is unavailable. ``0`` or ``None`` means no timeout.
+            Defaults to ``20000`` (20 seconds).
+          - `server_selector`: (callable or None) Optional, user-provided
+            function that augments server selection rules. The function should
+            accept as an argument a list of
+            :class:`~pymongo.server_description.ServerDescription` objects and
+            return a list of server descriptions that should be considered
+            suitable for the desired operation.
+          - `serverSelectionTimeoutMS`: (integer) Controls how long (in
+            milliseconds) the driver will wait to find an available,
+            appropriate server to carry out a database operation; while it is
+            waiting, multiple server monitoring operations may be carried out,
+            each controlled by `connectTimeoutMS`. Defaults to ``30000`` (30
+            seconds).
+          - `waitQueueTimeoutMS`: (integer or None) How long (in milliseconds)
+            a thread will wait for a socket from the pool if the pool has no
+            free sockets. Defaults to ``None`` (no timeout).
+          - `heartbeatFrequencyMS`: (optional) The number of milliseconds
+            between periodic server checks, or None to accept the default
+            frequency of 10 seconds.
+          - `serverMonitoringMode`: (optional) The server monitoring mode to use.
+            Valid values are the strings: "auto", "stream", "poll". Defaults to "auto".
+          - `appname`: (string or None) The name of the application that
+            created this MongoClient instance. The server will log this value
+            upon establishing each connection. It is also recorded in the slow
+            query log and profile collections.
+          - `driver`: (pair or None) A driver implemented on top of PyMongo can
+            pass a :class:`~pymongo.driver_info.DriverInfo` to add its name,
+            version, and platform to the message printed in the server log when
+            establishing a connection.
+          - `event_listeners`: a list or tuple of event listeners. See
+            :mod:`~pymongo.monitoring` for details.
+          - `retryWrites`: (boolean) Whether supported write operations
+            executed within this MongoClient will be retried once after a
+            network error. Defaults to ``True``.
+            The supported write operations are:
+
+              - :meth:`~pymongo.collection.Collection.bulk_write`, as long as
+                :class:`~pymongo.operations.UpdateMany` or
+                :class:`~pymongo.operations.DeleteMany` are not included.
+              - :meth:`~pymongo.collection.Collection.delete_one`
+              - :meth:`~pymongo.collection.Collection.insert_one`
+              - :meth:`~pymongo.collection.Collection.insert_many`
+              - :meth:`~pymongo.collection.Collection.replace_one`
+              - :meth:`~pymongo.collection.Collection.update_one`
+              - :meth:`~pymongo.collection.Collection.find_one_and_delete`
+              - :meth:`~pymongo.collection.Collection.find_one_and_replace`
+              - :meth:`~pymongo.collection.Collection.find_one_and_update`
+
+            Unsupported write operations include, but are not limited to,
+            :meth:`~pymongo.collection.Collection.aggregate` using the ``$out``
+            pipeline operator and any operation with an unacknowledged write
+            concern (e.g. {w: 0})). See
+            https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.md
+          - `retryReads`: (boolean) Whether supported read operations
+            executed within this MongoClient will be retried once after a
+            network error. Defaults to ``True``.
+            The supported read operations are:
+            :meth:`~pymongo.collection.Collection.find`,
+            :meth:`~pymongo.collection.Collection.find_one`,
+            :meth:`~pymongo.collection.Collection.aggregate` without ``$out``,
+            :meth:`~pymongo.collection.Collection.distinct`,
+            :meth:`~pymongo.collection.Collection.count`,
+            :meth:`~pymongo.collection.Collection.estimated_document_count`,
+            :meth:`~pymongo.collection.Collection.count_documents`,
+            :meth:`pymongo.collection.Collection.watch`,
+            :meth:`~pymongo.collection.Collection.list_indexes`,
+            :meth:`pymongo.database.Database.watch`,
+            :meth:`~pymongo.database.Database.list_collections`,
+            :meth:`pymongo.mongo_client.MongoClient.watch`,
+            and :meth:`~pymongo.mongo_client.MongoClient.list_databases`.
+
+            Unsupported read operations include, but are not limited to
+            :meth:`~pymongo.database.Database.command` and any getMore
+            operation on a cursor.
+
+            Enabling retryable reads makes applications more resilient to
+            transient errors such as network failures, database upgrades, and
+            replica set failovers. For an exact definition of which errors
+            trigger a retry, see the `retryable reads specification
+            <https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.md>`_.
+
+          - `compressors`: Comma separated list of compressors for wire
+            protocol compression. The list is used to negotiate a compressor
+            with the server. Currently supported options are "snappy", "zlib"
+            and "zstd". Support for snappy requires the
+            `python-snappy <https://pypi.org/project/python-snappy/>`_ package.
+            zlib support requires the Python standard library zlib module. zstd
+            requires the `zstandard <https://pypi.org/project/zstandard/>`_
+            package. By default no compression is used. Compression support
+            must also be enabled on the server. MongoDB 3.6+ supports snappy
+            and zlib compression. MongoDB 4.2+ adds support for zstd.
+            See :ref:`network-compression-example` for details.
+          - `zlibCompressionLevel`: (int) The zlib compression level to use
+            when zlib is used as the wire protocol compressor. Supported values
+            are -1 through 9. -1 tells the zlib library to use its default
+            compression level (usually 6). 0 means no compression. 1 is best
+            speed. 9 is best compression. Defaults to -1.
+          - `uuidRepresentation`: The BSON representation to use when encoding
+            from and decoding to instances of :class:`~uuid.UUID`. Valid
+            values are the strings: "standard", "pythonLegacy", "javaLegacy",
+            "csharpLegacy", and "unspecified" (the default). New applications
+            should consider setting this to "standard" for cross language
+            compatibility. See :ref:`handling-uuid-data-example` for details.
+          - `unicode_decode_error_handler`: The error handler to apply when
+            a Unicode-related error occurs during BSON decoding that would
+            otherwise raise :exc:`UnicodeDecodeError`. Valid options include
+            'strict', 'replace', 'backslashreplace', 'surrogateescape', and
+            'ignore'. Defaults to 'strict'.
+          - `srvServiceName`: (string) The SRV service name to use for
+            "mongodb+srv://" URIs. Defaults to "mongodb". Use it like so::
+
+                MongoClient("mongodb+srv://example.com/?srvServiceName=customname")
+          - `srvMaxHosts`: (int) limits the number of mongos-like hosts a client will
+            connect to. More specifically, when a "mongodb+srv://" connection string
+            resolves to more than srvMaxHosts number of hosts, the client will randomly
+            choose an srvMaxHosts sized subset of hosts.
+
+
+          | **Write Concern options:**
+          | (Only set if passed. No default values.)
+
+          - `w`: (integer or string) If this is a replica set, write operations
+            will block until they have been replicated to the specified number
+            or tagged set of servers. `w=<int>` always includes the replica set
+            primary (e.g. w=3 means write to the primary and wait until
+            replicated to **two** secondaries). Passing w=0 **disables write
+            acknowledgement** and all other write concern options.
+          - `wTimeoutMS`: **DEPRECATED** (integer) Used in conjunction with `w`.
+            Specify a value in milliseconds to control how long to wait for write propagation
+            to complete. If replication does not complete in the given
+            timeframe, a timeout exception is raised. Passing wTimeoutMS=0
+            will cause **write operations to wait indefinitely**.
+          - `journal`: If ``True`` block until write operations have been
+            committed to the journal. Cannot be used in combination with
+            `fsync`. Write operations will fail with an exception if this
+            option is used when the server is running without journaling.
+          - `fsync`: If ``True`` and the server is running without journaling,
+            blocks until the server has synced all data files to disk. If the
+            server is running with journaling, this acts the same as the `j`
+            option, blocking until write operations have been committed to the
+            journal. Cannot be used in combination with `j`.
+
+          | **Replica set keyword arguments for connecting with a replica set
+            - either directly or via a mongos:**
+
+          - `replicaSet`: (string or None) The name of the replica set to
+            connect to. The driver will verify that all servers it connects to
+            match this name. Implies that the hosts specified are a seed list
+            and the driver should attempt to find all members of the set.
+            Defaults to ``None``.
+
+          | **Read Preference:**
+
+          - `readPreference`: The replica set read preference for this client.
+            One of ``primary``, ``primaryPreferred``, ``secondary``,
+            ``secondaryPreferred``, or ``nearest``. Defaults to ``primary``.
+          - `readPreferenceTags`: Specifies a tag set as a comma-separated list
+            of colon-separated key-value pairs. For example ``dc:ny,rack:1``.
+            Defaults to ``None``.
+          - `maxStalenessSeconds`: (integer) The maximum estimated
+            length of time a replica set secondary can fall behind the primary
+            in replication before it will no longer be selected for operations.
+            Defaults to ``-1``, meaning no maximum. If maxStalenessSeconds
+            is set, it must be a positive integer greater than or equal to
+            90 seconds.
+
+          .. seealso:: :doc:`/examples/server_selection`
+
+          | **Authentication:**
+
+          - `username`: A string.
+          - `password`: A string.
+
+            Although username and password must be percent-escaped in a MongoDB
+            URI, they must not be percent-escaped when passed as parameters. In
+            this example, both the space and slash special characters are passed
+            as-is::
+
+              MongoClient(username="user name", password="pass/word")
+
+          - `authSource`: The database to authenticate on. Defaults to the
+            database specified in the URI, if provided, or to "admin".
+          - `authMechanism`: See :data:`~pymongo.auth.MECHANISMS` for options.
+            If no mechanism is specified, PyMongo automatically negotiates the
+            mechanism to use (SCRAM-SHA-1 or SCRAM-SHA-256) with the MongoDB server.
+          - `authMechanismProperties`: Used to specify authentication mechanism
+            specific options. To specify the service name for GSSAPI
+            authentication pass authMechanismProperties='SERVICE_NAME:<service
+            name>'.
+            To specify the session token for MONGODB-AWS authentication pass
+            ``authMechanismProperties='AWS_SESSION_TOKEN:<session token>'``.
+
+          .. seealso:: :doc:`/examples/authentication`
+
+          | **TLS/SSL configuration:**
+
+          - `tls`: (boolean) If ``True``, create the connection to the server
+            using transport layer security. Defaults to ``False``.
+          - `tlsInsecure`: (boolean) Specify whether TLS constraints should be
+            relaxed as much as possible. Setting ``tlsInsecure=True`` implies
+            ``tlsAllowInvalidCertificates=True`` and
+            ``tlsAllowInvalidHostnames=True``. Defaults to ``False``. Think
+            very carefully before setting this to ``True`` as it dramatically
+            reduces the security of TLS.
+          - `tlsAllowInvalidCertificates`: (boolean) If ``True``, continues
+            the TLS handshake regardless of the outcome of the certificate
+            verification process. If this is ``False``, and a value is not
+            provided for ``tlsCAFile``, PyMongo will attempt to load system
+            provided CA certificates. If the python version in use does not
+            support loading system CA certificates then the ``tlsCAFile``
+            parameter must point to a file of CA certificates.
+            ``tlsAllowInvalidCertificates=False`` implies ``tls=True``.
+            Defaults to ``False``. Think very carefully before setting this
+            to ``True`` as that could make your application vulnerable to
+            on-path attackers.
+          - `tlsAllowInvalidHostnames`: (boolean) If ``True``, disables TLS
+            hostname verification. ``tlsAllowInvalidHostnames=False`` implies
+            ``tls=True``. Defaults to ``False``. Think very carefully before
+            setting this to ``True`` as that could make your application
+            vulnerable to on-path attackers.
+          - `tlsCAFile`: A file containing a single or a bundle of
+            "certification authority" certificates, which are used to validate
+            certificates passed from the other end of the connection.
+            Implies ``tls=True``. Defaults to ``None``.
+          - `tlsCertificateKeyFile`: A file containing the client certificate
+            and private key. Implies ``tls=True``. Defaults to ``None``.
+          - `tlsCRLFile`: A file containing a PEM or DER formatted
+            certificate revocation list. Implies ``tls=True``. Defaults to
+            ``None``.
+          - `tlsCertificateKeyFilePassword`: The password or passphrase for
+            decrypting the private key in ``tlsCertificateKeyFile``. Only
+            necessary if the private key is encrypted. Defaults to ``None``.
+          - `tlsDisableOCSPEndpointCheck`: (boolean) If ``True``, disables
+            certificate revocation status checking via the OCSP responder
+            specified on the server certificate.
+            ``tlsDisableOCSPEndpointCheck=False`` implies ``tls=True``.
+            Defaults to ``False``.
+          - `ssl`: (boolean) Alias for ``tls``.
+
+          | **Read Concern options:**
+          | (If not set explicitly, this will use the server default)
+
+          - `readConcernLevel`: (string) The read concern level specifies the
+            level of isolation for read operations.  For example, a read
+            operation using a read concern level of ``majority`` will only
+            return data that has been written to a majority of nodes. If the
+            level is left unspecified, the server default will be used.
+
+          | **Client side encryption options:**
+          | (If not set explicitly, client side encryption will not be enabled.)
+
+          - `auto_encryption_opts`: A
+            :class:`~pymongo.encryption_options.AutoEncryptionOpts` which
+            configures this client to automatically encrypt collection commands
+            and automatically decrypt results. See
+            :ref:`automatic-client-side-encryption` for an example.
+            If a :class:`MongoClient` is configured with
+            ``auto_encryption_opts`` and a non-None ``maxPoolSize``, a
+            separate internal ``MongoClient`` is created if any of the
+            following are true:
+
+              - A ``key_vault_client`` is not passed to
+                :class:`~pymongo.encryption_options.AutoEncryptionOpts`
+              - ``bypass_auto_encrpytion=False`` is passed to
+                :class:`~pymongo.encryption_options.AutoEncryptionOpts`
+
+          | **Stable API options:**
+          | (If not set explicitly, Stable API will not be enabled.)
+
+          - `server_api`: A
+            :class:`~pymongo.server_api.ServerApi` which configures this
+            client to use Stable API. See :ref:`versioned-api-ref` for
+            details.
+
+        .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
+
+        .. versionchanged:: 4.5
+           Added the ``serverMonitoringMode`` keyword argument.
+
+        .. versionchanged:: 4.2
+           Added the ``timeoutMS`` keyword argument.
+
+        .. versionchanged:: 4.0
+
+             - Removed the fsync, unlock, is_locked, database_names, and
+               close_cursor methods.
+               See the :ref:`pymongo4-migration-guide`.
+             - Removed the ``waitQueueMultiple`` and ``socketKeepAlive``
+               keyword arguments.
+             - The default for `uuidRepresentation` was changed from
+               ``pythonLegacy`` to ``unspecified``.
+             - Added the ``srvServiceName``, ``maxConnecting``, and ``srvMaxHosts`` URI and
+               keyword arguments.
+
+        .. versionchanged:: 3.12
+           Added the ``server_api`` keyword argument.
+           The following keyword arguments were deprecated:
+
+             - ``ssl_certfile`` and ``ssl_keyfile`` were deprecated in favor
+               of ``tlsCertificateKeyFile``.
+
+        .. versionchanged:: 3.11
+           Added the following keyword arguments and URI options:
+
+             - ``tlsDisableOCSPEndpointCheck``
+             - ``directConnection``
+
+        .. versionchanged:: 3.9
+           Added the ``retryReads`` keyword argument and URI option.
+           Added the ``tlsInsecure`` keyword argument and URI option.
+           The following keyword arguments and URI options were deprecated:
+
+             - ``wTimeout`` was deprecated in favor of ``wTimeoutMS``.
+             - ``j`` was deprecated in favor of ``journal``.
+             - ``ssl_cert_reqs`` was deprecated in favor of
+               ``tlsAllowInvalidCertificates``.
+             - ``ssl_match_hostname`` was deprecated in favor of
+               ``tlsAllowInvalidHostnames``.
+             - ``ssl_ca_certs`` was deprecated in favor of ``tlsCAFile``.
+             - ``ssl_certfile`` was deprecated in favor of
+               ``tlsCertificateKeyFile``.
+             - ``ssl_crlfile`` was deprecated in favor of ``tlsCRLFile``.
+             - ``ssl_pem_passphrase`` was deprecated in favor of
+               ``tlsCertificateKeyFilePassword``.
+
+        .. versionchanged:: 3.9
+           ``retryWrites`` now defaults to ``True``.
+
+        .. versionchanged:: 3.8
+           Added the ``server_selector`` keyword argument.
+           Added the ``type_registry`` keyword argument.
+
+        .. versionchanged:: 3.7
+           Added the ``driver`` keyword argument.
+
+        .. versionchanged:: 3.6
+           Added support for mongodb+srv:// URIs.
+           Added the ``retryWrites`` keyword argument and URI option.
+
+        .. versionchanged:: 3.5
+           Add ``username`` and ``password`` options. Document the
+           ``authSource``, ``authMechanism``, and ``authMechanismProperties``
+           options.
+           Deprecated the ``socketKeepAlive`` keyword argument and URI option.
+           ``socketKeepAlive`` now defaults to ``True``.
+
+        .. versionchanged:: 3.0
+           :class:`~pymongo.mongo_client.MongoClient` is now the one and only
+           client class for a standalone server, mongos, or replica set.
+           It includes the functionality that had been split into
+           :class:`~pymongo.mongo_client.MongoReplicaSetClient`: it can connect
+           to a replica set, discover all its members, and monitor the set for
+           stepdowns, elections, and reconfigs.
+
+           The :class:`~pymongo.mongo_client.MongoClient` constructor no
+           longer blocks while connecting to the server or servers, and it no
+           longer raises :class:`~pymongo.errors.ConnectionFailure` if they
+           are unavailable, nor :class:`~pymongo.errors.ConfigurationError`
+           if the user's credentials are wrong. Instead, the constructor
+           returns immediately and launches the connection process on
+           background threads.
+
+           Therefore the ``alive`` method is removed since it no longer
+           provides meaningful information; even if the client is disconnected,
+           it may discover a server in time to fulfill the next operation.
+
+           In PyMongo 2.x, :class:`~pymongo.MongoClient` accepted a list of
+           standalone MongoDB servers and used the first it could connect to::
+
+               MongoClient(['host1.com:27017', 'host2.com:27017'])
+
+           A list of multiple standalones is no longer supported; if multiple
+           servers are listed they must be members of the same replica set, or
+           mongoses in the same sharded cluster.
+
+           The behavior for a list of mongoses is changed from "high
+           availability" to "load balancing". Before, the client connected to
+           the lowest-latency mongos in the list, and used it until a network
+           error prompted it to re-evaluate all mongoses' latencies and
+           reconnect to one of them. In PyMongo 3, the client monitors its
+           network latency to all the mongoses continuously, and distributes
+           operations evenly among those with the lowest latency. See
+           :ref:`mongos-load-balancing` for more information.
+
+           The ``connect`` option is added.
+
+           The ``start_request``, ``in_request``, and ``end_request`` methods
+           are removed, as well as the ``auto_start_request`` option.
+
+           The ``copy_database`` method is removed, see the
+           :doc:`copy_database examples </examples/copydb>` for alternatives.
+
+           The :meth:`MongoClient.disconnect` method is removed; it was a
+           synonym for :meth:`~pymongo.MongoClient.close`.
+
+           :class:`~pymongo.mongo_client.MongoClient` no longer returns an
+           instance of :class:`~pymongo.database.Database` for attribute names
+           with leading underscores. You must use dict-style lookups instead::
+
+               client['__my_database__']
+
+           Not::
+
+               client.__my_database__
+
+        .. versionchanged:: 4.7
+            Deprecated parameter ``wTimeoutMS``, use :meth:`~pymongo.timeout`.
+
+        .. versionchanged:: 4.9
+            The default value of ``connect`` is changed to ``False`` when running in a
+            Function-as-a-service environment.
         """
         doc_class = document_class or dict
         self._init_kwargs: dict[str, Any] = {
