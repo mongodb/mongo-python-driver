@@ -24,6 +24,7 @@ libmongocrypt.tar.gz
 libmongocrypt/
 libmongocrypt_git/
 hatch_config.toml
+.venv
 
 # Lambda temp files
 test/lambda/.aws-sam
