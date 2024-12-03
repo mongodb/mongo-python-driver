@@ -23,7 +23,7 @@ set -o xtrace
 # Install python with pip.
 PYTHON_VER="python3.9"
 apt-get -qq update
-apt-get --qq install $PYTHON_VER python3-pip python3-venv build-essential $PYTHON_VER-dev -y
+apt-get -qq install $PYTHON_VER python3-pip python3-venv build-essential $PYTHON_VER-dev -y
 
 export PYTHON_BINARY=$PYTHON_VER
 export TEST_AUTH_AWS=1
