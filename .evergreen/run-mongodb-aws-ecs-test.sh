@@ -30,5 +30,4 @@ export TEST_AUTH_AWS=1
 export AUTH="auth"
 export SET_XTRACE_ON=1
 cd src
-$PYTHON_BINARY -m pip install -q --user hatch
 bash .evergreen/hatch.sh test:test-eg
