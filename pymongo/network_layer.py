@@ -21,7 +21,7 @@ import socket
 import struct
 import sys
 import time
-from asyncio import AbstractEventLoop, Future
+from asyncio import AbstractEventLoop, Future, StreamReader
 from typing import (
     TYPE_CHECKING,
     Optional,
@@ -59,7 +59,7 @@ except ImportError:
     )
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.asynchronous.pool import AsyncConnection, AsyncConnectionStream
     from pymongo.synchronous.pool import Connection
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -83,6 +83,15 @@ async def async_sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> Non
         raise socket.timeout("timed out") from exc
     finally:
         sock.settimeout(timeout)
+
+
+async def async_sendall_stream(stream: asyncio.StreamWriter, buf: bytes) -> None:
+    try:
+        stream.write(buf)
+        await asyncio.wait_for(stream.drain(), timeout=None)
+    except asyncio.TimeoutError as exc:
+        # Convert the asyncio.wait_for timeout error to socket.timeout which pool.py understands.
+        raise socket.timeout("timed out") from exc
 
 
 if sys.platform != "win32":
@@ -237,9 +246,9 @@ def sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
 
 
 async def _poll_cancellation(conn: AsyncConnection) -> None:
-    while True:
-        if conn.cancel_context.cancelled:
-            return
+    # while True:
+    #     if conn.cancel_context.cancelled:
+    #         return
 
         await asyncio.sleep(_POLL_TIMEOUT)
 
@@ -282,6 +291,42 @@ async def async_receive_data(
     finally:
         sock.settimeout(sock_timeout)
 
+async def async_receive_data_stream(
+    conn: StreamReader, length: int, deadline: Optional[float]
+) -> memoryview:
+    # sock = conn.conn
+    # sock_timeout = sock.gettimeout()
+    timeout: Optional[Union[float, int]]
+    # if deadline:
+    #     # When the timeout has expired perform one final check to
+    #     # see if the socket is readable. This helps avoid spurious
+    #     # timeouts on AWS Lambda and other FaaS environments.
+    #     timeout = max(deadline - time.monotonic(), 0)
+    # else:
+    #     timeout = sock_timeout
+
+    try:
+        return await asyncio.wait_for(_async_receive_stream(conn, length), timeout=None)
+        # read_task = create_task(_async_receive_stream(conn, length))
+        # tasks = [read_task, cancellation_task]
+        # done, pending = await asyncio.wait(
+        #     tasks, timeout=None, return_when=asyncio.FIRST_COMPLETED
+        # )
+        # print(f"Done: {done}, pending: {pending}")
+        # for task in pending:
+        #     task.cancel()
+        # if pending:
+        #     await asyncio.wait(pending)
+        # if len(done) == 0:
+        #     raise socket.timeout("timed out")
+        # if read_task in done:
+        #     return read_task.result()
+        # # raise _OperationCancelled("operation cancelled")
+    finally:
+        pass
+        # sock.settimeout(sock_timeout)
+
+
 
 async def async_receive_data_socket(
     sock: Union[socket.socket, _sslConn], length: int
@@ -315,6 +360,12 @@ async def _async_receive(conn: socket.socket, length: int, loop: AbstractEventLo
         bytes_read += chunk_length
     return mv
 
+
+async def _async_receive_stream(reader: asyncio.StreamReader, length: int) -> memoryview:
+    bytes = await reader.read(length)
+    if len(bytes) == 0:
+        raise OSError("connection closed")
+    return memoryview(bytes)
 
 def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> memoryview:
     buf = bytearray(length)
