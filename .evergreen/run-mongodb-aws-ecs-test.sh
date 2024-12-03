@@ -30,4 +30,5 @@ export TEST_AUTH_AWS=1
 export AUTH="auth"
 export SET_XTRACE_ON=1
 cd src
+rm -rf .venv
 bash .evergreen/hatch.sh test:test-eg
