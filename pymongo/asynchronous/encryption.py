@@ -72,6 +72,7 @@ from pymongo.errors import (
     EncryptedCollectionError,
     EncryptionError,
     InvalidOperation,
+    NetworkTimeout,
     ServerSelectionTimeoutError,
 )
 from pymongo.network_layer import BLOCKING_IO_ERRORS, async_sendall
@@ -165,8 +166,8 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 None,  # crlfile
                 False,  # allow_invalid_certificates
                 False,  # allow_invalid_hostnames
-                False,
-            )  # disable_ocsp_endpoint_check
+                False,  # disable_ocsp_endpoint_check
+            )
         # CSOT: set timeout for socket creation.
         connect_timeout = max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
         opts = PoolOptions(
@@ -207,7 +208,9 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             raise  # Propagate MongoCryptError errors directly.
         except Exception as exc:
             remaining = _csot.remaining()
-            if remaining is not None and remaining <= 0:
+            if isinstance(exc, (socket.timeout, NetworkTimeout)) or (
+                remaining is not None and remaining <= 0
+            ):
                 # Wrap I/O errors in PyMongo exceptions.
                 _raise_connection_failure((host, port), exc)
             # Mark this attempt as failed and defer to libmongocrypt to retry.

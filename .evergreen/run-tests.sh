@@ -158,7 +158,7 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
 
     # TODO: Test with 'pip install pymongocrypt'
     if [ ! -d "libmongocrypt_git" ]; then
-      git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
+      git clone https://github.com/ShaneHarvey/libmongocrypt.git --branch PYTHON-4992 libmongocrypt_git
     fi
     python -m pip install -U setuptools
     python -m pip install ./libmongocrypt_git/bindings/python
