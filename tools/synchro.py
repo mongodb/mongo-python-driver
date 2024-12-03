@@ -371,6 +371,9 @@ def main() -> None:
             print(f"Refusing to overwrite {sync_name}")
             errored = True
     if errored:
+        import pdb
+
+        pdb.set_trace()
         raise ValueError("Aborting synchro due to errors")
 
     unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
