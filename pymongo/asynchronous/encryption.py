@@ -199,9 +199,6 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                     if not data:
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
-            # Async raises an OSError instead of returning empty bytes
-            except OSError as err:
-                raise OSError("KMS connection closed") from err
             except BLOCKING_IO_ERRORS:
                 raise socket.timeout("timed out") from None
             finally:
@@ -216,7 +213,13 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 # Wrap I/O errors in PyMongo exceptions.
                 _raise_connection_failure((host, port), exc)
             # Mark this attempt as failed and defer to libmongocrypt to retry.
-            kms_context.fail()
+            try:
+                kms_context.fail()
+            except MongoCryptError as final_err:
+                exc = MongoCryptError(
+                    f"{final_err}, last attempt failed with: {exc}", final_err.code
+                )
+                raise exc from final_err
 
     async def collection_info(self, database: str, filter: bytes) -> Optional[bytes]:
         """Get the collection info for a namespace.
