@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+import statistics
 import time
 from asyncio import streams, StreamReader
 from typing import (
@@ -60,6 +61,11 @@ if TYPE_CHECKING:
     from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = False
+
+TOTAL = []
+TOTAL_WRITE = []
+TOTAL_READ = []
+# print(f"TOTALS: {TOTAL, TOTAL_WRITE, TOTAL_READ}")
 
 
 async def command_stream(
@@ -113,7 +119,6 @@ async def command_stream(
         bson._decode_all_selective.
     :param exhaust_allowed: True if we should enable OP_MSG exhaustAllowed.
     """
-    # print("Running stream command!")
     name = next(iter(spec))
     ns = dbname + ".$cmd"
     speculative_hello = False
@@ -194,13 +199,24 @@ async def command_stream(
         )
 
     try:
+        write_start = time.monotonic()
         await async_sendall_stream(conn.conn[1], msg)
+        write_elapsed = time.monotonic() - write_start
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
             response_doc: _DocumentOut = {"ok": 1}
         else:
+            read_start = time.monotonic()
             reply = await receive_message_stream(conn.conn[0], request_id)
+            read_elapsed = time.monotonic() - read_start
+            # if name == "insert":
+            #     TOTAL.append(write_elapsed + read_elapsed)
+            #     TOTAL_READ.append(read_elapsed)
+            #     TOTAL_WRITE.append(write_elapsed)
+            # if name == "endSessions":
+            #     print(
+            #         f"AVERAGE READ: {statistics.mean(TOTAL_READ)}, AVERAGE WRITE: {statistics.mean(TOTAL_WRITE)}, AVERAGE ELAPSED: {statistics.mean(TOTAL)}")
             conn.more_to_come = reply.more_to_come
             unpacked_docs = reply.unpack_response(
                 codec_options=codec_options, user_fields=user_fields
@@ -313,7 +329,10 @@ async def receive_message_stream(
     #         deadline = None
     deadline = None
     # Ignore the response's request id.
+    read_start = time.monotonic()
     length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data_stream(conn, 16, deadline))
+    read_elapsed = time.monotonic() - read_start
+    # print(f"Read header in {read_elapsed}")
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         if request_id != response_to:
@@ -333,7 +352,10 @@ async def receive_message_stream(
         )
         data = decompress(await async_receive_data_stream(conn, length - 25, deadline), compressor_id)
     else:
+        read_start = time.monotonic()
         data = await async_receive_data_stream(conn, length - 16, deadline)
+        read_elapsed = time.monotonic() - read_start
+        # print(f"Read body in {read_elapsed}")
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]

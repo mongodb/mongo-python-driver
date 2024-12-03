@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import errno
 import socket
+import statistics
 import struct
 import sys
 import time
@@ -68,6 +69,7 @@ _POLL_TIMEOUT = 0.5
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
 BLOCKING_IO_ERRORS = (BlockingIOError, BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
 
+
 async def async_sendall_stream(stream: asyncio.StreamWriter, buf: bytes) -> None:
     try:
         stream.write(buf)
@@ -77,161 +79,14 @@ async def async_sendall_stream(stream: asyncio.StreamWriter, buf: bytes) -> None
         raise socket.timeout("timed out") from exc
 
 
-if sys.platform != "win32":
-
-    async def _async_sendall_ssl(
-        sock: Union[socket.socket, _sslConn], buf: bytes, loop: AbstractEventLoop
-    ) -> None:
-        view = memoryview(buf)
-        sent = 0
-
-        def _is_ready(fut: Future) -> None:
-            if fut.done():
-                return
-            fut.set_result(None)
-
-        while sent < len(buf):
-            try:
-                sent += sock.send(view[sent:])
-            except BLOCKING_IO_ERRORS as exc:
-                fd = sock.fileno()
-                # Check for closed socket.
-                if fd == -1:
-                    raise SSLError("Underlying socket has been closed") from None
-                if isinstance(exc, BLOCKING_IO_READ_ERROR):
-                    fut = loop.create_future()
-                    loop.add_reader(fd, _is_ready, fut)
-                    try:
-                        await fut
-                    finally:
-                        loop.remove_reader(fd)
-                if isinstance(exc, BLOCKING_IO_WRITE_ERROR):
-                    fut = loop.create_future()
-                    loop.add_writer(fd, _is_ready, fut)
-                    try:
-                        await fut
-                    finally:
-                        loop.remove_writer(fd)
-                if _HAVE_PYOPENSSL and isinstance(exc, BLOCKING_IO_LOOKUP_ERROR):
-                    fut = loop.create_future()
-                    loop.add_reader(fd, _is_ready, fut)
-                    try:
-                        loop.add_writer(fd, _is_ready, fut)
-                        await fut
-                    finally:
-                        loop.remove_reader(fd)
-                        loop.remove_writer(fd)
-
-    async def _async_receive_ssl(
-        conn: _sslConn, length: int, loop: AbstractEventLoop, once: Optional[bool] = False
-    ) -> memoryview:
-        mv = memoryview(bytearray(length))
-        total_read = 0
-
-        def _is_ready(fut: Future) -> None:
-            if fut.done():
-                return
-            fut.set_result(None)
-
-        while total_read < length:
-            try:
-                read = conn.recv_into(mv[total_read:])
-                if read == 0:
-                    raise OSError("connection closed")
-                # KMS responses update their expected size after the first batch, stop reading after one loop
-                if once:
-                    return mv[:read]
-                total_read += read
-            except BLOCKING_IO_ERRORS as exc:
-                fd = conn.fileno()
-                # Check for closed socket.
-                if fd == -1:
-                    raise SSLError("Underlying socket has been closed") from None
-                if isinstance(exc, BLOCKING_IO_READ_ERROR):
-                    fut = loop.create_future()
-                    loop.add_reader(fd, _is_ready, fut)
-                    try:
-                        await fut
-                    finally:
-                        loop.remove_reader(fd)
-                if isinstance(exc, BLOCKING_IO_WRITE_ERROR):
-                    fut = loop.create_future()
-                    loop.add_writer(fd, _is_ready, fut)
-                    try:
-                        await fut
-                    finally:
-                        loop.remove_writer(fd)
-                if _HAVE_PYOPENSSL and isinstance(exc, BLOCKING_IO_LOOKUP_ERROR):
-                    fut = loop.create_future()
-                    loop.add_reader(fd, _is_ready, fut)
-                    try:
-                        loop.add_writer(fd, _is_ready, fut)
-                        await fut
-                    finally:
-                        loop.remove_reader(fd)
-                        loop.remove_writer(fd)
-        return mv
-
-else:
-    # The default Windows asyncio event loop does not support loop.add_reader/add_writer:
-    # https://docs.python.org/3/library/asyncio-platforms.html#asyncio-platform-support
-    # Note: In PYTHON-4493 we plan to replace this code with asyncio streams.
-    async def _async_sendall_ssl(
-        sock: Union[socket.socket, _sslConn], buf: bytes, dummy: AbstractEventLoop
-    ) -> None:
-        view = memoryview(buf)
-        total_length = len(buf)
-        total_sent = 0
-        # Backoff starts at 1ms, doubles on timeout up to 512ms, and halves on success
-        # down to 1ms.
-        backoff = 0.001
-        while total_sent < total_length:
-            try:
-                sent = sock.send(view[total_sent:])
-            except BLOCKING_IO_ERRORS:
-                await asyncio.sleep(backoff)
-                sent = 0
-            if sent > 0:
-                backoff = max(backoff / 2, 0.001)
-            else:
-                backoff = min(backoff * 2, 0.512)
-            total_sent += sent
-
-    async def _async_receive_ssl(
-        conn: _sslConn, length: int, dummy: AbstractEventLoop, once: Optional[bool] = False
-    ) -> memoryview:
-        mv = memoryview(bytearray(length))
-        total_read = 0
-        # Backoff starts at 1ms, doubles on timeout up to 512ms, and halves on success
-        # down to 1ms.
-        backoff = 0.001
-        while total_read < length:
-            try:
-                read = conn.recv_into(mv[total_read:])
-                if read == 0:
-                    raise OSError("connection closed")
-                # KMS responses update their expected size after the first batch, stop reading after one loop
-                if once:
-                    return mv[:read]
-            except BLOCKING_IO_ERRORS:
-                await asyncio.sleep(backoff)
-                read = 0
-            if read > 0:
-                backoff = max(backoff / 2, 0.001)
-            else:
-                backoff = min(backoff * 2, 0.512)
-            total_read += read
-        return mv
-
-
 def sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
     sock.sendall(buf)
 
 
 async def _poll_cancellation(conn: AsyncConnection) -> None:
-    # while True:
-    #     if conn.cancel_context.cancelled:
-    #         return
+    while True:
+        if conn.cancel_context.cancelled:
+            return
 
         await asyncio.sleep(_POLL_TIMEOUT)
 
@@ -295,19 +150,11 @@ async def async_receive_data_socket(
         sock.settimeout(sock_timeout)
 
 
-
 async def _async_receive_stream(reader: asyncio.StreamReader, length: int) -> memoryview:
-    mv = bytearray(length)
-    total_read = 0
-
-    while total_read < length:
-        bytes = await reader.read(length)
-        chunk_length = len(bytes)
-        if chunk_length == 0:
-            raise OSError("connection closed")
-        mv[total_read:] = bytes
-        total_read += chunk_length
-    return memoryview(mv)
+    try:
+        return memoryview(await reader.readexactly(length))
+    except asyncio.IncompleteReadError:
+        raise OSError("connection closed")
 
 def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> memoryview:
     buf = bytearray(length)
