@@ -42,7 +42,7 @@ from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
 from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.asynchronous.network import command, receive_message, command_stream, receive_message_stream
+from pymongo.asynchronous.network import command_stream, receive_message_stream
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -80,7 +80,7 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
 )
-from pymongo.network_layer import async_sendall, async_sendall_stream
+from pymongo.network_layer import async_sendall_stream
 from pymongo.pool_options import PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
@@ -534,7 +534,7 @@ class AsyncConnection:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return await command(
+            return await command_stream(
                 self,
                 dbname,
                 spec,
@@ -576,7 +576,7 @@ class AsyncConnection:
             )
 
         try:
-            await async_sendall(self.conn, message)
+            await async_sendall_stream(self.conn, message)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -586,7 +586,7 @@ class AsyncConnection:
         If any exception is raised, the socket is closed.
         """
         try:
-            return await receive_message(self, request_id, self.max_message_size)
+            return await receive_message_stream(self, request_id, self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 
