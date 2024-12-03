@@ -93,6 +93,7 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
+    from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
 
 
@@ -110,7 +111,7 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
-def _connect_kms(address: _Address, opts: PoolOptions):
+def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
     try:
         return _configured_socket(address, opts)
     except Exception as exc:
