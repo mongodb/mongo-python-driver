@@ -19,7 +19,9 @@ Used as part of our build system to generate synchronous code.
 
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 from os import listdir
 from pathlib import Path
 
@@ -356,36 +358,25 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 
 
 def main() -> None:
-    # output = subprocess.check_output(['git', 'status', '-s']).decode('utf8')
-    # modified_files = set()
-    # for line in output.splitlines():
-    #     modified_files.add('./' + line.strip().split(' ')[1])
-    # target_before_content = dict()
-    # for dest in [_pymongo_dest_base, _gridfs_dest_base, _test_dest_base]:
-    #     for target in Path(dest).glob('*.py'):
-    #         target_before_content[str(target)] = target.read_text()
+    output = subprocess.check_output(["git", "status", "-s"]).decode("utf8")  # noqa:S603,S607
+    modified_files = set()
+    for line in output.splitlines():
+        modified_files.add("./" + line.strip().split(" ")[1])
+    errored = False
+    for fname in async_files + gridfs_files:
+        if str(fname) in modified_files:
+            continue
+        sync_name = str(fname).replace("asynchronous", "synchronous")
+        if sync_name in modified_files and "OVERRIDE_SYNCHRO_CHECK" not in os.environ:
+            print(f"Refusing to overwrite {sync_name}")
+            errored = True
+    if errored:
+        raise ValueError("Aborting synchro due to errors")
+    return
     unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
     unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
     unasync_directory(test_files, _test_base, _test_dest_base, replacements)
     process_files(sync_files + sync_gridfs_files + sync_test_files)
-
-    # if os.environ.get('OVERRIDE_SYNC_FILES'):
-    #     return
-
-    # errored = False
-    # for fname in sync_files + sync_gridfs_files:
-    #     async_name = fname.replace('synchronous', 'asynchronous')
-    #     if async_name in modified_files:
-    #         continue
-    #     target = Path(fname)
-    #     new_text = target.read_text()
-    #     old_text = target_before_content[str(target)]
-    #     if new_text != old_text:
-    #         target.write_text(old_text)
-    #         errored = True
-    #         print(f"Refusing to overwrite {target}")
-    # if errored:
-    #     raise ValueError('Encountered errors')
 
 
 if __name__ == "__main__":
