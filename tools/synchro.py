@@ -372,7 +372,7 @@ def main() -> None:
             errored = True
     if errored:
         raise ValueError("Aborting synchro due to errors")
-    return
+
     unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
     unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
     unasync_directory(test_files, _test_base, _test_dest_base, replacements)
