@@ -19,6 +19,7 @@ import asyncio
 import contextlib
 import enum
 import socket
+import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
 from copy import deepcopy
@@ -176,9 +177,10 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             ssl_context=ctx,
         )
         host, port = parse_host(endpoint, _HTTPS_PORT)
-        sleep_usec = kms_context.usleep
-        if sleep_usec:
-            await asyncio.sleep(float(sleep_usec) / 1e6)
+        sleep_u = kms_context.usleep
+        if sleep_u:
+            sleep_sec = float(sleep_u) / 1e6
+            await asyncio.sleep(sleep_sec)
         try:
             conn = await _configured_socket((host, port), opts)
             try:
