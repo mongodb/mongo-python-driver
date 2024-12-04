@@ -41,7 +41,11 @@ import pytest
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.helpers import anext
 from pymongo.daemon import _spawn_daemon
-from pymongo.ssl_context import _ssl
+
+try:
+    from pymongo.pyopenssl_context import IS_PYOPENSSL
+except ImportError:
+    IS_PYOPENSSL = False
 
 sys.path[0:0] = [""]
 
@@ -2922,7 +2926,7 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
             await self.client_encryption.create_data_key(provider, master_key=master_key)
 
     async def test_kms_retry(self):
-        if _ssl.IS_PYOPENSSL:
+        if IS_PYOPENSSL:
             self.skipTest(
                 "PyOpenSSL does not support a required method for this test, Connection.makefile"
             )
