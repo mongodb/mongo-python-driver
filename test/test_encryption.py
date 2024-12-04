@@ -39,7 +39,7 @@ from typing import Any, Dict, Mapping, Optional
 import pytest
 
 from pymongo.daemon import _spawn_daemon
-from pymongo.pyopenssl_context import IS_PYOPENSSL
+from pymongo.ssl_context import _ssl
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.helpers import next
 
@@ -2904,7 +2904,7 @@ class TestKmsRetryProse(EncryptionIntegrationTest):
             self.client_encryption.create_data_key(provider, master_key=master_key)
 
     def test_kms_retry(self):
-        if IS_PYOPENSSL:
+        if _ssl.IS_PYOPENSSL:
             self.skipTest(
                 "PyOpenSSL does not support a required method for this test, Connection.makefile"
             )
