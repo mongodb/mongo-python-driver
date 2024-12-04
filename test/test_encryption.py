@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import base64
 import copy
+import http.client
+import json
 import os
 import pathlib
 import re
@@ -88,6 +90,7 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
+from pymongo.ssl_support import get_ssl_context
 from pymongo.synchronous import encryption
 from pymongo.synchronous.encryption import Algorithm, ClientEncryption, QueryType
 from pymongo.synchronous.mongo_client import MongoClient
@@ -1360,9 +1363,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             "key": ("arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
             "endpoint": "kms.us-east-1.amazonaws.com:12345",
         }
-        with self.assertRaisesRegex(EncryptionError, "kms.us-east-1.amazonaws.com:12345") as ctx:
+        with self.assertRaisesRegex(EncryptionError, "kms.us-east-1.amazonaws.com:12345"):
             self.client_encryption.create_data_key("aws", master_key=master_key)
-        self.assertIsInstance(ctx.exception.cause, AutoReconnect)
 
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def test_05_aws_endpoint_wrong_region(self):
@@ -2833,6 +2835,86 @@ class TestRangeQueryDefaultsProse(EncryptionIntegrationTest):
             123, "range", self.key_id, contention_factor=0, range_opts=opts
         )
         assert len(payload) > len(self.payload_defaults)
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#24-kms-retry-tests
+class TestKmsRetryProse(EncryptionIntegrationTest):
+    @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
+    def setUp(self):
+        super().setUp()
+        # 1, create client with only tlsCAFile.
+        providers: dict = copy.deepcopy(ALL_KMS_PROVIDERS)
+        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9003"
+        providers["gcp"]["endpoint"] = "127.0.0.1:9003"
+        kms_tls_opts = {
+            p: {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM} for p in providers
+        }
+        self.client_encryption = self.create_client_encryption(
+            providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts
+        )
+
+    def http_post(self, path, data=None):
+        # Note, the connection to the mock server needs to be closed after
+        # each request because the server is single threaded.
+        ctx: ssl.SSLContext = get_ssl_context(
+            CLIENT_PEM,  # certfile
+            None,  # passphrase
+            CA_PEM,  # ca_certs
+            None,  # crlfile
+            False,  # allow_invalid_certificates
+            False,  # allow_invalid_hostnames
+            False,  # disable_ocsp_endpoint_check
+        )
+        conn = http.client.HTTPSConnection("127.0.0.1:9003", context=ctx)
+        try:
+            if data is not None:
+                headers = {"Content-type": "application/json"}
+                body = json.dumps(data)
+            else:
+                headers = {}
+                body = None
+            conn.request("POST", path, body, headers)
+            res = conn.getresponse()
+            res.read()
+        finally:
+            conn.close()
+
+    def _test(self, provider, master_key):
+        self.http_post("/reset")
+        # Case 1: createDataKey and encrypt with TCP retry
+        self.http_post("/set_failpoint/network", {"count": 1})
+        key_id = self.client_encryption.create_data_key(provider, master_key=master_key)
+        self.http_post("/set_failpoint/network", {"count": 1})
+        self.client_encryption.encrypt(
+            123, Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_id
+        )
+
+        # Case 2: createDataKey and encrypt with HTTP retry
+        self.http_post("/set_failpoint/http", {"count": 1})
+        key_id = self.client_encryption.create_data_key(provider, master_key=master_key)
+        self.http_post("/set_failpoint/http", {"count": 1})
+        self.client_encryption.encrypt(
+            123, Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_id
+        )
+
+        # Case 3: createDataKey fails after too many retries
+        self.http_post("/set_failpoint/network", {"count": 4})
+        with self.assertRaisesRegex(EncryptionError, "KMS request failed after"):
+            self.client_encryption.create_data_key(provider, master_key=master_key)
+
+    def test_kms_retry(self):
+        self._test("aws", {"region": "foo", "key": "bar", "endpoint": "127.0.0.1:9003"})
+        self._test("azure", {"keyVaultEndpoint": "127.0.0.1:9003", "keyName": "foo"})
+        self._test(
+            "gcp",
+            {
+                "projectId": "foo",
+                "location": "bar",
+                "keyRing": "baz",
+                "keyName": "qux",
+                "endpoint": "127.0.0.1:9003",
+            },
+        )
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#automatic-data-encryption-keys

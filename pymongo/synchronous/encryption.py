@@ -19,6 +19,7 @@ import asyncio
 import contextlib
 import enum
 import socket
+import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
 from copy import deepcopy
@@ -67,7 +68,7 @@ from pymongo.errors import (
     EncryptedCollectionError,
     EncryptionError,
     InvalidOperation,
-    PyMongoError,
+    NetworkTimeout,
     ServerSelectionTimeoutError,
 )
 from pymongo.network_layer import BLOCKING_IO_ERRORS, sendall
@@ -80,13 +81,20 @@ from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.pool import _configured_socket, _raise_connection_failure
+from pymongo.synchronous.pool import (
+    _configured_socket,
+    _get_timeout_details,
+    _raise_connection_failure,
+)
 from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
+
+    from pymongo.pyopenssl_context import _sslConn
+    from pymongo.typings import _Address
 
 
 _IS_SYNC = True
@@ -101,6 +109,13 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
+
+
+def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
+    try:
+        return _configured_socket(address, opts)
+    except Exception as exc:
+        _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
 
 @contextlib.contextmanager
@@ -166,8 +181,8 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                 None,  # crlfile
                 False,  # allow_invalid_certificates
                 False,  # allow_invalid_hostnames
-                False,
-            )  # disable_ocsp_endpoint_check
+                False,  # disable_ocsp_endpoint_check
+            )
         # CSOT: set timeout for socket creation.
         connect_timeout = max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
         opts = PoolOptions(
@@ -175,9 +190,13 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             socket_timeout=connect_timeout,
             ssl_context=ctx,
         )
-        host, port = parse_host(endpoint, _HTTPS_PORT)
+        address = parse_host(endpoint, _HTTPS_PORT)
+        sleep_u = kms_context.usleep
+        if sleep_u:
+            sleep_sec = float(sleep_u) / 1e6
+            time.sleep(sleep_sec)
         try:
-            conn = _configured_socket((host, port), opts)
+            conn = _connect_kms(address, opts)
             try:
                 sendall(conn, message)
                 while kms_context.bytes_needed > 0:
@@ -194,20 +213,29 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                     if not data:
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
-            # Async raises an OSError instead of returning empty bytes
-            except OSError as err:
-                raise OSError("KMS connection closed") from err
-            except BLOCKING_IO_ERRORS:
-                raise socket.timeout("timed out") from None
+            except MongoCryptError:
+                raise  # Propagate MongoCryptError errors directly.
+            except Exception as exc:
+                # Wrap I/O errors in PyMongo exceptions.
+                if isinstance(exc, BLOCKING_IO_ERRORS):
+                    exc = socket.timeout("timed out")
+                _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
             finally:
                 conn.close()
-        except (PyMongoError, MongoCryptError):
-            raise  # Propagate pymongo errors directly.
-        except asyncio.CancelledError:
-            raise
-        except Exception as error:
-            # Wrap I/O errors in PyMongo exceptions.
-            _raise_connection_failure((host, port), error)
+        except MongoCryptError:
+            raise  # Propagate MongoCryptError errors directly.
+        except Exception as exc:
+            remaining = _csot.remaining()
+            if isinstance(exc, NetworkTimeout) or (remaining is not None and remaining <= 0):
+                raise
+            # Mark this attempt as failed and defer to libmongocrypt to retry.
+            try:
+                kms_context.fail()
+            except MongoCryptError as final_err:
+                exc = MongoCryptError(
+                    f"{final_err}, last attempt failed with: {exc}", final_err.code
+                )
+                raise exc from final_err
 
     def collection_info(self, database: str, filter: bytes) -> Optional[bytes]:
         """Get the collection info for a namespace.
