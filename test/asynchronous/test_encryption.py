@@ -2861,7 +2861,6 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     async def asyncSetUp(self):
         await super().asyncSetUp()
-
         # 1, create client with only tlsCAFile.
         providers: dict = copy.deepcopy(ALL_KMS_PROVIDERS)
         providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9003"

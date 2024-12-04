@@ -2843,7 +2843,6 @@ class TestKmsRetryProse(EncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def setUp(self):
         super().setUp()
-
         # 1, create client with only tlsCAFile.
         providers: dict = copy.deepcopy(ALL_KMS_PROVIDERS)
         providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9003"
