@@ -42,6 +42,11 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.helpers import anext
 from pymongo.daemon import _spawn_daemon
 
+try:
+    from pymongo.pyopenssl_context import IS_PYOPENSSL
+except ImportError:
+    IS_PYOPENSSL = False
+
 sys.path[0:0] = [""]
 
 from test import (
@@ -2921,6 +2926,10 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
             await self.client_encryption.create_data_key(provider, master_key=master_key)
 
     async def test_kms_retry(self):
+        if IS_PYOPENSSL:
+            self.skipTest(
+                "PyOpenSSL does not support a required method for this test, Connection.makefile"
+            )
         await self._test("aws", {"region": "foo", "key": "bar", "endpoint": "127.0.0.1:9003"})
         await self._test("azure", {"keyVaultEndpoint": "127.0.0.1:9003", "keyName": "foo"})
         await self._test(

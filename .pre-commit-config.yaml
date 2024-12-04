@@ -24,6 +24,7 @@ repos:
       entry: bash ./tools/synchro.sh
       language: python
       require_serial: true
+      fail_fast: true
       additional_dependencies:
         - ruff==0.1.3
         - unasync

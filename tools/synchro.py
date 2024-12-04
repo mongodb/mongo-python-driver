@@ -19,7 +19,9 @@ Used as part of our build system to generate synchronous code.
 
 from __future__ import annotations
 
+import os
 import re
+import sys
 from os import listdir
 from pathlib import Path
 
@@ -356,6 +358,19 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 
 
 def main() -> None:
+    modified_files = [f"./{f}" for f in sys.argv[1:]]
+    errored = False
+    for fname in async_files + gridfs_files:
+        # If the async file was modified, we don't need to check if the sync file was also modified.
+        if str(fname) in modified_files:
+            continue
+        sync_name = str(fname).replace("asynchronous", "synchronous")
+        if sync_name in modified_files and "OVERRIDE_SYNCHRO_CHECK" not in os.environ:
+            print(f"Refusing to overwrite {sync_name}")
+            errored = True
+    if errored:
+        raise ValueError("Aborting synchro due to errors")
+
     unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
     unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
     unasync_directory(test_files, _test_base, _test_dest_base, replacements)
