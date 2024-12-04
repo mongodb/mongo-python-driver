@@ -441,6 +441,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
+    TEST_PATH = ""  # This gets filled in by generate_test_classes
     mongos_clients: list[MongoClient] = []
 
     @staticmethod
