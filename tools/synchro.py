@@ -361,6 +361,7 @@ def main() -> None:
     modified_files = [f"./{f}" for f in sys.argv[1:]]
     errored = False
     for fname in async_files + gridfs_files:
+        # If the async file was modified, we don't need to check if the sync file was also modified.
         if str(fname) in modified_files:
             continue
         sync_name = str(fname).replace("asynchronous", "synchronous")
