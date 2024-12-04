@@ -18,6 +18,7 @@ from __future__ import annotations
 import copy
 import gc
 import itertools
+import os
 import random
 import re
 import sys
@@ -1412,6 +1413,8 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(len(docs), 2)
 
     async def test_to_list_csot_applied(self):
+        if os.environ.get("SKIP_CSOT_TESTS", ""):
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         client = await self.async_single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
         # Initialize the client with a larger timeout to help make test less flakey
@@ -1453,6 +1456,8 @@ class TestCursor(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_blockConnection
     async def test_command_cursor_to_list_csot_applied(self):
+        if os.environ.get("SKIP_CSOT_TESTS", ""):
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         client = await self.async_single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
         # Initialize the client with a larger timeout to help make test less flakey
