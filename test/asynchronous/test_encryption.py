@@ -41,6 +41,7 @@ import pytest
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.helpers import anext
 from pymongo.daemon import _spawn_daemon
+from pymongo.pyopenssl_context import IS_PYOPENSSL
 
 sys.path[0:0] = [""]
 
@@ -2860,6 +2861,7 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     async def asyncSetUp(self):
         await super().asyncSetUp()
+
         # 1, create client with only tlsCAFile.
         providers: dict = copy.deepcopy(ALL_KMS_PROVIDERS)
         providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9003"
@@ -2921,6 +2923,10 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
             await self.client_encryption.create_data_key(provider, master_key=master_key)
 
     async def test_kms_retry(self):
+        if IS_PYOPENSSL:
+            self.skipTest(
+                "PyOpenSSL does not support a required method for this test, Connection.makefile"
+            )
         await self._test("aws", {"region": "foo", "key": "bar", "endpoint": "127.0.0.1:9003"})
         await self._test("azure", {"keyVaultEndpoint": "127.0.0.1:9003", "keyName": "foo"})
         await self._test(
