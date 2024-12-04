@@ -25,9 +25,9 @@ function get_import_time() {
 }
 
 get_import_time $HEAD_SHA
-git stash
+git stash || true
 git checkout $BASE_SHA
 get_import_time $BASE_SHA
 git checkout $HEAD_SHA
-git stash apply
+git stash apply || true
 python tools/compare_import_time.py $HEAD_SHA $BASE_SHA
