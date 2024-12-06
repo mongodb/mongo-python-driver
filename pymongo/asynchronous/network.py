@@ -15,6 +15,7 @@
 """Internal network layer helper methods."""
 from __future__ import annotations
 
+import asyncio
 import datetime
 import logging
 import statistics
@@ -200,7 +201,7 @@ async def command_stream(
 
     try:
         write_start = time.monotonic()
-        await async_sendall_stream(conn.conn[1], msg)
+        await async_sendall_stream(conn, msg)
         write_elapsed = time.monotonic() - write_start
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
@@ -208,15 +209,15 @@ async def command_stream(
             response_doc: _DocumentOut = {"ok": 1}
         else:
             read_start = time.monotonic()
-            reply = await receive_message_stream(conn.conn[0], request_id)
+            reply = await receive_message_stream(conn, request_id)
             read_elapsed = time.monotonic() - read_start
-            # if name == "insert":
-            #     TOTAL.append(write_elapsed + read_elapsed)
-            #     TOTAL_READ.append(read_elapsed)
-            #     TOTAL_WRITE.append(write_elapsed)
-            # if name == "endSessions":
-            #     print(
-            #         f"AVERAGE READ: {statistics.mean(TOTAL_READ)}, AVERAGE WRITE: {statistics.mean(TOTAL_WRITE)}, AVERAGE ELAPSED: {statistics.mean(TOTAL)}")
+            if name == "insert":
+                TOTAL.append(write_elapsed + read_elapsed)
+                TOTAL_READ.append(read_elapsed)
+                TOTAL_WRITE.append(write_elapsed)
+            if name == "endSessions":
+                print(
+                    f"AVERAGE READ: {statistics.mean(TOTAL_READ)}, AVERAGE WRITE: {statistics.mean(TOTAL_WRITE)}, AVERAGE ELAPSED: {statistics.mean(TOTAL)}")
             conn.more_to_come = reply.more_to_come
             unpacked_docs = reply.unpack_response(
                 codec_options=codec_options, user_fields=user_fields
@@ -316,7 +317,7 @@ async def command_stream(
 
 
 async def receive_message_stream(
-    conn: StreamReader, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
+    conn: AsyncConnectionStream, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     # if _csot.get_timeout():
@@ -329,33 +330,34 @@ async def receive_message_stream(
     #         deadline = None
     deadline = None
     # Ignore the response's request id.
-    read_start = time.monotonic()
-    length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data_stream(conn, 16, deadline))
-    read_elapsed = time.monotonic() - read_start
-    # print(f"Read header in {read_elapsed}")
-    # No request_id for exhaust cursor "getMore".
-    if request_id is not None:
-        if request_id != response_to:
-            raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
-    if length <= 16:
-        raise ProtocolError(
-            f"Message length ({length!r}) not longer than standard message header size (16)"
-        )
-    if length > max_message_size:
-        raise ProtocolError(
-            f"Message length ({length!r}) is larger than server max "
-            f"message size ({max_message_size!r})"
-        )
-    if op_code == 2012:
-        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
-            await async_receive_data_stream(conn, 9, deadline)
-        )
-        data = decompress(await async_receive_data_stream(conn, length - 25, deadline), compressor_id)
-    else:
-        read_start = time.monotonic()
-        data = await async_receive_data_stream(conn, length - 16, deadline)
-        read_elapsed = time.monotonic() - read_start
-        # print(f"Read body in {read_elapsed}")
+    loop = asyncio.get_running_loop()
+    done = loop.create_future()
+    mv = memoryview(bytearray(max_message_size))
+    conn.conn[1].reset(mv, done)
+    await asyncio.wait_for(done, timeout=None)
+    length, op_code = done.result()
+
+    # length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data_stream(conn, 16, deadline))
+    # # No request_id for exhaust cursor "getMore".
+    # if request_id is not None:
+    #     if request_id != response_to:
+    #         raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
+    # if length <= 16:
+    #     raise ProtocolError(
+    #         f"Message length ({length!r}) not longer than standard message header size (16)"
+    #     )
+    # if length > max_message_size:
+    #     raise ProtocolError(
+    #         f"Message length ({length!r}) is larger than server max "
+    #         f"message size ({max_message_size!r})"
+    #     )
+    # if op_code == 2012:
+    #     op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
+    #         await async_receive_data_stream(conn, 9, deadline)
+    #     )
+    #     data = decompress(await async_receive_data_stream(conn, length - 25, deadline), compressor_id)
+    # else:
+    #     data = await async_receive_data_stream(conn, length - 16, deadline)
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
@@ -363,5 +365,5 @@ async def receive_message_stream(
         raise ProtocolError(
             f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
         ) from None
-    return unpack_reply(data)
+    return unpack_reply(mv[16:length])
 

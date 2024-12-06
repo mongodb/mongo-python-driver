@@ -80,7 +80,7 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
 )
-from pymongo.network_layer import async_sendall_stream
+from pymongo.network_layer import async_sendall_stream, _UNPACK_HEADER, PyMongoProtocol
 from pymongo.pool_options import PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
@@ -794,7 +794,7 @@ class AsyncConnectionStream:
     """
 
     def __init__(
-        self, conn: tuple[asyncio.StreamReader, asyncio.StreamWriter], pool: Pool, address: tuple[str, int], id: int
+        self, conn: tuple[asyncio.BaseTransport, PyMongoProtocol], pool: Pool, address: tuple[str, int], id: int
     ):
         self.pool_ref = weakref.ref(pool)
         self.conn = conn
@@ -1107,7 +1107,7 @@ class AsyncConnectionStream:
             )
 
         try:
-            await async_sendall_stream(self.conn[1], message)
+            await async_sendall_stream(self.conn, message)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -1117,7 +1117,7 @@ class AsyncConnectionStream:
         If any exception is raised, the socket is closed.
         """
         try:
-            return await receive_message_stream(self.conn[0], request_id, self.max_message_size)
+            return await receive_message_stream(self.conn, request_id, self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -1235,7 +1235,7 @@ class AsyncConnectionStream:
         # Note: We catch exceptions to avoid spurious errors on interpreter
         # shutdown.
         try:
-            self.conn[1].close()
+            self.conn[0].close()
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: S110
@@ -1243,7 +1243,7 @@ class AsyncConnectionStream:
 
     def conn_closed(self) -> bool:
         """Return True if we know socket has been closed, False otherwise."""
-        return self.conn[1].is_closing()
+        return self.conn[0].is_closing()
 
     def send_cluster_time(
         self,
@@ -1315,11 +1315,6 @@ class AsyncConnectionStream:
         )
 
 
-async def _create_connection_stream(address: _Address, options: PoolOptions) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
-    """Given (host, port) and PoolOptions, connect and return a paired StreamReader and StreamWriter.
-    """
-    sock = _create_connection(address, options)
-    return await asyncio.open_connection(sock=sock)
 
 
 def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
@@ -1395,34 +1390,31 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
 
 async def _configured_stream(
     address: _Address, options: PoolOptions
-) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+) -> tuple[asyncio.BaseTransport, PyMongoProtocol]:
     """Given (host, port) and PoolOptions, return a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
 
     Sets socket's SSL and timeout options.
     """
-    (reader, writer) = await _create_connection_stream(address, options)
+    sock = _create_connection(address, options)
     ssl_context = options._ssl_context
 
     if ssl_context is None:
-        # sock.settimeout(options.socket_timeout)
-        return reader, writer
+        return await asyncio.get_running_loop().create_connection(lambda: PyMongoProtocol(), sock=sock)
 
     host = address[0]
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
-        await writer.start_tls(ssl_context, server_hostname=host)
+        transport, protocol = await asyncio.get_running_loop().create_connection(lambda: PyMongoProtocol(), sock=sock, server_hostname=host, ssl=ssl_context)
     except _CertificateError:
-        writer.close()
-        await writer.wait_closed()
+        transport.close()
         # Raise _CertificateError directly like we do after match_hostname
         # below.
         raise
     except (OSError, SSLError) as exc:
-        writer.close()
-        await writer.wait_closed()
+        transport.close()
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
@@ -1434,13 +1426,12 @@ async def _configured_stream(
         and not options.tls_allow_invalid_hostnames
     ):
         try:
-            ssl.match_hostname(writer.get_extra_info("peercert"), hostname=host)  # type:ignore[attr-defined]
+            ssl.match_hostname(transport.get_extra_info("peercert"), hostname=host)  # type:ignore[attr-defined]
         except _CertificateError:
-            writer.close()
-            await writer.wait_closed()
+            transport.close()
             raise
 
-    return reader, writer
+    return transport, protocol
 
 
 async def _configured_socket(

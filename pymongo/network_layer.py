@@ -70,10 +70,50 @@ _POLL_TIMEOUT = 0.5
 BLOCKING_IO_ERRORS = (BlockingIOError, BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
 
 
-async def async_sendall_stream(stream: asyncio.StreamWriter, buf: bytes) -> None:
+class PyMongoProtocol(asyncio.Protocol):
+    def __init__(self):
+        self.transport = None
+        self.done = None
+        self.buffer = None
+        self.expected_length = 0
+        self.expecting_header = False
+        self.bytes_read = 0
+        self.op_code = None
+
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def write(self, message: bytes):
+        self.transport.write(message)
+
+    def data_received(self, data):
+        size = len(data)
+        if size == 0:
+            raise OSError("connection closed")
+        self.buffer[self.bytes_read:self.bytes_read + size] = data
+        self.bytes_read += size
+        if self.expecting_header:
+            self.expected_length, _, response_to, self.op_code = _UNPACK_HEADER(self.buffer[:16])
+            self.expecting_header = False
+
+        if self.bytes_read == self.expected_length:
+            self.done.set_result((self.expected_length, self.op_code))
+
+    def connection_lost(self, exc):
+        if self.done and not self.done.done():
+            self.done.set_result(True)
+
+    def reset(self, buffer: memoryview, done: asyncio.Future):
+        self.buffer = buffer
+        self.done = done
+        self.bytes_read = 0
+        self.expecting_header = True
+        self.op_code = None
+
+
+async def async_sendall_stream(stream: AsyncConnectionStream, buf: bytes) -> None:
     try:
-        stream.write(buf)
-        await asyncio.wait_for(stream.drain(), timeout=None)
+        stream.conn[1].write(buf)
     except asyncio.TimeoutError as exc:
         # Convert the asyncio.wait_for timeout error to socket.timeout which pool.py understands.
         raise socket.timeout("timed out") from exc
@@ -92,7 +132,7 @@ async def _poll_cancellation(conn: AsyncConnection) -> None:
 
 
 async def async_receive_data_stream(
-    conn: StreamReader, length: int, deadline: Optional[float]
+    conn: AsyncConnectionStream, length: int, deadline: Optional[float]
 ) -> memoryview:
     # sock = conn.conn
     # sock_timeout = sock.gettimeout()
@@ -104,9 +144,13 @@ async def async_receive_data_stream(
     #     timeout = max(deadline - time.monotonic(), 0)
     # else:
     #     timeout = sock_timeout
+    loop = asyncio.get_running_loop()
 
+    done = loop.create_future()
+    conn.conn[1].setup(done, length)
     try:
-        return await asyncio.wait_for(_async_receive_stream(conn, length), timeout=None)
+        await asyncio.wait_for(done, timeout=None)
+        return done.result()
         # read_task = create_task(_async_receive_stream(conn, length))
         # tasks = [read_task, cancellation_task]
         # done, pending = await asyncio.wait(
