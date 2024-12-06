@@ -758,6 +758,8 @@ def create_alternative_hosts_variants():
         )
     )
 
+    expansions = dict()
+    handle_c_ext(C_EXTS[0], expansions)
     for host_name in OTHER_HOSTS:
         host = HOSTS[host_name]
         variants.append(
@@ -766,6 +768,7 @@ def create_alternative_hosts_variants():
                 display_name=get_display_name("Other hosts", host),
                 batchtime=batchtime,
                 host=host,
+                expansions=expansions,
             )
         )
     return variants
