@@ -16,13 +16,24 @@
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import inspect
 import time
 from collections import deque
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
-from typing import TYPE_CHECKING, Any, Callable, Deque, MutableMapping, Optional, TypeVar, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Deque,
+    Generator,
+    MutableMapping,
+    Optional,
+    TypeVar,
+    cast,
+)
 
 if TYPE_CHECKING:
     from pymongo.write_concern import WriteConcern
@@ -52,6 +63,17 @@ def remaining() -> Optional[float]:
     if not get_timeout():
         return None
     return DEADLINE.get() - time.monotonic()
+
+
+@contextlib.contextmanager
+def reset() -> Generator:
+    timeout = get_timeout()
+    if timeout is None:
+        deadline_token = DEADLINE.set(DEADLINE.get())
+    else:
+        deadline_token = DEADLINE.set(DEADLINE.get() + timeout)
+    yield
+    DEADLINE.reset(deadline_token)
 
 
 def clamp_remaining(max_timeout: float) -> float:

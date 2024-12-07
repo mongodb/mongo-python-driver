@@ -38,6 +38,7 @@ from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
     InvalidOperation,
+    NetworkTimeout,
     OperationFailure,
 )
 from pymongo.operations import IndexModel, InsertOne
@@ -377,6 +378,45 @@ class TestTransactions(TransactionsBase):
                 res = f(*args, session=s)  # type:ignore[operator]
                 if isinstance(res, (CommandCursor, Cursor)):
                     res.to_list()
+
+    # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#10-convenient-transactions
+    @client_context.require_transactions
+    @client_context.require_version_min(4, 4, -1)
+    @client_context.require_failCommand_fail_point
+    def test_10_convenient_transactions_csot(self):
+        self.client.db.coll.drop()
+
+        listener = OvertCommandListener()
+
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {
+                    "failCommands": ["insert", "abortTransaction"],
+                    "blockConnection": True,
+                    "blockTimeMS": 200,
+                },
+            }
+        ):
+            client = self.rs_or_single_client(
+                timeoutMS=150,
+                event_listeners=[listener],
+            )
+            session = client.start_session()
+
+            def callback(s):
+                client.db.coll.insert_one({"_id": 1}, session=s)
+
+            with self.assertRaises(NetworkTimeout):
+                session.with_transaction(callback)
+
+        started = listener.started_command_names()
+        failed = listener.failed_command_names()
+
+        self.assertIn("insert", started)
+        self.assertIn("abortTransaction", started)
+        self.assertIn("insert", failed)
+        self.assertIn("abortTransaction", failed)
 
 
 class PatchSessionTimeout:

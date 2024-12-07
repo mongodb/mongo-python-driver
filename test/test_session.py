@@ -44,7 +44,7 @@ from bson import DBRef
 from gridfs.synchronous.grid_file import GridFS, GridFSBucket
 from pymongo import ASCENDING, MongoClient, monitoring
 from pymongo.common import _MAX_END_SESSIONS
-from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
+from pymongo.errors import ConfigurationError, InvalidOperation, NetworkTimeout, OperationFailure
 from pymongo.operations import IndexModel, InsertOne, UpdateOne
 from pymongo.read_concern import ReadConcern
 from pymongo.synchronous.command_cursor import CommandCursor
