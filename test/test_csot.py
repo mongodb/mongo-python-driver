@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the CSOT unified spec tests."""
+"""Test the CSOT unified spec and prose tests."""
 from __future__ import annotations
 
 import os
 import sys
+from test.utils import OvertCommandListener
+
+from pymongo.read_concern import ReadConcern
 
 sys.path[0:0] = [""]
 
@@ -24,8 +27,8 @@ from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
 
 import pymongo
-from pymongo import _csot
-from pymongo.errors import PyMongoError
+from pymongo import ReadPreference, WriteConcern, _csot
+from pymongo.errors import NetworkTimeout, PyMongoError
 
 # Location of JSON test specifications.
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "csot")
