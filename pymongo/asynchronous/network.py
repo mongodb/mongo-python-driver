@@ -330,12 +330,9 @@ async def receive_message_stream(
     #         deadline = None
     deadline = None
     # Ignore the response's request id.
-    loop = asyncio.get_running_loop()
-    done = loop.create_future()
     mv = memoryview(bytearray(max_message_size))
-    conn.conn[1].reset(mv, done)
-    await asyncio.wait_for(done, timeout=None)
-    length, op_code = done.result()
+    conn.conn[1].reset(mv)
+    length, op_code = await asyncio.wait_for(conn.conn[1].read(), timeout=None)
 
     # length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data_stream(conn, 16, deadline))
     # # No request_id for exhaust cursor "getMore".

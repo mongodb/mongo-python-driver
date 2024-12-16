@@ -1107,7 +1107,7 @@ class AsyncConnectionStream:
             )
 
         try:
-            await async_sendall_stream(self.conn, message)
+            await async_sendall_stream(self, message)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -1117,7 +1117,7 @@ class AsyncConnectionStream:
         If any exception is raised, the socket is closed.
         """
         try:
-            return await receive_message_stream(self.conn, request_id, self.max_message_size)
+            return await receive_message_stream(self, request_id, self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 
