@@ -32,6 +32,7 @@ from typing import (
 
 from pymongo import ssl_support
 from pymongo._asyncio_task import create_task
+from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import _OperationCancelled
 from pymongo.socket_checker import _errno_from_exception
 
@@ -74,7 +75,7 @@ BLOCKING_IO_ERRORS = (BlockingIOError, BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BL
 class PyMongoProtocol(asyncio.BufferedProtocol):
     def __init__(self):
         self.transport = None
-        self._buffer = None
+        self._buffer = memoryview(bytearray(MAX_MESSAGE_SIZE))
         self.expected_length = 0
         self.expecting_header = False
         self.bytes_read = 0
