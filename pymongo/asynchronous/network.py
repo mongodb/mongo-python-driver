@@ -63,10 +63,10 @@ if TYPE_CHECKING:
 
 _IS_SYNC = False
 
-TOTAL = []
-TOTAL_WRITE = []
-TOTAL_READ = []
-print(f"TOTALS: {TOTAL, TOTAL_WRITE, TOTAL_READ}")
+# TOTAL = []
+# TOTAL_WRITE = []
+# TOTAL_READ = []
+# print(f"TOTALS: {TOTAL, TOTAL_WRITE, TOTAL_READ}")
 
 
 async def command_stream(
@@ -211,13 +211,13 @@ async def command_stream(
             read_start = time.monotonic()
             reply = await receive_message_stream(conn, request_id)
             read_elapsed = time.monotonic() - read_start
-            if name == "insert":
-                TOTAL.append(write_elapsed + read_elapsed)
-                TOTAL_READ.append(read_elapsed)
-                TOTAL_WRITE.append(write_elapsed)
-            if name == "endSessions":
-                print(
-                    f"AVERAGE READ: {statistics.mean(TOTAL_READ)}, AVERAGE WRITE: {statistics.mean(TOTAL_WRITE)}, AVERAGE ELAPSED: {statistics.mean(TOTAL)}")
+            # if name == "insert":
+            #     TOTAL.append(write_elapsed + read_elapsed)
+            #     TOTAL_READ.append(read_elapsed)
+            #     TOTAL_WRITE.append(write_elapsed)
+            # if name == "endSessions":
+            #     print(
+            #         f"AVERAGE READ: {statistics.mean(TOTAL_READ)}, AVERAGE WRITE: {statistics.mean(TOTAL_WRITE)}, AVERAGE ELAPSED: {statistics.mean(TOTAL)}")
             conn.more_to_come = reply.more_to_come
             unpacked_docs = reply.unpack_response(
                 codec_options=codec_options, user_fields=user_fields
