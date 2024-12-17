@@ -60,9 +60,9 @@ _IS_SYNC = False
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
-TOTAL = []
-TOTAL_WRITE = []
-TOTAL_READ = []
+# TOTAL = []
+# TOTAL_WRITE = []
+# TOTAL_READ = []
 # print(f"TOTALS: {TOTAL, TOTAL_WRITE, TOTAL_READ}")
 
 
