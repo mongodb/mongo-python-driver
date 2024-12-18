@@ -46,7 +46,7 @@ from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import (
     _UNPACK_COMPRESSION_HEADER,
-    _UNPACK_HEADER, async_sendall_stream, async_receive_data_stream,
+    _UNPACK_HEADER, async_sendall_stream,
 )
 
 if TYPE_CHECKING:
