@@ -77,7 +77,7 @@ BLOCKING_IO_ERRORS = (BlockingIOError, BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BL
 class PyMongoProtocol(asyncio.BufferedProtocol):
     def __init__(self):
         self.transport = None
-        self._buffer = memoryview(bytearray(65536))  # 64KB default buffer for SSL handshakes
+        self._buffer = memoryview(bytearray(MAX_MESSAGE_SIZE))
         self.expected_length = 0
         self.expecting_header = False
         self.bytes_read = 0
@@ -146,8 +146,8 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         self._drain_waiter = self._loop.create_future()
         await self._drain_waiter
 
-    def reset(self, buffer: memoryview):
-        self._buffer = buffer
+    def reset(self):
+        # self._buffer = buffer
         self.bytes_read = 0
         self.expecting_header = True
         self.op_code = None
