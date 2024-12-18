@@ -23,6 +23,7 @@ import statistics
 import struct
 import sys
 import time
+import yappi
 from asyncio import AbstractEventLoop, Future, StreamReader
 from typing import (
     TYPE_CHECKING,
@@ -84,7 +85,7 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         self._done = None
         self._connection_lost = False
         self._paused = False
-        self._drain_waiters = collections.deque()
+        self._drain_waiter = None
         self._loop = asyncio.get_running_loop()
 
     def connection_made(self, transport):
@@ -104,10 +105,11 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
 
     def buffer_updated(self, nbytes: int):
         if nbytes == 0:
-            raise OSError("connection closed")
+            self.connection_lost(OSError("connection closed"))
+            self._done.set_result(None)
         self.bytes_read += nbytes
         if self.expecting_header:
-            self.expected_length, _, response_to, self.op_code = _UNPACK_HEADER(self._buffer[:16])
+            self.expected_length, _, _, self.op_code = _UNPACK_HEADER(self._buffer[:16])
             self.expecting_header = False
 
         if self.bytes_read == self.expected_length:
@@ -121,9 +123,8 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         assert self._paused
         self._paused = False
 
-        for waiter in self._drain_waiters:
-            if not waiter.done():
-                waiter.set_result(None)
+        if self._drain_waiter and not self._drain_waiter.done():
+            self._drain_waiter.set_result(None)
 
     def connection_lost(self, exc):
         self._connection_lost = True
@@ -131,24 +132,19 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         if not self._paused:
             return
 
-        for waiter in self._drain_waiters:
-            if not waiter.done():
-                if exc is None:
-                    waiter.set_result(None)
-                else:
-                    waiter.set_exception(exc)
+        if self._drain_waiter and not self._drain_waiter.done():
+            if exc is None:
+                self._drain_waiter.set_result(None)
+            else:
+                self._drain_waiter.set_exception(exc)
 
     async def _drain_helper(self):
         if self._connection_lost:
             raise ConnectionResetError('Connection lost')
         if not self._paused:
             return
-        waiter = self._loop.create_future()
-        self._drain_waiters.append(waiter)
-        try:
-            await waiter
-        finally:
-            self._drain_waiters.remove(waiter)
+        self._drain_waiter = self._loop.create_future()
+        await self._drain_waiter
 
     def reset(self, buffer: memoryview):
         self._buffer = buffer
