@@ -80,13 +80,15 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         self._buffer = memoryview(bytearray(MAX_MESSAGE_SIZE))
         self.expected_length = 0
         self.expecting_header = False
-        self.bytes_read = 0
+        self.ready_offset = 0
+        self.empty_offset = 0
         self.op_code = None
         self._done = None
         self._connection_lost = False
         self._paused = False
         self._drain_waiter = None
         self._loop = asyncio.get_running_loop()
+        self._messages = collections.deque()
 
     def connection_made(self, transport):
         self.transport = transport
@@ -96,24 +98,71 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         await self._drain_helper()
 
     async def read(self):
-        self._done = self._loop.create_future()
-        await self._done
-        return self.expected_length, self.op_code
+        data, opcode, to_remove = None, None, None
+        for message in self._messages:
+            if message.done():
+                data, opcode = self.unpack_message(message)
+                to_remove = message
+        if to_remove:
+            self._messages.remove(to_remove)
+        else:
+            message = self._loop.create_future()
+            self._messages.append(message)
+            try:
+                await message
+            finally:
+                self._messages.remove(message)
+            data, opcode = self.unpack_message(message)
+        return data, opcode
+
+    def unpack_message(self, message):
+        start, end, opcode = message.result()
+        if isinstance(start, tuple):
+            return memoryview(
+                self._buffer[start[0]:end[0]].tobytes() + self._buffer[start[1]:end[1]].tobytes()), opcode
+        else:
+            return self._buffer[start:end], opcode
 
     def get_buffer(self, sizehint: int):
-        return self._buffer[self.bytes_read:]
+        if self.empty_offset + sizehint >= MAX_MESSAGE_SIZE - 1:
+            self.empty_offset = 0
+        if self.empty_offset < self.ready_offset:
+            return self._buffer[self.empty_offset:self.ready_offset]
+        else:
+            return self._buffer[self.empty_offset:]
 
     def buffer_updated(self, nbytes: int):
         if nbytes == 0:
             self.connection_lost(OSError("connection closed"))
             self._done.set_result(None)
-        self.bytes_read += nbytes
+        self.empty_offset += nbytes
         if self.expecting_header:
-            self.expected_length, _, _, self.op_code = _UNPACK_HEADER(self._buffer[:16])
+            self.expected_length, _, _, self.op_code = _UNPACK_HEADER(self._buffer[self.ready_offset:self.ready_offset + 16])
             self.expecting_header = False
 
-        if self.bytes_read == self.expected_length:
-            self._done.set_result((self.expected_length, self.op_code))
+        if self.ready_offset < self.empty_offset:
+            if self.empty_offset - self.ready_offset >= self.expected_length:
+                self.store_message(self.ready_offset + 16, self.ready_offset + self.expected_length, self.op_code)
+                self.ready_offset += self.expected_length
+        else:
+            if self.ready_offset + self.expected_length <= MAX_MESSAGE_SIZE - 1:
+                self.store_message(self.ready_offset + 16, self.ready_offset + self.expected_length, self.op_code)
+                self.ready_offset += self.expected_length
+            elif MAX_MESSAGE_SIZE - 1 - self.ready_offset + self.empty_offset >= self.expected_length:
+                self.store_message((self.ready_offset, 0), (MAX_MESSAGE_SIZE - 1, self.expected_length - (MAX_MESSAGE_SIZE - 1 - self.ready_offset)), self.op_code)
+                self.ready_offset = self.expected_length - (MAX_MESSAGE_SIZE - 1 - self.ready_offset)
+
+    def store_message(self, start, end, opcode):
+        stored = False
+        for message in self._messages:
+            if not message.done():
+                message.set_result((start, end, opcode))
+                stored = True
+        if not stored:
+            message = self._loop.create_future()
+            message.set_result((start, end, opcode))
+            self._messages.append(message)
+        self.expecting_header = True
 
     def pause_writing(self):
         assert not self._paused

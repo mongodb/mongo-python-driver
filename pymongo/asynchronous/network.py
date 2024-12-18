@@ -332,7 +332,7 @@ async def receive_message_stream(
     # Ignore the response's request id.
     # data = bytearray(max_message_size)
     conn.conn[1].reset()
-    length, op_code = await asyncio.wait_for(conn.conn[1].read(), timeout=None)
+    data, op_code = await asyncio.wait_for(conn.conn[1].read(), timeout=None)
 
     # length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data_stream(conn, 16, deadline))
     # # No request_id for exhaust cursor "getMore".
@@ -362,5 +362,5 @@ async def receive_message_stream(
         raise ProtocolError(
             f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
         ) from None
-    return unpack_reply(conn.conn[1].data()[16:length])
+    return unpack_reply(data)
 
