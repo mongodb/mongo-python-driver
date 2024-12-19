@@ -332,7 +332,11 @@ async def receive_message_stream(
     # Ignore the response's request id.
     # data = bytearray(max_message_size)
     conn.conn[1].reset()
-    data, op_code = await asyncio.wait_for(conn.conn[1].read(), timeout=None)
+    # try:
+    data, op_code = await asyncio.wait_for(conn.conn[1].read(), timeout=5)
+    # except asyncio.TimeoutError:
+    #     print(f"Timed out on read in {asyncio.current_task()}. Start of reading memory at {conn.conn[1].ready_offset}, start of writing memory at {conn.conn[1].empty_offset}, max of {MAX_MESSAGE_SIZE}, messages: {conn.conn[1]._messages}")
+
 
     # length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data_stream(conn, 16, deadline))
     # # No request_id for exhaust cursor "getMore".

@@ -76,8 +76,9 @@ BLOCKING_IO_ERRORS = (BlockingIOError, BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BL
 
 class PyMongoProtocol(asyncio.BufferedProtocol):
     def __init__(self):
+        self._buffer_size = MAX_MESSAGE_SIZE
         self.transport = None
-        self._buffer = memoryview(bytearray(MAX_MESSAGE_SIZE))
+        self._buffer = memoryview(bytearray(self._buffer_size))
         self.expected_length = 0
         self.expecting_header = False
         self.ready_offset = 0
@@ -118,13 +119,15 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
     def unpack_message(self, message):
         start, end, opcode = message.result()
         if isinstance(start, tuple):
+            # print(f"Unpacking message with start {start} and end {end} on {asyncio.current_task()}")
             return memoryview(
-                self._buffer[start[0]:end[0]].tobytes() + self._buffer[start[1]:end[1]].tobytes()), opcode
+                bytearray(self._buffer[start[0]:end[0]]) + bytearray(self._buffer[start[1]:end[1]])), opcode
         else:
             return self._buffer[start:end], opcode
 
     def get_buffer(self, sizehint: int):
-        if self.empty_offset + sizehint >= MAX_MESSAGE_SIZE - 1:
+        # print(f"get_buffer with empty {self.empty_offset} and sizehint {sizehint}, ready {self.ready_offset}")
+        if self.empty_offset + sizehint >= self._buffer_size:
             self.empty_offset = 0
         if self.empty_offset < self.ready_offset:
             return self._buffer[self.empty_offset:self.ready_offset]
@@ -139,18 +142,25 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         if self.expecting_header:
             self.expected_length, _, _, self.op_code = _UNPACK_HEADER(self._buffer[self.ready_offset:self.ready_offset + 16])
             self.expecting_header = False
+            self.ready_offset += 16
+            self.expected_length -= 16
 
+        # print(f"Ready: {self.ready_offset} out of {self._buffer_size}")
         if self.ready_offset < self.empty_offset:
             if self.empty_offset - self.ready_offset >= self.expected_length:
-                self.store_message(self.ready_offset + 16, self.ready_offset + self.expected_length, self.op_code)
+                self.store_message(self.ready_offset, self.ready_offset + self.expected_length, self.op_code)
                 self.ready_offset += self.expected_length
         else:
-            if self.ready_offset + self.expected_length <= MAX_MESSAGE_SIZE - 1:
-                self.store_message(self.ready_offset + 16, self.ready_offset + self.expected_length, self.op_code)
+            # print(f"Ready: {self.ready_offset}, Empty: {self.empty_offset}, expecting: {self.expected_length}")
+            # print(f"Is linear: {self.ready_offset + self.expected_length <= self._buffer_size}, {self.ready_offset + self.expected_length} vs {self._buffer_size}")
+            # print(f"Is wrapped: {self._buffer_size - self.ready_offset + self.empty_offset >= self.expected_length}, {self._buffer_size - self.ready_offset + self.empty_offset} vs {self.expected_length}")
+            if self.ready_offset + self.expected_length <= self._buffer_size:
+                self.store_message(self.ready_offset, self.ready_offset + self.expected_length, self.op_code)
                 self.ready_offset += self.expected_length
-            elif MAX_MESSAGE_SIZE - 1 - self.ready_offset + self.empty_offset >= self.expected_length:
-                self.store_message((self.ready_offset, 0), (MAX_MESSAGE_SIZE - 1, self.expected_length - (MAX_MESSAGE_SIZE - 1 - self.ready_offset)), self.op_code)
-                self.ready_offset = self.expected_length - (MAX_MESSAGE_SIZE - 1 - self.ready_offset)
+            elif self._buffer_size - self.ready_offset + self.empty_offset >= self.expected_length:
+                # print(f"{asyncio.current_task()} First chunk: {self._buffer_size - self.ready_offset}, second chunk: {self.expected_length - (self._buffer_size - self.ready_offset)}, total: {self._buffer_size - self.ready_offset + self.expected_length - (self._buffer_size - self.ready_offset)} of {self.expected_length}")
+                self.store_message((self.ready_offset, 0), (self._buffer_size, self.expected_length - (self._buffer_size - self.ready_offset)), self.op_code)
+                self.ready_offset = self.expected_length - (self._buffer_size - self.ready_offset)
 
     def store_message(self, start, end, opcode):
         stored = False
