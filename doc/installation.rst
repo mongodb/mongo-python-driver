@@ -6,7 +6,7 @@ Installing / Upgrading
 <http://pypi.python.org/pypi/pymongo/>`_.
 
 .. warning:: **Do not install the "bson" package from pypi.** PyMongo comes
-   with its own bson package; doing "pip install bson" or "easy_install bson"
+   with its own bson package; doing "pip install bson"
    installs a third-party package that is incompatible with PyMongo.
 
 Installing with pip
@@ -134,7 +134,7 @@ Python to fail to build the C extensions if you have Xcode 4 installed. There
 is a workaround::
 
   # For some Python builds from python.org
-  $ env ARCHFLAGS='-arch i386 -arch x86_64' python -m easy_install pymongo
+  $ env ARCHFLAGS='-arch i386 -arch x86_64' python -m pip install pymongo
 
 See `http://bugs.python.org/issue11623 <http://bugs.python.org/issue11623>`_
 for a more detailed explanation.
@@ -152,15 +152,9 @@ This may cause C extension builds to fail with an error similar to::
 There are workarounds::
 
   # Apple specified workaround for Xcode 5.1
-  # easy_install
-  $ ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future easy_install pymongo
-  # or pip
   $ ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install pymongo
 
   # Alternative workaround using CFLAGS
-  # easy_install
-  $ CFLAGS=-Qunused-arguments easy_install pymongo
-  # or pip
   $ CFLAGS=-Qunused-arguments pip install pymongo
 
 

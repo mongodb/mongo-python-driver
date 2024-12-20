@@ -139,7 +139,7 @@ Unix
 ~~~~
 
 To authenticate using GSSAPI you must first install the python `kerberos`_ or
-`pykerberos`_ module using easy_install or pip. Make sure you run kinit before
+`pykerberos`_ module using pip. Make sure you run kinit before
 using the following authentication methods::
 
   $ kinit mongodbuser@EXAMPLE.COM
