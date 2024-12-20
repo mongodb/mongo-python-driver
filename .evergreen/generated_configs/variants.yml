@@ -16,6 +16,8 @@ buildvariants:
     run_on:
       - rhel92-fips
     batchtime: 10080
+    expansions:
+      NO_EXT: "1"
   - name: other-hosts-rhel8-zseries
     tasks:
       - name: .6.0 .standalone !.sync_async
@@ -23,6 +25,8 @@ buildvariants:
     run_on:
       - rhel8-zseries-small
     batchtime: 10080
+    expansions:
+      NO_EXT: "1"
   - name: other-hosts-rhel8-power8
     tasks:
       - name: .6.0 .standalone !.sync_async
@@ -30,6 +34,8 @@ buildvariants:
     run_on:
       - rhel8-power-small
     batchtime: 10080
+    expansions:
+      NO_EXT: "1"
   - name: other-hosts-rhel8-arm64
     tasks:
       - name: .6.0 .standalone !.sync_async
@@ -37,6 +43,8 @@ buildvariants:
     run_on:
       - rhel82-arm64-small
     batchtime: 10080
+    expansions:
+      NO_EXT: "1"
 
   # Atlas connect tests
   - name: atlas-connect-rhel8-python3.9
