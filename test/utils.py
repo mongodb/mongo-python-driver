@@ -185,6 +185,10 @@ class EventListener(BaseListener, monitoring.CommandListener):
         """Return list of command names started."""
         return [event.command_name for event in self.started_events]
 
+    def failed_command_names(self) -> List[str]:
+        """Return list of command names failed."""
+        return [event.command_name for event in self.failed_events]
+
     def reset(self) -> None:
         """Reset the state of this listener."""
         self.results.clear()
