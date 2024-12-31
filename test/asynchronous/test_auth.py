@@ -297,9 +297,6 @@ class TestGSSAPI(AsyncPyMongoTestCase):
         )
         await client.server_info()
 
-        if props["CANONICALIZE_HOST_NAME"] == "none":
-            return
-
     async def test_gssapi_host_name(self):
         props = self.mech_properties
         props["SERVICE_HOST"] = "example.com"
