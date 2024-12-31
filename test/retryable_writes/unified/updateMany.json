@@ -15,7 +15,10 @@
     {
       "client": {
         "id": "client0",
-        "useMultipleMongoses": true
+        "useMultipleMongoses": true,
+        "observeEvents": [
+          "commandStartedEvent"
+        ]
       }
     },
     {
@@ -83,6 +86,23 @@
             {
               "_id": 2,
               "x": 23
+            }
+          ]
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "update",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": false
+                  }
+                }
+              }
             }
           ]
         }

@@ -26,7 +26,7 @@ sys.path[0:0] = [""]
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils import (
     OvertCommandListener,
-    wait_until,
+    async_wait_until,
 )
 from typing import List
 
@@ -162,7 +162,7 @@ class TestTransactions(AsyncTransactionsBase):
         client = await self.async_rs_client(
             async_client_context.mongos_seeds(), localThresholdMS=1000
         )
-        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
+        await async_wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
         await coll.insert_one({})
@@ -191,7 +191,7 @@ class TestTransactions(AsyncTransactionsBase):
         client = await self.async_rs_client(
             async_client_context.mongos_seeds(), localThresholdMS=1000
         )
-        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
+        await async_wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
         await coll.insert_one({})
@@ -403,21 +403,12 @@ class PatchSessionTimeout:
 
 
 class TestTransactionsConvenientAPI(AsyncTransactionsBase):
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.mongos_clients = []
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.mongos_clients = []
         if async_client_context.supports_transactions():
             for address in async_client_context.mongoses:
-                cls.mongos_clients.append(
-                    await cls.unmanaged_async_single_client("{}:{}".format(*address))
-                )
-
-    @classmethod
-    async def _tearDown_class(cls):
-        for client in cls.mongos_clients:
-            await client.close()
-        await super()._tearDown_class()
+                self.mongos_clients.append(await self.async_single_client("{}:{}".format(*address)))
 
     async def _set_fail_point(self, client, command_args):
         cmd = {"configureFailPoint": "failCommand"}

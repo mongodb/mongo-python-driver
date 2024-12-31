@@ -744,7 +744,6 @@ def create_aws_auth_variants():
 
 
 def create_alternative_hosts_variants():
-    expansions = dict(SKIP_HATCH="true")
     batchtime = BATCHTIME_WEEK
     variants = []
 
@@ -752,23 +751,24 @@ def create_alternative_hosts_variants():
     variants.append(
         create_variant(
             [".5.0 .standalone !.sync_async"],
-            get_display_name("OpenSSL 1.0.2", host, python=CPYTHONS[0], **expansions),
+            get_display_name("OpenSSL 1.0.2", host, python=CPYTHONS[0]),
             host=host,
             python=CPYTHONS[0],
             batchtime=batchtime,
-            expansions=expansions,
         )
     )
 
+    expansions = dict()
+    handle_c_ext(C_EXTS[0], expansions)
     for host_name in OTHER_HOSTS:
         host = HOSTS[host_name]
         variants.append(
             create_variant(
                 [".6.0 .standalone !.sync_async"],
-                display_name=get_display_name("Other hosts", host, **expansions),
-                expansions=expansions,
+                display_name=get_display_name("Other hosts", host),
                 batchtime=batchtime,
                 host=host,
+                expansions=expansions,
             )
         )
     return variants

@@ -476,7 +476,6 @@ class _AsyncClientBulk:
                         if op_type == "delete":
                             res = DeleteResult(doc, acknowledged=True)  # type: ignore[assignment]
                         full_result[f"{op_type}Results"][original_index] = res
-
             except Exception as exc:
                 # Attempt to close the cursor, then raise top-level error.
                 if cmd_cursor.alive:

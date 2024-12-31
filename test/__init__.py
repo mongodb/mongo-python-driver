@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import gc
+import logging
 import multiprocessing
 import os
 import signal
@@ -25,6 +26,7 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
@@ -191,6 +193,8 @@ class ClientContext:
             client.close()
 
     def _init_client(self):
+        self.mongoses = []
+        self.connection_attempts = []
         self.client = self._connect(host, port)
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not
@@ -860,6 +864,16 @@ class ClientContext:
 client_context = ClientContext()
 
 
+def reset_client_context():
+    if _IS_SYNC:
+        # sync tests don't need to reset a client context
+        return
+    elif client_context.client is not None:
+        client_context.client.close()
+        client_context.client = None
+    client_context._init_client()
+
+
 class PyMongoTestCase(unittest.TestCase):
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)
@@ -1106,26 +1120,10 @@ class PyMongoTestCase(unittest.TestCase):
 class UnitTest(PyMongoTestCase):
     """Async base class for TestCases that don't require a connection to MongoDB."""
 
-    @classmethod
-    def setUpClass(cls):
-        if _IS_SYNC:
-            cls._setup_class()
-        else:
-            asyncio.run(cls._setup_class())
-
-    @classmethod
-    def tearDownClass(cls):
-        if _IS_SYNC:
-            cls._tearDown_class()
-        else:
-            asyncio.run(cls._tearDown_class())
-
-    @classmethod
-    def _setup_class(cls):
+    def setUp(self) -> None:
         pass
 
-    @classmethod
-    def _tearDown_class(cls):
+    def tearDown(self) -> None:
         pass
 
 
@@ -1136,37 +1134,20 @@ class IntegrationTest(PyMongoTestCase):
     db: Database
     credentials: Dict[str, str]
 
-    @classmethod
-    def setUpClass(cls):
-        if _IS_SYNC:
-            cls._setup_class()
-        else:
-            asyncio.run(cls._setup_class())
-
-    @classmethod
-    def tearDownClass(cls):
-        if _IS_SYNC:
-            cls._tearDown_class()
-        else:
-            asyncio.run(cls._tearDown_class())
-
-    @classmethod
     @client_context.require_connection
-    def _setup_class(cls):
-        if client_context.load_balancer and not getattr(cls, "RUN_ON_LOAD_BALANCER", False):
+    def setUp(self) -> None:
+        if not _IS_SYNC:
+            reset_client_context()
+        if client_context.load_balancer and not getattr(self, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")
-        if client_context.serverless and not getattr(cls, "RUN_ON_SERVERLESS", False):
+        if client_context.serverless and not getattr(self, "RUN_ON_SERVERLESS", False):
             raise SkipTest("this test does not support serverless")
-        cls.client = client_context.client
-        cls.db = cls.client.pymongo_test
+        self.client = client_context.client
+        self.db = self.client.pymongo_test
         if client_context.auth_enabled:
-            cls.credentials = {"username": db_user, "password": db_pwd}
+            self.credentials = {"username": db_user, "password": db_pwd}
         else:
-            cls.credentials = {}
-
-    @classmethod
-    def _tearDown_class(cls):
-        pass
+            self.credentials = {}
 
     def cleanup_colls(self, *collections):
         """Cleanup collections faster than drop_collection."""
@@ -1192,37 +1173,14 @@ class MockClientTest(UnitTest):
     # MockClients tests that use replicaSet, directConnection=True, pass
     # multiple seed addresses, or wait for heartbeat events are incompatible
     # with loadBalanced=True.
-    @classmethod
-    def setUpClass(cls):
-        if _IS_SYNC:
-            cls._setup_class()
-        else:
-            asyncio.run(cls._setup_class())
-
-    @classmethod
-    def tearDownClass(cls):
-        if _IS_SYNC:
-            cls._tearDown_class()
-        else:
-            asyncio.run(cls._tearDown_class())
-
-    @classmethod
     @client_context.require_no_load_balancer
-    def _setup_class(cls):
-        pass
-
-    @classmethod
-    def _tearDown_class(cls):
-        pass
-
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
 
         self.client_knobs = client_knobs(heartbeat_frequency=0.001, min_heartbeat_interval=0.001)
-
         self.client_knobs.enable()
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.client_knobs.disable()
         super().tearDown()
 
@@ -1253,7 +1211,6 @@ def teardown():
             c.drop_database("pymongo_test_mike")
             c.drop_database("pymongo_test_bernie")
         c.close()
-
     print_running_clients()
 
 

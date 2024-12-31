@@ -129,13 +129,8 @@ class ClientUnitTest(UnitTest):
 
     client: MongoClient
 
-    @classmethod
-    def _setup_class(cls):
-        cls.client = cls.unmanaged_rs_or_single_client(connect=False, serverSelectionTimeoutMS=100)
-
-    @classmethod
-    def _tearDown_class(cls):
-        cls.client.close()
+    def setUp(self) -> None:
+        self.client = self.rs_or_single_client(connect=False, serverSelectionTimeoutMS=100)
 
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
@@ -1039,14 +1034,21 @@ class TestClient(IntegrationTest):
         self.assertFalse(client._topology._opened)
 
         # Ensure kill cursors thread has not been started.
-        kc_thread = client._kill_cursors_executor._thread
-        self.assertFalse(kc_thread and kc_thread.is_alive())
-
+        if _IS_SYNC:
+            kc_thread = client._kill_cursors_executor._thread
+            self.assertFalse(kc_thread and kc_thread.is_alive())
+        else:
+            kc_task = client._kill_cursors_executor._task
+            self.assertFalse(kc_task and not kc_task.done())
         # Using the client should open topology and start the thread.
         client.admin.command("ping")
         self.assertTrue(client._topology._opened)
-        kc_thread = client._kill_cursors_executor._thread
-        self.assertTrue(kc_thread and kc_thread.is_alive())
+        if _IS_SYNC:
+            kc_thread = client._kill_cursors_executor._thread
+            self.assertTrue(kc_thread and kc_thread.is_alive())
+        else:
+            kc_task = client._kill_cursors_executor._task
+            self.assertTrue(kc_task and not kc_task.done())
 
     def test_close_does_not_open_servers(self):
         client = self.rs_client(connect=False)
@@ -1241,6 +1243,7 @@ class TestClient(IntegrationTest):
     def test_server_selection_timeout(self):
         client = MongoClient(serverSelectionTimeoutMS=100, connect=False)
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
+        client.close()
 
         client = MongoClient(serverSelectionTimeoutMS=0, connect=False)
 
@@ -1251,16 +1254,20 @@ class TestClient(IntegrationTest):
         self.assertRaises(
             ConfigurationError, MongoClient, serverSelectionTimeoutMS=None, connect=False
         )
+        client.close()
 
         client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=100", connect=False)
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
+        client.close()
 
         client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=0", connect=False)
         self.assertAlmostEqual(0, client.options.server_selection_timeout)
+        client.close()
 
         # Test invalid timeout in URI ignored and set to default.
         client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=-1", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
+        client.close()
 
         client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)

@@ -40,7 +40,6 @@ from test.utils import (
     async_get_pool,
     async_is_mongos,
     async_wait_until,
-    wait_until,
 )
 
 from bson import encode
@@ -88,14 +87,10 @@ class TestCollectionNoConnect(AsyncUnitTest):
     db: AsyncDatabase
     client: AsyncMongoClient
 
-    @classmethod
-    async def _setup_class(cls):
-        cls.client = AsyncMongoClient(connect=False)
-        cls.db = cls.client.pymongo_test
-
-    @classmethod
-    async def _tearDown_class(cls):
-        await cls.client.close()
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.client = self.simple_client(connect=False)
+        self.db = self.client.pymongo_test
 
     def test_collection(self):
         self.assertRaises(TypeError, AsyncCollection, self.db, 5)
@@ -165,27 +160,14 @@ class TestCollectionNoConnect(AsyncUnitTest):
 class AsyncTestCollection(AsyncIntegrationTest):
     w: int
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.w = async_client_context.w  # type: ignore
-
-    @classmethod
-    def tearDownClass(cls):
-        if _IS_SYNC:
-            cls.db.drop_collection("test_large_limit")  # type: ignore[unused-coroutine]
-        else:
-            asyncio.run(cls.async_tearDownClass())
-
-    @classmethod
-    async def async_tearDownClass(cls):
-        await cls.db.drop_collection("test_large_limit")
-
     async def asyncSetUp(self):
-        await self.db.test.drop()
+        await super().asyncSetUp()
+        self.w = async_client_context.w  # type: ignore
 
     async def asyncTearDown(self):
         await self.db.test.drop()
+        await self.db.drop_collection("test_large_limit")
+        await super().asyncTearDown()
 
     @contextlib.contextmanager
     def write_concern_collection(self):
@@ -1023,7 +1005,10 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.insert_one({"y": 1}, bypass_document_validation=True)
         await db_w0.test.replace_one({"y": 1}, {"x": 1}, bypass_document_validation=True)
 
-        await async_wait_until(lambda: db_w0.test.find_one({"x": 1}), "find w:0 replaced document")
+        async def predicate():
+            return await db_w0.test.find_one({"x": 1})
+
+        await async_wait_until(predicate, "find w:0 replaced document")
 
     async def test_update_bypass_document_validation(self):
         db = self.db
@@ -1871,7 +1856,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await cur.close()
         cur = None
         # Wait until the background thread returns the socket.
-        wait_until(lambda: pool.active_sockets == 0, "return socket")
+        await async_wait_until(lambda: pool.active_sockets == 0, "return socket")
         # The socket should be discarded.
         self.assertEqual(0, len(pool.conns))
 

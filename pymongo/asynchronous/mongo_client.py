@@ -32,6 +32,7 @@ access:
 """
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import os
 import warnings
@@ -59,8 +60,8 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, common, helpers_shared, uri_parser
-from pymongo.asynchronous import client_session, database, periodic_executor
+from pymongo import _csot, common, helpers_shared, periodic_executor, uri_parser
+from pymongo.asynchronous import client_session, database
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
 from pymongo.asynchronous.client_session import _EmptyServerSession
@@ -82,7 +83,11 @@ from pymongo.errors import (
     WaitQueueTimeoutError,
     WriteConcernError,
 )
-from pymongo.lock import _HAS_REGISTER_AT_FORK, _ALock, _create_lock, _release_locks
+from pymongo.lock import (
+    _HAS_REGISTER_AT_FORK,
+    _async_create_lock,
+    _release_locks,
+)
 from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
 from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason
@@ -842,7 +847,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._options = options = ClientOptions(username, password, dbase, opts, _IS_SYNC)
 
         self._default_database_name = dbase
-        self._lock = _ALock(_create_lock())
+        self._lock = _async_create_lock()
         self._kill_cursors_queue: list = []
 
         self._event_listeners = options.pool_options._event_listeners
@@ -908,7 +913,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             await AsyncMongoClient._process_periodic_tasks(client)
             return True
 
-        executor = periodic_executor.PeriodicExecutor(
+        executor = periodic_executor.AsyncPeriodicExecutor(
             interval=common.KILL_CURSOR_FREQUENCY,
             min_interval=common.MIN_HEARTBEAT_INTERVAL,
             target=target,
@@ -1195,7 +1200,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     ResourceWarning,
                     stacklevel=2,
                 )
-        except AttributeError:
+        except (AttributeError, TypeError):
+            # Ignore errors at interpreter exit.
             pass
 
     def _close_cursor_soon(
@@ -1721,7 +1727,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 address=address,
             )
 
-            async with operation.conn_mgr._alock:
+            async with operation.conn_mgr._lock:
                 async with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
                     return await server.run_operation(
@@ -1969,7 +1975,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         try:
             if conn_mgr:
-                async with conn_mgr._alock:
+                async with conn_mgr._lock:
                     # Cursor is pinned to LB outside of a transaction.
                     assert address is not None
                     assert conn_mgr.conn is not None
@@ -2032,6 +2038,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         for address, cursor_id, conn_mgr in pinned_cursors:
             try:
                 await self._cleanup_cursor_lock(cursor_id, address, conn_mgr, None, False)
+            except asyncio.CancelledError:
+                raise
             except Exception as exc:
                 if isinstance(exc, InvalidOperation) and self._topology._closed:
                     # Raise the exception when client is closed so that it
@@ -2046,6 +2054,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
                     await self._kill_cursors(cursor_ids, address, topology, session=None)
+                except asyncio.CancelledError:
+                    raise
                 except Exception as exc:
                     if isinstance(exc, InvalidOperation) and self._topology._closed:
                         raise
@@ -2060,6 +2070,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         try:
             await self._process_kill_cursors()
             await self._topology.update_pool()
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             if isinstance(exc, InvalidOperation) and self._topology._closed:
                 return

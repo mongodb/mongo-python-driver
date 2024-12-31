@@ -17,7 +17,7 @@ find_python3() {
         elif [ -d "/Library/Frameworks/Python.Framework/Versions/3.9" ]; then
             PYTHON="/Library/Frameworks/Python.Framework/Versions/3.9/bin/python3"
         fi
-    elif [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
+    elif [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
         PYTHON="C:/python/Python39/python.exe"
     else
         # Prefer our own toolchain, fall back to mongodb toolchain if it has Python 3.9+.
@@ -56,7 +56,7 @@ createvirtualenv () {
         # Workaround for bug in older versions of virtualenv.
         $VIRTUALENV $VENVPATH 2>/dev/null || $VIRTUALENV $VENVPATH
     fi
-    if [ "Windows_NT" = "$OS" ]; then
+    if [ "Windows_NT" = "${OS:-}" ]; then
         # Workaround https://bugs.python.org/issue32451:
         # mongovenv/Scripts/activate: line 3: $'\r': command not found
         dos2unix $VENVPATH/Scripts/activate || true
@@ -78,6 +78,7 @@ testinstall () {
     PYTHON=$1
     RELEASE=$2
     NO_VIRTUALENV=$3
+    PYTHON_IMPL=$(python -c "import platform; print(platform.python_implementation())")
 
     if [ -z "$NO_VIRTUALENV" ]; then
         createvirtualenv $PYTHON venvtestinstall
@@ -86,7 +87,11 @@ testinstall () {
 
     $PYTHON -m pip install --upgrade $RELEASE
     cd tools
-    $PYTHON fail_if_no_c.py
+
+    if [ "$PYTHON_IMPL" = "CPython" ]; then
+        $PYTHON fail_if_no_c.py
+    fi
+
     $PYTHON -m pip uninstall -y pymongo
     cd ..
 

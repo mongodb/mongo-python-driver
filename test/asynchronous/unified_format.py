@@ -50,6 +50,7 @@ from test.unified_format_shared import (
 )
 from test.utils import (
     async_get_pool,
+    async_wait_until,
     camel_to_snake,
     camel_to_snake_args,
     parse_spec_options,
@@ -76,6 +77,7 @@ from pymongo.asynchronous.encryption import AsyncClientEncryption
 from pymongo.asynchronous.helpers import anext
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
+    AutoReconnect,
     BulkWriteError,
     ClientBulkWriteException,
     ConfigurationError,
@@ -303,7 +305,6 @@ class EntityMapUtil:
                 kwargs["h"] = uri
             client = await self.test.async_rs_or_single_client(**kwargs)
             self[spec["id"]] = client
-            self.test.addAsyncCleanup(client.close)
             return
         elif entity_type == "database":
             client = self[spec["client"]]
@@ -441,6 +442,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
+    TEST_PATH = ""  # This gets filled in by generate_test_classes
     mongos_clients: list[AsyncMongoClient] = []
 
     @staticmethod
@@ -478,33 +480,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 await db.create_collection(coll_name, write_concern=wc, **opts)
 
     @classmethod
-    async def _setup_class(cls):
-        # super call creates internal client cls.client
-        await super()._setup_class()
-        # process file-level runOnRequirements
-        run_on_spec = cls.TEST_SPEC.get("runOnRequirements", [])
-        if not await cls.should_run_on(run_on_spec):
-            raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
-
-        # add any special-casing for skipping tests here
-        if async_client_context.storage_engine == "mmapv1":
-            if "retryable-writes" in cls.TEST_SPEC["description"] or "retryable_writes" in str(
-                cls.TEST_PATH
-            ):
-                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
-
-        # Handle mongos_clients for transactions tests.
-        cls.mongos_clients = []
-        if (
-            async_client_context.supports_transactions()
-            and not async_client_context.load_balancer
-            and not async_client_context.serverless
-        ):
-            for address in async_client_context.mongoses:
-                cls.mongos_clients.append(
-                    await cls.unmanaged_async_single_client("{}:{}".format(*address))
-                )
-
+    def setUpClass(cls) -> None:
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(
             heartbeat_frequency=0.1,
@@ -515,17 +491,36 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         cls.knobs.enable()
 
     @classmethod
-    async def _tearDown_class(cls):
+    def tearDownClass(cls) -> None:
         cls.knobs.disable()
-        for client in cls.mongos_clients:
-            await client.close()
-        await super()._tearDown_class()
 
     async def asyncSetUp(self):
+        # super call creates internal client cls.client
         await super().asyncSetUp()
+        # process file-level runOnRequirements
+        run_on_spec = self.TEST_SPEC.get("runOnRequirements", [])
+        if not await self.should_run_on(run_on_spec):
+            raise unittest.SkipTest(f"{self.__class__.__name__} runOnRequirements not satisfied")
+
+        # add any special-casing for skipping tests here
+        if async_client_context.storage_engine == "mmapv1":
+            if "retryable-writes" in self.TEST_SPEC["description"] or "retryable_writes" in str(
+                self.TEST_PATH
+            ):
+                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
+
+        # Handle mongos_clients for transactions tests.
+        self.mongos_clients = []
+        if (
+            async_client_context.supports_transactions()
+            and not async_client_context.load_balancer
+            and not async_client_context.serverless
+        ):
+            for address in async_client_context.mongoses:
+                self.mongos_clients.append(await self.async_single_client("{}:{}".format(*address)))
+
         # process schemaVersion
         # note: we check major schema version during class generation
-        # note: we do this here because we cannot run assertions in setUpClass
         version = Version.from_string(self.TEST_SPEC["schemaVersion"])
         self.assertLessEqual(
             version,
@@ -545,15 +540,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 or "Cancel server check" in spec["description"]
             ):
                 self.skipTest("MMAPv1 does not support retryWrites=True")
-        if (
-            "AsyncDatabase-level aggregate with $out includes read preference for 5.0+ server"
-            in spec["description"]
-        ):
-            if async_client_context.version[0] == 8:
-                self.skipTest("waiting on PYTHON-4356")
-        if "Aggregate with $out includes read preference for 5.0+ server" in spec["description"]:
-            if async_client_context.version[0] == 8:
-                self.skipTest("waiting on PYTHON-4356")
         if "Client side error in command starting transaction" in spec["description"]:
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
@@ -764,9 +750,10 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         for client in clients:
             try:
                 await client.admin.command("killAllSessions", [])
-            except OperationFailure:
+            except (OperationFailure, AutoReconnect):
                 # "operation was interrupted" by killing the command's
                 # own session.
+                # On 8.0+ killAllSessions sometimes returns a network error.
                 pass
 
     async def _databaseOperation_listCollections(self, target, *args, **kwargs):
@@ -1043,7 +1030,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             )
 
         client = await self.async_single_client("{}:{}".format(*session._pinned_address))
-        self.addAsyncCleanup(client.close)
         await self.__set_fail_point(client=client, command_args=spec["failPoint"])
 
     async def _testOperation_createEntities(self, spec):
@@ -1144,13 +1130,13 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         client, event, count = spec["client"], spec["event"], spec["count"]
         self.assertEqual(self._event_count(client, event), count, f"expected {count} not {event!r}")
 
-    def _testOperation_waitForEvent(self, spec):
+    async def _testOperation_waitForEvent(self, spec):
         """Run the waitForEvent test operation.
 
         Wait for a number of events to be published, or fail.
         """
         client, event, count = spec["client"], spec["event"], spec["count"]
-        wait_until(
+        await async_wait_until(
             lambda: self._event_count(client, event) >= count,
             f"find {count} {event} event(s)",
         )

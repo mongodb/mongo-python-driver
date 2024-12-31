@@ -24,6 +24,7 @@ repos:
       entry: bash ./tools/synchro.sh
       language: python
       require_serial: true
+      fail_fast: true
       additional_dependencies:
         - ruff==0.1.3
         - unasync
@@ -102,3 +103,15 @@ repos:
     # - test/versioned-api/crud-api-version-1-strict.json:514: nin ==> inn, min, bin, nine
     # - test/test_client.py:188: te ==> the, be, we, to
     args: ["-L", "fle,fo,infinit,isnt,nin,te,aks"]
+
+- repo: local
+  hooks:
+  - id: executable-shell
+    name: executable-shell
+    entry: chmod +x
+    language: system
+    types: [shell]
+    exclude: |
+      (?x)(
+          .evergreen/retry-with-backoff.sh
+        )

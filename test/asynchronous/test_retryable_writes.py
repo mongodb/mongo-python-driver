@@ -1,4 +1,4 @@
-# Copyright 2017 MongoDB, Inc.
+# Copyright 2017-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,7 +43,6 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.errors import (
     AutoReconnect,
     ConnectionFailure,
@@ -133,34 +132,27 @@ class IgnoreDeprecationsTest(AsyncIntegrationTest):
     RUN_ON_SERVERLESS = True
     deprecation_filter: DeprecationFilter
 
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.deprecation_filter = DeprecationFilter()
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.deprecation_filter = DeprecationFilter()
 
-    @classmethod
-    async def _tearDown_class(cls):
-        cls.deprecation_filter.stop()
-        await super()._tearDown_class()
+    async def asyncTearDown(self) -> None:
+        self.deprecation_filter.stop()
 
 
 class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
     knobs: client_knobs
 
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
         # Speed up the tests by decreasing the heartbeat frequency.
-        cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
-        cls.knobs.enable()
-        cls.client = await cls.unmanaged_async_rs_or_single_client(retryWrites=True)
-        cls.db = cls.client.pymongo_test
+        self.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
+        self.knobs.enable()
+        self.client = await self.async_rs_or_single_client(retryWrites=True)
+        self.db = self.client.pymongo_test
 
-    @classmethod
-    async def _tearDown_class(cls):
-        cls.knobs.disable()
-        await cls.client.close()
-        await super()._tearDown_class()
+    async def asyncTearDown(self) -> None:
+        self.knobs.disable()
 
     @async_client_context.require_no_standalone
     async def test_actionable_error_message(self):
@@ -181,26 +173,18 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     listener: OvertCommandListener
     knobs: client_knobs
 
-    @classmethod
     @async_client_context.require_no_mmap
-    async def _setup_class(cls):
-        await super()._setup_class()
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
         # Speed up the tests by decreasing the heartbeat frequency.
-        cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
-        cls.knobs.enable()
-        cls.listener = OvertCommandListener()
-        cls.client = await cls.unmanaged_async_rs_or_single_client(
-            retryWrites=True, event_listeners=[cls.listener]
+        self.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
+        self.knobs.enable()
+        self.listener = OvertCommandListener()
+        self.client = await self.async_rs_or_single_client(
+            retryWrites=True, event_listeners=[self.listener]
         )
-        cls.db = cls.client.pymongo_test
+        self.db = self.client.pymongo_test
 
-    @classmethod
-    async def _tearDown_class(cls):
-        cls.knobs.disable()
-        await cls.client.close()
-        await super()._tearDown_class()
-
-    async def asyncSetUp(self):
         if async_client_context.is_rs and async_client_context.test_commands_enabled:
             await self.client.admin.command(
                 SON([("configureFailPoint", "onPrimaryTransactionalWrite"), ("mode", "alwaysOn")])
@@ -211,6 +195,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             await self.client.admin.command(
                 SON([("configureFailPoint", "onPrimaryTransactionalWrite"), ("mode", "off")])
             )
+        self.knobs.disable()
 
     async def test_supported_single_statement_no_retry(self):
         listener = OvertCommandListener()
@@ -225,47 +210,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                     event.command,
                     f"{msg} sent txnNumber with {event.command_name}",
                 )
-
-    @async_client_context.require_no_standalone
-    async def test_supported_single_statement_supported_cluster(self):
-        for method, args, kwargs in retryable_single_statement_ops(self.db.retryable_write_test):
-            msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
-            self.listener.reset()
-            await method(*args, **kwargs)
-            commands_started = self.listener.started_events
-            self.assertEqual(len(self.listener.succeeded_events), 1, msg)
-            first_attempt = commands_started[0]
-            self.assertIn(
-                "lsid",
-                first_attempt.command,
-                f"{msg} sent no lsid with {first_attempt.command_name}",
-            )
-            initial_session_id = first_attempt.command["lsid"]
-            self.assertIn(
-                "txnNumber",
-                first_attempt.command,
-                f"{msg} sent no txnNumber with {first_attempt.command_name}",
-            )
-
-            # There should be no retry when the failpoint is not active.
-            if async_client_context.is_mongos or not async_client_context.test_commands_enabled:
-                self.assertEqual(len(commands_started), 1)
-                continue
-
-            initial_transaction_id = first_attempt.command["txnNumber"]
-            retry_attempt = commands_started[1]
-            self.assertIn(
-                "lsid",
-                retry_attempt.command,
-                f"{msg} sent no lsid with {first_attempt.command_name}",
-            )
-            self.assertEqual(retry_attempt.command["lsid"], initial_session_id, msg)
-            self.assertIn(
-                "txnNumber",
-                retry_attempt.command,
-                f"{msg} sent no txnNumber with {first_attempt.command_name}",
-            )
-            self.assertEqual(retry_attempt.command["txnNumber"], initial_transaction_id, msg)
 
     async def test_supported_single_statement_unsupported_cluster(self):
         if async_client_context.is_rs or async_client_context.is_mongos:
@@ -480,13 +424,12 @@ class TestWriteConcernError(AsyncIntegrationTest):
     RUN_ON_SERVERLESS = True
     fail_insert: dict
 
-    @classmethod
     @async_client_context.require_replica_set
     @async_client_context.require_no_mmap
     @async_client_context.require_failCommand_fail_point
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.fail_insert = {
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.fail_insert = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 2},
             "data": {

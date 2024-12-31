@@ -18,6 +18,7 @@ from __future__ import annotations
 import copy
 import gc
 import itertools
+import os
 import random
 import re
 import sys
@@ -1403,6 +1404,8 @@ class TestCursor(IntegrationTest):
         self.assertEqual(len(docs), 2)
 
     def test_to_list_csot_applied(self):
+        if os.environ.get("SKIP_CSOT_TESTS", ""):
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         client = self.single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
         # Initialize the client with a larger timeout to help make test less flakey
@@ -1444,6 +1447,8 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_failCommand_blockConnection
     def test_command_cursor_to_list_csot_applied(self):
+        if os.environ.get("SKIP_CSOT_TESTS", ""):
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         client = self.single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
         # Initialize the client with a larger timeout to help make test less flakey
@@ -1636,10 +1641,6 @@ class TestRawBatchCursor(IntegrationTest):
 
 
 class TestRawBatchCommandCursor(IntegrationTest):
-    @classmethod
-    def _setup_class(cls):
-        super()._setup_class()
-
     def test_aggregate_raw(self):
         c = self.db.test
         c.drop()
