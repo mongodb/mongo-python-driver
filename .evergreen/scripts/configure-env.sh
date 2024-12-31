@@ -1,8 +1,10 @@
-#!/bin/bash -eux
+#!/bin/bash
+
+set -eu
 
 # Get the current unique version of this checkout
 # shellcheck disable=SC2154
-if [ "$is_patch" = "true" ]; then
+if [ "${is_patch:-}" = "true" ]; then
     # shellcheck disable=SC2154
     CURRENT_VERSION="$(git describe)-patch-$version_id"
 else
@@ -14,7 +16,7 @@ DRIVERS_TOOLS="$(dirname $PROJECT_DIRECTORY)/drivers-tools"
 CARGO_HOME=${CARGO_HOME:-${DRIVERS_TOOLS}/.cargo}
 
 # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
-if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
+if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
     DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
     PROJECT_DIRECTORY=$(cygpath -m $PROJECT_DIRECTORY)
     CARGO_HOME=$(cygpath -m $CARGO_HOME)
