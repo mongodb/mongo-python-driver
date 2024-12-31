@@ -1,6 +1,5 @@
 #!/bin/bash
-set -o xtrace   # Write all commands first to stderr
-set -o errexit  # Exit the script with error if any of the commands fail
+set -eu
 
 # Copy PyMongo's test certificates over driver-evergreen-tools'
 cp ${PROJECT_DIRECTORY}/test/certificates/* ${DRIVERS_TOOLS}/.evergreen/x509gen/
@@ -9,7 +8,7 @@ cp ${PROJECT_DIRECTORY}/test/certificates/* ${DRIVERS_TOOLS}/.evergreen/x509gen/
 cp ${PROJECT_DIRECTORY}/test/certificates/client.pem ${MONGO_ORCHESTRATION_HOME}/lib/client.pem
 
 # Ensure hatch is installed.
-bash ${PROJECT_DIRECTORY}/scripts/ensure-hatch.sh
+bash ${PROJECT_DIRECTORY}/.evergreen/scripts/ensure-hatch.sh
 
 if [ -w /etc/hosts ]; then
   SUDO=""
