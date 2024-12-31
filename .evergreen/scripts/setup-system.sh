@@ -3,7 +3,7 @@
 set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
-pushd $(dirname $(dirname $HERE))
+pushd "$(dirname "$(dirname $HERE)")"
 echo "Setting up system..."
 bash .evergreen/scripts/configure-env.sh
 source .evergreen/scripts/env.sh

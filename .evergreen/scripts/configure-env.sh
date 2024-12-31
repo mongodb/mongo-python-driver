@@ -61,7 +61,7 @@ export CARGO_HOME="$CARGO_HOME"
 export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
 export PATH="$MONGODB_BINARIES:$PATH"
 # shellcheck disable=SC2154
-export PROJECT="$project"
+export PROJECT="${project:-mongo-python-driver}"
 export PIP_QUIET=1
 EOT
 
