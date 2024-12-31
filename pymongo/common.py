@@ -729,6 +729,10 @@ URI_OPTIONS_VALIDATOR_MAP: dict[str, Callable[[Any, Any], Any]] = {
     "srvmaxhosts": validate_non_negative_integer,
     "timeoutms": validate_timeoutms,
     "servermonitoringmode": validate_server_monitoring_mode,
+    "proxyhost": validate_string,
+    "proxyport": validate_positive_integer_or_none,
+    "proxyusername": validate_string_or_none,
+    "proxypassword": validate_string_or_none,
 }
 
 # Dictionary where keys are the names of URI options specific to pymongo,

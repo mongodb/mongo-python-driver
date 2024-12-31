@@ -121,6 +121,12 @@ except ImportError:
         """Dummy function for platforms that don't provide fcntl."""
 
 
+try:
+    from python_socks import ProxyType
+    from python_socks.sync import Proxy
+except ImportError:
+    Proxy = ProxyType = None
+
 _IS_SYNC = True
 
 _MAX_TCP_KEEPIDLE = 120
@@ -836,7 +842,21 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
             sock.settimeout(timeout)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
-            sock.connect(sa)
+            if proxy := options.proxy:
+                if Proxy is None:
+                    raise RuntimeError(
+                        "In order to use SOCKS5 proxy, python_socks must be installed. "
+                        "This can be done by re-installing pymongo with `pip install pymongo[socks]`"
+                    )
+                proxy_host = proxy["host"]
+                proxy_port = proxy["port"] or 1080
+                sock.connect((proxy_host, proxy_port))
+                proxy = Proxy(
+                    ProxyType.SOCKS5, proxy_host, proxy_port, proxy["username"], proxy["password"]
+                )
+                proxy.connect(sa[0], dest_port=sa[1], _socket=sock)
+            else:
+                sock.connect(sa)
             return sock
         except OSError as e:
             err = e
