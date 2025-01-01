@@ -19,6 +19,7 @@ fi
 PYTHON_VERSION=$(${PYTHON_BINARY} -c "import sys; sys.stdout.write('.'.join(str(val) for val in sys.version_info[:2]))")
 
 # Ensure the C extensions are installed.
+rm -rf .venv
 ${PYTHON_BINARY} -m venv --system-site-packages .venv
 source .venv/bin/activate
 pip install -U pip
