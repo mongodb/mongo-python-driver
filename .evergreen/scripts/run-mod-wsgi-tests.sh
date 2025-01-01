@@ -19,7 +19,10 @@ PYTHON_VERSION=$(${PYTHON_BINARY} -c "import sys; sys.stdout.write('.'.join(str(
 
 # Use the installed venv.
 source .venv/bin/activate
+which pip
+pip --version
 pip install -U pip
+pip --version
 python -m pip install -v -e .
 
 export MOD_WSGI_SO=/opt/python/mod_wsgi/python_version/$PYTHON_VERSION/mod_wsgi_version/$MOD_WSGI_VERSION/mod_wsgi.so
