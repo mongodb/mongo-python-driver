@@ -1,6 +1,5 @@
 #!/bin/bash
-set -o xtrace
-set -o errexit
+set -eux
 
 APACHE=$(command -v apache2 || command -v /usr/lib/apache2/mpm-prefork/apache2) || true
 if [ -n "$APACHE" ]; then
@@ -18,9 +17,7 @@ fi
 
 PYTHON_VERSION=$(${PYTHON_BINARY} -c "import sys; sys.stdout.write('.'.join(str(val) for val in sys.version_info[:2]))")
 
-# Ensure the C extensions are installed.
-rm -rf .venv
-${PYTHON_BINARY} -m venv --system-site-packages .venv
+# Use the installed venv.
 source .venv/bin/activate
 pip install -U pip
 python -m pip install -e .
@@ -49,5 +46,3 @@ python ${PROJECT_DIRECTORY}/test/mod_wsgi_test/test_client.py -n 25000 -t 100 pa
 python ${PROJECT_DIRECTORY}/test/mod_wsgi_test/test_client.py -n 25000 serial \
     http://localhost:8080/interpreter1${PROJECT_DIRECTORY} http://localhost:8080/interpreter2${PROJECT_DIRECTORY} || \
     (tail -n 100 error_log && exit 1)
-
-rm -rf .venv
