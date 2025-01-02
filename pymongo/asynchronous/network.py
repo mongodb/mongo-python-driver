@@ -46,7 +46,7 @@ from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import (
     _UNPACK_COMPRESSION_HEADER,
-    _UNPACK_HEADER, async_sendall_stream,
+    _UNPACK_HEADER, async_sendall, async_receive_data,
 )
 
 if TYPE_CHECKING:
@@ -201,7 +201,7 @@ async def command_stream(
 
     try:
         write_start = time.monotonic()
-        await async_sendall_stream(conn, msg)
+        await async_sendall(conn, msg)
         write_elapsed = time.monotonic() - write_start
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
@@ -209,7 +209,7 @@ async def command_stream(
             response_doc: _DocumentOut = {"ok": 1}
         else:
             read_start = time.monotonic()
-            reply = await receive_message_stream(conn, request_id)
+            reply = await receive_message(conn, request_id)
             read_elapsed = time.monotonic() - read_start
             # if name == "insert":
             #     TOTAL.append(write_elapsed + read_elapsed)
@@ -316,7 +316,7 @@ async def command_stream(
     return response_doc  # type: ignore[return-value]
 
 
-async def receive_message_stream(
+async def receive_message(
     conn: AsyncConnectionStream, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
@@ -330,35 +330,27 @@ async def receive_message_stream(
     #         deadline = None
     deadline = None
     # Ignore the response's request id.
-    # data = bytearray(max_message_size)
-    conn.conn[1].reset()
-    # try:
-    data, op_code = await asyncio.wait_for(conn.conn[1].read(), timeout=5)
-    # except asyncio.TimeoutError:
-    #     print(f"Timed out on read in {asyncio.current_task()}. Start of reading memory at {conn.conn[1].ready_offset}, start of writing memory at {conn.conn[1].empty_offset}, max of {MAX_MESSAGE_SIZE}, messages: {conn.conn[1]._messages}")
-
-
-    # length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data_stream(conn, 16, deadline))
-    # # No request_id for exhaust cursor "getMore".
-    # if request_id is not None:
-    #     if request_id != response_to:
-    #         raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
-    # if length <= 16:
-    #     raise ProtocolError(
-    #         f"Message length ({length!r}) not longer than standard message header size (16)"
-    #     )
-    # if length > max_message_size:
-    #     raise ProtocolError(
-    #         f"Message length ({length!r}) is larger than server max "
-    #         f"message size ({max_message_size!r})"
-    #     )
-    # if op_code == 2012:
-    #     op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
-    #         await async_receive_data_stream(conn, 9, deadline)
-    #     )
-    #     data = decompress(await async_receive_data_stream(conn, length - 25, deadline), compressor_id)
-    # else:
-    #     data = await async_receive_data_stream(conn, length - 16, deadline)
+    length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data(conn, 16, deadline))
+    # No request_id for exhaust cursor "getMore".
+    if request_id is not None:
+        if request_id != response_to:
+            raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
+    if length <= 16:
+        raise ProtocolError(
+            f"Message length ({length!r}) not longer than standard message header size (16)"
+        )
+    if length > max_message_size:
+        raise ProtocolError(
+            f"Message length ({length!r}) is larger than server max "
+            f"message size ({max_message_size!r})"
+        )
+    if op_code == 2012:
+        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
+            await async_receive_data(conn, 9, deadline)
+        )
+        data = decompress(await async_receive_data(conn, length - 25, deadline), compressor_id)
+    else:
+        data = await async_receive_data(conn, length - 16, deadline)
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
@@ -367,4 +359,3 @@ async def receive_message_stream(
             f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
         ) from None
     return unpack_reply(data)
-
