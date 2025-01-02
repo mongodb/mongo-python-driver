@@ -46,24 +46,11 @@ functions:
         binary: bash
         working_dir: "src"
         args:
-          - .evergreen/scripts/configure-env.sh
+          - .evergreen/scripts/setup-system.sh
     # Load the expansion file to make an evergreen variable with the current unique version
     - command: expansions.update
       params:
         file: src/expansion.yml
-    - command: subprocess.exec
-      params:
-        include_expansions_in_env: ["PROJECT_DIRECTORY", "DRIVERS_TOOLS"]
-        binary: bash
-        args:
-          - src/.evergreen/scripts/prepare-resources.sh
-    # Run drivers-evergreen-tools system setup
-    - command: subprocess.exec
-      params:
-        include_expansions_in_env: ["PROJECT_DIRECTORY", "DRIVERS_TOOLS"]
-        binary: bash
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/setup.sh
 
   "upload coverage" :
     - command: ec2.assume_role
@@ -546,15 +533,6 @@ functions:
         args:
           - ${DRIVERS_TOOLS}/.evergreen/teardown.sh
 
-  "install dependencies":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/install-dependencies.sh
-
   "assume ec2 role":
     - command: ec2.assume_role
       params:
@@ -650,7 +628,6 @@ functions:
 pre:
   - func: "fetch source"
   - func: "setup system"
-  - func: "install dependencies"
   - func: "assume ec2 role"
 
 post:
@@ -958,7 +935,6 @@ tasks:
 
     - name: "test-aws-lambda-deployed"
       commands:
-        - func: "install dependencies"
         - command: ec2.assume_role
           params:
             role_arn: ${LAMBDA_AWS_ROLE_ARN}
@@ -1547,8 +1523,6 @@ tasks:
 
     - name: testazurekms-fail-task
       commands:
-      - func: fetch source
-      - func: setup system
       - func: "bootstrap mongo-orchestration"
         vars:
           VERSION: "latest"
