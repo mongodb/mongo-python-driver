@@ -659,7 +659,7 @@ buildvariants:
     run_on:
       - windows-64-vsMulti-small
     expansions:
-      PYTHON_BINARY: C:/python/Python313t/python.exe
+      PYTHON_BINARY: C:/python/Python313/python3.13t.exe
 
   # Green framework tests
   - name: green-eventlet-rhel8-python3.9

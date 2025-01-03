@@ -146,6 +146,8 @@ def get_python_binary(python: str, host: Host) -> str:
         else:
             base = "C:/python"
         python = python.replace(".", "")
+        if python == "313t":
+            return f"{base}/Python313/python3.13t.exe"
         return f"{base}/Python{python}/python.exe"
 
     if name in ["rhel8", "ubuntu22", "ubuntu20", "rhel7"]:
