@@ -630,9 +630,7 @@ buildvariants:
   # Free threaded tests
   - name: free-threaded-rhel8-python3.13t
     tasks:
-      - name: .8.0 .sharded_cluster .auth .ssl !.sync_async
-      - name: .8.0 .replica_set .noauth .ssl !.sync_async
-      - name: .8.0 .standalone .noauth .nossl !.sync_async
+      - name: .free-threading
     display_name: Free-threaded RHEL8 Python3.13t
     run_on:
       - rhel87-small
@@ -640,29 +638,23 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13t/bin/python3
   - name: free-threaded-macos-python3.13t
     tasks:
-      - name: .8.0 .sharded_cluster .auth .ssl !.sync_async
-      - name: .8.0 .replica_set .noauth .ssl !.sync_async
-      - name: .8.0 .standalone .noauth .nossl !.sync_async
+      - name: .free-threading
     display_name: Free-threaded macOS Python3.13t
     run_on:
       - macos-14
     expansions:
-      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3
+      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
   - name: free-threaded-macos-arm64-python3.13t
     tasks:
-      - name: .8.0 .sharded_cluster .auth .ssl !.sync_async
-      - name: .8.0 .replica_set .noauth .ssl !.sync_async
-      - name: .8.0 .standalone .noauth .nossl !.sync_async
+      - name: .free-threading
     display_name: Free-threaded macOS Arm64 Python3.13t
     run_on:
       - macos-14-arm64
     expansions:
-      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3
+      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
   - name: free-threaded-win64-python3.13t
     tasks:
-      - name: .8.0 .sharded_cluster .auth .ssl !.sync_async
-      - name: .8.0 .replica_set .noauth .ssl !.sync_async
-      - name: .8.0 .standalone .noauth .nossl !.sync_async
+      - name: .free-threading
     display_name: Free-threaded Win64 Python3.13t
     run_on:
       - windows-64-vsMulti-small
