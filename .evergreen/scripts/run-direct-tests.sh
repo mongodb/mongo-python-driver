@@ -8,4 +8,7 @@ createvirtualenv "$PYTHON_BINARY" .venv
 
 pip install -e ".[test]"
 
-pytest
+python --version
+pytest --version
+
+pytest -v
