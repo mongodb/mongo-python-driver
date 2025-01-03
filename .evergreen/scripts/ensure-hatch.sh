@@ -2,6 +2,9 @@
 
 set -eu
 
+HERE=$(dirname ${BASH_SOURCE:-$0})
+pushd "$(dirname "$(dirname $HERE)")" > /dev/null
+
 # Ensure hatch is available.
 if [ ! -x "$(command -v hatch)" ]; then
   # Install a virtual env with "hatch"
@@ -53,3 +56,4 @@ if [ ! -x "$(command -v hatch)" ]; then
   echo "Installing hatch... done."
 fi
 hatch --version
+popd > /dev/null

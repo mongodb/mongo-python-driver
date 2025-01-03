@@ -125,7 +125,8 @@ class _sslConn(_SSL.Connection):
             try:
                 return call(*args, **kwargs)
             except BLOCKING_IO_ERRORS as exc:
-                if is_async:
+                # Do not retry if the connection is in non-blocking mode.
+                if is_async or timeout == 0:
                     raise exc
                 # Check for closed socket.
                 if self.fileno() == -1:

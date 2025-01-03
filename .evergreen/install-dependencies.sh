@@ -7,9 +7,6 @@ cp ${PROJECT_DIRECTORY}/test/certificates/* ${DRIVERS_TOOLS}/.evergreen/x509gen/
 # Replace MongoOrchestration's client certificate.
 cp ${PROJECT_DIRECTORY}/test/certificates/client.pem ${MONGO_ORCHESTRATION_HOME}/lib/client.pem
 
-# Ensure hatch is installed.
-bash ${PROJECT_DIRECTORY}/.evergreen/scripts/ensure-hatch.sh
-
 if [ -w /etc/hosts ]; then
   SUDO=""
 else
