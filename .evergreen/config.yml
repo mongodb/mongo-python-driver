@@ -302,9 +302,12 @@ functions:
 
   "run direct tests":
     - command: subprocess.exec
-      include_expansions_in_env: ["PYTHON_BINARY"]
-      binary: bash
-      args: [ .evergreen/scripts/run-direct-tests.sh ]
+      type: test
+      params:
+        working_dir: "src"
+        binary: bash
+        include_expansions_in_env: ["PYTHON_BINARY"]
+        args: [ .evergreen/scripts/run-direct-tests.sh ]
 
   "run enterprise auth tests":
     - command: subprocess.exec
