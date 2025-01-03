@@ -1,6 +1,6 @@
 #!/bin/bash
 
-.evergreen/utils.sh
+. .evergreen/utils.sh
 
 . .evergreen/scripts/env.sh
 
