@@ -10,7 +10,7 @@ createvirtualenv "$PYTHON_BINARY" .venv
 set -x
 python --version
 # pip install pytest
-pip install -e .
+pip install -v -e .
 python -c "import pymongo"
 python -c "import bson"
 # pytest --version
