@@ -6,9 +6,10 @@
 
 createvirtualenv "$PYTHON_BINARY" .venv
 
-pip install -e ".[test]"
+# pip install -e ".[test]"
 
 python --version
+pip install pytest
 export PYTHONFAULTHANDLER=1
 pytest --version
 
