@@ -2,7 +2,7 @@
 
 . .evergreen/utils.sh
 
-. .evergreen/scripts/env.sh
+# . .evergreen/scripts/env.sh
 
 createvirtualenv "$PYTHON_BINARY" .venv
 
