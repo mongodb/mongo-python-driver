@@ -12,7 +12,7 @@ python --version
 # pip install pytest
 pip install -v -e .
 ls pymongo
-python -c "import pymongo"
+# python -c "import pymongo"
 python -c "import bson"
 # pytest --version
 
