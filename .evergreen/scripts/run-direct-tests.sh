@@ -7,7 +7,7 @@ ls pymongo
 createvirtualenv "$PYTHON_BINARY" .venv
 ls pymongo
 # pip install -e ".[test]"
-
+ulimit -c unlimited
 python --version
 # pip install pytest
 pip install -v -e .
