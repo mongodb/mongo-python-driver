@@ -2,6 +2,7 @@
 set -x
 . .evergreen/utils.sh
 
+env
 # . .evergreen/scripts/env.sh
 ls pymongo
 createvirtualenv "$PYTHON_BINARY" .venv
@@ -10,6 +11,8 @@ ls pymongo
 ulimit -c unlimited
 python --version
 # pip install pytest
+export PYMONGO_C_EXT_MUST_BUILD=1
+python _setup.py build_ext -i
 pip install -v -e .
 ls pymongo
 # python -c "import pymongo"
