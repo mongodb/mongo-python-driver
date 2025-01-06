@@ -67,7 +67,7 @@ ocsp = ["requirements/ocsp.txt"]
 snappy = ["requirements/snappy.txt"]
 test = ["requirements/test.txt"]
 zstd = ["requirements/zstd.txt"]
-socks = ["requirements/socks.txt"]
+proxy = ["requirements/proxy.txt"]
 
 [tool.pytest.ini_options]
 minversion = "7"

@@ -171,14 +171,14 @@ def _parse_pool_options(
     load_balanced = options.get("loadbalanced")
     max_connecting = options.get("maxconnecting", common.MAX_CONNECTING)
     if proxy_host := options.get("proxyHost"):
-        proxy = {
+        proxy_options = {
             "host": proxy_host,
             "port": options.get("proxyPort"),
             "username": options.get("proxyUserName"),
             "password": options.get("proxyPassword"),
         }
     else:
-        proxy = None
+        proxy_options = None
     return PoolOptions(
         max_pool_size,
         min_pool_size,
@@ -197,7 +197,7 @@ def _parse_pool_options(
         load_balanced=load_balanced,
         credentials=credentials,
         is_sync=is_sync,
-        proxy=proxy,
+        proxy=proxy_options,
     )
 
 

@@ -848,7 +848,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
                 if Proxy is None:
                     raise RuntimeError(
                         "In order to use SOCKS5 proxy, python_socks must be installed. "
-                        "This can be done by re-installing pymongo with `pip install pymongo[socks]`"
+                        "This can be done by re-installing pymongo with `pip install pymongo[proxy]`"
                     )
                 proxy_host = proxy["host"]
                 proxy_port = proxy["port"] or 1080
