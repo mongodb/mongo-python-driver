@@ -325,6 +325,9 @@ def create_server_variants() -> list[BuildVariant]:
 def create_free_threaded_variants() -> list[BuildVariant]:
     variants = []
     for host_name in ("rhel8", "macos", "macos-arm64", "win64"):
+        if host_name == "win64":
+            # TODO: PYTHON-5027
+            continue
         tasks = [".free-threading"]
         host = HOSTS[host_name]
         python = "3.13t"
