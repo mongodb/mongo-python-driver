@@ -13,8 +13,9 @@ PyMongo 4.11 brings a number of changes including:
 - Dropped support for Python 3.8.
 - Dropped support for MongoDB 3.6.
 - Dropped support for the MONGODB-CR authenticate mechanism, which is no longer supported by MongoDB 4.0+.
-- Added support for free-threaded Python with the GIL disabled. For more information see:
+- Added limited support for free-threaded Python with the GIL disabled. For more information see:
   `Free-threaded CPython <https://docs.python.org/3.13/whatsnew/3.13.html#whatsnew313-free-threaded-cpython>`_.
+  We do not yet support free-threaded Python on Windows (`PYTHON-5027`_) or with Encryption (`PYTHON-5024`_).
 - :attr:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.address` and
   :attr:`~pymongo.mongo_client.MongoClient.address` now correctly block when called on unconnected clients
   until either connection succeeds or a server selection timeout error is raised.
@@ -41,6 +42,8 @@ See the `PyMongo 4.11 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.11 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40784
+.. _PYTHON-5027: https://jira.mongodb.org/browse/PYTHON-5027
+.. _PYTHON-5024: https://jira.mongodb.org/browse/PYTHON-5024
 
 Changes in Version 4.10.1 (2024/10/01)
 --------------------------------------
