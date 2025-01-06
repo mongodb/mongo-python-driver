@@ -116,30 +116,6 @@ functions:
         content_type: text/html
         display_name: "Coverage Report HTML"
 
-  "upload core dumps":
-    - command: ec2.assume_role
-      params:
-        role_arn: ${assume_role_arn}
-    - command: archive.targz_pack
-      params:
-        target: "mongo-coredumps.tgz"
-        source_dir: ${PROJECT_DIRECTORY}/
-        include:
-          - "./**.core"
-          - "./**.mdmp" # Windows: minidumps
-    - command: s3.put
-      params:
-        aws_key: ${AWS_ACCESS_KEY_ID}
-        aws_secret: ${AWS_SECRET_ACCESS_KEY}
-        aws_session_token: ${AWS_SESSION_TOKEN}
-        local_file: mongo-coredumps.tgz
-        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/coredumps/${task_id}-${execution}-mongodb-coredumps.tar.gz
-        bucket: ${bucket_name}
-        permissions: public-read
-        content_type: ${content_type|application/gzip}
-        display_name: Core Dumps - Execution
-        optional: true
-
   "upload mo artifacts":
     - command: ec2.assume_role
       params:
@@ -668,7 +644,6 @@ post:
   - func: "teardown system"
   - func: "upload coverage"
   - func: "upload mo artifacts"
-  - func: "upload core dumps"
   - func: "upload test results"
   - func: "stop mongo-orchestration"
   - func: "cleanup"
