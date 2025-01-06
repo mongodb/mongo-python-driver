@@ -8,7 +8,8 @@ if [ -z "$1" ]
 fi
 
 target=$1
-remote_dir=/home/ec2-user/mongo-python-driver
+user=${target%@*}
+remote_dir=/home/$user/mongo-python-driver
 
 echo "Copying files to $target..."
 rsync -az -e ssh --exclude '.git' --filter=':- .gitignore' -r . $target:$remote_dir
