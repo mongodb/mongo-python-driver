@@ -1747,6 +1747,9 @@ int write_dict(PyObject* self, buffer_t buffer,
                     PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
                     PyErr_Fetch(&etype, &evalue, &etrace);
                     PyObject *InvalidDocument = _error("InvalidDocument");
+                    if (InvalidDocument == NULL) {
+                        return 0;
+                    }
 
                     if (top_level && InvalidDocument && PyErr_GivenExceptionMatches(etype, InvalidDocument)) {
 
@@ -1760,6 +1763,9 @@ int write_dict(PyObject* self, buffer_t buffer,
                             if (msg) {
                                 // Prepend doc to the existing message
                                 PyObject *dict_str = PyObject_Str(dict);
+                                if (dict_str ==  NULL) {
+                                    return 0;
+                                }
                                 PyObject *new_msg = PyUnicode_FromFormat("Invalid document %s | %s", PyUnicode_AsUTF8(dict_str), PyUnicode_AsUTF8(msg));
                                 Py_DECREF(dict_str);
 
