@@ -82,6 +82,11 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
             )
 
     def build_extension(self, ext):
+        # "ProgramFiles(x86)" is not a valid environment variable in Cygwin but is needed for
+        # the MSVCCompiler in distutils.
+        if os.name == "nt":
+            if "ProgramFiles" in os.environ and "ProgramFiles(x86)" not in os.environ:
+                os.environ["ProgramFiles(x86)"] = os.environ["ProgramFiles"] + " (x86)"
         name = ext.name
         try:
             build_ext.build_extension(self, ext)

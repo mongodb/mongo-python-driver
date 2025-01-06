@@ -13,6 +13,7 @@ PyMongo 4.11 brings a number of changes including:
 - Dropped support for Python 3.8.
 - Dropped support for MongoDB 3.6.
 - Dropped support for the MONGODB-CR authenticate mechanism, which is no longer supported by MongoDB 4.0+.
+- pymongocrypt>=1.12 is now required for :ref:`In-Use Encryption` support.
 - Added support for free-threaded Python with the GIL disabled. For more information see:
   `Free-threaded CPython <https://docs.python.org/3.13/whatsnew/3.13.html#whatsnew313-free-threaded-cpython>`_.
 - :attr:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.address` and
