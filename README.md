@@ -145,11 +145,18 @@ Client-Side Field Level Encryption requires
 ```bash
 python -m pip install "pymongo[encryption]"
 ```
+
+Proxy support requires
+[python-socks]
+```bash
+python -m pip install "pymongo[proxy]"
+```
+
 You can install all dependencies automatically with the following
 command:
 
 ```bash
-python -m pip install "pymongo[gssapi,aws,ocsp,snappy,zstd,encryption]"
+python -m pip install "pymongo[gssapi,aws,ocsp,snappy,zstd,encryption,proxy]"
 ```
 
 Additional dependencies are:
