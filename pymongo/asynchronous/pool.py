@@ -578,6 +578,7 @@ class AsyncConnection:
         try:
             await async_sendall(self.conn, message)
         except BaseException as error:
+            print(error)
             self._raise_connection_failure(error)
 
     async def receive_message(self, request_id: Optional[int]) -> Union[_OpReply, _OpMsg]:
@@ -784,7 +785,7 @@ class AsyncConnection:
         )
 
 
-class AsyncConnectionStream:
+class AsyncConnectionProtocol:
     """Store a connection with some metadata.
 
     :param conn: a raw connection object
@@ -1818,7 +1819,7 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    async def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> AsyncConnectionStream:
+    async def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> AsyncConnectionProtocol:
         """Connect to Mongo and return a new AsyncConnection.
 
         Can raise ConnectionFailure.
@@ -1874,7 +1875,7 @@ class Pool:
 
             raise
 
-        conn = AsyncConnectionStream(sock, self, self.address, conn_id)  # type: ignore[arg-type]
+        conn = AsyncConnectionProtocol(sock, self, self.address, conn_id)  # type: ignore[arg-type]
         async with self.lock:
             self.active_contexts.add(conn.cancel_context)
             self.active_contexts.discard(tmp_context)
@@ -1899,7 +1900,7 @@ class Pool:
     @contextlib.asynccontextmanager
     async def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AsyncGenerator[AsyncConnectionStream, None]:
+    ) -> AsyncGenerator[AsyncConnectionProtocol, None]:
         """Get a connection from the pool. Use with a "with" statement.
 
         Returns a :class:`AsyncConnection` object wrapping a connected
@@ -2002,7 +2003,7 @@ class Pool:
 
     async def _get_conn(
         self, checkout_started_time: float, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AsyncConnectionStream:
+    ) -> AsyncConnectionProtocol:
         """Get or create a AsyncConnection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of

@@ -1547,7 +1547,7 @@ class _OpMsg:
             raise ProtocolError(f"Unsupported OP_MSG payload type: 0x{first_payload_type:x}")
 
         if len(msg) != first_payload_size + 5:
-            raise ProtocolError("Unsupported OP_MSG reply: >1 section")
+            raise ProtocolError(f"Unsupported OP_MSG reply: >1 section, {len(msg)} vs {first_payload_size + 5}")
 
         payload_document = msg[5:]
         return cls(flags, payload_document)

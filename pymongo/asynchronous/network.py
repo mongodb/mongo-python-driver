@@ -53,7 +53,7 @@ if TYPE_CHECKING:
     from bson import CodecOptions
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
-    from pymongo.asynchronous.pool import AsyncConnection, AsyncStreamConnection, AsyncConnectionStream
+    from pymongo.asynchronous.pool import AsyncConnection, AsyncStreamConnection, AsyncConnectionProtocol
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
@@ -70,7 +70,7 @@ _IS_SYNC = False
 
 
 async def command_stream(
-    conn: AsyncConnectionStream,
+    conn: AsyncConnectionProtocol,
     dbname: str,
     spec: MutableMapping[str, Any],
     is_mongos: bool,
@@ -317,7 +317,7 @@ async def command_stream(
 
 
 async def receive_message(
-    conn: AsyncConnectionStream, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
+    conn: AsyncConnectionProtocol, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     # if _csot.get_timeout():
@@ -330,28 +330,28 @@ async def receive_message(
     #         deadline = None
     deadline = None
     # Ignore the response's request id.
-    length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data(conn, 16, deadline))
+    data, op_code = await async_receive_data(conn, 0, deadline)
+    # length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data(conn, 16, deadline))
     # No request_id for exhaust cursor "getMore".
-    if request_id is not None:
-        if request_id != response_to:
-            raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
-    if length <= 16:
-        raise ProtocolError(
-            f"Message length ({length!r}) not longer than standard message header size (16)"
-        )
-    if length > max_message_size:
-        raise ProtocolError(
-            f"Message length ({length!r}) is larger than server max "
-            f"message size ({max_message_size!r})"
-        )
-    if op_code == 2012:
-        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
-            await async_receive_data(conn, 9, deadline)
-        )
-        data = decompress(await async_receive_data(conn, length - 25, deadline), compressor_id)
-    else:
-        data = await async_receive_data(conn, length - 16, deadline)
-
+    # if request_id is not None:
+    #     if request_id != response_to:
+    #         raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
+    # if length <= 16:
+    #     raise ProtocolError(
+    #         f"Message length ({length!r}) not longer than standard message header size (16)"
+    #     )
+    # if length > max_message_size:
+    #     raise ProtocolError(
+    #         f"Message length ({length!r}) is larger than server max "
+    #         f"message size ({max_message_size!r})"
+    #     )
+    # if op_code == 2012:
+    #     op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
+    #         await async_receive_data(conn, 9, deadline)
+    #     )
+    #     data = decompress(await async_receive_data(conn, length - 25, deadline), compressor_id)
+    # else:
+    # data = await async_receive_data(conn, length - 16, deadline)
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
     except KeyError:

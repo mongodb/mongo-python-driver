@@ -18,10 +18,14 @@ from __future__ import annotations
 import asyncio
 import collections
 import errno
+import os
+import random
 import socket
 import struct
 import time
+import traceback
 import typing
+import uuid
 from asyncio import AbstractEventLoop
 from typing import (
     TYPE_CHECKING,
@@ -61,7 +65,7 @@ except ImportError:
     )
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.pool import AsyncConnection, AsyncConnectionStream
+    from pymongo.asynchronous.pool import AsyncConnection, AsyncConnectionProtocol
     from pymongo.synchronous.pool import Connection
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -71,27 +75,22 @@ _POLL_TIMEOUT = 0.5
 BLOCKING_IO_ERRORS = (BlockingIOError, BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
 
 
-class PyMongoProtocolReadRequest:
-    def __init__(self, length: int, future: asyncio.Future):
-        self.length = length
-        self.future = future
-
-
 class PyMongoProtocol(asyncio.BufferedProtocol):
-    def __init__(self):
-        self._buffer_size = MAX_MESSAGE_SIZE
+    def __init__(self, buffer_size: Optional[int] = 2 ** 14):
+        self._buffer_size = buffer_size
         self.transport = None
         self._buffer = memoryview(bytearray(self._buffer_size))
-        self.ready_offset = 0
-        self.empty_offset = 0
-        self.bytes_available = 0
-        self.op_code = None
-        self._done = None
+        self._overflow = None
+        self._length = 0
+        self._overflow_length = 0
+        self._body_length = 0
+        self._op_code = None
         self._connection_lost = False
         self._paused = False
         self._drain_waiter = None
         self._loop = asyncio.get_running_loop()
-        self._messages: typing.Deque[PyMongoProtocolReadRequest] = collections.deque()
+        self._read_waiter = None
+        self._id = uuid.uuid4()
 
     def connection_made(self, transport):
         self.transport = transport
@@ -99,82 +98,58 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
     async def write(self, message: bytes):
         self.transport.write(message)
         await self._drain_helper()
+        # if "find" in str(message):
+        #     print(f"Finished writing find on {self._id}")
 
-    async def read(self, length: int):
-        if self.bytes_available >= length:
-            start, end = self._calculate_read_offsets(length)
-            return self._read_data(start, end)
-        else:
-            request = PyMongoProtocolReadRequest(length, self._loop.create_future())
-            self._messages.append(request)
-            try:
-                await request.future
-            finally:
-                self._messages.remove(request)
-            if request.future.done():
-                start, end = request.future.result()
-                return self._read_data(start, end)
-
-    def _calculate_read_offsets(self, length):
-        if self.ready_offset < self.empty_offset:
-            start, end = self.ready_offset, self.ready_offset + length
-            self.ready_offset += length
-        # Our offset for writing has wrapped around to the start of the buffer
-        else:
-            if self.ready_offset + length <= self._buffer_size:
-                start, end = self.ready_offset, self.ready_offset + length
-                self.ready_offset += length
+    async def read(self):
+        # if asyncio.current_task() and 'pymongo' not in asyncio.current_task().get_name():
+            # print(f"Read call on {asyncio.current_task().get_name()}, {self._id}, from {traceback.format_stack(limit=5)}")
+        # tasks = [(t.get_name(), t.get_coro()) for t in asyncio.all_tasks() if "Task" in t.get_name()]
+        # print(f"All pending: {tasks}")
+        self._length, self._overflow_length, self._body_length, self._op_code, self._overflow = 0, 0, 0, None, None
+        self._read_waiter = self._loop.create_future()
+        await self._read_waiter
+        if self._read_waiter.done() and self._read_waiter.result() is not None:
+            # if asyncio.current_task() and 'pymongo' not in asyncio.current_task().get_name():
+                # print(f"Returning body of size {self._body_length} on {asyncio.current_task().get_name()}, {self._id}")
+            if self._body_length > self._buffer_size:
+                # print(f"Finished reading find on {self._id}")
+                return memoryview(bytearray(self._buffer[16:self._length]) + bytearray(self._overflow[:self._overflow_length])), self._op_code
             else:
-                start, end = (self.ready_offset, 0), (self._buffer_size, length - (self._buffer_size - self.ready_offset))
-                self.ready_offset = length - (self._buffer_size - self.ready_offset)
-        self.bytes_available -= length
-        return start, end
-
-    def _read_data(self, start, end):
-        if isinstance(start, tuple):
-            # print(f"Reading data with start {start} and end {end} on {asyncio.current_task()}")
-            return memoryview(
-                bytearray(self._buffer[start[0]:end[0]]) + bytearray(self._buffer[start[1]:end[1]]))
-        else:
-            return self._buffer[start:end]
+                return memoryview(self._buffer[16:self._body_length]), self._op_code
 
     def get_buffer(self, sizehint: int):
-        # print(f"get_buffer with empty {self.empty_offset} and sizehint {sizehint}, ready {self.ready_offset}")
-        if self.empty_offset + sizehint >= self._buffer_size:
-            self.empty_offset = 0
-        if self.empty_offset < self.ready_offset:
-            return self._buffer[self.empty_offset:self.ready_offset]
-        else:
-            return self._buffer[self.empty_offset:]
+        # print(f"Sizehint: {sizehint} for {self._id}")
+        # if sizehint > self._buffer_size - self._length:
+
+        if self._overflow is not None:
+            # if asyncio.current_task() and 'pymongo' not in asyncio.current_task().get_name():
+                # print(f"Overflow offset: {self._overflow_length} on {asyncio.current_task().get_name()}, {self._id}")
+            return self._overflow[self._overflow_length:]
+        # if asyncio.current_task() and 'pymongo' not in asyncio.current_task().get_name():
+        #     print(f"Buffer offset {self._length} on {asyncio.current_task().get_name()}, {self._id}")
+        return self._buffer[self._length:]
 
     def buffer_updated(self, nbytes: int):
+        # print(f"Bytes read: {nbytes} for {self._id}, have read {self._length}, {self._overflow_length}")
         if nbytes == 0:
-            self.connection_lost(OSError("connection closed"))
-            self._done.set_result(None)
-        self.empty_offset += nbytes
-        self.bytes_available += nbytes
-
-        # print(f"Ready: {self.ready_offset} and empty: {self.empty_offset} and available: {self.bytes_available} out of {self._buffer_size}")
-        for message in self._messages:
-            if not message.future.done() and self.bytes_available >= message.length:
-                start, end = self._calculate_read_offsets(message.length)
-                message.future.set_result((start, end))
-            #     if self.ready_offset < self.empty_offset:
-            #         message.future.set_result((self.ready_offset, self.ready_offset + message.length))
-            #         self.ready_offset += message.length
-            # # Our offset for writing has wrapped around to the start of the buffer
-            # else:
-            #     # print(f"Ready: {self.ready_offset}, Empty: {self.empty_offset}, expecting: {self.expected_length}")
-            #     # print(f"Is linear: {self.ready_offset + self.expected_length <= self._buffer_size}, {self.ready_offset + self.expected_length} vs {self._buffer_size}")
-            #     # print(f"Is wrapped: {self._buffer_size - self.ready_offset + self.empty_offset >= self.expected_length}, {self._buffer_size - self.ready_offset + self.empty_offset} vs {self.expected_length}")
-            #     if self.ready_offset + message.length <= self._buffer_size:
-            #         message.future.set_result((self.ready_offset, self.ready_offset + message.length))
-            #         self.ready_offset += message.length
-            #     else:
-            #         # print(f"{asyncio.current_task()} First chunk: {self._buffer_size - self.ready_offset}, second chunk: {self.expected_length - (self._buffer_size - self.ready_offset)}, total: {self._buffer_size - self.ready_offset + self.expected_length - (self._buffer_size - self.ready_offset)} of {self.expected_length}")
-            #         message.future.set_result(((self.ready_offset, 0), (self._buffer_size, message.length - (self._buffer_size - self.ready_offset))))
-            #         self.ready_offset = message.length - (self._buffer_size - self.ready_offset)
-            #     self.bytes_available -= message.length
+            self._read_waiter.set_result(None)
+            self._read_waiter.set_exception(OSError("connection closed"))
+        else:
+            if self._overflow is not None:
+                self._overflow_length += nbytes
+                # if asyncio.current_task() and 'pymongo' not in asyncio.current_task().get_name():
+                #     print(f"Read {nbytes} into overflow, have {self._length + self._overflow_length} out of {self._body_length} on {asyncio.current_task().get_name()}, {self._id}")
+            else:
+                if self._length == 0:
+                    self._body_length, _, response_to, self._op_code = _UNPACK_HEADER(self._buffer[:16])
+                    if self._body_length > self._buffer_size:
+                        self._overflow = memoryview(bytearray(self._body_length - (self._buffer_size - nbytes)))
+                self._length += nbytes
+                # if asyncio.current_task() and 'pymongo' not in asyncio.current_task().get_name():
+                #     print(f"Read {nbytes} into buffer, have {self._length + self._overflow_length} out of {self._body_length} on {asyncio.current_task().get_name()}, {self._id}")
+            if self._length + self._overflow_length >= self._body_length and self._read_waiter and not self._read_waiter.done():
+                self._read_waiter.set_result(True)
 
     def pause_writing(self):
         assert not self._paused
@@ -186,6 +161,9 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
 
         if self._drain_waiter and not self._drain_waiter.done():
             self._drain_waiter.set_result(None)
+
+    # def eof_received(self):
+        # print(f"EOF received on {self._id}")
 
     def connection_lost(self, exc):
         self._connection_lost = True
@@ -211,19 +189,21 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         return self._buffer
 
 
-async def async_sendall(stream: AsyncConnectionStream, buf: bytes) -> None:
+async def async_sendall(stream: AsyncConnectionProtocol, buf: bytes) -> None:
     try:
-        await asyncio.wait_for(stream.conn[1].write(buf), timeout=None)
-    except asyncio.TimeoutError as exc:
-        # Convert the asyncio.wait_for timeout error to socket.timeout which pool.py understands.
-        raise socket.timeout("timed out") from exc
+        await asyncio.wait_for(stream.conn[1].write(buf), timeout=5)
+    except Exception as exc:
+        # print(f"Got exception writing: {exc} on {asyncio.current_task().get_name() if asyncio.current_task().get_name() else None},")
+        raise
+        # # Convert the asyncio.wait_for timeout error to socket.timeout which pool.py understands.
+        # raise socket.timeout("timed out") from exc
 
 
 def sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
     sock.sendall(buf)
 
 
-async def _poll_cancellation(conn: AsyncConnectionStream) -> None:
+async def _poll_cancellation(conn: AsyncConnectionProtocol) -> None:
     while True:
         if conn.cancel_context.cancelled:
             return
@@ -232,7 +212,7 @@ async def _poll_cancellation(conn: AsyncConnectionStream) -> None:
 
 
 async def async_receive_data(
-    conn: AsyncConnectionStream, length: int, deadline: Optional[float]
+    conn: AsyncConnectionProtocol, length: int, deadline: Optional[float]
 ) -> memoryview:
     # sock = conn.conn
     # sock_timeout = sock.gettimeout()
@@ -245,25 +225,26 @@ async def async_receive_data(
     # else:
     #     timeout = sock_timeout
 
-    cancellation_task = create_task(_poll_cancellation(conn))
-    try:
-        read_task = create_task(conn.conn[1].read(length))
-        tasks = [read_task, cancellation_task]
-        done, pending = await asyncio.wait(
-            tasks, timeout=5, return_when=asyncio.FIRST_COMPLETED
-        )
-        for task in pending:
-            task.cancel()
-        if pending:
-            await asyncio.wait(pending)
-        if len(done) == 0:
-            raise socket.timeout("timed out")
-        if read_task in done:
-            return read_task.result()
-        raise _OperationCancelled("operation cancelled")
-    finally:
-        pass
-        # sock.settimeout(sock_timeout)
+    return await conn.conn[1].read()
+    # cancellation_task = create_task(_poll_cancellation(conn))
+    # try:
+    #     read_task = create_task(conn.conn[1].read())
+    #     tasks = [read_task, cancellation_task]
+    #     done, pending = await asyncio.wait(
+    #         tasks, timeout=5, return_when=asyncio.FIRST_COMPLETED
+    #     )
+    #     for task in pending:
+    #         task.cancel()
+    #     if pending:
+    #         await asyncio.wait(pending)
+    #     if len(done) == 0:
+    #         raise socket.timeout("timed out")
+    #     if read_task in done:
+    #         return read_task.result()
+    #     raise _OperationCancelled("operation cancelled")
+    # finally:
+    #     pass
+    #     # sock.settimeout(sock_timeout)
 
 
 def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> memoryview:
