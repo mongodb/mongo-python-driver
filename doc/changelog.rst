@@ -7,6 +7,10 @@ Changes in Version 4.11.0 (YYYY/MM/DD)
 .. warning:: PyMongo 4.11 drops support for Python 3.8: Python 3.9+ or PyPy 3.9+ is now required.
 .. warning:: PyMongo 4.11 drops support for MongoDB 3.6. PyMongo now supports MongoDB 4.0+.
    Driver support for MongoDB 3.6 reached end of life in April 2024.
+.. warning:: Driver support for MongoDB 4.0 reaches end of life in April 2025.
+   A future minor release of PyMongo will raise the minimum supported MongoDB Server version from 4.0 to 4.2.
+   This is in accordance with [MongoDB Software Lifecycle Schedules](https://www.mongodb.com/legal/support-policy/lifecycles).
+   **Support for MongoDB Server 4.0 will be dropped in a future release!**
 
 PyMongo 4.11 brings a number of changes including:
 
