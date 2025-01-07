@@ -627,6 +627,32 @@ buildvariants:
       AUTH: auth
       PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
+  # Free threaded tests
+  - name: free-threaded-rhel8-python3.13t
+    tasks:
+      - name: .free-threading
+    display_name: Free-threaded RHEL8 Python3.13t
+    run_on:
+      - rhel87-small
+    expansions:
+      PYTHON_BINARY: /opt/python/3.13t/bin/python3
+  - name: free-threaded-macos-python3.13t
+    tasks:
+      - name: .free-threading
+    display_name: Free-threaded macOS Python3.13t
+    run_on:
+      - macos-14
+    expansions:
+      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
+  - name: free-threaded-macos-arm64-python3.13t
+    tasks:
+      - name: .free-threading
+    display_name: Free-threaded macOS Arm64 Python3.13t
+    run_on:
+      - macos-14-arm64
+    expansions:
+      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
+
   # Green framework tests
   - name: green-eventlet-rhel8-python3.9
     tasks:

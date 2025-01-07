@@ -146,12 +146,16 @@ def get_python_binary(python: str, host: Host) -> str:
         else:
             base = "C:/python"
         python = python.replace(".", "")
+        if python == "313t":
+            return f"{base}/Python313/python3.13t.exe"
         return f"{base}/Python{python}/python.exe"
 
     if name in ["rhel8", "ubuntu22", "ubuntu20", "rhel7"]:
         return f"/opt/python/{python}/bin/python3"
 
     if name in ["macos", "macos-arm64"]:
+        if python == "3.13t":
+            return "/Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t"
         return f"/Library/Frameworks/Python.Framework/Versions/{python}/bin/python3"
 
     raise ValueError(f"no match found for python {python} on {name}")
@@ -315,6 +319,21 @@ def create_server_variants() -> list[BuildVariant]:
             variant = create_variant(tasks, display_name, python=python, host=host)
             variants.append(variant)
 
+    return variants
+
+
+def create_free_threaded_variants() -> list[BuildVariant]:
+    variants = []
+    for host_name in ("rhel8", "macos", "macos-arm64", "win64"):
+        if host_name == "win64":
+            # TODO: PYTHON-5027
+            continue
+        tasks = [".free-threading"]
+        host = HOSTS[host_name]
+        python = "3.13t"
+        display_name = get_display_name("Free-threaded", host, python=python)
+        variant = create_variant(tasks, display_name, python=python, host=host)
+        variants.append(variant)
     return variants
 
 

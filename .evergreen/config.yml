@@ -116,7 +116,6 @@ functions:
         content_type: text/html
         display_name: "Coverage Report HTML"
 
-
   "upload mo artifacts":
     - command: ec2.assume_role
       params:
@@ -299,6 +298,15 @@ functions:
         args:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-tests.sh
+
+  "run direct tests":
+    - command: subprocess.exec
+      type: test
+      params:
+        working_dir: "src"
+        binary: bash
+        include_expansions_in_env: ["PYTHON_BINARY"]
+        args: [ .evergreen/scripts/run-direct-tests.sh ]
 
   "run enterprise auth tests":
     - command: subprocess.exec
@@ -919,6 +927,15 @@ tasks:
       tags: ["no-server"]
       commands:
         - func: "run tests"
+
+    - name: "free-threading"
+      tags: ["free-threading"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "8.0"
+            TOPOLOGY: "replica_set"
+        - func: "run direct tests"
 
     - name: "atlas-connect"
       tags: ["atlas-connect"]
