@@ -15,12 +15,8 @@
 """Internal network layer helper methods."""
 from __future__ import annotations
 
-import asyncio
 import datetime
 import logging
-import statistics
-import time
-from asyncio import streams, StreamReader
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -34,26 +30,24 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo import _csot, helpers_shared, message
-from pymongo.common import MAX_MESSAGE_SIZE
-from pymongo.compression_support import _NO_COMPRESSION, decompress
+from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
-    ProtocolError,
 )
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
+from pymongo.message import _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import (
-    _UNPACK_COMPRESSION_HEADER,
-    _UNPACK_HEADER, async_sendall, async_receive_data,
+    async_receive_message,
+    async_sendall,
 )
 
 if TYPE_CHECKING:
     from bson import CodecOptions
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
-    from pymongo.asynchronous.pool import AsyncConnection, AsyncStreamConnection, AsyncConnectionProtocol
+    from pymongo.asynchronous.pool import AsyncConnectionProtocol
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
@@ -63,13 +57,8 @@ if TYPE_CHECKING:
 
 _IS_SYNC = False
 
-# TOTAL = []
-# TOTAL_WRITE = []
-# TOTAL_READ = []
-# print(f"TOTALS: {TOTAL, TOTAL_WRITE, TOTAL_READ}")
 
-
-async def command_stream(
+async def command(
     conn: AsyncConnectionProtocol,
     dbname: str,
     spec: MutableMapping[str, Any],
@@ -200,24 +189,13 @@ async def command_stream(
         )
 
     try:
-        write_start = time.monotonic()
         await async_sendall(conn, msg)
-        write_elapsed = time.monotonic() - write_start
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
             response_doc: _DocumentOut = {"ok": 1}
         else:
-            read_start = time.monotonic()
-            reply = await receive_message(conn, request_id)
-            read_elapsed = time.monotonic() - read_start
-            # if name == "insert":
-            #     TOTAL.append(write_elapsed + read_elapsed)
-            #     TOTAL_READ.append(read_elapsed)
-            #     TOTAL_WRITE.append(write_elapsed)
-            # if name == "endSessions":
-            #     print(
-            #         f"AVERAGE READ: {statistics.mean(TOTAL_READ)}, AVERAGE WRITE: {statistics.mean(TOTAL_WRITE)}, AVERAGE ELAPSED: {statistics.mean(TOTAL)}")
+            reply = await async_receive_message(conn, request_id)
             conn.more_to_come = reply.more_to_come
             unpacked_docs = reply.unpack_response(
                 codec_options=codec_options, user_fields=user_fields
@@ -314,48 +292,3 @@ async def command_stream(
         )
 
     return response_doc  # type: ignore[return-value]
-
-
-async def receive_message(
-    conn: AsyncConnectionProtocol, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
-) -> Union[_OpReply, _OpMsg]:
-    """Receive a raw BSON message or raise socket.error."""
-    # if _csot.get_timeout():
-    #     deadline = _csot.get_deadline()
-    # else:
-    #     timeout = conn.conn.gettimeout()
-    #     if timeout:
-    #         deadline = time.monotonic() + timeout
-    #     else:
-    #         deadline = None
-    deadline = None
-    # Ignore the response's request id.
-    data, op_code = await async_receive_data(conn, 0, deadline)
-    # length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data(conn, 16, deadline))
-    # No request_id for exhaust cursor "getMore".
-    # if request_id is not None:
-    #     if request_id != response_to:
-    #         raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
-    # if length <= 16:
-    #     raise ProtocolError(
-    #         f"Message length ({length!r}) not longer than standard message header size (16)"
-    #     )
-    # if length > max_message_size:
-    #     raise ProtocolError(
-    #         f"Message length ({length!r}) is larger than server max "
-    #         f"message size ({max_message_size!r})"
-    #     )
-    # if op_code == 2012:
-    #     op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
-    #         await async_receive_data(conn, 9, deadline)
-    #     )
-    #     data = decompress(await async_receive_data(conn, length - 25, deadline), compressor_id)
-    # else:
-    # data = await async_receive_data(conn, length - 16, deadline)
-    try:
-        unpack_reply = _UNPACK_REPLY[op_code]
-    except KeyError:
-        raise ProtocolError(
-            f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
-        ) from None
-    return unpack_reply(data)

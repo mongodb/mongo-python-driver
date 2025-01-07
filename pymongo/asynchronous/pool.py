@@ -37,12 +37,11 @@ from typing import (
     Union,
 )
 
-from asyncio import streams
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
 from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.asynchronous.network import command_stream, receive_message
+from pymongo.asynchronous.network import command
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -80,7 +79,7 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
 )
-from pymongo.network_layer import async_sendall, _UNPACK_HEADER, PyMongoProtocol
+from pymongo.network_layer import PyMongoProtocol, async_receive_message, async_sendall
 from pymongo.pool_options import PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
@@ -534,7 +533,7 @@ class AsyncConnection:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return await command_stream(
+            return await command(
                 self,
                 dbname,
                 spec,
@@ -578,7 +577,6 @@ class AsyncConnection:
         try:
             await async_sendall(self.conn, message)
         except BaseException as error:
-            print(error)
             self._raise_connection_failure(error)
 
     async def receive_message(self, request_id: Optional[int]) -> Union[_OpReply, _OpMsg]:
@@ -587,7 +585,7 @@ class AsyncConnection:
         If any exception is raised, the socket is closed.
         """
         try:
-            return await receive_message(self, request_id, self.max_message_size)
+            return await async_receive_message(self, request_id, self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -795,7 +793,11 @@ class AsyncConnectionProtocol:
     """
 
     def __init__(
-        self, conn: tuple[asyncio.BaseTransport, PyMongoProtocol], pool: Pool, address: tuple[str, int], id: int
+        self,
+        conn: tuple[asyncio.BaseTransport, PyMongoProtocol],
+        pool: Pool,
+        address: tuple[str, int],
+        id: int,
     ):
         self.pool_ref = weakref.ref(pool)
         self.conn = conn
@@ -1066,7 +1068,7 @@ class AsyncConnectionProtocol:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return await command_stream(
+            return await command(
                 self,
                 dbname,
                 spec,
@@ -1118,7 +1120,7 @@ class AsyncConnectionProtocol:
         If any exception is raised, the socket is closed.
         """
         try:
-            return await receive_message(self, request_id, self.max_message_size)
+            return await async_receive_message(self, request_id, self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -1316,8 +1318,6 @@ class AsyncConnectionProtocol:
         )
 
 
-
-
 def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
     """Given (host, port) and PoolOptions, connect and return a socket object.
 
@@ -1400,15 +1400,23 @@ async def _configured_stream(
     """
     sock = _create_connection(address, options)
     ssl_context = options._ssl_context
+    timeout = sock.gettimeout()
 
     if ssl_context is None:
-        return await asyncio.get_running_loop().create_connection(lambda: PyMongoProtocol(), sock=sock)
+        return await asyncio.get_running_loop().create_connection(
+            lambda: PyMongoProtocol(timeout=timeout, buffer_size=2**16), sock=sock
+        )
 
     host = address[0]
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
-        transport, protocol = await asyncio.get_running_loop().create_connection(lambda: PyMongoProtocol(), sock=sock, server_hostname=host, ssl=ssl_context)
+        transport, protocol = await asyncio.get_running_loop().create_connection(
+            lambda: PyMongoProtocol(timeout=timeout, buffer_size=2**14),
+            sock=sock,
+            server_hostname=host,
+            ssl=ssl_context,
+        )
     except _CertificateError:
         transport.close()
         # Raise _CertificateError directly like we do after match_hostname
@@ -1819,7 +1827,9 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    async def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> AsyncConnectionProtocol:
+    async def connect(
+        self, handler: Optional[_MongoClientErrorHandler] = None
+    ) -> AsyncConnectionProtocol:
         """Connect to Mongo and return a new AsyncConnection.
 
         Can raise ConnectionFailure.
@@ -1849,7 +1859,7 @@ class Pool:
             )
 
         try:
-            sock = await _configured_stream(self.address, self.opts)
+            transport, protocol = await _configured_stream(self.address, self.opts)
         except BaseException as error:
             async with self.lock:
                 self.active_contexts.discard(tmp_context)
@@ -1875,7 +1885,7 @@ class Pool:
 
             raise
 
-        conn = AsyncConnectionProtocol(sock, self, self.address, conn_id)  # type: ignore[arg-type]
+        conn = AsyncConnectionProtocol((transport, protocol), self, self.address, conn_id)  # type: ignore[arg-type]
         async with self.lock:
             self.active_contexts.add(conn.cancel_context)
             self.active_contexts.discard(tmp_context)

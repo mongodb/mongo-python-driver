@@ -16,8 +16,6 @@
 from __future__ import annotations
 
 import logging
-import statistics
-import time
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
@@ -58,12 +56,6 @@ if TYPE_CHECKING:
 _IS_SYNC = False
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
-
-
-# TOTAL = []
-# TOTAL_WRITE = []
-# TOTAL_READ = []
-# print(f"TOTALS: {TOTAL, TOTAL_WRITE, TOTAL_READ}")
 
 
 class Server:
@@ -212,19 +204,8 @@ class Server:
             if more_to_come:
                 reply = await conn.receive_message(None)
             else:
-                write_start = time.monotonic()
                 await conn.send_message(data, max_doc_size)
-                write_elapsed = time.monotonic() - write_start
-
-                read_start = time.monotonic()
                 reply = await conn.receive_message(request_id)
-                read_elapsed = time.monotonic() - read_start
-
-                # TOTAL.append(write_elapsed + read_elapsed)
-                # TOTAL_READ.append(read_elapsed)
-                # TOTAL_WRITE.append(write_elapsed)
-                # print(
-                #     f"AVERAGE READ: {statistics.mean(TOTAL_READ)}, AVERAGE WRITE: {statistics.mean(TOTAL_WRITE)}, AVERAGE ELAPSED: {statistics.mean(TOTAL)}")
 
             # Unpack and check for command errors.
             if use_cmd:

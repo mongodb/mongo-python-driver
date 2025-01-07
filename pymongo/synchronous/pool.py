@@ -76,7 +76,7 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
 )
-from pymongo.network_layer import sendall
+from pymongo.network_layer import PyMongoProtocol, receive_message, sendall
 from pymongo.pool_options import PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
@@ -85,7 +85,7 @@ from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI, SSLError
 from pymongo.synchronous.client_session import _validate_session_write_concern
 from pymongo.synchronous.helpers import _handle_reauth
-from pymongo.synchronous.network import command, receive_message
+from pymongo.synchronous.network import command
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -781,6 +781,539 @@ class Connection:
         )
 
 
+class ConnectionProtocol:
+    """Store a connection with some metadata.
+
+    :param conn: a raw connection object
+    :param pool: a Pool instance
+    :param address: the server's (host, port)
+    :param id: the id of this socket in it's pool
+    """
+
+    def __init__(
+        self,
+        conn: tuple[asyncio.BaseTransport, PyMongoProtocol],
+        pool: Pool,
+        address: tuple[str, int],
+        id: int,
+    ):
+        self.pool_ref = weakref.ref(pool)
+        self.conn = conn
+        self.address = address
+        self.id = id
+        self.closed = False
+        self.last_checkin_time = time.monotonic()
+        self.performed_handshake = False
+        self.is_writable: bool = False
+        self.max_wire_version = MAX_WIRE_VERSION
+        self.max_bson_size = MAX_BSON_SIZE
+        self.max_message_size = MAX_MESSAGE_SIZE
+        self.max_write_batch_size = MAX_WRITE_BATCH_SIZE
+        self.supports_sessions = False
+        self.hello_ok: bool = False
+        self.is_mongos = False
+        self.op_msg_enabled = False
+        self.listeners = pool.opts._event_listeners
+        self.enabled_for_cmap = pool.enabled_for_cmap
+        self.enabled_for_logging = pool.enabled_for_logging
+        self.compression_settings = pool.opts._compression_settings
+        self.compression_context: Union[SnappyContext, ZlibContext, ZstdContext, None] = None
+        self.socket_checker: SocketChecker = SocketChecker()
+        self.oidc_token_gen_id: Optional[int] = None
+        # Support for mechanism negotiation on the initial handshake.
+        self.negotiated_mechs: Optional[list[str]] = None
+        self.auth_ctx: Optional[_AuthContext] = None
+
+        # The pool's generation changes with each reset() so we can close
+        # sockets created before the last reset.
+        self.pool_gen = pool.gen
+        self.generation = self.pool_gen.get_overall()
+        self.ready = False
+        self.cancel_context: _CancellationContext = _CancellationContext()
+        self.opts = pool.opts
+        self.more_to_come: bool = False
+        # For load balancer support.
+        self.service_id: Optional[ObjectId] = None
+        self.server_connection_id: Optional[int] = None
+        # When executing a transaction in load balancing mode, this flag is
+        # set to true to indicate that the session now owns the connection.
+        self.pinned_txn = False
+        self.pinned_cursor = False
+        self.active = False
+        self.last_timeout = self.opts.socket_timeout
+        self.connect_rtt = 0.0
+        self._client_id = pool._client_id
+        self.creation_time = time.monotonic()
+
+    def set_conn_timeout(self, timeout: Optional[float]) -> None:
+        """Cache last timeout to avoid duplicate calls to conn.settimeout."""
+        if timeout == self.last_timeout:
+            return
+        self.last_timeout = timeout
+
+    def apply_timeout(
+        self, client: MongoClient, cmd: Optional[MutableMapping[str, Any]]
+    ) -> Optional[float]:
+        # CSOT: use remaining timeout when set.
+        timeout = _csot.remaining()
+        if timeout is None:
+            # Reset the socket timeout unless we're performing a streaming monitor check.
+            if not self.more_to_come:
+                self.set_conn_timeout(self.opts.socket_timeout)
+            return None
+        # RTT validation.
+        rtt = _csot.get_rtt()
+        if rtt is None:
+            rtt = self.connect_rtt
+        max_time_ms = timeout - rtt
+        if max_time_ms < 0:
+            timeout_details = _get_timeout_details(self.opts)
+            formatted = format_timeout_details(timeout_details)
+            # CSOT: raise an error without running the command since we know it will time out.
+            errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f} {formatted}"
+            raise ExecutionTimeout(
+                errmsg,
+                50,
+                {"ok": 0, "errmsg": errmsg, "code": 50},
+                self.max_wire_version,
+            )
+        if cmd is not None:
+            cmd["maxTimeMS"] = int(max_time_ms * 1000)
+        self.set_conn_timeout(timeout)
+        return timeout
+
+    def pin_txn(self) -> None:
+        self.pinned_txn = True
+        assert not self.pinned_cursor
+
+    def pin_cursor(self) -> None:
+        self.pinned_cursor = True
+        assert not self.pinned_txn
+
+    def unpin(self) -> None:
+        pool = self.pool_ref()
+        if pool:
+            pool.checkin(self)
+        else:
+            self.close_conn(ConnectionClosedReason.STALE)
+
+    def hello_cmd(self) -> dict[str, Any]:
+        # Handshake spec requires us to use OP_MSG+hello command for the
+        # initial handshake in load balanced or stable API mode.
+        if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
+            self.op_msg_enabled = True
+            return {HelloCompat.CMD: 1}
+        else:
+            return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
+
+    def hello(self) -> Hello:
+        return self._hello(None, None, None)
+
+    def _hello(
+        self,
+        cluster_time: Optional[ClusterTime],
+        topology_version: Optional[Any],
+        heartbeat_frequency: Optional[int],
+    ) -> Hello[dict[str, Any]]:
+        cmd = self.hello_cmd()
+        performing_handshake = not self.performed_handshake
+        awaitable = False
+        if performing_handshake:
+            self.performed_handshake = True
+            cmd["client"] = self.opts.metadata
+            if self.compression_settings:
+                cmd["compression"] = self.compression_settings.compressors
+            if self.opts.load_balanced:
+                cmd["loadBalanced"] = True
+        elif topology_version is not None:
+            cmd["topologyVersion"] = topology_version
+            assert heartbeat_frequency is not None
+            cmd["maxAwaitTimeMS"] = int(heartbeat_frequency * 1000)
+            awaitable = True
+            # If connect_timeout is None there is no timeout.
+            if self.opts.connect_timeout:
+                self.set_conn_timeout(self.opts.connect_timeout + heartbeat_frequency)
+
+        if not performing_handshake and cluster_time is not None:
+            cmd["$clusterTime"] = cluster_time
+
+        creds = self.opts._credentials
+        if creds:
+            if creds.mechanism == "DEFAULT" and creds.username:
+                cmd["saslSupportedMechs"] = creds.source + "." + creds.username
+            from pymongo.synchronous import auth
+
+            auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
+            if auth_ctx:
+                speculative_authenticate = auth_ctx.speculate_command()
+                if speculative_authenticate is not None:
+                    cmd["speculativeAuthenticate"] = speculative_authenticate
+        else:
+            auth_ctx = None
+
+        if performing_handshake:
+            start = time.monotonic()
+        doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
+        if performing_handshake:
+            self.connect_rtt = time.monotonic() - start
+        hello = Hello(doc, awaitable=awaitable)
+        self.is_writable = hello.is_writable
+        self.max_wire_version = hello.max_wire_version
+        self.max_bson_size = hello.max_bson_size
+        self.max_message_size = hello.max_message_size
+        self.max_write_batch_size = hello.max_write_batch_size
+        self.supports_sessions = (
+            hello.logical_session_timeout_minutes is not None and hello.is_readable
+        )
+        self.logical_session_timeout_minutes: Optional[int] = hello.logical_session_timeout_minutes
+        self.hello_ok = hello.hello_ok
+        self.is_repl = hello.server_type in (
+            SERVER_TYPE.RSPrimary,
+            SERVER_TYPE.RSSecondary,
+            SERVER_TYPE.RSArbiter,
+            SERVER_TYPE.RSOther,
+            SERVER_TYPE.RSGhost,
+        )
+        self.is_standalone = hello.server_type == SERVER_TYPE.Standalone
+        self.is_mongos = hello.server_type == SERVER_TYPE.Mongos
+        if performing_handshake and self.compression_settings:
+            ctx = self.compression_settings.get_compression_context(hello.compressors)
+            self.compression_context = ctx
+
+        self.op_msg_enabled = True
+        self.server_connection_id = hello.connection_id
+        if creds:
+            self.negotiated_mechs = hello.sasl_supported_mechs
+        if auth_ctx:
+            auth_ctx.parse_response(hello)  # type:ignore[arg-type]
+            if auth_ctx.speculate_succeeded():
+                self.auth_ctx = auth_ctx
+        if self.opts.load_balanced:
+            if not hello.service_id:
+                raise ConfigurationError(
+                    "Driver attempted to initialize in load balancing mode,"
+                    " but the server does not support this mode"
+                )
+            self.service_id = hello.service_id
+            self.generation = self.pool_gen.get(self.service_id)
+        return hello
+
+    def _next_reply(self) -> dict[str, Any]:
+        reply = self.receive_message(None)
+        self.more_to_come = reply.more_to_come
+        unpacked_docs = reply.unpack_response()
+        response_doc = unpacked_docs[0]
+        helpers_shared._check_command_response(response_doc, self.max_wire_version)
+        return response_doc
+
+    @_handle_reauth
+    def command(
+        self,
+        dbname: str,
+        spec: MutableMapping[str, Any],
+        read_preference: _ServerMode = ReadPreference.PRIMARY,
+        codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
+        check: bool = True,
+        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
+        read_concern: Optional[ReadConcern] = None,
+        write_concern: Optional[WriteConcern] = None,
+        parse_write_concern_error: bool = False,
+        collation: Optional[_CollationIn] = None,
+        session: Optional[ClientSession] = None,
+        client: Optional[MongoClient] = None,
+        retryable_write: bool = False,
+        publish_events: bool = True,
+        user_fields: Optional[Mapping[str, Any]] = None,
+        exhaust_allowed: bool = False,
+    ) -> dict[str, Any]:
+        """Execute a command or raise an error.
+
+        :param dbname: name of the database on which to run the command
+        :param spec: a command document as a dict, SON, or mapping object
+        :param read_preference: a read preference
+        :param codec_options: a CodecOptions instance
+        :param check: raise OperationFailure if there are errors
+        :param allowable_errors: errors to ignore if `check` is True
+        :param read_concern: The read concern for this command.
+        :param write_concern: The write concern for this command.
+        :param parse_write_concern_error: Whether to parse the
+            ``writeConcernError`` field in the command response.
+        :param collation: The collation for this command.
+        :param session: optional ClientSession instance.
+        :param client: optional MongoClient for gossipping $clusterTime.
+        :param retryable_write: True if this command is a retryable write.
+        :param publish_events: Should we publish events for this command?
+        :param user_fields: Response fields that should be decoded
+            using the TypeDecoders from codec_options, passed to
+            bson._decode_all_selective.
+        """
+        self.validate_session(client, session)
+        session = _validate_session_write_concern(session, write_concern)
+
+        # Ensure command name remains in first place.
+        if not isinstance(spec, ORDERED_TYPES):  # type:ignore[arg-type]
+            spec = dict(spec)
+
+        if not (write_concern is None or write_concern.acknowledged or collation is None):
+            raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
+
+        self.add_server_api(spec)
+        if session:
+            session._apply_to(spec, retryable_write, read_preference, self)
+        self.send_cluster_time(spec, session, client)
+        listeners = self.listeners if publish_events else None
+        unacknowledged = bool(write_concern and not write_concern.acknowledged)
+        if self.op_msg_enabled:
+            self._raise_if_not_writable(unacknowledged)
+        try:
+            return command(
+                self,
+                dbname,
+                spec,
+                self.is_mongos,
+                read_preference,
+                codec_options,
+                session,
+                client,
+                check,
+                allowable_errors,
+                self.address,
+                listeners,
+                self.max_bson_size,
+                read_concern,
+                parse_write_concern_error=parse_write_concern_error,
+                collation=collation,
+                compression_ctx=self.compression_context,
+                use_op_msg=self.op_msg_enabled,
+                unacknowledged=unacknowledged,
+                user_fields=user_fields,
+                exhaust_allowed=exhaust_allowed,
+                write_concern=write_concern,
+            )
+        except (OperationFailure, NotPrimaryError):
+            raise
+        # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
+        except BaseException as error:
+            self._raise_connection_failure(error)
+
+    def send_message(self, message: bytes, max_doc_size: int) -> None:
+        """Send a raw BSON message or raise ConnectionFailure.
+
+        If a network exception is raised, the socket is closed.
+        """
+        if self.max_bson_size is not None and max_doc_size > self.max_bson_size:
+            raise DocumentTooLarge(
+                "BSON document too large (%d bytes) - the connected server "
+                "supports BSON document sizes up to %d bytes." % (max_doc_size, self.max_bson_size)
+            )
+
+        try:
+            sendall(self, message)
+        except BaseException as error:
+            self._raise_connection_failure(error)
+
+    def receive_message(self, request_id: Optional[int]) -> Union[_OpReply, _OpMsg]:
+        """Receive a raw BSON message or raise ConnectionFailure.
+
+        If any exception is raised, the socket is closed.
+        """
+        try:
+            return receive_message(self, request_id, self.max_message_size)
+        except BaseException as error:
+            self._raise_connection_failure(error)
+
+    def _raise_if_not_writable(self, unacknowledged: bool) -> None:
+        """Raise NotPrimaryError on unacknowledged write if this socket is not
+        writable.
+        """
+        if unacknowledged and not self.is_writable:
+            # Write won't succeed, bail as if we'd received a not primary error.
+            raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
+
+    def unack_write(self, msg: bytes, max_doc_size: int) -> None:
+        """Send unack OP_MSG.
+
+        Can raise ConnectionFailure or InvalidDocument.
+
+        :param msg: bytes, an OP_MSG message.
+        :param max_doc_size: size in bytes of the largest document in `msg`.
+        """
+        self._raise_if_not_writable(True)
+        self.send_message(msg, max_doc_size)
+
+    def write_command(
+        self, request_id: int, msg: bytes, codec_options: CodecOptions
+    ) -> dict[str, Any]:
+        """Send "insert" etc. command, returning response as a dict.
+
+        Can raise ConnectionFailure or OperationFailure.
+
+        :param request_id: an int.
+        :param msg: bytes, the command message.
+        """
+        self.send_message(msg, 0)
+        reply = self.receive_message(request_id)
+        result = reply.command_response(codec_options)
+
+        # Raises NotPrimaryError or OperationFailure.
+        helpers_shared._check_command_response(result, self.max_wire_version)
+        return result
+
+    def authenticate(self, reauthenticate: bool = False) -> None:
+        """Authenticate to the server if needed.
+
+        Can raise ConnectionFailure or OperationFailure.
+        """
+        # CMAP spec says to publish the ready event only after authenticating
+        # the connection.
+        if reauthenticate:
+            if self.performed_handshake:
+                # Existing auth_ctx is stale, remove it.
+                self.auth_ctx = None
+            self.ready = False
+        if not self.ready:
+            creds = self.opts._credentials
+            if creds:
+                from pymongo.synchronous import auth
+
+                auth.authenticate(creds, self, reauthenticate=reauthenticate)
+            self.ready = True
+            duration = time.monotonic() - self.creation_time
+            if self.enabled_for_cmap:
+                assert self.listeners is not None
+                self.listeners.publish_connection_ready(self.address, self.id, duration)
+            if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    clientId=self._client_id,
+                    message=_ConnectionStatusMessage.CONN_READY,
+                    serverHost=self.address[0],
+                    serverPort=self.address[1],
+                    driverConnectionId=self.id,
+                    durationMS=duration,
+                )
+
+    def validate_session(
+        self, client: Optional[MongoClient], session: Optional[ClientSession]
+    ) -> None:
+        """Validate this session before use with client.
+
+        Raises error if the client is not the one that created the session.
+        """
+        if session:
+            if session._client is not client:
+                raise InvalidOperation("Can only use session with the MongoClient that started it")
+
+    def close_conn(self, reason: Optional[str]) -> None:
+        """Close this connection with a reason."""
+        if self.closed:
+            return
+        self._close_conn()
+        if reason:
+            if self.enabled_for_cmap:
+                assert self.listeners is not None
+                self.listeners.publish_connection_closed(self.address, self.id, reason)
+            if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    clientId=self._client_id,
+                    message=_ConnectionStatusMessage.CONN_CLOSED,
+                    serverHost=self.address[0],
+                    serverPort=self.address[1],
+                    driverConnectionId=self.id,
+                    reason=_verbose_connection_error_reason(reason),
+                    error=reason,
+                )
+
+    def _close_conn(self) -> None:
+        """Close this connection."""
+        if self.closed:
+            return
+        self.closed = True
+        self.cancel_context.cancel()
+        # Note: We catch exceptions to avoid spurious errors on interpreter
+        # shutdown.
+        try:
+            self.conn[0].close()
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: S110
+            pass
+
+    def conn_closed(self) -> bool:
+        """Return True if we know socket has been closed, False otherwise."""
+        return self.conn[0].is_closing()
+
+    def send_cluster_time(
+        self,
+        command: MutableMapping[str, Any],
+        session: Optional[ClientSession],
+        client: Optional[MongoClient],
+    ) -> None:
+        """Add $clusterTime."""
+        if client:
+            client._send_cluster_time(command, session)
+
+    def add_server_api(self, command: MutableMapping[str, Any]) -> None:
+        """Add server_api parameters."""
+        if self.opts.server_api:
+            _add_to_command(command, self.opts.server_api)
+
+    def update_last_checkin_time(self) -> None:
+        self.last_checkin_time = time.monotonic()
+
+    def update_is_writable(self, is_writable: bool) -> None:
+        self.is_writable = is_writable
+
+    def idle_time_seconds(self) -> float:
+        """Seconds since this socket was last checked into its pool."""
+        return time.monotonic() - self.last_checkin_time
+
+    def _raise_connection_failure(self, error: BaseException) -> NoReturn:
+        # Catch *all* exceptions from socket methods and close the socket. In
+        # regular Python, socket operations only raise socket.error, even if
+        # the underlying cause was a Ctrl-C: a signal raised during socket.recv
+        # is expressed as an EINTR error from poll. See internal_select_ex() in
+        # socketmodule.c. All error codes from poll become socket.error at
+        # first. Eventually in PyEval_EvalFrameEx the interpreter checks for
+        # signals and throws KeyboardInterrupt into the current frame on the
+        # main thread.
+        #
+        # But in Gevent and Eventlet, the polling mechanism (epoll, kqueue,
+        # ..) is called in Python code, which experiences the signal as a
+        # KeyboardInterrupt from the start, rather than as an initial
+        # socket.error, so we catch that, close the socket, and reraise it.
+        #
+        # The connection closed event will be emitted later in checkin.
+        if self.ready:
+            reason = None
+        else:
+            reason = ConnectionClosedReason.ERROR
+        self.close_conn(reason)
+        # SSLError from PyOpenSSL inherits directly from Exception.
+        if isinstance(error, (IOError, OSError, SSLError)):
+            details = _get_timeout_details(self.opts)
+            _raise_connection_failure(self.address, error, timeout_details=details)
+        else:
+            raise
+
+    def __eq__(self, other: Any) -> bool:
+        return self.conn == other.conn
+
+    def __ne__(self, other: Any) -> bool:
+        return not self == other
+
+    def __hash__(self) -> int:
+        return hash(self.conn)
+
+    def __repr__(self) -> str:
+        return "Connection({}){} at {}".format(
+            repr(self.conn),
+            self.closed and " CLOSED" or "",
+            id(self),
+        )
+
+
 def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
     """Given (host, port) and PoolOptions, connect and return a socket object.
 
@@ -850,6 +1383,60 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         # support IPv6. The test case is Jython2.5.1 which doesn't
         # support IPv6 at all.
         raise OSError("getaddrinfo failed")
+
+
+def _configured_stream(
+    address: _Address, options: PoolOptions
+) -> tuple[asyncio.BaseTransport, PyMongoProtocol]:
+    """Given (host, port) and PoolOptions, return a configured socket.
+
+    Can raise socket.error, ConnectionFailure, or _CertificateError.
+
+    Sets socket's SSL and timeout options.
+    """
+    sock = _create_connection(address, options)
+    ssl_context = options._ssl_context
+    timeout = sock.gettimeout()
+
+    if ssl_context is None:
+        return asyncio.get_running_loop().create_connection(
+            lambda: PyMongoProtocol(timeout=timeout, buffer_size=2**16), sock=sock
+        )
+
+    host = address[0]
+    try:
+        # We have to pass hostname / ip address to wrap_socket
+        # to use SSLContext.check_hostname.
+        transport, protocol = asyncio.get_running_loop().create_connection(
+            lambda: PyMongoProtocol(timeout=timeout, buffer_size=2**14),
+            sock=sock,
+            server_hostname=host,
+            ssl=ssl_context,
+        )
+    except _CertificateError:
+        transport.close()
+        # Raise _CertificateError directly like we do after match_hostname
+        # below.
+        raise
+    except (OSError, SSLError) as exc:
+        transport.close()
+        # We raise AutoReconnect for transient and permanent SSL handshake
+        # failures alike. Permanent handshake failures, like protocol
+        # mismatch, will be turned into ServerSelectionTimeoutErrors later.
+        details = _get_timeout_details(options)
+        _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
+    if (
+        ssl_context.verify_mode
+        and not ssl_context.check_hostname
+        and not options.tls_allow_invalid_hostnames
+    ):
+        try:
+            ssl.match_hostname(transport.get_extra_info("peercert"), hostname=host)  # type:ignore[attr-defined]
+        except _CertificateError:
+            transport.close()
+            raise
+
+    return transport, protocol
 
 
 def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
@@ -1232,7 +1819,7 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
+    def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> ConnectionProtocol:
         """Connect to Mongo and return a new Connection.
 
         Can raise ConnectionFailure.
@@ -1262,7 +1849,7 @@ class Pool:
             )
 
         try:
-            sock = _configured_socket(self.address, self.opts)
+            transport, protocol = _configured_stream(self.address, self.opts)
         except BaseException as error:
             with self.lock:
                 self.active_contexts.discard(tmp_context)
@@ -1288,7 +1875,7 @@ class Pool:
 
             raise
 
-        conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
+        conn = ConnectionProtocol((transport, protocol), self, self.address, conn_id)  # type: ignore[arg-type]
         with self.lock:
             self.active_contexts.add(conn.cancel_context)
             self.active_contexts.discard(tmp_context)
@@ -1298,8 +1885,8 @@ class Pool:
             if self.handshake:
                 conn.hello()
                 self.is_writable = conn.is_writable
-            if handler:
-                handler.contribute_socket(conn, completed_handshake=False)
+            # if handler:
+            #     handler.contribute_socket(conn, completed_handshake=False)
 
             conn.authenticate()
         except BaseException:
@@ -1313,7 +1900,7 @@ class Pool:
     @contextlib.contextmanager
     def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> Generator[Connection, None]:
+    ) -> Generator[ConnectionProtocol, None]:
         """Get a connection from the pool. Use with a "with" statement.
 
         Returns a :class:`Connection` object wrapping a connected
@@ -1416,7 +2003,7 @@ class Pool:
 
     def _get_conn(
         self, checkout_started_time: float, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> Connection:
+    ) -> ConnectionProtocol:
         """Get or create a Connection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
