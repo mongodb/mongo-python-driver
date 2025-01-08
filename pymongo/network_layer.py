@@ -50,12 +50,86 @@ except ImportError:
     _sslConn = SSLSocket  # type: ignore
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.pool import AsyncConnectionProtocol
+    from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.synchronous.pool import Connection
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 _POLL_TIMEOUT = 0.5
+
+
+class NetworkingInterfaceBase:
+    def __init__(self, conn: Union[socket.socket, _sslConn] | tuple[asyncio.BaseTransport, PyMongoProtocol]):
+        self.conn = conn
+
+    def gettimeout(self):
+        raise NotImplementedError
+
+    def settimeout(self, timeout: float | None):
+        raise NotImplementedError
+
+    def close(self):
+        raise NotImplementedError
+
+    def is_closing(self) -> bool:
+        raise NotImplementedError
+
+    def writer(self):
+        raise NotImplementedError
+
+    def reader(self):
+        raise NotImplementedError
+
+
+class AsyncNetworkingInterface(NetworkingInterfaceBase):
+    def __init__(self, conn: tuple[asyncio.BaseTransport, PyMongoProtocol]):
+        super().__init__(conn)
+
+    @property
+    def gettimeout(self):
+        return self.conn[1].gettimeout
+
+    def settimeout(self, timeout: float | None):
+        self.conn[1].settimeout(timeout)
+
+    def close(self):
+        self.conn[0].close()
+
+    def is_closing(self):
+        self.conn[0].is_closing()
+
+    @property
+    def writer(self) -> PyMongoProtocol:
+        return self.conn[1]
+
+    @property
+    def reader(self) -> PyMongoProtocol:
+        return self.conn[1]
+
+
+class NetworkingInterface(NetworkingInterfaceBase):
+    def __init__(self, conn: Union[socket.socket, _sslConn]):
+        super().__init__(conn)
+
+    def gettimeout(self):
+        return self.conn.gettimeout()
+
+    def settimeout(self, timeout: float | None):
+        self.conn.settimeout(timeout)
+
+    def close(self):
+        self.conn.close()
+
+    def is_closing(self):
+        self.conn.is_closing()
+
+    @property
+    def writer(self):
+        return self.conn
+
+    @property
+    def reader(self):
+        return self.conn
 
 
 class PyMongoProtocol(asyncio.BufferedProtocol):
@@ -78,8 +152,11 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         self._compressor_id = None
         self._need_compression_header = False
 
+    def settimeout(self, timeout: float | None):
+        self._timeout = timeout
+
     @property
-    def timeout(self) -> float | None:
+    def gettimeout(self) -> float | None:
         """The configured timeout for the socket that underlies our protocol pair."""
         return self._timeout
 
@@ -236,9 +313,9 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         return self._buffer
 
 
-async def async_sendall(conn: AsyncConnectionProtocol, buf: bytes) -> None:
+async def async_sendall(conn: PyMongoProtocol, buf: bytes) -> None:
     try:
-        await asyncio.wait_for(conn.conn[1].write(buf), timeout=conn.conn[1].timeout)
+        await asyncio.wait_for(conn.write(buf), timeout=conn.gettimeout)
     except asyncio.TimeoutError as exc:
         # Convert the asyncio.wait_for timeout error to socket.timeout which pool.py understands.
         raise socket.timeout("timed out") from exc
@@ -248,7 +325,7 @@ def sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
     sock.sendall(buf)
 
 
-async def _poll_cancellation(conn: AsyncConnectionProtocol) -> None:
+async def _poll_cancellation(conn: AsyncConnection) -> None:
     while True:
         if conn.cancel_context.cancelled:
             return
@@ -257,13 +334,12 @@ async def _poll_cancellation(conn: AsyncConnectionProtocol) -> None:
 
 
 async def async_receive_data(
-    conn: AsyncConnectionProtocol,
+    conn: AsyncConnection,
     deadline: Optional[float],
     request_id: Optional[int],
     max_message_size: int,
 ) -> memoryview:
-    sock = conn.conn[1]
-    sock_timeout = sock.timeout
+    conn_timeout = conn.conn.gettimeout
     timeout: Optional[Union[float, int]]
     if deadline:
         # When the timeout has expired perform one final check to
@@ -271,10 +347,10 @@ async def async_receive_data(
         # timeouts on AWS Lambda and other FaaS environments.
         timeout = max(deadline - time.monotonic(), 0)
     else:
-        timeout = sock_timeout
+        timeout = conn_timeout
 
     cancellation_task = create_task(_poll_cancellation(conn))
-    read_task = create_task(conn.conn[1].read(request_id, max_message_size))
+    read_task = create_task(conn.conn.reader.read(request_id, max_message_size))
     tasks = [read_task, cancellation_task]
     done, pending = await asyncio.wait(tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
     for task in pending:
@@ -335,7 +411,7 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
 
 
 async def async_receive_message(
-    conn: AsyncConnectionProtocol,
+    conn: AsyncConnection,
     request_id: Optional[int],
     max_message_size: int = MAX_MESSAGE_SIZE,
 ) -> Union[_OpReply, _OpMsg]:
@@ -343,7 +419,7 @@ async def async_receive_message(
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
     else:
-        timeout = conn.conn[1].timeout
+        timeout = conn.conn.reader.gettimeout
         if timeout:
             deadline = time.monotonic() + timeout
         else:

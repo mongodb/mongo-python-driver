@@ -47,7 +47,7 @@ if TYPE_CHECKING:
     from bson import CodecOptions
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
-    from pymongo.asynchronous.pool import AsyncConnectionProtocol
+    from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
@@ -59,7 +59,7 @@ _IS_SYNC = False
 
 
 async def command(
-    conn: AsyncConnectionProtocol,
+    conn: AsyncConnection,
     dbname: str,
     spec: MutableMapping[str, Any],
     is_mongos: bool,
@@ -189,7 +189,7 @@ async def command(
         )
 
     try:
-        await async_sendall(conn, msg)
+        await async_sendall(conn.conn.writer, msg)
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
