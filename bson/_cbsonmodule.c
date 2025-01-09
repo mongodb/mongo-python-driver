@@ -1653,7 +1653,7 @@ void handle_invalid_doc_error(PyObject* dict) {
     PyObject *InvalidDocument = _error("InvalidDocument");
     if (InvalidDocument == NULL) {
         PyErr_Restore(etype, evalue, etrace);
-        return 0;
+        return;
     }
 
     if (PyErr_GivenExceptionMatches(etype, InvalidDocument)) {
@@ -1670,19 +1670,18 @@ void handle_invalid_doc_error(PyObject* dict) {
                 PyObject *dict_str = PyObject_Str(dict);
                 if (dict_str == NULL) {
                     Py_DECREF(msg);
-                    return 0;
+                    return;
                 }
-                PyObject *dict_str_utf8 = PyUnicode_AsUTF8(dict);
+                const char * dict_str_utf8 = PyUnicode_AsUTF8(dict);
                 Py_DECREF(dict_str);
                 if (dict_str_utf8 == NULL) {
                     Py_DECREF(msg);
-                    return 0
+                    return;
                 }
-                PyObject *msg_utf8 = PyUnicode_AsUTF8(msg);
+                const char * msg_utf8 = PyUnicode_AsUTF8(msg);
                 if (msg_utf8 == NULL) {
                     Py_DECREF(msg);
-                    Py_DECREF(dict_str_utf8)
-                    return 0
+                    return;
                 }
                 PyObject *new_msg = PyUnicode_FromFormat("Invalid document %s | %s", dict_str_utf8, msg_utf8);
                 Py_DECREF(msg_utf8);
