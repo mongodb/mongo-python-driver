@@ -63,7 +63,6 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.asynchronous.pool import _configured_socket, _raise_connection_failure
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
@@ -75,12 +74,13 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
 )
-from pymongo.network_layer import BLOCKING_IO_ERRORS, async_sendall
+from pymongo.network_layer import async_sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
+from pymongo.pool_shared import _configured_socket, _raise_connection_failure
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
-from pymongo.ssl_support import get_ssl_context
+from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
 from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern

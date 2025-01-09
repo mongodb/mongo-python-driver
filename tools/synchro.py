@@ -117,6 +117,8 @@ replacements = {
     "_async_create_lock": "_create_lock",
     "_async_create_condition": "_create_condition",
     "_async_cond_wait": "_cond_wait",
+    "AsyncNetworkingInterface": "NetworkingInterface",
+    "_configured_protocol": "_configured_socket",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

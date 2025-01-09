@@ -9,30 +9,20 @@ from typing import (
     Any,
     NoReturn,
     Optional,
-    Union,
 )
 
 from pymongo import _csot
 from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
-    ConfigurationError,
     ConnectionFailure,
-    DocumentTooLarge,
-    ExecutionTimeout,
-    InvalidOperation,
     NetworkTimeout,
-    NotPrimaryError,
-    OperationFailure,
-    PyMongoError,
-    WaitQueueTimeoutError,
     _CertificateError,
 )
-from pymongo.network_layer import PyMongoProtocol, AsyncNetworkingInterface
+from pymongo.network_layer import AsyncNetworkingInterface, NetworkingInterface, PyMongoProtocol
 from pymongo.pool_options import PoolOptions
 from pymongo.ssl_support import HAS_SNI, SSLError
 
 if TYPE_CHECKING:
-    from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
 
 try:
@@ -49,6 +39,7 @@ except ImportError:
     # everything we need from fcntl, etc.
     def _set_non_inheritable_non_atomic(fd: int) -> None:  # noqa: ARG001
         """Dummy function for platforms that don't provide fcntl."""
+
 
 _MAX_TCP_KEEPIDLE = 120
 _MAX_TCP_KEEPINTVL = 10
@@ -249,9 +240,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         raise OSError("getaddrinfo failed")
 
 
-async def _configured_protocol(
-    address: _Address, options: PoolOptions
-) -> AsyncNetworkingInterface:
+async def _configured_protocol(address: _Address, options: PoolOptions) -> AsyncNetworkingInterface:
     """Given (host, port) and PoolOptions, return a configured transport, protocol pair.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
@@ -263,9 +252,11 @@ async def _configured_protocol(
     timeout = sock.gettimeout()
 
     if ssl_context is None:
-        return AsyncNetworkingInterface(await asyncio.get_running_loop().create_connection(
-            lambda: PyMongoProtocol(timeout=timeout, buffer_size=2**16), sock=sock
-        ))
+        return AsyncNetworkingInterface(
+            await asyncio.get_running_loop().create_connection(
+                lambda: PyMongoProtocol(timeout=timeout, buffer_size=2**16), sock=sock
+            )
+        )
 
     host = address[0]
     try:
@@ -303,9 +294,7 @@ async def _configured_protocol(
     return AsyncNetworkingInterface((transport, protocol))
 
 
-def _configured_socket(
-    address: _Address, options: PoolOptions
-) -> Union[socket.socket, _sslConn]:
+def _configured_socket(address: _Address, options: PoolOptions) -> NetworkingInterface:
     """Given (host, port) and PoolOptions, return a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
@@ -317,7 +306,7 @@ def _configured_socket(
 
     if ssl_context is None:
         sock.settimeout(options.socket_timeout)
-        return sock
+        return NetworkingInterface(sock)
 
     host = address[0]
     try:
@@ -351,4 +340,4 @@ def _configured_socket(
             raise
 
     ssl_sock.settimeout(options.socket_timeout)
-    return ssl_sock
+    return NetworkingInterface(ssl_sock)

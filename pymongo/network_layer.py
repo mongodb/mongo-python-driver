@@ -26,7 +26,7 @@ from typing import (
     Union,
 )
 
-from pymongo import _csot
+from pymongo import _csot, ssl_support
 from pymongo._asyncio_task import create_task
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import decompress
@@ -59,7 +59,9 @@ _POLL_TIMEOUT = 0.5
 
 
 class NetworkingInterfaceBase:
-    def __init__(self, conn: Union[socket.socket, _sslConn] | tuple[asyncio.BaseTransport, PyMongoProtocol]):
+    def __init__(
+        self, conn: Union[socket.socket, _sslConn] | tuple[asyncio.BaseTransport, PyMongoProtocol]
+    ):
         self.conn = conn
 
     def gettimeout(self):
@@ -74,10 +76,7 @@ class NetworkingInterfaceBase:
     def is_closing(self) -> bool:
         raise NotImplementedError
 
-    def writer(self):
-        raise NotImplementedError
-
-    def reader(self):
+    def get_conn(self):
         raise NotImplementedError
 
 
@@ -99,11 +98,7 @@ class AsyncNetworkingInterface(NetworkingInterfaceBase):
         self.conn[0].is_closing()
 
     @property
-    def writer(self) -> PyMongoProtocol:
-        return self.conn[1]
-
-    @property
-    def reader(self) -> PyMongoProtocol:
+    def get_conn(self) -> PyMongoProtocol:
         return self.conn[1]
 
 
@@ -124,11 +119,7 @@ class NetworkingInterface(NetworkingInterfaceBase):
         self.conn.is_closing()
 
     @property
-    def writer(self):
-        return self.conn
-
-    @property
-    def reader(self):
+    def get_conn(self):
         return self.conn
 
 
@@ -333,35 +324,8 @@ async def _poll_cancellation(conn: AsyncConnection) -> None:
         await asyncio.sleep(_POLL_TIMEOUT)
 
 
-async def async_receive_data(
-    conn: AsyncConnection,
-    deadline: Optional[float],
-    request_id: Optional[int],
-    max_message_size: int,
-) -> memoryview:
-    conn_timeout = conn.conn.gettimeout
-    timeout: Optional[Union[float, int]]
-    if deadline:
-        # When the timeout has expired perform one final check to
-        # see if the socket is readable. This helps avoid spurious
-        # timeouts on AWS Lambda and other FaaS environments.
-        timeout = max(deadline - time.monotonic(), 0)
-    else:
-        timeout = conn_timeout
-
-    cancellation_task = create_task(_poll_cancellation(conn))
-    read_task = create_task(conn.conn.reader.read(request_id, max_message_size))
-    tasks = [read_task, cancellation_task]
-    done, pending = await asyncio.wait(tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
-    for task in pending:
-        task.cancel()
-    if pending:
-        await asyncio.wait(pending)
-    if len(done) == 0:
-        raise socket.timeout("timed out")
-    if read_task in done:
-        return read_task.result()
-    raise _OperationCancelled("operation cancelled")
+# Errors raised by sockets (and TLS sockets) when in non-blocking mode.
+BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
 
 def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> memoryview:
@@ -384,12 +348,12 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
                 short_timeout = _POLL_TIMEOUT
             conn.set_conn_timeout(short_timeout)
             try:
-                chunk_length = conn.conn.recv_into(mv[bytes_read:])
-            # except BLOCKING_IO_ERRORS:
-            #     if conn.cancel_context.cancelled:
-            #         raise _OperationCancelled("operation cancelled") from None
-            #     # We reached the true deadline.
-            #     raise socket.timeout("timed out") from None
+                chunk_length = conn.conn.get_conn.recv_into(mv[bytes_read:])
+            except BLOCKING_IO_ERRORS:
+                if conn.cancel_context.cancelled:
+                    raise _OperationCancelled("operation cancelled") from None
+                # We reached the true deadline.
+                raise socket.timeout("timed out") from None
             except socket.timeout:
                 if conn.cancel_context.cancelled:
                     raise _OperationCancelled("operation cancelled") from None
@@ -416,22 +380,42 @@ async def async_receive_message(
     max_message_size: int = MAX_MESSAGE_SIZE,
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
+    timeout: Optional[Union[float, int]]
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
     else:
-        timeout = conn.conn.reader.gettimeout
+        timeout = conn.conn.get_conn.gettimeout
         if timeout:
             deadline = time.monotonic() + timeout
         else:
             deadline = None
-    data, op_code = await async_receive_data(conn, deadline, request_id, max_message_size)
-    try:
-        unpack_reply = _UNPACK_REPLY[op_code]
-    except KeyError:
-        raise ProtocolError(
-            f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
-        ) from None
-    return unpack_reply(data)
+    if deadline:
+        # When the timeout has expired perform one final check to
+        # see if the socket is readable. This helps avoid spurious
+        # timeouts on AWS Lambda and other FaaS environments.
+        timeout = max(deadline - time.monotonic(), 0)
+
+    cancellation_task = create_task(_poll_cancellation(conn))
+    read_task = create_task(conn.conn.get_conn.read(request_id, max_message_size))
+    tasks = [read_task, cancellation_task]
+    done, pending = await asyncio.wait(tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
+    for task in pending:
+        task.cancel()
+    if pending:
+        await asyncio.wait(pending)
+    if len(done) == 0:
+        raise socket.timeout("timed out")
+    if read_task in done:
+        data, op_code = read_task.result()
+
+        try:
+            unpack_reply = _UNPACK_REPLY[op_code]
+        except KeyError:
+            raise ProtocolError(
+                f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
+            ) from None
+        return unpack_reply(data)
+    raise _OperationCancelled("operation cancelled")
 
 
 def receive_message(

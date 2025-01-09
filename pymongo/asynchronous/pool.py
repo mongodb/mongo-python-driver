@@ -17,11 +17,8 @@ from __future__ import annotations
 import asyncio
 import collections
 import contextlib
-import functools
 import logging
 import os
-import socket
-import ssl
 import sys
 import time
 import weakref
@@ -52,16 +49,13 @@ from pymongo.common import (
 from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConfigurationError,
-    ConnectionFailure,
     DocumentTooLarge,
     ExecutionTimeout,
     InvalidOperation,
-    NetworkTimeout,
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
     WaitQueueTimeoutError,
-    _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.lock import (
@@ -79,10 +73,15 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
 )
-from pymongo.network_layer import async_receive_message, async_sendall, AsyncNetworkingInterface
+from pymongo.network_layer import AsyncNetworkingInterface, async_receive_message, async_sendall
 from pymongo.pool_options import PoolOptions
-from pymongo.pool_shared import _configured_protocol, _CancellationContext, _get_timeout_details, format_timeout_details, \
-    _raise_connection_failure
+from pymongo.pool_shared import (
+    _CancellationContext,
+    _configured_protocol,
+    _get_timeout_details,
+    _raise_connection_failure,
+    format_timeout_details,
+)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -101,7 +100,6 @@ if TYPE_CHECKING:
         ZstdContext,
     )
     from pymongo.message import _OpMsg, _OpReply
-    from pymongo.pyopenssl_context import _sslConn
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.typings import ClusterTime, _Address, _CollationIn
@@ -195,6 +193,7 @@ class AsyncConnection:
         if timeout == self.last_timeout:
             return
         self.last_timeout = timeout
+        self.conn.get_conn.settimeout(timeout)
 
     def apply_timeout(
         self, client: AsyncMongoClient, cmd: Optional[MutableMapping[str, Any]]
@@ -453,7 +452,7 @@ class AsyncConnection:
             )
 
         try:
-            await async_sendall(self.conn.writer, message)
+            await async_sendall(self.conn.get_conn, message)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -589,7 +588,10 @@ class AsyncConnection:
 
     def conn_closed(self) -> bool:
         """Return True if we know socket has been closed, False otherwise."""
-        return self.conn.is_closing()
+        if _IS_SYNC:
+            return self.socket_checker.socket_closed(self.conn.get_conn)
+        else:
+            return self.conn.is_closing()
 
     def send_cluster_time(
         self,
@@ -977,9 +979,7 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    async def connect(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AsyncConnection:
+    async def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> AsyncConnection:
         """Connect to Mongo and return a new AsyncConnection.
 
         Can raise ConnectionFailure.

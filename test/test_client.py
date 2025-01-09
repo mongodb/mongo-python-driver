@@ -1279,7 +1279,7 @@ class TestClient(IntegrationTest):
     def test_socketKeepAlive(self):
         pool = get_pool(self.client)
         with pool.checkout() as conn:
-            keepalive = conn.conn.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
+            keepalive = conn.conn.get_conn.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
             self.assertTrue(keepalive)
 
     @no_type_check
