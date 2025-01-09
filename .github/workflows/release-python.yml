@@ -102,7 +102,7 @@ jobs:
           aws_region_name: ${{ vars.AWS_REGION_NAME }}
           aws_secret_id: ${{ secrets.AWS_SECRET_ID }}
           artifactory_username: ${{ vars.ARTIFACTORY_USERNAME }}
-      - uses: mongodb-labs/drivers-github-tools/python/publish@v2
+      - uses: mongodb-labs/drivers-github-tools/python/post-publish@v2
         with:
           version: ${{ inputs.version }}
           following_version: ${{ inputs.following_version }}
