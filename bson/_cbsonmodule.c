@@ -1647,7 +1647,7 @@ fail:
 
 /* Update Invalid Document error message to include doc.
  */
-void handle_invalid_doc_error() {
+void handle_invalid_doc_error(PyObject* dict) {
     PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
     PyErr_Fetch(&etype, &evalue, &etrace);
     PyObject *InvalidDocument = _error("InvalidDocument");
@@ -1808,7 +1808,7 @@ int write_dict(PyObject* self, buffer_t buffer,
                 Py_DECREF(key);
                 Py_DECREF(value);
                 if (PyErr_Occurred() && top_level) {
-                    handle_invalid_doc_error();
+                    handle_invalid_doc_error(dict);
                 }
                 return 0;
             }
@@ -1832,7 +1832,7 @@ int write_dict(PyObject* self, buffer_t buffer,
                 Py_DECREF(value);
                 Py_DECREF(iter);
                 if (PyErr_Occurred() && top_level) {
-                    handle_invalid_doc_error();
+                    handle_invalid_doc_error(dict);
                 }
                 return 0;
             }
