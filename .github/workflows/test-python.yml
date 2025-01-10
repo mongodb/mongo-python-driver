@@ -32,7 +32,7 @@ jobs:
           python -m pip install -U pip hatch rust-just
       - name: Run linters
         run: |
-          just-manual
+          just lint-manual
       - name: Run compilation
         run: |
           export PYMONGO_C_EXT_MUST_BUILD=1
