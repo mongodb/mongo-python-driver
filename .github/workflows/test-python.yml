@@ -29,10 +29,10 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
       - name: Install Python dependencies
         run: |
-          python -m pip install -U pip hatch
+          python -m pip install -U pip hatch rust-just
       - name: Run linters
         run: |
-          hatch run lint:run-manual
+          just-manual
       - name: Run compilation
         run: |
           export PYMONGO_C_EXT_MUST_BUILD=1
@@ -40,7 +40,7 @@ jobs:
           python tools/fail_if_no_c.py
       - name: Run typecheck
         run: |
-          hatch run typing:check
+          just typing
       - run: |
           sudo apt-get install -y cppcheck
       - run: |
@@ -75,7 +75,7 @@ jobs:
           allow-prereleases: true
       - name: Install dependencies
         run: |
-          pip install -U pip
+          pip install -U pip rust-just
           if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
             pip install --pre cffi setuptools
             pip install --no-build-isolation hatch
@@ -95,7 +95,7 @@ jobs:
           if [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
             pytest -v --durations=5 --maxfail=10
           else
-            hatch run test:test
+            just test
           fi
 
   doctest:
@@ -113,14 +113,14 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
       - name: Install dependencies
         run: |
-          pip install -U hatch pip
+          pip install -U hatch pip rust-just
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.12.0
         with:
           mongodb-version: '8.0.0-rc4'
       - name: Run tests
         run: |
-          hatch run doctest:test
+          just doctest
 
   docs:
     name: Docs Checks
@@ -137,10 +137,10 @@ jobs:
           python-version: '3.9'
       - name: Install dependencies
         run: |
-          pip install -U pip hatch
+          pip install -U pip hatch rust-just
       - name: Build docs
         run: |
-          hatch run doc:build
+          just docs
 
   linkcheck:
     name: Link Check
@@ -160,7 +160,7 @@ jobs:
           pip install -U pip hatch
       - name: Build docs
         run: |
-          hatch run doc:linkcheck
+          just docs-linkcheck
 
   typing:
     name: Typing Tests
@@ -179,10 +179,10 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
       - name: Install dependencies
         run: |
-          pip install -U pip hatch
+          pip install -U pip hatch rust-just
       - name: Run typecheck
         run: |
-          hatch run typing:check
+          just typing
 
   make_sdist:
     runs-on: ubuntu-latest
