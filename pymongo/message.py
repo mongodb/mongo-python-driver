@@ -24,7 +24,6 @@ from __future__ import annotations
 import datetime
 import random
 import struct
-from collections import ChainMap
 from io import BytesIO as _BytesIO
 from typing import (
     TYPE_CHECKING,
@@ -1117,14 +1116,14 @@ def _client_batched_op_msg_impl(
         op_doc[op_type] = ns_info[namespace]  # type: ignore[index]
 
         # Since the data document itself is nested within the insert document
-        # it won't be automatically re-ordered by the BSON conversion.
-        # We use ChainMap here to make the _id field the first field instead.
+        # it won't be automatically re-ordered by the BSON conversion, so we need
+        # to encode it directly as a top-level document first.
         doc_to_encode = op_doc
         if real_op_type == "insert":
             doc = op_doc["document"]
             if not isinstance(doc, RawBSONDocument):
                 doc_to_encode = op_doc.copy()  # type: ignore[attr-defined] # Shallow copy
-                doc_to_encode["document"] = ChainMap(doc, {"_id": doc["_id"]})  # type: ignore[index]
+                doc_to_encode["document"] = RawBSONDocument(_dict_to_bson(doc, False, opts))  # type: ignore[index]
 
         # Encode current operation doc and, if newly added, namespace doc.
         op_doc_encoded = _dict_to_bson(doc_to_encode, False, opts)
