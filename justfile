@@ -12,7 +12,7 @@ install:
     bash .evergreen/scripts/ensure-hatch.sh
 
 [group('docs')]
-docs-build:
+docs:
     source .evergreen/scripts/ensure-hatch.sh && hatch run doc:build
 
 [group('docs')]
