@@ -136,35 +136,35 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     fi
 
     python -m pip install '.[encryption]'
-    pip install pymongocrypt==1.11
-    # # Use the nocrypto build to avoid dependency issues with older windows/python versions.
-    # BASE=$(pwd)/libmongocrypt/nocrypto
-    # if [ -f "${BASE}/lib/libmongocrypt.so" ]; then
-    #     PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.so
-    # elif [ -f "${BASE}/lib/libmongocrypt.dylib" ]; then
-    #     PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.dylib
-    # elif [ -f "${BASE}/bin/mongocrypt.dll" ]; then
-    #     PYMONGOCRYPT_LIB=${BASE}/bin/mongocrypt.dll
-    #     # libmongocrypt's windows dll is not marked executable.
-    #     chmod +x $PYMONGOCRYPT_LIB
-    #     PYMONGOCRYPT_LIB=$(cygpath -m $PYMONGOCRYPT_LIB)
-    # elif [ -f "${BASE}/lib64/libmongocrypt.so" ]; then
-    #     PYMONGOCRYPT_LIB=${BASE}/lib64/libmongocrypt.so
-    # else
-    #     echo "Cannot find libmongocrypt shared object file"
-    #     exit 1
-    # fi
-    # export PYMONGOCRYPT_LIB
 
-    # # TODO: Test with 'pip install pymongocrypt'
-    # if [ ! -d "libmongocrypt_git" ]; then
-    #   git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
-    # fi
-    # python -m pip install -U setuptools
-    # python -m pip install ./libmongocrypt_git/bindings/python
-    # python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
-    # python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
-    # # PATH is updated by PREPARE_SHELL for access to mongocryptd.
+    # Use the nocrypto build to avoid dependency issues with older windows/python versions.
+    BASE=$(pwd)/libmongocrypt/nocrypto
+    if [ -f "${BASE}/lib/libmongocrypt.so" ]; then
+        PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.so
+    elif [ -f "${BASE}/lib/libmongocrypt.dylib" ]; then
+        PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.dylib
+    elif [ -f "${BASE}/bin/mongocrypt.dll" ]; then
+        PYMONGOCRYPT_LIB=${BASE}/bin/mongocrypt.dll
+        # libmongocrypt's windows dll is not marked executable.
+        chmod +x $PYMONGOCRYPT_LIB
+        PYMONGOCRYPT_LIB=$(cygpath -m $PYMONGOCRYPT_LIB)
+    elif [ -f "${BASE}/lib64/libmongocrypt.so" ]; then
+        PYMONGOCRYPT_LIB=${BASE}/lib64/libmongocrypt.so
+    else
+        echo "Cannot find libmongocrypt shared object file"
+        exit 1
+    fi
+    export PYMONGOCRYPT_LIB
+
+    # TODO: Test with 'pip install pymongocrypt'
+    if [ ! -d "libmongocrypt_git" ]; then
+      git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
+    fi
+    python -m pip install -U setuptools
+    python -m pip install ./libmongocrypt_git/bindings/python
+    python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
+    python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
+    # PATH is updated by PREPARE_SHELL for access to mongocryptd.
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then

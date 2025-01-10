@@ -213,6 +213,9 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                     if not data:
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
+            # Async raises an OSError instead of returning empty bytes
+            except OSError as err:
+                raise OSError("KMS connection closed") from err
             except MongoCryptError:
                 raise  # Propagate MongoCryptError errors directly.
             except Exception as exc:
