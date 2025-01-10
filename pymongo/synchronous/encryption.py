@@ -213,16 +213,20 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                     if not data:
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
-            # Async raises an OSError instead of returning empty bytes
-            except OSError as err:
-                raise OSError("KMS connection closed") from err
             except MongoCryptError:
                 raise  # Propagate MongoCryptError errors directly.
             except Exception as exc:
                 # Wrap I/O errors in PyMongo exceptions.
                 if isinstance(exc, BLOCKING_IO_ERRORS):
                     exc = socket.timeout("timed out")
-                _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
+                # Async raises an OSError instead of returning empty bytes.
+                if isinstance(exc, OSError):
+                    msg_prefix = "KMS connection closed"
+                else:
+                    msg_prefix = None
+                _raise_connection_failure(
+                    address, exc, msg_prefix=msg_prefix, timeout_details=_get_timeout_details(opts)
+                )
             finally:
                 conn.close()
         except MongoCryptError:
