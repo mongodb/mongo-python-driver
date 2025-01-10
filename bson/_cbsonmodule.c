@@ -1649,59 +1649,48 @@ fail:
  */
 void handle_invalid_doc_error(PyObject* dict) {
     PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
+    PyObject *msg = NULL, *dict_str = NULL, *new_msg = NULL;
     PyErr_Fetch(&etype, &evalue, &etrace);
     PyObject *InvalidDocument = _error("InvalidDocument");
     if (InvalidDocument == NULL) {
-        PyErr_Restore(etype, evalue, etrace);
-        return;
+        goto cleanup;
     }
 
-    if (PyErr_GivenExceptionMatches(etype, InvalidDocument)) {
-
-        Py_DECREF(etype);
-        etype = InvalidDocument;
-
-        if (evalue) {
-            PyObject *msg = PyObject_Str(evalue);
+    if (evalue && PyErr_GivenExceptionMatches(etype, InvalidDocument)) {
+        PyObject *msg = PyObject_Str(evalue);
+        if (msg) {
+            // Prepend doc to the existing message
+            PyObject *dict_str = PyObject_Str(dict);
+            if (dict_str == NULL) {
+                goto cleanup;
+            }
+            const char * dict_str_utf8 = PyUnicode_AsUTF8(dict_str);
+            if (dict_str_utf8 == NULL) {
+                goto cleanup;
+            }
+            const char * msg_utf8 = PyUnicode_AsUTF8(msg);
+            if (msg_utf8 == NULL) {
+                goto cleanup;
+            }
+            PyObject *new_msg = PyUnicode_FromFormat("Invalid document %s | %s", dict_str_utf8, msg_utf8);
             Py_DECREF(evalue);
-
-            if (msg) {
-                // Prepend doc to the existing message
-                PyObject *dict_str = PyObject_Str(dict);
-                if (dict_str == NULL) {
-                    Py_DECREF(msg);
-                    return;
-                }
-                const char * dict_str_utf8 = PyUnicode_AsUTF8(dict);
-                Py_DECREF(dict_str);
-                if (dict_str_utf8 == NULL) {
-                    Py_DECREF(msg);
-                    return;
-                }
-                const char * msg_utf8 = PyUnicode_AsUTF8(msg);
-                if (msg_utf8 == NULL) {
-                    Py_DECREF(msg);
-                    return;
-                }
-                PyObject *new_msg = PyUnicode_FromFormat("Invalid document %s | %s", dict_str_utf8, msg_utf8);
-                Py_DECREF(msg_utf8);
-
-                if (new_msg) {
-                    Py_DECREF(msg);
-                    evalue = new_msg;
-                }
-                else {
-                    Py_DECREF(new_msg);
-                    evalue = msg;
-                }
+            Py_DECREF(etype);
+            etype = InvalidDocument;
+            InvalidDocument = NULL;
+            if (new_msg) {
+                evalue = new_msg;
+            } else {
+                evalue = msg;
             }
         }
         PyErr_NormalizeException(&etype, &evalue, &etrace);
     }
-    else {
-        Py_DECREF(InvalidDocument);
-    }
+cleanup:
     PyErr_Restore(etype, evalue, etrace);
+    Py_XDECREF(msg);
+    Py_XDECREF(InvalidDocument);
+    Py_XDECREF(dict_str);
+    Py_XDECREF(new_msg);
 }
 
 
@@ -1804,8 +1793,6 @@ int write_dict(PyObject* self, buffer_t buffer,
         while (PyDict_Next(dict, &pos, &key, &value)) {
             if (!decode_and_write_pair(self, buffer, key, value,
                                     check_keys, options, top_level)) {
-                Py_DECREF(key);
-                Py_DECREF(value);
                 if (PyErr_Occurred() && top_level) {
                     handle_invalid_doc_error(dict);
                 }
@@ -1827,12 +1814,12 @@ int write_dict(PyObject* self, buffer_t buffer,
             }
             if (!decode_and_write_pair(self, buffer, key, value,
                                     check_keys, options, top_level)) {
-                Py_DECREF(key);
-                Py_DECREF(value);
-                Py_DECREF(iter);
                 if (PyErr_Occurred() && top_level) {
                     handle_invalid_doc_error(dict);
                 }
+                Py_DECREF(key);
+                Py_DECREF(value);
+                Py_DECREF(iter);
                 return 0;
             }
             Py_DECREF(key);

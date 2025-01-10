@@ -1112,6 +1112,34 @@ class TestBSON(unittest.TestCase):
         with self.assertRaisesRegex(InvalidDocument, f"Invalid document {doc}"):
             encode(doc)
 
+    def test_doc_in_invalid_document_error_message_mapping(self):
+        class MyMapping(abc.Mapping):
+            def keys():
+                return ["t"]
+
+            def __getitem__(self, name):
+                if name == "_id":
+                    return None
+                return Wrapper(name)
+
+            def __len__(self):
+                return 1
+
+            def __iter__(self):
+                return iter(["t"])
+
+        class Wrapper:
+            def __init__(self, val):
+                self.val = val
+
+            def __repr__(self):
+                return repr(self.val)
+
+        self.assertEqual("1", repr(Wrapper(1)))
+        doc = MyMapping()
+        with self.assertRaisesRegex(InvalidDocument, f"Invalid document {doc}"):
+            encode(doc)
+
 
 class TestCodecOptions(unittest.TestCase):
     def test_document_class(self):
