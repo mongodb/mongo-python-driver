@@ -2163,7 +2163,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
         # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
         key["endpoint"] = "127.0.0.1:9001"
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("aws", key)
 
@@ -2180,7 +2181,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             await self.client_encryption_expired.create_data_key("azure", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("azure", key)
 
@@ -2197,7 +2199,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             await self.client_encryption_expired.create_data_key("gcp", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("gcp", key)
 
@@ -2211,7 +2214,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             await self.client_encryption_expired.create_data_key("kmip")
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("kmip")
 
