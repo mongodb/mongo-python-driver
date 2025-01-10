@@ -98,7 +98,6 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
-from pymongo.ssl_support import get_ssl_context
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = False
@@ -2879,15 +2878,8 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
     async def http_post(self, path, data=None):
         # Note, the connection to the mock server needs to be closed after
         # each request because the server is single threaded.
-        ctx: ssl.SSLContext = get_ssl_context(
-            CLIENT_PEM,  # certfile
-            None,  # passphrase
-            CA_PEM,  # ca_certs
-            None,  # crlfile
-            False,  # allow_invalid_certificates
-            False,  # allow_invalid_hostnames
-            False,  # disable_ocsp_endpoint_check
-        )
+        ctx = ssl.create_default_context(cafile=CA_PEM)
+        ctx.load_cert_chain(CLIENT_PEM)
         conn = http.client.HTTPSConnection("127.0.0.1:9003", context=ctx)
         try:
             if data is not None:
