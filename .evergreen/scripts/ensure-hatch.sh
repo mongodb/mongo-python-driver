@@ -8,9 +8,11 @@ pushd "$(dirname "$(dirname $HERE)")" > /dev/null
 # Ensure hatch is available locally.
 VENV_DIR=.venv
 if [ -f $VENV_DIR/Scripts/hatch ]; then
+  . $VENV_DIR/Scripts/activate
   return 0
 fi
 if [ -f $VENV_DIR/bin/hatch ]; then
+  . $VENV_DIR/bin/activate
   return 0
 fi
 
