@@ -63,7 +63,7 @@ if [ -d .git ]; then
   fi
 
   # Ensure the pre-commit hook is installed.
-  if ! -f .git/hooks/pre-commit ]; then
+  if [ ! -f .git/hooks/pre-commit ]; then
     pre-commit install
   fi
 fi

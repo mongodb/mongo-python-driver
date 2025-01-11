@@ -14,14 +14,19 @@ else
 fi
 
 # Install just.
-if [ ! -f $HOME/.local/bin/just ]; then
-  curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to "$HOME/.local/bin" || {
+if [ "${CI:-}" == "true" ]; then
+  BIN_DIR=$MONGODB_BINARIES
+else
+  BIN_DIR=$HOME/.local/bin
+fi
+if [ ! -f $BIN_DIR/just ]; then
+  curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to "$BIN_DIR" || {
     # CARGO_HOME is defined in configure-env.sh
     export CARGO_HOME=${CARGO_HOME:-$HOME/.cargo/}
     export RUSTUP_HOME="${CARGO_HOME}/.rustup"
     ${DRIVERS_TOOLS}/.evergreen/install-rust.sh
     cargo install just
-    mv $CARGO_HOME/just $HOME/.local/bin
+    mv $CARGO_HOME/just $BIN_DIR
   }
 fi
 
