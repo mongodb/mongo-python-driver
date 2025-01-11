@@ -51,4 +51,4 @@ GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
   TEST_DATA_LAKE=${TEST_DATA_LAKE:-} \
   TEST_SUITES=${TEST_SUITES:-} \
   MONGODB_API_VERSION=${MONGODB_API_VERSION} \
-  bash "${PROJECT_DIRECTORY}"/.evergreen/test.sh test-eg
+  bash "${PROJECT_DIRECTORY}"/.evergreen/just.sh test-eg
