@@ -158,6 +158,7 @@ pre-commit run --all-files --hook-stage manual ruff
 Typically we use `just` to run the linters, e.g.
 
 ```bash
+just install  # this will install a venv with pre-commit installed, and install the pre-commit hook.
 just typing-mypy
 just run lint-manual
 ```
@@ -194,7 +195,8 @@ the pages will re-render and the browser will automatically refresh.
 
 -   Ensure you have started the appropriate Mongo Server(s).
 -   Run `just install` to set up `hatch` in a local virtual environment, or you can manually
-    create a virtual environment and run `pytest` directly.
+    create a virtual environment and run `pytest` directly.  If you want to use a specific
+    version of Python, remove the `.venv` folder and set `PYTHON_BINARY` before running `just install`.
 -   Run `just test` or `pytest` to run all of the tests.
 -   Append `test/<mod_name>.py::<class_name>::<test_name>` to run
     specific tests. You can omit the `<test_name>` to test a full class

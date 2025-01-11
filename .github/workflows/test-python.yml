@@ -27,9 +27,11 @@ jobs:
           python-version: "3.9"
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
+      - name: Install just
+        uses: extractions/setup-just@v2
       - name: Install Python dependencies
         run: |
-          python -m pip install -U pip hatch rust-just pre-commit
+          just install
       - name: Run linters
         run: |
           just lint-manual
@@ -73,18 +75,16 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
           allow-prereleases: true
+      - name: Install just
+        uses: extractions/setup-just@v2
       - name: Install dependencies
         run: |
-          pip install -U pip rust-just
-          if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
-            pip install --pre cffi setuptools
-            pip install --no-build-isolation hatch
-          elif [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
+         if [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
             # Hatch can't be installed on 3.13t, use pytest directly.
             pip install .
             pip install -r requirements/test.txt
           else
-            pip install hatch
+            just install
           fi
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.12.0
@@ -111,9 +111,8 @@ jobs:
           python-version: "3.9"
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
-      - name: Install dependencies
-        run: |
-          pip install -U hatch pip rust-just
+      - name: Install just
+        uses: extractions/setup-just@v2
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.12.0
         with:
@@ -135,9 +134,11 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
           # Build docs on lowest supported Python for furo
           python-version: '3.9'
+      - name: Install just
+        uses: extractions/setup-just@v2
       - name: Install dependencies
         run: |
-          pip install -U pip hatch rust-just
+          just install
       - name: Build docs
         run: |
           just docs
@@ -155,9 +156,11 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
           # Build docs on lowest supported Python for furo
           python-version: '3.9'
+      - name: Install just
+        uses: extractions/setup-just@v2
       - name: Install dependencies
         run: |
-          pip install -U pip hatch rust-just
+          just install
       - name: Build docs
         run: |
           just docs-linkcheck
@@ -177,9 +180,11 @@ jobs:
           python-version: "${{matrix.python}}"
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
+      - name: Install just
+        uses: extractions/setup-just@v2
       - name: Install dependencies
         run: |
-          pip install -U pip hatch rust-just
+          just install
       - name: Run typecheck
         run: |
           just typing

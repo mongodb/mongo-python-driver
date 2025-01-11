@@ -1,5 +1,5 @@
 #!/bin/bash
 set -eu
 
-. .evergreen/scripts/ensure-hatch.sh
+. .evergreen/scripts/setup-dev-env.sh
 hatch run "$@"

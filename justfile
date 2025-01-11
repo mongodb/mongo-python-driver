@@ -3,57 +3,62 @@ set shell := ["bash", "-c"]
 set dotenv-load
 set dotenv-filename := "./.evergreen/scripts/env.sh"
 
+# Handle cross-platform paths to local python cli tools.
+python_bin_dir := if os_family() == "windows" { "./.venv/Scripts" } else { "./.venv/bin" }
+hatch_bin := python_bin_dir + "/hatch"
+pre_commit_bin := python_bin_dir + "/pre-commit"
+
 # Make the default recipe private so it doesn't show up in the list.
 [private]
 default:
   @just --list
 
 install:
-    bash .evergreen/scripts/ensure-hatch.sh
+   bash .evergreen/scripts/setup-dev-env.sh
 
 [group('docs')]
 docs:
-    source .evergreen/scripts/ensure-hatch.sh && hatch run doc:build
+    {{hatch_bin}} run doc:build
 
 [group('docs')]
 docs-serve:
-    source .evergreen/scripts/ensure-hatch.sh && hatch run doc:serve
+    {{hatch_bin}} run doc:serve
 
 [group('docs')]
 docs-linkcheck:
-    hatch run doc:linkcheck
+    {{hatch_bin}} run doc:linkcheck
 
 [group('docs')]
 docs-test:
-    source .evergreen/scripts/ensure-hatch.sh && hatch run doctest:test
+    {{hatch_bin}} run doctest:test
 
 [group('typing')]
 typing:
-    source .evergreen/scripts/ensure-hatch.sh && hatch run typing:check
+    {{hatch_bin}} run typing:check
 
 [group('typing')]
 typing-mypy:
-    source .evergreen/scripts/ensure-hatch.sh && hatch run typing:mypy
+    {{hatch_bin}} run typing:mypy
 
 [group('lint')]
 lint:
-    pre-commit run --all-files
+    {{pre_commit_bin}} run --all-files
 
 [group('lint')]
 lint-manual:
-    pre-commit run --all-files --hook-stage manual
+    {{pre_commit_bin}} run --all-files --hook-stage manual
 
 [group('test')]
 test *args:
-    source .evergreen/scripts/ensure-hatch.sh && hatch run test:test {{args}}
+    {{hatch_bin}} run test:test {{args}}
 
 [group('test')]
 test-mockupdb:
-    source .evergreen/scripts/ensure-hatch.sh && hatch run test:test-mockupdb
+    {{hatch_bin}} run test:test-mockupdb
 
 [group('test')]
 test-eg *args:
-    source .evergreen/scripts/ensure-hatch.sh && hatch run test:test-eg {{args}}
+    {{hatch_bin}} run test:test-eg {{args}}
 
 [group('encryption')]
 setup-encryption:
