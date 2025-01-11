@@ -15,7 +15,7 @@ fi
 
 # Install just.
 if [ "${CI:-}" == "true" ]; then
-  BIN_DIR=$MONGODB_BINARIES
+  BIN_DIR=$DRIVERS_TOOLS_BINARIES
 else
   BIN_DIR=$HOME/.local/bin
 fi

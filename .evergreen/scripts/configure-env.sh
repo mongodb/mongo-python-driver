@@ -34,6 +34,7 @@ fi
 
 export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
 export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
+export DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
 
 cat <<EOT > "$SCRIPT_DIR"/env.sh
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
@@ -61,7 +62,7 @@ export skip_ECS_auth_test="${skip_ECS_auth_test:-}"
 export CARGO_HOME="$CARGO_HOME"
 export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
 export HATCH_CONFIG="$HATCH_CONFIG"
-export PATH="$MONGODB_BINARIES:$PATH"
+export PATH="$MONGODB_BINARIES:$DRIVERS_TOOLS_BINARIES:$PATH"
 # shellcheck disable=SC2154
 export PROJECT="${project:-mongo-python-driver}"
 export PIP_QUIET=1
