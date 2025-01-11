@@ -2,4 +2,4 @@
 set -eu
 
 . .evergreen/scripts/setup-dev-env.sh
-hatch run "$@"
+just "$@"

@@ -56,14 +56,16 @@ if [ ! -f ${HATCH_CONFIG} ]; then
   hatch config set dirs.cache "$(pwd)/.hatch/cache"
 fi
 
-# Ensure there is a local pre-commit.
-if [ ! -f $BIN_DIR/pre-commit ]; then
-  python -m pip install pre-commit
-fi
+# Ensure there is a local pre-commit if there is a git checkout.
+if [ -d .git ]; then
+  if [ ! -f $BIN_DIR/pre-commit ]; then
+    python -m pip install pre-commit
+  fi
 
-# Ensure the pre-commit hook is installed.
-if [ ! -f .git/hooks/pre-commit ]; then
-  pre-commit install
+  # Ensure the pre-commit hook is installed.
+  if ! -f .git/hooks/pre-commit ]; then
+    pre-commit install
+  fi
 fi
 
 # Install pymongo and its test deps.

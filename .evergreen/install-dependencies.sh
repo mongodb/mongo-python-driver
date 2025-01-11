@@ -13,6 +13,18 @@ else
   SUDO="sudo"
 fi
 
+# Install just.
+if [ ! -f $HOME/.local/bin/just ]; then
+  curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to "$HOME/.local/bin" || {
+    # CARGO_HOME is defined in configure-env.sh
+    export CARGO_HOME=${CARGO_HOME:-$HOME/.cargo/}
+    export RUSTUP_HOME="${CARGO_HOME}/.rustup"
+    ${DRIVERS_TOOLS}/.evergreen/install-rust.sh
+    cargo install just
+    mv $CARGO_HOME/just $HOME/.local/bin
+  }
+fi
+
 # Add 'server' and 'hostname_not_in_cert' as a hostnames
 echo "127.0.0.1 server" | $SUDO tee -a /etc/hosts
 echo "127.0.0.1 hostname_not_in_cert" | $SUDO tee -a /etc/hosts
