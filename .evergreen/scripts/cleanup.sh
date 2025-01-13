@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ -f "$DRIVERS_TOOLS"/.evergreen/csfle/secrets-export.sh ]; then
-  . .evergreen/hatch.sh encryption:teardown
+  bash .evergreen/teardown-encryption.sh
 fi
 rm -rf "${DRIVERS_TOOLS}" || true
 rm -f ./secrets-export.sh || true

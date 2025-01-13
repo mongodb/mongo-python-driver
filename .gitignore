@@ -25,6 +25,8 @@ libmongocrypt/
 libmongocrypt_git/
 hatch_config.toml
 .venv
+expansion.yml
+.evergreen/scripts/env.sh
 
 # Lambda temp files
 test/lambda/.aws-sam

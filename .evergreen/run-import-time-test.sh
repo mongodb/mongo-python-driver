@@ -5,7 +5,7 @@ set -x
 
 . .evergreen/utils.sh
 
-if [ -z "$PYTHON_BINARY" ]; then
+if [ -z "${PYTHON_BINARY:-}" ]; then
     PYTHON_BINARY=$(find_python3)
 fi
 

@@ -30,4 +30,4 @@ set -x
 export TEST_AUTH_AWS=1
 export AUTH="auth"
 export SET_XTRACE_ON=1
-bash ./.evergreen/hatch.sh test:test-eg
+bash ./.evergreen/just.sh test-eg

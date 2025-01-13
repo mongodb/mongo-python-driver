@@ -1,6 +1,6 @@
-#!/bin/bash -ex
+#!/bin/bash
 
-set -o xtrace
+set -eu
 
 find_python3() {
     PYTHON=""
