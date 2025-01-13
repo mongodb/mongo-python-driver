@@ -965,6 +965,7 @@ class Topology:
             driver=options.driver,
             pause_enabled=False,
             server_api=options.server_api,
+            proxy=options.proxy,
         )
 
         return self._settings.pool_class(
