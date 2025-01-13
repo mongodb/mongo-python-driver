@@ -91,6 +91,10 @@ filterwarnings = [
     "module:unclosed <socket.socket:ResourceWarning",
     "module:unclosed <ssl.SSLSocket:ResourceWarning",
     "module:unclosed <socket object:ResourceWarning",
+    # TODO: Remove the next three as part of full migration to Pytest (ADD TICKET)
+    "module:unclosed transport:ResourceWarning",
+    "module:unclosed <_SelectorSocketTransport:ResourceWarning",
+    "module:Unclosed AsyncMongoClient:ResourceWarning",
     # https://github.com/eventlet/eventlet/issues/818
     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314

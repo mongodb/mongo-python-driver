@@ -22,7 +22,6 @@ sys.path[0:0] = [""]
 from test.asynchronous import (
     AsyncIntegrationTest,
     async_client_context,
-    reset_client_context,
     unittest,
 )
 from test.asynchronous.helpers import async_repl_set_step_down
@@ -105,7 +104,7 @@ class TestAsyncConnectionsSurvivePrimaryStepDown(AsyncIntegrationTest):
         await self.set_fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["insert"], "errorCode": error_code}}
         )
-        self.addAsyncCleanup(self.set_fail_point, {"mode": "off"})
+        self.addToCleanup(self.set_fail_point, {"mode": "off"})
         # Insert record and verify failure.
         with self.assertRaises(NotPrimaryError) as exc:
             await self.coll.insert_one({"test": 1})

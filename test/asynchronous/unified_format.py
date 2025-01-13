@@ -689,7 +689,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             "createChangeStream", target, AsyncMongoClient, AsyncDatabase, AsyncCollection
         )
         stream = await target.watch(*args, **kwargs)
-        self.addAsyncCleanup(stream.close)
+        self.addToCleanup(stream.close)
         return stream
 
     async def _clientOperation_createChangeStream(self, target, *args, **kwargs):
@@ -787,7 +787,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         if "filter" not in kwargs:
             self.fail('createFindCursor requires a "filter" argument')
         cursor = await NonLazyCursor.create(target.find(*args, **kwargs), target.database.client)
-        self.addAsyncCleanup(cursor.close)
+        self.addToCleanup(cursor.close)
         return cursor
 
     def _collectionOperation_count(self, target, *args, **kwargs):
@@ -1010,7 +1010,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         cmd_on = SON([("configureFailPoint", "failCommand")])
         cmd_on.update(command_args)
         await client.admin.command(cmd_on)
-        self.addAsyncCleanup(
+        self.addToCleanup(
             client.admin.command, "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
         )
 
@@ -1386,7 +1386,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         await self.kill_all_sessions()
-        self.addAsyncCleanup(self.kill_all_sessions)
+        self.addToCleanup(self.kill_all_sessions)
 
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.

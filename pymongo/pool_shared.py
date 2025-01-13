@@ -249,7 +249,7 @@ async def _configured_protocol(address: _Address, options: PoolOptions) -> Async
     """
     sock = _create_connection(address, options)
     ssl_context = options._ssl_context
-    timeout = sock.gettimeout()
+    timeout = options.socket_timeout
 
     if ssl_context is None:
         return AsyncNetworkingInterface(
@@ -269,12 +269,12 @@ async def _configured_protocol(address: _Address, options: PoolOptions) -> Async
             ssl=ssl_context,
         )
     except _CertificateError:
-        transport.close()
+        transport.abort()
         # Raise _CertificateError directly like we do after match_hostname
         # below.
         raise
     except (OSError, SSLError) as exc:
-        transport.close()
+        transport.abort()
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
@@ -288,7 +288,7 @@ async def _configured_protocol(address: _Address, options: PoolOptions) -> Async
         try:
             ssl.match_hostname(transport.get_extra_info("peercert"), hostname=host)  # type:ignore[attr-defined]
         except _CertificateError:
-            transport.close()
+            transport.abort()
             raise
 
     return AsyncNetworkingInterface((transport, protocol))

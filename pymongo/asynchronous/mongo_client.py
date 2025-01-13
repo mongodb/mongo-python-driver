@@ -1951,7 +1951,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 # exhausted the result set we *must* close the socket
                 # to stop the server from sending more data.
                 assert conn_mgr.conn is not None
-                conn_mgr.conn.close_conn(ConnectionClosedReason.ERROR)
+                await conn_mgr.conn.close_conn(ConnectionClosedReason.ERROR)
             else:
                 await self._close_cursor_now(cursor_id, address, session=session, conn_mgr=conn_mgr)
         if conn_mgr:

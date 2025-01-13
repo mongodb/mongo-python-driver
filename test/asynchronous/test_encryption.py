@@ -235,7 +235,7 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
         client_encryption = AsyncClientEncryption(
             kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
         )
-        self.addAsyncCleanup(client_encryption.close)
+        self.addToCleanup(client_encryption.close)
         return client_encryption
 
     @classmethod
@@ -289,7 +289,7 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
         key_vault = await create_key_vault(
             self.client.keyvault.datakeys, json_data("custom", "key-document-local.json")
         )
-        self.addAsyncCleanup(key_vault.drop)
+        self.addToCleanup(key_vault.drop)
 
         # Collection.insert_one/insert_many auto encrypts.
         docs = [
@@ -350,7 +350,7 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
         # Configure the encrypted field via jsonSchema.
         json_schema = json_data("custom", "schema.json")
         await create_with_schema(self.db.test, json_schema)
-        self.addAsyncCleanup(self.db.test.drop)
+        self.addToCleanup(self.db.test.drop)
 
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         await self._test_auto_encrypt(opts)
@@ -475,7 +475,7 @@ class TestExplicitSimple(AsyncEncryptionIntegrationTest):
         key_vault = async_client_context.client.keyvault.get_collection(
             "datakeys", codec_options=OPTS
         )
-        self.addAsyncCleanup(key_vault.drop)
+        self.addToCleanup(key_vault.drop)
 
         # Create the encrypted field's data key.
         key_id = await client_encryption.create_data_key("local", key_alt_names=["name"])
@@ -927,7 +927,7 @@ class TestExternalKeyVault(AsyncEncryptionIntegrationTest):
             json_data("corpus", "corpus-key-local.json"),
             json_data("corpus", "corpus-key-aws.json"),
         )
-        self.addAsyncCleanup(vault.drop)
+        self.addToCleanup(vault.drop)
 
         # Configure the encrypted field via the local schema_map option.
         schemas = {"db.coll": json_data("external", "external-schema.json")}
@@ -993,7 +993,7 @@ class TestViews(AsyncEncryptionIntegrationTest):
     async def test_views_are_prohibited(self):
         await self.client.db.view.drop()
         await self.client.db.create_collection("view", viewOn="coll")
-        self.addAsyncCleanup(self.client.db.view.drop)
+        self.addToCleanup(self.client.db.view.drop)
 
         opts = AutoEncryptionOpts(self.kms_providers(), "keyvault.datakeys")
         client_encrypted = await self.async_rs_or_single_client(
@@ -1042,7 +1042,7 @@ class TestCorpus(AsyncEncryptionIntegrationTest):
         coll = await create_with_schema(
             self.client.db.coll, self.fix_up_schema(json_data("corpus", "corpus-schema.json"))
         )
-        self.addAsyncCleanup(coll.drop)
+        self.addToCleanup(coll.drop)
 
         vault = await create_key_vault(
             self.client.keyvault.datakeys,
@@ -1052,7 +1052,7 @@ class TestCorpus(AsyncEncryptionIntegrationTest):
             json_data("corpus", "corpus-key-gcp.json"),
             json_data("corpus", "corpus-key-kmip.json"),
         )
-        self.addAsyncCleanup(vault.drop)
+        self.addToCleanup(vault.drop)
 
         client_encrypted = await self.async_rs_or_single_client(auto_encryption_opts=opts)
 
@@ -2863,7 +2863,7 @@ class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
         self.key1_id = self.key1_document["_id"]
         await self.client.drop_database(self.db)
         self.key_vault = await create_key_vault(self.client.keyvault.datakeys, self.key1_document)
-        self.addAsyncCleanup(self.key_vault.drop)
+        self.addToCleanup(self.key_vault.drop)
         self.client_encryption = self.create_client_encryption(
             {"local": {"key": LOCAL_MASTER_KEY}},
             self.key_vault.full_name,

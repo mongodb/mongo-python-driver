@@ -20,6 +20,7 @@ import errno
 import socket
 import struct
 import time
+import traceback
 from typing import (
     TYPE_CHECKING,
     Optional,
@@ -79,6 +80,8 @@ class NetworkingInterfaceBase:
     def get_conn(self):
         raise NotImplementedError
 
+    def sock(self):
+        raise NotImplementedError
 
 class AsyncNetworkingInterface(NetworkingInterfaceBase):
     def __init__(self, conn: tuple[asyncio.BaseTransport, PyMongoProtocol]):
@@ -91,8 +94,9 @@ class AsyncNetworkingInterface(NetworkingInterfaceBase):
     def settimeout(self, timeout: float | None):
         self.conn[1].settimeout(timeout)
 
-    def close(self):
-        self.conn[0].close()
+    async def close(self):
+        self.conn[0].abort()
+        await self.conn[1].wait_closed()
 
     def is_closing(self):
         self.conn[0].is_closing()
@@ -100,6 +104,10 @@ class AsyncNetworkingInterface(NetworkingInterfaceBase):
     @property
     def get_conn(self) -> PyMongoProtocol:
         return self.conn[1]
+
+    @property
+    def sock(self):
+        return self.conn[0].get_extra_info("socket")
 
 
 class NetworkingInterface(NetworkingInterfaceBase):
@@ -122,6 +130,10 @@ class NetworkingInterface(NetworkingInterfaceBase):
     def get_conn(self):
         return self.conn
 
+    @property
+    def sock(self):
+        return self.conn
+
 
 class PyMongoProtocol(asyncio.BufferedProtocol):
     def __init__(self, timeout: Optional[float] = None, buffer_size: Optional[int] = 2**14):
@@ -136,12 +148,16 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         self._connection_lost = False
         self._paused = False
         self._drain_waiter = None
-        self._loop = asyncio.get_running_loop()
         self._read_waiter = None
         self._timeout = timeout
         self._is_compressed = False
         self._compressor_id = None
         self._need_compression_header = False
+        self._max_message_size = MAX_MESSAGE_SIZE
+        self._request_id = None
+        self._closed = asyncio.get_running_loop().create_future()
+        self._debug = False
+
 
     def settimeout(self, timeout: float | None):
         self._timeout = timeout
@@ -159,11 +175,14 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
 
     async def write(self, message: bytes):
         """Write a message to this connection's transport."""
+        if self.transport.is_closing():
+            raise OSError("Connection is closed")
         self.transport.write(message)
         await self._drain_helper()
 
-    async def read(self, request_id: Optional[int], max_message_size: int):
+    async def read(self, request_id: Optional[int], max_message_size: int, debug: bool = False):
         """Read a single MongoDB Wire Protocol message from this connection."""
+        self._debug = debug
         self._max_message_size = max_message_size
         self._request_id = request_id
         self._length, self._overflow_length, self._body_length, self._op_code, self._overflow = (
@@ -173,9 +192,14 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
             None,
             None,
         )
-        self._read_waiter = self._loop.create_future()
+        if self.transport.is_closing():
+            print("Connection is closed")
+            raise OSError("Connection is closed")
+        self._read_waiter = asyncio.get_running_loop().create_future()
         await self._read_waiter
         if self._read_waiter.done() and self._read_waiter.result():
+            if self._debug:
+                print("Read waiter done")
             header_size = 16
             if self._body_length > self._buffer_size:
                 if self._is_compressed:
@@ -201,16 +225,22 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
                     ), self._op_code
                 else:
                     return memoryview(self._buffer[header_size : self._body_length]), self._op_code
-        return None
+        raise OSError("connection closed")
 
     def get_buffer(self, sizehint: int):
         """Called to allocate a new receive buffer."""
         if self._overflow is not None:
-            return self._overflow[self._overflow_length :]
-        return self._buffer[self._length :]
+            if len(self._overflow[self._overflow_length:]) == 0:
+                print(f"Overflow buffer overflow, overflow size of {len(self._overflow)}")
+            return self._overflow[self._overflow_length:]
+        if len(self._buffer[self._length:]) == 0:
+            print(f"Default buffer overflow, overflow size of {len(self._buffer)}")
+        return self._buffer[self._length:]
 
     def buffer_updated(self, nbytes: int):
         """Called when the buffer was updated with the received data"""
+        if self._debug:
+            print(f"buffer_updated for {nbytes}")
         if nbytes == 0:
             self.connection_lost(OSError("connection closed"))
             return
@@ -222,11 +252,13 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
                     try:
                         self._body_length, self._op_code = self.process_header()
                     except ProtocolError as exc:
+                        if self._debug:
+                            print(f"Protocol error: {exc}")
                         self.connection_lost(exc)
                         return
                     if self._body_length > self._buffer_size:
                         self._overflow = memoryview(
-                            bytearray(self._body_length - (self._buffer_size - nbytes))
+                            bytearray(self._body_length - (self._buffer_size - nbytes) + 1000)
                         )
                 self._length += nbytes
             if (
@@ -234,6 +266,10 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
                 and self._read_waiter
                 and not self._read_waiter.done()
             ):
+                if self._length > self._body_length:
+                    self._body_length = self._length
+                if self._length + self._overflow_length > self._body_length:
+                    print(f"Done reading with length {self._length + self._overflow_length} out of {self._body_length}")
                 self._read_waiter.set_result(True)
 
     def process_header(self):
@@ -282,6 +318,12 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
             else:
                 self._read_waiter.set_exception(exc)
 
+        if not self._closed.done():
+            if exc is None:
+                self._closed.set_result(None)
+            else:
+                self._closed.set_exception(exc)
+
         # Wake up the writer(s) if currently paused.
         if not self._paused:
             return
@@ -297,11 +339,14 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
             raise ConnectionResetError("Connection lost")
         if not self._paused:
             return
-        self._drain_waiter = self._loop.create_future()
+        self._drain_waiter = asyncio.get_running_loop().create_future()
         await self._drain_waiter
 
     def data(self):
         return self._buffer
+
+    async def wait_closed(self):
+        await self._closed
 
 
 async def async_sendall(conn: PyMongoProtocol, buf: bytes) -> None:
@@ -378,6 +423,7 @@ async def async_receive_message(
     conn: AsyncConnection,
     request_id: Optional[int],
     max_message_size: int = MAX_MESSAGE_SIZE,
+    debug: bool = False,
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     timeout: Optional[Union[float, int]]
@@ -395,8 +441,14 @@ async def async_receive_message(
         # timeouts on AWS Lambda and other FaaS environments.
         timeout = max(deadline - time.monotonic(), 0)
 
+    # if debug:
+    #     print(f"async_receive_message with timeout: {timeout}. From csot: {_csot.get_timeout()}, from conn: {conn.conn.get_conn.gettimeout}, deadline: {deadline} ")
+    # if timeout is None:
+    #     timeout = 5.0
+
+
     cancellation_task = create_task(_poll_cancellation(conn))
-    read_task = create_task(conn.conn.get_conn.read(request_id, max_message_size))
+    read_task = create_task(conn.conn.get_conn.read(request_id, max_message_size, debug))
     tasks = [read_task, cancellation_task]
     done, pending = await asyncio.wait(tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
     for task in pending:

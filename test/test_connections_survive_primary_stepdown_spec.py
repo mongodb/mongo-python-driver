@@ -22,7 +22,6 @@ sys.path[0:0] = [""]
 from test import (
     IntegrationTest,
     client_context,
-    reset_client_context,
     unittest,
 )
 from test.helpers import repl_set_step_down

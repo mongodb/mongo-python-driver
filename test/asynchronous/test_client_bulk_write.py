@@ -116,7 +116,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         models = []
         for _ in range(self.max_write_batch_size + 1):
             models.append(InsertOne(namespace="db.coll", document={"a": "b"}))
-        self.addAsyncCleanup(client.db["coll"].drop)
+        self.addToCleanup(client.db["coll"].drop)
 
         result = await client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, self.max_write_batch_size + 1)
@@ -148,7 +148,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
                     document={"a": b_repeated},
                 )
             )
-        self.addAsyncCleanup(client.db["coll"].drop)
+        self.addToCleanup(client.db["coll"].drop)
 
         result = await client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, num_models)
@@ -191,7 +191,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
                         document={"a": "b"},
                     )
                 )
-            self.addAsyncCleanup(client.db["coll"].drop)
+            self.addToCleanup(client.db["coll"].drop)
 
             with self.assertRaises(ClientBulkWriteException) as context:
                 await client.bulk_write(models=models)
@@ -214,7 +214,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addAsyncCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         await collection.drop()
         await collection.insert_one(document={"_id": 1})
 
@@ -244,7 +244,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addAsyncCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         await collection.drop()
         await collection.insert_one(document={"_id": 1})
 
@@ -274,7 +274,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addAsyncCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         await collection.drop()
 
         models = []
@@ -315,7 +315,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addAsyncCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         await collection.drop()
 
         async with client.start_session() as session:
@@ -358,7 +358,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addAsyncCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         await collection.drop()
 
         fail_command = {
@@ -478,7 +478,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
                 document={"a": "b"},
             )
         )
-        self.addAsyncCleanup(client.db["coll"].drop)
+        self.addToCleanup(client.db["coll"].drop)
 
         # No batch splitting required.
         result = await client.bulk_write(models=models)
@@ -511,8 +511,8 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
                 document={"a": "b"},
             )
         )
-        self.addAsyncCleanup(client.db["coll"].drop)
-        self.addAsyncCleanup(client.db[c_repeated].drop)
+        self.addToCleanup(client.db["coll"].drop)
+        self.addToCleanup(client.db[c_repeated].drop)
 
         # Batch splitting required.
         result = await client.bulk_write(models=models)
@@ -575,7 +575,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client()
 
         collection = client.db["coll"]
-        self.addAsyncCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         await collection.drop()
 
         models = []
@@ -616,7 +616,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addAsyncCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         await collection.drop()
         await client.db.command({"create": "db.coll"})
 
@@ -665,10 +665,10 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
         _OVERHEAD = 500
 
         internal_client = await self.async_rs_or_single_client(timeoutMS=None)
-        self.addAsyncCleanup(internal_client.close)
+        self.addToCleanup(internal_client.close)
 
         collection = internal_client.db["coll"]
-        self.addAsyncCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         await collection.drop()
 
         fail_command = {

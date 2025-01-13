@@ -866,22 +866,24 @@ class AsyncClientContext:
 async_client_context = AsyncClientContext()
 
 
-async def reset_client_context():
-    if _IS_SYNC:
-        # sync tests don't need to reset a client context
-        return
-    elif async_client_context.client is not None:
-        await async_client_context.client.close()
-        async_client_context.client = None
-    await async_client_context._init_client()
-
-
 class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
+    def __init__(self, methodName: str = "runTest"):
+        super().__init__(methodName)
+        self.cleanups = []
+
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)
 
     def assertEqualReply(self, expected, actual, msg=None):
         self.assertEqual(sanitize_reply(expected), sanitize_reply(actual), msg)
+
+    def addToCleanup(self, func, *args, **kwargs):
+        self.cleanups.append(func(*args, **kwargs))
+
+    async def asyncTearDown(self) -> None:
+        for coro in reversed(self.cleanups):
+            await coro
+
 
     @asynccontextmanager
     async def fail_point(self, command_args):
@@ -1013,7 +1015,7 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
         client = AsyncMongoClient(uri, port, **client_options)
         if client._options.connect:
             await client.aconnect()
-        self.addAsyncCleanup(client.close)
+        self.addToCleanup(client.close)
         return client
 
     @classmethod
@@ -1109,7 +1111,7 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
             client = AsyncMongoClient(**kwargs)
         else:
             client = AsyncMongoClient(h, p, **kwargs)
-        self.addAsyncCleanup(client.close)
+        self.addToCleanup(client.close)
         return client
 
     @classmethod
@@ -1141,9 +1143,6 @@ class AsyncUnitTest(AsyncPyMongoTestCase):
     async def asyncSetUp(self) -> None:
         pass
 
-    async def asyncTearDown(self) -> None:
-        pass
-
 
 class AsyncIntegrationTest(AsyncPyMongoTestCase):
     """Async base class for TestCases that need a connection to MongoDB to pass."""
@@ -1152,10 +1151,9 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
     db: AsyncDatabase
     credentials: Dict[str, str]
 
-    @async_client_context.require_connection
     async def asyncSetUp(self) -> None:
         if not _IS_SYNC:
-            await reset_client_context()
+            await async_client_context._init_client()
         if async_client_context.load_balancer and not getattr(self, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")
         if async_client_context.serverless and not getattr(self, "RUN_ON_SERVERLESS", False):
@@ -1166,6 +1164,12 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
             self.credentials = {"username": db_user, "password": db_pwd}
         else:
             self.credentials = {}
+
+    async def asyncTearDown(self) -> None:
+        if not _IS_SYNC:
+            await super().asyncTearDown()
+            await async_client_context.client.close()
+            async_client_context.client = None
 
     async def cleanup_colls(self, *collections):
         """Cleanup collections faster than drop_collection."""
@@ -1205,12 +1209,15 @@ class AsyncMockClientTest(AsyncUnitTest):
 
 async def async_setup():
     await async_client_context.init()
+    global initial_client_context
+    initial_client_context = async_client_context.client.client
     warnings.resetwarnings()
     warnings.simplefilter("always")
     global_knobs.enable()
 
 
 async def async_teardown():
+    print("Async teardown")
     global_knobs.disable()
     garbage = []
     for g in gc.garbage:
@@ -1219,16 +1226,27 @@ async def async_teardown():
         garbage.append(f"  gc.get_referrers: {gc.get_referrers(g)!r}")
     if garbage:
         raise AssertionError("\n".join(garbage))
+    print("async_client_context teardown")
     c = async_client_context.client
     if c:
         if not async_client_context.is_data_lake:
+            print("dropping pymongo-pooling-tests")
             await c.drop_database("pymongo-pooling-tests")
+            print("dropping pymongo_test")
             await c.drop_database("pymongo_test")
+            print("dropping pymongo_test1")
             await c.drop_database("pymongo_test1")
+            print("dropping pymongo_test2")
             await c.drop_database("pymongo_test2")
+            print("dropping pymongo_test_mike")
             await c.drop_database("pymongo_test_mike")
+            print("dropping pymongo_test_bernie")
             await c.drop_database("pymongo_test_bernie")
+        print("closing async_client_context")
         await c.close()
+    if initial_client_context:
+        print("closing initial_client_context")
+        await initial_client_context.close()
     print_running_clients()
 
 
