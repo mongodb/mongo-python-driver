@@ -91,10 +91,12 @@ filterwarnings = [
     "module:unclosed <socket.socket:ResourceWarning",
     "module:unclosed <ssl.SSLSocket:ResourceWarning",
     "module:unclosed <socket object:ResourceWarning",
-    # TODO: Remove the next three as part of full migration to Pytest (ADD TICKET)
+    # TODO: Remove the next five as part of PYTHON-5036.
     "module:unclosed transport:ResourceWarning",
     "module:unclosed <_SelectorSocketTransport:ResourceWarning",
     "module:Unclosed AsyncMongoClient:ResourceWarning",
+    "module:coroutine 'AsyncMongoClient.close' was never awaited:RuntimeWarning",
+    "module:coroutine 'UnifiedSpecTestMixinV1.kill_all_sessions' was never awaited:RuntimeWarning",
     # https://github.com/eventlet/eventlet/issues/818
     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314

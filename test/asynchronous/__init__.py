@@ -1209,15 +1209,12 @@ class AsyncMockClientTest(AsyncUnitTest):
 
 async def async_setup():
     await async_client_context.init()
-    global initial_client_context
-    initial_client_context = async_client_context.client.client
     warnings.resetwarnings()
     warnings.simplefilter("always")
     global_knobs.enable()
 
 
 async def async_teardown():
-    print("Async teardown")
     global_knobs.disable()
     garbage = []
     for g in gc.garbage:
@@ -1226,28 +1223,19 @@ async def async_teardown():
         garbage.append(f"  gc.get_referrers: {gc.get_referrers(g)!r}")
     if garbage:
         raise AssertionError("\n".join(garbage))
-    print("async_client_context teardown")
-    c = async_client_context.client
-    if c:
-        if not async_client_context.is_data_lake:
-            print("dropping pymongo-pooling-tests")
-            await c.drop_database("pymongo-pooling-tests")
-            print("dropping pymongo_test")
-            await c.drop_database("pymongo_test")
-            print("dropping pymongo_test1")
-            await c.drop_database("pymongo_test1")
-            print("dropping pymongo_test2")
-            await c.drop_database("pymongo_test2")
-            print("dropping pymongo_test_mike")
-            await c.drop_database("pymongo_test_mike")
-            print("dropping pymongo_test_bernie")
-            await c.drop_database("pymongo_test_bernie")
-        print("closing async_client_context")
-        await c.close()
-    if initial_client_context:
-        print("closing initial_client_context")
-        await initial_client_context.close()
-    print_running_clients()
+    # TODO: Fix or remove entirely as part of PYTHON-5036.
+    if _IS_SYNC:
+        c = async_client_context.client
+        if c:
+            if not async_client_context.is_data_lake:
+                await c.drop_database("pymongo-pooling-tests")
+                await c.drop_database("pymongo_test")
+                await c.drop_database("pymongo_test1")
+                await c.drop_database("pymongo_test2")
+                await c.drop_database("pymongo_test_mike")
+                await c.drop_database("pymongo_test_bernie")
+            await c.close()
+        print_running_clients()
 
 
 def test_cases(suite):
