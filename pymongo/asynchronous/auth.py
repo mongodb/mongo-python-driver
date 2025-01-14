@@ -15,6 +15,7 @@
 """Authentication helpers."""
 from __future__ import annotations
 
+import asyncio
 import functools
 import hashlib
 import hmac
@@ -177,15 +178,28 @@ def _auth_key(nonce: str, username: str, password: str) -> str:
     return md5hash.hexdigest()
 
 
-def _canonicalize_hostname(hostname: str, option: str | bool) -> str:
+async def _canonicalize_hostname(hostname: str, option: str | bool) -> str:
     """Canonicalize hostname following MIT-krb5 behavior."""
     # https://github.com/krb5/krb5/blob/d406afa363554097ac48646a29249c04f498c88e/src/util/k5test.py#L505-L520
     if option in [False, "none"]:
         return hostname
 
-    af, socktype, proto, canonname, sockaddr = socket.getaddrinfo(
-        hostname, None, 0, 0, socket.IPPROTO_TCP, socket.AI_CANONNAME
-    )[0]
+    if not _IS_SYNC:
+        loop = asyncio.get_event_loop()
+        af, socktype, proto, canonname, sockaddr = (
+            await loop.getaddrinfo(
+                hostname,
+                None,
+                family=0,
+                type=0,
+                proto=socket.IPPROTO_TCP,
+                flags=socket.AI_CANONNAME,
+            )
+        )[0]  # type: ignore[index]
+    else:
+        af, socktype, proto, canonname, sockaddr = socket.getaddrinfo(
+            hostname, None, 0, 0, socket.IPPROTO_TCP, socket.AI_CANONNAME
+        )[0]
 
     # For forward just to resolve the cname as dns.lookup() will not return it.
     if option == "forward":
@@ -213,7 +227,7 @@ async def _authenticate_gssapi(credentials: MongoCredential, conn: AsyncConnecti
         # Starting here and continuing through the while loop below - establish
         # the security context. See RFC 4752, Section 3.1, first paragraph.
         host = props.service_host or conn.address[0]
-        host = _canonicalize_hostname(host, props.canonicalize_host_name)
+        host = await _canonicalize_hostname(host, props.canonicalize_host_name)
         service = props.service_name + "@" + host
         if props.service_realm is not None:
             service = service + "@" + props.service_realm
