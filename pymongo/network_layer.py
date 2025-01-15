@@ -72,7 +72,7 @@ BLOCKING_IO_ERRORS = (BlockingIOError, BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BL
 async def async_sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
     timeout = sock.gettimeout()
     sock.settimeout(0.0)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
             await asyncio.wait_for(_async_sendall_ssl(sock, buf, loop), timeout=timeout)
@@ -259,7 +259,7 @@ async def async_receive_data(
         timeout = sock_timeout
 
     sock.settimeout(0.0)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     cancellation_task = create_task(_poll_cancellation(conn))
     try:
         if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
@@ -290,7 +290,7 @@ async def async_receive_data_socket(
     timeout = sock_timeout
 
     sock.settimeout(0.0)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
             return await asyncio.wait_for(
