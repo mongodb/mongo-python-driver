@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import builtins
+import functools
 import socket
 import sys
 from typing import (
@@ -26,6 +27,7 @@ from typing import (
     cast,
 )
 
+from pymongo._asyncio_executor import _PYMONGO_EXECUTOR
 from pymongo.errors import (
     OperationFailure,
 )
@@ -70,14 +72,24 @@ def _handle_reauth(func: F) -> F:
     return cast(F, inner)
 
 
-def getaddrinfo(host, port, **kwargs):
+def getaddrinfo(
+    host: Any, port: Any, **kwargs: Any
+) -> list[
+    tuple[
+        socket.AddressFamily,
+        socket.SocketKind,
+        int,
+        str,
+        tuple[str, int] | tuple[str, int, int, int],
+    ]
+]:
     if not _IS_SYNC:
         loop = asyncio.get_running_loop()
-        return loop.getaddrinfo(  # type: ignore[assignment]
-            host, port, **kwargs
+        return loop.run_in_executor(  # type: ignore[return-value]
+            _PYMONGO_EXECUTOR, functools.partial(socket.getaddrinfo, host, port, **kwargs)
         )
     else:
-        return socket.getaddrinfo(host, port, **kwargs)  # type: ignore[assignment]
+        return socket.getaddrinfo(host, port, **kwargs)
 
 
 if sys.version_info >= (3, 10):
