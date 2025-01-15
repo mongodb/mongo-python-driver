@@ -15,7 +15,6 @@
 """Python driver for MongoDB."""
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
 from typing import ContextManager, Optional
 
 __all__ = [
@@ -167,6 +166,3 @@ def timeout(seconds: Optional[float]) -> ContextManager[None]:
     if seconds is not None:
         seconds = float(seconds)
     return _csot._TimeoutContext(seconds)
-
-
-_PYMONGO_EXECUTOR = ThreadPoolExecutor(thread_name_prefix="PYMONGO_EXECUTOR-")
