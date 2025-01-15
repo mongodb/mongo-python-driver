@@ -2884,6 +2884,7 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
         # each request because the server is single threaded.
         ctx = ssl.create_default_context(cafile=CA_PEM)
         ctx.load_cert_chain(CLIENT_PEM)
+        ctx.verify_mode = ssl.CERT_NONE
         conn = http.client.HTTPSConnection("127.0.0.1:9003", context=ctx)
         try:
             if data is not None:
