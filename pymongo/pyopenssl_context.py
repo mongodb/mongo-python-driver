@@ -31,7 +31,7 @@ import service_identity
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 
-from pymongo import _PYMONGO_EXECUTOR
+from pymongo._asyncio_executor import _PYMONGO_EXECUTOR
 from pymongo.errors import ConfigurationError as _ConfigurationError
 from pymongo.errors import _CertificateError  # type:ignore[attr-defined]
 from pymongo.ocsp_cache import _OCSPCache

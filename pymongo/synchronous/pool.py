@@ -38,7 +38,8 @@ from typing import (
 )
 
 from bson import DEFAULT_CODEC_OPTIONS
-from pymongo import _PYMONGO_EXECUTOR, _csot, helpers_shared
+from pymongo import _csot, helpers_shared
+from pymongo._asyncio_executor import _PYMONGO_EXECUTOR
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,

@@ -38,7 +38,8 @@ from typing import (
 )
 
 from bson import DEFAULT_CODEC_OPTIONS
-from pymongo import _PYMONGO_EXECUTOR, _csot, helpers_shared
+from pymongo import _csot, helpers_shared
+from pymongo._asyncio_executor import _PYMONGO_EXECUTOR
 from pymongo.asynchronous.client_session import _validate_session_write_concern
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.asynchronous.network import command, receive_message
