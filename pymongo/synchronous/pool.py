@@ -85,7 +85,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI, SSLError
 from pymongo.synchronous.client_session import _validate_session_write_concern
-from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.helpers import _handle_reauth, getaddrinfo
 from pymongo.synchronous.network import command, receive_message
 
 if TYPE_CHECKING:
@@ -813,14 +813,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         family = socket.AF_UNSPEC
 
     err = None
-    if not _IS_SYNC:
-        loop = asyncio.get_running_loop()
-        results = loop.getaddrinfo(  # type: ignore[assignment]
-            host, port, family=family, type=socket.SOCK_STREAM
-        )
-    else:
-        results = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)  # type: ignore[assignment]
-    for res in results:  # type: ignore[attr-defined]
+    for res in getaddrinfo(host, port, family=family, type=socket.SOCK_STREAM):  # type: ignore[attr-defined]
         af, socktype, proto, dummy, sa = res
         # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
         # number of platforms (newer Linux and *BSD). Starting with CPython 3.4

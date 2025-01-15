@@ -15,7 +15,6 @@
 """Authentication helpers."""
 from __future__ import annotations
 
-import asyncio
 import functools
 import hashlib
 import hmac
@@ -46,6 +45,7 @@ from pymongo.synchronous.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
 )
+from pymongo.synchronous.helpers import getaddrinfo
 
 if TYPE_CHECKING:
     from pymongo.hello import Hello
@@ -181,22 +181,16 @@ def _canonicalize_hostname(hostname: str, option: str | bool) -> str:
     if option in [False, "none"]:
         return hostname
 
-    if not _IS_SYNC:
-        loop = asyncio.get_running_loop()
-        af, socktype, proto, canonname, sockaddr = (
-            loop.getaddrinfo(
-                hostname,
-                None,
-                family=0,
-                type=0,
-                proto=socket.IPPROTO_TCP,
-                flags=socket.AI_CANONNAME,
-            )
-        )[0]  # type: ignore[index]
-    else:
-        af, socktype, proto, canonname, sockaddr = socket.getaddrinfo(
-            hostname, None, 0, 0, socket.IPPROTO_TCP, socket.AI_CANONNAME
-        )[0]
+    af, socktype, proto, canonname, sockaddr = (
+        getaddrinfo(
+            hostname,
+            None,
+            family=0,
+            type=0,
+            proto=socket.IPPROTO_TCP,
+            flags=socket.AI_CANONNAME,
+        )
+    )[0]  # type: ignore[index]
 
     # For forward just to resolve the cname as dns.lookup() will not return it.
     if option == "forward":
