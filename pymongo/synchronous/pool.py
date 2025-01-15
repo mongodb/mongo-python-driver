@@ -813,7 +813,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
 
     err = None
     if not _IS_SYNC:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         results = loop.getaddrinfo(  # type: ignore[assignment]
             host, port, family=family, type=socket.SOCK_STREAM
         )

@@ -182,7 +182,7 @@ def _canonicalize_hostname(hostname: str, option: str | bool) -> str:
         return hostname
 
     if not _IS_SYNC:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         af, socktype, proto, canonname, sockaddr = (
             loop.getaddrinfo(
                 hostname,

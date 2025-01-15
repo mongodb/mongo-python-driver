@@ -815,7 +815,7 @@ async def _create_connection(address: _Address, options: PoolOptions) -> socket.
 
     err = None
     if not _IS_SYNC:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         results = await loop.getaddrinfo(  # type: ignore[assignment]
             host, port, family=family, type=socket.SOCK_STREAM
         )
