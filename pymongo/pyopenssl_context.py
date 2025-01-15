@@ -31,7 +31,6 @@ import service_identity
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 
-from pymongo._asyncio_executor import _PYMONGO_EXECUTOR
 from pymongo.errors import ConfigurationError as _ConfigurationError
 from pymongo.errors import _CertificateError  # type:ignore[attr-defined]
 from pymongo.ocsp_cache import _OCSPCache
@@ -406,7 +405,7 @@ class SSLContext:
                 ssl_conn.set_tlsext_host_name(server_hostname.encode("idna"))
             if self.verify_mode != _stdlibssl.CERT_NONE:
                 # Request a stapled OCSP response.
-                await loop.run_in_executor(_PYMONGO_EXECUTOR, ssl_conn.request_ocsp)
+                await loop.run_in_executor(None, ssl_conn.request_ocsp)
             ssl_conn.set_connect_state()
         # If this wasn't true the caller of wrap_socket would call
         # do_handshake()
@@ -414,7 +413,7 @@ class SSLContext:
             # XXX: If we do hostname checking in a callback we can get rid
             # of this call to do_handshake() since the handshake
             # will happen automatically later.
-            await loop.run_in_executor(_PYMONGO_EXECUTOR, ssl_conn.do_handshake)
+            await loop.run_in_executor(None, ssl_conn.do_handshake)
             # XXX: Do this in a callback registered with
             # SSLContext.set_info_callback? See Twisted for an example.
             if self.check_hostname and server_hostname is not None:

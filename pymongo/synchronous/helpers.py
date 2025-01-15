@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import asyncio
 import builtins
-import functools
 import socket
 import sys
 from typing import (
@@ -27,7 +26,6 @@ from typing import (
     cast,
 )
 
-from pymongo._asyncio_executor import _PYMONGO_EXECUTOR
 from pymongo.errors import (
     OperationFailure,
 )
@@ -85,9 +83,7 @@ def getaddrinfo(
 ]:
     if not _IS_SYNC:
         loop = asyncio.get_running_loop()
-        return loop.run_in_executor(  # type: ignore[return-value]
-            _PYMONGO_EXECUTOR, functools.partial(socket.getaddrinfo, host, port, **kwargs)
-        )
+        return loop.getaddrinfo(host, port, **kwargs)  # type: ignore[return-value]
     else:
         return socket.getaddrinfo(host, port, **kwargs)
 

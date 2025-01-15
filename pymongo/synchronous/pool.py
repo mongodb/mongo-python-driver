@@ -39,7 +39,6 @@ from typing import (
 
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
-from pymongo._asyncio_executor import _PYMONGO_EXECUTOR
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -880,7 +879,7 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
                 else:
                     loop = asyncio.get_running_loop()
                     ssl_sock = loop.run_in_executor(
-                        _PYMONGO_EXECUTOR,
+                        None,
                         functools.partial(ssl_context.wrap_socket, sock, server_hostname=host),  # type: ignore[assignment, misc]
                     )
         else:
@@ -891,9 +890,7 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
                     ssl_sock = ssl_context.a_wrap_socket(sock)  # type: ignore[assignment, misc]
                 else:
                     loop = asyncio.get_running_loop()
-                    ssl_sock = loop.run_in_executor(
-                        _PYMONGO_EXECUTOR, ssl_context.wrap_socket, sock
-                    )  # type: ignore[assignment, misc]
+                    ssl_sock = loop.run_in_executor(None, ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc]
     except _CertificateError:
         sock.close()
         # Raise _CertificateError directly like we do after match_hostname

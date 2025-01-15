@@ -39,7 +39,6 @@ from typing import (
 
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
-from pymongo._asyncio_executor import _PYMONGO_EXECUTOR
 from pymongo.asynchronous.client_session import _validate_session_write_concern
 from pymongo.asynchronous.helpers import _handle_reauth, getaddrinfo
 from pymongo.asynchronous.network import command, receive_message
@@ -884,7 +883,7 @@ async def _configured_socket(
                 else:
                     loop = asyncio.get_running_loop()
                     ssl_sock = await loop.run_in_executor(
-                        _PYMONGO_EXECUTOR,
+                        None,
                         functools.partial(ssl_context.wrap_socket, sock, server_hostname=host),  # type: ignore[assignment, misc]
                     )
         else:
@@ -895,9 +894,7 @@ async def _configured_socket(
                     ssl_sock = await ssl_context.a_wrap_socket(sock)  # type: ignore[assignment, misc]
                 else:
                     loop = asyncio.get_running_loop()
-                    ssl_sock = await loop.run_in_executor(
-                        _PYMONGO_EXECUTOR, ssl_context.wrap_socket, sock
-                    )  # type: ignore[assignment, misc]
+                    ssl_sock = await loop.run_in_executor(None, ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc]
     except _CertificateError:
         sock.close()
         # Raise _CertificateError directly like we do after match_hostname
