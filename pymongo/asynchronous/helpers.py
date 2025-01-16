@@ -70,7 +70,7 @@ def _handle_reauth(func: F) -> F:
     return cast(F, inner)
 
 
-async def getaddrinfo(
+async def _getaddrinfo(
     host: Any, port: Any, **kwargs: Any
 ) -> list[
     tuple[

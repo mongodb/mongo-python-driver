@@ -45,7 +45,7 @@ from pymongo.synchronous.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
 )
-from pymongo.synchronous.helpers import getaddrinfo
+from pymongo.synchronous.helpers import _getaddrinfo
 
 if TYPE_CHECKING:
     from pymongo.hello import Hello
@@ -182,7 +182,7 @@ def _canonicalize_hostname(hostname: str, option: str | bool) -> str:
         return hostname
 
     af, socktype, proto, canonname, sockaddr = (
-        getaddrinfo(
+        _getaddrinfo(
             hostname,
             None,
             family=0,

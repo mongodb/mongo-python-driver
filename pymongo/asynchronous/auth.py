@@ -38,7 +38,7 @@ from pymongo.asynchronous.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
 )
-from pymongo.asynchronous.helpers import getaddrinfo
+from pymongo.asynchronous.helpers import _getaddrinfo
 from pymongo.auth_shared import (
     MongoCredential,
     _authenticate_scram_start,
@@ -185,7 +185,7 @@ async def _canonicalize_hostname(hostname: str, option: str | bool) -> str:
         return hostname
 
     af, socktype, proto, canonname, sockaddr = (
-        await getaddrinfo(
+        await _getaddrinfo(
             hostname,
             None,
             family=0,
