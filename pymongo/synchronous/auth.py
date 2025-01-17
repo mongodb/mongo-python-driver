@@ -45,6 +45,7 @@ from pymongo.synchronous.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
 )
+from pymongo.synchronous.helpers import _getaddrinfo
 
 if TYPE_CHECKING:
     from pymongo.hello import Hello
@@ -180,9 +181,16 @@ def _canonicalize_hostname(hostname: str, option: str | bool) -> str:
     if option in [False, "none"]:
         return hostname
 
-    af, socktype, proto, canonname, sockaddr = socket.getaddrinfo(
-        hostname, None, 0, 0, socket.IPPROTO_TCP, socket.AI_CANONNAME
-    )[0]
+    af, socktype, proto, canonname, sockaddr = (
+        _getaddrinfo(
+            hostname,
+            None,
+            family=0,
+            type=0,
+            proto=socket.IPPROTO_TCP,
+            flags=socket.AI_CANONNAME,
+        )
+    )[0]  # type: ignore[index]
 
     # For forward just to resolve the cname as dns.lookup() will not return it.
     if option == "forward":

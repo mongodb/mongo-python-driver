@@ -232,7 +232,8 @@
                   "id": "client1",
                   "useMultipleMongoses": true,
                   "uriOptions": {
-                    "heartbeatFrequencyMS": 30000
+                    "heartbeatFrequencyMS": 30000,
+                    "appName": "transactionsClient"
                   },
                   "observeEvents": [
                     "commandStartedEvent"
@@ -299,7 +300,8 @@
                   "isMaster",
                   "hello"
                 ],
-                "closeConnection": true
+                "closeConnection": true,
+                "appName": "transactionsClient"
               }
             }
           }

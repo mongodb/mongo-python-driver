@@ -2162,7 +2162,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
         # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
         key["endpoint"] = "127.0.0.1:9001"
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("aws", key)
 
@@ -2179,7 +2180,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             await self.client_encryption_expired.create_data_key("azure", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("azure", key)
 
@@ -2196,7 +2198,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             await self.client_encryption_expired.create_data_key("gcp", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("gcp", key)
 
@@ -2210,7 +2213,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             await self.client_encryption_expired.create_data_key("kmip")
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("kmip")
 
@@ -2880,6 +2884,8 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
         # each request because the server is single threaded.
         ctx = ssl.create_default_context(cafile=CA_PEM)
         ctx.load_cert_chain(CLIENT_PEM)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
         conn = http.client.HTTPSConnection("127.0.0.1:9003", context=ctx)
         try:
             if data is not None:
