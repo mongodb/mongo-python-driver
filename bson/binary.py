@@ -406,7 +406,7 @@ class Binary(bytes):
     @overload
     def from_vector(
         cls: Type[Binary],
-        vector: list[Union[int, float]],
+        vector: Union[list[int], list[float]],
         dtype: BinaryVectorDtype,
         padding: int = 0,
     ) -> Binary:
@@ -415,7 +415,7 @@ class Binary(bytes):
     @classmethod
     def from_vector(
         cls: Type[Binary],
-        vector: Union[BinaryVector, list[Union[int, float]]],
+        vector: Union[BinaryVector, list[int], list[float]],
         dtype: Optional[BinaryVectorDtype] = None,
         padding: Optional[int] = None,
     ) -> Binary:
