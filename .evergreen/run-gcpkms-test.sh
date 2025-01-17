@@ -17,6 +17,6 @@ echo "Untarring file ... begin"
 GCPKMS_CMD="tar xf mongo-python-driver.tgz" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 echo "Untarring file ... end"
 echo "Running test ... begin"
-GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 ./.evergreen/hatch.sh test:test-eg" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 ./.evergreen/just.sh test-eg" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 echo "Running test ... end"
 bash $HERE/teardown-encryption.sh

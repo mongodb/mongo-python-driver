@@ -8,5 +8,5 @@ PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3 \
     KEY_NAME="${AZUREKMS_KEYNAME}" \
     KEY_VAULT_ENDPOINT="${AZUREKMS_KEYVAULTENDPOINT}" \
     SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
-    $HERE/hatch.sh test:test-eg
+    $HERE/just.sh test-eg
 bash $HERE/teardown-encryption.sh
