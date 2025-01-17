@@ -80,7 +80,7 @@ jobs:
       - name: Install dependencies
         run: |
          if [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
-            # Hatch can't be installed on 3.13t, use pytest directly.
+            # Just can't be installed on 3.13t, use pytest directly.
             pip install .
             pip install -r requirements/test.txt
           else
