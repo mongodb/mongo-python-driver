@@ -15,6 +15,7 @@
 """Test that each file in mypy_fails/ actually fails mypy, and test some
 sample client code that uses PyMongo typings.
 """
+
 from __future__ import annotations
 
 import os
@@ -37,7 +38,8 @@ from typing import (
 if TYPE_CHECKING:
     from typing_extensions import NotRequired, TypedDict
 
-    from bson import ObjectId
+    from bson import Binary, ObjectId
+    from bson.binary import BinaryVector, BinaryVectorDtype
 
     class Movie(TypedDict):
         name: str
@@ -589,6 +591,20 @@ class TestCodecOptionsDocumentType(unittest.TestCase):
         options = CodecOptions(SON[str, Any])
         obj = options.document_class()
         obj["a"] = 1
+
+
+class TestBSONFromVectorType(unittest.TestCase):
+    def test_from_vector_binaryvector(self):
+        list_vector = BinaryVector([127, 7], BinaryVectorDtype.INT8)
+        Binary.from_vector(list_vector)
+
+    def test_from_vector_list_int(self):
+        list_vector = [127, 7]
+        Binary.from_vector(list_vector, BinaryVectorDtype.INT8)
+
+    def test_from_vector_list_float(self):
+        list_vector = [127.0, 7.0]
+        Binary.from_vector(list_vector, BinaryVectorDtype.INT8)
 
 
 if __name__ == "__main__":
