@@ -1565,6 +1565,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             await self._encrypter.close()
         self._closed = True
+        # Yield to the asyncio event loop so all executor tasks properly exit after cancellation
+        await asyncio.sleep(0)
 
     if not _IS_SYNC:
         # Add support for contextlib.aclosing.

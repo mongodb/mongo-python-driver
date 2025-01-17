@@ -75,6 +75,8 @@ class AsyncPeriodicExecutor:
         callback; see monitor.py.
         """
         self._stopped = True
+        if self._task:
+            self._task.cancel()
 
     async def join(self, timeout: Optional[int] = None) -> None:
         if self._task is not None:
