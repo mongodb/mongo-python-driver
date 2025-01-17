@@ -277,7 +277,7 @@ class SSLContext:
         # Calling set_options adds the option to the existing bitmask and
         # returns the new bitmask.
         # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_options
-        self._ctx.set_options(0)
+        return self._ctx.set_options(0)
 
     def __set_options(self, value: int) -> None:
         # Explicitly convert to int, since newer CPython versions
