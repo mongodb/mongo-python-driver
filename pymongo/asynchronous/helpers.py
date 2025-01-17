@@ -15,7 +15,9 @@
 """Miscellaneous pieces that need to be synchronized."""
 from __future__ import annotations
 
+import asyncio
 import builtins
+import socket
 import sys
 from typing import (
     Any,
@@ -66,6 +68,24 @@ def _handle_reauth(func: F) -> F:
             raise
 
     return cast(F, inner)
+
+
+async def _getaddrinfo(
+    host: Any, port: Any, **kwargs: Any
+) -> list[
+    tuple[
+        socket.AddressFamily,
+        socket.SocketKind,
+        int,
+        str,
+        tuple[str, int] | tuple[str, int, int, int],
+    ]
+]:
+    if not _IS_SYNC:
+        loop = asyncio.get_running_loop()
+        return await loop.getaddrinfo(host, port, **kwargs)  # type: ignore[return-value]
+    else:
+        return socket.getaddrinfo(host, port, **kwargs)
 
 
 if sys.version_info >= (3, 10):

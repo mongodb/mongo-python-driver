@@ -28,9 +28,10 @@ including 4 space indents and 79 character line limits.
 
 -   Avoid backward breaking changes if at all possible.
 -   Write inline documentation for new classes and methods.
--   We use [hatch](https://hatch.pypa.io/dev/) for our script runner and packaging tool.
+-   We use [hatch](https://hatch.pypa.io/dev/) for python environment management and packaging.
+-   We use [just](https://just.systems/man/en/) as our task runner.
 -   Write tests and make sure they pass (make sure you have a mongod
-    running on the default port, then execute `hatch run test:test` from the cmd
+    running on the default port, then execute `just test` from the cmd
     line to run the test suite).
 -   Add yourself to doc/contributors.rst `:)`
 
@@ -148,17 +149,18 @@ To run `pre-commit` manually, run:
 pre-commit run --all-files
 ```
 
-To run a manual hook like `mypy` manually, run:
+To run a manual hook like `ruff` manually, run:
 
 ```bash
-pre-commit run --all-files --hook-stage manual mypy
+pre-commit run --all-files --hook-stage manual ruff
 ```
 
-Typically we use `hatch` to run the linters, e.g.
+Typically we use `just` to run the linters, e.g.
 
 ```bash
-hatch run typing:check-mypy
-hatch run lint:build-manual
+just install  # this will install a venv with pre-commit installed, and install the pre-commit hook.
+just typing-mypy
+just run lint-manual
 ```
 
 ## Documentation
@@ -176,13 +178,13 @@ documentation including narrative docs, and the [Sphinx docstring format](https:
 You can build the documentation locally by running:
 
 ```bash
-hatch run doc:build
+just docs-build
 ```
 
 When updating docs, it can be helpful to run the live docs server as:
 
 ```bash
-hatch run doc:serve
+just docs-serve
 ```
 
 Browse to the link provided, and then as you make changes to docstrings or narrative docs,
@@ -192,13 +194,14 @@ the pages will re-render and the browser will automatically refresh.
 ## Running Tests Locally
 
 -   Ensure you have started the appropriate Mongo Server(s).
--   Run `pip install hatch` to use `hatch` for testing or run
-    `pip install -e ".[test]"` to run `pytest` directly.
--   Run `hatch run test:test` or `pytest` to run all of the tests.
+-   Run `just install` to set up `hatch` in a local virtual environment, or you can manually
+    create a virtual environment and run `pytest` directly.  If you want to use a specific
+    version of Python, remove the `.venv` folder and set `PYTHON_BINARY` before running `just install`.
+-   Run `just test` or `pytest` to run all of the tests.
 -   Append `test/<mod_name>.py::<class_name>::<test_name>` to run
     specific tests. You can omit the `<test_name>` to test a full class
     and the `<class_name>` to test a full module. For example:
-    `hatch run test:test -- test/test_change_stream.py::TestUnifiedChangeStreamsErrors::test_change_stream_errors_on_ElectionInProgress`.
+    `just test test/test_change_stream.py::TestUnifiedChangeStreamsErrors::test_change_stream_errors_on_ElectionInProgress`.
 -   Use the `-k` argument to select tests by pattern.
 
 ## Running Load Balancer Tests Locally
@@ -211,15 +214,15 @@ the pages will re-render and the browser will automatically refresh.
 -   Start the load balancer using:
     `MONGODB_URI='mongodb://localhost:27017,localhost:27018/' $PWD/drivers-evergreen-tools/.evergreen/run-load-balancer.sh start`.
 -   Run the tests from the `pymongo` checkout directory using:
-    `TEST_LOADBALANCER=1 hatch run test:test-eg`.
+    `TEST_LOADBALANCER=1 just test-eg`.
 
 ## Running Encryption Tests Locally
 - Clone `drivers-evergreen-tools`:
   `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
 - Run `export DRIVERS_TOOLS=$PWD/drivers-evergreen-tools`
-- Run `AWS_PROFILE=<profile> hatch run encryption:setup` after setting up your AWS profile with `aws configure sso`.
-- Run the tests with `TEST_ENCRYPTION=1 hatch run test:test-eg`.
-- When done, run `hatch run encryption:teardown` to clean up.
+- Run `AWS_PROFILE=<profile> just setup-encryption` after setting up your AWS profile with `aws configure sso`.
+- Run the tests with `TEST_ENCRYPTION=1 just test-eg`.
+- When done, run `just teardown-encryption` to clean up.
 
 ## Re-sync Spec Tests
 

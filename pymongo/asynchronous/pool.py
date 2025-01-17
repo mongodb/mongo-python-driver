@@ -40,7 +40,7 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
-from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.asynchronous.helpers import _getaddrinfo, _handle_reauth
 from pymongo.asynchronous.network import command, receive_message
 from pymongo.common import (
     MAX_BSON_SIZE,
@@ -783,7 +783,7 @@ class AsyncConnection:
         )
 
 
-def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
+async def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
     """Given (host, port) and PoolOptions, connect and return a socket object.
 
     Can raise socket.error.
@@ -814,7 +814,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         family = socket.AF_UNSPEC
 
     err = None
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+    for res in await _getaddrinfo(host, port, family=family, type=socket.SOCK_STREAM):  # type: ignore[attr-defined]
         af, socktype, proto, dummy, sa = res
         # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
         # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
@@ -863,7 +863,7 @@ async def _configured_socket(
 
     Sets socket's SSL and timeout options.
     """
-    sock = _create_connection(address, options)
+    sock = await _create_connection(address, options)
     ssl_context = options._ssl_context
 
     if ssl_context is None:

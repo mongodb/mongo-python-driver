@@ -127,7 +127,9 @@
                   "update": {
                     "x": 1
                   },
-                  "new": false,
+                  "new": {
+                    "$$unsetOrMatches": false
+                  },
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -299,7 +301,9 @@
                   "update": {
                     "x": 1
                   },
-                  "new": false,
+                  "new": {
+                    "$$unsetOrMatches": false
+                  },
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
