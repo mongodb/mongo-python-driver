@@ -10,8 +10,12 @@ if [ -f $HERE/env.sh ]; then
   source $HERE/env.sh
 fi
 
+# Install just and uv directly if necessary.
+if ! command -v just 2>/dev/null; then
+  curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s
+fi
 if ! command -v uv 2>/dev/null; then
-  bash .evergreen/install-dependencies.sh
+  curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 
 # Ensure that we have the correct base python binary.

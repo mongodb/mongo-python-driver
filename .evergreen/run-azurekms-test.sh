@@ -8,7 +8,10 @@ export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
 export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
 export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
 SKIP_SERVERS=1 bash $HERE/setup-encryption.sh
-tar czf /tmp/mongo-python-driver.tgz .
+# Set up the remote files to test.
+git add .
+git commit -m "add files" || true
+git archive -o /tmp/mongo-python-driver.tgz HEAD
 # shellcheck disable=SC2088
 AZUREKMS_SRC="/tmp/mongo-python-driver.tgz" AZUREKMS_DST="~/" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/copy-file.sh
