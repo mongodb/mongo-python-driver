@@ -48,7 +48,8 @@ else
   echo "Not sourcing secrets"
 fi
 
-# Store which extras and groups we'll need.
+# Start compiling the args we'll pass to uv.
+# Run in an isolated environment so as not to pollute the base venv.
 UV_ARGS=("--isolated --extra test")
 
 # Compile and ensure C extensions if applicable.
