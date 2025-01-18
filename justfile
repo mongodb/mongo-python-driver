@@ -4,7 +4,7 @@ set dotenv-load
 set dotenv-filename := "./.evergreen/scripts/env.sh"
 
 # Commonly used command segments.
-uv_run := "uv run --isolated"
+uv_run := "uv run --isolated "
 typing_run := uv_run + "--group typing --all-extras"
 docs_run := uv_run + "--extra docs"
 doc_build := "./doc/_build"
