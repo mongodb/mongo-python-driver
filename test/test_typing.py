@@ -594,14 +594,17 @@ class TestCodecOptionsDocumentType(unittest.TestCase):
 
 
 class TestBSONFromVectorType(unittest.TestCase):
+    @only_type_check
     def test_from_vector_binaryvector(self):
         list_vector = BinaryVector([127, 7], BinaryVectorDtype.INT8)
         Binary.from_vector(list_vector)
 
+    @only_type_check
     def test_from_vector_list_int(self):
         list_vector = [127, 7]
         Binary.from_vector(list_vector, BinaryVectorDtype.INT8)
 
+    @only_type_check
     def test_from_vector_list_float(self):
         list_vector = [127.0, 7.0]
         Binary.from_vector(list_vector, BinaryVectorDtype.INT8)
