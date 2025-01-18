@@ -11,12 +11,14 @@ if [ -f $HERE/env.sh ]; then
 fi
 
 # Install just and uv directly if necessary.
+BIN_DIR=$HOME/.local/bin
 if ! command -v just 2>/dev/null; then
-  curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s
+  curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s --to "$BIN_DIR"
+  export PATH="$BIN_DIR:$PATH"
 fi
 if ! command -v uv 2>/dev/null; then
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  source $HOME/.local/bin/env
+  curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$BIN_DIR" sh
+  export PATH="$BIN_DIR:$PATH"
 fi
 
 # Ensure that we have the correct base python binary.
