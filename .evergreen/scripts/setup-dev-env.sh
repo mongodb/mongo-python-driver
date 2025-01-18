@@ -23,6 +23,7 @@ fi
 
 # Set up the python environment.
 uv sync
+uv run --with pip pip install -e .
 
 # Ensure there is a pre-commit hook if there is a git checkout.
 if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then

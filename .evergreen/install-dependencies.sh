@@ -49,7 +49,7 @@ if [ ! -f $BIN_DIR/uv ]; then
     curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || true
   fi
   # On Windows or unsupported systems, fall back to installing from cargo.
-  if [ ! -f $BIN_DIR/just ]; then
+  if [ ! -f $BIN_DIR/uv ]; then
      # CARGO_HOME is defined in configure-env.sh
     export CARGO_HOME=${CARGO_HOME:-$HOME/.cargo/}
     export RUSTUP_HOME="${CARGO_HOME}/.rustup"
@@ -62,6 +62,7 @@ if [ ! -f $BIN_DIR/uv ]; then
       mv $CARGO_HOME/uv $BIN_DIR
       mv $CARGO_HOME/uvx $BIN_DIR
     fi
+  fi
 fi
 
 # Add 'server' and 'hostname_not_in_cert' as a hostnames
