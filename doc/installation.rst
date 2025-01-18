@@ -28,7 +28,7 @@ To upgrade using pip::
 Dependencies
 ------------
 
-PyMongo supports CPython 3.9+ and PyPy3.9+.
+PyMongo supports CPython 3.9+ and PyPy3.10+.
 
 Required dependencies
 .....................

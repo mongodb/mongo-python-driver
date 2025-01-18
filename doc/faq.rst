@@ -166,7 +166,7 @@ they are returned to the pool.
 Does PyMongo support Python 3?
 ------------------------------
 
-PyMongo supports CPython 3.9+ and PyPy3.9+. See the :doc:`python3` for details.
+PyMongo supports CPython 3.9+ and PyPy3.10+. See the :doc:`python3` for details.
 
 Does PyMongo support asynchronous frameworks like Gevent, asyncio, Tornado, or Twisted?
 ---------------------------------------------------------------------------------------

@@ -161,8 +161,8 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     fi
     export PYMONGOCRYPT_LIB
     # Ensure pymongocrypt is working properly.
-    uv ${UV_ARGS[*]} run python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
-    uv ${UV_ARGS[*]} run python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
+    uv run ${UV_ARGS[*]} python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
+    uv run ${UV_ARGS[*]} python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
     # PATH is updated by configure-env.sh for access to mongocryptd.
 fi
 

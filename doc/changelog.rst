@@ -4,7 +4,7 @@ Changelog
 Changes in Version 4.11.0 (YYYY/MM/DD)
 --------------------------------------
 
-.. warning:: PyMongo 4.11 drops support for Python 3.8: Python 3.9+ or PyPy 3.9+ is now required.
+.. warning:: PyMongo 4.11 drops support for Python 3.8 and PyPy 3.9: Python 3.9+ or PyPy 3.10+ is now required.
 .. warning:: PyMongo 4.11 drops support for MongoDB 3.6. PyMongo now supports MongoDB 4.0+.
    Driver support for MongoDB 3.6 reached end of life in April 2024.
 .. warning:: Driver support for MongoDB 4.0 reaches end of life in April 2025.
@@ -14,7 +14,7 @@ Changes in Version 4.11.0 (YYYY/MM/DD)
 
 PyMongo 4.11 brings a number of changes including:
 
-- Dropped support for Python 3.8.
+- Dropped support for Python 3.8 and PyPy 3.9.
 - Dropped support for MongoDB 3.6.
 - Dropped support for the MONGODB-CR authenticate mechanism, which is no longer supported by MongoDB 4.0+.
 - pymongocrypt>=1.12 is now required for :ref:`In-Use Encryption` support.
