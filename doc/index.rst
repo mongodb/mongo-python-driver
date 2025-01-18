@@ -106,13 +106,8 @@ About This Documentation
 This documentation is generated using the `Sphinx
 <https://www.sphinx-doc.org/en/master/>`_ documentation generator. The source files
 for the documentation are located in the *doc/* directory of the
-**PyMongo** distribution. To generate the docs locally run the
-following command from the root directory of the **PyMongo** source:
-
-.. code-block:: bash
-
-  $ pip install hatch
-  $ hatch run doc:build
+**PyMongo** distribution. See the PyMongo `contributing guide  <https://github.com/mongodb/mongo-python-driver/blob/master/CONTRIBUTING.md#documentation/>`_
+for instructions on the building the docs from source.
 
 Indices and tables
 ------------------

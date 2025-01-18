@@ -28,7 +28,7 @@ including 4 space indents and 79 character line limits.
 
 -   Avoid backward breaking changes if at all possible.
 -   Write inline documentation for new classes and methods.
--   We use [hatch](https://hatch.pypa.io/dev/) for python environment management and packaging.
+-   We use [uv](https://docs.astral.sh/uv/) for python environment management and packaging.
 -   We use [just](https://just.systems/man/en/) as our task runner.
 -   Write tests and make sure they pass (make sure you have a mongod
     running on the default port, then execute `just test` from the cmd
@@ -194,7 +194,7 @@ the pages will re-render and the browser will automatically refresh.
 ## Running Tests Locally
 
 -   Ensure you have started the appropriate Mongo Server(s).
--   Run `just install` to set up `hatch` in a local virtual environment, or you can manually
+-   Run `just install` to set a local virtual environment, or you can manually
     create a virtual environment and run `pytest` directly.  If you want to use a specific
     version of Python, remove the `.venv` folder and set `PYTHON_BINARY` before running `just install`.
 -   Run `just test` or `pytest` to run all of the tests.

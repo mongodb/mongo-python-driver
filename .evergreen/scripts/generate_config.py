@@ -6,7 +6,7 @@
 # ]
 # ///
 
-# Note: Run this file with `hatch run`, `pipx run`, or `uv run`.
+# Note: Run this file with `pipx run`, or `uv run`.
 from __future__ import annotations
 
 import sys

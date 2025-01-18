@@ -45,6 +45,30 @@ Documentation = "https://www.mongodb.com/docs/languages/python/pymongo-driver/cu
 Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
+[dependency-groups]
+dev = [
+    "pre-commit>=4.0"
+]
+gevent = ["gevent"]
+eventlet = ["eventlet"]
+coverage = [
+    "pytest-cov",
+    "coverage>=5,<=7.5"
+]
+mockupdb = [
+    "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
+]
+pymongocrypt_source = [
+    "pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
+]
+perf = ["simplejson"]
+typing = [
+    "pip",
+    "mypy==1.14.1",
+    "pyright==1.1.391",
+    "typing_extensions"
+]
+
 # Used to call hatch_build.py
 [tool.hatch.build.hooks.custom]
 

@@ -48,7 +48,10 @@ else
   echo "Not sourcing secrets"
 fi
 
-# Ensure C extensions have compiled.
+# Store which extras and groups we'll need.
+UV_ARGS=("--isolated --extra test")
+
+# # Ensure C extensions have compiled.
 if [ -z "${NO_EXT:-}" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     python tools/fail_if_no_c.py
 fi
@@ -77,7 +80,7 @@ if [ "$AUTH" != "noauth" ]; then
 fi
 
 if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
-    python -m pip install '.[gssapi]'
+    UV_ARGS+=("--extra gssapi")
     if [ "Windows_NT" = "$OS" ]; then
         echo "Setting GSSAPI_PASS"
         export GSSAPI_PASS=${SASL_PASS}
@@ -118,24 +121,26 @@ if [ "$SSL" != "nossl" ]; then
 fi
 
 if [ "$COMPRESSORS" = "snappy" ]; then
-    python -m pip install '.[snappy]'
+    UV_ARGS+=("--extra snappy")
 elif [ "$COMPRESSORS" = "zstd" ]; then
-    python -m pip install zstandard
+    UV_ARGS+=("--extra zstandard")
 fi
 
 # PyOpenSSL test setup.
 if [ -n "$TEST_PYOPENSSL" ]; then
-    python -m pip install '.[ocsp]'
+    UV_ARGS+=("--extra ocsp")
 fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
-    # Check for libmongocrypt checkout.
+    # Check for libmongocrypt download.
     if [ ! -d "libmongocrypt" ]; then
         echo "Run encryption setup first!"
         exit 1
     fi
 
-    python -m pip install '.[encryption]'
+    UV_ARGS+=("--extra encryption")
+    # TODO: Test with 'pip install pymongocrypt'
+    UV_ARGS+=("--group pymongocrypt_source")
 
     # Use the nocrypto build to avoid dependency issues with older windows/python versions.
     BASE=$(pwd)/libmongocrypt/nocrypto
@@ -155,21 +160,12 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
         exit 1
     fi
     export PYMONGOCRYPT_LIB
-
-    # TODO: Test with 'pip install pymongocrypt'
-    if [ ! -d "libmongocrypt_git" ]; then
-      git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
-    fi
-    python -m pip install -U setuptools
-    python -m pip install ./libmongocrypt_git/bindings/python
-    python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
-    python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
     # PATH is updated by PREPARE_SHELL for access to mongocryptd.
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
     if [ -n "$TEST_ENCRYPTION_PYOPENSSL" ]; then
-        python -m pip install '.[ocsp]'
+        UV_ARGS+=("--extra ocsp")
     fi
 
     if [ -n "$TEST_CRYPT_SHARED" ]; then
@@ -214,22 +210,22 @@ if [ -n "$TEST_ATLAS" ]; then
 fi
 
 if [ -n "$TEST_OCSP" ]; then
-    python -m pip install ".[ocsp]"
+    UV_ARGS+=("--extra ocsp")
     TEST_SUITES="ocsp"
 fi
 
 if [ -n "$TEST_AUTH_AWS" ]; then
-    python -m pip install ".[aws]"
+    UV_ARGS+=("--extra aws")
     TEST_SUITES="auth_aws"
 fi
 
 if [ -n "$TEST_AUTH_OIDC" ]; then
-    python -m pip install ".[aws]"
+    UV_ARGS+=("--extra aws")
     TEST_SUITES="auth_oidc"
 fi
 
 if [ -n "$PERF_TEST" ]; then
-    python -m pip install simplejson
+    UV_ARGS+=("--group perf")
     start_time=$(date +%s)
     TEST_SUITES="perf"
     # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
@@ -249,27 +245,27 @@ python -c 'import sys; print(sys.version)'
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     # Keep in sync with combine-coverage.sh.
     # coverage >=5 is needed for relative_files=true.
-    python -m pip install pytest-cov "coverage>=5,<=7.5"
+    UV_ARGS+=("--group coverage")
     TEST_ARGS="$TEST_ARGS --cov"
 fi
 
 if [ -n "$GREEN_FRAMEWORK" ]; then
-    python -m pip install $GREEN_FRAMEWORK
+    UV_ARGS+=("--group $GREEN_FRAMEWORK")
 fi
 
 # Show the installed packages
-PIP_QUIET=0 python -m pip list
+PIP_QUIET=0 uv run ${UV_ARGS[*]} --with pip pip list
 
 if [ -z "$GREEN_FRAMEWORK" ]; then
     # Use --capture=tee-sys so pytest prints test output inline:
     # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
-    if [ -z "$TEST_SUITES" ]; then
-      python -m pytest -v --capture=tee-sys --durations=5 $TEST_ARGS
-    else
-      python -m pytest -v --capture=tee-sys --durations=5 -m $TEST_SUITES $TEST_ARGS
+    PYTEST_ARGS="-v --capture=tee-sys --durations=5 $TEST_ARGS"
+    if [ -n "$TEST_SUITES" ]; then
+      PYTEST_ARGS="-m $TEST_SUITES $PYTEST_ARGS"
     fi
+    uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
 else
-    python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
+    uv run ${UV_ARGS[*]} green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi
 
 # Handle perf test post actions.

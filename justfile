@@ -3,10 +3,12 @@ set shell := ["bash", "-c"]
 set dotenv-load
 set dotenv-filename := "./.evergreen/scripts/env.sh"
 
-# Handle cross-platform paths to local python cli tools.
-python_bin_dir := if os_family() == "windows" { "./.venv/Scripts" } else { "./.venv/bin" }
-hatch_bin := python_bin_dir + "/hatch"
-pre_commit_bin := python_bin_dir + "/pre-commit"
+# Commonly used command segments.
+uv_run := "uv run --isolated"
+typing_run := uv_run + "--group typing --all-extras"
+docs_run := uv_run + "--extra docs"
+doc_build := "./doc/_build"
+mypy_args := "--install-types --non-interactive"
 
 # Make the default recipe private so it doesn't show up in the list.
 [private]
@@ -18,47 +20,55 @@ install:
 
 [group('docs')]
 docs:
-    {{hatch_bin}} run doc:build
+    {{docs_run}} sphinx-build -W -b html doc {{doc_build}}/html
 
 [group('docs')]
 docs-serve:
-    {{hatch_bin}} run doc:serve
+    {{docs_run}} sphinx-autobuild -W -b html doc --watch ./pymongo --watch ./bson --watch ./gridfs {{doc_build}}/serve
 
 [group('docs')]
 docs-linkcheck:
-    {{hatch_bin}} run doc:linkcheck
+    {{docs_run}} sphinx-build -E -b linkcheck doc {{doc_build}}/linkcheck
 
 [group('docs')]
 docs-test:
-    {{hatch_bin}} run doctest:test
+    {{docs_run}} --extra test sphinx-build -E -b doctest doc {{doc_build}}/doctest
 
 [group('typing')]
 typing:
-    {{hatch_bin}} run typing:check
+    just typing-mypy
+    just typing-pyright
 
 [group('typing')]
 typing-mypy:
-    {{hatch_bin}} run typing:mypy
+    {{typing_run}} mypy {{mypy_args}} bson gridfs tools pymongo
+    {{typing_run}} mypy {{mypy_args}} --config-file mypy_test.ini test
+    {{typing_run}} mypy {{mypy_args}} test/test_typing.py test/test_typing_strict.py
+
+[group('typing')]
+typing-pyright:
+    {{typing_run}} pyright test/test_typing.py test/test_typing_strict.py
+    {{typing_run}} pyright -p strict_pyrightconfig.json test/test_typing_strict.py
 
 [group('lint')]
 lint:
-    {{pre_commit_bin}} run --all-files
+    {{uv_run}} pre-commit run --all-files
 
 [group('lint')]
 lint-manual:
-    {{pre_commit_bin}} run --all-files --hook-stage manual
+    {{uv_run}} pre-commit run --all-files --hook-stage manual
 
 [group('test')]
-test *args:
-    {{hatch_bin}} run test:test {{args}}
+test *args="-v --durations=5 --maxfail=10":
+    {{uv_run}} --extra test pytest {{args}}
 
 [group('test')]
-test-mockupdb:
-    {{hatch_bin}} run test:test-mockupdb
+test-mockupdb *args:
+    {{uv_run}} -v --extra test --group mockupdb pytest -m mockupdb {{args}}
 
 [group('test')]
 test-eg *args:
-    {{hatch_bin}} run test:test-eg {{args}}
+    bash ./.evergreen/run-tests.sh {{args}}
 
 [group('encryption')]
 setup-encryption:
@@ -67,3 +77,10 @@ setup-encryption:
 [group('encryption')]
 teardown-encryption:
     bash .evergreen/teardown-encryption.sh
+
+# TODO:
+# We'll install uv in install-dependencies and update our task runner script.
+# We'll need to handle uv config - no global paths, use correct python, in install-dependencies
+# We'll need to add groups for dev and typing
+# In this PR, we'll move env creation into run-tests.sh.  In the next PR we can sort that part out.
+# Update docs

@@ -26,7 +26,7 @@ _NO_COMPRESSION.update(_SENSITIVE_COMMANDS)
 
 def _have_snappy() -> bool:
     try:
-        import snappy  # type:ignore[import-not-found]  # noqa: F401
+        import snappy  # type:ignore[import-untyped]  # noqa: F401
 
         return True
     except ImportError:
