@@ -51,8 +51,9 @@ fi
 # Store which extras and groups we'll need.
 UV_ARGS=("--isolated --extra test")
 
-# # Ensure C extensions have compiled.
+# Compile and ensure C extensions if applicable.
 if [ -z "${NO_EXT:-}" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
+    uv run --with pip pip install -e .
     python tools/fail_if_no_c.py
 fi
 
@@ -160,7 +161,10 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
         exit 1
     fi
     export PYMONGOCRYPT_LIB
-    # PATH is updated by PREPARE_SHELL for access to mongocryptd.
+    # Ensure pymongocrypt is working properly.
+    uv ${UV_ARGS[*]} run python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
+    uv ${UV_ARGS[*]} run python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
+    # PATH is updated by configure-env.sh for access to mongocryptd.
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
