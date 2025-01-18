@@ -17,10 +17,6 @@ echo "Untarring file ... begin"
 AZUREKMS_CMD="tar xf mongo-python-driver.tgz" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 echo "Untarring file ... end"
-echo "Setting up remote system... begin"
-AZUREKMS_CMD="./.evergreen/scripts/setup-system.sh" \
-    $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
-echo "Setting up remote system... end"
 echo "Running test ... begin"
 AZUREKMS_CMD="KEY_NAME=\"$AZUREKMS_KEYNAME\" KEY_VAULT_ENDPOINT=\"$AZUREKMS_KEYVAULTENDPOINT\" SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/just.sh test-eg" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh

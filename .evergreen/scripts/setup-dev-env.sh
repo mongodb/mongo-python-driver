@@ -10,6 +10,10 @@ if [ -f $HERE/env.sh ]; then
   source $HERE/env.sh
 fi
 
+if ! command -v uv 2>/dev/null; then
+  bash .evergreen/install-dependencies.sh
+fi
+
 # Ensure that we have the correct base python binary.
 if [ -z "${UV_PYTHON:-}" ]; then
   . .evergreen/utils.sh
