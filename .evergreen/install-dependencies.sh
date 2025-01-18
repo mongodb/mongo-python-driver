@@ -35,9 +35,9 @@ if [ ! -f $BIN_DIR/just ]; then
     . ${DRIVERS_TOOLS}/.evergreen/install-rust.sh
     cargo install just
     if [ "Windows_NT" = "${OS:-}" ]; then
-      mv $CARGO_HOME/just.exe $BIN_DIR/just
+      mv $CARGO_HOME/bin/just.exe $BIN_DIR/just
     else
-      mv $CARGO_HOME/just $BIN_DIR
+      mv $CARGO_HOME/binjust $BIN_DIR
     fi
   }
 fi
@@ -56,11 +56,11 @@ if [ ! -f $BIN_DIR/uv ]; then
     . ${DRIVERS_TOOLS}/.evergreen/install-rust.sh
     cargo install --git https://github.com/astral-sh/uv uv
     if [ "Windows_NT" = "${OS:-}" ]; then
-      mv $CARGO_HOME/uv.exe $BIN_DIR/uv
-      mv $CARGO_HOME/uvx.exe $BIN_DIR/uvx
+      mv $CARGO_HOME/bin/uv.exe $BIN_DIR/uv
+      mv $CARGO_HOME/bin/uvx.exe $BIN_DIR/uvx
     else
-      mv $CARGO_HOME/uv $BIN_DIR
-      mv $CARGO_HOME/uvx $BIN_DIR
+      mv $CARGO_HOME/bin/uv $BIN_DIR
+      mv $CARGO_HOME/bin/uvx $BIN_DIR
     fi
   fi
 fi
