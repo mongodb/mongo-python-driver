@@ -16,6 +16,7 @@ if ! command -v just 2>/dev/null; then
 fi
 if ! command -v uv 2>/dev/null; then
   curl -LsSf https://astral.sh/uv/install.sh | sh
+  source $HOME/.local/bin/env
 fi
 
 # Ensure that we have the correct base python binary.
