@@ -77,10 +77,3 @@ setup-encryption:
 [group('encryption')]
 teardown-encryption:
     bash .evergreen/teardown-encryption.sh
-
-# TODO:
-# We'll install uv in install-dependencies and update our task runner script.
-# We'll need to handle uv config - no global paths, use correct python, in install-dependencies
-# We'll need to add groups for dev and typing
-# In this PR, we'll move env creation into run-tests.sh.  In the next PR we can sort that part out.
-# Update docs
