@@ -27,6 +27,7 @@ if [ ! -f $BIN_DIR/just ]; then
     else
       mv $CARGO_HOME/binjust $BIN_DIR
     fi
+    export PATH="$BIN_DIR:$PATH"
   }
 fi
 
@@ -51,4 +52,5 @@ if [ ! -f $BIN_DIR/uv ]; then
       mv $CARGO_HOME/bin/uvx $BIN_DIR
     fi
   fi
+  export PATH="$BIN_DIR:$PATH"
 fi
