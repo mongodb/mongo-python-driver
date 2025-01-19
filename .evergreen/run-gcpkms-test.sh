@@ -15,6 +15,7 @@ git add .
 git commit -m "add files" || true
 git archive -o /tmp/mongo-python-driver.tgz HEAD
 GCPKMS_SRC=/tmp/mongo-python-driver.tgz GCPKMS_DST=$GCPKMS_INSTANCENAME: $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/copy-file.sh
+GCPKMS_SRC="$PROJECT_DIRECTORY/secrets-export.sh" GCPKMS_DST=$GCPKMS_INSTANCENAME: $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/copy-file.sh
 echo "Copying files ... end"
 echo "Untarring file ... begin"
 GCPKMS_CMD="tar xf mongo-python-driver.tgz" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh

@@ -7,11 +7,9 @@ if [ "${CI:-}" == "true" ]; then
   BIN_DIR=$DRIVERS_TOOLS_BINARIES
 else
   BIN_DIR=$HOME/.local/bin
+  # Ensure bin dir is on the path.
+  export PATH="$BIN_DIR:$PATH"
 fi
-
-# REMOVE BEFORE MERGING.
-rm -f $BIN_DIR/just
-rm -f $BIN_DIR/uv
 
 # Install just.
 if [ ! -f $BIN_DIR/just ]; then
@@ -31,7 +29,6 @@ if [ ! -f $BIN_DIR/just ]; then
     else
       mv $CARGO_HOME/binjust $BIN_DIR
     fi
-    export PATH="$BIN_DIR:$PATH"
   }
 fi
 
@@ -56,5 +53,4 @@ if [ ! -f $BIN_DIR/uv ]; then
       mv $CARGO_HOME/bin/uvx $BIN_DIR
     fi
   fi
-  export PATH="$BIN_DIR:$PATH"
 fi
