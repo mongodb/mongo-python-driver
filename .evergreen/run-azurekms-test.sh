@@ -13,7 +13,6 @@ git add .
 git commit -m "add files" || true
 git archive -o /tmp/mongo-python-driver.tar HEAD
 tar -rf /tmp/mongo-python-driver.tar libmongocrypt
-tar -rf /tmp/mongo-python-driver.tar secrets-export.sh
 gzip -f /tmp/mongo-python-driver.tar
 # shellcheck disable=SC2088
 AZUREKMS_SRC="/tmp/mongo-python-driver.tar.gz" AZUREKMS_DST="~/" \

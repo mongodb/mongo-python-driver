@@ -15,7 +15,6 @@ git add .
 git commit -m "add files" || true
 git archive -o /tmp/mongo-python-driver.tar HEAD
 tar -rf /tmp/mongo-python-driver.tar libmongocrypt
-tar -rf /tmp/mongo-python-driver.tar secrets-export.sh
 gzip -f /tmp/mongo-python-driver.tar
 GCPKMS_SRC=/tmp/mongo-python-driver.tar.gz GCPKMS_DST=$GCPKMS_INSTANCENAME: $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/copy-file.sh
 echo "Copying files ... end"
