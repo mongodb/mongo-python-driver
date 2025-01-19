@@ -23,7 +23,7 @@ AZUREKMS_CMD="tar xf mongo-python-driver.tgz" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 echo "Untarring file ... end"
 echo "Running test ... begin"
-AZUREKMS_CMD="KEY_NAME=\"$AZUREKMS_KEYNAME\" KEY_VAULT_ENDPOINT=\"$AZUREKMS_KEYVAULTENDPOINT\" SUCCESS=true TEST_FLE_AZURE_AUTO=1 bash ./.evergreen/just.sh test-eg" \
+AZUREKMS_CMD="pwd && ls && KEY_NAME=\"$AZUREKMS_KEYNAME\" KEY_VAULT_ENDPOINT=\"$AZUREKMS_KEYVAULTENDPOINT\" SUCCESS=true TEST_FLE_AZURE_AUTO=1 bash ./.evergreen/just.sh test-eg" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 echo "Running test ... end"
 bash $HERE/teardown-encryption.sh
