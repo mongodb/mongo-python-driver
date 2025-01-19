@@ -1,0 +1,3 @@
+AZUREKMS_VMNAME: vmname-PYTHON_DRIVER-22377
+AZUREKMS_RESOURCEGROUP: DRIVERS-2411
+AZUREKMS_SCOPE: /subscriptions/803c7bf2-a561-4cc3-b105-1191321c3ae6/resourceGroups/DRIVERS-2411/providers/Microsoft.KeyVault/vaults/drivers-2411-keyvault
