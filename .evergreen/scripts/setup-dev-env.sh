@@ -12,6 +12,7 @@ fi
 
 # Ensure dependencies are installed.
 . .evergreen/install-dependencies.sh
+echo "HELLO: $PATH"
 
 # Ensure that we have the correct base python binary.
 if [ -z "${UV_PYTHON:-}" ]; then
