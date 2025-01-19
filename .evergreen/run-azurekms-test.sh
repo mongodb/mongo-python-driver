@@ -15,7 +15,7 @@ git archive -o /tmp/mongo-python-driver.tgz HEAD
 # shellcheck disable=SC2088
 AZUREKMS_SRC="/tmp/mongo-python-driver.tgz" AZUREKMS_DST="~/" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/copy-file.sh
-AZUREKMS_SRC="$HERE/../../secrets-export.sh" AZUREKMS_DST="~/" \
+AZUREKMS_SRC="$HERE/../secrets-export.sh" AZUREKMS_DST="~/" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/copy-file.sh
 echo "Copying files ... end"
 echo "Untarring file ... begin"
