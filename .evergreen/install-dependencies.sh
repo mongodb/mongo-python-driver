@@ -9,6 +9,10 @@ else
   BIN_DIR=$HOME/.local/bin
 fi
 
+# REMOVE BEFORE MERGING.
+rm -f $BIN_DIR/just
+rm -f $BIN_DIR/uv
+
 # Install just.
 if [ ! -f $BIN_DIR/just ]; then
   if [ "Windows_NT" = "${OS:-}" ]; then
