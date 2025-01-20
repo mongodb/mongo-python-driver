@@ -12,9 +12,9 @@ fi
 
 # Ensure dependencies are installed.
 . .evergreen/install-dependencies.sh
-echo "HELLO: $PATH"
 
 # Ensure that we have the correct base python binary.
+echo "Setting up python environment..."
 if [ -z "${UV_PYTHON:-}" ]; then
   . .evergreen/utils.sh
 
@@ -24,10 +24,10 @@ if [ -z "${UV_PYTHON:-}" ]; then
   export UV_PYTHON=${PYTHON_BINARY}
   echo "export UV_PYTHON=$UV_PYTHON" >> $HERE/env.sh
 fi
-
-# Set up the python environment.
+echo "Using python $UV_PYTHON"
 uv sync
 uv run --with pip pip install -e .
+echo "Setting up python environment... done."
 
 # Ensure there is a pre-commit hook if there is a git checkout.
 if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
