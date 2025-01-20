@@ -10,7 +10,7 @@ else
 fi
 
 
-_CURL_ARGS="--proto '=https' --tlsv1.2 -LsSf"
+_CURL_ARGS="--tlsv1.2 -LsSf"
 
 function _cargo_install() {
   # CARGO_HOME is defined in configure-env.sh
