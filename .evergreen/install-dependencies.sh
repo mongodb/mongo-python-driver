@@ -17,7 +17,7 @@ function _cargo_install() {
   export CARGO_HOME=${CARGO_HOME:-$HOME/.cargo/}
   export RUSTUP_HOME="${CARGO_HOME}/.rustup"
   . ${DRIVERS_TOOLS}/.evergreen/install-rust.sh
-  cargo install "$@"
+  cargo install --force --quiet "$@"
 }
 
 # Install just.
