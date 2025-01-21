@@ -237,10 +237,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     def test_iteration(self):
         client = self.client
-        if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
-            msg = "'NoneType' object is not callable"
-        else:
-            msg = "'AsyncMongoClient' object is not iterable"
+        msg = "'AsyncMongoClient' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in client:  # type: ignore[misc] # error: "None" not callable  [misc]
