@@ -26,6 +26,10 @@ function _pip_install() {
 # Ensure just is installed.
 if ! command -v just 2>/dev/null; then
   # On most systems we can install directly.
+  _TARGET=""
+  if [ "Windows_NT" = "${OS:-}" ]; then
+    TARGET="--target x86_64-pc-windows-msvc"
+  fi
   echo "Installing just..."
   curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- $_TARGET --to "$_BIN_DIR" || {
     _pip_install rust-just just
