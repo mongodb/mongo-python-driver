@@ -62,12 +62,6 @@ pymongocrypt_source = [
     "pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
 ]
 perf = ["simplejson"]
-typing = [
-    "pip",
-    "mypy==1.14.1",
-    "pyright==1.1.391",
-    "typing_extensions"
-]
 
 # Used to call hatch_build.py
 [tool.hatch.build.hooks.custom]
