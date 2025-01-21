@@ -17,6 +17,8 @@ else
   BIN_DIR=.venv/bin
 fi
 
+. $HERE/install-dependencies.sh
+
 # Ensure there is a python venv.
 if [ ! -d $BIN_DIR ]; then
   . .evergreen/utils.sh
