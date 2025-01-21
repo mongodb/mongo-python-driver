@@ -28,7 +28,7 @@ if ! command -v just 2>/dev/null; then
   # On most systems we can install directly.
   _TARGET=""
   if [ "Windows_NT" = "${OS:-}" ]; then
-    TARGET="--target x86_64-pc-windows-msvc"
+    _TARGET="--target x86_64-pc-windows-msvc"
   fi
   echo "Installing just..."
   mkdir -p "$_BIN_DIR" 2>/dev/null || true
