@@ -1,15 +1,6 @@
 #!/bin/bash
 
 set -eu
-<<<<<<< HEAD
-file="$PROJECT_DIRECTORY/.evergreen/install-dependencies.sh"
-# Don't use ${file} syntax here because evergreen treats it as an empty expansion.
-[ -f "$file" ] && bash "$file"
-||||||| 86084adb2
-file="$PROJECT_DIRECTORY/.evergreen/install-dependencies.sh"
-# Don't use ${file} syntax here because evergreen treats it as an empty expansion.
-[ -f "$file" ] && bash "$file" || echo "$file not available, skipping"
-=======
 
 # On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
 if [ "${CI:-}" == "true" ]; then
@@ -49,4 +40,16 @@ if ! command -v just 2>/dev/null; then
   fi
   echo "Installing just... done."
 fi
->>>>>>> 2235b8354cef0acc0b41321fc103d14acf0ef92f
+
+# Install uv.
+if ! command -v uv 2>/dev/null; then
+  echo "Installing uv..."
+  # On most systems we can install directly.
+  _curl https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
+     _pip_install uv uv
+  }
+  if ! command -v uv 2>/dev/null; then
+    export PATH="$PATH:$_BIN_DIR"
+  fi
+  echo "Installing uv... done."
+fi
