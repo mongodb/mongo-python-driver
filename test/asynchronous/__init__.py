@@ -866,16 +866,6 @@ class AsyncClientContext:
 async_client_context = AsyncClientContext()
 
 
-async def reset_client_context():
-    if _IS_SYNC:
-        # sync tests don't need to reset a client context
-        return
-    elif async_client_context.client is not None:
-        await async_client_context.client.close()
-        async_client_context.client = None
-    await async_client_context._init_client()
-
-
 class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)
