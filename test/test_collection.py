@@ -133,10 +133,7 @@ class TestCollectionNoConnect(UnitTest):
 
     def test_iteration(self):
         coll = self.db.coll
-        if _IS_SYNC:
-            msg = "'Collection' object is not iterable"
-        else:
-            msg = "'Collection' object is not iterable"
+        msg = "'Collection' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in coll:  # type: ignore[misc] # error: "None" not callable  [misc]
