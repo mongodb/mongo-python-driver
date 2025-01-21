@@ -31,6 +31,7 @@ if ! command -v just 2>/dev/null; then
     TARGET="--target x86_64-pc-windows-msvc"
   fi
   echo "Installing just..."
+  mkdir -p "$_BIN_DIR" 2>/dev/null || true
   curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- $_TARGET --to "$_BIN_DIR" || {
     _pip_install rust-just just
   }
