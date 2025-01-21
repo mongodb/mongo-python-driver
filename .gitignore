@@ -24,6 +24,7 @@ libmongocrypt.tar.gz
 libmongocrypt/
 .venv
 expansion.yml
+*expansions.yml
 .evergreen/scripts/env.sh
 
 # Lambda temp files
