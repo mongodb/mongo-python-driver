@@ -1559,8 +1559,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # Stop the periodic task thread and then send pending killCursor
         # requests before closing the topology.
         self._kill_cursors_executor.close()
-        if not _IS_SYNC:
-            await self._kill_cursors_executor.join()
         await self._process_kill_cursors()
         await self._topology.close()
         if self._encrypter:

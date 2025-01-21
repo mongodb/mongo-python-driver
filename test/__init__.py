@@ -864,6 +864,16 @@ class ClientContext:
 client_context = ClientContext()
 
 
+def reset_client_context():
+    if _IS_SYNC:
+        # sync tests don't need to reset a client context
+        return
+    elif client_context.client is not None:
+        client_context.client.close()
+        client_context.client = None
+    client_context._init_client()
+
+
 class PyMongoTestCase(unittest.TestCase):
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)
@@ -1126,6 +1136,8 @@ class IntegrationTest(PyMongoTestCase):
 
     @client_context.require_connection
     def setUp(self) -> None:
+        if not _IS_SYNC:
+            reset_client_context()
         if client_context.load_balancer and not getattr(self, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")
         if client_context.serverless and not getattr(self, "RUN_ON_SERVERLESS", False):
