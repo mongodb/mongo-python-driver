@@ -75,19 +75,12 @@ class AsyncPeriodicExecutor:
         callback; see monitor.py.
         """
         self._stopped = True
-        if self._task:
+        if self._task is not None:
             self._task.cancel()
 
     async def join(self, timeout: Optional[int] = None) -> None:
         if self._task is not None:
-            try:
-                await asyncio.wait_for(self._task, timeout=timeout)  # type-ignore: [arg-type]
-            except asyncio.TimeoutError:
-                # Task timed out
-                pass
-            except asyncio.exceptions.CancelledError:
-                # Task was already finished, or not yet started.
-                raise
+            await asyncio.wait([self._task], timeout=timeout)  # type-ignore: [arg-type]
 
     def wake(self) -> None:
         """Execute the target function soon."""
