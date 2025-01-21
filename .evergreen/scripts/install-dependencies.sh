@@ -45,7 +45,7 @@ fi
 if ! command -v uv 2>/dev/null; then
   echo "Installing uv..."
   # On most systems we can install directly.
-  _curl https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
+  curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
      _pip_install uv uv
   }
   if ! command -v uv 2>/dev/null; then

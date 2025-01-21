@@ -13,6 +13,14 @@ fi
 # Ensure dependencies are installed.
 . $HERE/install-dependencies.sh
 
+
+# Set the location of the python bin dir.
+if [ "Windows_NT" = "${OS:-}" ]; then
+  BIN_DIR=.venv/Scripts
+else
+  BIN_DIR=.venv/bin
+fi
+
 # Ensure there is a python venv.
 if [ ! -d $BIN_DIR ]; then
   . .evergreen/utils.sh
