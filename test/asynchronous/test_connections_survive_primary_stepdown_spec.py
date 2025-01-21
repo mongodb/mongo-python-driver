@@ -22,7 +22,6 @@ sys.path[0:0] = [""]
 from test.asynchronous import (
     AsyncIntegrationTest,
     async_client_context,
-    reset_client_context,
     unittest,
 )
 from test.asynchronous.helpers import async_repl_set_step_down
