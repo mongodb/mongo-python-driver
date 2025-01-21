@@ -9,7 +9,7 @@ if [ "${CI:-}" == "true" ]; then
 else
   _BIN_DIR=$HOME/.local/bin
 fi
-if [ ! -f $BIN_DIR/just ]; then
+if [ ! -f $_BIN_DIR/just ]; then
   if [ "Windows_NT" = "${OS:-}" ]; then
     _TARGET="--target x86_64-pc-windows-msvc"
   else
