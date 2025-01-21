@@ -4,7 +4,7 @@ set -eu
 # Install just.
 # On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
 if [ "${CI:-}" == "true" ]; then
-  BIN_DIR=$DRIVERS_TOOLS_BINARIES
+  BIN_DIR=${DRIVERS_TOOLS_BINARIES:-}
 else
   BIN_DIR=$HOME/.local/bin
 fi
