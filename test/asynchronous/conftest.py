@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import sys
 
+import pymongo
 from typing_extensions import Any
 
 from pymongo import AsyncMongoClient
@@ -13,6 +14,8 @@ from test.asynchronous import async_setup, async_teardown, _connection_string, A
 
 import pytest
 import pytest_asyncio
+
+from test.utils import FunctionCallRecorder
 
 _IS_SYNC = False
 
@@ -123,6 +126,15 @@ def simple_client(h: Any = None, p: Any = None, **kwargs: Any) -> AsyncMongoClie
     else:
         client = AsyncMongoClient(h, p, **kwargs)
     return client
+
+@pytest.fixture(scope="function")
+def patch_resolver():
+    from pymongo.srv_resolver import _resolve
+
+    patched_resolver = FunctionCallRecorder(_resolve)
+    pymongo.srv_resolver._resolve = patched_resolver
+    yield patched_resolver
+    pymongo.srv_resolver._resolve = _resolve
 
 
 
