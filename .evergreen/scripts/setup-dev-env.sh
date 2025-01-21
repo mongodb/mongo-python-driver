@@ -11,11 +11,10 @@ if [ -f $HERE/env.sh ]; then
 fi
 
 # Ensure dependencies are installed.
-. .evergreen/install-dependencies.sh
+. $HERE/install-dependencies.sh
 
-# Ensure that we have the correct base python binary.
-echo "Setting up python environment..."
-if [ -z "${UV_PYTHON:-}" ]; then
+# Ensure there is a python venv.
+if [ ! -d $BIN_DIR ]; then
   . .evergreen/utils.sh
 
   if [ -z "${PYTHON_BINARY:-}" ]; then

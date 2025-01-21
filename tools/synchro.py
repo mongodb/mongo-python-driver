@@ -149,6 +149,10 @@ _pymongo_dest_base = "./pymongo/synchronous/"
 _gridfs_dest_base = "./gridfs/synchronous/"
 _test_dest_base = "./test/"
 
+if not Path.exists(Path(_pymongo_dest_base)):
+    Path.mkdir(Path(_pymongo_dest_base))
+if not Path.exists(Path(_gridfs_dest_base)):
+    Path.mkdir(Path(_gridfs_dest_base))
 
 async_files = [
     _pymongo_base + f for f in listdir(_pymongo_base) if (Path(_pymongo_base) / f).is_file()
@@ -168,18 +172,6 @@ test_files = [
     _test_base + f
     for f in listdir(_test_base)
     if (Path(_test_base) / f).is_file() and not async_only_test(f)
-]
-
-sync_files = [
-    _pymongo_dest_base + f
-    for f in listdir(_pymongo_dest_base)
-    if (Path(_pymongo_dest_base) / f).is_file()
-]
-
-sync_gridfs_files = [
-    _gridfs_dest_base + f
-    for f in listdir(_gridfs_dest_base)
-    if (Path(_gridfs_dest_base) / f).is_file()
 ]
 
 # Add each asynchronized test here as part of the converting PR
@@ -223,15 +215,10 @@ converted_tests = [
     "unified_format.py",
 ]
 
-sync_test_files = [
-    _test_dest_base + f for f in converted_tests if (Path(_test_dest_base) / f).is_file()
-]
 
-
-docstring_translate_files = sync_files + sync_gridfs_files + sync_test_files
-
-
-def process_files(files: list[str]) -> None:
+def process_files(
+    files: list[str], docstring_translate_files: list[str], sync_test_files: list[str]
+) -> None:
     for file in files:
         if "__init__" not in file or "__init__" and "test" in file:
             with open(file, "r+") as f:
@@ -374,7 +361,27 @@ def main() -> None:
     unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
     unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
     unasync_directory(test_files, _test_base, _test_dest_base, replacements)
-    process_files(sync_files + sync_gridfs_files + sync_test_files)
+
+    sync_files = [
+        _pymongo_dest_base + f
+        for f in listdir(_pymongo_dest_base)
+        if (Path(_pymongo_dest_base) / f).is_file()
+    ]
+
+    sync_gridfs_files = [
+        _gridfs_dest_base + f
+        for f in listdir(_gridfs_dest_base)
+        if (Path(_gridfs_dest_base) / f).is_file()
+    ]
+    sync_test_files = [
+        _test_dest_base + f for f in converted_tests if (Path(_test_dest_base) / f).is_file()
+    ]
+
+    docstring_translate_files = sync_files + sync_gridfs_files + sync_test_files
+
+    process_files(
+        sync_files + sync_gridfs_files + sync_test_files, docstring_translate_files, sync_test_files
+    )
 
 
 if __name__ == "__main__":

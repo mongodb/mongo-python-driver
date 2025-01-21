@@ -11,10 +11,10 @@ echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" >$MONGO_ORCHESTRA
 
 popd
 
-# # Copy PyMongo's test certificates over driver-evergreen-tools'
+# Copy PyMongo's test certificates over driver-evergreen-tools'
 cp ${PROJECT_DIRECTORY}/test/certificates/* ${DRIVERS_TOOLS}/.evergreen/x509gen/
 
-# # Replace MongoOrchestration's client certificate.
+# Replace MongoOrchestration's client certificate.
 cp ${PROJECT_DIRECTORY}/test/certificates/client.pem ${MONGO_ORCHESTRATION_HOME}/lib/client.pem
 
 if [ -w /etc/hosts ]; then
