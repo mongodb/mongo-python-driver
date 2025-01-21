@@ -161,7 +161,9 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     fi
     export PYMONGOCRYPT_LIB
     # Ensure pymongocrypt is working properly.
+    # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
+    # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
     # PATH is updated by configure-env.sh for access to mongocryptd.
 fi
@@ -257,6 +259,7 @@ if [ -n "$GREEN_FRAMEWORK" ]; then
 fi
 
 # Show the installed packages
+# shellcheck disable=SC2048
 PIP_QUIET=0 uv run ${UV_ARGS[*]} --with pip pip list
 
 if [ -z "$GREEN_FRAMEWORK" ]; then
@@ -266,8 +269,10 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     if [ -n "$TEST_SUITES" ]; then
       PYTEST_ARGS="-m $TEST_SUITES $PYTEST_ARGS"
     fi
+    # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
 else
+    # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi
 

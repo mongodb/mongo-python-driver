@@ -19,9 +19,9 @@ function _pip_install() {
   . $_HERE/utils.sh
   _VENV_PATH=$(mktemp -d)
   echo "Installing $2 using pip..."
-  createvirtualenv $(find_python3) $_VENV_PATH
+  createvirtualenv "$(find_python3)" $_VENV_PATH
   python -m pip install $1
-  ln -s $(which $2) $_BIN_DIR/$2
+  ln -s "$(which $2)" $_BIN_DIR/$2
   echo "Installing $2 using pip... done."
 }
 

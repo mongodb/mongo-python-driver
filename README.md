@@ -196,7 +196,7 @@ ObjectId('4aba160ee23f6b543e000002')
 Documentation is available at
 [pymongo.readthedocs.io](https://pymongo.readthedocs.io/en/stable/).
 
-See the [contributing guide](./CONTRIBUTING.md) for how to build the documentation.
+See the [contributing guide](./CONTRIBUTING.md#documentation) for how to build the documentation.
 
 ## Learning Resources
 
