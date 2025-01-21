@@ -1418,6 +1418,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         raise TypeError("'AsyncMongoClient' object is not iterable")
 
     next = __next__
+    anext = next
 
     async def _server_property(self, attr_name: str) -> Any:
         """An attribute of the current server's description.

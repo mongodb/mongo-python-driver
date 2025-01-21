@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 
 def pytest_collection_modifyitems(items, config):
     # Markers that should overlap with the default markers.
@@ -10,6 +12,6 @@ def pytest_collection_modifyitems(items, config):
             default_marker = "default_async"
         else:
             default_marker = "default"
-        markers = [m for m in item.iter_markers() if m not in overlap_markers]
+        markers = [m for m in item.iter_markers() if m.name not in overlap_markers]
         if not markers:
             item.add_marker(default_marker)

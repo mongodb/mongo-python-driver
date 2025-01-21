@@ -30,6 +30,10 @@ import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
+
+import pytest_asyncio
+from pymongo.lock import _create_lock, _async_create_lock
+
 from test.helpers import (
     COMPRESSORS,
     IS_SRV,
@@ -116,7 +120,7 @@ class AsyncClientContext:
         self.default_client_options: Dict = {}
         self.sessions_enabled = False
         self.client = None  # type: ignore
-        self.conn_lock = threading.Lock()
+        self.conn_lock = _async_create_lock()
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
@@ -337,7 +341,7 @@ class AsyncClientContext:
                         await mongos_client.close()
 
     async def init(self):
-        with self.conn_lock:
+        async with self.conn_lock:
             if not self.client and not self.connection_attempts:
                 await self._init_client()
 
@@ -520,6 +524,12 @@ class AsyncClientContext:
             func=func,
         )
 
+    @property
+    def is_not_mmap(self):
+        if self.is_mongos:
+            return True
+        return self.storage_engine != "mmapv1"
+
     def require_no_mmap(self, func):
         """Run a test only if the server is not using the MMAPv1 storage
         engine. Only works for standalone and replica sets; tests are
@@ -573,6 +583,10 @@ class AsyncClientContext:
         """Run a test only if the client is connected to a replica set."""
         return self._require(lambda: self.is_rs, "Not connected to a replica set", func=func)
 
+    @property
+    async def secondaries_count(self):
+        return 0 if not self.client else len(await self.client.secondaries)
+
     def require_secondaries_count(self, count):
         """Run a test only if the client is connected to a replica set that has
         `count` secondaries.
@@ -588,7 +602,7 @@ class AsyncClientContext:
 
     @property
     async def supports_secondary_read_pref(self):
-        if self.has_secondaries:
+        if await self.has_secondaries:
             return True
         if self.is_mongos:
             shard = await self.client.config.shards.find_one()["host"]  # type:ignore[index]
@@ -692,7 +706,7 @@ class AsyncClientContext:
         if "sharded" in topologies and self.is_mongos:
             return True
         if "sharded-replicaset" in topologies and self.is_mongos:
-            shards = await async_client_context.client.config.shards.find().to_list()
+            shards = await self.client.config.shards.find().to_list()
             for shard in shards:
                 # For a 3-member RS-backed sharded cluster, shard['host']
                 # will be 'replicaName/ip1:port1,ip2:port2,ip3:port3'
@@ -1191,8 +1205,39 @@ class AsyncMockClientTest(AsyncUnitTest):
         await super().asyncTearDown()
 
 
+async def _get_environment():
+    client = AsyncClientContext()
+    await client.init()
+    requirements = {}
+    requirements["SUPPORT_TRANSACTIONS"] = client.supports_transactions()
+    requirements["IS_DATA_LAKE"] = client.is_data_lake
+    requirements["IS_SYNC"] = _IS_SYNC
+    requirements["IS_SYNC"] = _IS_SYNC
+    requirements["REQUIRE_API_VERSION"] = MONGODB_API_VERSION
+    requirements["SUPPORTS_FAILCOMMAND_FAIL_POINT"] = client.supports_failCommand_fail_point
+    requirements["IS_NOT_MMAP"] = client.is_not_mmap
+    requirements["SERVER_VERSION"] = client.version
+    requirements["AUTH_ENABLED"] = client.auth_enabled
+    requirements["FIPS_ENABLED"] = client.fips_enabled
+    requirements["IS_RS"] = client.is_rs
+    requirements["MONGOSES"] = len(client.mongoses)
+    requirements["SECONDARIES_COUNT"] = await client.secondaries_count
+    requirements["SECONDARY_READ_PREF"] = await client.supports_secondary_read_pref
+    requirements["HAS_IPV6"] = client.has_ipv6
+    requirements["IS_SERVERLESS"] = client.serverless
+    requirements["IS_LOAD_BALANCER"] = client.load_balancer
+    requirements["TEST_COMMANDS_ENABLED"] = client.test_commands_enabled
+    requirements["IS_TLS"] = client.tls
+    requirements["IS_TLS_CERT"] = client.tlsCertificateKeyFile
+    requirements["SERVER_IS_RESOLVEABLE"] = client.server_is_resolvable
+    requirements["SESSIONS_ENABLED"] = client.sessions_enabled
+    requirements["SUPPORTS_RETRYABLE_WRITES"] = client.supports_retryable_writes()
+    await client.client.close()
+
+    return requirements
+
 async def async_setup():
-    await async_client_context.init()
+    await _get_environment()
     warnings.resetwarnings()
     warnings.simplefilter("always")
     global_knobs.enable()
@@ -1207,16 +1252,16 @@ async def async_teardown():
         garbage.append(f"  gc.get_referrers: {gc.get_referrers(g)!r}")
     if garbage:
         raise AssertionError("\n".join(garbage))
-    c = async_client_context.client
-    if c:
-        if not async_client_context.is_data_lake:
-            await c.drop_database("pymongo-pooling-tests")
-            await c.drop_database("pymongo_test")
-            await c.drop_database("pymongo_test1")
-            await c.drop_database("pymongo_test2")
-            await c.drop_database("pymongo_test_mike")
-            await c.drop_database("pymongo_test_bernie")
-        await c.close()
+    # c = async_client_context.client
+    # if c:
+    #     if not async_client_context.is_data_lake:
+    #         await c.drop_database("pymongo-pooling-tests")
+    #         await c.drop_database("pymongo_test")
+    #         await c.drop_database("pymongo_test1")
+    #         await c.drop_database("pymongo_test2")
+    #         await c.drop_database("pymongo_test_mike")
+    #         await c.drop_database("pymongo_test_bernie")
+    #     await c.close()
     print_running_clients()
 
 
