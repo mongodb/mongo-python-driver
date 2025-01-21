@@ -2,7 +2,6 @@
 
 set -eu
 
-# Install just.
 # On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
 if [ "${CI:-}" == "true" ]; then
   _BIN_DIR=${DRIVERS_TOOLS_BINARIES:-}
@@ -11,6 +10,7 @@ else
 fi
 
 
+# Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
   _HERE=$(dirname ${BASH_SOURCE:-$0})
   . $_HERE/../utils.sh
