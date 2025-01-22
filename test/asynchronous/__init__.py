@@ -879,6 +879,19 @@ class AsyncClientContext:
 # Reusable client context
 async_client_context = AsyncClientContext()
 
+class AsyncPyMongoTestCasePyTest:
+    @asynccontextmanager
+    async def fail_point(self, client, command_args):
+        cmd_on = SON([("configureFailPoint", "failCommand")])
+        cmd_on.update(command_args)
+        await client.admin.command(cmd_on)
+        try:
+            yield
+        finally:
+            await client.admin.command(
+                "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
+            )
+
 
 class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
     def assertEqualCommand(self, expected, actual, msg=None):
@@ -1205,39 +1218,7 @@ class AsyncMockClientTest(AsyncUnitTest):
         await super().asyncTearDown()
 
 
-async def _get_environment():
-    client = AsyncClientContext()
-    await client.init()
-    requirements = {}
-    requirements["SUPPORT_TRANSACTIONS"] = client.supports_transactions()
-    requirements["IS_DATA_LAKE"] = client.is_data_lake
-    requirements["IS_SYNC"] = _IS_SYNC
-    requirements["IS_SYNC"] = _IS_SYNC
-    requirements["REQUIRE_API_VERSION"] = MONGODB_API_VERSION
-    requirements["SUPPORTS_FAILCOMMAND_FAIL_POINT"] = client.supports_failCommand_fail_point
-    requirements["IS_NOT_MMAP"] = client.is_not_mmap
-    requirements["SERVER_VERSION"] = client.version
-    requirements["AUTH_ENABLED"] = client.auth_enabled
-    requirements["FIPS_ENABLED"] = client.fips_enabled
-    requirements["IS_RS"] = client.is_rs
-    requirements["MONGOSES"] = len(client.mongoses)
-    requirements["SECONDARIES_COUNT"] = await client.secondaries_count
-    requirements["SECONDARY_READ_PREF"] = await client.supports_secondary_read_pref
-    requirements["HAS_IPV6"] = client.has_ipv6
-    requirements["IS_SERVERLESS"] = client.serverless
-    requirements["IS_LOAD_BALANCER"] = client.load_balancer
-    requirements["TEST_COMMANDS_ENABLED"] = client.test_commands_enabled
-    requirements["IS_TLS"] = client.tls
-    requirements["IS_TLS_CERT"] = client.tlsCertificateKeyFile
-    requirements["SERVER_IS_RESOLVEABLE"] = client.server_is_resolvable
-    requirements["SESSIONS_ENABLED"] = client.sessions_enabled
-    requirements["SUPPORTS_RETRYABLE_WRITES"] = client.supports_retryable_writes()
-    await client.client.close()
-
-    return requirements
-
 async def async_setup():
-    await _get_environment()
     warnings.resetwarnings()
     warnings.simplefilter("always")
     global_knobs.enable()

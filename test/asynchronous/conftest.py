@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import sys
+from typing import Callable
 
 import pymongo
 from typing_extensions import Any
@@ -9,7 +11,7 @@ from typing_extensions import Any
 from pymongo import AsyncMongoClient
 from pymongo.uri_parser import parse_uri
 
-from test import pytest_conf, db_user, db_pwd
+from test import pytest_conf, db_user, db_pwd, MONGODB_API_VERSION
 from test.asynchronous import async_setup, async_teardown, _connection_string, AsyncClientContext
 
 import pytest
@@ -36,6 +38,86 @@ async def async_client_context_fixture():
     await client.init()
     yield client
     await client.client.close()
+
+@pytest_asyncio.fixture(loop_scope="session", autouse=True)
+async def test_environment(async_client_context_fixture):
+    requirements = {}
+    requirements["SUPPORT_TRANSACTIONS"] = async_client_context_fixture.supports_transactions()
+    requirements["IS_DATA_LAKE"] = async_client_context_fixture.is_data_lake
+    requirements["IS_SYNC"] = _IS_SYNC
+    requirements["IS_SYNC"] = _IS_SYNC
+    requirements["REQUIRE_API_VERSION"] = MONGODB_API_VERSION
+    requirements["SUPPORTS_FAILCOMMAND_FAIL_POINT"] = async_client_context_fixture.supports_failCommand_fail_point
+    requirements["IS_NOT_MMAP"] = async_client_context_fixture.is_not_mmap
+    requirements["SERVER_VERSION"] = async_client_context_fixture.version
+    requirements["AUTH_ENABLED"] = async_client_context_fixture.auth_enabled
+    requirements["FIPS_ENABLED"] = async_client_context_fixture.fips_enabled
+    requirements["IS_RS"] = async_client_context_fixture.is_rs
+    requirements["MONGOSES"] = len(async_client_context_fixture.mongoses)
+    requirements["SECONDARIES_COUNT"] = await async_client_context_fixture.secondaries_count
+    requirements["SECONDARY_READ_PREF"] = await async_client_context_fixture.supports_secondary_read_pref
+    requirements["HAS_IPV6"] = async_client_context_fixture.has_ipv6
+    requirements["IS_SERVERLESS"] = async_client_context_fixture.serverless
+    requirements["IS_LOAD_BALANCER"] = async_client_context_fixture.load_balancer
+    requirements["TEST_COMMANDS_ENABLED"] = async_client_context_fixture.test_commands_enabled
+    requirements["IS_TLS"] = async_client_context_fixture.tls
+    requirements["IS_TLS_CERT"] = async_client_context_fixture.tlsCertificateKeyFile
+    requirements["SERVER_IS_RESOLVEABLE"] = async_client_context_fixture.server_is_resolvable
+    requirements["SESSIONS_ENABLED"] = async_client_context_fixture.sessions_enabled
+    requirements["SUPPORTS_RETRYABLE_WRITES"] = async_client_context_fixture.supports_retryable_writes()
+    yield requirements
+
+
+@pytest_asyncio.fixture
+async def require_auth(test_environment):
+    if not test_environment["AUTH_ENABLED"]:
+        pytest.skip("Authentication is not enabled on the server")
+
+@pytest_asyncio.fixture
+async def require_no_fips(test_environment):
+    if test_environment["FIPS_ENABLED"]:
+        pytest.skip("Test cannot run on a FIPS-enabled host")
+
+@pytest_asyncio.fixture
+async def require_no_tls(test_environment):
+    if test_environment["IS_TLS"]:
+        pytest.skip("Must be able to connect without TLS")
+
+@pytest_asyncio.fixture
+async def require_ipv6(test_environment):
+    if not test_environment["HAS_IPV6"]:
+        pytest.skip("No IPv6")
+
+@pytest_asyncio.fixture
+async def require_sync(test_environment):
+    if not _IS_SYNC:
+        pytest.skip("This test only works with the synchronous API")
+
+@pytest_asyncio.fixture
+async def require_no_mongos(test_environment):
+    if test_environment["MONGOSES"]:
+        pytest.skip("Must be connected to a mongod, not a mongos")
+
+@pytest_asyncio.fixture
+async def require_no_replica_set(test_environment):
+    if test_environment["IS_RS"]:
+        pytest.skip("Connected to a replica set, not a standalone mongod")
+
+@pytest_asyncio.fixture
+async def require_replica_set(test_environment):
+    if not test_environment["IS_RS"]:
+        pytest.skip("Not connected to a replica set")
+
+@pytest_asyncio.fixture
+async def require_sdam(test_environment):
+    if test_environment["IS_SERVERLESS"] or test_environment["IS_LOAD_BALANCER"]:
+        pytest.skip("loadBalanced and serverless clients do not run SDAM")
+
+@pytest_asyncio.fixture
+async def require_failCommand_fail_point(test_environment):
+    if not test_environment["SUPPORTS_FAILCOMMAND_FAIL_POINT"]:
+        pytest.skip("failCommand fail point must be supported")
+
 
 @pytest_asyncio.fixture(loop_scope="session", autouse=True)
 async def test_setup_and_teardown():
@@ -80,12 +162,18 @@ async def async_single_client_noauth(
 ) -> AsyncMongoClient[dict]:
     """Make a direct connection. Don't authenticate."""
     return await _async_mongo_client(async_client_context, h, p, authenticate=False, directConnection=True, **kwargs)
-#
-async def async_single_client(
-    async_client_context, h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[dict]:
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def async_single_client(async_client_context_fixture) -> Callable[..., AsyncMongoClient]:
     """Make a direct connection, and authenticate if necessary."""
-    return await _async_mongo_client(async_client_context, h, p, directConnection=True, **kwargs)
+    clients = []
+    async def _make_client(h: Any = None, p: Any = None, **kwargs: Any):
+        client = await _async_mongo_client(async_client_context_fixture, h, p, directConnection=True, **kwargs)
+        clients.append(client)
+        return client
+    yield _make_client
+    for client in clients:
+        await client.close()
 
 # @pytest_asyncio.fixture(loop_scope="function")
 # async def async_rs_client_noauth(
@@ -94,38 +182,64 @@ async def async_single_client(
 #     """Connect to the replica set. Don't authenticate."""
 #     return await _async_mongo_client(async_client_context, h, p, authenticate=False, **kwargs)
 #
-# @pytest_asyncio.fixture(loop_scope="function")
-# async def async_rs_client(
-#     async_client_context, h: Any = None, p: Any = None, **kwargs: Any
-# ) -> AsyncMongoClient[dict]:
-#     """Connect to the replica set and authenticate if necessary."""
-#     return await _async_mongo_client(async_client_context, h, p, **kwargs)
-#
-# @pytest_asyncio.fixture(loop_scope="function")
-# async def async_rs_or_single_client_noauth(
-#     async_client_context, h: Any = None, p: Any = None, **kwargs: Any
-# ) -> AsyncMongoClient[dict]:
-#     """Connect to the replica set if there is one, otherwise the standalone.
-#
-#     Like rs_or_single_client, but does not authenticate.
-#     """
-#     return await _async_mongo_client(async_client_context, h, p, authenticate=False, **kwargs)
 
-async def async_rs_or_single_client(
-    async_client_context, h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[Any]:
+@pytest_asyncio.fixture(loop_scope="session")
+async def async_rs_client(async_client_context_fixture) -> Callable[..., AsyncMongoClient]:
+    """Connect to the replica set and authenticate if necessary."""
+    clients = []
+    async def _make_client(h: Any = None, p: Any = None, **kwargs: Any):
+        client = await _async_mongo_client(async_client_context_fixture, h, p, **kwargs)
+        clients.append(client)
+        return client
+    yield _make_client
+    for client in clients:
+        await client.close()
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def async_rs_or_single_client_noauth(async_client_context_fixture) -> Callable[..., AsyncMongoClient]:
+    """Connect to the replica set if there is one, otherwise the standalone.
+
+    Like rs_or_single_client, but does not authenticate.
+    """
+    clients = []
+    async def _make_client(h: Any = None, p: Any = None, **kwargs: Any):
+        client = await _async_mongo_client(async_client_context_fixture, h, p, authenticate=False, **kwargs)
+        clients.append(client)
+        return client
+    yield _make_client
+    for client in clients:
+        await client.close()
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def async_rs_or_single_client(async_client_context_fixture) -> Callable[..., AsyncMongoClient]:
     """Connect to the replica set if there is one, otherwise the standalone.
 
     Authenticates if necessary.
     """
-    return await _async_mongo_client(async_client_context, h, p, **kwargs)
+    clients = []
+    async def _make_client(h: Any = None, p: Any = None, **kwargs: Any):
+        client = await _async_mongo_client(async_client_context_fixture, h, p, **kwargs)
+        clients.append(client)
+        return client
+    yield _make_client
+    for client in clients:
+        await client.close()
 
-def simple_client(h: Any = None, p: Any = None, **kwargs: Any) -> AsyncMongoClient:
-    if not h and not p:
-        client = AsyncMongoClient(**kwargs)
-    else:
-        client = AsyncMongoClient(h, p, **kwargs)
-    return client
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def simple_client() -> Callable[..., AsyncMongoClient]:
+    clients = []
+    async def _make_client(h: Any = None, p: Any = None, **kwargs: Any):
+        if not h and not p:
+            client = AsyncMongoClient(**kwargs)
+        else:
+            client = AsyncMongoClient(h, p, **kwargs)
+        clients.append(client)
+        return client
+    yield _make_client
+    for client in clients:
+        await client.close()
 
 @pytest.fixture(scope="function")
 def patch_resolver():
