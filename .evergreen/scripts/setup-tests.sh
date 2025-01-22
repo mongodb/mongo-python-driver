@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eu
+set -eux
 
 # Supported/used environment variables:
 #  AUTH                 Set to enable authentication. Defaults to "noauth"
