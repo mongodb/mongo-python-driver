@@ -30,7 +30,7 @@ set -eu
 #  PYTHON_BINARY        The python binary to use in tests.
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
-ROOT_DIR="$(dirname $(dirname $HERE))"
+ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
 
 pushd $ROOT_DIR > /dev/null
 
