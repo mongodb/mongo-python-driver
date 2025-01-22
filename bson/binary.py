@@ -405,14 +405,17 @@ class Binary(bytes):
     @classmethod
     @overload
     def from_vector(
-        cls: Type[Binary], vector: list[int, float], dtype: BinaryVectorDtype, padding: int = 0
+        cls: Type[Binary],
+        vector: Union[list[int], list[float]],
+        dtype: BinaryVectorDtype,
+        padding: int = 0,
     ) -> Binary:
         ...
 
     @classmethod
     def from_vector(
         cls: Type[Binary],
-        vector: Union[BinaryVector, list[int, float]],
+        vector: Union[BinaryVector, list[int], list[float]],
         dtype: Optional[BinaryVectorDtype] = None,
         padding: Optional[int] = None,
     ) -> Binary:

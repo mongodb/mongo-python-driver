@@ -6,7 +6,7 @@
 # ]
 # ///
 
-# Note: Run this file with `hatch run`, `pipx run`, or `uv run`.
+# Note: Run this file with `pipx run`, or `uv run`.
 from __future__ import annotations
 
 import sys
@@ -28,7 +28,7 @@ from shrub.v3.shrub_service import ShrubService
 
 ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
-PYPYS = ["pypy3.9", "pypy3.10"]
+PYPYS = ["pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080

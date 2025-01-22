@@ -6,9 +6,13 @@ HERE=$(dirname ${BASH_SOURCE:-$0})
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
 
 # Source the env file to pick up common variables.
-if [ -f $HERE/scripts/env.sh ]; then
-  source $HERE/scripts/env.sh
+if [ -f $HERE/env.sh ]; then
+  source $HERE/env.sh
 fi
+
+# Ensure dependencies are installed.
+. $HERE/install-dependencies.sh
+
 
 # Set the location of the python bin dir.
 if [ "Windows_NT" = "${OS:-}" ]; then
@@ -24,49 +28,15 @@ if [ ! -d $BIN_DIR ]; then
   if [ -z "${PYTHON_BINARY:-}" ]; then
       PYTHON_BINARY=$(find_python3)
   fi
-
-  echo "Creating virtual environment..."
-  createvirtualenv "$PYTHON_BINARY" .venv
-  echo "Creating virtual environment... done."
+  export UV_PYTHON=${PYTHON_BINARY}
+  echo "export UV_PYTHON=$UV_PYTHON" >> $HERE/env.sh
 fi
+echo "Using python $UV_PYTHON"
+uv sync
+uv run --with pip pip install -e .
+echo "Setting up python environment... done."
 
-# Activate the virtual env.
-. $BIN_DIR/activate
-
-# Ensure there is a local hatch.
-if [ ! -f $BIN_DIR/hatch ]; then
-  echo "Installing hatch..."
-  python -m pip install hatch || {
-    # CARGO_HOME is defined in configure-env.sh
-    export CARGO_HOME=${CARGO_HOME:-$HOME/.cargo/}
-    export RUSTUP_HOME="${CARGO_HOME}/.rustup"
-    ${DRIVERS_TOOLS}/.evergreen/install-rust.sh
-    source "${CARGO_HOME}/env"
-    python -m pip install hatch
-  }
-  echo "Installing hatch... done."
+# Ensure there is a pre-commit hook if there is a git checkout.
+if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
+    uv run pre-commit install
 fi
-
-# Ensure hatch does not write to user or global locations.
-HATCH_CONFIG=${HATCH_CONFIG:-hatch_config.toml}
-if [ ! -f ${HATCH_CONFIG} ]; then
-  touch hatch_config.toml
-  hatch config restore
-  hatch config set dirs.data "$(pwd)/.hatch/data"
-  hatch config set dirs.cache "$(pwd)/.hatch/cache"
-fi
-
-# Ensure there is a local pre-commit if there is a git checkout.
-if [ -d .git ]; then
-  if [ ! -f $BIN_DIR/pre-commit ]; then
-    python -m pip install pre-commit
-  fi
-
-  # Ensure the pre-commit hook is installed.
-  if [ ! -f .git/hooks/pre-commit ]; then
-    pre-commit install
-  fi
-fi
-
-# Install pymongo and its test deps.
-python -m pip install ".[test]"
