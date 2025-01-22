@@ -8,12 +8,11 @@ tasks:
           AUTH: auth
           SSL: ssl
           LOAD_BALANCER: "true"
-      - func: run load-balancer
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
-          test_loadbalancer: "true"
+          TEST_LOADBALANCER: "true"
     tags: [load-balancer, auth, ssl]
   - name: test-load-balancer-noauth-ssl
     commands:
@@ -23,12 +22,11 @@ tasks:
           AUTH: noauth
           SSL: ssl
           LOAD_BALANCER: "true"
-      - func: run load-balancer
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
-          test_loadbalancer: "true"
+          TEST_LOADBALANCER: "true"
     tags: [load-balancer, noauth, ssl]
   - name: test-load-balancer-noauth-nossl
     commands:
@@ -38,12 +36,11 @@ tasks:
           AUTH: noauth
           SSL: nossl
           LOAD_BALANCER: "true"
-      - func: run load-balancer
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
-          test_loadbalancer: "true"
+          TEST_LOADBALANCER: "true"
     tags: [load-balancer, noauth, nossl]
 
   # Server tests

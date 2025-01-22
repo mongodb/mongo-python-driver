@@ -211,7 +211,7 @@ the pages will re-render and the browser will automatically refresh.
     `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
 -   Start the servers using
     `LOAD_BALANCER=true TOPOLOGY=sharded_cluster AUTH=noauth SSL=nossl MONGODB_VERSION=6.0 DRIVERS_TOOLS=$PWD/drivers-evergreen-tools MONGO_ORCHESTRATION_HOME=$PWD/drivers-evergreen-tools/.evergreen/orchestration $PWD/drivers-evergreen-tools/.evergreen/run-orchestration.sh`.
--   Set upt the test using:
+-   Set up the test using:
     `MONGODB_URI='mongodb://localhost:27017,localhost:27018/' TEST_LOADBALANCER=1 just setup-test`.
 -   Run the tests from the `pymongo` checkout directory using:
     `just test-eg`.
