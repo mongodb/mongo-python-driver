@@ -14,14 +14,16 @@ fi
 PROJECT_DIRECTORY="$(pwd)"
 DRIVERS_TOOLS="$(dirname $PROJECT_DIRECTORY)/drivers-tools"
 CARGO_HOME=${CARGO_HOME:-${DRIVERS_TOOLS}/.cargo}
-HATCH_CONFIG=$PROJECT_DIRECTORY/hatch_config.toml
+UV_TOOL_DIR=$PROJECT_DIRECTORY/.local/uv/tools
+UV_CACHE_DIR=$PROJECT_DIRECTORY/.local/uv/cache
 
 # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
 if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
     DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
     PROJECT_DIRECTORY=$(cygpath -m $PROJECT_DIRECTORY)
     CARGO_HOME=$(cygpath -m $CARGO_HOME)
-    HATCH_CONFIG=$(cygpath -m "$HATCH_CONFIG")
+    UV_TOOL_DIR=$(cygpath -m "$UV_TOOL_DIR")
+    UV_CACHE_DIR=$(cygpath -m "$UV_CACHE_DIR")
 fi
 
 SCRIPT_DIR="$PROJECT_DIRECTORY/.evergreen/scripts"
@@ -62,7 +64,9 @@ export skip_ECS_auth_test="${skip_ECS_auth_test:-}"
 
 export CARGO_HOME="$CARGO_HOME"
 export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
-export HATCH_CONFIG="$HATCH_CONFIG"
+export UV_TOOL_DIR="$UV_TOOL_DIR"
+export UV_CACHE_DIR="$UV_CACHE_DIR"
+export UV_TOOL_BIN_DIR="$DRIVERS_TOOLS_BINARIES"
 export PATH="$MONGODB_BINARIES:$DRIVERS_TOOLS_BINARIES:$PATH"
 # shellcheck disable=SC2154
 export PROJECT="${project:-mongo-python-driver}"

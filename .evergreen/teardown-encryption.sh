@@ -7,4 +7,4 @@ if [ -z "${DRIVERS_TOOLS}" ]; then
 fi
 
 bash ${DRIVERS_TOOLS}/.evergreen/csfle/stop-servers.sh
-rm -rf libmongocrypt/ libmongocrypt_git/ libmongocrypt.tar.gz mongocryptd.pid
+rm -rf libmongocrypt/ libmongocrypt.tar.gz mongocryptd.pid

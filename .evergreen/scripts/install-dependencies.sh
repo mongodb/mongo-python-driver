@@ -40,3 +40,16 @@ if ! command -v just 2>/dev/null; then
   fi
   echo "Installing just... done."
 fi
+
+# Install uv.
+if ! command -v uv 2>/dev/null; then
+  echo "Installing uv..."
+  # On most systems we can install directly.
+  curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
+     _pip_install uv uv
+  }
+  if ! command -v uv 2>/dev/null; then
+    export PATH="$PATH:$_BIN_DIR"
+  fi
+  echo "Installing uv... done."
+fi
