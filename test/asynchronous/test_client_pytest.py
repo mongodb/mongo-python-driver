@@ -41,8 +41,6 @@ import pytest_asyncio
 
 from bson.binary import CSHARP_LEGACY, JAVA_LEGACY, PYTHON_LEGACY, Binary, UuidRepresentation
 from pymongo.operations import _Op
-from test.asynchronous.conftest import simple_client, async_single_client, async_rs_client, \
-    async_rs_or_single_client
 
 sys.path[0:0] = [""]
 

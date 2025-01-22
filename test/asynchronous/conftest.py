@@ -32,14 +32,14 @@ def event_loop_policy():
 
     return asyncio.get_event_loop_policy()
 
-@pytest_asyncio.fixture(loop_scope="session")
+@pytest_asyncio.fixture(loop_scope="session", scope="session")
 async def async_client_context_fixture():
     client = AsyncClientContext()
     await client.init()
     yield client
     await client.client.close()
 
-@pytest_asyncio.fixture(loop_scope="session", autouse=True)
+@pytest_asyncio.fixture(loop_scope="session", scope="session")
 async def test_environment(async_client_context_fixture):
     requirements = {}
     requirements["SUPPORT_TRANSACTIONS"] = async_client_context_fixture.supports_transactions()
@@ -119,7 +119,7 @@ async def require_failCommand_fail_point(test_environment):
         pytest.skip("failCommand fail point must be supported")
 
 
-@pytest_asyncio.fixture(loop_scope="session", autouse=True)
+@pytest_asyncio.fixture(loop_scope="session", scope="session", autouse=True)
 async def test_setup_and_teardown():
     await async_setup()
     yield
