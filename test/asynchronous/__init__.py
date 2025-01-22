@@ -15,24 +15,19 @@
 """Asynchronous test suite for pymongo, bson, and gridfs."""
 from __future__ import annotations
 
-import asyncio
 import gc
-import logging
 import multiprocessing
 import os
 import signal
 import socket
 import subprocess
 import sys
-import threading
 import time
-import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
 
-import pytest_asyncio
-from pymongo.lock import _create_lock, _async_create_lock
+from pymongo.lock import _async_create_lock
 
 from test.helpers import (
     COMPRESSORS,

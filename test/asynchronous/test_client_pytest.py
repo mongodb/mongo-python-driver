@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import _thread as thread
 import asyncio
-import base64
 import contextlib
 import copy
 import datetime
@@ -39,7 +38,6 @@ from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
-from pymongo.lock import _async_create_lock
 
 from bson.binary import CSHARP_LEGACY, JAVA_LEGACY, PYTHON_LEGACY, Binary, UuidRepresentation
 from pymongo.operations import _Op
@@ -50,23 +48,17 @@ sys.path[0:0] = [""]
 
 from test.asynchronous import (
     HAVE_IPADDRESS,
-    AsyncIntegrationTest,
-    AsyncMockClientTest,
-    AsyncUnitTest,
     SkipTest,
     client_knobs,
     connected,
     db_pwd,
     db_user,
-    remove_all_users,
-    unittest, AsyncClientContext, AsyncPyMongoTestCasePyTest,
+    AsyncPyMongoTestCasePyTest,
 )
-from test.asynchronous.pymongo_mocks import AsyncMockClient
 from test.test_binary import BinaryData
 from test.utils import (
     NTHREADS,
     CMAPListener,
-    FunctionCallRecorder,
     async_get_pool,
     async_wait_until,
     asyncAssertRaisesExactly,
@@ -2097,3 +2089,442 @@ class TestAsyncClientIntegrationTest(AsyncPyMongoTestCasePyTest):
         docs = await coll.find(predicate).to_list(length=2)
         assert len(docs) == 2
         await coll.drop()
+
+@pytest.mark.usefixtures("require_no_mongos")
+class TestAsyncExhaustCursor(AsyncPyMongoTestCasePyTest):
+    async def test_exhaust_query_server_error(self, async_rs_or_single_client):
+        # When doing an exhaust query, the socket stays checked out on success
+        # but must be checked in on error to avoid semaphore leaks.
+        client = await connected(await async_rs_or_single_client(maxPoolSize=1))
+
+        collection = client.pymongo_test.test
+        pool = await async_get_pool(client)
+        conn = one(pool.conns)
+
+        # This will cause OperationFailure in all mongo versions since
+        # the value for $orderby must be a document.
+        cursor = collection.find(
+            SON([("$query", {}), ("$orderby", True)]), cursor_type=CursorType.EXHAUST
+        )
+
+        with pytest.raises(OperationFailure):
+            await cursor.next()
+        assert not conn.closed
+
+        # The socket was checked in and the semaphore was decremented.
+        assert conn in pool.conns
+        assert pool.requests == 0
+
+    async def test_exhaust_getmore_server_error(self, async_rs_or_single_client):
+        # When doing a getmore on an exhaust cursor, the socket stays checked
+        # out on success but it's checked in on error to avoid semaphore leaks.
+        client = await async_rs_or_single_client(maxPoolSize=1)
+        collection = client.pymongo_test.test
+        await collection.drop()
+
+        await collection.insert_many([{} for _ in range(200)])
+
+        pool = await async_get_pool(client)
+        pool._check_interval_seconds = None  # Never check.
+        conn = one(pool.conns)
+
+        cursor = collection.find(cursor_type=CursorType.EXHAUST)
+
+        # Initial query succeeds.
+        await cursor.next()
+
+        # Cause a server error on getmore.
+        async def receive_message(request_id):
+            # Discard the actual server response.
+            await AsyncConnection.receive_message(conn, request_id)
+
+            # responseFlags bit 1 is QueryFailure.
+            msg = struct.pack("<iiiii", 1 << 1, 0, 0, 0, 0)
+            msg += encode({"$err": "mock err", "code": 0})
+            return message._OpReply.unpack(msg)
+
+        conn.receive_message = receive_message
+        with pytest.raises(OperationFailure):
+            await cursor.to_list()
+        # Unpatch the instance.
+        del conn.receive_message
+
+        # The socket is returned to the pool and it still works.
+        assert 200 == await collection.count_documents({})
+        assert conn in pool.conns
+
+    async def test_exhaust_query_network_error(self, async_rs_or_single_client):
+        # When doing an exhaust query, the socket stays checked out on success
+        # but must be checked in on error to avoid semaphore leaks.
+        client = await connected(
+            await async_rs_or_single_client(maxPoolSize=1, retryReads=False)
+        )
+        collection = client.pymongo_test.test
+        pool = await async_get_pool(client)
+        pool._check_interval_seconds = None  # Never check.
+
+        # Cause a network error.
+        conn = one(pool.conns)
+        conn.conn.close()
+
+        cursor = collection.find(cursor_type=CursorType.EXHAUST)
+        with pytest.raises(ConnectionFailure):
+            await cursor.next()
+        assert conn.closed
+
+        # The socket was closed and the semaphore was decremented.
+        assert conn not in pool.conns
+        assert 0 == pool.requests
+
+    async def test_exhaust_getmore_network_error(self, async_rs_or_single_client):
+        # When doing a getmore on an exhaust cursor, the socket stays checked
+        # out on success but it's checked in on error to avoid semaphore leaks.
+        client = await async_rs_or_single_client(maxPoolSize=1)
+        collection = client.pymongo_test.test
+        await collection.drop()
+        await collection.insert_many([{} for _ in range(200)])  # More than one batch.
+        pool = await async_get_pool(client)
+        pool._check_interval_seconds = None  # Never check.
+
+        cursor = collection.find(cursor_type=CursorType.EXHAUST)
+
+        # Initial query succeeds.
+        await cursor.next()
+
+        # Cause a network error.
+        conn = cursor._sock_mgr.conn
+        conn.conn.close()
+
+        # A getmore fails.
+        with pytest.raises(ConnectionFailure):
+            await cursor.to_list()
+        assert conn.closed
+
+        await async_wait_until(
+            lambda: len(client._kill_cursors_queue) == 0,
+            "waited for all killCursor requests to complete",
+        )
+        # The socket was closed and the semaphore was decremented.
+        assert conn not in pool.conns
+        assert 0 == pool.requests
+
+    @pytest.mark.usefixtures("require_sync")
+    def test_gevent_task(self, async_client_context_fixture):
+        if not gevent_monkey_patched():
+            pytest.skip("Must be running monkey patched by gevent")
+        from gevent import spawn
+
+        def poller():
+            while True:
+                async_client_context_fixture.client.pymongo_test.test.insert_one({})
+
+        task = spawn(poller)
+        task.kill()
+        assert task.dead
+
+    @pytest.mark.usefixtures("require_sync")
+    def test_gevent_timeout(self, async_rs_or_single_client):
+        if not gevent_monkey_patched():
+            pytest.skip("Must be running monkey patched by gevent")
+        from gevent import Timeout, spawn
+
+        client = async_rs_or_single_client(maxPoolSize=1)
+        coll = client.pymongo_test.test
+        coll.insert_one({})
+
+        def contentious_task():
+            # The 10 second timeout causes this test to fail without blocking
+            # forever if a bug like PYTHON-2334 is reintroduced.
+            with Timeout(10):
+                coll.find_one({"$where": delay(1)})
+
+        def timeout_task():
+            with Timeout(0.5):
+                try:
+                    coll.find_one({})
+                except Timeout:
+                    pass
+
+        ct = spawn(contentious_task)
+        tt = spawn(timeout_task)
+        tt.join(15)
+        ct.join(15)
+        assert tt.dead
+        assert ct.dead
+        assert tt.get() is None
+        assert ct.get() is None
+
+    @pytest.mark.usefixtures("require_sync")
+    def test_gevent_timeout_when_creating_connection(self, async_rs_or_single_client):
+        if not gevent_monkey_patched():
+            pytest.skip("Must be running monkey patched by gevent")
+        from gevent import Timeout, spawn
+
+        client = async_rs_or_single_client()
+
+        coll = client.pymongo_test.test
+        pool = async_get_pool(client)
+
+        # Patch the pool to delay the connect method.
+        def delayed_connect(*args, **kwargs):
+            time.sleep(3)
+            return pool.__class__.connect(pool, *args, **kwargs)
+
+        pool.connect = delayed_connect
+
+        def timeout_task():
+            with Timeout(1):
+                try:
+                    coll.find_one({})
+                    return False
+                except Timeout:
+                    return True
+
+        tt = spawn(timeout_task)
+        tt.join(10)
+
+        # Assert that we got our active_sockets count back
+        assert pool.active_sockets == 0
+        # Assert the greenlet is dead
+        assert tt.dead
+        # Assert that the Timeout was raised all the way to the try
+        assert tt.get()
+        # Unpatch the instance.
+        del pool.connect
+
+@pytest.mark.usefixtures("require_sync")
+class TestClientLazyConnect:
+    """Test concurrent operations on a lazily-connecting MongoClient."""
+
+    def _get_client(self, async_rs_or_single_client):
+        return async_rs_or_single_client(connect=False)
+
+    def test_insert_one(self):
+        def reset(collection):
+            collection.drop()
+
+        def insert_one(collection, _):
+            collection.insert_one({})
+
+        def test(collection):
+            assert NTHREADS == collection.count_documents({})
+
+        lazy_client_trial(reset, insert_one, test, self._get_client)
+
+    def test_update_one(self):
+        def reset(collection):
+            collection.drop()
+            collection.insert_one({"i": 0})
+
+        # Update doc 10 times.
+        def update_one(collection, _):
+            collection.update_one({}, {"$inc": {"i": 1}})
+
+        def test(collection):
+            assert NTHREADS == collection.find_one()["i"]
+
+        lazy_client_trial(reset, update_one, test, self._get_client)
+
+    def test_delete_one(self):
+        def reset(collection):
+            collection.drop()
+            collection.insert_many([{"i": i} for i in range(NTHREADS)])
+
+        def delete_one(collection, i):
+            collection.delete_one({"i": i})
+
+        def test(collection):
+            assert 0 == collection.count_documents({})
+
+        lazy_client_trial(reset, delete_one, test, self._get_client)
+
+    def test_find_one(self):
+        results: list = []
+
+        def reset(collection):
+            collection.drop()
+            collection.insert_one({})
+            results[:] = []
+
+        def find_one(collection, _):
+            results.append(collection.find_one())
+
+        def test(collection):
+            assert NTHREADS == len(results)
+
+        lazy_client_trial(reset, find_one, test, self._get_client)
+
+class TestMongoClientFailover():
+    async def test_discover_primary(self, async_mock_client):
+        c = await async_mock_client(
+            standalones=[],
+            members=["a:1", "b:2", "c:3"],
+            mongoses=[],
+            host="b:2",  # Pass a secondary.
+            replicaSet="rs",
+            heartbeatFrequencyMS=500,
+        )
+
+        await async_wait_until(lambda: len(c.nodes) == 3, "connect")
+
+        assert await c.address == ("a", 1)
+        # Fail over.
+        c.kill_host("a:1")
+        c.mock_primary = "b:2"
+
+        async def predicate():
+            return (await c.address) == ("b", 2)
+
+        await async_wait_until(predicate, "wait for server address to be updated")
+        # a:1 not longer in nodes.
+        assert len(c.nodes) < 3
+
+    async def test_reconnect(self, async_mock_client):
+        # Verify the node list isn't forgotten during a network failure.
+        c = await async_mock_client(
+            standalones=[],
+            members=["a:1", "b:2", "c:3"],
+            mongoses=[],
+            host="b:2",  # Pass a secondary.
+            replicaSet="rs",
+            retryReads=False,
+            serverSelectionTimeoutMS=1000,
+        )
+
+        await async_wait_until(lambda: len(c.nodes) == 3, "connect")
+
+        # Total failure.
+        c.kill_host("a:1")
+        c.kill_host("b:2")
+        c.kill_host("c:3")
+
+        with pytest.raises(AutoReconnect):
+            await c.db.collection.find_one()
+
+        # But it can reconnect.
+        c.revive_host("a:1")
+        await (await c._get_topology()).select_servers(
+            writable_server_selector, _Op.TEST, server_selection_timeout=10
+        )
+        assert await c.address == ("a", 1)
+
+    async def _test_network_error(self, async_mock_client, operation_callback):
+        # Verify only the disconnected server is reset by a network failure.
+
+        # Disable background refresh.
+        with client_knobs(heartbeat_frequency=999999):
+            c = await async_mock_client(
+                standalones=[],
+                members=["a:1", "b:2"],
+                mongoses=[],
+                host="a:1",
+                replicaSet="rs",
+                connect=False,
+                retryReads=False,
+                serverSelectionTimeoutMS=1000,
+            )
+
+            # Set host-specific information so we can test whether it is reset.
+            c.set_wire_version_range("a:1", 2, MIN_SUPPORTED_WIRE_VERSION)
+            c.set_wire_version_range("b:2", 2, MIN_SUPPORTED_WIRE_VERSION + 1)
+            await (await c._get_topology()).select_servers(writable_server_selector, _Op.TEST)
+            await async_wait_until(lambda: len(c.nodes) == 2, "connect")
+
+            c.kill_host("a:1")
+
+            with pytest.raises(AutoReconnect):
+                await operation_callback(c)
+
+            # The primary's description is reset.
+            server_a = (await c._get_topology()).get_server_by_address(("a", 1))
+            sd_a = server_a.description
+            assert SERVER_TYPE.Unknown == sd_a.server_type
+            assert 0 == sd_a.min_wire_version
+            assert 0 == sd_a.max_wire_version
+
+            # ...but not the secondary's.
+            server_b = (await c._get_topology()).get_server_by_address(("b", 2))
+            sd_b = server_b.description
+            assert SERVER_TYPE.RSSecondary == sd_b.server_type
+            assert 2 == sd_b.min_wire_version
+            assert MIN_SUPPORTED_WIRE_VERSION + 1 == sd_b.max_wire_version
+
+    async def test_network_error_on_query(self, async_mock_client):
+        async def callback(client):
+            return await client.db.collection.find_one()
+
+        await self._test_network_error(async_mock_client, callback)
+
+    async def test_network_error_on_insert(self, async_mock_client):
+        async def callback(client):
+            return await client.db.collection.insert_one({})
+
+        await self._test_network_error(async_mock_client, callback)
+
+    async def test_network_error_on_update(self, async_mock_client):
+        async def callback(client):
+            return await client.db.collection.update_one({}, {"$unset": "x"})
+
+        await self._test_network_error(async_mock_client, callback)
+
+    async def test_network_error_on_replace(self, async_mock_client):
+        async def callback(client):
+            return await client.db.collection.replace_one({}, {})
+
+        await self._test_network_error(async_mock_client, callback)
+
+    async def test_network_error_on_delete(self, async_mock_client):
+        async def callback(client):
+            return await client.db.collection.delete_many({})
+
+        await self._test_network_error(async_mock_client, callback)
+
+# TODO: replace require_connection
+# @pytest.mark.usefixtures("require_connection")
+class TestAsyncClientPool:
+    async def test_rs_client_does_not_maintain_pool_to_arbiters(self, async_mock_client):
+        listener = CMAPListener()
+        c = await async_mock_client(
+            standalones=[],
+            members=["a:1", "b:2", "c:3", "d:4"],
+            mongoses=[],
+            arbiters=["c:3"],  # c:3 is an arbiter.
+            down_hosts=["d:4"],  # d:4 is unreachable.
+            host=["a:1", "b:2", "c:3", "d:4"],
+            replicaSet="rs",
+            minPoolSize=1,  # minPoolSize
+            event_listeners=[listener],
+        )
+
+        await async_wait_until(lambda: len(c.nodes) == 3, "connect")
+        assert await c.address == ("a", 1)
+        assert await c.arbiters == {("c", 3)}
+        await listener.async_wait_for_event(monitoring.ConnectionReadyEvent, 2)
+        assert listener.event_count(monitoring.ConnectionCreatedEvent) == 2
+        arbiter = c._topology.get_server_by_address(("c", 3))
+        assert not arbiter.pool.conns
+        arbiter = c._topology.get_server_by_address(("d", 4))
+        assert not arbiter.pool.conns
+        assert listener.event_count(monitoring.PoolReadyEvent) == 2
+
+    async def test_direct_client_maintains_pool_to_arbiter(self, async_mock_client):
+        listener = CMAPListener()
+        c = await async_mock_client(
+            standalones=[],
+            members=["a:1", "b:2", "c:3"],
+            mongoses=[],
+            arbiters=["c:3"],  # c:3 is an arbiter.
+            host="c:3",
+            directConnection=True,
+            minPoolSize=1,  # minPoolSize
+            event_listeners=[listener],
+        )
+
+        await async_wait_until(lambda: len(c.nodes) == 1, "connect")
+        assert await c.address == ("c", 3)
+        await listener.async_wait_for_event(monitoring.ConnectionReadyEvent, 1)
+        assert listener.event_count(monitoring.ConnectionCreatedEvent) == 1
+        arbiter = c._topology.get_server_by_address(("c", 3))
+        assert len(arbiter.pool.conns) == 1
+        assert listener.event_count(monitoring.PoolReadyEvent) == 1
+

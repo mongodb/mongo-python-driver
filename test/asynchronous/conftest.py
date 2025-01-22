@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import sys
 from typing import Callable
 
@@ -17,6 +16,7 @@ from test.asynchronous import async_setup, async_teardown, _connection_string, A
 import pytest
 import pytest_asyncio
 
+from test.asynchronous.pymongo_mocks import AsyncMockClient
 from test.utils import FunctionCallRecorder
 
 _IS_SYNC = False
@@ -157,11 +157,17 @@ async def _async_mongo_client(
         return client
 
 
-async def async_single_client_noauth(
-    async_client_context, h: Any = None, p: Any = None, **kwargs: Any
-) -> AsyncMongoClient[dict]:
+@pytest_asyncio.fixture(loop_scope="session")
+async def async_single_client_noauth(async_client_context_fixture) -> Callable[..., AsyncMongoClient]:
     """Make a direct connection. Don't authenticate."""
-    return await _async_mongo_client(async_client_context, h, p, authenticate=False, directConnection=True, **kwargs)
+    clients = []
+    async def _make_client(h: Any = None, p: Any = None, **kwargs: Any):
+        client = await _async_mongo_client(async_client_context_fixture, h, p, authenticate=False, directConnection=True, **kwargs)
+        clients.append(client)
+        return client
+    yield _make_client
+    for client in clients:
+        await client.close()
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def async_single_client(async_client_context_fixture) -> Callable[..., AsyncMongoClient]:
@@ -175,13 +181,18 @@ async def async_single_client(async_client_context_fixture) -> Callable[..., Asy
     for client in clients:
         await client.close()
 
-# @pytest_asyncio.fixture(loop_scope="function")
-# async def async_rs_client_noauth(
-#     async_client_context, h: Any = None, p: Any = None, **kwargs: Any
-# ) -> AsyncMongoClient[dict]:
-#     """Connect to the replica set. Don't authenticate."""
-#     return await _async_mongo_client(async_client_context, h, p, authenticate=False, **kwargs)
-#
+@pytest_asyncio.fixture(loop_scope="session")
+async def async_rs_client_noauth(async_client_context_fixture) -> Callable[..., AsyncMongoClient]:
+    """Connect to the replica set. Don't authenticate."""
+    clients = []
+    async def _make_client(h: Any = None, p: Any = None, **kwargs: Any):
+        client = await _async_mongo_client(async_client_context_fixture, h, p, authenticate=False, **kwargs)
+        clients.append(client)
+        return client
+    yield _make_client
+    for client in clients:
+        await client.close()
+
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def async_rs_client(async_client_context_fixture) -> Callable[..., AsyncMongoClient]:
@@ -250,6 +261,23 @@ def patch_resolver():
     yield patched_resolver
     pymongo.srv_resolver._resolve = _resolve
 
+@pytest_asyncio.fixture(loop_scope="session")
+async def async_mock_client():
+        clients = []
 
+        async def _make_client(standalones,
+        members,
+        mongoses,
+        hello_hosts=None,
+        arbiters=None,
+        down_hosts=None,
+        *args,
+        **kwargs):
+            client = await AsyncMockClient.get_async_mock_client(standalones, members, mongoses, hello_hosts, arbiters, down_hosts, *args, **kwargs)
+            clients.append(client)
+            return client
+        yield _make_client
+        for client in clients:
+            await client.close()
 
 pytest_collection_modifyitems = pytest_conf.pytest_collection_modifyitems
