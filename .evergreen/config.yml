@@ -281,15 +281,6 @@ functions:
         args:
           - .evergreen/scripts/setup-tests.sh
     - command: subprocess.exec
-      params:
-          working_dir: "src"
-          binary: bash
-          background: true
-          include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-          args:
-            - .evergreen/scripts/run-with-env.sh
-            - .evergreen/scripts/setup-encryption.sh
-    - command: subprocess.exec
       type: test
       params:
         working_dir: "src"
@@ -298,15 +289,6 @@ functions:
         args:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-tests.sh
-
-  "run direct tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        working_dir: "src"
-        binary: bash
-        include_expansions_in_env: ["PYTHON_BINARY"]
-        args: [ .evergreen/scripts/run-direct-tests.sh ]
 
   "run enterprise auth tests":
     - command: subprocess.exec
@@ -586,25 +568,6 @@ functions:
         include_expansions_in_env: [SERVER_TYPE, OCSP_ALGORITHM]
         args:
           - ${DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh
-
-  "run load-balancer":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        include_expansions_in_env: ["MONGODB_URI"]
-        args:
-          - src/.evergreen/scripts/run-with-env.sh
-          - src/.evergreen/scripts/run-load-balancer.sh
-    - command: expansions.update
-      params:
-        file: lb-expansion.yml
-
-  "stop load-balancer":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - src/.evergreen/scripts/stop-load-balancer.sh
 
   "teardown atlas":
     - command: subprocess.exec
@@ -935,7 +898,7 @@ tasks:
           vars:
             VERSION: "8.0"
             TOPOLOGY: "replica_set"
-        - func: "run direct tests"
+        - func: "run tests"
 
     - name: "atlas-connect"
       tags: ["atlas-connect"]

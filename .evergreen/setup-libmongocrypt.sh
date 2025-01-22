@@ -50,11 +50,3 @@ mkdir libmongocrypt
 tar xzf libmongocrypt.tar.gz -C ./libmongocrypt
 ls -la libmongocrypt
 ls -la libmongocrypt/nocrypto
-
-if [ -z "${SKIP_SERVERS:-}" ]; then
-    PYTHON_BINARY_OLD=${PYTHON_BINARY}
-    export PYTHON_BINARY=""
-    bash "${DRIVERS_TOOLS}"/.evergreen/csfle/setup-secrets.sh
-    export PYTHON_BINARY=$PYTHON_BINARY_OLD
-    bash "${DRIVERS_TOOLS}"/.evergreen/csfle/start-servers.sh
-fi

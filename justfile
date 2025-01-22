@@ -71,9 +71,9 @@ test-eg *args:
     bash ./.evergreen/run-tests.sh {{args}}
 
 [group('encryption')]
-setup-encryption:
-    bash .evergreen/setup-encryption.sh
+setup-test:
+    bash .evergreen/scripts/setup-tests.sh
 
 [group('encryption')]
-teardown-encryption:
-    bash .evergreen/teardown-encryption.sh
+teardown-test:
+    bash .evergreen/scripts/teardown-tests.sh

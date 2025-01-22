@@ -5,9 +5,13 @@ set -eu
 HERE=$(dirname ${BASH_SOURCE:-$0})
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
 
-# Source the env file to pick up common variables.
+# Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
   source $HERE/env.sh
+fi
+# PYTHON_BINARY may be defined in test-env.sh.
+if [ -f $HERE/test-env.sh ]; then
+  source $HERE/test-env.sh
 fi
 
 # Ensure dependencies are installed.
