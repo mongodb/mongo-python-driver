@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eux
+set -eu
 
 # Supported/used environment variables:
 #  AUTH                 Set to enable authentication. Defaults to "noauth"
@@ -57,7 +57,7 @@ GREEN_FRAMEWORK="${GREEN_FRAMEWORK:-}"
 PYTHON_BINARY="${PYTHON_BINARY:-}"
 
 function _write_env() {
-  echo "export $1=$2" >> $SCRIPT_DIR/test-env.sh
+  echo "export $1=${2:-}" >> $SCRIPT_DIR/test-env.sh
 }
 
 _write_env TEST_ENCRYPTION $TEST_ENCRYPTION
