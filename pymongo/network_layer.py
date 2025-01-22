@@ -267,18 +267,25 @@ async def async_receive_data(
         else:
             read_task = create_task(_async_receive(sock, length, loop))  # type: ignore[arg-type]
         tasks = [read_task, cancellation_task]
-        done, pending = await asyncio.wait(
-            tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED
-        )
-        for task in pending:
-            task.cancel()
-        if pending:
-            await asyncio.wait(pending)
-        if len(done) == 0:
-            raise socket.timeout("timed out")
-        if read_task in done:
-            return read_task.result()
-        raise _OperationCancelled("operation cancelled")
+        try:
+            done, pending = await asyncio.wait(
+                tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED
+            )
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.wait(pending)
+            if len(done) == 0:
+                raise socket.timeout("timed out")
+            if read_task in done:
+                return read_task.result()
+            raise _OperationCancelled("operation cancelled")
+        except asyncio.CancelledError:
+            for task in tasks:
+                task.cancel()
+            await asyncio.wait(tasks)
+            raise
+
     finally:
         sock.settimeout(sock_timeout)
 
