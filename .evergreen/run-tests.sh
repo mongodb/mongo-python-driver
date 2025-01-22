@@ -1,8 +1,8 @@
 #!/bin/bash
-set -eu
+set -eux
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
-ROOT_DIR="$(dirname $(dirname $HERE))"
+ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
 
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
@@ -16,9 +16,9 @@ else
 fi
 
 # Try to source the test inputs
-if [ -f $SCRIPT_DIR/test-env.sh ]; then
+if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
   echo "Sourcing test inputs"
-  source $SCRIPT_DIR/test-env.sh
+  source $SCRIPT_DIR/scripts/test-env.sh
 else
   echo "Not sourcing test inputs"
 fi
@@ -27,43 +27,39 @@ PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implement
 
 # Start compiling the args we'll pass to uv.
 # Run in an isolated environment so as not to pollute the base venv.
-UV_ARGS=("--isolated --extra test")
+UV_ARGS=${UV_ARGS:-"--extra test"}
+TEST_ARGS=${TEST_ARGS:-}
 
 # Ensure C extensions if applicable.
 if [ -z "${NO_EXT:-}" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     uv run tools/fail_if_no_c.py
 fi
 
-if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
-    # Check for libmongocrypt download.
-    if [ ! -d "libmongocrypt" ]; then
-        echo "Run test setup first!"
-        exit 1
-    fi
+if [ -n "${PYMONGOCRYPT_LIB:-}" ]; then
     # Ensure pymongocrypt is working properly.
     # shellcheck disable=SC2048
-    uv run ${UV_ARGS[*]} python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
+    uv run ${UV_ARGS} python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
     # shellcheck disable=SC2048
-    uv run ${UV_ARGS[*]} python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
+    uv run ${UV_ARGS} python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
     # PATH is updated by configure-env.sh for access to mongocryptd.
 fi
 
 PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implementation())")
-echo "Running $AUTH tests over $SSL with python $(uv python find)"
+echo "Running ${AUTH:-noauth} tests over ${SSL:-nossl} with python $(uv python find)"
 uv run python -c 'import sys; print(sys.version)'
 
 # Show the installed packages
 # shellcheck disable=SC2048
-PIP_QUIET=0 uv run ${UV_ARGS[*]} --with pip pip list
+PIP_QUIET=0 uv run ${UV_ARGS} --with pip pip list
 
 # Record the start time for a perf test.
-if [ -n "$PERF_TEST" ]; then
+if [ -n "${PERF_TEST:-}" ]; then
     start_time=$(date +%s)
 fi
 
 # Run the tests, and store the results in Evergreen compatible XUnit XML
 # files in the xunit-results/ directory.
-if [ -z "$GREEN_FRAMEWORK" ]; then
+if [ -z "${GREEN_FRAMEWORK:-}" ]; then
     # shellcheck disable=SC2048
     uv run ${UV_ARGS} pytest $TEST_ARGS
 else
@@ -72,7 +68,7 @@ else
 fi
 
 # Handle perf test post actions.
-if [ -n "$PERF_TEST" ]; then
+if [ -n "${PERF_TEST:-}" ]; then
     end_time=$(date +%s)
     elapsed_secs=$((end_time-start_time))
 
