@@ -86,6 +86,7 @@ def source_env(path):
             if not match:
                 continue
             name, value = match.groups()
+            print("Setting", name, value)  # noqa: T201
             os.environ[name] = value
 
 
