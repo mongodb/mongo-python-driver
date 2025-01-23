@@ -271,9 +271,13 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     fi
     # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
-    PYTEST_ARGS="$PYTEST_ARGS -m asyncio"
-    # shellcheck disable=SC2048
-    uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
+
+    # Workaround until unittest -> pytest conversion is complete
+    if [ -z "$TEST_SUITES" ]; then
+      PYTEST_ARGS="$PYTEST_ARGS -m asyncio"
+      # shellcheck disable=SC2048
+      uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
+    fi
 else
     # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
