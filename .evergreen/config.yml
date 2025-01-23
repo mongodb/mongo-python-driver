@@ -287,8 +287,7 @@ functions:
         binary: bash
         include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY", "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "SINGLE_MONGOS_LB_URI", "MULTI_MONGOS_LB_URI", "TEST_SUITES"]
         args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-tests.sh
+          - .evergreen/run-tests.sh
 
   "run enterprise auth tests":
     - command: subprocess.exec

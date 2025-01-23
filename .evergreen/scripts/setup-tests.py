@@ -118,6 +118,8 @@ with ENV_FILE.open("w") as fid:
     fid.write(f"export SSL={SSL}\n")
     for var in EXPECTED_VARS:
         value = os.environ.get(var, "")
+        # Remove any existing quote chars.
+        value = value.replace('"', "")
         if value:
             fid.write(f'export {var}="{value}"\n')
 ENV_FILE.chmod(ENV_FILE.stat().st_mode | stat.S_IEXEC)
@@ -157,6 +159,13 @@ if AUTH == "noauth":
     write_env("DB_USER", DB_USER)
     write_env("DB_PASSWORD", DB_PASSWORD)
     LOGGER.info("Added auth, DB_USER: %s", DB_USER)
+
+
+if is_set("MONGODB_STARTED"):
+    write_env("PYMONGO_MUST_CONNECT", "true")
+
+if is_set("DISABLE_TEST_COMMANDS"):
+    write_env("PYMONGO_DISABLE_TEST_COMMANDS", "1")
 
 
 if is_set("TEST_ENTERPRISE_AUTH"):
