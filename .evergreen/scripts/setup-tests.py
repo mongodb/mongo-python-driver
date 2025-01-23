@@ -15,20 +15,10 @@ HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
 ENV_FILE = HERE / "test-env.sh"
 
-AUTH = os.environ.get("AUTH", "noauth")
-SSL = os.environ.get("SSL", "nossl")
-DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS").replace(os.sep, "/")
-
-TEST_SUITES = os.environ.get("TEST_SUITES", "")
-TEST_ARGS = " ".join(sys.argv[1:])
-# Start compiling the args we'll pass to uv.
-# Run in an isolated environment so as not to pollute the base venv.
-UV_ARGS = ["--isolated --extra test"]
-
 logging.basicConfig()
 LOGGER = logging.getLogger(__name__)
 
-expected_vars = [
+EXPECTED_VARS = [
     "TEST_ENCRYPTION",
     "TEST_ENCRYPTION_PYOPENSSL",
     "TEST_CRYPT_SHARED",
@@ -52,14 +42,34 @@ expected_vars = [
     "PYTHON_BINARY",
 ]
 
-with ENV_FILE.open("w") as fid:
-    fid.write("set +x\n")
-    fid.write(f"export AUTH={AUTH}\n")
-    fid.write(f"export SSL={SSL}\n")
-    for var in expected_vars:
-        value = os.environ.get(var, "")
-        if value:
-            fid.write(f'export {var}="{value}"\n')
+# Handle the test suite based on the presence of env variables.
+TEST_SUITE_MAP = dict(
+    TEST_DATA_LAKE="data_lake",
+    TEST_AUTH_OIDC="auth_oidc",
+    TEST_INDEX_MANAGEMENT="index_management",
+    TEST_ENTERPRISE_AUTH="auth",
+    TEST_LOADBALANCER="load_balancer",
+    TEST_ENCRYPTION="encryption",
+    TEST_FLE_AZURE_AUTO="csfle",
+    TEST_FLE_GCP_AUTO="csfle",
+    TEST_ATLAS="atlas",
+    TEST_OCSP="ocsp",
+    TEST_AUTH_AWS="auth_aws",
+    PERF_TEST="perf",
+)
+
+# Handle extras based on the presence of env variables.
+EXTRAS_MAP = dict(
+    TEST_AUTH_OIDC="aws",
+    TEST_AUTH_AWS="aws",
+    TEST_OCSP="ocsp",
+    TEST_PYOPENSSL="ocsp",
+    TEST_ENTERPRISE_AUTH="gssapi",
+    TEST_ENCRYPTION="encryption",
+    TEST_FLE_AZURE_AUTO="encryption",
+    TEST_FLE_GCP_AUTO="encryption",
+    TEST_ENCRYPTION_PYOPENSSL="ocsp",
+)
 
 
 def write_env(name, value):
@@ -83,49 +93,42 @@ def run_command(cmd):
     subprocess.check_call(shlex.split(cmd))  # noqa: S603
 
 
+# Load variables.
 if (ROOT / "secrets-export.sh").exists():
     source_env(ROOT / "secrets-export.sh")
 if (HERE / "env.sh").exists():
     source_env(HERE / "env.sh")
 
+# Set up default values.
+DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS").replace(os.sep, "/")
+AUTH = os.environ.get("AUTH", "noauth")
+SSL = os.environ.get("SSL", "nossl")
+TEST_SUITES = os.environ.get("TEST_SUITES", "")
+TEST_ARGS = " ".join(sys.argv[1:])
+# Start compiling the args we'll pass to uv.
+# Run in an isolated environment so as not to pollute the base venv.
+UV_ARGS = ["--isolated --extra test"]
+
+# Save variables in EXPECTED_VARS that have values.
+with ENV_FILE.open("w") as fid:
+    fid.write("set +x\n")
+    fid.write(f"export AUTH={AUTH}\n")
+    fid.write(f"export SSL={SSL}\n")
+    for var in EXPECTED_VARS:
+        value = os.environ.get(var, "")
+        if value:
+            fid.write(f'export {var}="{value}"\n')
 ENV_FILE.chmod(ENV_FILE.stat().st_mode | stat.S_IEXEC)
 
-# Handle extras based on the presence of env variables.
-extras_map = dict(
-    TEST_AUTH_OIDC="aws",
-    TEST_AUTH_AWS="aws",
-    TEST_OCSP="ocsp",
-    TEST_PYOPENSSL="ocsp",
-    TEST_ENTERPRISE_AUTH="gssapi",
-    TEST_ENCRYPTION="encryption",
-    TEST_FLE_AZURE_AUTO="encryption",
-    TEST_FLE_GCP_AUTO="encryption",
-    TEST_ENCRYPTION_PYOPENSSL="ocsp",
-)
-for env_var, extra in extras_map.items():
+for env_var, extra in EXTRAS_MAP.items():
     if env_var in os.environ:
         UV_ARGS.append(f"--extra {extra}")
 
-# Handle the test suite based on the presence of env variables.
-test_suite_map = dict(
-    TEST_DATA_LAKE="data_lake",
-    TEST_AUTH_OIDC="auth_oidc",
-    TEST_INDEX_MANAGEMENT="index_management",
-    TEST_ENTERPRISE_AUTH="auth",
-    TEST_LOADBALANCER="load_balancer",
-    TEST_ENCRYPTION="encryption",
-    TEST_FLE_AZURE_AUTO="csfle",
-    TEST_FLE_GCP_AUTO="csfle",
-    TEST_ATLAS="atlas",
-    TEST_OCSP="ocsp",
-    TEST_AUTH_AWS="auth_aws",
-    PERF_TEST="perf",
-)
-for env_var, test_suite_map in extras_map.items():
+for env_var, suite in TEST_SUITE_MAP.items():
     if TEST_SUITES:
         continue
     if env_var in os.environ:
-        TEST_SUITES = test_suite_map
+        TEST_SUITES = suite
 
 if AUTH == "noauth":
     if is_set("TEST_DATA_LAKE"):
