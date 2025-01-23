@@ -15,7 +15,7 @@ HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
 ENV_FILE = HERE / "test-env.sh"
 
-logging.basicConfig()
+logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
 EXPECTED_VARS = [
@@ -291,6 +291,7 @@ if is_set("COVERAGE") and platform.python_implementation() == "CPython":
 
 
 if is_set("GREEN_FRAMEWORK"):
+    LOGGER.info("REALLY?")
     framework = os.environ["GREEN_FRAMEWORK"]
     UV_ARGS.append(f"--group {framework}")
 
