@@ -291,7 +291,7 @@ if is_set("COVERAGE") and platform.python_implementation() == "CPython":
 
 
 if is_set("GREEN_FRAMEWORK"):
-    LOGGER.info("REALLY?")
+    LOGGER.info("REALLY?: *%s*", os.environ["GREEN_FRAMEWORK"])
     framework = os.environ["GREEN_FRAMEWORK"]
     UV_ARGS.append(f"--group {framework}")
 
