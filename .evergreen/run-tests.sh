@@ -7,6 +7,14 @@ ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
+# Try to source the env file.
+if [ -f $SCRIPT_DIR/scripts/env.sh ]; then
+  echo "Sourcing env inputs"
+  source $SCRIPT_DIR/scripts/env.sh
+else
+  echo "Not sourcing env inputs"
+fi
+
 # Try to source local Drivers Secrets
 if [ -f $ROOT_DIR/secrets-export.sh ]; then
   echo "Sourcing secrets"
