@@ -34,3 +34,6 @@ ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
 . $ROOT_DIR/.evergreen/utils.sh
 PYTHON=${PYTHON_BINAR:-$(find_python3)}
 $PYTHON $SCRIPT_DIR/setup-tests.py
+
+cat $SCRIPT_DIR/test-env.sh
+exit 1
