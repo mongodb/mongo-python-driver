@@ -86,13 +86,13 @@ pprint(os.environ)  # noqa: T203
 def source_env(path):
     with open(path) as fid:
         for line in fid:
-            match = re.match("export (.*?)=(.+?)", line.strip())
+            match = re.match("export (.*?)=(.*)", line.strip())
             if not match:
                 continue
             name, value = match.groups()
-            print("Setting", name, value)  # noqa: T201
-            print(line)  # noqa: T201
-            os.environ[name] = value
+            value = value.replace('"', "")
+            if value.strip():
+                os.environ[name] = value
 
 
 def is_set(var):
