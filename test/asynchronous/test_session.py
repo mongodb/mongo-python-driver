@@ -33,9 +33,11 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
+from test.asynchronous.helpers import client_knobs
 from test.utils import (
     EventListener,
     ExceptionCatchingThread,
+    HeartbeatEventListener,
     OvertCommandListener,
     async_wait_until,
 )
@@ -1133,12 +1135,10 @@ class TestClusterTime(AsyncIntegrationTest):
         if "$clusterTime" not in (await async_client_context.hello):
             raise SkipTest("$clusterTime not supported")
 
+    # Sessions prose test: 3) $clusterTime in commands
     async def test_cluster_time(self):
         listener = SessionTestListener()
-        # Prevent heartbeats from updating $clusterTime between operations.
-        client = await self.async_rs_or_single_client(
-            event_listeners=[listener], heartbeatFrequencyMS=999999
-        )
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
         await collection.insert_many([{} for _ in range(10)])
@@ -1216,6 +1216,40 @@ class TestClusterTime(AsyncIntegrationTest):
                         >= succeeded.reply["$clusterTime"]["clusterTime"],
                         f"{f.__name__} sent wrong $clusterTime with {event.command_name}",
                     )
+
+    # Sessions prose test: 20) $clusterTime in commands
+    async def test_cluster_time_not_used_by_sdam(self):
+        heartbeat_listener = HeartbeatEventListener()
+        cmd_listener = OvertCommandListener()
+        with client_knobs(min_heartbeat_interval=0.01):
+            c1 = await self.async_single_client(
+                event_listeners=[heartbeat_listener, cmd_listener], heartbeatFrequencyMS=10
+            )
+            cluster_time = (await c1.admin.command({"ping": 1}))["$clusterTime"]
+            self.assertEqual(c1._topology.max_cluster_time(), cluster_time)
+
+            # Advance the server's $clusterTime by performing an insert via another client.
+            await self.db.test.insert_one({"advance": "$clusterTime"})
+            # Wait until the client C1 processes the next pair of SDAM heartbeat started + succeeded events.
+            heartbeat_listener.reset()
+
+            async def next_heartbeat():
+                events = heartbeat_listener.events
+                for i in range(len(events) - 1):
+                    if isinstance(events[i], monitoring.ServerHeartbeatStartedEvent):
+                        if isinstance(events[i + 1], monitoring.ServerHeartbeatSucceededEvent):
+                            return True
+                return False
+
+            await async_wait_until(
+                next_heartbeat, "never found pair of heartbeat started + succeeded events"
+            )
+            # Assert that C1's max $clusterTime is still the same and has not been updated by SDAM.
+            cmd_listener.reset()
+            await c1.admin.command({"ping": 1})
+            started = cmd_listener.started_events[0]
+            self.assertEqual(started.command_name, "ping")
+            self.assertEqual(started.command["$clusterTime"], cluster_time)
 
 
 if __name__ == "__main__":
