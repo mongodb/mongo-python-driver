@@ -1203,7 +1203,7 @@ class TestClusterTime(IntegrationTest):
                         f"{f.__name__} sent wrong $clusterTime with {event.command_name}",
                     )
 
-    # Sessions prose test: 20) $clusterTime in commands
+    # Sessions prose test: 20) Drivers do not gossip `$clusterTime` on SDAM commands
     def test_cluster_time_not_used_by_sdam(self):
         heartbeat_listener = HeartbeatEventListener()
         cmd_listener = OvertCommandListener()
