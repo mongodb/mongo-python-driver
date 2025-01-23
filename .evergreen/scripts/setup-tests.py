@@ -10,6 +10,7 @@ import stat
 import subprocess
 import sys
 from pathlib import Path
+from pprint import pprint
 
 HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
@@ -77,6 +78,9 @@ def write_env(name, value):
         # Remove any existing quote chars.
         value = value.replace('"', "")
         fid.write(f'export {name}="{value}"\n')
+
+
+pprint(os.environ)  # noqa: T203
 
 
 def source_env(path):
