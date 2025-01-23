@@ -271,6 +271,8 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     fi
     # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
+    PYTEST_ARGS="$PYTEST_ARGS -m asyncio"
+    uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
 else
     # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
