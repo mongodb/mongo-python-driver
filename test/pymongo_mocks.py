@@ -165,7 +165,8 @@ class MockClient(MongoClient):
             standalones, members, mongoses, hello_hosts, arbiters, down_hosts, *args, **kwargs
         )
 
-        c._connect()
+        if "connect" not in kwargs or "connect" in kwargs and kwargs["connect"]:
+            c._connect()
         return c
 
     def kill_host(self, host):

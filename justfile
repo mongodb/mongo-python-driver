@@ -63,6 +63,10 @@ test *args="-v --durations=5 --maxfail=10":
     {{uv_run}} --extra test pytest {{args}}
 
 [group('test')]
+test-async *args="-v --durations=5 --maxfail=10 -m asyncio":
+    {{uv_run}} --extra test pytest {{args}}
+
+[group('test')]
 test-mockupdb *args:
     {{uv_run}} -v --extra test --group mockupdb pytest -m mockupdb {{args}}
 

@@ -75,6 +75,8 @@ replacements = {
     "AsyncPyMongoTestCase": "PyMongoTestCase",
     "AsyncMockClientTest": "MockClientTest",
     "async_client_context": "client_context",
+    "async_client": "client",
+    "async_mock_client": "mock_client",
     "async_setup": "setup",
     "asyncSetUp": "setUp",
     "asyncTearDown": "tearDown",
@@ -119,6 +121,10 @@ replacements = {
     "_async_create_lock": "_create_lock",
     "_async_create_condition": "_create_condition",
     "_async_cond_wait": "_cond_wait",
+}
+
+removals: set[str] = {
+    'loop_scope="session"',
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -187,6 +193,7 @@ converted_tests = [
     "test_bulk.py",
     "test_change_stream.py",
     "test_client.py",
+    "test_client_pytest.py",
     "test_client_bulk_write.py",
     "test_client_context.py",
     "test_collation.py",
@@ -229,7 +236,9 @@ def process_files(
                 if file in docstring_translate_files:
                     lines = translate_docstrings(lines)
                 if file in sync_test_files:
-                    translate_imports(lines)
+                    lines = translate_imports(lines)
+                if file in sync_test_files:
+                    lines = apply_removals(lines)
                 f.seek(0)
                 f.writelines(lines)
                 f.truncate()
@@ -329,6 +338,18 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                 lines[i + 1] = "DOCSTRING_REMOVED"
 
     return [line for line in lines if line != "DOCSTRING_REMOVED"]
+
+
+def apply_removals(lines: list[str]) -> list[str]:
+    tokens_to_remove = [line for line in lines if any(t in line for t in removals)]
+    for token in removals:
+        for line in tokens_to_remove:
+            index = lines.index(line)
+            if token + ", " in line:
+                lines[index] = line.replace(token + ", ", "")
+            else:
+                lines[index] = line.replace(token, "")
+    return lines
 
 
 def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[str, str]) -> None:

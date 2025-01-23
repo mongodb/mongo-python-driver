@@ -15,18 +15,14 @@
 """Synchronous test suite for pymongo, bson, and gridfs."""
 from __future__ import annotations
 
-import asyncio
 import gc
-import logging
 import multiprocessing
 import os
 import signal
 import socket
 import subprocess
 import sys
-import threading
 import time
-import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
@@ -53,6 +49,7 @@ from test.helpers import (
     sanitize_reply,
 )
 
+from pymongo.lock import _create_lock
 from pymongo.uri_parser import parse_uri
 
 try:
@@ -116,7 +113,7 @@ class ClientContext:
         self.default_client_options: Dict = {}
         self.sessions_enabled = False
         self.client = None  # type: ignore
-        self.conn_lock = threading.Lock()
+        self.conn_lock = _create_lock()
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
@@ -518,6 +515,12 @@ class ClientContext:
             func=func,
         )
 
+    @property
+    def is_not_mmap(self):
+        if self.is_mongos:
+            return True
+        return self.storage_engine != "mmapv1"
+
     def require_no_mmap(self, func):
         """Run a test only if the server is not using the MMAPv1 storage
         engine. Only works for standalone and replica sets; tests are
@@ -570,6 +573,10 @@ class ClientContext:
     def require_replica_set(self, func):
         """Run a test only if the client is connected to a replica set."""
         return self._require(lambda: self.is_rs, "Not connected to a replica set", func=func)
+
+    @property
+    def secondaries_count(self):
+        return 0 if not self.client else len(self.client.secondaries)
 
     def require_secondaries_count(self, count):
         """Run a test only if the client is connected to a replica set that has
@@ -690,7 +697,7 @@ class ClientContext:
         if "sharded" in topologies and self.is_mongos:
             return True
         if "sharded-replicaset" in topologies and self.is_mongos:
-            shards = client_context.client.config.shards.find().to_list()
+            shards = self.client.config.shards.find().to_list()
             for shard in shards:
                 # For a 3-member RS-backed sharded cluster, shard['host']
                 # will be 'replicaName/ip1:port1,ip2:port2,ip3:port3'
@@ -862,6 +869,18 @@ class ClientContext:
 
 # Reusable client context
 client_context = ClientContext()
+
+
+class PyMongoTestCasePyTest:
+    @contextmanager
+    def fail_point(self, client, command_args):
+        cmd_on = SON([("configureFailPoint", "failCommand")])
+        cmd_on.update(command_args)
+        client.admin.command(cmd_on)
+        try:
+            yield
+        finally:
+            client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
 
 
 class PyMongoTestCase(unittest.TestCase):

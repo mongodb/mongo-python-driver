@@ -872,6 +872,7 @@ class AsyncClientContext:
 # Reusable client context
 async_client_context = AsyncClientContext()
 
+
 class AsyncPyMongoTestCasePyTest:
     @asynccontextmanager
     async def fail_point(self, client, command_args):
@@ -1212,6 +1213,7 @@ class AsyncMockClientTest(AsyncUnitTest):
 
 
 async def async_setup():
+    await async_client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")
     global_knobs.enable()
@@ -1226,16 +1228,16 @@ async def async_teardown():
         garbage.append(f"  gc.get_referrers: {gc.get_referrers(g)!r}")
     if garbage:
         raise AssertionError("\n".join(garbage))
-    # c = async_client_context.client
-    # if c:
-    #     if not async_client_context.is_data_lake:
-    #         await c.drop_database("pymongo-pooling-tests")
-    #         await c.drop_database("pymongo_test")
-    #         await c.drop_database("pymongo_test1")
-    #         await c.drop_database("pymongo_test2")
-    #         await c.drop_database("pymongo_test_mike")
-    #         await c.drop_database("pymongo_test_bernie")
-    #     await c.close()
+    c = async_client_context.client
+    if c:
+        if not async_client_context.is_data_lake:
+            await c.drop_database("pymongo-pooling-tests")
+            await c.drop_database("pymongo_test")
+            await c.drop_database("pymongo_test1")
+            await c.drop_database("pymongo_test2")
+            await c.drop_database("pymongo_test_mike")
+            await c.drop_database("pymongo_test_bernie")
+        await c.close()
     print_running_clients()
 
 

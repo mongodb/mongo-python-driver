@@ -25,8 +25,7 @@ from typing import Any, Tuple, Type, no_type_check
 
 sys.path[0:0] = [""]
 
-from test import client_context, unittest
-from test.test_client import IntegrationTest
+from test import IntegrationTest, client_context, unittest
 
 from bson import (
     _BUILT_IN_TYPES,

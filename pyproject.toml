@@ -94,7 +94,7 @@ zstd = ["requirements/zstd.txt"]
 
 [tool.pytest.ini_options]
 minversion = "7"
-addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml", "-m default or default_async or asyncio"]
+addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml", "-m default or default_async"]
 testpaths = ["test"]
 log_cli_level = "INFO"
 faulthandler_timeout = 1500
@@ -135,6 +135,8 @@ markers = [
     "mockupdb: tests that rely on mockupdb",
     "default: default test suite",
     "default_async: default async test suite",
+    "unit: tests that don't require a connection to MongoDB",
+    "integration: tests that require a connection to MongoDB",
 ]
 
 [tool.mypy]

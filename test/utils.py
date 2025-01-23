@@ -32,8 +32,9 @@ from asyncio import iscoroutinefunction
 from collections import abc, defaultdict
 from functools import partial
 from test import client_context, db_pwd, db_user
-from test.asynchronous import async_client_context
 from typing import Any, List
+
+import pytest
 
 from bson import json_util
 from bson.objectid import ObjectId
@@ -810,7 +811,7 @@ def frequent_thread_switches():
         sys.setswitchinterval(interval)
 
 
-def lazy_client_trial(reset, target, test, get_client):
+def lazy_client_trial(reset, target, test, client, client_context):
     """Test concurrent operations on a lazily-connecting client.
 
     `reset` takes a collection and resets it for the next trial.
@@ -826,7 +827,7 @@ def lazy_client_trial(reset, target, test, get_client):
     with frequent_thread_switches():
         for _i in range(NTRIALS):
             reset(collection)
-            lazy_client = get_client()
+            lazy_client = client
             lazy_collection = lazy_client.pymongo_test.test
             run_threads(lazy_collection, target)
             test(lazy_collection)
@@ -1022,3 +1023,10 @@ async def async_set_fail_point(client, command_args):
     cmd = SON([("configureFailPoint", "failCommand")])
     cmd.update(command_args)
     await client.admin.command(cmd)
+
+
+def _default_pytest_mark(is_sync: bool):
+    if is_sync:
+        return pytest.mark.default
+    else:
+        return pytest.mark.asyncio(loop_scope="session")
