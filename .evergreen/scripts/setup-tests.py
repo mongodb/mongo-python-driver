@@ -46,7 +46,6 @@ expected_vars = [
     "TEST_AUTH_AWS",
     "TEST_AUTH_OIDC",
     "COMPRESSORS",
-    "SUCCESS",
     "MONGODB_URI",
     "PERF_TEST",
     "GREEN_FRAMEWORK",
@@ -194,7 +193,7 @@ if is_set("TEST_LOADBALANCER"):
         MULTI_MONGOS_LB_URI += "&tls=true"
     write_env("SINGLE_MONGOS_LB_URI", SINGLE_MONGOS_LB_URI)
     write_env("MULTI_MONGOS_LB_URI", MULTI_MONGOS_LB_URI)
-    cmd = f'bash "${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
+    cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
     run_command(cmd)
 
 if SSL != "nossl":
@@ -235,8 +234,8 @@ if is_set("TEST_ENCRYPTION") or is_set("TEST_FLE_AZURE_AUTO") or is_set("TEST_FL
     # PATH is updated by configure-env.sh for access to mongocryptd.
 
 if is_set("TEST_ENCRYPTION"):
-    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/setup-secrets.sh")
-    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/start-servers.sh")
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/setup-secrets.sh")
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/start-servers.sh")
 
 
 if is_set("TEST_CRYPT_SHARED"):
@@ -254,6 +253,7 @@ if is_set("TEST_FLE_AZURE_AUTO") or is_set("TEST_FLE_GCP_AUTO"):
     if "SUCCESS" not in os.environ:
         raise RuntimeError("Must define SUCCESS")
 
+    write_env("SUCCESS", os.environ["SUCCESS"])
     MONGODB_URI = os.environ["MONGODB_URI"]
     if "@" in MONGODB_URI:
         raise RuntimeError("MONGODB_URI unexpectedly contains user credentials in FLE test!")

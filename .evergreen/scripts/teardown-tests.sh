@@ -2,7 +2,12 @@
 set -eu
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
-ROOT_DIR="$(dirname $(dirname $HERE))"
+ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
+
+# Remove temporary test files.
+pushd $ROOT_DIR > /dev/null
+rm -rf libmongocrypt/ libmongocrypt.tar.gz mongocryptd.pid > /dev/null
+popd > /dev/null
 
 if [ ! -f $SCRIPT_DIR/test-env.sh ]; then
     exit 0
@@ -22,6 +27,3 @@ fi
 if [ -n "${TEST_LOADBALANCER:-}" ]; then
     bash "${DRIVERS_TOOLS}"/.evergreen/run-load-balancer.sh stop
 fi
-
-# Remove temporary test files.
-rm -rf libmongocrypt/ libmongocrypt.tar.gz mongocryptd.pid > /dev/null

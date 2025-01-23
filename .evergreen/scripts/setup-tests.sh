@@ -25,8 +25,7 @@ set -eu
 #  TEST_INDEX_MANAGEMENT        If non-empty, run index management tests
 #  TEST_ENCRYPTION_PYOPENSSL    If non-empy, test encryption with PyOpenSSL
 #  PERF_TEST            If non-empty, run the performance tests.
-#  MONGODB_URI          If non-empty, use as the MONGODB_URI in tests
-#  SUCCESS              Flag used to indicate whether a test is expected to pass or fail.
+#  MONGODB_URI          If non-empty, use as the MONGODB_URI in tests.
 #  PYTHON_BINARY        The python binary to use in tests.
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
