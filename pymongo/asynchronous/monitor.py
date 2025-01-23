@@ -191,8 +191,6 @@ class Monitor(MonitorBase):
 
     async def close(self) -> None:
         self.gc_safe_close()
-        if not _IS_SYNC:
-            await self._executor.join()
         await self._rtt_monitor.close()
         # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
@@ -460,8 +458,6 @@ class _RttMonitor(MonitorBase):
 
     async def close(self) -> None:
         self.gc_safe_close()
-        if not _IS_SYNC:
-            await self._executor.join()
         # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
         await self._pool.reset()
