@@ -31,6 +31,7 @@ set -eu
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
 
+env
 . $ROOT_DIR/.evergreen/utils.sh
 PYTHON=${PYTHON_BINAR:-$(find_python3)}
 $PYTHON $SCRIPT_DIR/setup-tests.py

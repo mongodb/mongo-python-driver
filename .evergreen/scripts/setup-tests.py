@@ -74,6 +74,8 @@ EXTRAS_MAP = dict(
 
 def write_env(name, value):
     with ENV_FILE.open("a") as fid:
+        # Remove any existing quote chars.
+        value = value.replace('"', "")
         fid.write(f'export {name}="{value}"\n')
 
 
