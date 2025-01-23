@@ -272,6 +272,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
     PYTEST_ARGS="$PYTEST_ARGS -m asyncio"
+    # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
 else
     # shellcheck disable=SC2048

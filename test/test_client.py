@@ -174,15 +174,15 @@ class TestClientUnitTest:
 
     def test_types(self):
         with pytest.raises(TypeError):
-            MongoClient(1)
+            MongoClient(1)  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            MongoClient(1.14)
+            MongoClient(1.14)  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            MongoClient("localhost", "27017")
+            MongoClient("localhost", "27017")  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            MongoClient("localhost", 1.14)
+            MongoClient("localhost", 1.14)  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            MongoClient("localhost", [])
+            MongoClient("localhost", [])  # type: ignore[arg-type]
 
         with pytest.raises(ConfigurationError):
             MongoClient([])
@@ -371,11 +371,11 @@ class TestClientUnitTest:
 
             # Bad "driver" options.
         with pytest.raises(TypeError):
-            DriverInfo("Foo", 1, "a")
+            DriverInfo("Foo", 1, "a")  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            DriverInfo(version="1", platform="a")
+            DriverInfo(version="1", platform="a")  # type: ignore[call-arg]
         with pytest.raises(TypeError):
-            DriverInfo()
+            DriverInfo()  # type: ignore[call-arg]
         with pytest.raises(TypeError):
             simple_client(driver=1)
         with pytest.raises(TypeError):

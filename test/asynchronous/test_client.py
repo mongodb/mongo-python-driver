@@ -175,15 +175,15 @@ class TestClientUnitTest:
 
     async def test_types(self):
         with pytest.raises(TypeError):
-            AsyncMongoClient(1)
+            AsyncMongoClient(1)  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            AsyncMongoClient(1.14)
+            AsyncMongoClient(1.14)  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            AsyncMongoClient("localhost", "27017")
+            AsyncMongoClient("localhost", "27017")  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            AsyncMongoClient("localhost", 1.14)
+            AsyncMongoClient("localhost", 1.14)  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            AsyncMongoClient("localhost", [])
+            AsyncMongoClient("localhost", [])  # type: ignore[arg-type]
 
         with pytest.raises(ConfigurationError):
             AsyncMongoClient([])
@@ -389,11 +389,11 @@ class TestClientUnitTest:
 
             # Bad "driver" options.
         with pytest.raises(TypeError):
-            DriverInfo("Foo", 1, "a")
+            DriverInfo("Foo", 1, "a")  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            DriverInfo(version="1", platform="a")
+            DriverInfo(version="1", platform="a")  # type: ignore[call-arg]
         with pytest.raises(TypeError):
-            DriverInfo()
+            DriverInfo()  # type: ignore[call-arg]
         with pytest.raises(TypeError):
             await simple_client(driver=1)
         with pytest.raises(TypeError):
