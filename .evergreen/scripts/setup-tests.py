@@ -81,6 +81,8 @@ def source_env(path):
     with open(path) as fid:
         for line in fid:
             match = re.match("export (.*?)=(.+?)", line.strip())
+            if not match:
+                continue
             name, value = match.groups()
             os.environ[name] = value
 
