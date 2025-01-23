@@ -750,7 +750,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if port is None:
             port = self.PORT
         if not isinstance(port, int):
-            raise TypeError("port must be an instance of int")
+            raise TypeError(f"port must be an instance of int, not {type(port)}")
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
@@ -1971,7 +1971,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         The cursor is closed synchronously on the current thread.
         """
         if not isinstance(cursor_id, int):
-            raise TypeError("cursor_id must be an instance of int")
+            raise TypeError(f"cursor_id must be an instance of int, not {type(cursor_id)}")
 
         try:
             if conn_mgr:
@@ -2093,7 +2093,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """If provided session is None, lend a temporary session."""
         if session is not None:
             if not isinstance(session, client_session.AsyncClientSession):
-                raise ValueError("'session' argument must be an AsyncClientSession or None.")
+                raise ValueError(f"'session' argument must be an AsyncClientSession or None, not {type(session)}.")
             # Don't call end_session.
             yield session
             return
@@ -2247,7 +2247,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             name = name.name
 
         if not isinstance(name, str):
-            raise TypeError("name_or_database must be an instance of str or a AsyncDatabase")
+            raise TypeError(f"name_or_database must be an instance of str or a AsyncDatabase, not {type(name)}")
 
         async with await self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
             await self[name]._command(
