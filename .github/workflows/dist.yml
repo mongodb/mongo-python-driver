@@ -58,6 +58,12 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
           allow-prereleases: true
 
+      - name: Set up QEMU
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
       - name: Install cibuildwheel
         # Note: the default manylinux is manylinux2014
         run: |
