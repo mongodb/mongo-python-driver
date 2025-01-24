@@ -273,7 +273,7 @@ if is_set("TEST_FLE_AZURE_AUTO") or is_set("TEST_FLE_GCP_AUTO"):
         raise RuntimeError("Must define SUCCESS")
 
     write_env("SUCCESS", os.environ["SUCCESS"])
-    MONGODB_URI = os.environ["MONGODB_URI"]
+    MONGODB_URI = os.environ.get("MONGODB_URI")
     if "@" in MONGODB_URI:
         raise RuntimeError("MONGODB_URI unexpectedly contains user credentials in FLE test!")
 
