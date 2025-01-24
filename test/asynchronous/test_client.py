@@ -444,16 +444,16 @@ class TestClientUnitTest:
         options = client.options
         assert len(bson.encode(options.pool_options.metadata)) <= _MAX_METADATA_SIZE
 
-    @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     async def test_container_metadata(self, simple_client):
-        metadata = copy.deepcopy(_METADATA)
-        metadata["driver"]["name"] = "PyMongo|async"
-        metadata["env"] = {}
-        metadata["env"]["container"] = {"orchestrator": "kubernetes"}
+        with mock.patch("os.environ", {ENV_VAR_K8S: "1"}):
+            metadata = copy.deepcopy(_METADATA)
+            metadata["driver"]["name"] = "PyMongo|async"
+            metadata["env"] = {}
+            metadata["env"]["container"] = {"orchestrator": "kubernetes"}
 
-        client = await simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
-        options = client.options
-        assert options.pool_options.metadata["env"] == metadata["env"]
+            client = await simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
+            options = client.options
+            assert options.pool_options.metadata["env"] == metadata["env"]
 
     async def test_kwargs_codec_options(self, simple_client):
         class MyFloatType:
