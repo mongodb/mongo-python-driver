@@ -243,12 +243,9 @@ class TestClientUnitTest:
         assert "has no attribute '_does_not_exist'" in str(context.value)
 
     async def test_iteration(self, async_client):
-        if _IS_SYNC or sys.version_info < (3, 10):
-            msg = "'AsyncMongoClient' object is not iterable"
-        else:
-            msg = "'AsyncMongoClient' object is not an async iterator"
+        msg = "'AsyncMongoClient' object is not iterable"
 
-        with pytest.raises(TypeError, match="'AsyncMongoClient' object is not iterable"):
+        with pytest.raises(TypeError, match=msg):
             for _ in async_client:
                 break
 
@@ -261,7 +258,7 @@ class TestClientUnitTest:
             _ = await anext(async_client)
 
         # 'next()' method fails
-        with pytest.raises(TypeError, match="'AsyncMongoClient' object is not iterable"):
+        with pytest.raises(TypeError, match=msg):
             _ = await async_client.anext()
 
         # Do not implement typing.Iterable
