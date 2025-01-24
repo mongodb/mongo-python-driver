@@ -26,12 +26,10 @@ fi
 # Try to source the test inputs
 if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
   echo "Sourcing test inputs"
-  #source $SCRIPT_DIR/scripts/test-env.sh
+  source $SCRIPT_DIR/scripts/test-env.sh
 else
   echo "Not sourcing test inputs"
 fi
-
-exit 1
 
 PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implementation())")
 
