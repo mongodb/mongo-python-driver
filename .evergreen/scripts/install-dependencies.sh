@@ -5,9 +5,12 @@ set -eu
 # On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
 if [ "${CI:-}" == "true" ]; then
   _BIN_DIR=${DRIVERS_TOOLS_BINARIES:-}
+elif [ "Windows_NT" = "${OS:-}" ]; then
+  _BIN_DIR=$HOME/cli_bin
 else
   _BIN_DIR=$HOME/.local/bin
 fi
+export PATH="$PATH:$_BIN_DIR"
 
 
 # Helper function to pip install a dependency using a temporary python env.
@@ -35,9 +38,6 @@ if ! command -v just 2>/dev/null; then
   curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- $_TARGET --to "$_BIN_DIR" || {
     _pip_install rust-just just
   }
-  if ! command -v just 2>/dev/null; then
-    export PATH="$PATH:$_BIN_DIR"
-  fi
   echo "Installing just... done."
 fi
 
@@ -48,8 +48,5 @@ if ! command -v uv 2>/dev/null; then
   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
      _pip_install uv uv
   }
-  if ! command -v uv 2>/dev/null; then
-    export PATH="$PATH:$_BIN_DIR"
-  fi
   echo "Installing uv... done."
 fi

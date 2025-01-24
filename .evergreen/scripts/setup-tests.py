@@ -73,7 +73,7 @@ EXTRAS_MAP = dict(
 
 
 def write_env(name, value):
-    with ENV_FILE.open("a") as fid:
+    with ENV_FILE.open("a", newline="\n") as fid:
         # Remove any existing quote chars.
         value = value.replace('"', "")
         fid.write(f'export {name}="{value}"\n')
@@ -116,7 +116,7 @@ TEST_ARGS = " ".join(sys.argv[1:])
 UV_ARGS = ["--isolated --extra test"]
 
 # Save variables in EXPECTED_VARS that have values.
-with ENV_FILE.open("w") as fid:
+with ENV_FILE.open("w", newline="\n") as fid:
     fid.write("#!/usr/bin/env bash\n")
     fid.write("set +x\n")
     fid.write(f"export AUTH={AUTH}\n")
@@ -186,7 +186,7 @@ if is_set("TEST_ENTERPRISE_AUTH"):
         LOGGER.info("Writing keytab")
         keytab = base64.b64decode(os.environ["KEYTAB_BASE64"])
         keytab_file = ROOT / ".evergreen/drivers.keytab"
-        with keytab_file.open("w") as fid:
+        with keytab_file.open("w", newline="\n") as fid:
             fid.write(keytab)
         principal = os.environ["PRINCIPAL"]
         LOGGER.info("Running kinit")
