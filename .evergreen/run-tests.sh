@@ -265,18 +265,15 @@ PIP_QUIET=0 uv run ${UV_ARGS[*]} --with pip pip list
 if [ -z "$GREEN_FRAMEWORK" ]; then
     # Use --capture=tee-sys so pytest prints test output inline:
     # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
-    PYTEST_ARGS="-v --capture=tee-sys --durations=5 $TEST_ARGS"
+    PYTEST_ARGS=("-v" "--capture=tee-sys" "--durations=5" "$TEST_ARGS")
     if [ -n "$TEST_SUITES" ]; then
       # Workaround until unittest -> pytest conversion is complete
       if [[ "$TEST_SUITES" == *"default_async"* ]]; then
-        # shellcheck disable=SC2206
-        ASYNC_PYTEST_ARGS=("-m asyncio" "--junitxml=xunit-results/TEST-asyncresults.xml" $PYTEST_ARGS)
+        ASYNC_PYTEST_ARGS=("-m asyncio" "--junitxml=xunit-results/TEST-asyncresults.xml" "${PYTEST_ARGS[@]}")
       else
-        # shellcheck disable=SC2206
-        ASYNC_PYTEST_ARGS=("-m asyncio and $TEST_SUITES" "--junitxml=xunit-results/TEST-asyncresults.xml" $PYTEST_ARGS)
+        ASYNC_PYTEST_ARGS=("-m asyncio and $TEST_SUITES" "--junitxml=xunit-results/TEST-asyncresults.xml" "${PYTEST_ARGS[@]}")
       fi
-      # shellcheck disable=SC2206
-      PYTEST_ARGS=("-m $TEST_SUITES and not asyncio" $PYTEST_ARGS)
+      PYTEST_ARGS=("-m $TEST_SUITES and not asyncio" "${PYTEST_ARGS[@]}")
     fi
     # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} pytest "${PYTEST_ARGS[@]}"
