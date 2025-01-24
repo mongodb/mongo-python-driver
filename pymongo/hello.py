@@ -133,7 +133,7 @@ class Hello(Generic[_DocumentType]):
 
     @property
     def max_message_size(self) -> int:
-        return self._doc.get("maxMessageSizeBytes", 2 * self.max_bson_size)
+        return self._doc.get("maxMessageSizeBytes", common.MAX_MESSAGE_SIZE)
 
     @property
     def max_write_batch_size(self) -> int:
