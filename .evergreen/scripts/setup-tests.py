@@ -40,6 +40,7 @@ EXPECTED_VARS = [
     "PERF_TEST",
     "GREEN_FRAMEWORK",
     "PYTHON_BINARY",
+    "LIBMONGOCRYPT_URL",
 ]
 
 # Handle the test suite based on the presence of env variables.
