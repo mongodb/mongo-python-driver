@@ -117,6 +117,7 @@ UV_ARGS = ["--isolated --extra test"]
 
 # Save variables in EXPECTED_VARS that have values.
 with ENV_FILE.open("w") as fid:
+    fid.write("#!/usr/bin/env bash\n")
     fid.write("set +x\n")
     fid.write(f"export AUTH={AUTH}\n")
     fid.write(f"export SSL={SSL}\n")
