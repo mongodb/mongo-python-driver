@@ -63,12 +63,15 @@ jobs:
         run: |
           python -m pip install -U pip
           python -m pip install "cibuildwheel>=2.20,<3"
-          podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+      - name: Set up qemu
+        if: ${{ matrix.buildplat[0] == 'ubuntu-20.04' }}
+        run: sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
       - name: Build wheels
         env:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
-          CIBW_CONTAINER_ENGINE: podman
+          CIBW_CONTAINER_ENGINE: ${{ matrix.buildplat[0] == 'ubuntu-20.04' && 'podman' || 'docker' }}
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Build manylinux1 wheels
