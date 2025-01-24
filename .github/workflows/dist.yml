@@ -36,8 +36,8 @@ jobs:
         buildplat:
         - [ubuntu-20.04, "manylinux_x86_64", "cp3*-manylinux_x86_64"]
         - [ubuntu-24.04-arm, "manylinux_aarch64", "cp3*-manylinux_aarch64"]
-        - [ubuntu-20.04, "manylinux_ppc64le", "cp3*-manylinux_ppc64le"]
-        - [ubuntu-20.04, "manylinux_s390x", "cp3*-manylinux_s390x"]
+        - [ubuntu-24.04, "manylinux_ppc64le", "cp3*-manylinux_ppc64le"]
+        - [ubuntu-24.04, "manylinux_s390x", "cp3*-manylinux_s390x"]
         - [ubuntu-20.04, "manylinux_i686", "cp3*-manylinux_i686"]
         - [windows-2019, "win_amd6", "cp3*-win_amd64"]
         - [windows-2019, "win32", "cp3*-win32"]
@@ -64,14 +64,9 @@ jobs:
           python -m pip install -U pip
           python -m pip install "cibuildwheel>=2.20,<3"
 
-      - name: Set up qemu
-        if: ${{ matrix.buildplat[0] == 'ubuntu-20.04' }}
-        run: sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
-
       - name: Build wheels
         env:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
-          CIBW_CONTAINER_ENGINE: ${{ matrix.buildplat[0] == 'ubuntu-20.04' && 'podman' || 'docker' }}
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Build manylinux1 wheels
