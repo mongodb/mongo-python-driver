@@ -106,7 +106,7 @@ if (HERE / "env.sh").exists():
     source_env(HERE / "env.sh")
 
 # Set up default values.
-DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS").replace(os.sep, "/")
+DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS", "").replace(os.sep, "/")
 AUTH = os.environ.get("AUTH", "noauth")
 SSL = os.environ.get("SSL", "nossl")
 TEST_SUITES = os.environ.get("TEST_SUITES", "")
