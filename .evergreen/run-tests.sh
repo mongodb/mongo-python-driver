@@ -37,7 +37,7 @@ export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
 set +x
-PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implementation())")
+PYTHON_IMPL=$(uv run --frozen python -c "import platform; print(platform.python_implementation())")
 
 # Try to source local Drivers Secrets
 if [ -f ./secrets-export.sh ]; then
@@ -49,11 +49,11 @@ fi
 
 # Start compiling the args we'll pass to uv.
 # Run in an isolated environment so as not to pollute the base venv.
-UV_ARGS=("--isolated --extra test")
+UV_ARGS=("--isolated --frozen --extra test")
 
 # Ensure C extensions if applicable.
 if [ -z "${NO_EXT:-}" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
-    uv run tools/fail_if_no_c.py
+    uv run --frozen tools/fail_if_no_c.py
 fi
 
 if [ "$AUTH" != "noauth" ]; then
@@ -239,7 +239,7 @@ if [ -n "$PERF_TEST" ]; then
 fi
 
 echo "Running $AUTH tests over $SSL with python $(uv python find)"
-uv run python -c 'import sys; print(sys.version)'
+uv run --frozen python -c 'import sys; print(sys.version)'
 
 
 # Run the tests, and store the results in Evergreen compatible XUnit XML
