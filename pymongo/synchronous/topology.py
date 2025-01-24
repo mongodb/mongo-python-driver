@@ -253,7 +253,8 @@ class Topology:
         timeout = _csot.remaining()
         if timeout is None:
             return self._settings.server_selection_timeout
-        return timeout
+        else:
+            return min(timeout, self._settings.server_selection_timeout)
 
     def select_servers(
         self,
