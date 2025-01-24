@@ -31,9 +31,6 @@ else
   echo "Not sourcing test inputs"
 fi
 
-env
-exit 1
-
 PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implementation())")
 
 # Start compiling the args we'll pass to uv.
