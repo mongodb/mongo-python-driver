@@ -2,11 +2,6 @@
 set -o errexit  # Exit the script with error if any of the commands fail
 set -o xtrace
 
-if [ -z "${DRIVERS_TOOLS}" ]; then
-    echo "Missing environment variable DRIVERS_TOOLS"
-    exit 1
-fi
-
 TARGET=""
 
 if [ "Windows_NT" = "${OS:-''}" ]; then # Magic variable in cygwin
