@@ -6,7 +6,7 @@ echo "Copying files ... begin"
 export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
 export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
 export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
+LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
 # Set up the remote files to test.
 git add .
 git commit -m "add files" || true
@@ -20,7 +20,7 @@ AZUREKMS_CMD="tar xf mongo-python-driver.tgz" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 echo "Untarring file ... end"
 echo "Running test ... begin"
-AZUREKMS_CMD="SUCCESS=true TEST_FLE_AZURE_AUTO=1 bash ./.evergreen/scripts/setup-tests.sh" \
+AZUREKMS_CMD="SUCCESS=true TEST_FLE_AZURE_AUTO=1 LIBMONGOCRYPT_URL=$LIBMONGOCRYPT_URL bash ./.evergreen/scripts/setup-tests.sh" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 AZUREKMS_CMD="KEY_NAME=\"$AZUREKMS_KEYNAME\" KEY_VAULT_ENDPOINT=\"$AZUREKMS_KEYVAULTENDPOINT\" bash ./.evergreen/just.sh test-eg" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
