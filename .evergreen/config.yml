@@ -274,6 +274,7 @@ functions:
 
   "run tests":
     - command: subprocess.exec
+      type: test
       params:
         include_expansions_in_env: ["TEST_DATA_LAKE", "PYTHON_BINARY", "AUTH", "SSL", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL", "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "TEST_LOADBALANCER", "TEST_SEVERLESS", "ORCHESTRATION_FILE"]
         binary: bash
@@ -1463,7 +1464,7 @@ tasks:
     - name: "testgcpkms-task"
       commands:
         - command: subprocess.exec
-          type: setup
+          type: test
           params:
             working_dir: "src"
             binary: bash
@@ -1491,6 +1492,7 @@ tasks:
     - name: testazurekms-task
       commands:
       - command: subprocess.exec
+        type: test
         params:
           binary: bash
           working_dir: src

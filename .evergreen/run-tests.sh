@@ -90,6 +90,6 @@ if [ -n "${PERF_TEST:-}" ]; then
 fi
 
 # Handle coverage post actions.
-if [ -n "$COVERAGE" ]; then
+if [ -n "${COVERAGE:-}" ]; then
     rm -rf .pytest_cache
 fi
