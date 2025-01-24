@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eu
+set -eux
 
 . .evergreen/scripts/setup-dev-env.sh
 # TODO remove before merging.
