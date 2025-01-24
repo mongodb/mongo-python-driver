@@ -31,6 +31,9 @@ else
   echo "Not sourcing test inputs"
 fi
 
+env
+exit 1
+
 PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implementation())")
 
 # Start compiling the args we'll pass to uv.
@@ -67,6 +70,7 @@ fi
 
 # Run the tests, and store the results in Evergreen compatible XUnit XML
 # files in the xunit-results/ directory.
+echo "Running tests with $TEST_ARGS..."
 if [ -z "${GREEN_FRAMEWORK:-}" ]; then
     # shellcheck disable=SC2048
     uv run ${UV_ARGS} pytest $TEST_ARGS
@@ -74,6 +78,7 @@ else
     # shellcheck disable=SC2048
     uv run ${UV_ARGS} green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi
+echo "Running tests with $TEST_ARGS... done."
 
 # Handle perf test post actions.
 if [ -n "${PERF_TEST:-}" ]; then
