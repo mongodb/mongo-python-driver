@@ -267,6 +267,9 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
     PYTEST_ARGS="-v --capture=tee-sys --durations=5 $TEST_ARGS"
     if [ -n "$TEST_SUITES" ]; then
+      # Workaround until unittest -> pytest conversion is complete
+      # shellcheck disable=SC2206
+      ASYNC_PYTEST_ARGS=("-m asyncio and $TEST_SUITES" "--junitxml=xunit-results/TEST-asyncresults.xml" $PYTEST_ARGS)
       PYTEST_ARGS="-m $TEST_SUITES $PYTEST_ARGS"
     fi
     # shellcheck disable=SC2048
@@ -274,15 +277,11 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
 
     # Workaround until unittest -> pytest conversion is complete
     if [ -z "$TEST_SUITES" ]; then
-      PYTEST_ARGS="-m asyncio --junitxml=xunit-results/TEST-asyncresults.xml $PYTEST_ARGS"
-      # shellcheck disable=SC2048
-      uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
-    else
-      PYTEST_ARGS="-m $TEST_SUITES and asyncio --junitxml=xunit-results/TEST-asyncresults.xml $PYTEST_ARGS"
-      # shellcheck disable=SC2048
-      uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
+      # shellcheck disable=SC2206
+      ASYNC_PYTEST_ARGS=("-m asyncio" "--junitxml=xunit-results/TEST-asyncresults.xml" $PYTEST_ARGS)
     fi
-
+    # shellcheck disable=SC2048
+    uv run ${UV_ARGS[*]} pytest "${ASYNC_PYTEST_ARGS[@]}"
 else
     # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS

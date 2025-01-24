@@ -243,7 +243,7 @@ class TestClientUnitTest:
         assert "has no attribute '_does_not_exist'" in str(context.value)
 
     async def test_iteration(self, async_client):
-        if _IS_SYNC:
+        if _IS_SYNC or sys.version_info < (3, 10):
             msg = "'AsyncMongoClient' object is not iterable"
         else:
             msg = "'AsyncMongoClient' object is not an async iterator"
