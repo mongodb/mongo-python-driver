@@ -139,7 +139,7 @@ for env_var, suite in TEST_SUITE_MAP.items():
     if env_var in os.environ:
         TEST_SUITES = suite
 
-if AUTH == "noauth":
+if AUTH != "noauth":
     if is_set("TEST_DATA_LAKE"):
         DB_USER = "mhuser"
         DB_PASSWORD = "pencil"  # noqa: S105
