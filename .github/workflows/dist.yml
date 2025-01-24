@@ -35,7 +35,7 @@ jobs:
         # https://github.com/github/feedback/discussions/7835#discussioncomment-1769026
         buildplat:
         - [ubuntu-20.04, "manylinux_x86_64", "cp3*-manylinux_x86_64"]
-        - [ubuntu-20.04, "manylinux_aarch64", "cp3*-manylinux_aarch64"]
+        - [ubuntu-24.04-arm, "manylinux_aarch64", "cp3*-manylinux_aarch64"]
         - [ubuntu-20.04, "manylinux_ppc64le", "cp3*-manylinux_ppc64le"]
         - [ubuntu-20.04, "manylinux_s390x", "cp3*-manylinux_s390x"]
         - [ubuntu-20.04, "manylinux_i686", "cp3*-manylinux_i686"]
@@ -58,12 +58,6 @@ jobs:
           cache-dependency-path: 'pyproject.toml'
           allow-prereleases: true
 
-      - name: Set up QEMU
-        if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: all
-
       - name: Install cibuildwheel
         # Note: the default manylinux is manylinux2014
         run: |
@@ -73,6 +67,7 @@ jobs:
       - name: Build wheels
         env:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
+          CIBW_CONTAINER_ENGINE: podman
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Build manylinux1 wheels
