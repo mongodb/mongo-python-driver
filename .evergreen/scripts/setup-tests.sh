@@ -36,12 +36,6 @@ if [ -f $SCRIPT_DIR/scripts/env.sh ]; then
   source $SCRIPT_DIR/scripts/env.sh
 fi
 
-# Try to source local Drivers Secrets.
-if [ -f $ROOT_DIR/secrets-export.sh ]; then
-  source ./secrets-export.sh
-else
-fi
-
 # Source serverless secrets if applicable.
 if [ -n "${TEST_SERVERLESS:-}" ]; then
   source $DRIVERS_TOOLS/.evergreen/serverless/secrets-export.sh

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eux
+set -eu
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
@@ -15,28 +15,21 @@ else
   echo "Not sourcing env inputs"
 fi
 
-# Try to source local Drivers Secrets
-if [ -f $ROOT_DIR/secrets-export.sh ]; then
-  echo "Sourcing secrets"
-  source ./secrets-export.sh
-else
-  echo "Not sourcing secrets"
-fi
-
-# Try to source the test inputs
+# Ensure there are test inputs.
 if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
   echo "Sourcing test inputs"
   source $SCRIPT_DIR/scripts/test-env.sh
 else
-  echo "Not sourcing test inputs"
+  echo "Missing test inputs, please run 'just setup-test'"
+  exit 1
+fi
+
+# Source the csfle secrets if running encryption test.
+if [ -n "${TEST_ENCRYPTION}" ]; then
+  source $DRIVERS_TOOLS/.evergreen/csfle/secrets-export.sh
 fi
 
 PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implementation())")
-
-# Start compiling the args we'll pass to uv.
-# Run in an isolated environment so as not to pollute the base venv.
-UV_ARGS=${UV_ARGS:-"--extra test"}
-TEST_ARGS=${TEST_ARGS:-}
 
 # Ensure C extensions if applicable.
 if [ -z "${NO_EXT:-}" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
@@ -67,6 +60,10 @@ fi
 
 # Run the tests, and store the results in Evergreen compatible XUnit XML
 # files in the xunit-results/ directory.
+TEST_ARGS=${TEST_ARGS}
+if [ "$#" -ne 0 ]; then
+    TEST_ARGS=“$@”
+fi
 echo "Running tests with $TEST_ARGS..."
 if [ -z "${GREEN_FRAMEWORK:-}" ]; then
     # shellcheck disable=SC2048

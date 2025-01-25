@@ -92,7 +92,7 @@ def handle_test_env():
     AUTH = os.environ.get("AUTH", "noauth")
     SSL = os.environ.get("SSL", "nossl")
     TEST_SUITES = os.environ.get("TEST_SUITES", "")
-    TEST_ARGS = " ".join(sys.argv[1:])
+    TEST_ARGS = ""
     # Start compiling the args we'll pass to uv.
     # Run in an isolated environment so as not to pollute the base venv.
     UV_ARGS = ["--isolated --extra test"]
