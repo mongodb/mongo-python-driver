@@ -7,7 +7,7 @@ export AZUREKMS_RESOURCEGROUP=${AZUREKMS_RESOURCEGROUP}
 export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
 export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
-SUCCESS=true TEST_FLE_AZURE_AUTO=1 LIBMONGOCRYPT_URL=$LIBMONGOCRYPT_URL bash $HERE/scripts/setup-test.sh
+SUCCESS=true TEST_FLE_AZURE_AUTO=1 LIBMONGOCRYPT_URL=$LIBMONGOCRYPT_URL bash $HERE/scripts/setup-tests.sh
 # Set up the remote files to test.
 git add .
 git commit -m "add files" || true

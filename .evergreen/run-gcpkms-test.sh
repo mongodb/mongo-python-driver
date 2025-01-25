@@ -9,7 +9,7 @@ export GCPKMS_PROJECT=${GCPKMS_PROJECT}
 export GCPKMS_ZONE=${GCPKMS_ZONE}
 export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
-SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=$LIBMONGOCRYPT_URL bash $HERE/scripts/setup-test.sh
+SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=$LIBMONGOCRYPT_URL bash $HERE/scripts/setup-tests.sh
 # Set up the remote files to test.
 git add .
 git commit -m "add files" || true
