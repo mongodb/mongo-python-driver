@@ -269,7 +269,9 @@ def validate_int_or_basestring(option: str, value: Any) -> Union[int, str]:
             return int(value)
         except ValueError:
             return value
-    raise TypeError(f"Wrong type for {option}, value must be an integer or a string, not {type(value)}")
+    raise TypeError(
+        f"Wrong type for {option}, value must be an integer or a string, not {type(value)}"
+    )
 
 
 def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[int, str]:
@@ -283,7 +285,8 @@ def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[in
             return value
         return validate_non_negative_integer(option, val)
     raise TypeError(
-        f"Wrong type for {option}, value must be an non negative integer or a string, not {type(value)}")
+        f"Wrong type for {option}, value must be an non negative integer or a string, not {type(value)}"
+    )
 
 
 def validate_positive_float(option: str, value: Any) -> float:
@@ -443,7 +446,8 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
     if not isinstance(value, str):
         if not isinstance(value, dict):
             raise ValueError(
-                f"Auth mechanism properties must be given as a string or a dictionary, not {type(value)}")
+                f"Auth mechanism properties must be given as a string or a dictionary, not {type(value)}"
+            )
         for key, value in value.items():  # noqa: B020
             if isinstance(value, str):
                 props[key] = value
@@ -670,7 +674,9 @@ def validate_datetime_conversion(option: Any, value: Any) -> Optional[DatetimeCo
     elif isinstance(value, int):
         return DatetimeConversion(value)
 
-    raise TypeError(f"{option} must be a str or int representing DatetimeConversion, not {type(value)}")
+    raise TypeError(
+        f"{option} must be a str or int representing DatetimeConversion, not {type(value)}"
+    )
 
 
 def validate_server_monitoring_mode(option: str, value: str) -> str:
@@ -918,7 +924,8 @@ class BaseObject:
     ) -> None:
         if not isinstance(codec_options, CodecOptions):
             raise TypeError(
-                f"codec_options must be an instance of bson.codec_options.CodecOptions, not {type(codec_options)}")
+                f"codec_options must be an instance of bson.codec_options.CodecOptions, not {type(codec_options)}"
+            )
         self._codec_options = codec_options
 
         if not isinstance(read_preference, _ServerMode):
@@ -937,7 +944,8 @@ class BaseObject:
 
         if not isinstance(read_concern, ReadConcern):
             raise TypeError(
-                f"read_concern must be an instance of pymongo.read_concern.ReadConcern, not {type(read_concern)}")
+                f"read_concern must be an instance of pymongo.read_concern.ReadConcern, not {type(read_concern)}"
+            )
         self._read_concern = read_concern
 
     @property

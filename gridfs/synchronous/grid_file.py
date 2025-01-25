@@ -1426,7 +1426,9 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
            from the server. Metadata is fetched when first needed.
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError(f"root_collection must be an instance of Collection, not {type(root_collection)}")
+            raise TypeError(
+                f"root_collection must be an instance of Collection, not {type(root_collection)}"
+            )
         _disallow_transactions(session)
 
         root_collection = _clear_entity_type_registry(root_collection)

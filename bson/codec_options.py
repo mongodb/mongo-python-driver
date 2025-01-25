@@ -402,17 +402,22 @@ else:
                 )
             if not isinstance(unicode_decode_error_handler, str):
                 raise ValueError(
-                    f"unicode_decode_error_handler must be a string, not {type(unicode_decode_error_handler)}")
+                    f"unicode_decode_error_handler must be a string, not {type(unicode_decode_error_handler)}"
+                )
             if tzinfo is not None:
                 if not isinstance(tzinfo, datetime.tzinfo):
-                    raise TypeError(f"tzinfo must be an instance of datetime.tzinfo, not {type(tzinfo)}")
+                    raise TypeError(
+                        f"tzinfo must be an instance of datetime.tzinfo, not {type(tzinfo)}"
+                    )
                 if not tz_aware:
                     raise ValueError("cannot specify tzinfo without also setting tz_aware=True")
 
             type_registry = type_registry or TypeRegistry()
 
             if not isinstance(type_registry, TypeRegistry):
-                raise TypeError(f"type_registry must be an instance of TypeRegistry, not {type(type_registry)}")
+                raise TypeError(
+                    f"type_registry must be an instance of TypeRegistry, not {type(type_registry)}"
+                )
 
             return tuple.__new__(
                 cls,
@@ -482,6 +487,7 @@ else:
             opts = self._options_dict()
             opts.update(kwargs)
             return CodecOptions(**opts)
+
 
 DEFAULT_CODEC_OPTIONS: CodecOptions[dict[str, Any]] = CodecOptions()
 

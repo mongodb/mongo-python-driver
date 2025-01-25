@@ -133,7 +133,8 @@ def _index_list(
             return list(key_or_list.items())
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError(
-                f"if no direction is specified, key_or_list must be an instance of list, not {type(key_or_list)}")
+                f"if no direction is specified, key_or_list must be an instance of list, not {type(key_or_list)}"
+            )
         values: list[tuple[str, int]] = []
         for item in key_or_list:
             if isinstance(item, str):

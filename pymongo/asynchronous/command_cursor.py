@@ -94,7 +94,9 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         self.batch_size(batch_size)
 
         if not isinstance(max_await_time_ms, int) and max_await_time_ms is not None:
-            raise TypeError(f"max_await_time_ms must be an integer or None, not {type(max_await_time_ms)}")
+            raise TypeError(
+                f"max_await_time_ms must be an integer or None, not {type(max_await_time_ms)}"
+            )
 
     def __del__(self) -> None:
         self._die_no_lock()

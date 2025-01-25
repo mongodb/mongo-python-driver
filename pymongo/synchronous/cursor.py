@@ -543,7 +543,9 @@ class Cursor(Generic[_DocumentType]):
         .. versionadded:: 3.2
         """
         if not isinstance(max_await_time_ms, int) and max_await_time_ms is not None:
-            raise TypeError(f"max_await_time_ms must be an integer or None, not {type(max_await_time_ms)}")
+            raise TypeError(
+                f"max_await_time_ms must be an integer or None, not {type(max_await_time_ms)}"
+            )
         self._check_okay_to_chain()
 
         # Ignore max_await_time_ms if not tailable or await_data is False.
