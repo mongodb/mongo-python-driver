@@ -60,10 +60,10 @@ ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024**2)
-MAX_MESSAGE_SIZE: int = 2 * MAX_BSON_SIZE
+MAX_MESSAGE_SIZE = 48 * 1000 * 1000
 MIN_WIRE_VERSION = 0
 MAX_WIRE_VERSION = 0
-MAX_WRITE_BATCH_SIZE = 1000
+MAX_WRITE_BATCH_SIZE = 100000
 
 # What this version of PyMongo supports.
 MIN_SUPPORTED_SERVER_VERSION = "4.0"
