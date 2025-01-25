@@ -31,6 +31,27 @@ set -eu
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
 
+# Try to source the env file.
+if [ -f $SCRIPT_DIR/scripts/env.sh ]; then
+  source $SCRIPT_DIR/scripts/env.sh
+fi
+
+# Try to source local Drivers Secrets.
+if [ -f $ROOT_DIR/secrets-export.sh ]; then
+  source ./secrets-export.sh
+else
+fi
+
+# Source serverless secrets if applicable.
+if [ -n "${TEST_SERVERLESS:-}" ]; then
+  source $DRIVERS_TOOLS/.evergreen/serverless/secrets-export.sh
+fi
+
+# Source atlas secrets if applicable.
+if [ -n "${TEST_INDEX_MANAGEMENT:-}" ]; then
+  source $DRIVERS_TOOLS/..evergreen/atlas/secrets-export.sh"
+fi
+
 . $ROOT_DIR/.evergreen/utils.sh
 PYTHON=${PYTHON_BINARY:-$(find_python3)}
 $PYTHON $SCRIPT_DIR/setup-tests.py

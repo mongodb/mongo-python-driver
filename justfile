@@ -70,10 +70,10 @@ test-mockupdb *args:
 test-eg *args:
     bash ./.evergreen/run-tests.sh {{args}}
 
-[group('encryption')]
+[group('test')]
 setup-test:
     bash .evergreen/scripts/setup-tests.sh
 
-[group('encryption')]
+[group('test')]
 teardown-test:
     bash .evergreen/scripts/teardown-tests.sh
