@@ -1367,7 +1367,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             name = name.name
 
         if not isinstance(name, str):
-            raise TypeError(f"name_or_collection must be an instance of str or Collection, not {type(name)}")
+            raise TypeError(
+                f"name_or_collection must be an instance of str or Collection, not {type(name)}"
+            )
         cmd = {"validate": name, "scandata": scandata, "full": full}
         if comment is not None:
             cmd["comment"] = comment

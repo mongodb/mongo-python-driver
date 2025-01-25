@@ -309,7 +309,9 @@ class TransactionOptions:
                 )
         if max_commit_time_ms is not None:
             if not isinstance(max_commit_time_ms, int):
-                raise TypeError(f"max_commit_time_ms must be an integer or None, not {type(max_commit_time_ms)}")
+                raise TypeError(
+                    f"max_commit_time_ms must be an integer or None, not {type(max_commit_time_ms)}"
+                )
 
     @property
     def read_concern(self) -> Optional[ReadConcern]:
@@ -919,7 +921,8 @@ class ClientSession:
         """
         if not isinstance(operation_time, Timestamp):
             raise TypeError(
-                f"operation_time must be an instance of bson.timestamp.Timestamp, not {type(operation_time)}")
+                f"operation_time must be an instance of bson.timestamp.Timestamp, not {type(operation_time)}"
+            )
         self._advance_operation_time(operation_time)
 
     def _process_response(self, reply: Mapping[str, Any]) -> None:

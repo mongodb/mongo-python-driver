@@ -2235,7 +2235,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             name = name.name
 
         if not isinstance(name, str):
-            raise TypeError(f"name_or_database must be an instance of str or a Database, not {type(name)}")
+            raise TypeError(
+                f"name_or_database must be an instance of str or a Database, not {type(name)}"
+            )
 
         with self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
             self[name]._command(
