@@ -9,6 +9,7 @@ import stat
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
@@ -73,22 +74,22 @@ EXTRAS_MAP = dict(
 )
 
 
-def write_env(name, value):
+def write_env(name: str, value: Any) -> None:
     with ENV_FILE.open("a", newline="\n") as fid:
         # Remove any existing quote chars.
         value = value.replace('"', "")
         fid.write(f'export {name}="{value}"\n')
 
 
-def is_set(var):
-    return os.environ.get(var)
+def is_set(var: str) -> bool:
+    return os.environ.get(var) is not None
 
 
-def run_command(cmd):
+def run_command(cmd: str) -> None:
     subprocess.check_call(shlex.split(cmd))  # noqa: S603
 
 
-def handle_test_env():
+def handle_test_env() -> None:
     AUTH = os.environ.get("AUTH", "noauth")
     SSL = os.environ.get("SSL", "nossl")
     TEST_SUITES = os.environ.get("TEST_SUITES", "")

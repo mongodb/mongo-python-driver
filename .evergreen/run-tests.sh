@@ -25,7 +25,7 @@ else
 fi
 
 # Source the csfle secrets if running encryption test.
-if [ -n "${TEST_ENCRYPTION}" ]; then
+if [ -n "${TEST_ENCRYPTION:-}" ]; then
   source $DRIVERS_TOOLS/.evergreen/csfle/secrets-export.sh
 fi
 
