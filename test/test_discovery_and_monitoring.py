@@ -244,7 +244,7 @@ class TestClusterTimeComparison(unittest.TestCase):
     def test_cluster_time_comparison(self):
         t = create_mock_topology("mongodb://host")
 
-        def send_cluster_time(time, inc, should_update):
+        def send_cluster_time(time, inc):
             old = t.max_cluster_time()
             new = {"clusterTime": Timestamp(time, inc)}
             got_hello(
@@ -259,16 +259,14 @@ class TestClusterTimeComparison(unittest.TestCase):
             )
 
             actual = t.max_cluster_time()
-            if should_update:
-                self.assertEqual(actual, new)
-            else:
-                self.assertEqual(actual, old)
+            # We never update $clusterTime from monitoring connections.
+            self.assertEqual(actual, old)
 
-        send_cluster_time(0, 1, True)
-        send_cluster_time(2, 2, True)
-        send_cluster_time(2, 1, False)
-        send_cluster_time(1, 3, False)
-        send_cluster_time(2, 3, True)
+        send_cluster_time(0, 1)
+        send_cluster_time(2, 2)
+        send_cluster_time(2, 1)
+        send_cluster_time(1, 3)
+        send_cluster_time(2, 3)
 
 
 class TestIgnoreStaleErrors(IntegrationTest):
