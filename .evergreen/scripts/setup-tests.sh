@@ -31,6 +31,9 @@ set -eu
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
 
+echo "hello from setup-test.sh 1"
+env
+
 # Try to source the env file.
 if [ -f $SCRIPT_DIR/scripts/env.sh ]; then
   source $SCRIPT_DIR/scripts/env.sh
@@ -45,6 +48,10 @@ fi
 if [ -n "${TEST_INDEX_MANAGEMENT:-}" ]; then
   source $DRIVERS_TOOLS/..evergreen/atlas/secrets-export.sh
 fi
+
+echo "hello from setup-test.sh 2"
+env
+exit 1
 
 . $ROOT_DIR/.evergreen/utils.sh
 PYTHON=${PYTHON_BINARY:-$(find_python3)}
