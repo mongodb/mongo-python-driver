@@ -9,20 +9,17 @@ export GCPKMS_PROJECT=${GCPKMS_PROJECT}
 export GCPKMS_ZONE=${GCPKMS_ZONE}
 export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
 LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian11/master/latest/libmongocrypt.tar.gz
-SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=$LIBMONGOCRYPT_URL bash $HERE/scripts/setup-tests.sh
 # Set up the remote files to test.
 git add .
 git commit -m "add files" || true
-git archive -o /tmp/mongo-python-driver.tar --add-file $HERE/scripts/test-env.sh HEAD
-tar -rf /tmp/mongo-python-driver.tar libmongocrypt
-tar -rf /tmp/mongo-python-driver.tar
-gzip -f /tmp/mongo-python-driver.tar
+git archive -o /tmp/mongo-python-driver.tgz HEAD
 GCPKMS_SRC=/tmp/mongo-python-driver.tar.gz GCPKMS_DST=$GCPKMS_INSTANCENAME: $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/copy-file.sh
 echo "Copying files ... end"
 echo "Untarring file ... begin"
 GCPKMS_CMD="tar xf mongo-python-driver.tar.gz" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 echo "Untarring file ... end"
 echo "Running test ... begin"
+GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 LIBMONGOCRYPT_URL=$LIBMONGOCRYPT_URL bash ./evergreen/just.sh setup-test" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 GCPKMS_CMD="./.evergreen/just.sh test-eg" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 echo "Running test ... end"
 bash $HERE/scripts/teardown-tests.sh
