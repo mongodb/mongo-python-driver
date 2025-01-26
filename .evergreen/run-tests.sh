@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eux
+set -eu
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
@@ -23,6 +23,8 @@ else
   echo "Missing test inputs, please run 'just setup-test'"
   exit 1
 fi
+
+set -x
 
 # Source the csfle secrets if running encryption test.
 if [ -n "${TEST_ENCRYPTION:-}" ]; then
