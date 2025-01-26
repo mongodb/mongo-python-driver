@@ -82,7 +82,8 @@ def write_env(name: str, value: Any) -> None:
 
 
 def is_set(var: str) -> bool:
-    return os.environ.get(var) is not None
+    value = os.environ.get(var, "")
+    return len(value.strip()) > 0
 
 
 def run_command(cmd: str) -> None:
