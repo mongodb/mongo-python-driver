@@ -18,6 +18,8 @@ fi
 # Ensure there are test inputs.
 if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
   echo "Sourcing test inputs"
+  # TODO remove before merging
+  cat $SCRIPT_DIR/scripts/test-env.sh
   source $SCRIPT_DIR/scripts/test-env.sh
 else
   echo "Missing test inputs, please run 'just setup-test'"
