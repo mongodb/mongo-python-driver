@@ -321,13 +321,6 @@ functions:
 
   "run aws auth test with regular aws credentials":
     - command: subprocess.exec
-      params:
-        include_expansions_in_env: ["TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL", "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "TEST_LOADBALANCER", "TEST_SEVERLESS", "ORCHESTRATION_FILE"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
-    - command: subprocess.exec
       type: test
       params:
         include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
@@ -339,13 +332,6 @@ functions:
           - regular
 
   "run aws auth test with assume role credentials":
-    - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL", "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "TEST_LOADBALANCER", "TEST_SEVERLESS", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
     - command: subprocess.exec
       type: test
       params:
@@ -359,13 +345,6 @@ functions:
 
   "run aws auth test with aws EC2 credentials":
     - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL", "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "TEST_LOADBALANCER", "TEST_SEVERLESS", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
-    - command: subprocess.exec
       type: test
       params:
         include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
@@ -377,13 +356,6 @@ functions:
           - ec2
 
   "run aws auth test with aws web identity credentials":
-    - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL", "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "TEST_LOADBALANCER", "TEST_SEVERLESS", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
     - # Test with and without AWS_ROLE_SESSION_NAME set.
     - command: subprocess.exec
       type: test
@@ -410,13 +382,6 @@ functions:
 
   "run aws auth test with aws credentials as environment variables":
     - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL", "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "TEST_LOADBALANCER", "TEST_SEVERLESS", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
-    - command: subprocess.exec
       type: test
       params:
         include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
@@ -429,13 +394,6 @@ functions:
 
   "run aws auth test with aws credentials and session token as environment variables":
     - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL", "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "TEST_LOADBALANCER", "TEST_SEVERLESS", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
-    - command: subprocess.exec
       type: test
       params:
         include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
@@ -447,13 +405,6 @@ functions:
           - session-creds
 
   "run oidc auth test with test credentials":
-    - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL", "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "TEST_LOADBALANCER", "TEST_SEVERLESS", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
     - command: subprocess.exec
       type: test
       params:
@@ -541,13 +492,6 @@ functions:
         file: atlas-expansion.yml
 
   "run-ocsp-test":
-    - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL", "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "TEST_LOADBALANCER", "TEST_SEVERLESS", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
     - command: subprocess.exec
       type: test
       params:
