@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eu
+set -eux
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
