@@ -22,6 +22,7 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 import unittest
 import warnings
@@ -113,7 +114,7 @@ class ClientContext:
         self.default_client_options: Dict = {}
         self.sessions_enabled = False
         self.client = None  # type: ignore
-        self.conn_lock = _create_lock()
+        self.conn_lock = threading.Lock()
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
@@ -697,7 +698,7 @@ class ClientContext:
         if "sharded" in topologies and self.is_mongos:
             return True
         if "sharded-replicaset" in topologies and self.is_mongos:
-            shards = self.client.config.shards.find().to_list()
+            shards = client_context.client.config.shards.find().to_list()
             for shard in shards:
                 # For a 3-member RS-backed sharded cluster, shard['host']
                 # will be 'replicaName/ip1:port1,ip2:port2,ip3:port3'
@@ -869,6 +870,16 @@ class ClientContext:
 
 # Reusable client context
 client_context = ClientContext()
+
+
+def reset_client_context():
+    if _IS_SYNC:
+        # sync tests don't need to reset a client context
+        return
+    elif client_context.client is not None:
+        client_context.client.close()
+        client_context.client = None
+    client_context._init_client()
 
 
 class PyMongoTestCasePyTest:
@@ -1145,6 +1156,8 @@ class IntegrationTest(PyMongoTestCase):
 
     @client_context.require_connection
     def setUp(self) -> None:
+        if not _IS_SYNC:
+            reset_client_context()
         if client_context.load_balancer and not getattr(self, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")
         if client_context.serverless and not getattr(self, "RUN_ON_SERVERLESS", False):
