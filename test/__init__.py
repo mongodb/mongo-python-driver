@@ -50,7 +50,6 @@ from test.helpers import (
     sanitize_reply,
 )
 
-from pymongo.lock import _create_lock
 from pymongo.uri_parser import parse_uri
 
 try:

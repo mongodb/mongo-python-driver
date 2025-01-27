@@ -275,22 +275,22 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         ASYNC_PYTEST_ARGS=("-m asyncio and $TEST_SUITES" "--junitxml=xunit-results/TEST-asyncresults.xml" "${PYTEST_ARGS[@]}")
       fi
       PYTEST_ARGS=("-m $TEST_SUITES and not asyncio" "${PYTEST_ARGS[@]}")
+    else
+      ASYNC_PYTEST_ARGS=("-m asyncio" "--junitxml=xunit-results/TEST-asyncresults.xml" "${PYTEST_ARGS[@]}")
     fi
     # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} pytest "${PYTEST_ARGS[@]}"
 
     # Workaround until unittest -> pytest conversion is complete
-    if [ -n "$TEST_SUITES" ]; then
-      set +o errexit
+    set +o errexit
+    # shellcheck disable=SC2048
+    uv run ${UV_ARGS[*]} pytest "${ASYNC_PYTEST_ARGS[@]}" "--collect-only"
+    collected=$?
+    set -o errexit
+    # If we collected at least one async test, run all collected tests
+    if [ $collected -ne 5 ]; then
       # shellcheck disable=SC2048
-      uv run ${UV_ARGS[*]} pytest "${ASYNC_PYTEST_ARGS[@]}" "--collect-only"
-      collected=$?
-      set -o errexit
-      # If we collected at least one async test, run all collected tests
-      if [ $collected -ne 5 ]; then
-        # shellcheck disable=SC2048
-        uv run ${UV_ARGS[*]} pytest "${ASYNC_PYTEST_ARGS[@]}"
-      fi
+      uv run ${UV_ARGS[*]} pytest "${ASYNC_PYTEST_ARGS[@]}"
     fi
 else
     # shellcheck disable=SC2048
