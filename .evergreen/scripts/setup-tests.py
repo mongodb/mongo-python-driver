@@ -90,7 +90,10 @@ def run_command(cmd: str) -> None:
     try:
         subprocess.run(shlex.split(cmd), check=True)  # noqa: S603
     except subprocess.CalledProcessError as e:
-        LOGGER.error(e.stderr.decode("utf-8"))
+        if e.stderr:
+            LOGGER.error(e.stderr.decode("utf-8"))
+        if e.stdout:
+            LOGGER.error(e.stdout.decode("utf-8"))
         raise e
 
 
