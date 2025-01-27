@@ -191,10 +191,14 @@ def handle_test_env() -> None:
             MULTI_MONGOS_LB_URI += "&tls=true"
         write_env("SINGLE_MONGOS_LB_URI", SINGLE_MONGOS_LB_URI)
         write_env("MULTI_MONGOS_LB_URI", MULTI_MONGOS_LB_URI)
+        if not DRIVERS_TOOLS:
+            raise RuntimeError("Missing DRIVERS_TOOLS")
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
 
     if SSL != "nossl":
+        if not DRIVERS_TOOLS:
+            raise RuntimeError("Missing DRIVERS_TOOLS")
         write_env("CLIENT_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/client.pem")
         write_env("CA_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/ca.pem")
 
@@ -231,6 +235,8 @@ def handle_test_env() -> None:
         # PATH is updated by configure-env.sh for access to mongocryptd.
 
     if is_set("TEST_ENCRYPTION"):
+        if not DRIVERS_TOOLS:
+            raise RuntimeError("Missing DRIVERS_TOOLS")
         run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/setup-secrets.sh")
         run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/start-servers.sh")
 

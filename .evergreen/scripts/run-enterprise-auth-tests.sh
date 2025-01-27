@@ -5,4 +5,5 @@ set -eu
 set +x
 # Use the default python to bootstrap secrets.
 bash "${DRIVERS_TOOLS}"/.evergreen/secrets_handling/setup-secrets.sh drivers/enterprise_auth
-TEST_ENTERPRISE_AUTH=1 AUTH=auth bash "${PROJECT_DIRECTORY}"/.evergreen/just.sh test-eg
+TEST_ENTERPRISE_AUTH=1 AUTH=auth bash "${PROJECT_DIRECTORY}"/.evergreen/just.sh setup-test
+bash "${PROJECT_DIRECTORY}"/.evergreen/just.sh test-eg

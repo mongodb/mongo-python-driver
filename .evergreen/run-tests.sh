@@ -23,9 +23,9 @@ else
   echo "Missing test inputs, please run 'just setup-test'"
 fi
 
-# Source the csfle secrets if running encryption test.
-if [ -n "${TEST_ENCRYPTION:-}" ]; then
-  source $DRIVERS_TOOLS/.evergreen/csfle/secrets-export.sh
+# Source the local secrets export file if available.
+if [ -f "$ROOT_DIR/secrets-export.sh" ]; then
+  source "$ROOT_DIR/secrets-export.sh"
 fi
 
 PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implementation())")

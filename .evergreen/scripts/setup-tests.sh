@@ -32,8 +32,8 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
 
 # Try to source the env file.
-if [ -f $SCRIPT_DIR/scripts/env.sh ]; then
-  source $SCRIPT_DIR/scripts/env.sh
+if [ -f $SCRIPT_DIR/env.sh ]; then
+  source $SCRIPT_DIR/env.sh
 fi
 
 # Source serverless secrets if applicable.
