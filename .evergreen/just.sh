@@ -1,7 +1,5 @@
 #!/bin/bash
-set -eux
+set -eu
 
-echo "Hello from just.sh"
-env
 . .evergreen/scripts/setup-dev-env.sh
 just "$@"

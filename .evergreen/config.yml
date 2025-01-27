@@ -789,6 +789,7 @@ tasks:
         - func: "run tests"
           vars:
             TEST_INDEX_MANAGEMENT: "1"
+            AUTH: "auth"
 
     - name: "mod-wsgi-standalone"
       tags: ["mod_wsgi"]
