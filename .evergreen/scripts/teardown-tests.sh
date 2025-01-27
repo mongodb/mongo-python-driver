@@ -2,7 +2,7 @@
 set -eu
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
-ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
+ROOT_DIR="$(dirname "$(dirname $SCRIPT_DIR)")"
 
 # Remove temporary test files.
 pushd $ROOT_DIR > /dev/null

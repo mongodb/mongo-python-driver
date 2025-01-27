@@ -2,7 +2,7 @@
 set -eu
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
-ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
+ROOT_DIR="$(dirname "$(dirname $SCRIPT_DIR)")"
 
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
@@ -62,7 +62,7 @@ fi
 # files in the xunit-results/ directory.
 TEST_ARGS=${TEST_ARGS}
 if [ "$#" -ne 0 ]; then
-    TEST_ARGS=“$@”
+    TEST_ARGS="$*"
 fi
 echo "Running tests with $TEST_ARGS..."
 if [ -z "${GREEN_FRAMEWORK:-}" ]; then

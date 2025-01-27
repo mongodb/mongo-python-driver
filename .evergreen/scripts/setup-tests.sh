@@ -29,7 +29,7 @@ set -eu
 #  PYTHON_BINARY        The python binary to use in tests.
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
-ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
+ROOT_DIR="$(dirname "$(dirname $SCRIPT_DIR)")"
 
 # Try to source the env file.
 if [ -f $SCRIPT_DIR/env.sh ]; then
