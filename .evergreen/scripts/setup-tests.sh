@@ -43,7 +43,7 @@ fi
 
 # Source atlas secrets if applicable.
 if [ -n "${TEST_INDEX_MANAGEMENT:-}" ]; then
-  source $DRIVERS_TOOLS/..evergreen/atlas/secrets-export.sh
+  source $DRIVERS_TOOLS/.evergreen/atlas/secrets-export.sh
 fi
 
 . $ROOT_DIR/.evergreen/utils.sh
