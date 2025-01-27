@@ -77,7 +77,7 @@ EXTRAS_MAP = dict(
 def write_env(name: str, value: Any) -> None:
     with ENV_FILE.open("a", newline="\n") as fid:
         # Remove any existing quote chars.
-        value = value.replace('"', "")
+        value = str(value).replace('"', "")
         fid.write(f'export {name}="{value}"\n')
 
 
@@ -213,7 +213,7 @@ def handle_test_env() -> None:
     if is_set("TEST_ENCRYPTION") or is_set("TEST_FLE_AZURE_AUTO") or is_set("TEST_FLE_GCP_AUTO"):
         # Check for libmongocrypt download.
         if not (ROOT / "libmongocrypt").exists():
-            run_command(f"bash {HERE}/setup-libmongocrypt.sh")
+            run_command(f"bash {HERE.as_posix()}/setup-libmongocrypt.sh")
 
         # TODO: Test with 'pip install pymongocrypt'
         UV_ARGS.append("--group pymongocrypt_source")
@@ -243,7 +243,7 @@ def handle_test_env() -> None:
         run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/start-servers.sh")
 
     if is_set("TEST_CRYPT_SHARED"):
-        CRYPT_SHARED_DIR = Path(os.environ["CRYPT_SHARED_LIB_PATH"]).parent()
+        CRYPT_SHARED_DIR = Path(os.environ["CRYPT_SHARED_LIB_PATH"]).parent
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
         DYLD_FALLBACK_LIBRARY_PATH = os.environ.get("DYLD_FALLBACK_LIBRARY_PATH", "")
         LD_LIBRARY_PATH = os.environ.get("LD_LIBRARY_PATH", "")

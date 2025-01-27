@@ -277,6 +277,7 @@ functions:
       type: test
       params:
         include_expansions_in_env: ["TEST_DATA_LAKE", "PYTHON_BINARY", "AUTH", "SSL",
+          "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
           "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL",
           "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "TEST_LOADBALANCER", "TEST_SEVERLESS", "MONGODB_URI"]
         binary: bash

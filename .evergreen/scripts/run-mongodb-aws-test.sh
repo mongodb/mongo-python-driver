@@ -24,5 +24,5 @@ echo "Running MONGODB-AWS authentication tests for $1"
 # Handle credentials and environment setup.
 . "$DRIVERS_TOOLS"/.evergreen/auth_aws/aws_setup.sh "$1"
 
-TEST_AUTH_AWS=1 AUTH="auth" bash ./evergreen/just.sh setup-test
+TEST_AUTH_AWS=1 AUTH="auth" bash ./.evergreen/just.sh setup-test
 bash ./.evergreen/just.sh test-eg
