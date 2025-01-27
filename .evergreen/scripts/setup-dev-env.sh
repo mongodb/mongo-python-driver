@@ -36,11 +36,11 @@ if [ ! -d $BIN_DIR ]; then
   echo "export UV_PYTHON=$UV_PYTHON" >> $HERE/env.sh
 fi
 echo "Using python $UV_PYTHON"
-uv sync
-uv run --with pip pip install -e .
+uv sync --frozen
+uv run --frozen --with pip pip install -e .
 echo "Setting up python environment... done."
 
 # Ensure there is a pre-commit hook if there is a git checkout.
 if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
-    uv run pre-commit install
+    uv run --frozen pre-commit install
 fi

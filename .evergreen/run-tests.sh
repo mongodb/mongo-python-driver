@@ -32,7 +32,7 @@ PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implement
 
 # Ensure C extensions if applicable.
 if [ -z "${NO_EXT:-}" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
-    uv run tools/fail_if_no_c.py
+    uv run --frozen tools/fail_if_no_c.py
 fi
 
 if [ -n "${PYMONGOCRYPT_LIB:-}" ]; then
