@@ -35,9 +35,10 @@ jobs:
         # https://github.com/github/feedback/discussions/7835#discussioncomment-1769026
         buildplat:
         - [ubuntu-20.04, "manylinux_x86_64", "cp3*-manylinux_x86_64"]
-        - [ubuntu-20.04, "manylinux_aarch64", "cp3*-manylinux_aarch64"]
-        - [ubuntu-20.04, "manylinux_ppc64le", "cp3*-manylinux_ppc64le"]
-        - [ubuntu-20.04, "manylinux_s390x", "cp3*-manylinux_s390x"]
+        - [ubuntu-24.04-arm, "manylinux_aarch64", "cp3*-manylinux_aarch64"]
+        # Disabled pending PYTHON-5058
+        # - [ubuntu-24.04, "manylinux_ppc64le", "cp3*-manylinux_ppc64le"]
+        # - [ubuntu-24.04, "manylinux_s390x", "cp3*-manylinux_s390x"]
         - [ubuntu-20.04, "manylinux_i686", "cp3*-manylinux_i686"]
         - [windows-2019, "win_amd6", "cp3*-win_amd64"]
         - [windows-2019, "win32", "cp3*-win32"]
