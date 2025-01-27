@@ -278,11 +278,12 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     else
       ASYNC_PYTEST_ARGS=("-m asyncio" "--junitxml=xunit-results/TEST-asyncresults.xml" "${PYTEST_ARGS[@]}")
     fi
-    # shellcheck disable=SC2048
-    uv run ${UV_ARGS[*]} pytest "${PYTEST_ARGS[@]}"
-
     # Workaround until unittest -> pytest conversion is complete
     set +o errexit
+    # shellcheck disable=SC2048
+    uv run ${UV_ARGS[*]} pytest "${PYTEST_ARGS[@]}"
+    exit_code=$?
+
     # shellcheck disable=SC2048
     uv run ${UV_ARGS[*]} pytest "${ASYNC_PYTEST_ARGS[@]}" "--collect-only"
     collected=$?
@@ -291,6 +292,9 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     if [ $collected -ne 5 ]; then
       # shellcheck disable=SC2048
       uv run ${UV_ARGS[*]} pytest "${ASYNC_PYTEST_ARGS[@]}"
+    fi
+    if [ $exit_code -ne 0 ]; then
+      exit $exit_code
     fi
 else
     # shellcheck disable=SC2048
