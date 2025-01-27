@@ -88,9 +88,9 @@ def is_set(var: str) -> bool:
 
 def run_command(cmd: str) -> None:
     try:
-        proc = subprocess.run(shlex.split(cmd), check=True)  # noqa: S603
+        subprocess.run(shlex.split(cmd), check=True)  # noqa: S603
     except subprocess.CalledProcessError as e:
-        LOGGER.error(proc.stderr.decode("utf-8"))
+        LOGGER.error(e.stderr.decode("utf-8"))
         raise e
 
 
