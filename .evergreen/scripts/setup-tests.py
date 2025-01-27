@@ -168,7 +168,7 @@ def handle_test_env() -> None:
             LOGGER.info("Writing keytab")
             keytab = base64.b64decode(os.environ["KEYTAB_BASE64"])
             keytab_file = ROOT / ".evergreen/drivers.keytab"
-            with keytab_file.open("w", newline="\n") as fid:
+            with keytab_file.open("wb", newline="\n") as fid:
                 fid.write(keytab)
             principal = os.environ["PRINCIPAL"]
             LOGGER.info("Running kinit")
