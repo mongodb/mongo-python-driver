@@ -247,7 +247,7 @@ def handle_test_env() -> None:
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
         DYLD_FALLBACK_LIBRARY_PATH = os.environ.get("DYLD_FALLBACK_LIBRARY_PATH", "")
         LD_LIBRARY_PATH = os.environ.get("LD_LIBRARY_PATH", "")
-        PATH = os.environ("PATH")
+        PATH = os.environ["PATH"]
         write_env("DYLD_FALLBACK_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:{DYLD_FALLBACK_LIBRARY_PATH}")
         write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:{LD_LIBRARY_PATH}")
         write_env("PATH", f"{CRYPT_SHARED_DIR}:{PATH}")

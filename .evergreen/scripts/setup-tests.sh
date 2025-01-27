@@ -46,6 +46,12 @@ if [ -n "${TEST_INDEX_MANAGEMENT:-}" ]; then
   source $DRIVERS_TOOLS/.evergreen/atlas/secrets-export.sh
 fi
 
+# Source local secrets if applicable.
+if [ -f "$ROOT_DIR/secrets-export.sh" ]; then
+  source "$ROOT_DIR/secrets-export.sh"
+fi
+
+
 . $ROOT_DIR/.evergreen/utils.sh
 PYTHON=${PYTHON_BINARY:-$(find_python3)}
 $PYTHON $SCRIPT_DIR/setup-tests.py
