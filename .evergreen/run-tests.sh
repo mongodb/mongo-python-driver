@@ -6,6 +6,7 @@ ROOT_DIR="$(dirname $(dirname $SCRIPT_DIR))"
 
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
+export UV_FROZEN=1  # Do not modify lock files
 
 # Try to source the env file.
 if [ -f $SCRIPT_DIR/scripts/env.sh ]; then
