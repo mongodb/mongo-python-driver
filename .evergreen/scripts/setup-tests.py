@@ -87,14 +87,9 @@ def is_set(var: str) -> bool:
 
 
 def run_command(cmd: str) -> None:
-    try:
-        subprocess.run(shlex.split(cmd), check=True)  # noqa: S603
-    except subprocess.CalledProcessError as e:
-        if e.stderr:
-            LOGGER.error(e.stderr.decode("utf-8"))
-        if e.stdout:
-            LOGGER.error(e.stdout.decode("utf-8"))
-        raise e
+    LOGGER.info("Running command %s...", cmd)
+    subprocess.check_call(shlex.split(cmd))  # noqa: S603
+    LOGGER.info("Running command %s... done.", cmd)
 
 
 def handle_test_env() -> None:
