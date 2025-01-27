@@ -172,6 +172,7 @@ def handle_test_env() -> None:
                 fid.write(keytab)
             principal = os.environ["PRINCIPAL"]
             LOGGER.info("Running kinit")
+            os.environ["KRB5_CONFIG"] = str(krb_conf)
             cmd = f"kinit -k -t {keytab_file} -p {principal}"
             run_command(cmd)
 
