@@ -89,6 +89,7 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
           skip-existing: true
+          attestations: ${{ env.DRY_RUN }}
       - name: Publish package distributions to PyPI
         if: startsWith(env.DRY_RUN, 'false')
         uses: pypa/gh-action-pypi-publish@release/v1
