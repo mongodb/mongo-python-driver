@@ -251,6 +251,10 @@ def _gen_find_command(
         if limit < 0:
             cmd["singleBatch"] = True
     if batch_size:
+        # When limit and batchSize are equal we increase batchSize by 1 to
+        # avoid an unnecessary killCursors.
+        if limit == batch_size:
+            batch_size += 1
         cmd["batchSize"] = batch_size
     if read_concern.level and not (session and session.in_transaction):
         cmd["readConcern"] = read_concern.document

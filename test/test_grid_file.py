@@ -33,7 +33,7 @@ from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
-from test.utils import EventListener
+from test.utils import OvertCommandListener
 
 from bson.objectid import ObjectId
 from gridfs.errors import NoFile
@@ -97,6 +97,7 @@ class TestGridFileNoConnect(UnitTest):
 
 class TestGridFile(IntegrationTest):
     def setUp(self):
+        super().setUp()
         self.cleanup_colls(self.db.fs.files, self.db.fs.chunks)
 
     def test_basic(self):
@@ -808,7 +809,7 @@ Bye"""
         # Use 102 batches to cause a single getMore.
         chunk_size = 1024
         data = b"d" * (102 * chunk_size)
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
         db = client.pymongo_test
         with GridIn(db.fs, chunk_size=chunk_size) as infile:

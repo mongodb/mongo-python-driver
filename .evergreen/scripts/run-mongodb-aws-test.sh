@@ -13,10 +13,16 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #                 mechanism.
 #  PYTHON_BINARY  The Python version to use.
 
-echo "Running MONGODB-AWS authentication tests"
+# shellcheck disable=SC2154
+if [ "${skip_EC2_auth_test:-}" = "true" ] && { [ "$1" = "ec2" ] || [ "$1" = "web-identity" ]; }; then
+   echo "This platform does not support the EC2 auth test, skipping..."
+   exit 0
+fi
+
+echo "Running MONGODB-AWS authentication tests for $1"
 
 # Handle credentials and environment setup.
-. $DRIVERS_TOOLS/.evergreen/auth_aws/aws_setup.sh $1
+. "$DRIVERS_TOOLS"/.evergreen/auth_aws/aws_setup.sh "$1"
 
 # show test output
 set -x
@@ -24,4 +30,4 @@ set -x
 export TEST_AUTH_AWS=1
 export AUTH="auth"
 export SET_XTRACE_ON=1
-bash ./.evergreen/hatch.sh test:test-eg
+bash ./.evergreen/just.sh test-eg

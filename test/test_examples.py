@@ -33,19 +33,14 @@ from pymongo.write_concern import WriteConcern
 
 
 class TestSampleShellCommands(IntegrationTest):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        # Run once before any tests run.
-        cls.db.inventory.drop()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.client.drop_database("pymongo_test")
+    def setUp(self):
+        super().setUp()
+        self.db.inventory.drop()
 
     def tearDown(self):
         # Run after every test.
         self.db.inventory.drop()
+        self.client.drop_database("pymongo_test")
 
     def test_first_three_examples(self):
         db = self.db

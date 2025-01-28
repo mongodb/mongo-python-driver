@@ -73,7 +73,6 @@ from test.utils import (
     is_greenthread_patched,
     lazy_client_trial,
     one,
-    wait_until,
 )
 
 import bson
@@ -131,15 +130,10 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     client: AsyncMongoClient
 
-    @classmethod
-    async def _setup_class(cls):
-        cls.client = await cls.unmanaged_async_rs_or_single_client(
+    async def asyncSetUp(self) -> None:
+        self.client = await self.async_rs_or_single_client(
             connect=False, serverSelectionTimeoutMS=100
         )
-
-    @classmethod
-    async def _tearDown_class(cls):
-        await cls.client.close()
 
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
@@ -243,10 +237,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     def test_iteration(self):
         client = self.client
-        if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
-            msg = "'NoneType' object is not callable"
-        else:
-            msg = "'AsyncMongoClient' object is not iterable"
+        msg = "'AsyncMongoClient' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in client:  # type: ignore[misc] # error: "None" not callable  [misc]
@@ -693,8 +684,8 @@ class TestClient(AsyncIntegrationTest):
             # When the reaper runs at the same time as the get_socket, two
             # connections could be created and checked into the pool.
             self.assertGreaterEqual(len(server._pool.conns), 1)
-            wait_until(lambda: conn not in server._pool.conns, "remove stale socket")
-            wait_until(lambda: len(server._pool.conns) >= 1, "replace stale socket")
+            await async_wait_until(lambda: conn not in server._pool.conns, "remove stale socket")
+            await async_wait_until(lambda: len(server._pool.conns) >= 1, "replace stale socket")
 
     async def test_max_idle_time_reaper_does_not_exceed_maxPoolSize(self):
         with client_knobs(kill_cursor_frequency=0.1):
@@ -710,8 +701,8 @@ class TestClient(AsyncIntegrationTest):
             # When the reaper runs at the same time as the get_socket,
             # maxPoolSize=1 should prevent two connections from being created.
             self.assertEqual(1, len(server._pool.conns))
-            wait_until(lambda: conn not in server._pool.conns, "remove stale socket")
-            wait_until(lambda: len(server._pool.conns) == 1, "replace stale socket")
+            await async_wait_until(lambda: conn not in server._pool.conns, "remove stale socket")
+            await async_wait_until(lambda: len(server._pool.conns) == 1, "replace stale socket")
 
     async def test_max_idle_time_reaper_removes_stale(self):
         with client_knobs(kill_cursor_frequency=0.1):
@@ -727,7 +718,7 @@ class TestClient(AsyncIntegrationTest):
             async with server._pool.checkout() as conn_two:
                 pass
             self.assertIs(conn_one, conn_two)
-            wait_until(
+            await async_wait_until(
                 lambda: len(server._pool.conns) == 0,
                 "stale socket reaped and new one NOT added to the pool",
             )
@@ -745,7 +736,7 @@ class TestClient(AsyncIntegrationTest):
             server = await (await client._get_topology()).select_server(
                 readable_server_selector, _Op.TEST
             )
-            wait_until(
+            await async_wait_until(
                 lambda: len(server._pool.conns) == 10,
                 "pool initialized with 10 connections",
             )
@@ -753,7 +744,7 @@ class TestClient(AsyncIntegrationTest):
             # Assert that if a socket is closed, a new one takes its place
             async with server._pool.checkout() as conn:
                 conn.close_conn(None)
-            wait_until(
+            await async_wait_until(
                 lambda: len(server._pool.conns) == 10,
                 "a closed socket gets replaced from the pool",
             )
@@ -939,8 +930,10 @@ class TestClient(AsyncIntegrationTest):
         async with eval(the_repr) as client_two:
             self.assertEqual(client_two, client)
 
-    def test_getters(self):
-        wait_until(lambda: async_client_context.nodes == self.client.nodes, "find all nodes")
+    async def test_getters(self):
+        await async_wait_until(
+            lambda: async_client_context.nodes == self.client.nodes, "find all nodes"
+        )
 
     async def test_list_databases(self):
         cmd_docs = (await self.client.admin.command("listDatabases"))["databases"]
@@ -1065,14 +1058,21 @@ class TestClient(AsyncIntegrationTest):
         self.assertFalse(client._topology._opened)
 
         # Ensure kill cursors thread has not been started.
-        kc_thread = client._kill_cursors_executor._thread
-        self.assertFalse(kc_thread and kc_thread.is_alive())
-
+        if _IS_SYNC:
+            kc_thread = client._kill_cursors_executor._thread
+            self.assertFalse(kc_thread and kc_thread.is_alive())
+        else:
+            kc_task = client._kill_cursors_executor._task
+            self.assertFalse(kc_task and not kc_task.done())
         # Using the client should open topology and start the thread.
         await client.admin.command("ping")
         self.assertTrue(client._topology._opened)
-        kc_thread = client._kill_cursors_executor._thread
-        self.assertTrue(kc_thread and kc_thread.is_alive())
+        if _IS_SYNC:
+            kc_thread = client._kill_cursors_executor._thread
+            self.assertTrue(kc_thread and kc_thread.is_alive())
+        else:
+            kc_task = client._kill_cursors_executor._task
+            self.assertTrue(kc_task and not kc_task.done())
 
     async def test_close_does_not_open_servers(self):
         client = await self.async_rs_client(connect=False)
@@ -1277,6 +1277,7 @@ class TestClient(AsyncIntegrationTest):
     async def test_server_selection_timeout(self):
         client = AsyncMongoClient(serverSelectionTimeoutMS=100, connect=False)
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
+        await client.close()
 
         client = AsyncMongoClient(serverSelectionTimeoutMS=0, connect=False)
 
@@ -1289,18 +1290,22 @@ class TestClient(AsyncIntegrationTest):
         self.assertRaises(
             ConfigurationError, AsyncMongoClient, serverSelectionTimeoutMS=None, connect=False
         )
+        await client.close()
 
         client = AsyncMongoClient(
             "mongodb://localhost/?serverSelectionTimeoutMS=100", connect=False
         )
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
+        await client.close()
 
         client = AsyncMongoClient("mongodb://localhost/?serverSelectionTimeoutMS=0", connect=False)
         self.assertAlmostEqual(0, client.options.server_selection_timeout)
+        await client.close()
 
         # Test invalid timeout in URI ignored and set to default.
         client = AsyncMongoClient("mongodb://localhost/?serverSelectionTimeoutMS=-1", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
+        await client.close()
 
         client = AsyncMongoClient("mongodb://localhost/?serverSelectionTimeoutMS=", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
@@ -1608,7 +1613,7 @@ class TestClient(AsyncIntegrationTest):
                 await async_client_context.port,
             )
             await self.async_single_client(uri, event_listeners=[listener])
-            wait_until(
+            await async_wait_until(
                 lambda: len(listener.results) >= 2, "record two ServerHeartbeatStartedEvents"
             )
 
@@ -1766,16 +1771,16 @@ class TestClient(AsyncIntegrationTest):
         pool = await async_get_pool(client)
         original_connect = pool.connect
 
-        def stall_connect(*args, **kwargs):
-            time.sleep(2)
-            return original_connect(*args, **kwargs)
+        async def stall_connect(*args, **kwargs):
+            await asyncio.sleep(2)
+            return await original_connect(*args, **kwargs)
 
         pool.connect = stall_connect
         # Un-patch Pool.connect to break the cyclic reference.
         self.addCleanup(delattr, pool, "connect")
 
         # Wait for the background thread to start creating connections
-        wait_until(lambda: len(pool.conns) > 1, "start creating connections")
+        await async_wait_until(lambda: len(pool.conns) > 1, "start creating connections")
 
         # Assert that application operations do not block.
         for _ in range(10):
@@ -1858,7 +1863,7 @@ class TestClient(AsyncIntegrationTest):
         await client.close()
         # Add cursor to kill cursors queue
         del cursor
-        wait_until(
+        await async_wait_until(
             lambda: client._kill_cursors_queue,
             "waited for cursor to be added to queue",
         )
@@ -2232,7 +2237,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
             await cursor.to_list()
         self.assertTrue(conn.closed)
 
-        wait_until(
+        await async_wait_until(
             lambda: len(client._kill_cursors_queue) == 0,
             "waited for all killCursor requests to complete",
         )
@@ -2403,7 +2408,7 @@ class TestMongoClientFailover(AsyncMockClientTest):
         )
         self.addAsyncCleanup(c.close)
 
-        wait_until(lambda: len(c.nodes) == 3, "connect")
+        await async_wait_until(lambda: len(c.nodes) == 3, "connect")
 
         self.assertEqual(await c.address, ("a", 1))
         # Fail over.
@@ -2430,7 +2435,7 @@ class TestMongoClientFailover(AsyncMockClientTest):
         )
         self.addAsyncCleanup(c.close)
 
-        wait_until(lambda: len(c.nodes) == 3, "connect")
+        await async_wait_until(lambda: len(c.nodes) == 3, "connect")
 
         # Total failure.
         c.kill_host("a:1")
@@ -2472,7 +2477,7 @@ class TestMongoClientFailover(AsyncMockClientTest):
             c.set_wire_version_range("a:1", 2, MIN_SUPPORTED_WIRE_VERSION)
             c.set_wire_version_range("b:2", 2, MIN_SUPPORTED_WIRE_VERSION + 1)
             await (await c._get_topology()).select_servers(writable_server_selector, _Op.TEST)
-            wait_until(lambda: len(c.nodes) == 2, "connect")
+            await async_wait_until(lambda: len(c.nodes) == 2, "connect")
 
             c.kill_host("a:1")
 
@@ -2544,11 +2549,11 @@ class TestClientPool(AsyncMockClientTest):
         )
         self.addAsyncCleanup(c.close)
 
-        wait_until(lambda: len(c.nodes) == 3, "connect")
+        await async_wait_until(lambda: len(c.nodes) == 3, "connect")
         self.assertEqual(await c.address, ("a", 1))
         self.assertEqual(await c.arbiters, {("c", 3)})
         # Assert that we create 2 and only 2 pooled connections.
-        listener.wait_for_event(monitoring.ConnectionReadyEvent, 2)
+        await listener.async_wait_for_event(monitoring.ConnectionReadyEvent, 2)
         self.assertEqual(listener.event_count(monitoring.ConnectionCreatedEvent), 2)
         # Assert that we do not create connections to arbiters.
         arbiter = c._topology.get_server_by_address(("c", 3))
@@ -2574,10 +2579,10 @@ class TestClientPool(AsyncMockClientTest):
         )
         self.addAsyncCleanup(c.close)
 
-        wait_until(lambda: len(c.nodes) == 1, "connect")
+        await async_wait_until(lambda: len(c.nodes) == 1, "connect")
         self.assertEqual(await c.address, ("c", 3))
         # Assert that we create 1 pooled connection.
-        listener.wait_for_event(monitoring.ConnectionReadyEvent, 1)
+        await listener.async_wait_for_event(monitoring.ConnectionReadyEvent, 1)
         self.assertEqual(listener.event_count(monitoring.ConnectionCreatedEvent), 1)
         arbiter = c._topology.get_server_by_address(("c", 3))
         self.assertEqual(len(arbiter.pool.conns), 1)

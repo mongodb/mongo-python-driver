@@ -37,7 +37,7 @@ export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 
 set +x
-python -c "import sys; sys.exit(sys.prefix == sys.base_prefix)" || (echo "Not inside a virtual env!"; exit 1)
+PYTHON_IMPL=$(uv run --frozen python -c "import platform; print(platform.python_implementation())")
 
 # Try to source local Drivers Secrets
 if [ -f ./secrets-export.sh ]; then
@@ -47,19 +47,28 @@ else
   echo "Not sourcing secrets"
 fi
 
+# Start compiling the args we'll pass to uv.
+# Run in an isolated environment so as not to pollute the base venv.
+UV_ARGS=("--isolated --frozen --extra test")
+
+# Ensure C extensions if applicable.
+if [ -z "${NO_EXT:-}" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
+    uv run --frozen tools/fail_if_no_c.py
+fi
+
 if [ "$AUTH" != "noauth" ]; then
-    if [ ! -z "$TEST_DATA_LAKE" ]; then
+    if [ -n "$TEST_DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
-    elif [ ! -z "$TEST_SERVERLESS" ]; then
-        source ${DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh
+    elif [ -n "$TEST_SERVERLESS" ]; then
+        source "${DRIVERS_TOOLS}"/.evergreen/serverless/secrets-export.sh
         export DB_USER=$SERVERLESS_ATLAS_USER
         export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
         export MONGODB_URI="$SERVERLESS_URI"
         echo "MONGODB_URI=$MONGODB_URI"
         export SINGLE_MONGOS_LB_URI=$MONGODB_URI
         export MULTI_MONGOS_LB_URI=$MONGODB_URI
-    elif [ ! -z "$TEST_AUTH_OIDC" ]; then
+    elif [ -n "$TEST_AUTH_OIDC" ]; then
         export DB_USER=$OIDC_ADMIN_USER
         export DB_PASSWORD=$OIDC_ADMIN_PWD
         export DB_IP="$MONGODB_URI"
@@ -71,7 +80,7 @@ if [ "$AUTH" != "noauth" ]; then
 fi
 
 if [ -n "$TEST_ENTERPRISE_AUTH" ]; then
-    python -m pip install '.[gssapi]'
+    UV_ARGS+=("--extra gssapi")
     if [ "Windows_NT" = "$OS" ]; then
         echo "Setting GSSAPI_PASS"
         export GSSAPI_PASS=${SASL_PASS}
@@ -112,24 +121,26 @@ if [ "$SSL" != "nossl" ]; then
 fi
 
 if [ "$COMPRESSORS" = "snappy" ]; then
-    python -m pip install '.[snappy]'
+    UV_ARGS+=("--extra snappy")
 elif [ "$COMPRESSORS" = "zstd" ]; then
-    python -m pip install zstandard
+    UV_ARGS+=("--extra zstandard")
 fi
 
 # PyOpenSSL test setup.
 if [ -n "$TEST_PYOPENSSL" ]; then
-    python -m pip install '.[ocsp]'
+    UV_ARGS+=("--extra ocsp")
 fi
 
 if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
-    # Check for libmongocrypt checkout.
+    # Check for libmongocrypt download.
     if [ ! -d "libmongocrypt" ]; then
         echo "Run encryption setup first!"
         exit 1
     fi
 
-    python -m pip install '.[encryption]'
+    UV_ARGS+=("--extra encryption")
+    # TODO: Test with 'pip install pymongocrypt'
+    UV_ARGS+=("--group pymongocrypt_source")
 
     # Use the nocrypto build to avoid dependency issues with older windows/python versions.
     BASE=$(pwd)/libmongocrypt/nocrypto
@@ -149,21 +160,17 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
         exit 1
     fi
     export PYMONGOCRYPT_LIB
-
-    # TODO: Test with 'pip install pymongocrypt'
-    if [ ! -d "libmongocrypt_git" ]; then
-      git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
-    fi
-    python -m pip install -U setuptools
-    python -m pip install ./libmongocrypt_git/bindings/python
-    python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
-    python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
-    # PATH is updated by PREPARE_SHELL for access to mongocryptd.
+    # Ensure pymongocrypt is working properly.
+    # shellcheck disable=SC2048
+    uv run ${UV_ARGS[*]} python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
+    # shellcheck disable=SC2048
+    uv run ${UV_ARGS[*]} python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
+    # PATH is updated by configure-env.sh for access to mongocryptd.
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
     if [ -n "$TEST_ENCRYPTION_PYOPENSSL" ]; then
-        python -m pip install '.[ocsp]'
+        UV_ARGS+=("--extra ocsp")
     fi
 
     if [ -n "$TEST_CRYPT_SHARED" ]; then
@@ -208,22 +215,22 @@ if [ -n "$TEST_ATLAS" ]; then
 fi
 
 if [ -n "$TEST_OCSP" ]; then
-    python -m pip install ".[ocsp]"
+    UV_ARGS+=("--extra ocsp")
     TEST_SUITES="ocsp"
 fi
 
 if [ -n "$TEST_AUTH_AWS" ]; then
-    python -m pip install ".[aws]"
+    UV_ARGS+=("--extra aws")
     TEST_SUITES="auth_aws"
 fi
 
 if [ -n "$TEST_AUTH_OIDC" ]; then
-    python -m pip install ".[aws]"
+    UV_ARGS+=("--extra aws")
     TEST_SUITES="auth_oidc"
 fi
 
 if [ -n "$PERF_TEST" ]; then
-    python -m pip install simplejson
+    UV_ARGS+=("--group perf")
     start_time=$(date +%s)
     TEST_SUITES="perf"
     # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
@@ -231,8 +238,8 @@ if [ -n "$PERF_TEST" ]; then
     TEST_ARGS="test/performance/perf_test.py $TEST_ARGS"
 fi
 
-echo "Running $AUTH tests over $SSL with python $(which python)"
-python -c 'import sys; print(sys.version)'
+echo "Running $AUTH tests over $SSL with python $(uv python find)"
+uv run --frozen python -c 'import sys; print(sys.version)'
 
 
 # Run the tests, and store the results in Evergreen compatible XUnit XML
@@ -240,31 +247,33 @@ python -c 'import sys; print(sys.version)'
 
 # Run the tests with coverage if requested and coverage is installed.
 # Only cover CPython. PyPy reports suspiciously low coverage.
-PYTHON_IMPL=$(python -c "import platform; print(platform.python_implementation())")
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     # Keep in sync with combine-coverage.sh.
     # coverage >=5 is needed for relative_files=true.
-    python -m pip install pytest-cov "coverage>=5,<=7.5"
+    UV_ARGS+=("--group coverage")
     TEST_ARGS="$TEST_ARGS --cov"
 fi
 
 if [ -n "$GREEN_FRAMEWORK" ]; then
-    python -m pip install $GREEN_FRAMEWORK
+    UV_ARGS+=("--group $GREEN_FRAMEWORK")
 fi
 
 # Show the installed packages
-PIP_QUIET=0 python -m pip list
+# shellcheck disable=SC2048
+PIP_QUIET=0 uv run ${UV_ARGS[*]} --with pip pip list
 
 if [ -z "$GREEN_FRAMEWORK" ]; then
     # Use --capture=tee-sys so pytest prints test output inline:
     # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
-    if [ -z "$TEST_SUITES" ]; then
-      python -m pytest -v --capture=tee-sys --durations=5 $TEST_ARGS
-    else
-      python -m pytest -v --capture=tee-sys --durations=5 -m $TEST_SUITES $TEST_ARGS
+    PYTEST_ARGS="-v --capture=tee-sys --durations=5 $TEST_ARGS"
+    if [ -n "$TEST_SUITES" ]; then
+      PYTEST_ARGS="-m $TEST_SUITES $PYTEST_ARGS"
     fi
+    # shellcheck disable=SC2048
+    uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
 else
-    python green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
+    # shellcheck disable=SC2048
+    uv run ${UV_ARGS[*]} green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
 fi
 
 # Handle perf test post actions.

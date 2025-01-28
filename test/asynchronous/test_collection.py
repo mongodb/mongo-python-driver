@@ -36,10 +36,10 @@ from test.asynchronous import (  # TODO: fix sync imports in PYTHON-4528
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,
+    OvertCommandListener,
     async_get_pool,
     async_is_mongos,
     async_wait_until,
-    wait_until,
 )
 
 from bson import encode
@@ -87,14 +87,10 @@ class TestCollectionNoConnect(AsyncUnitTest):
     db: AsyncDatabase
     client: AsyncMongoClient
 
-    @classmethod
-    async def _setup_class(cls):
-        cls.client = AsyncMongoClient(connect=False)
-        cls.db = cls.client.pymongo_test
-
-    @classmethod
-    async def _tearDown_class(cls):
-        await cls.client.close()
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.client = self.simple_client(connect=False)
+        self.db = self.client.pymongo_test
 
     def test_collection(self):
         self.assertRaises(TypeError, AsyncCollection, self.db, 5)
@@ -137,13 +133,7 @@ class TestCollectionNoConnect(AsyncUnitTest):
 
     def test_iteration(self):
         coll = self.db.coll
-        if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
-            msg = "'NoneType' object is not callable"
-        else:
-            if _IS_SYNC:
-                msg = "'Collection' object is not iterable"
-            else:
-                msg = "'AsyncCollection' object is not iterable"
+        msg = "'AsyncCollection' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in coll:  # type: ignore[misc] # error: "None" not callable  [misc]
@@ -164,27 +154,14 @@ class TestCollectionNoConnect(AsyncUnitTest):
 class AsyncTestCollection(AsyncIntegrationTest):
     w: int
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.w = async_client_context.w  # type: ignore
-
-    @classmethod
-    def tearDownClass(cls):
-        if _IS_SYNC:
-            cls.db.drop_collection("test_large_limit")  # type: ignore[unused-coroutine]
-        else:
-            asyncio.run(cls.async_tearDownClass())
-
-    @classmethod
-    async def async_tearDownClass(cls):
-        await cls.db.drop_collection("test_large_limit")
-
     async def asyncSetUp(self):
-        await self.db.test.drop()
+        await super().asyncSetUp()
+        self.w = async_client_context.w  # type: ignore
 
     async def asyncTearDown(self):
         await self.db.test.drop()
+        await self.db.drop_collection("test_large_limit")
+        await super().asyncTearDown()
 
     @contextlib.contextmanager
     def write_concern_collection(self):
@@ -1022,10 +999,10 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.insert_one({"y": 1}, bypass_document_validation=True)
         await db_w0.test.replace_one({"y": 1}, {"x": 1}, bypass_document_validation=True)
 
-        async def async_lambda():
-            await db_w0.test.find_one({"x": 1})
+        async def predicate():
+            return await db_w0.test.find_one({"x": 1})
 
-        await async_wait_until(async_lambda, "find w:0 replaced document")
+        await async_wait_until(predicate, "find w:0 replaced document")
 
     async def test_update_bypass_document_validation(self):
         db = self.db
@@ -1873,7 +1850,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await cur.close()
         cur = None
         # Wait until the background thread returns the socket.
-        wait_until(lambda: pool.active_sockets == 0, "return socket")
+        await async_wait_until(lambda: pool.active_sockets == 0, "return socket")
         # The socket should be discarded.
         self.assertEqual(0, len(pool.conns))
 
@@ -2119,7 +2096,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertEqual(4, (await c.find_one_and_update({}, {"$inc": {"i": 1}}, sort=sort))["j"])
 
     async def test_find_one_and_write_concern(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         db = (await self.async_single_client(event_listeners=[listener]))[self.db.name]
         # non-default WriteConcern.
         c_w0 = db.get_collection("test", write_concern=WriteConcern(w=0))

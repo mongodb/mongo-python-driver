@@ -1,6 +1,15 @@
 #!/bin/bash
-set -o xtrace   # Write all commands first to stderr
-set -o errexit  # Exit the script with error if any of the commands fail
+set -eu
+
+HERE=$(dirname ${BASH_SOURCE:-$0})
+pushd $HERE
+. env.sh
+
+rm -rf $DRIVERS_TOOLS
+git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" >$MONGO_ORCHESTRATION_HOME/orchestration.config
+
+popd
 
 # Copy PyMongo's test certificates over driver-evergreen-tools'
 cp ${PROJECT_DIRECTORY}/test/certificates/* ${DRIVERS_TOOLS}/.evergreen/x509gen/

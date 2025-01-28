@@ -45,6 +45,7 @@ from pymongo.synchronous.auth_oidc import (
     _authenticate_oidc,
     _get_authenticator,
 )
+from pymongo.synchronous.helpers import _getaddrinfo
 
 if TYPE_CHECKING:
     from pymongo.hello import Hello
@@ -174,12 +175,26 @@ def _auth_key(nonce: str, username: str, password: str) -> str:
     return md5hash.hexdigest()
 
 
-def _canonicalize_hostname(hostname: str) -> str:
+def _canonicalize_hostname(hostname: str, option: str | bool) -> str:
     """Canonicalize hostname following MIT-krb5 behavior."""
     # https://github.com/krb5/krb5/blob/d406afa363554097ac48646a29249c04f498c88e/src/util/k5test.py#L505-L520
-    af, socktype, proto, canonname, sockaddr = socket.getaddrinfo(
-        hostname, None, 0, 0, socket.IPPROTO_TCP, socket.AI_CANONNAME
-    )[0]
+    if option in [False, "none"]:
+        return hostname
+
+    af, socktype, proto, canonname, sockaddr = (
+        _getaddrinfo(
+            hostname,
+            None,
+            family=0,
+            type=0,
+            proto=socket.IPPROTO_TCP,
+            flags=socket.AI_CANONNAME,
+        )
+    )[0]  # type: ignore[index]
+
+    # For forward just to resolve the cname as dns.lookup() will not return it.
+    if option == "forward":
+        return canonname.lower()
 
     try:
         name = socket.getnameinfo(sockaddr, socket.NI_NAMEREQD)
@@ -202,9 +217,8 @@ def _authenticate_gssapi(credentials: MongoCredential, conn: Connection) -> None
         props = credentials.mechanism_properties
         # Starting here and continuing through the while loop below - establish
         # the security context. See RFC 4752, Section 3.1, first paragraph.
-        host = conn.address[0]
-        if props.canonicalize_host_name:
-            host = _canonicalize_hostname(host)
+        host = props.service_host or conn.address[0]
+        host = _canonicalize_hostname(host, props.canonicalize_host_name)
         service = props.service_name + "@" + host
         if props.service_realm is not None:
             service = service + "@" + props.service_realm
@@ -326,21 +340,6 @@ def _authenticate_x509(credentials: MongoCredential, conn: Connection) -> None:
     conn.command("$external", cmd)
 
 
-def _authenticate_mongo_cr(credentials: MongoCredential, conn: Connection) -> None:
-    """Authenticate using MONGODB-CR."""
-    source = credentials.source
-    username = credentials.username
-    password = credentials.password
-    # Get a nonce
-    response = conn.command(source, {"getnonce": 1})
-    nonce = response["nonce"]
-    key = _auth_key(nonce, username, password)
-
-    # Actually authenticate
-    query = {"authenticate": 1, "user": username, "nonce": nonce, "key": key}
-    conn.command(source, query)
-
-
 def _authenticate_default(credentials: MongoCredential, conn: Connection) -> None:
     if conn.max_wire_version >= 7:
         if conn.negotiated_mechs:
@@ -360,7 +359,6 @@ def _authenticate_default(credentials: MongoCredential, conn: Connection) -> Non
 
 _AUTH_MAP: Mapping[str, Callable[..., None]] = {
     "GSSAPI": _authenticate_gssapi,
-    "MONGODB-CR": _authenticate_mongo_cr,
     "MONGODB-X509": _authenticate_x509,
     "MONGODB-AWS": _authenticate_aws,
     "MONGODB-OIDC": _authenticate_oidc,  # type:ignore[dict-item]

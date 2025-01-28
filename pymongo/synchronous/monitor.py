@@ -16,24 +16,24 @@
 
 from __future__ import annotations
 
+import asyncio
 import atexit
 import logging
 import time
 import weakref
 from typing import TYPE_CHECKING, Any, Mapping, Optional, cast
 
-from pymongo import common
+from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
 from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
 from pymongo.logger import _SDAM_LOGGER, _debug_log, _SDAMStatusMessage
+from pymongo.periodic_executor import _shutdown_executors
 from pymongo.pool_options import _is_faas
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from pymongo.srv_resolver import _SrvResolver
-from pymongo.synchronous import periodic_executor
-from pymongo.synchronous.periodic_executor import _shutdown_executors
 
 if TYPE_CHECKING:
     from pymongo.synchronous.pool import Connection, Pool, _CancellationContext
@@ -149,6 +149,7 @@ class Monitor(MonitorBase):
         self._listeners = self._settings._pool_options._event_listeners
         self._publish = self._listeners is not None and self._listeners.enabled_for_server_heartbeat
         self._cancel_context: Optional[_CancellationContext] = None
+        self._conn_id: Optional[int] = None
         self._rtt_monitor = _RttMonitor(
             topology,
             topology_settings,
@@ -237,12 +238,16 @@ class Monitor(MonitorBase):
         except ReferenceError:
             # Topology was garbage-collected.
             self.close()
+        finally:
+            if self._executor._stopped:
+                self._rtt_monitor.close()
 
     def _check_server(self) -> ServerDescription:
         """Call hello or read the next streaming response.
 
         Returns a ServerDescription.
         """
+        self._conn_id = None
         start = time.monotonic()
         try:
             try:
@@ -252,6 +257,8 @@ class Monitor(MonitorBase):
                 details = cast(Mapping[str, Any], exc.details)
                 self._topology.receive_cluster_time(details.get("$clusterTime"))
                 raise
+        except asyncio.CancelledError:
+            raise
         except ReferenceError:
             raise
         except Exception as error:
@@ -272,6 +279,7 @@ class Monitor(MonitorBase):
                     awaited=awaited,
                     durationMS=duration * 1000,
                     failure=error,
+                    driverConnectionId=self._conn_id,
                     message=_SDAMStatusMessage.HEARTBEAT_FAIL,
                 )
             self._reset_connection()
@@ -314,6 +322,8 @@ class Monitor(MonitorBase):
                 )
 
             self._cancel_context = conn.cancel_context
+            # Record the connection id so we can later attach it to the failed log message.
+            self._conn_id = conn.id
             response, round_trip_time = self._check_with_socket(conn)
             if not response.awaitable:
                 self._rtt_monitor.add_sample(round_trip_time)
@@ -414,6 +424,8 @@ class SrvMonitor(MonitorBase):
             if len(seedlist) == 0:
                 # As per the spec: this should be treated as a failure.
                 raise Exception
+        except asyncio.CancelledError:
+            raise
         except Exception:
             # As per the spec, upon encountering an error:
             # - An error must not be raised
@@ -477,6 +489,8 @@ class _RttMonitor(MonitorBase):
         except ReferenceError:
             # Topology was garbage-collected.
             self.close()
+        except asyncio.CancelledError:
+            raise
         except Exception:
             self._pool.reset()
 
@@ -531,4 +545,5 @@ def _shutdown_resources() -> None:
         shutdown()
 
 
-atexit.register(_shutdown_resources)
+if _IS_SYNC:
+    atexit.register(_shutdown_resources)

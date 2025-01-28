@@ -19,7 +19,11 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    async_client_context,
+    unittest,
+)
 from test.asynchronous.helpers import async_repl_set_step_down
 from test.utils import (
     CMAPListener,
@@ -39,29 +43,20 @@ class TestAsyncConnectionsSurvivePrimaryStepDown(AsyncIntegrationTest):
     listener: CMAPListener
     coll: AsyncCollection
 
-    @classmethod
     @async_client_context.require_replica_set
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.listener = CMAPListener()
-        cls.client = await cls.unmanaged_async_rs_or_single_client(
-            event_listeners=[cls.listener], retryWrites=False, heartbeatFrequencyMS=500
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.listener = CMAPListener()
+        self.client = await self.async_rs_or_single_client(
+            event_listeners=[self.listener], retryWrites=False, heartbeatFrequencyMS=500
         )
 
         # Ensure connections to all servers in replica set. This is to test
         # that the is_writable flag is properly updated for connections that
         # survive a replica set election.
-        await async_ensure_all_connected(cls.client)
-        cls.listener.reset()
-
-        cls.db = cls.client.get_database("step-down", write_concern=WriteConcern("majority"))
-        cls.coll = cls.db.get_collection("step-down", write_concern=WriteConcern("majority"))
-
-    @classmethod
-    async def _tearDown_class(cls):
-        await cls.client.close()
-
-    async def asyncSetUp(self):
+        await async_ensure_all_connected(self.client)
+        self.db = self.client.get_database("step-down", write_concern=WriteConcern("majority"))
+        self.coll = self.db.get_collection("step-down", write_concern=WriteConcern("majority"))
         # Note that all ops use same write-concern as self.db (majority).
         await self.db.drop_collection("step-down")
         await self.db.create_collection("step-down")

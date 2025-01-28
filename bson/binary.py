@@ -16,7 +16,7 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Sequence, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Type, Union, overload
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -195,7 +195,7 @@ SENSITIVE_SUBTYPE = 8
 
 
 VECTOR_SUBTYPE = 9
-"""**(BETA)** BSON binary subtype for densely packed vector data.
+"""BSON binary subtype for densely packed vector data.
 
 .. versionadded:: 4.10
 """
@@ -207,7 +207,7 @@ USER_DEFINED_SUBTYPE = 128
 
 
 class BinaryVectorDtype(Enum):
-    """**(BETA)** Datatypes of vector subtype.
+    """Datatypes of vector subtype.
 
     :param FLOAT32: (0x27) Pack list of :class:`float` as float32
     :param INT8: (0x03) Pack list of :class:`int` in [-128, 127] as signed int8
@@ -229,7 +229,7 @@ class BinaryVectorDtype(Enum):
 
 @dataclass
 class BinaryVector:
-    """**(BETA)** Vector of numbers along with metadata for binary interoperability.
+    """Vector of numbers along with metadata for binary interoperability.
     .. versionadded:: 4.10
     """
 
@@ -256,7 +256,7 @@ class Binary(bytes):
     the difference between what should be considered binary data and
     what should be considered a string when we encode to BSON.
 
-    **(BETA)** Subtype 9 provides a space-efficient representation of 1-dimensional vector data.
+    Subtype 9 provides a space-efficient representation of 1-dimensional vector data.
     Its data is prepended with two bytes of metadata.
     The first (dtype) describes its data type, such as float32 or int8.
     The second (padding) prescribes the number of bits to ignore in the final byte.
@@ -278,7 +278,7 @@ class Binary(bytes):
        Support any bytes-like type that implements the buffer protocol.
 
     .. versionchanged:: 4.10
-       **(BETA)** Addition of vector subtype.
+       Addition of vector subtype.
     """
 
     _type_marker = 5
@@ -398,26 +398,52 @@ class Binary(bytes):
         )
 
     @classmethod
+    @overload
+    def from_vector(cls: Type[Binary], vector: BinaryVector) -> Binary:
+        ...
+
+    @classmethod
+    @overload
     def from_vector(
         cls: Type[Binary],
-        vector: list[int, float],
+        vector: Union[list[int], list[float]],
         dtype: BinaryVectorDtype,
         padding: int = 0,
     ) -> Binary:
-        """**(BETA)** Create a BSON :class:`~bson.binary.Binary` of Vector subtype from a list of Numbers.
+        ...
+
+    @classmethod
+    def from_vector(
+        cls: Type[Binary],
+        vector: Union[BinaryVector, list[int], list[float]],
+        dtype: Optional[BinaryVectorDtype] = None,
+        padding: Optional[int] = None,
+    ) -> Binary:
+        """Create a BSON :class:`~bson.binary.Binary` of Vector subtype.
 
         To interpret the representation of the numbers, a data type must be included.
         See :class:`~bson.binary.BinaryVectorDtype` for available types and descriptions.
 
         The dtype and padding are prepended to the binary data's value.
 
-        :param vector: List of values
+        :param vector: Either a List of values, or a :class:`~bson.binary.BinaryVector` dataclass.
         :param dtype: Data type of the values
         :param padding: For fractional bytes, number of bits to ignore at end of vector.
         :return: Binary packed data identified by dtype and padding.
 
         .. versionadded:: 4.10
         """
+        if isinstance(vector, BinaryVector):
+            if dtype or padding:
+                raise ValueError(
+                    "The first argument, vector, has type BinaryVector. "
+                    "dtype or padding cannot be separately defined, but were."
+                )
+            dtype = vector.dtype
+            padding = vector.padding
+            vector = vector.data  # type: ignore
+
+        padding = 0 if padding is None else padding
         if dtype == BinaryVectorDtype.INT8:  # pack ints in [-128, 127] as signed int8
             format_str = "b"
             if padding:
@@ -432,11 +458,11 @@ class Binary(bytes):
             raise NotImplementedError("%s not yet supported" % dtype)
 
         metadata = struct.pack("<sB", dtype.value, padding)
-        data = struct.pack(f"<{len(vector)}{format_str}", *vector)
+        data = struct.pack(f"<{len(vector)}{format_str}", *vector)  # type: ignore
         return cls(metadata + data, subtype=VECTOR_SUBTYPE)
 
     def as_vector(self) -> BinaryVector:
-        """**(BETA)** From the Binary, create a list of numbers, along with dtype and padding.
+        """From the Binary, create a list of numbers, along with dtype and padding.
 
         :return: BinaryVector
 

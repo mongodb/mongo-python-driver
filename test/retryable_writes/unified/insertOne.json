@@ -13,7 +13,10 @@
     {
       "client": {
         "id": "client0",
-        "useMultipleMongoses": false
+        "useMultipleMongoses": false,
+        "observeEvents": [
+          "commandStartedEvent"
+        ]
       }
     },
     {
@@ -98,6 +101,33 @@
             {
               "_id": 3,
               "x": 33
+            }
+          ]
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "insert",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": true
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "commandName": "insert",
+                "command": {
+                  "txnNumber": {
+                    "$$exists": true
+                  }
+                }
+              }
             }
           ]
         }

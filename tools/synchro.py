@@ -19,7 +19,9 @@ Used as part of our build system to generate synchronous code.
 
 from __future__ import annotations
 
+import os
 import re
+import sys
 from os import listdir
 from pathlib import Path
 
@@ -110,6 +112,13 @@ replacements = {
     "async_set_fail_point": "set_fail_point",
     "async_ensure_all_connected": "ensure_all_connected",
     "async_repl_set_step_down": "repl_set_step_down",
+    "AsyncPeriodicExecutor": "PeriodicExecutor",
+    "async_wait_for_event": "wait_for_event",
+    "pymongo_server_monitor_task": "pymongo_server_monitor_thread",
+    "pymongo_server_rtt_task": "pymongo_server_rtt_thread",
+    "_async_create_lock": "_create_lock",
+    "_async_create_condition": "_create_condition",
+    "_async_cond_wait": "_cond_wait",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -130,8 +139,6 @@ docstring_removals: set[str] = {
     ".. warning:: This API is currently in beta, meaning the classes, methods, and behaviors described within may change before the full release."
 }
 
-type_replacements = {"_Condition": "threading.Condition"}
-
 import_replacements = {"test.synchronous": "test"}
 
 _pymongo_base = "./pymongo/asynchronous/"
@@ -142,6 +149,10 @@ _pymongo_dest_base = "./pymongo/synchronous/"
 _gridfs_dest_base = "./gridfs/synchronous/"
 _test_dest_base = "./test/"
 
+if not Path.exists(Path(_pymongo_dest_base)):
+    Path.mkdir(Path(_pymongo_dest_base))
+if not Path.exists(Path(_gridfs_dest_base)):
+    Path.mkdir(Path(_gridfs_dest_base))
 
 async_files = [
     _pymongo_base + f for f in listdir(_pymongo_base) if (Path(_pymongo_base) / f).is_file()
@@ -161,18 +172,6 @@ test_files = [
     _test_base + f
     for f in listdir(_test_base)
     if (Path(_test_base) / f).is_file() and not async_only_test(f)
-]
-
-sync_files = [
-    _pymongo_dest_base + f
-    for f in listdir(_pymongo_dest_base)
-    if (Path(_pymongo_dest_base) / f).is_file()
-]
-
-sync_gridfs_files = [
-    _gridfs_dest_base + f
-    for f in listdir(_gridfs_dest_base)
-    if (Path(_gridfs_dest_base) / f).is_file()
 ]
 
 # Add each asynchronized test here as part of the converting PR
@@ -217,15 +216,10 @@ converted_tests = [
     "unified_format.py",
 ]
 
-sync_test_files = [
-    _test_dest_base + f for f in converted_tests if (Path(_test_dest_base) / f).is_file()
-]
 
-
-docstring_translate_files = sync_files + sync_gridfs_files + sync_test_files
-
-
-def process_files(files: list[str]) -> None:
+def process_files(
+    files: list[str], docstring_translate_files: list[str], sync_test_files: list[str]
+) -> None:
     for file in files:
         if "__init__" not in file or "__init__" and "test" in file:
             with open(file, "r+") as f:
@@ -235,8 +229,6 @@ def process_files(files: list[str]) -> None:
                 lines = translate_async_sleeps(lines)
                 if file in docstring_translate_files:
                     lines = translate_docstrings(lines)
-                translate_locks(lines)
-                translate_types(lines)
                 if file in sync_test_files:
                     translate_imports(lines)
                 f.seek(0)
@@ -267,34 +259,6 @@ def translate_coroutine_types(lines: list[str]) -> list[str]:
             index = lines.index(type)
             new = type.replace(old, res.group(3))
             lines[index] = new
-    return lines
-
-
-def translate_locks(lines: list[str]) -> list[str]:
-    lock_lines = [line for line in lines if "_Lock(" in line]
-    cond_lines = [line for line in lines if "_Condition(" in line]
-    for line in lock_lines:
-        res = re.search(r"_Lock\(([^()]*\([^()]*\))\)", line)
-        if res:
-            old = res[0]
-            index = lines.index(line)
-            lines[index] = line.replace(old, res[1])
-    for line in cond_lines:
-        res = re.search(r"_Condition\(([^()]*\([^()]*\))\)", line)
-        if res:
-            old = res[0]
-            index = lines.index(line)
-            lines[index] = line.replace(old, res[1])
-
-    return lines
-
-
-def translate_types(lines: list[str]) -> list[str]:
-    for k, v in type_replacements.items():
-        matches = [line for line in lines if k in line and "import" not in line]
-        for line in matches:
-            index = lines.index(line)
-            lines[index] = line.replace(k, v)
     return lines
 
 
@@ -382,10 +346,43 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 
 
 def main() -> None:
+    modified_files = [f"./{f}" for f in sys.argv[1:]]
+    errored = False
+    for fname in async_files + gridfs_files:
+        # If the async file was modified, we don't need to check if the sync file was also modified.
+        if str(fname) in modified_files:
+            continue
+        sync_name = str(fname).replace("asynchronous", "synchronous")
+        if sync_name in modified_files and "OVERRIDE_SYNCHRO_CHECK" not in os.environ:
+            print(f"Refusing to overwrite {sync_name}")
+            errored = True
+    if errored:
+        raise ValueError("Aborting synchro due to errors")
+
     unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
     unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
     unasync_directory(test_files, _test_base, _test_dest_base, replacements)
-    process_files(sync_files + sync_gridfs_files + sync_test_files)
+
+    sync_files = [
+        _pymongo_dest_base + f
+        for f in listdir(_pymongo_dest_base)
+        if (Path(_pymongo_dest_base) / f).is_file()
+    ]
+
+    sync_gridfs_files = [
+        _gridfs_dest_base + f
+        for f in listdir(_gridfs_dest_base)
+        if (Path(_gridfs_dest_base) / f).is_file()
+    ]
+    sync_test_files = [
+        _test_dest_base + f for f in converted_tests if (Path(_test_dest_base) / f).is_file()
+    ]
+
+    docstring_translate_files = sync_files + sync_gridfs_files + sync_test_files
+
+    process_files(
+        sync_files + sync_gridfs_files + sync_test_files, docstring_translate_files, sync_test_files
+    )
 
 
 if __name__ == "__main__":

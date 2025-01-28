@@ -140,8 +140,8 @@ class _Bulk:
         self,
         selector: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
-        multi: bool = False,
-        upsert: bool = False,
+        multi: bool,
+        upsert: Optional[bool],
         collation: Optional[Mapping[str, Any]] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Union[str, dict[str, Any], None] = None,
@@ -149,9 +149,9 @@ class _Bulk:
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
-        cmd: dict[str, Any] = dict(  # noqa: C406
-            [("q", selector), ("u", update), ("multi", multi), ("upsert", upsert)]
-        )
+        cmd: dict[str, Any] = {"q": selector, "u": update, "multi": multi}
+        if upsert is not None:
+            cmd["upsert"] = upsert
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -173,14 +173,16 @@ class _Bulk:
         self,
         selector: Mapping[str, Any],
         replacement: Mapping[str, Any],
-        upsert: bool = False,
+        upsert: Optional[bool],
         collation: Optional[Mapping[str, Any]] = None,
         hint: Union[str, dict[str, Any], None] = None,
         sort: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
-        cmd = {"q": selector, "u": replacement, "multi": False, "upsert": upsert}
+        cmd: dict[str, Any] = {"q": selector, "u": replacement}
+        if upsert is not None:
+            cmd["upsert"] = upsert
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
@@ -200,7 +202,7 @@ class _Bulk:
         hint: Union[str, dict[str, Any], None] = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
-        cmd = {"q": selector, "limit": limit}
+        cmd: dict[str, Any] = {"q": selector, "limit": limit}
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation

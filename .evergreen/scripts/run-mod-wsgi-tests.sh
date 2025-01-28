@@ -28,7 +28,7 @@ export MOD_WSGI_SO=/opt/python/mod_wsgi/python_version/$PYTHON_VERSION/mod_wsgi_
 export PYTHONHOME=/opt/python/$PYTHON_VERSION
 # If MOD_WSGI_EMBEDDED is set use the default embedded mode behavior instead
 # of daemon mode (WSGIDaemonProcess).
-if [ -n "$MOD_WSGI_EMBEDDED" ]; then
+if [ -n "${MOD_WSGI_EMBEDDED:-}" ]; then
     export MOD_WSGI_CONF=mod_wsgi_test_embedded.conf
 else
     export MOD_WSGI_CONF=mod_wsgi_test.conf

@@ -23,9 +23,95 @@ import time
 import weakref
 from typing import Any, Optional
 
+from pymongo._asyncio_task import create_task
 from pymongo.lock import _create_lock
 
-_IS_SYNC = True
+_IS_SYNC = False
+
+
+class AsyncPeriodicExecutor:
+    def __init__(
+        self,
+        interval: float,
+        min_interval: float,
+        target: Any,
+        name: Optional[str] = None,
+    ):
+        """Run a target function periodically on a background task.
+
+        If the target's return value is false, the executor stops.
+
+        :param interval: Seconds between calls to `target`.
+        :param min_interval: Minimum seconds between calls if `wake` is
+            called very often.
+        :param target: A function.
+        :param name: A name to give the underlying task.
+        """
+        self._event = False
+        self._interval = interval
+        self._min_interval = min_interval
+        self._target = target
+        self._stopped = False
+        self._task: Optional[asyncio.Task] = None
+        self._name = name
+        self._skip_sleep = False
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
+
+    def open(self) -> None:
+        """Start. Multiple calls have no effect."""
+        self._stopped = False
+
+        if self._task is None or (
+            self._task.done() and not self._task.cancelled() and not self._task.cancelling()  # type: ignore[unused-ignore, attr-defined]
+        ):
+            self._task = create_task(self._run(), name=self._name)
+
+    def close(self, dummy: Any = None) -> None:
+        """Stop. To restart, call open().
+
+        The dummy parameter allows an executor's close method to be a weakref
+        callback; see monitor.py.
+        """
+        self._stopped = True
+
+    async def join(self, timeout: Optional[int] = None) -> None:
+        if self._task is not None:
+            await asyncio.wait([self._task], timeout=timeout)  # type-ignore: [arg-type]
+
+    def wake(self) -> None:
+        """Execute the target function soon."""
+        self._event = True
+
+    def update_interval(self, new_interval: int) -> None:
+        self._interval = new_interval
+
+    def skip_sleep(self) -> None:
+        self._skip_sleep = True
+
+    async def _run(self) -> None:
+        while not self._stopped:
+            if self._task and self._task.cancelling():  # type: ignore[unused-ignore, attr-defined]
+                raise asyncio.CancelledError
+            try:
+                if not await self._target():
+                    self._stopped = True
+                    break
+            except BaseException:
+                self._stopped = True
+                raise
+
+            if self._skip_sleep:
+                self._skip_sleep = False
+            else:
+                deadline = time.monotonic() + self._interval
+                while not self._stopped and time.monotonic() < deadline:
+                    await asyncio.sleep(self._min_interval)
+                    if self._event:
+                        break  # Early wake.
+
+            self._event = False
 
 
 class PeriodicExecutor:
@@ -64,19 +150,6 @@ class PeriodicExecutor:
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
 
-    def _run_async(self) -> None:
-        # The default asyncio loop implementation on Windows
-        # has issues with sharing sockets across loops (https://github.com/python/cpython/issues/122240)
-        # We explicitly use a different loop implementation here to prevent that issue
-        if sys.platform == "win32":
-            loop = asyncio.SelectorEventLoop()
-            try:
-                loop.run_until_complete(self._run())  # type: ignore[func-returns-value]
-            finally:
-                loop.close()
-        else:
-            asyncio.run(self._run())  # type: ignore[func-returns-value]
-
     def open(self) -> None:
         """Start. Multiple calls have no effect.
 
@@ -104,10 +177,7 @@ class PeriodicExecutor:
             pass
 
         if not started:
-            if _IS_SYNC:
-                thread = threading.Thread(target=self._run, name=self._name)
-            else:
-                thread = threading.Thread(target=self._run_async, name=self._name)
+            thread = threading.Thread(target=self._run, name=self._name)
             thread.daemon = True
             self._thread = weakref.proxy(thread)
             _register_executor(self)

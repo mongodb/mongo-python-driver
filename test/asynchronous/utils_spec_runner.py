@@ -46,7 +46,7 @@ from gridfs.asynchronous.grid_file import AsyncGridFSBucket
 from pymongo.asynchronous import client_session
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
-from pymongo.errors import BulkWriteError, OperationFailure, PyMongoError
+from pymongo.errors import AutoReconnect, BulkWriteError, OperationFailure, PyMongoError
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
@@ -249,29 +249,21 @@ class AsyncSpecRunner(AsyncIntegrationTest):
     knobs: client_knobs
     listener: EventListener
 
-    @classmethod
-    async def _setup_class(cls):
-        await super()._setup_class()
-        cls.mongos_clients = []
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.mongos_clients = []
 
         # Speed up the tests by decreasing the heartbeat frequency.
-        cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
-        cls.knobs.enable()
-
-    @classmethod
-    async def _tearDown_class(cls):
-        cls.knobs.disable()
-        for client in cls.mongos_clients:
-            await client.close()
-        await super()._tearDown_class()
-
-    def setUp(self):
-        super().setUp()
+        self.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
+        self.knobs.enable()
         self.targets = {}
         self.listener = None  # type: ignore
         self.pool_listener = None
         self.server_listener = None
         self.maxDiff = None
+
+    async def asyncTearDown(self) -> None:
+        self.knobs.disable()
 
     async def _set_fail_point(self, client, command_args):
         cmd = SON([("configureFailPoint", "failCommand")])
@@ -343,9 +335,10 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         for client in clients:
             try:
                 await client.admin.command("killAllSessions", [])
-            except OperationFailure:
+            except (OperationFailure, AutoReconnect):
                 # "operation was interrupted" by killing the command's
                 # own session.
+                # On 8.0+ killAllSessions sometimes returns a network error.
                 pass
 
     def check_command_result(self, expected_result, result):
@@ -699,8 +692,6 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         self.listener = listener
         self.pool_listener = pool_listener
         self.server_listener = server_listener
-        # Close the client explicitly to avoid having too many threads open.
-        self.addAsyncCleanup(client.close)
 
         # Create session0 and session1.
         sessions = {}

@@ -22,7 +22,7 @@ is emitted and parsed, with the default being the Relaxed Extended JSON format.
 when :const:`CANONICAL_JSON_OPTIONS` or :const:`LEGACY_JSON_OPTIONS` is
 provided, respectively.
 
-.. _Extended JSON: https://github.com/mongodb/specifications/blob/master/source/extended-json.rst
+.. _Extended JSON: https://github.com/mongodb/specifications/blob/master/source/extended-json/extended-json.md
 
 Example usage (deserialization):
 
@@ -617,25 +617,28 @@ def _parse_canonical_datetime(
         raise TypeError(f"Bad $date, extra field(s): {doc}")
     # mongoexport 2.6 and newer
     if isinstance(dtm, str):
-        # Parse offset
-        if dtm[-1] == "Z":
-            dt = dtm[:-1]
-            offset = "Z"
-        elif dtm[-6] in ("+", "-") and dtm[-3] == ":":
-            # (+|-)HH:MM
-            dt = dtm[:-6]
-            offset = dtm[-6:]
-        elif dtm[-5] in ("+", "-"):
-            # (+|-)HHMM
-            dt = dtm[:-5]
-            offset = dtm[-5:]
-        elif dtm[-3] in ("+", "-"):
-            # (+|-)HH
-            dt = dtm[:-3]
-            offset = dtm[-3:]
-        else:
-            dt = dtm
-            offset = ""
+        try:
+            # Parse offset
+            if dtm[-1] == "Z":
+                dt = dtm[:-1]
+                offset = "Z"
+            elif dtm[-6] in ("+", "-") and dtm[-3] == ":":
+                # (+|-)HH:MM
+                dt = dtm[:-6]
+                offset = dtm[-6:]
+            elif dtm[-5] in ("+", "-"):
+                # (+|-)HHMM
+                dt = dtm[:-5]
+                offset = dtm[-5:]
+            elif dtm[-3] in ("+", "-"):
+                # (+|-)HH
+                dt = dtm[:-3]
+                offset = dtm[-3:]
+            else:
+                dt = dtm
+                offset = ""
+        except IndexError as exc:
+            raise ValueError(f"time data {dtm!r} does not match ISO-8601 datetime format") from exc
 
         # Parse the optional factional seconds portion.
         dot_index = dt.rfind(".")
@@ -848,7 +851,7 @@ def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:
     ):
         return _encode_datetime(obj.as_datetime(), json_options)
     elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
-        return {"$date": str(int(obj))}
+        return {"$date": int(obj)}
     return {"$date": {"$numberLong": str(int(obj))}}
 
 

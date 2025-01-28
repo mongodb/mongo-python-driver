@@ -633,6 +633,7 @@ class TestTypeRegistry(unittest.TestCase):
 
 class TestCollectionWCustomType(IntegrationTest):
     def setUp(self):
+        super().setUp()
         self.db.test.drop()
 
     def tearDown(self):
@@ -754,6 +755,7 @@ class TestCollectionWCustomType(IntegrationTest):
 
 class TestGridFileCustomType(IntegrationTest):
     def setUp(self):
+        super().setUp()
         self.db.drop_collection("fs.files")
         self.db.drop_collection("fs.chunks")
 
@@ -917,11 +919,10 @@ class ChangeStreamsWCustomTypesTestMixin:
 
 
 class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
-    @classmethod
     @client_context.require_change_streams
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.db.test.delete_many({})
+    def setUp(self):
+        super().setUp()
+        self.db.test.delete_many({})
 
     def tearDown(self):
         self.input_target.drop()
@@ -935,12 +936,11 @@ class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCus
 
 
 class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
-    @classmethod
     @client_context.require_version_min(4, 0, 0)
     @client_context.require_change_streams
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.db.test.delete_many({})
+    def setUp(self):
+        super().setUp()
+        self.db.test.delete_many({})
 
     def tearDown(self):
         self.input_target.drop()
@@ -954,12 +954,11 @@ class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCusto
 
 
 class TestClusterChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
-    @classmethod
     @client_context.require_version_min(4, 0, 0)
     @client_context.require_change_streams
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.db.test.delete_many({})
+    def setUp(self):
+        super().setUp()
+        self.db.test.delete_many({})
 
     def tearDown(self):
         self.input_target.drop()

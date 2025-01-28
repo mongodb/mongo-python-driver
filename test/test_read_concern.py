@@ -31,24 +31,16 @@ from pymongo.read_concern import ReadConcern
 class TestReadConcern(IntegrationTest):
     listener: OvertCommandListener
 
-    @classmethod
     @client_context.require_connection
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.listener = OvertCommandListener()
-        cls.client = cls.unmanaged_rs_or_single_client(event_listeners=[cls.listener])
-        cls.db = cls.client.pymongo_test
+    def setUp(self):
+        super().setUp()
+        self.listener = OvertCommandListener()
+        self.client = self.rs_or_single_client(event_listeners=[self.listener])
+        self.db = self.client.pymongo_test
         client_context.client.pymongo_test.create_collection("coll")
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.client.close()
-        client_context.client.pymongo_test.drop_collection("coll")
-        super().tearDownClass()
-
     def tearDown(self):
-        self.listener.reset()
-        super().tearDown()
+        client_context.client.pymongo_test.drop_collection("coll")
 
     def test_read_concern(self):
         rc = ReadConcern()

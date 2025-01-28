@@ -106,20 +106,13 @@ class _AsyncClientBulk:
         self.bypass_doc_val = bypass_document_validation
         self.comment = comment
         self.verbose_results = verbose_results
-
         self.ops: list[tuple[str, Mapping[str, Any]]] = []
         self.namespaces: list[str] = []
         self.idx_offset: int = 0
         self.total_ops: int = 0
-
         self.executed = False
-        self.uses_upsert = False
         self.uses_collation = False
         self.uses_array_filters = False
-        self.uses_hint_update = False
-        self.uses_hint_delete = False
-        self.uses_sort = False
-
         self.is_retryable = self.client.options.retry_writes
         self.retrying = False
         self.started_retryable_write = False
@@ -144,7 +137,7 @@ class _AsyncClientBulk:
         namespace: str,
         selector: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
-        multi: bool = False,
+        multi: bool,
         upsert: Optional[bool] = None,
         collation: Optional[Mapping[str, Any]] = None,
         array_filters: Optional[list[Mapping[str, Any]]] = None,
@@ -160,19 +153,16 @@ class _AsyncClientBulk:
             "multi": multi,
         }
         if upsert is not None:
-            self.uses_upsert = True
             cmd["upsert"] = upsert
         if array_filters is not None:
             self.uses_array_filters = True
             cmd["arrayFilters"] = array_filters
         if hint is not None:
-            self.uses_hint_update = True
             cmd["hint"] = hint
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
         if sort is not None:
-            self.uses_sort = True
             cmd["sort"] = sort
         if multi:
             # A bulk_write containing an update_many is not retryable.
@@ -200,16 +190,13 @@ class _AsyncClientBulk:
             "multi": False,
         }
         if upsert is not None:
-            self.uses_upsert = True
             cmd["upsert"] = upsert
         if hint is not None:
-            self.uses_hint_update = True
             cmd["hint"] = hint
         if collation is not None:
             self.uses_collation = True
             cmd["collation"] = collation
         if sort is not None:
-            self.uses_sort = True
             cmd["sort"] = sort
         self.ops.append(("replace", cmd))
         self.namespaces.append(namespace)
@@ -226,7 +213,6 @@ class _AsyncClientBulk:
         """Create a delete document and add it to the list of ops."""
         cmd = {"delete": -1, "filter": selector, "multi": multi}
         if hint is not None:
-            self.uses_hint_delete = True
             cmd["hint"] = hint
         if collation is not None:
             self.uses_collation = True
@@ -490,7 +476,6 @@ class _AsyncClientBulk:
                         if op_type == "delete":
                             res = DeleteResult(doc, acknowledged=True)  # type: ignore[assignment]
                         full_result[f"{op_type}Results"][original_index] = res
-
             except Exception as exc:
                 # Attempt to close the cursor, then raise top-level error.
                 if cmd_cursor.alive:
@@ -681,11 +666,11 @@ class _AsyncClientBulk:
             _throw_client_bulk_write_exception(full_result, self.verbose_results)
         return full_result
 
-    async def execute_command_unack_unordered(
+    async def execute_command_unack(
         self,
         conn: AsyncConnection,
     ) -> None:
-        """Execute commands with OP_MSG and w=0 writeConcern, unordered."""
+        """Execute commands with OP_MSG and w=0 writeConcern. Always unordered."""
         db_name = "admin"
         cmd_name = "bulkWrite"
         listeners = self.client._event_listeners
@@ -704,8 +689,8 @@ class _AsyncClientBulk:
         while self.idx_offset < self.total_ops:
             # Construct the server command, specifying the relevant options.
             cmd = {"bulkWrite": 1}
-            cmd["errorsOnly"] = not self.verbose_results
-            cmd["ordered"] = self.ordered  # type: ignore[assignment]
+            cmd["errorsOnly"] = True
+            cmd["ordered"] = False
             if self.bypass_doc_val is not None:
                 cmd["bypassDocumentValidation"] = self.bypass_doc_val
             cmd["writeConcern"] = {"w": 0}  # type: ignore[assignment]
@@ -723,43 +708,6 @@ class _AsyncClientBulk:
 
             self.idx_offset += len(to_send_ops)
 
-    async def execute_command_unack_ordered(
-        self,
-        conn: AsyncConnection,
-    ) -> None:
-        """Execute commands with OP_MSG and w=0 WriteConcern, ordered."""
-        full_result: MutableMapping[str, Any] = {
-            "anySuccessful": False,
-            "error": None,
-            "writeErrors": [],
-            "writeConcernErrors": [],
-            "nInserted": 0,
-            "nUpserted": 0,
-            "nMatched": 0,
-            "nModified": 0,
-            "nDeleted": 0,
-            "insertResults": {},
-            "updateResults": {},
-            "deleteResults": {},
-        }
-        # Ordered bulk writes have to be acknowledged so that we stop
-        # processing at the first error, even when the application
-        # specified unacknowledged writeConcern.
-        initial_write_concern = WriteConcern()
-        op_id = _randint()
-        try:
-            await self._execute_command(
-                initial_write_concern,
-                None,
-                conn,
-                op_id,
-                False,
-                full_result,
-                self.write_concern,
-            )
-        except OperationFailure:
-            pass
-
     async def execute_no_results(
         self,
         conn: AsyncConnection,
@@ -775,9 +723,7 @@ class _AsyncClientBulk:
                 "Cannot set bypass_document_validation with unacknowledged write concern"
             )
 
-        if self.ordered:
-            return await self.execute_command_unack_ordered(conn)
-        return await self.execute_command_unack_unordered(conn)
+        return await self.execute_command_unack(conn)
 
     async def execute(
         self,

@@ -88,6 +88,7 @@ class TestClientBulkWrite(AsyncIntegrationTest):
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
 class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.max_write_batch_size = await async_client_context.max_write_batch_size
         self.max_bson_object_size = await async_client_context.max_bson_size
         self.max_message_size_bytes = await async_client_context.max_message_size_bytes
@@ -401,12 +402,16 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         # Insert document.
         models_insert = [InsertOne(namespace="db.coll", document={"a": b_repeated})]
         with self.assertRaises(DocumentTooLarge):
-            await client.bulk_write(models=models_insert, write_concern=WriteConcern(w=0))
+            await client.bulk_write(
+                models=models_insert, ordered=False, write_concern=WriteConcern(w=0)
+            )
 
         # Replace document.
         models_replace = [ReplaceOne(namespace="db.coll", filter={}, replacement={"a": b_repeated})]
         with self.assertRaises(DocumentTooLarge):
-            await client.bulk_write(models=models_replace, write_concern=WriteConcern(w=0))
+            await client.bulk_write(
+                models=models_replace, ordered=False, write_concern=WriteConcern(w=0)
+            )
 
     async def _setup_namespace_test_models(self):
         # See prose test specification below for details on these calculations.
@@ -590,12 +595,51 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertEqual(result.update_results[1].did_upsert, True)
         self.assertEqual(result.update_results[2].did_upsert, False)
 
+    @async_client_context.require_version_min(8, 0, 0, -24)
+    @async_client_context.require_no_serverless
+    async def test_15_unacknowledged_write_across_batches(self):
+        listener = OvertCommandListener()
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
+
+        collection = client.db["coll"]
+        self.addAsyncCleanup(collection.drop)
+        await collection.drop()
+        await client.db.command({"create": "db.coll"})
+
+        b_repeated = "b" * (self.max_bson_object_size - 500)
+        models = [
+            InsertOne(namespace="db.coll", document={"a": b_repeated})
+            for _ in range(int(self.max_message_size_bytes / self.max_bson_object_size) + 1)
+        ]
+
+        listener.reset()
+
+        res = await client.bulk_write(models, ordered=False, write_concern=WriteConcern(w=0))
+        self.assertEqual(False, res.acknowledged)
+
+        events = listener.started_events
+        self.assertEqual(2, len(events))
+        self.assertEqual(
+            int(self.max_message_size_bytes / self.max_bson_object_size),
+            len(events[0].command["ops"]),
+        )
+        self.assertEqual(1, len(events[1].command["ops"]))
+        self.assertEqual(events[0].operation_id, events[1].operation_id)
+        self.assertEqual({"w": 0}, events[0].command["writeConcern"])
+        self.assertEqual({"w": 0}, events[1].command["writeConcern"])
+
+        self.assertEqual(
+            int(self.max_message_size_bytes / self.max_bson_object_size) + 1,
+            await collection.count_documents({}),
+        )
+
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#11-multi-batch-bulkwrites
 class TestClientBulkWriteCSOT(AsyncIntegrationTest):
     async def asyncSetUp(self):
         if os.environ.get("SKIP_CSOT_TESTS", ""):
             raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
+        await super().asyncSetUp()
         self.max_write_batch_size = await async_client_context.max_write_batch_size
         self.max_bson_object_size = await async_client_context.max_bson_size
         self.max_message_size_bytes = await async_client_context.max_message_size_bytes

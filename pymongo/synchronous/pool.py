@@ -23,7 +23,6 @@ import os
 import socket
 import ssl
 import sys
-import threading
 import time
 import weakref
 from typing import (
@@ -62,7 +61,11 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
-from pymongo.lock import _create_lock, _Lock
+from pymongo.lock import (
+    _cond_wait,
+    _create_condition,
+    _create_lock,
+)
 from pymongo.logger import (
     _CONNECTION_LOGGER,
     _ConnectionStatusMessage,
@@ -81,7 +84,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI, SSLError
 from pymongo.synchronous.client_session import _validate_session_write_concern
-from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.helpers import _getaddrinfo, _handle_reauth
 from pymongo.synchronous.network import command, receive_message
 
 if TYPE_CHECKING:
@@ -206,11 +209,6 @@ def _raise_connection_failure(
         raise NetworkTimeout(msg) from error
     else:
         raise AutoReconnect(msg) from error
-
-
-def _cond_wait(condition: threading.Condition, deadline: Optional[float]) -> bool:
-    timeout = deadline - time.monotonic() if deadline else None
-    return condition.wait(timeout)
 
 
 def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
@@ -704,6 +702,8 @@ class Connection:
         # shutdown.
         try:
             self.conn.close()
+        except asyncio.CancelledError:
+            raise
         except Exception:  # noqa: S110
             pass
 
@@ -812,7 +812,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         family = socket.AF_UNSPEC
 
     err = None
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+    for res in _getaddrinfo(host, port, family=family, type=socket.SOCK_STREAM):  # type: ignore[attr-defined]
         af, socktype, proto, dummy, sa = res
         # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
         # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
@@ -988,8 +988,8 @@ class Pool:
         # from the right side.
         self.conns: collections.deque = collections.deque()
         self.active_contexts: set[_CancellationContext] = set()
-        _lock = _create_lock()
-        self.lock = _Lock(_lock)
+        self.lock = _create_lock()
+        self._max_connecting_cond = _create_condition(self.lock)
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
@@ -1015,7 +1015,7 @@ class Pool:
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
-        self.size_cond = threading.Condition(_lock)
+        self.size_cond = _create_condition(self.lock)
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
@@ -1023,7 +1023,7 @@ class Pool:
         # The second portion of the wait queue.
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
-        self._max_connecting_cond = threading.Condition(_lock)
+        self._max_connecting_cond = _create_condition(self.lock)
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         self._client_id = client_id
@@ -1243,6 +1243,9 @@ class Pool:
         with self.lock:
             conn_id = self.next_connection_id
             self.next_connection_id += 1
+            # Use a temporary context so that interrupt_connections can cancel creating the socket.
+            tmp_context = _CancellationContext()
+            self.active_contexts.add(tmp_context)
 
         listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
@@ -1261,6 +1264,8 @@ class Pool:
         try:
             sock = _configured_socket(self.address, self.opts)
         except BaseException as error:
+            with self.lock:
+                self.active_contexts.discard(tmp_context)
             if self.enabled_for_cmap:
                 assert listeners is not None
                 listeners.publish_connection_closed(
@@ -1286,6 +1291,9 @@ class Pool:
         conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
         with self.lock:
             self.active_contexts.add(conn.cancel_context)
+            self.active_contexts.discard(tmp_context)
+        if tmp_context.cancelled:
+            conn.cancel_context.cancel()
         try:
             if self.handshake:
                 conn.hello()
@@ -1295,6 +1303,8 @@ class Pool:
 
             conn.authenticate()
         except BaseException:
+            with self.lock:
+                self.active_contexts.discard(conn.cancel_context)
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
@@ -1450,7 +1460,8 @@ class Pool:
         with self.size_cond:
             self._raise_if_not_ready(checkout_started_time, emit_event=True)
             while not (self.requests < self.max_pool_size):
-                if not _cond_wait(self.size_cond, deadline):
+                timeout = deadline - time.monotonic() if deadline else None
+                if not _cond_wait(self.size_cond, timeout):
                     # Timed out, notify the next thread to ensure a
                     # timeout doesn't consume the condition.
                     if self.requests < self.max_pool_size:
@@ -1473,7 +1484,8 @@ class Pool:
                 with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
                     while not (self.conns or self._pending < self._max_connecting):
-                        if not _cond_wait(self._max_connecting_cond, deadline):
+                        timeout = deadline - time.monotonic() if deadline else None
+                        if not _cond_wait(self._max_connecting_cond, timeout):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
                             if self.conns or self._pending < self._max_connecting:
