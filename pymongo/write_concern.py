@@ -74,7 +74,7 @@ class WriteConcern:
 
         if wtimeout is not None:
             if not isinstance(wtimeout, int):
-                raise TypeError("wtimeout must be an integer")
+                raise TypeError(f"wtimeout must be an integer, not {type(wtimeout)}.")
             if wtimeout < 0:
                 raise ValueError("wtimeout cannot be less than 0")
             self.__document["wtimeout"] = wtimeout
@@ -98,7 +98,7 @@ class WriteConcern:
                     raise ValueError("w cannot be less than 0")
                 self.__acknowledged = w > 0
             elif not isinstance(w, str):
-                raise TypeError("w must be an integer or string")
+                raise TypeError(f"w must be an integer or string, not {type(w)}.")
             self.__document["w"] = w
 
         self.__server_default = not self.__document

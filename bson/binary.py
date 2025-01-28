@@ -290,7 +290,7 @@ class Binary(bytes):
         subtype: int = BINARY_SUBTYPE,
     ) -> Binary:
         if not isinstance(subtype, int):
-            raise TypeError("subtype must be an instance of int")
+            raise TypeError(f"subtype must be an instance of int, not {type(subtype)}.")
         if subtype >= 256 or subtype < 0:
             raise ValueError("subtype must be contained in [0, 256)")
         # Support any type that implements the buffer protocol.
@@ -321,7 +321,7 @@ class Binary(bytes):
         .. versionadded:: 3.11
         """
         if not isinstance(uuid, UUID):
-            raise TypeError("uuid must be an instance of uuid.UUID")
+            raise TypeError(f"uuid must be an instance of uuid.UUID, not {type(uuid)}.")
 
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError(
