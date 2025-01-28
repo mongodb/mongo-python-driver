@@ -161,7 +161,7 @@ def _password_digest(username: str, password: str) -> str:
     if len(password) == 0:
         raise ValueError("password can't be empty")
     if not isinstance(username, str):
-        raise TypeError("username must be an instance of str")
+        raise TypeError(f"username must be an instance of str, not {type(username)}.")
 
     md5hash = hashlib.md5()  # noqa: S324
     data = f"{username}:mongo:{password}"

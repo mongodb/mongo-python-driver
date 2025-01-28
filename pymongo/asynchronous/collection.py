@@ -228,7 +228,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             read_concern or database.read_concern,
         )
         if not isinstance(name, str):
-            raise TypeError("name must be an instance of str")
+            raise TypeError(f"name must be an instance of str, not {type(name)}.")
         from pymongo.asynchronous.database import AsyncDatabase
 
         if not isinstance(database, AsyncDatabase):
@@ -2475,7 +2475,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             name = helpers_shared._gen_index_name(index_or_name)
 
         if not isinstance(name, str):
-            raise TypeError("index_or_name must be an instance of str or list")
+            raise TypeError(f"index_or_name must be an instance of str or list, not {type(name)}.")
 
         cmd = {"dropIndexes": self._name, "index": name}
         cmd.update(kwargs)
@@ -3078,7 +3078,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         """
         if not isinstance(new_name, str):
-            raise TypeError("new_name must be an instance of str")
+            raise TypeError(f"new_name must be an instance of str, not {type(new_name)}.")
 
         if not new_name or ".." in new_name:
             raise InvalidName("collection names cannot be empty")
@@ -3148,7 +3148,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         """
         if not isinstance(key, str):
-            raise TypeError("key must be an instance of str")
+            raise TypeError(f"key must be an instance of str, not {type(key)}.")
         cmd = {"distinct": self._name, "key": key}
         if filter is not None:
             if "query" in kwargs:
@@ -3196,7 +3196,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise ValueError(
-                "return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER"
+                f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, not {type(return_document)}."
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd = {"findAndModify": self._name, "query": filter, "new": return_document}

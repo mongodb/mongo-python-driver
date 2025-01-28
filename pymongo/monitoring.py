@@ -472,14 +472,15 @@ def _validate_event_listeners(
 ) -> Sequence[_EventListeners]:
     """Validate event listeners"""
     if not isinstance(listeners, abc.Sequence):
-        raise TypeError(f"{option} must be a list or tuple")
+        raise TypeError(f"{option} must be a list or tuple, not {type(listeners)}.")
     for listener in listeners:
         if not isinstance(listener, _EventListener):
             raise TypeError(
                 f"Listeners for {option} must be either a "
                 "CommandListener, ServerHeartbeatListener, "
                 "ServerListener, TopologyListener, or "
-                "ConnectionPoolListener."
+                "ConnectionPoolListener,"
+                f"not {type(listener)}."
             )
     return listeners
 
@@ -496,7 +497,8 @@ def register(listener: _EventListener) -> None:
             f"Listeners for {listener} must be either a "
             "CommandListener, ServerHeartbeatListener, "
             "ServerListener, TopologyListener, or "
-            "ConnectionPoolListener."
+            "ConnectionPoolListener,"
+            f"not {type(listener)}."
         )
     if isinstance(listener, CommandListener):
         _LISTENERS.command_listeners.append(listener)

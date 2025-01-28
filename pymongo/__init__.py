@@ -160,7 +160,7 @@ def timeout(seconds: Optional[float]) -> ContextManager[None]:
     .. versionadded:: 4.2
     """
     if not isinstance(seconds, (int, float, type(None))):
-        raise TypeError("timeout must be None, an int, or a float")
+        raise TypeError(f"timeout must be None, an int, or a float, not {type(seconds)}.")
     if seconds and seconds < 0:
         raise ValueError("timeout cannot be negative")
     if seconds is not None:
