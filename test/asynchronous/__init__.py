@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import gc
+import inspect
 import logging
 import multiprocessing
 import os
@@ -900,19 +901,34 @@ class AsyncPyMongoTestCase(unittest.TestCase):
         def addAsyncCleanup(self, func, /, *args, **kwargs):
             self.addCleanup(*(func, *args), **kwargs)
 
-        def run(self, result=None):
-            if result is None:
-                result = self.defaultTestResult()
-            result.startTest(self)
+        def _callSetUp(self):
+            self._callAsync(self.asyncSetUp)
 
-            try:
-                self.setUp()
-                self.loop.run_until_complete(self.asyncSetUp())
-                self.loop.run_until_complete(getattr(self, self._testMethodName)())
-                self.loop.run_until_complete(self.asyncTearDown())
-            finally:
-                self.tearDown()
-                result.stopTest(self)
+        def _callTestMethod(self, method):
+            if self._callMaybeAsync(method) is not None:
+                warnings.warn(
+                    f"It is deprecated to return a value that is not None from a "
+                    f"test case ({method})",
+                    DeprecationWarning,
+                    stacklevel=4,
+                )
+
+        def _callTearDown(self):
+            self._callAsync(self.asyncTearDown)
+            self.tearDown()
+
+        def _callCleanup(self, function, *args, **kwargs):
+            self._callMaybeAsync(function, *args, **kwargs)
+
+        def _callAsync(self, func, /, *args, **kwargs):
+            assert inspect.iscoroutinefunction(func), f"{func!r} is not an async function"
+            return self.loop.run_until_complete(func(*args, **kwargs))
+
+        def _callMaybeAsync(self, func, /, *args, **kwargs):
+            if inspect.iscoroutinefunction(func):
+                return self.loop.run_until_complete(func(*args, **kwargs))
+            else:
+                return func(*args, **kwargs)
 
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)
