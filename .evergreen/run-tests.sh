@@ -64,7 +64,7 @@ TEST_ARGS=${TEST_ARGS}
 if [ "$#" -ne 0 ]; then
     TEST_ARGS="$*"
 fi
-echo "Running tests with $TEST_ARGS..."
+echo "Running tests with $TEST_ARGS and uv args $UV_ARGS..."
 if [ -z "${GREEN_FRAMEWORK:-}" ]; then
     # shellcheck disable=SC2048
     uv run ${UV_ARGS} pytest $TEST_ARGS
