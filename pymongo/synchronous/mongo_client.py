@@ -1414,6 +1414,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         raise TypeError("'MongoClient' object is not iterable")
 
     next = __next__
+    if not _IS_SYNC:
+        next = next
+        __next__ = next
 
     def _server_property(self, attr_name: str) -> Any:
         """An attribute of the current server's description.

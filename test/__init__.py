@@ -15,9 +15,7 @@
 """Synchronous test suite for pymongo, bson, and gridfs."""
 from __future__ import annotations
 
-import asyncio
 import gc
-import logging
 import multiprocessing
 import os
 import signal
@@ -26,7 +24,6 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
@@ -518,6 +515,12 @@ class ClientContext:
             func=func,
         )
 
+    @property
+    def is_not_mmap(self):
+        if self.is_mongos:
+            return True
+        return self.storage_engine != "mmapv1"
+
     def require_no_mmap(self, func):
         """Run a test only if the server is not using the MMAPv1 storage
         engine. Only works for standalone and replica sets; tests are
@@ -571,6 +574,10 @@ class ClientContext:
         """Run a test only if the client is connected to a replica set."""
         return self._require(lambda: self.is_rs, "Not connected to a replica set", func=func)
 
+    @property
+    def secondaries_count(self):
+        return 0 if not self.client else len(self.client.secondaries)
+
     def require_secondaries_count(self, count):
         """Run a test only if the client is connected to a replica set that has
         `count` secondaries.
@@ -589,7 +596,7 @@ class ClientContext:
         if self.has_secondaries:
             return True
         if self.is_mongos:
-            shard = self.client.config.shards.find_one()["host"]  # type:ignore[index]
+            shard = (self.client.config.shards.find_one())["host"]  # type:ignore[index]
             num_members = shard.count(",") + 1
             return num_members > 1
         return False
@@ -872,6 +879,18 @@ def reset_client_context():
         client_context.client.close()
         client_context.client = None
     client_context._init_client()
+
+
+class PyMongoTestCasePyTest:
+    @contextmanager
+    def fail_point(self, client, command_args):
+        cmd_on = SON([("configureFailPoint", "failCommand")])
+        cmd_on.update(command_args)
+        client.admin.command(cmd_on)
+        try:
+            yield
+        finally:
+            client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
 
 
 class PyMongoTestCase(unittest.TestCase):

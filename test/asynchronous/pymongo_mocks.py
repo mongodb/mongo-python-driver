@@ -166,7 +166,8 @@ class AsyncMockClient(AsyncMongoClient):
             standalones, members, mongoses, hello_hosts, arbiters, down_hosts, *args, **kwargs
         )
 
-        await c.aconnect()
+        if kwargs.get("connect", True):
+            await c.aconnect()
         return c
 
     def kill_host(self, host):

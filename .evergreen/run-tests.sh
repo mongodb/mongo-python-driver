@@ -31,7 +31,7 @@ set -o xtrace
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 TEST_SUITES=${TEST_SUITES:-}
-TEST_ARGS="${*:1}"
+TEST_ARGS=("${*:1}")
 
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
@@ -206,6 +206,7 @@ if [ -n "$TEST_INDEX_MANAGEMENT" ]; then
     TEST_SUITES="index_management"
 fi
 
+# shellcheck disable=SC2128
 if [ -n "$TEST_DATA_LAKE" ] && [ -z "$TEST_ARGS" ]; then
     TEST_SUITES="data_lake"
 fi
@@ -235,7 +236,7 @@ if [ -n "$PERF_TEST" ]; then
     TEST_SUITES="perf"
     # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
     # affects the benchmark results.
-    TEST_ARGS="test/performance/perf_test.py $TEST_ARGS"
+    TEST_ARGS+=("test/performance/perf_test.py")
 fi
 
 echo "Running $AUTH tests over $SSL with python $(uv python find)"
@@ -251,7 +252,7 @@ if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     # Keep in sync with combine-coverage.sh.
     # coverage >=5 is needed for relative_files=true.
     UV_ARGS+=("--group coverage")
-    TEST_ARGS="$TEST_ARGS --cov"
+    TEST_ARGS+=("--cov")
 fi
 
 if [ -n "$GREEN_FRAMEWORK" ]; then
@@ -265,15 +266,37 @@ PIP_QUIET=0 uv run ${UV_ARGS[*]} --with pip pip list
 if [ -z "$GREEN_FRAMEWORK" ]; then
     # Use --capture=tee-sys so pytest prints test output inline:
     # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
-    PYTEST_ARGS="-v --capture=tee-sys --durations=5 $TEST_ARGS"
+    PYTEST_ARGS=("-v" "--capture=tee-sys" "--durations=5" "${TEST_ARGS[@]}")
     if [ -n "$TEST_SUITES" ]; then
-      PYTEST_ARGS="-m $TEST_SUITES $PYTEST_ARGS"
+      # Workaround until unittest -> pytest conversion is complete
+      if [[ "$TEST_SUITES" == *"default_async"* ]]; then
+        ASYNC_PYTEST_ARGS=("-m asyncio" "--junitxml=xunit-results/TEST-asyncresults.xml" "${PYTEST_ARGS[@]}")
+      else
+        ASYNC_PYTEST_ARGS=("-m asyncio and $TEST_SUITES" "--junitxml=xunit-results/TEST-asyncresults.xml" "${PYTEST_ARGS[@]}")
+      fi
+      PYTEST_ARGS=("-m $TEST_SUITES and not asyncio" "${PYTEST_ARGS[@]}")
+    else
+      ASYNC_PYTEST_ARGS=("-m asyncio" "--junitxml=xunit-results/TEST-asyncresults.xml" "${PYTEST_ARGS[@]}")
     fi
+    # Workaround until unittest -> pytest conversion is complete
+    set +o errexit
     # shellcheck disable=SC2048
-    uv run ${UV_ARGS[*]} pytest $PYTEST_ARGS
+    uv run ${UV_ARGS[*]} pytest "${PYTEST_ARGS[@]}"
+    exit_code=$?
+
+    # shellcheck disable=SC2048
+    uv run ${UV_ARGS[*]} pytest "${ASYNC_PYTEST_ARGS[@]}"
+    async_exit_code=$?
+    set -o errexit
+    if [ $async_exit_code -ne 5 ] && [ $async_exit_code -ne 0 ]; then
+      exit $async_exit_code
+    fi
+    if [ $exit_code -ne 0 ]; then
+      exit $exit_code
+    fi
 else
     # shellcheck disable=SC2048
-    uv run ${UV_ARGS[*]} green_framework_test.py $GREEN_FRAMEWORK -v $TEST_ARGS
+    uv run ${UV_ARGS[*]} green_framework_test.py $GREEN_FRAMEWORK -v "${TEST_ARGS[@]}"
 fi
 
 # Handle perf test post actions.
