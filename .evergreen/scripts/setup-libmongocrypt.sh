@@ -45,3 +45,8 @@ mkdir libmongocrypt
 tar xzf libmongocrypt.tar.gz -C ./libmongocrypt
 ls -la libmongocrypt
 ls -la libmongocrypt/nocrypto
+
+if [ "Windows_NT" = "${OS:-''}" ]; then
+    # libmongocrypt's windows dll is not marked executable.
+    chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll
+fi

@@ -230,8 +230,6 @@ def handle_test_env() -> None:
             PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.dylib"
         else:
             PYMONGOCRYPT_LIB = BASE / "bin/mongocrypt.dll"
-            # libmongocrypt's windows dll is not marked executable.
-            PYMONGOCRYPT_LIB.chmod(PYMONGOCRYPT_LIB.stat().st_mode | stat.S_IEXEC)
         if not PYMONGOCRYPT_LIB.exists():
             raise RuntimeError("Cannot find libmongocrypt shared object file")
         write_env("PYMONGOCRYPT_LIB", PYMONGOCRYPT_LIB.as_posix())
