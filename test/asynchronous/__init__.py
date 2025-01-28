@@ -882,7 +882,8 @@ async def reset_client_context():
 
 class AsyncPyMongoTestCase(unittest.TestCase):
     if not _IS_SYNC:
-        # Customize async TestCase to use a single event loop for all tests.
+        # An async TestCase that uses a single event loop for all tests.
+        # Inspired by IsolatedAsyncioTestCase.
         def __init__(self, methodName="runTest"):
             super().__init__(methodName)
             try:
@@ -902,16 +903,11 @@ class AsyncPyMongoTestCase(unittest.TestCase):
             self.addCleanup(*(func, *args), **kwargs)
 
         def _callSetUp(self):
+            self.setUp()
             self._callAsync(self.asyncSetUp)
 
         def _callTestMethod(self, method):
-            if self._callMaybeAsync(method) is not None:
-                warnings.warn(
-                    f"It is deprecated to return a value that is not None from a "
-                    f"test case ({method})",
-                    DeprecationWarning,
-                    stacklevel=4,
-                )
+            self._callMaybeAsync(method)
 
         def _callTearDown(self):
             self._callAsync(self.asyncTearDown)
