@@ -337,7 +337,7 @@ class AsyncTestCMAP(AsyncIntegrationTest):
 
     async def test_3_uri_connection_pool_options(self):
         opts = "&".join([f"{k}={v}" for k, v in self.POOL_OPTIONS.items()])
-        uri = f"mongodb://{async_client_context.pair}/?{opts}"
+        uri = f"mongodb://{await async_client_context.pair}/?{opts}"
         client = await self.async_rs_or_single_client(uri)
         self.addAsyncCleanup(client.close)
         pool_opts = (await async_get_pool(client)).opts
@@ -378,7 +378,7 @@ class AsyncTestCMAP(AsyncIntegrationTest):
 
         pool.connect = mock_connect
         # Un-patch Pool.connect to break the cyclic reference.
-        self.addAsyncCleanup(delattr, pool, "connect")
+        self.addCleanup(delattr, pool, "connect")
 
         # Attempt to create a new connection.
         with self.assertRaisesRegex(ConnectionFailure, "connect failed"):
