@@ -165,7 +165,7 @@ class MockClient(MongoClient):
             standalones, members, mongoses, hello_hosts, arbiters, down_hosts, *args, **kwargs
         )
 
-        if "connect" not in kwargs or "connect" in kwargs and kwargs["connect"]:
+        if kwargs.get("connect", True):
             c._connect()
         return c
 

@@ -2393,7 +2393,16 @@ class TestClientLazyConnect:
 
     @pytest.fixture
     def _get_client(self, async_rs_or_single_client):
-        return async_rs_or_single_client(connect=False)
+        clients = []
+
+        def _make_client():
+            client = async_rs_or_single_client(connect=False)
+            clients.append(client)
+            return client
+
+        yield _make_client
+        for client in clients:
+            client.close()
 
     def test_insert_one(self, _get_client, async_client_context_fixture):
         def reset(collection):

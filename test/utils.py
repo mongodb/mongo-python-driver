@@ -811,7 +811,7 @@ def frequent_thread_switches():
         sys.setswitchinterval(interval)
 
 
-def lazy_client_trial(reset, target, test, client, client_context):
+def lazy_client_trial(reset, target, test, get_client, client_context):
     """Test concurrent operations on a lazily-connecting client.
 
     `reset` takes a collection and resets it for the next trial.
@@ -827,7 +827,7 @@ def lazy_client_trial(reset, target, test, client, client_context):
     with frequent_thread_switches():
         for _i in range(NTRIALS):
             reset(collection)
-            lazy_client = client
+            lazy_client = get_client()
             lazy_collection = lazy_client.pymongo_test.test
             run_threads(lazy_collection, target)
             test(lazy_collection)

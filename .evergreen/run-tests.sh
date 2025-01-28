@@ -285,13 +285,11 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     exit_code=$?
 
     # shellcheck disable=SC2048
-    uv run ${UV_ARGS[*]} pytest "${ASYNC_PYTEST_ARGS[@]}" "--collect-only"
-    collected=$?
+    uv run ${UV_ARGS[*]} pytest "${ASYNC_PYTEST_ARGS[@]}"
+    async_exit_code=$?
     set -o errexit
-    # If we collected at least one async test, run all collected tests
-    if [ $collected -ne 5 ]; then
-      # shellcheck disable=SC2048
-      uv run ${UV_ARGS[*]} pytest "${ASYNC_PYTEST_ARGS[@]}"
+    if [ $async_exit_code -ne 5 ] && [ $async_exit_code -ne 0 ]; then
+      exit $async_exit_code
     fi
     if [ $exit_code -ne 0 ]; then
       exit $exit_code
