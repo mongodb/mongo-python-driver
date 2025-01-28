@@ -887,7 +887,10 @@ class AsyncPyMongoTestCase(unittest.TestCase):
         def __init__(self, methodName="runTest"):
             super().__init__(methodName)
             try:
-                self.loop = asyncio.get_event_loop()
+                with warnings.catch_warnings():
+                    # Ignore DeprecationWarning: There is no current event loop
+                    warnings.simplefilter("ignore", DeprecationWarning)
+                    self.loop = asyncio.get_event_loop()
             except RuntimeError:
                 self.loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(self.loop)
