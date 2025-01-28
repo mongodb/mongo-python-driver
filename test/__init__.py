@@ -30,6 +30,33 @@ import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
+
+from pymongo.uri_parser import parse_uri
+
+try:
+    import ipaddress
+
+    HAVE_IPADDRESS = True
+except ImportError:
+    HAVE_IPADDRESS = False
+from contextlib import contextmanager
+from functools import partial, wraps
+from typing import Any, Callable, Dict, Generator, overload
+from unittest import SkipTest
+from urllib.parse import quote_plus
+
+import pymongo
+import pymongo.errors
+from bson.son import SON
+from pymongo.common import partition_node
+from pymongo.hello import HelloCompat
+from pymongo.server_api import ServerApi
+from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
+from pymongo.synchronous.database import Database
+from pymongo.synchronous.mongo_client import MongoClient
+
+sys.path[0:0] = [""]
+
 from test.helpers import (
     COMPRESSORS,
     IS_SRV,
@@ -52,31 +79,7 @@ from test.helpers import (
     sanitize_cmd,
     sanitize_reply,
 )
-
-from pymongo.uri_parser import parse_uri
-
-try:
-    import ipaddress
-
-    HAVE_IPADDRESS = True
-except ImportError:
-    HAVE_IPADDRESS = False
-from contextlib import contextmanager
-from functools import partial, wraps
 from test.version import Version
-from typing import Any, Callable, Dict, Generator, overload
-from unittest import SkipTest
-from urllib.parse import quote_plus
-
-import pymongo
-import pymongo.errors
-from bson.son import SON
-from pymongo.common import partition_node
-from pymongo.hello import HelloCompat
-from pymongo.server_api import ServerApi
-from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
-from pymongo.synchronous.database import Database
-from pymongo.synchronous.mongo_client import MongoClient
 
 _IS_SYNC = True
 
@@ -875,6 +878,40 @@ def reset_client_context():
 
 
 class PyMongoTestCase(unittest.TestCase):
+    if not _IS_SYNC:
+        # Customize async TestCase to use a single event loop for all tests.
+        def __init__(self, methodName="runTest"):
+            super().__init__(methodName)
+            try:
+                self.loop = asyncio.get_event_loop()
+            except RuntimeError:
+                self.loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self.loop)
+
+        def setUp(self):
+            pass
+
+        def tearDown(self):
+            pass
+
+        # See TestCase.addCleanup.
+        def addCleanup(self, func, /, *args, **kwargs):
+            self.addCleanup(*(func, *args), **kwargs)
+
+        def run(self, result=None):
+            if result is None:
+                result = self.defaultTestResult()
+            result.startTest(self)
+
+            try:
+                self.setUp()
+                self.loop.run_until_complete(self.setUp())
+                self.loop.run_until_complete(getattr(self, self._testMethodName)())
+                self.loop.run_until_complete(self.tearDown())
+            finally:
+                self.tearDown()
+                result.stopTest(self)
+
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)
 
