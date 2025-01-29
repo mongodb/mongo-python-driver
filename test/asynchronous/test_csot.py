@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes
 
 import pymongo
 from pymongo import _csot
