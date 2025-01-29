@@ -23,48 +23,48 @@ import pytest
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, UnitTest, client_context, unittest
-from test.unified_format import generate_test_classes
+from test.asynchronous import AsyncIntegrationTest, AsyncUnitTest, async_client_context, unittest
+from test.asynchronous.unified_format import generate_test_classes
 from test.utils import (
     OvertCommandListener,
 )
 
-from pymongo.synchronous.helpers import next
+from pymongo.asynchronous.helpers import anext
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 pytestmark = pytest.mark.data_lake
 
 
-class TestDataLakeMustConnect(UnitTest):
-    def test_connected_to_data_lake(self):
+class TestDataLakeMustConnect(AsyncUnitTest):
+    async def test_connected_to_data_lake(self):
         data_lake = os.environ.get("TEST_DATA_LAKE")
         if not data_lake:
             self.skipTest("TEST_DATA_LAKE is not set")
 
         self.assertTrue(
-            client_context.is_data_lake and client_context.connected,
+            async_client_context.is_data_lake and async_client_context.connected,
             "client context must be connected to data lake when DATA_LAKE is set. Failed attempts:\n{}".format(
-                client_context.connection_attempt_info()
+                async_client_context.connection_attempt_info()
             ),
         )
 
 
-class TestDataLakeProse(IntegrationTest):
+class TestDataLakeProse(AsyncIntegrationTest):
     # Default test database and collection names.
     TEST_DB = "test"
     TEST_COLLECTION = "driverdata"
 
-    @client_context.require_data_lake
-    def setUp(self):
-        super().setUp()
+    @async_client_context.require_data_lake
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
 
     # Test killCursors
-    def test_1(self):
+    async def test_1(self):
         listener = OvertCommandListener()
-        client = self.rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         cursor = client[self.TEST_DB][self.TEST_COLLECTION].find({}, batch_size=2)
-        next(cursor)
+        await anext(cursor)
 
         # find command assertions
         find_cmd = listener.succeeded_events[-1]
@@ -73,7 +73,7 @@ class TestDataLakeProse(IntegrationTest):
         cursor_ns = find_cmd.reply["cursor"]["ns"]
 
         # killCursors command assertions
-        cursor.close()
+        await cursor.close()
         started = listener.started_events[-1]
         self.assertEqual(started.command_name, "killCursors")
         succeeded = listener.succeeded_events[-1]
@@ -86,15 +86,15 @@ class TestDataLakeProse(IntegrationTest):
         self.assertIn(cursor_id, succeeded.reply["cursorsKilled"])
 
     # Test no auth
-    def test_2(self):
-        client = self.rs_client_noauth()
-        client.admin.command("ping")
+    async def test_2(self):
+        client = await self.async_rs_client_noauth()
+        await client.admin.command("ping")
 
     # Test with auth
-    def test_3(self):
+    async def test_3(self):
         for mechanism in ["SCRAM-SHA-1", "SCRAM-SHA-256"]:
-            client = self.rs_or_single_client(authMechanism=mechanism)
-            client[self.TEST_DB][self.TEST_COLLECTION].find_one()
+            client = await self.async_rs_or_single_client(authMechanism=mechanism)
+            await client[self.TEST_DB][self.TEST_COLLECTION].find_one()
 
 
 # Location of JSON test specifications.

@@ -203,6 +203,7 @@ converted_tests = [
     "test_crud_unified.py",
     "test_cursor.py",
     "test_database.py",
+    "test_data_lake.py",
     "test_encryption.py",
     "test_grid_file.py",
     "test_logger.py",
