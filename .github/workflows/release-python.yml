@@ -14,7 +14,7 @@ on:
         default: false
         type: boolean
   schedule:
-    - cron:  '30 5 * * *'
+    - cron:  '*/5 * * * *'
   pull_request:
 
 env:
@@ -42,10 +42,6 @@ jobs:
     outputs:
       version: ${{ steps.pre-publish.outputs.version }}
     steps:
-      - run: |
-          echo "DRY RUN? ${{ env.DRY_RUN}}"
-          echo "INPUTS? ${{inputs.dry_run}}"
-          exit 1
       - uses: mongodb-labs/drivers-github-tools/secure-checkout@v2
         with:
           app_id: ${{ vars.APP_ID }}
