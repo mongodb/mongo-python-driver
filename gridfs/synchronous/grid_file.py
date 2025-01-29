@@ -100,7 +100,7 @@ class GridFS:
         .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
         """
         if not isinstance(database, Database):
-            raise TypeError("database must be an instance of Database")
+            raise TypeError(f"database must be an instance of Database, not {type(database)}.")
 
         database = _clear_entity_type_registry(database)
 
@@ -501,7 +501,7 @@ class GridFSBucket:
         .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
         """
         if not isinstance(db, Database):
-            raise TypeError("database must be an instance of Database")
+            raise TypeError(f"database must be an instance of Database, not {type(db)}.")
 
         db = _clear_entity_type_registry(db)
 
@@ -1076,7 +1076,9 @@ class GridIn:
            :attr:`~pymongo.collection.Collection.write_concern`
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an instance of Collection")
+            raise TypeError(
+                f"root_collection must be an instance of Collection, not {type(root_collection)}."
+            )
 
         if not root_collection.write_concern.acknowledged:
             raise ConfigurationError("root_collection must use acknowledged write_concern")
@@ -1426,7 +1428,9 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
            from the server. Metadata is fetched when first needed.
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an instance of Collection")
+            raise TypeError(
+                f"root_collection must be an instance of Collection, not {type(root_collection)}."
+            )
         _disallow_transactions(session)
 
         root_collection = _clear_entity_type_registry(root_collection)
