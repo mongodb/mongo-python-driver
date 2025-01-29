@@ -16,8 +16,8 @@
 from __future__ import annotations
 
 import os
-import pathlib
 import sys
+from pathlib import Path
 
 sys.path[0:0] = [""]
 
@@ -32,9 +32,9 @@ _IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
-    TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "csot")
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "csot")
 else:
-    TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "csot")
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "csot")
 
 # Generate unified tests.
 globals().update(generate_test_classes(TEST_PATH, module=__name__))
