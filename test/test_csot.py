@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import os
+import pathlib
 import sys
 
 sys.path[0:0] = [""]
@@ -30,7 +31,10 @@ from pymongo.errors import PyMongoError
 _IS_SYNC = True
 
 # Location of JSON test specifications.
-TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "csot")
+if _IS_SYNC:
+    TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "csot")
+else:
+    TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "csot")
 
 # Generate unified tests.
 globals().update(generate_test_classes(TEST_PATH, module=__name__))
