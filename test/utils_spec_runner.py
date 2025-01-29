@@ -113,7 +113,8 @@ else:
             self.task = asyncio.create_task(self.run(), name=self.name)
 
         def join(self, timeout: int = 0):
-            asyncio.wait([self.task], timeout=timeout)
+            if self.task is not None:
+                asyncio.wait([self.task], timeout=timeout)
 
         def is_alive(self):
             return not self.stopped
