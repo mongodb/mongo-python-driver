@@ -43,7 +43,7 @@ jobs:
       version: ${{ steps.pre-publish.outputs.version }}
     steps:
       - run: |
-          env
+          echo "DRY RUN? ${{ env.DRY_RUN}}"
           echo "INPUTS? ${{inputs.dry_run}}"
           exit 1
       - uses: mongodb-labs/drivers-github-tools/secure-checkout@v2
