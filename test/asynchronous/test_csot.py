@@ -103,7 +103,7 @@ class TestCSOT(AsyncIntegrationTest):
                 await stream.try_next()
             await coll.insert_one({})
             with pymongo.timeout(10):
-                self.assertTrue(stream.next())
+                self.assertTrue(await stream.next())
             self.assertTrue(stream.alive)
             # Timeout applies to entire next() call, not only individual commands.
             with pymongo.timeout(0.5):
