@@ -15,6 +15,7 @@ on:
         type: boolean
   schedule:
     - cron:  '30 5 * * *'
+  pull_request:
 
 env:
   # Changes per repo
@@ -41,6 +42,9 @@ jobs:
     outputs:
       version: ${{ steps.pre-publish.outputs.version }}
     steps:
+      - run: |
+          env
+          exit 1
       - uses: mongodb-labs/drivers-github-tools/secure-checkout@v2
         with:
           app_id: ${{ vars.APP_ID }}
@@ -85,14 +89,12 @@ jobs:
           name: all-dist-${{ github.run_id }}
           path: dist/
       - name: Publish package distributions to TestPyPI
+        if: startsWith(env.DRY_RUN, 'false')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
           skip-existing: true
           attestations: ${{ env.DRY_RUN }}
-      - name: Publish package distributions to PyPI
-        if: startsWith(env.DRY_RUN, 'false')
-        uses: pypa/gh-action-pypi-publish@release/v1
 
   post-publish:
     needs: [publish]
