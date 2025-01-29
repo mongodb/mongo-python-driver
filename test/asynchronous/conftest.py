@@ -22,7 +22,7 @@ def event_loop_policy():
     return asyncio.get_event_loop_policy()
 
 
-@pytest_asyncio.fixture(scope="package", autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True)
 async def test_setup_and_teardown():
     await async_setup()
     yield

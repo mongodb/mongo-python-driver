@@ -872,25 +872,6 @@ class PyMongoTestCase(unittest.TestCase):
     if not _IS_SYNC:
         # An async TestCase that uses a single event loop for all tests.
         # Inspired by TestCase.
-        def __init__(self, methodName="runTest"):
-            super().__init__(methodName)
-            self._loop = None
-
-        @property
-        def loop(self):
-            if self._loop:
-                return self._loop
-            try:
-                with warnings.catch_warnings():
-                    # Ignore DeprecationWarning: There is no current event loop
-                    warnings.simplefilter("ignore", DeprecationWarning)
-                    loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-            self._loop = loop
-            return loop
-
         def setUp(self):
             pass
 
@@ -917,11 +898,11 @@ class PyMongoTestCase(unittest.TestCase):
 
         def _callAsync(self, func, /, *args, **kwargs):
             assert inspect.iscoroutinefunction(func), f"{func!r} is not an async function"
-            return self.loop.run_until_complete(func(*args, **kwargs))
+            return get_loop().run_until_complete(func(*args, **kwargs))
 
         def _callMaybeAsync(self, func, /, *args, **kwargs):
             if inspect.iscoroutinefunction(func):
-                return self.loop.run_until_complete(func(*args, **kwargs))
+                return get_loop().run_until_complete(func(*args, **kwargs))
             else:
                 return func(*args, **kwargs)
 
@@ -1233,7 +1214,31 @@ class MockClientTest(UnitTest):
         super().tearDown()
 
 
+LOOP = None
+
+
+def get_loop() -> asyncio.AbstractEventLoop:
+    global LOOP
+    if LOOP is None:
+        try:
+            LOOP = asyncio.get_running_loop()
+        except RuntimeError:
+            # no running event loop, fallback to get_event_loop.
+            try:
+                # Ignore DeprecationWarning: There is no current event loop
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", DeprecationWarning)
+                    LOOP = asyncio.get_event_loop()
+            except RuntimeError:
+                LOOP = asyncio.new_event_loop()
+                asyncio.set_event_loop(LOOP)
+    return LOOP
+
+
 def setup():
+    if not _IS_SYNC:
+        global LOOP
+        LOOP = asyncio.get_running_loop()
     client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")
