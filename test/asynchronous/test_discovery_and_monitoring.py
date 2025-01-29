@@ -138,7 +138,7 @@ def get_type(topology, hostname):
     return description.server_type
 
 
-class TestAllScenarios(unittest.IsolatedAsyncioTestCase):
+class TestAllScenarios(AsyncUnitTest):
     pass
 
 
