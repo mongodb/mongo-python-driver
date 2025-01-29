@@ -85,9 +85,9 @@ OBJECT_TYPES = {
 class TestCMAP(IntegrationTest):
     # Location of JSON test specifications.
     if _IS_SYNC:
-        _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "connection_monitoring")
+        TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "connection_monitoring")
     else:
-        _TEST_PATH = os.path.join(
+        TEST_PATH = os.path.join(
             pathlib.Path(__file__).resolve().parent.parent, "connection_monitoring"
         )
 
