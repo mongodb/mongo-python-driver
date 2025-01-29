@@ -202,6 +202,7 @@ converted_tests = [
     "test_create_entities.py",
     "test_crud_unified.py",
     "test_cursor.py",
+    "test_custom_types.py",
     "test_database.py",
     "test_data_lake.py",
     "test_encryption.py",

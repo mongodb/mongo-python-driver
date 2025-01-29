@@ -23,11 +23,11 @@ from decimal import Decimal
 from random import random
 from typing import Any, Tuple, Type, no_type_check
 
-from gridfs.synchronous.grid_file import GridIn, GridOut
+from gridfs.asynchronous.grid_file import AsyncGridIn, AsyncGridOut
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 
 from bson import (
     _BUILT_IN_TYPES,
@@ -51,12 +51,12 @@ from bson.codec_options import (
 from bson.errors import InvalidDocument
 from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
+from pymongo.asynchronous.collection import ReturnDocument
+from pymongo.asynchronous.helpers import anext
 from pymongo.errors import DuplicateKeyError
 from pymongo.message import _CursorAddress
-from pymongo.synchronous.collection import ReturnDocument
-from pymongo.synchronous.helpers import next
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
 class DecimalEncoder(TypeEncoder):
@@ -634,49 +634,49 @@ class TestTypeRegistry(unittest.TestCase):
         run_test(TypeCodec, {"bson_type": Decimal128, "transform_bson": lambda x: x})
 
 
-class TestCollectionWCustomType(IntegrationTest):
-    def setUp(self):
-        super().setUp()
-        self.db.test.drop()
+class TestCollectionWCustomType(AsyncIntegrationTest):
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await self.db.test.drop()
 
-    def tearDown(self):
-        self.db.test.drop()
+    async def asyncTearDown(self):
+        await self.db.test.drop()
 
-    def test_overflow_int_w_custom_decoder(self):
+    async def test_overflow_int_w_custom_decoder(self):
         type_registry = TypeRegistry(fallback_encoder=lambda val: str(val))
         codec_options = CodecOptions(type_registry=type_registry)
         collection = self.db.get_collection("test", codec_options=codec_options)
 
-        collection.insert_one({"_id": 1, "data": 2**520})
-        ret = collection.find_one()
+        await collection.insert_one({"_id": 1, "data": 2**520})
+        ret = await collection.find_one()
         self.assertEqual(ret["data"], str(2**520))
 
-    def test_command_errors_w_custom_type_decoder(self):
+    async def test_command_errors_w_custom_type_decoder(self):
         db = self.db
         test_doc = {"_id": 1, "data": "a"}
         test = db.get_collection("test", codec_options=UNINT_DECODER_CODECOPTS)
 
-        result = test.insert_one(test_doc)
+        result = await test.insert_one(test_doc)
         self.assertEqual(result.inserted_id, test_doc["_id"])
         with self.assertRaises(DuplicateKeyError):
-            test.insert_one(test_doc)
+            await test.insert_one(test_doc)
 
-    def test_find_w_custom_type_decoder(self):
+    async def test_find_w_custom_type_decoder(self):
         db = self.db
         input_docs = [{"x": Int64(k)} for k in [1, 2, 3]]
         for doc in input_docs:
-            db.test.insert_one(doc)
+            await db.test.insert_one(doc)
 
         test = db.get_collection("test", codec_options=UNINT_DECODER_CODECOPTS)
-        for doc in test.find({}, batch_size=1):
+        async for doc in test.find({}, batch_size=1):
             self.assertIsInstance(doc["x"], UndecipherableInt64Type)
 
-    def test_find_w_custom_type_decoder_and_document_class(self):
-        def run_test(doc_cls):
+    async def test_find_w_custom_type_decoder_and_document_class(self):
+        async def run_test(doc_cls):
             db = self.db
             input_docs = [{"x": Int64(k)} for k in [1, 2, 3]]
             for doc in input_docs:
-                db.test.insert_one(doc)
+                await db.test.insert_one(doc)
 
             test = db.get_collection(
                 "test",
@@ -684,16 +684,16 @@ class TestCollectionWCustomType(IntegrationTest):
                     type_registry=TypeRegistry([UndecipherableIntDecoder()]), document_class=doc_cls
                 ),
             )
-            for doc in test.find({}, batch_size=1):
+            async for doc in test.find({}, batch_size=1):
                 self.assertIsInstance(doc, doc_cls)
                 self.assertIsInstance(doc["x"], UndecipherableInt64Type)
 
         for doc_cls in [RawBSONDocument, OrderedDict]:
-            run_test(doc_cls)
+            await run_test(doc_cls)
 
-    def test_aggregate_w_custom_type_decoder(self):
+    async def test_aggregate_w_custom_type_decoder(self):
         db = self.db
-        db.test.insert_many(
+        await db.test.insert_many(
             [
                 {"status": "in progress", "qty": Int64(1)},
                 {"status": "complete", "qty": Int64(10)},
@@ -708,15 +708,15 @@ class TestCollectionWCustomType(IntegrationTest):
             {"$match": {"status": "complete"}},
             {"$group": {"_id": "$status", "total_qty": {"$sum": "$qty"}}},
         ]
-        result = test.aggregate(pipeline)
+        result = await test.aggregate(pipeline)
 
-        res = (result.to_list())[0]
+        res = (await result.to_list())[0]
         self.assertEqual(res["_id"], "complete")
         self.assertIsInstance(res["total_qty"], UndecipherableInt64Type)
         self.assertEqual(res["total_qty"].value, 20)
 
-    def test_distinct_w_custom_type(self):
-        self.db.drop_collection("test")
+    async def test_distinct_w_custom_type(self):
+        await self.db.drop_collection("test")
 
         test = self.db.get_collection("test", codec_options=UNINT_CODECOPTS)
         values = [
@@ -725,23 +725,23 @@ class TestCollectionWCustomType(IntegrationTest):
             UndecipherableInt64Type(3),
             {"b": UndecipherableInt64Type(3)},
         ]
-        test.insert_many({"a": val} for val in values)
+        await test.insert_many({"a": val} for val in values)
 
-        self.assertEqual(values, test.distinct("a"))
+        self.assertEqual(values, await test.distinct("a"))
 
-    def test_find_one_and__w_custom_type_decoder(self):
+    async def test_find_one_and__w_custom_type_decoder(self):
         db = self.db
         c = db.get_collection("test", codec_options=UNINT_DECODER_CODECOPTS)
-        c.insert_one({"_id": 1, "x": Int64(1)})
+        await c.insert_one({"_id": 1, "x": Int64(1)})
 
-        doc = c.find_one_and_update(
+        doc = await c.find_one_and_update(
             {"_id": 1}, {"$inc": {"x": 1}}, return_document=ReturnDocument.AFTER
         )
         self.assertEqual(doc["_id"], 1)
         self.assertIsInstance(doc["x"], UndecipherableInt64Type)
         self.assertEqual(doc["x"].value, 2)
 
-        doc = c.find_one_and_replace(
+        doc = await c.find_one_and_replace(
             {"_id": 1}, {"x": Int64(3), "y": True}, return_document=ReturnDocument.AFTER
         )
         self.assertEqual(doc["_id"], 1)
@@ -749,22 +749,22 @@ class TestCollectionWCustomType(IntegrationTest):
         self.assertEqual(doc["x"].value, 3)
         self.assertEqual(doc["y"], True)
 
-        doc = c.find_one_and_delete({"y": True})
+        doc = await c.find_one_and_delete({"y": True})
         self.assertEqual(doc["_id"], 1)
         self.assertIsInstance(doc["x"], UndecipherableInt64Type)
         self.assertEqual(doc["x"].value, 3)
-        self.assertIsNone(c.find_one())
+        self.assertIsNone(await c.find_one())
 
 
-class TestGridFileCustomType(IntegrationTest):
-    def setUp(self):
-        super().setUp()
-        self.db.drop_collection("fs.files")
-        self.db.drop_collection("fs.chunks")
+class TestGridFileCustomType(AsyncIntegrationTest):
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await self.db.drop_collection("fs.files")
+        await self.db.drop_collection("fs.chunks")
 
-    def test_grid_out_custom_opts(self):
+    async def test_grid_out_custom_opts(self):
         db = self.db.with_options(codec_options=UPPERSTR_DECODER_CODECOPTS)
-        one = GridIn(
+        one = AsyncGridIn(
             db.fs,
             _id=5,
             filename="my_file",
@@ -773,11 +773,11 @@ class TestGridFileCustomType(IntegrationTest):
             bar=3,
             baz="hello",
         )
-        one.write(b"hello world")
-        one.close()
+        await one.write(b"hello world")
+        await one.close()
 
-        two = GridOut(db.fs, 5)
-        two.open()
+        two = AsyncGridOut(db.fs, 5)
+        await two.open()
 
         self.assertEqual("my_file", two.name)
         self.assertEqual("my_file", two.filename)
@@ -804,31 +804,31 @@ class TestGridFileCustomType(IntegrationTest):
 
 class ChangeStreamsWCustomTypesTestMixin:
     @no_type_check
-    def change_stream(self, *args, **kwargs):
-        stream = self.watched_target.watch(*args, max_await_time_ms=1, **kwargs)
-        self.addCleanup(stream.close)
+    async def change_stream(self, *args, **kwargs):
+        stream = await self.watched_target.watch(*args, max_await_time_ms=1, **kwargs)
+        self.addAsyncCleanup(stream.close)
         return stream
 
     @no_type_check
-    def insert_and_check(self, change_stream, insert_doc, expected_doc):
-        self.input_target.insert_one(insert_doc)
-        change = next(change_stream)
+    async def insert_and_check(self, change_stream, insert_doc, expected_doc):
+        await self.input_target.insert_one(insert_doc)
+        change = await anext(change_stream)
         self.assertEqual(change["fullDocument"], expected_doc)
 
     @no_type_check
-    def kill_change_stream_cursor(self, change_stream):
+    async def kill_change_stream_cursor(self, change_stream):
         # Cause a cursor not found error on the next getMore.
         cursor = change_stream._cursor
         address = _CursorAddress(cursor.address, cursor._ns)
         client = self.input_target.database.client
-        client._close_cursor_now(cursor.cursor_id, address)
+        await client._close_cursor_now(cursor.cursor_id, address)
 
     @no_type_check
-    def test_simple(self):
+    async def test_simple(self):
         codecopts = CodecOptions(
             type_registry=TypeRegistry([UndecipherableIntEncoder(), UppercaseTextDecoder()])
         )
-        self.create_targets(codec_options=codecopts)
+        await self.create_targets(codec_options=codecopts)
 
         input_docs = [
             {"_id": UndecipherableInt64Type(1), "data": "hello"},
@@ -841,20 +841,20 @@ class ChangeStreamsWCustomTypesTestMixin:
             {"_id": 3, "data": "!"},
         ]
 
-        change_stream = self.change_stream()
+        change_stream = await self.change_stream()
 
-        self.insert_and_check(change_stream, input_docs[0], expected_docs[0])
-        self.kill_change_stream_cursor(change_stream)
-        self.insert_and_check(change_stream, input_docs[1], expected_docs[1])
-        self.kill_change_stream_cursor(change_stream)
-        self.insert_and_check(change_stream, input_docs[2], expected_docs[2])
+        await self.insert_and_check(change_stream, input_docs[0], expected_docs[0])
+        await self.kill_change_stream_cursor(change_stream)
+        await self.insert_and_check(change_stream, input_docs[1], expected_docs[1])
+        await self.kill_change_stream_cursor(change_stream)
+        await self.insert_and_check(change_stream, input_docs[2], expected_docs[2])
 
     @no_type_check
-    def test_custom_type_in_pipeline(self):
+    async def test_custom_type_in_pipeline(self):
         codecopts = CodecOptions(
             type_registry=TypeRegistry([UndecipherableIntEncoder(), UppercaseTextDecoder()])
         )
-        self.create_targets(codec_options=codecopts)
+        await self.create_targets(codec_options=codecopts)
 
         input_docs = [
             {"_id": UndecipherableInt64Type(1), "data": "hello"},
@@ -864,22 +864,22 @@ class ChangeStreamsWCustomTypesTestMixin:
         expected_docs = [{"_id": 2, "data": "WORLD"}, {"_id": 3, "data": "!"}]
 
         # UndecipherableInt64Type should be encoded with the TypeRegistry.
-        change_stream = self.change_stream(
+        change_stream = await self.change_stream(
             [{"$match": {"documentKey._id": {"$gte": UndecipherableInt64Type(2)}}}]
         )
 
-        self.input_target.insert_one(input_docs[0])
-        self.insert_and_check(change_stream, input_docs[1], expected_docs[0])
-        self.kill_change_stream_cursor(change_stream)
-        self.insert_and_check(change_stream, input_docs[2], expected_docs[1])
+        await self.input_target.insert_one(input_docs[0])
+        await self.insert_and_check(change_stream, input_docs[1], expected_docs[0])
+        await self.kill_change_stream_cursor(change_stream)
+        await self.insert_and_check(change_stream, input_docs[2], expected_docs[1])
 
     @no_type_check
-    def test_break_resume_token(self):
+    async def test_break_resume_token(self):
         # Get one document from a change stream to determine resumeToken type.
-        self.create_targets()
-        change_stream = self.change_stream()
-        self.input_target.insert_one({"data": "test"})
-        change = next(change_stream)
+        await self.create_targets()
+        change_stream = await self.change_stream()
+        await self.input_target.insert_one({"data": "test"})
+        change = await anext(change_stream)
         resume_token_decoder = type_obfuscating_decoder_factory(type(change["_id"]["_data"]))
 
         # Custom-decoding the resumeToken type breaks resume tokens.
@@ -888,95 +888,101 @@ class ChangeStreamsWCustomTypesTestMixin:
         )
 
         # Re-create targets, change stream and proceed.
-        self.create_targets(codec_options=codecopts)
+        await self.create_targets(codec_options=codecopts)
 
         docs = [{"_id": 1}, {"_id": 2}, {"_id": 3}]
 
-        change_stream = self.change_stream()
-        self.insert_and_check(change_stream, docs[0], docs[0])
-        self.kill_change_stream_cursor(change_stream)
-        self.insert_and_check(change_stream, docs[1], docs[1])
-        self.kill_change_stream_cursor(change_stream)
-        self.insert_and_check(change_stream, docs[2], docs[2])
+        change_stream = await self.change_stream()
+        await self.insert_and_check(change_stream, docs[0], docs[0])
+        await self.kill_change_stream_cursor(change_stream)
+        await self.insert_and_check(change_stream, docs[1], docs[1])
+        await self.kill_change_stream_cursor(change_stream)
+        await self.insert_and_check(change_stream, docs[2], docs[2])
 
     @no_type_check
-    def test_document_class(self):
-        def run_test(doc_cls):
+    async def test_document_class(self):
+        async def run_test(doc_cls):
             codecopts = CodecOptions(
                 type_registry=TypeRegistry([UppercaseTextDecoder(), UndecipherableIntEncoder()]),
                 document_class=doc_cls,
             )
 
-            self.create_targets(codec_options=codecopts)
-            change_stream = self.change_stream()
+            await self.create_targets(codec_options=codecopts)
+            change_stream = await self.change_stream()
 
             doc = {"a": UndecipherableInt64Type(101), "b": "xyz"}
-            self.input_target.insert_one(doc)
-            change = next(change_stream)
+            await self.input_target.insert_one(doc)
+            change = await anext(change_stream)
 
             self.assertIsInstance(change, doc_cls)
             self.assertEqual(change["fullDocument"]["a"], 101)
             self.assertEqual(change["fullDocument"]["b"], "XYZ")
 
         for doc_cls in [OrderedDict, RawBSONDocument]:
-            run_test(doc_cls)
+            await run_test(doc_cls)
 
 
-class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
-    @client_context.require_change_streams
-    def setUp(self):
-        super().setUp()
-        self.db.test.delete_many({})
+class TestCollectionChangeStreamsWCustomTypes(
+    AsyncIntegrationTest, ChangeStreamsWCustomTypesTestMixin
+):
+    @async_client_context.require_change_streams
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await self.db.test.delete_many({})
 
-    def tearDown(self):
-        self.input_target.drop()
+    async def asyncTearDown(self):
+        await self.input_target.drop()
 
-    def create_targets(self, *args, **kwargs):
+    async def create_targets(self, *args, **kwargs):
         self.watched_target = self.db.get_collection("test", *args, **kwargs)
         self.input_target = self.watched_target
         # Ensure the collection exists and is empty.
-        self.input_target.insert_one({})
-        self.input_target.delete_many({})
+        await self.input_target.insert_one({})
+        await self.input_target.delete_many({})
 
 
-class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
-    @client_context.require_version_min(4, 0, 0)
-    @client_context.require_change_streams
-    def setUp(self):
-        super().setUp()
-        self.db.test.delete_many({})
+class TestDatabaseChangeStreamsWCustomTypes(
+    AsyncIntegrationTest, ChangeStreamsWCustomTypesTestMixin
+):
+    @async_client_context.require_version_min(4, 0, 0)
+    @async_client_context.require_change_streams
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await self.db.test.delete_many({})
 
-    def tearDown(self):
-        self.input_target.drop()
-        self.client.drop_database(self.watched_target)
+    async def asyncTearDown(self):
+        await self.input_target.drop()
+        await self.client.drop_database(self.watched_target)
 
-    def create_targets(self, *args, **kwargs):
+    async def create_targets(self, *args, **kwargs):
         self.watched_target = self.client.get_database(self.db.name, *args, **kwargs)
         self.input_target = self.watched_target.test
         # Insert a record to ensure db, coll are created.
-        self.input_target.insert_one({"data": "dummy"})
+        await self.input_target.insert_one({"data": "dummy"})
 
 
-class TestClusterChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
-    @client_context.require_version_min(4, 0, 0)
-    @client_context.require_change_streams
-    def setUp(self):
-        super().setUp()
-        self.db.test.delete_many({})
+class TestClusterChangeStreamsWCustomTypes(
+    AsyncIntegrationTest, ChangeStreamsWCustomTypesTestMixin
+):
+    @async_client_context.require_version_min(4, 0, 0)
+    @async_client_context.require_change_streams
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await self.db.test.delete_many({})
 
-    def tearDown(self):
-        self.input_target.drop()
-        self.client.drop_database(self.db)
+    async def asyncTearDown(self):
+        await self.input_target.drop()
+        await self.client.drop_database(self.db)
 
-    def create_targets(self, *args, **kwargs):
+    async def create_targets(self, *args, **kwargs):
         codec_options = kwargs.pop("codec_options", None)
         if codec_options:
             kwargs["type_registry"] = codec_options.type_registry
             kwargs["document_class"] = codec_options.document_class
-        self.watched_target = self.rs_client(*args, **kwargs)
+        self.watched_target = await self.async_rs_client(*args, **kwargs)
         self.input_target = self.watched_target[self.db.name].test
         # Insert a record to ensure db, coll are created.
-        self.input_target.insert_one({"data": "dummy"})
+        await self.input_target.insert_one({"data": "dummy"})
 
 
 if __name__ == "__main__":
