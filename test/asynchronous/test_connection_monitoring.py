@@ -16,9 +16,9 @@
 from __future__ import annotations
 
 import os
-import pathlib
 import sys
 import time
+from pathlib import Path
 
 sys.path[0:0] = [""]
 
@@ -85,11 +85,9 @@ OBJECT_TYPES = {
 class AsyncTestCMAP(AsyncIntegrationTest):
     # Location of JSON test specifications.
     if _IS_SYNC:
-        TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "connection_monitoring")
+        TEST_PATH = os.path.join(Path(__file__).resolve().parent, "connection_monitoring")
     else:
-        TEST_PATH = os.path.join(
-            pathlib.Path(__file__).resolve().parent.parent, "connection_monitoring"
-        )
+        TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "connection_monitoring")
 
     # Test operations:
 
