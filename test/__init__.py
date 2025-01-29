@@ -867,6 +867,28 @@ class ClientContext:
 # Reusable client context
 client_context = ClientContext()
 
+# Global event loop for async tests.
+LOOP = None
+
+
+def get_loop() -> asyncio.AbstractEventLoop:
+    """Get the test suite's global event loop."""
+    global LOOP
+    if LOOP is None:
+        try:
+            LOOP = asyncio.get_running_loop()
+        except RuntimeError:
+            # no running event loop, fallback to get_event_loop.
+            try:
+                # Ignore DeprecationWarning: There is no current event loop
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", DeprecationWarning)
+                    LOOP = asyncio.get_event_loop()
+            except RuntimeError:
+                LOOP = asyncio.new_event_loop()
+                asyncio.set_event_loop(LOOP)
+    return LOOP
+
 
 class PyMongoTestCase(unittest.TestCase):
     if not _IS_SYNC:
@@ -878,7 +900,6 @@ class PyMongoTestCase(unittest.TestCase):
         def tearDown(self):
             pass
 
-        # See TestCase.addCleanup.
         def addCleanup(self, func, /, *args, **kwargs):
             self.addCleanup(*(func, *args), **kwargs)
 
@@ -1214,31 +1235,10 @@ class MockClientTest(UnitTest):
         super().tearDown()
 
 
-LOOP = None
-
-
-def get_loop() -> asyncio.AbstractEventLoop:
-    global LOOP
-    if LOOP is None:
-        try:
-            LOOP = asyncio.get_running_loop()
-        except RuntimeError:
-            # no running event loop, fallback to get_event_loop.
-            try:
-                # Ignore DeprecationWarning: There is no current event loop
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", DeprecationWarning)
-                    LOOP = asyncio.get_event_loop()
-            except RuntimeError:
-                LOOP = asyncio.new_event_loop()
-                asyncio.set_event_loop(LOOP)
-    return LOOP
-
-
 def setup():
     if not _IS_SYNC:
-        global LOOP
-        LOOP = asyncio.get_running_loop()
+        # Set up the event loop.
+        get_loop()
     client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")
