@@ -17,10 +17,10 @@ from __future__ import annotations
 
 import asyncio
 import os
-import pathlib
 import socketserver
 import sys
 import threading
+from pathlib import Path
 
 sys.path[0:0] = [""]
 
@@ -36,7 +36,6 @@ from test.utils import (
     async_get_pool,
     async_wait_until,
     server_name_to_type,
-    wait_until,
 )
 from unittest.mock import patch
 
@@ -62,10 +61,10 @@ _IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
-    SDAM_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "discovery_and_monitoring")
+    SDAM_PATH = os.path.join(Path(__file__).resolve().parent, "discovery_and_monitoring")
 else:
     SDAM_PATH = os.path.join(
-        pathlib.Path(__file__).resolve().parent.parent,
+        Path(__file__).resolve().parent.parent,
         "discovery_and_monitoring",
     )
 
