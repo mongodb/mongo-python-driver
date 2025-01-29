@@ -44,6 +44,7 @@ from bson.son import SON
 from gridfs import GridFSBucket
 from gridfs.synchronous.grid_file import GridFSBucket
 from pymongo.errors import AutoReconnect, BulkWriteError, OperationFailure, PyMongoError
+from pymongo.lock import _create_condition, _create_lock
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
@@ -55,82 +56,59 @@ from pymongo.write_concern import WriteConcern
 _IS_SYNC = True
 
 if _IS_SYNC:
-
-    class SpecRunnerThread(threading.Thread):
-        def __init__(self, name):
-            super().__init__()
-            self.name = name
-            self.exc = None
-            self.daemon = True
-            self.cond = threading.Condition()
-            self.ops = []
-            self.stopped = False
-
-        def schedule(self, work):
-            self.ops.append(work)
-            with self.cond:
-                self.cond.notify()
-
-        def stop(self):
-            self.stopped = True
-            with self.cond:
-                self.cond.notify()
-
-        def run(self):
-            while not self.stopped or self.ops:
-                if not self.ops:
-                    with self.cond:
-                        self.cond.wait(10)
-                if self.ops:
-                    try:
-                        work = self.ops.pop(0)
-                        work()
-                    except Exception as exc:
-                        self.exc = exc
-                        self.stop()
+    PARENT = threading.Thread
 else:
+    PARENT = object
 
-    class SpecRunnerThread:
-        def __init__(self, name):
-            self.name = name
-            self.exc = None
-            self.cond = asyncio.Condition()
-            self.ops = []
-            self.stopped = False
-            self.task = None
 
-        def schedule(self, work):
-            self.ops.append(work)
-            with self.cond:
-                self.cond.notify()
+class SpecRunnerThread(PARENT):
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+        self.exc = None
+        self.daemon = True
+        self.cond = _create_condition(_create_lock())
+        self.ops = []
+        self.stopped = False
+        self.task = None
 
-        def stop(self):
-            self.stopped = True
-            with self.cond:
-                self.cond.notify()
+    if not _IS_SYNC:
 
         def start(self):
             self.task = asyncio.create_task(self.run(), name=self.name)
 
-        def join(self, timeout: int = 0):
+        def join(self, timeout: float | None = 0):  # type: ignore[override]
             if self.task is not None:
                 asyncio.wait([self.task], timeout=timeout)
 
         def is_alive(self):
             return not self.stopped
 
-        def run(self):
-            while not self.stopped or self.ops:
-                if not self.ops:
-                    with self.cond:
-                        asyncio.wait_for(self.cond.wait(), timeout=10)
-                if self.ops:
-                    try:
-                        work = self.ops.pop(0)
-                        work()
-                    except Exception as exc:
-                        self.exc = exc
-                        self.stop()
+    def schedule(self, work):
+        self.ops.append(work)
+        with self.cond:
+            self.cond.notify()
+
+    def stop(self):
+        self.stopped = True
+        with self.cond:
+            self.cond.notify()
+
+    def run(self):
+        while not self.stopped or self.ops:
+            if not self.ops:
+                with self.cond:
+                    if _IS_SYNC:
+                        self.cond.wait(10)  # type: ignore[call-arg]
+                    else:
+                        asyncio.wait_for(self.cond.wait(), timeout=10)  # type: ignore[arg-type]
+            if self.ops:
+                try:
+                    work = self.ops.pop(0)
+                    work()
+                except Exception as exc:
+                    self.exc = exc
+                    self.stop()
 
 
 class SpecTestCreator:

@@ -47,6 +47,7 @@ from pymongo.asynchronous import client_session
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.errors import AutoReconnect, BulkWriteError, OperationFailure, PyMongoError
+from pymongo.lock import _async_create_condition, _async_create_lock
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
@@ -55,82 +56,59 @@ from pymongo.write_concern import WriteConcern
 _IS_SYNC = False
 
 if _IS_SYNC:
-
-    class SpecRunnerThread(threading.Thread):
-        def __init__(self, name):
-            super().__init__()
-            self.name = name
-            self.exc = None
-            self.daemon = True
-            self.cond = threading.Condition()
-            self.ops = []
-            self.stopped = False
-
-        def schedule(self, work):
-            self.ops.append(work)
-            with self.cond:
-                self.cond.notify()
-
-        def stop(self):
-            self.stopped = True
-            with self.cond:
-                self.cond.notify()
-
-        def run(self):
-            while not self.stopped or self.ops:
-                if not self.ops:
-                    with self.cond:
-                        self.cond.wait(10)
-                if self.ops:
-                    try:
-                        work = self.ops.pop(0)
-                        work()
-                    except Exception as exc:
-                        self.exc = exc
-                        self.stop()
+    PARENT = threading.Thread
 else:
+    PARENT = object
 
-    class SpecRunnerTask:
-        def __init__(self, name):
-            self.name = name
-            self.exc = None
-            self.cond = asyncio.Condition()
-            self.ops = []
-            self.stopped = False
-            self.task = None
 
-        async def schedule(self, work):
-            self.ops.append(work)
-            async with self.cond:
-                self.cond.notify()
+class SpecRunnerTask(PARENT):
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+        self.exc = None
+        self.daemon = True
+        self.cond = _async_create_condition(_async_create_lock())
+        self.ops = []
+        self.stopped = False
+        self.task = None
 
-        async def stop(self):
-            self.stopped = True
-            async with self.cond:
-                self.cond.notify()
+    if not _IS_SYNC:
 
         async def start(self):
             self.task = asyncio.create_task(self.run(), name=self.name)
 
-        async def join(self, timeout: int = 0):
+        async def join(self, timeout: float | None = 0):  # type: ignore[override]
             if self.task is not None:
                 await asyncio.wait([self.task], timeout=timeout)
 
         def is_alive(self):
             return not self.stopped
 
-        async def run(self):
-            while not self.stopped or self.ops:
-                if not self.ops:
-                    async with self.cond:
-                        await asyncio.wait_for(self.cond.wait(), timeout=10)
-                if self.ops:
-                    try:
-                        work = self.ops.pop(0)
-                        await work()
-                    except Exception as exc:
-                        self.exc = exc
-                        await self.stop()
+    async def schedule(self, work):
+        self.ops.append(work)
+        async with self.cond:
+            self.cond.notify()
+
+    async def stop(self):
+        self.stopped = True
+        async with self.cond:
+            self.cond.notify()
+
+    async def run(self):
+        while not self.stopped or self.ops:
+            if not self.ops:
+                async with self.cond:
+                    if _IS_SYNC:
+                        await self.cond.wait(10)  # type: ignore[call-arg]
+                    else:
+                        await asyncio.wait_for(self.cond.wait(), timeout=10)  # type: ignore[arg-type]
+            if self.ops:
+                try:
+                    work = self.ops.pop(0)
+                    await work()
+                except Exception as exc:
+                    self.exc = exc
+                    await self.stop()
 
 
 class AsyncSpecTestCreator:

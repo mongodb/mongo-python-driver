@@ -1180,14 +1180,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     async def _testOperation_runOnThread(self, spec):
         """Run the 'runOnThread' operation."""
         thread = self.entity_map[spec["thread"]]
-        if _IS_SYNC:
-            await thread.schedule(lambda: self.run_entity_operation(spec["operation"]))
-        else:
-
-            async def op():
-                await self.run_entity_operation(spec["operation"])
-
-            await thread.schedule(op)
+        await thread.schedule(functools.partial(self.run_entity_operation, spec["operation"]))
 
     async def _testOperation_waitForThread(self, spec):
         """Run the 'waitForThread' operation."""
