@@ -23,8 +23,8 @@ import threading
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
-from test.utils import wait_until
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.utils import async_wait_until
 
 import pymongo
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -33,24 +33,24 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import ServerApi
 from pymongo.write_concern import WriteConcern
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-class TestSampleShellCommands(IntegrationTest):
-    def setUp(self):
-        super().setUp()
-        self.db.inventory.drop()
+class TestSampleShellCommands(AsyncIntegrationTest):
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await self.db.inventory.drop()
 
-    def tearDown(self):
+    async def asyncTearDown(self):
         # Run after every test.
-        self.db.inventory.drop()
-        self.client.drop_database("pymongo_test")
+        await self.db.inventory.drop()
+        await self.client.drop_database("pymongo_test")
 
-    def test_first_three_examples(self):
+    async def test_first_three_examples(self):
         db = self.db
 
         # Start Example 1
-        db.inventory.insert_one(
+        await db.inventory.insert_one(
             {
                 "item": "canvas",
                 "qty": 100,
@@ -60,16 +60,16 @@ class TestSampleShellCommands(IntegrationTest):
         )
         # End Example 1
 
-        self.assertEqual(db.inventory.count_documents({}), 1)
+        self.assertEqual(await db.inventory.count_documents({}), 1)
 
         # Start Example 2
         cursor = db.inventory.find({"item": "canvas"})
         # End Example 2
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
         # Start Example 3
-        db.inventory.insert_many(
+        await db.inventory.insert_many(
             [
                 {
                     "item": "journal",
@@ -93,13 +93,13 @@ class TestSampleShellCommands(IntegrationTest):
         )
         # End Example 3
 
-        self.assertEqual(db.inventory.count_documents({}), 4)
+        self.assertEqual(await db.inventory.count_documents({}), 4)
 
-    def test_query_top_level_fields(self):
+    async def test_query_top_level_fields(self):
         db = self.db
 
         # Start Example 6
-        db.inventory.insert_many(
+        await db.inventory.insert_many(
             [
                 {
                     "item": "journal",
@@ -135,37 +135,37 @@ class TestSampleShellCommands(IntegrationTest):
         )
         # End Example 6
 
-        self.assertEqual(db.inventory.count_documents({}), 5)
+        self.assertEqual(await db.inventory.count_documents({}), 5)
 
         # Start Example 7
         cursor = db.inventory.find({})
         # End Example 7
 
-        self.assertEqual(len(cursor.to_list()), 5)
+        self.assertEqual(len(await cursor.to_list()), 5)
 
         # Start Example 9
         cursor = db.inventory.find({"status": "D"})
         # End Example 9
 
-        self.assertEqual(len(cursor.to_list()), 2)
+        self.assertEqual(len(await cursor.to_list()), 2)
 
         # Start Example 10
         cursor = db.inventory.find({"status": {"$in": ["A", "D"]}})
         # End Example 10
 
-        self.assertEqual(len(cursor.to_list()), 5)
+        self.assertEqual(len(await cursor.to_list()), 5)
 
         # Start Example 11
         cursor = db.inventory.find({"status": "A", "qty": {"$lt": 30}})
         # End Example 11
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
         # Start Example 12
         cursor = db.inventory.find({"$or": [{"status": "A"}, {"qty": {"$lt": 30}}]})
         # End Example 12
 
-        self.assertEqual(len(cursor.to_list()), 3)
+        self.assertEqual(len(await cursor.to_list()), 3)
 
         # Start Example 13
         cursor = db.inventory.find(
@@ -173,9 +173,9 @@ class TestSampleShellCommands(IntegrationTest):
         )
         # End Example 13
 
-        self.assertEqual(len(cursor.to_list()), 2)
+        self.assertEqual(len(await cursor.to_list()), 2)
 
-    def test_query_embedded_documents(self):
+    async def test_query_embedded_documents(self):
         db = self.db
 
         # Start Example 14
@@ -183,7 +183,7 @@ class TestSampleShellCommands(IntegrationTest):
         # to use bson.son.SON instead of a Python dict.
         from bson.son import SON
 
-        db.inventory.insert_many(
+        await db.inventory.insert_many(
             [
                 {
                     "item": "journal",
@@ -223,37 +223,37 @@ class TestSampleShellCommands(IntegrationTest):
         cursor = db.inventory.find({"size": SON([("h", 14), ("w", 21), ("uom", "cm")])})
         # End Example 15
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
         # Start Example 16
         cursor = db.inventory.find({"size": SON([("w", 21), ("h", 14), ("uom", "cm")])})
         # End Example 16
 
-        self.assertEqual(len(cursor.to_list()), 0)
+        self.assertEqual(len(await cursor.to_list()), 0)
 
         # Start Example 17
         cursor = db.inventory.find({"size.uom": "in"})
         # End Example 17
 
-        self.assertEqual(len(cursor.to_list()), 2)
+        self.assertEqual(len(await cursor.to_list()), 2)
 
         # Start Example 18
         cursor = db.inventory.find({"size.h": {"$lt": 15}})
         # End Example 18
 
-        self.assertEqual(len(cursor.to_list()), 4)
+        self.assertEqual(len(await cursor.to_list()), 4)
 
         # Start Example 19
         cursor = db.inventory.find({"size.h": {"$lt": 15}, "size.uom": "in", "status": "D"})
         # End Example 19
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
-    def test_query_arrays(self):
+    async def test_query_arrays(self):
         db = self.db
 
         # Start Example 20
-        db.inventory.insert_many(
+        await db.inventory.insert_many(
             [
                 {"item": "journal", "qty": 25, "tags": ["blank", "red"], "dim_cm": [14, 21]},
                 {"item": "notebook", "qty": 50, "tags": ["red", "blank"], "dim_cm": [14, 21]},
@@ -273,51 +273,51 @@ class TestSampleShellCommands(IntegrationTest):
         cursor = db.inventory.find({"tags": ["red", "blank"]})
         # End Example 21
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
         # Start Example 22
         cursor = db.inventory.find({"tags": {"$all": ["red", "blank"]}})
         # End Example 22
 
-        self.assertEqual(len(cursor.to_list()), 4)
+        self.assertEqual(len(await cursor.to_list()), 4)
 
         # Start Example 23
         cursor = db.inventory.find({"tags": "red"})
         # End Example 23
 
-        self.assertEqual(len(cursor.to_list()), 4)
+        self.assertEqual(len(await cursor.to_list()), 4)
 
         # Start Example 24
         cursor = db.inventory.find({"dim_cm": {"$gt": 25}})
         # End Example 24
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
         # Start Example 25
         cursor = db.inventory.find({"dim_cm": {"$gt": 15, "$lt": 20}})
         # End Example 25
 
-        self.assertEqual(len(cursor.to_list()), 4)
+        self.assertEqual(len(await cursor.to_list()), 4)
 
         # Start Example 26
         cursor = db.inventory.find({"dim_cm": {"$elemMatch": {"$gt": 22, "$lt": 30}}})
         # End Example 26
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
         # Start Example 27
         cursor = db.inventory.find({"dim_cm.1": {"$gt": 25}})
         # End Example 27
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
         # Start Example 28
         cursor = db.inventory.find({"tags": {"$size": 3}})
         # End Example 28
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
-    def test_query_array_of_documents(self):
+    async def test_query_array_of_documents(self):
         db = self.db
 
         # Start Example 29
@@ -325,7 +325,7 @@ class TestSampleShellCommands(IntegrationTest):
         # to use bson.son.SON instead of a Python dict.
         from bson.son import SON
 
-        db.inventory.insert_many(
+        await db.inventory.insert_many(
             [
                 {
                     "item": "journal",
@@ -364,80 +364,80 @@ class TestSampleShellCommands(IntegrationTest):
         cursor = db.inventory.find({"instock": SON([("warehouse", "A"), ("qty", 5)])})
         # End Example 30
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
         # Start Example 31
         cursor = db.inventory.find({"instock": SON([("qty", 5), ("warehouse", "A")])})
         # End Example 31
 
-        self.assertEqual(len(cursor.to_list()), 0)
+        self.assertEqual(len(await cursor.to_list()), 0)
 
         # Start Example 32
         cursor = db.inventory.find({"instock.0.qty": {"$lte": 20}})
         # End Example 32
 
-        self.assertEqual(len(cursor.to_list()), 3)
+        self.assertEqual(len(await cursor.to_list()), 3)
 
         # Start Example 33
         cursor = db.inventory.find({"instock.qty": {"$lte": 20}})
         # End Example 33
 
-        self.assertEqual(len(cursor.to_list()), 5)
+        self.assertEqual(len(await cursor.to_list()), 5)
 
         # Start Example 34
         cursor = db.inventory.find({"instock": {"$elemMatch": {"qty": 5, "warehouse": "A"}}})
         # End Example 34
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
         # Start Example 35
         cursor = db.inventory.find({"instock": {"$elemMatch": {"qty": {"$gt": 10, "$lte": 20}}}})
         # End Example 35
 
-        self.assertEqual(len(cursor.to_list()), 3)
+        self.assertEqual(len(await cursor.to_list()), 3)
 
         # Start Example 36
         cursor = db.inventory.find({"instock.qty": {"$gt": 10, "$lte": 20}})
         # End Example 36
 
-        self.assertEqual(len(cursor.to_list()), 4)
+        self.assertEqual(len(await cursor.to_list()), 4)
 
         # Start Example 37
         cursor = db.inventory.find({"instock.qty": 5, "instock.warehouse": "A"})
         # End Example 37
 
-        self.assertEqual(len(cursor.to_list()), 2)
+        self.assertEqual(len(await cursor.to_list()), 2)
 
-    def test_query_null(self):
+    async def test_query_null(self):
         db = self.db
 
         # Start Example 38
-        db.inventory.insert_many([{"_id": 1, "item": None}, {"_id": 2}])
+        await db.inventory.insert_many([{"_id": 1, "item": None}, {"_id": 2}])
         # End Example 38
 
         # Start Example 39
         cursor = db.inventory.find({"item": None})
         # End Example 39
 
-        self.assertEqual(len(cursor.to_list()), 2)
+        self.assertEqual(len(await cursor.to_list()), 2)
 
         # Start Example 40
         cursor = db.inventory.find({"item": {"$type": 10}})
         # End Example 40
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
         # Start Example 41
         cursor = db.inventory.find({"item": {"$exists": False}})
         # End Example 41
 
-        self.assertEqual(len(cursor.to_list()), 1)
+        self.assertEqual(len(await cursor.to_list()), 1)
 
-    def test_projection(self):
+    async def test_projection(self):
         db = self.db
 
         # Start Example 42
-        db.inventory.insert_many(
+        await db.inventory.insert_many(
             [
                 {
                     "item": "journal",
@@ -477,13 +477,13 @@ class TestSampleShellCommands(IntegrationTest):
         cursor = db.inventory.find({"status": "A"})
         # End Example 43
 
-        self.assertEqual(len(cursor.to_list()), 3)
+        self.assertEqual(len(await cursor.to_list()), 3)
 
         # Start Example 44
         cursor = db.inventory.find({"status": "A"}, {"item": 1, "status": 1})
         # End Example 44
 
-        for doc in cursor:
+        async for doc in cursor:
             self.assertTrue("_id" in doc)
             self.assertTrue("item" in doc)
             self.assertTrue("status" in doc)
@@ -494,7 +494,7 @@ class TestSampleShellCommands(IntegrationTest):
         cursor = db.inventory.find({"status": "A"}, {"item": 1, "status": 1, "_id": 0})
         # End Example 45
 
-        for doc in cursor:
+        async for doc in cursor:
             self.assertFalse("_id" in doc)
             self.assertTrue("item" in doc)
             self.assertTrue("status" in doc)
@@ -505,7 +505,7 @@ class TestSampleShellCommands(IntegrationTest):
         cursor = db.inventory.find({"status": "A"}, {"status": 0, "instock": 0})
         # End Example 46
 
-        for doc in cursor:
+        async for doc in cursor:
             self.assertTrue("_id" in doc)
             self.assertTrue("item" in doc)
             self.assertFalse("status" in doc)
@@ -516,7 +516,7 @@ class TestSampleShellCommands(IntegrationTest):
         cursor = db.inventory.find({"status": "A"}, {"item": 1, "status": 1, "size.uom": 1})
         # End Example 47
 
-        for doc in cursor:
+        async for doc in cursor:
             self.assertTrue("_id" in doc)
             self.assertTrue("item" in doc)
             self.assertTrue("status" in doc)
@@ -531,7 +531,7 @@ class TestSampleShellCommands(IntegrationTest):
         cursor = db.inventory.find({"status": "A"}, {"size.uom": 0})
         # End Example 48
 
-        for doc in cursor:
+        async for doc in cursor:
             self.assertTrue("_id" in doc)
             self.assertTrue("item" in doc)
             self.assertTrue("status" in doc)
@@ -546,7 +546,7 @@ class TestSampleShellCommands(IntegrationTest):
         cursor = db.inventory.find({"status": "A"}, {"item": 1, "status": 1, "instock.qty": 1})
         # End Example 49
 
-        for doc in cursor:
+        async for doc in cursor:
             self.assertTrue("_id" in doc)
             self.assertTrue("item" in doc)
             self.assertTrue("status" in doc)
@@ -562,7 +562,7 @@ class TestSampleShellCommands(IntegrationTest):
         )
         # End Example 50
 
-        for doc in cursor:
+        async for doc in cursor:
             self.assertTrue("_id" in doc)
             self.assertTrue("item" in doc)
             self.assertTrue("status" in doc)
@@ -570,11 +570,11 @@ class TestSampleShellCommands(IntegrationTest):
             self.assertTrue("instock" in doc)
             self.assertEqual(len(doc["instock"]), 1)
 
-    def test_update_and_replace(self):
+    async def test_update_and_replace(self):
         db = self.db
 
         # Start Example 51
-        db.inventory.insert_many(
+        await db.inventory.insert_many(
             [
                 {
                     "item": "canvas",
@@ -641,31 +641,31 @@ class TestSampleShellCommands(IntegrationTest):
         # End Example 51
 
         # Start Example 52
-        db.inventory.update_one(
+        await db.inventory.update_one(
             {"item": "paper"},
             {"$set": {"size.uom": "cm", "status": "P"}, "$currentDate": {"lastModified": True}},
         )
         # End Example 52
 
-        for doc in db.inventory.find({"item": "paper"}):
+        async for doc in db.inventory.find({"item": "paper"}):
             self.assertEqual(doc["size"]["uom"], "cm")
             self.assertEqual(doc["status"], "P")
             self.assertTrue("lastModified" in doc)
 
         # Start Example 53
-        db.inventory.update_many(
+        await db.inventory.update_many(
             {"qty": {"$lt": 50}},
             {"$set": {"size.uom": "in", "status": "P"}, "$currentDate": {"lastModified": True}},
         )
         # End Example 53
 
-        for doc in db.inventory.find({"qty": {"$lt": 50}}):
+        async for doc in db.inventory.find({"qty": {"$lt": 50}}):
             self.assertEqual(doc["size"]["uom"], "in")
             self.assertEqual(doc["status"], "P")
             self.assertTrue("lastModified" in doc)
 
         # Start Example 54
-        db.inventory.replace_one(
+        await db.inventory.replace_one(
             {"item": "paper"},
             {
                 "item": "paper",
@@ -674,17 +674,17 @@ class TestSampleShellCommands(IntegrationTest):
         )
         # End Example 54
 
-        for doc in db.inventory.find({"item": "paper"}, {"_id": 0}):
+        async for doc in db.inventory.find({"item": "paper"}, {"_id": 0}):
             self.assertEqual(len(doc.keys()), 2)
             self.assertTrue("item" in doc)
             self.assertTrue("instock" in doc)
             self.assertEqual(len(doc["instock"]), 2)
 
-    def test_delete(self):
+    async def test_delete(self):
         db = self.db
 
         # Start Example 55
-        db.inventory.insert_many(
+        await db.inventory.insert_many(
             [
                 {
                     "item": "journal",
@@ -720,38 +720,38 @@ class TestSampleShellCommands(IntegrationTest):
         )
         # End Example 55
 
-        self.assertEqual(db.inventory.count_documents({}), 5)
+        self.assertEqual(await db.inventory.count_documents({}), 5)
 
         # Start Example 57
-        db.inventory.delete_many({"status": "A"})
+        await db.inventory.delete_many({"status": "A"})
         # End Example 57
 
-        self.assertEqual(db.inventory.count_documents({}), 3)
+        self.assertEqual(await db.inventory.count_documents({}), 3)
 
         # Start Example 58
-        db.inventory.delete_one({"status": "D"})
+        await db.inventory.delete_one({"status": "D"})
         # End Example 58
 
-        self.assertEqual(db.inventory.count_documents({}), 2)
+        self.assertEqual(await db.inventory.count_documents({}), 2)
 
         # Start Example 56
-        db.inventory.delete_many({})
+        await db.inventory.delete_many({})
         # End Example 56
 
-        self.assertEqual(db.inventory.count_documents({}), 0)
+        self.assertEqual(await db.inventory.count_documents({}), 0)
 
     if _IS_SYNC:
 
-        @client_context.require_change_streams
-        def test_change_streams(self):
+        @async_client_context.require_change_streams
+        async def test_change_streams(self):
             db = self.db
             done = False
 
-            def insert_docs():
+            async def insert_docs():
                 nonlocal done
                 while not done:
-                    db.inventory.insert_one({"username": "alice"})
-                    db.inventory.delete_one({"username": "alice"})
+                    await db.inventory.insert_one({"username": "alice"})
+                    await db.inventory.delete_one({"username": "alice"})
 
             t = threading.Thread(target=insert_docs)
             t.start()
@@ -759,94 +759,94 @@ class TestSampleShellCommands(IntegrationTest):
             try:
                 # 1. The database for reactive, real-time applications
                 # Start Changestream Example 1
-                cursor = db.inventory.watch()
-                next(cursor)
+                cursor = await db.inventory.watch()
+                await anext(cursor)
                 # End Changestream Example 1
-                cursor.close()
+                await cursor.close()
 
                 # Start Changestream Example 2
-                cursor = db.inventory.watch(full_document="updateLookup")
-                next(cursor)
+                cursor = await db.inventory.watch(full_document="updateLookup")
+                await anext(cursor)
                 # End Changestream Example 2
-                cursor.close()
+                await cursor.close()
 
                 # Start Changestream Example 3
                 resume_token = cursor.resume_token
-                cursor = db.inventory.watch(resume_after=resume_token)
-                next(cursor)
+                cursor = await db.inventory.watch(resume_after=resume_token)
+                await anext(cursor)
                 # End Changestream Example 3
-                cursor.close()
+                await cursor.close()
 
                 # Start Changestream Example 4
                 pipeline = [
                     {"$match": {"fullDocument.username": "alice"}},
                     {"$addFields": {"newField": "this is an added field!"}},
                 ]
-                cursor = db.inventory.watch(pipeline=pipeline)
-                next(cursor)
+                cursor = await db.inventory.watch(pipeline=pipeline)
+                await anext(cursor)
                 # End Changestream Example 4
-                cursor.close()
+                await cursor.close()
             finally:
                 done = True
                 t.join()
     else:
 
-        @client_context.require_change_streams
-        def test_change_streams(self):
+        @async_client_context.require_change_streams
+        async def test_change_streams(self):
             db = self.db
             done = False
 
-            def insert_docs():
+            async def insert_docs():
                 nonlocal done
                 while not done:
-                    db.inventory.insert_one({"username": "alice"})
-                    db.inventory.delete_one({"username": "alice"})
+                    await db.inventory.insert_one({"username": "alice"})
+                    await db.inventory.delete_one({"username": "alice"})
 
             t = asyncio.create_task(insert_docs())
             try:
                 # 1. The database for reactive, real-time applications
                 # Start Changestream Example 1
-                cursor = db.inventory.watch()
-                next(cursor)
+                cursor = await db.inventory.watch()
+                await anext(cursor)
                 # End Changestream Example 1
-                cursor.close()
+                await cursor.close()
 
                 # Start Changestream Example 2
-                cursor = db.inventory.watch(full_document="updateLookup")
-                next(cursor)
+                cursor = await db.inventory.watch(full_document="updateLookup")
+                await anext(cursor)
                 # End Changestream Example 2
-                cursor.close()
+                await cursor.close()
 
                 # Start Changestream Example 3
                 resume_token = cursor.resume_token
-                cursor = db.inventory.watch(resume_after=resume_token)
-                next(cursor)
+                cursor = await db.inventory.watch(resume_after=resume_token)
+                await anext(cursor)
                 # End Changestream Example 3
-                cursor.close()
+                await cursor.close()
 
                 # Start Changestream Example 4
                 pipeline = [
                     {"$match": {"fullDocument.username": "alice"}},
                     {"$addFields": {"newField": "this is an added field!"}},
                 ]
-                cursor = db.inventory.watch(pipeline=pipeline)
-                next(cursor)
+                cursor = await db.inventory.watch(pipeline=pipeline)
+                await anext(cursor)
                 # End Changestream Example 4
-                cursor.close()
+                await cursor.close()
             finally:
                 done = True
-                t
+                await t
 
-    def test_aggregate_examples(self):
+    async def test_aggregate_examples(self):
         db = self.db
 
         # Start Aggregation Example 1
 
-        db.sales.aggregate([{"$match": {"items.fruit": "banana"}}, {"$sort": {"date": 1}}])
+        await db.sales.aggregate([{"$match": {"items.fruit": "banana"}}, {"$sort": {"date": 1}}])
         # End Aggregation Example 1
 
         # Start Aggregation Example 2
-        db.sales.aggregate(
+        await db.sales.aggregate(
             [
                 {"$unwind": "$items"},
                 {"$match": {"items.fruit": "banana"}},
@@ -863,7 +863,7 @@ class TestSampleShellCommands(IntegrationTest):
         # End Aggregation Example 2
 
         # Start Aggregation Example 3
-        db.sales.aggregate(
+        await db.sales.aggregate(
             [
                 {"$unwind": "$items"},
                 {
@@ -888,7 +888,7 @@ class TestSampleShellCommands(IntegrationTest):
         # End Aggregation Example 3
 
         # Start Aggregation Example 4
-        db.air_alliances.aggregate(
+        await db.air_alliances.aggregate(
             [
                 {
                     "$lookup": {
@@ -915,8 +915,8 @@ class TestSampleShellCommands(IntegrationTest):
         )
         # End Aggregation Example 4
 
-    @client_context.require_version_min(4, 4)
-    def test_aggregate_projection_example(self):
+    @async_client_context.require_version_min(4, 4)
+    async def test_aggregate_projection_example(self):
         db = self.db
 
         # Start Aggregation Projection Example 1
@@ -947,85 +947,87 @@ class TestSampleShellCommands(IntegrationTest):
 
         # End Aggregation Projection Example 1
 
-    def test_commands(self):
+    async def test_commands(self):
         db = self.db
-        db.restaurants.insert_one({})
+        await db.restaurants.insert_one({})
 
         # Start runCommand Example 1
-        db.command("buildInfo")
+        await db.command("buildInfo")
         # End runCommand Example 1
 
         # Start runCommand Example 2
-        db.command("count", "restaurants")
+        await db.command("count", "restaurants")
         # End runCommand Example 2
 
-    def test_index_management(self):
+    async def test_index_management(self):
         db = self.db
 
         # Start Index Example 1
-        db.records.create_index("score")
+        await db.records.create_index("score")
         # End Index Example 1
 
         # Start Index Example 1
-        db.restaurants.create_index(
+        await db.restaurants.create_index(
             [("cuisine", pymongo.ASCENDING), ("name", pymongo.ASCENDING)],
             partialFilterExpression={"rating": {"$gt": 5}},
         )
         # End Index Example 1
 
-    @client_context.require_replica_set
-    def test_misc(self):
+    @async_client_context.require_replica_set
+    async def test_misc(self):
         # Marketing examples
         client = self.client
-        self.addCleanup(client.drop_database, "test")
-        self.addCleanup(client.drop_database, "my_database")
+        self.addAsyncCleanup(client.drop_database, "test")
+        self.addAsyncCleanup(client.drop_database, "my_database")
 
         # 2. Tunable consistency controls
         collection = client.my_database.my_collection
-        with client.start_session() as session:
-            collection.insert_one({"_id": 1}, session=session)
-            collection.update_one({"_id": 1}, {"$set": {"a": 1}}, session=session)
-            for _doc in collection.find({}, session=session):
+        async with client.start_session() as session:
+            await collection.insert_one({"_id": 1}, session=session)
+            await collection.update_one({"_id": 1}, {"$set": {"a": 1}}, session=session)
+            async for _doc in collection.find({}, session=session):
                 pass
 
         # 3. Exploiting the power of arrays
         collection = client.test.array_updates_test
-        collection.update_one({"_id": 1}, {"$set": {"a.$[i].b": 2}}, array_filters=[{"i.b": 0}])
+        await collection.update_one(
+            {"_id": 1}, {"$set": {"a.$[i].b": 2}}, array_filters=[{"i.b": 0}]
+        )
 
 
-class TestTransactionExamples(IntegrationTest):
-    @client_context.require_transactions
-    def test_transactions(self):
+class TestTransactionExamples(AsyncIntegrationTest):
+    @async_client_context.require_transactions
+    async def test_transactions(self):
         # Transaction examples
         client = self.client
-        self.addCleanup(client.drop_database, "hr")
-        self.addCleanup(client.drop_database, "reporting")
+        self.addAsyncCleanup(client.drop_database, "hr")
+        self.addAsyncCleanup(client.drop_database, "reporting")
 
         employees = client.hr.employees
         events = client.reporting.events
-        employees.insert_one({"employee": 3, "status": "Active"})
-        events.insert_one({"employee": 3, "status": {"new": "Active", "old": None}})
+        await employees.insert_one({"employee": 3, "status": "Active"})
+        await events.insert_one({"employee": 3, "status": {"new": "Active", "old": None}})
 
         # Start Transactions Intro Example 1
 
-        def update_employee_info(session):
+        async def update_employee_info(session):
             employees_coll = session.client.hr.employees
             events_coll = session.client.reporting.events
 
-            with session.start_transaction(
+            async with await session.start_transaction(
                 read_concern=ReadConcern("snapshot"), write_concern=WriteConcern(w="majority")
             ):
-                employees_coll.update_one(
+                await employees_coll.update_one(
                     {"employee": 3}, {"$set": {"status": "Inactive"}}, session=session
                 )
-                events_coll.insert_one(
+                await events_coll.insert_one(
                     {"employee": 3, "status": {"new": "Inactive", "old": "Active"}}, session=session
                 )
 
                 while True:
                     try:
                         # Commit uses write concern set at transaction start.
-                        session.commit_transaction()
+                        await session.commit_transaction()
                         print("Transaction committed.")
                         break
                     except (ConnectionFailure, OperationFailure) as exc:
@@ -1039,19 +1041,19 @@ class TestTransactionExamples(IntegrationTest):
 
         # End Transactions Intro Example 1
 
-        with client.start_session() as session:
-            update_employee_info(session)
+        async with client.start_session() as session:
+            await update_employee_info(session)
 
-        employee = employees.find_one({"employee": 3})
+        employee = await employees.find_one({"employee": 3})
         assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee["status"], "Inactive")
 
         # Start Transactions Retry Example 1
-        def run_transaction_with_retry(txn_func, session):
+        async def run_transaction_with_retry(txn_func, session):
             while True:
                 try:
-                    txn_func(session)  # performs transaction
+                    await txn_func(session)  # performs transaction
                     break
                 except (ConnectionFailure, OperationFailure) as exc:
                     print("Transaction aborted. Caught exception during transaction.")
@@ -1065,20 +1067,20 @@ class TestTransactionExamples(IntegrationTest):
 
         # End Transactions Retry Example 1
 
-        with client.start_session() as session:
-            run_transaction_with_retry(update_employee_info, session)
+        async with client.start_session() as session:
+            await run_transaction_with_retry(update_employee_info, session)
 
-        employee = employees.find_one({"employee": 3})
+        employee = await employees.find_one({"employee": 3})
         assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee["status"], "Inactive")
 
         # Start Transactions Retry Example 2
-        def commit_with_retry(session):
+        async def commit_with_retry(session):
             while True:
                 try:
                     # Commit uses write concern set at transaction start.
-                    session.commit_transaction()
+                    await session.commit_transaction()
                     print("Transaction committed.")
                     break
                 except (ConnectionFailure, OperationFailure) as exc:
@@ -1093,29 +1095,29 @@ class TestTransactionExamples(IntegrationTest):
         # End Transactions Retry Example 2
 
         # Test commit_with_retry from the previous examples
-        def _insert_employee_retry_commit(session):
-            with session.start_transaction():
-                employees.insert_one({"employee": 4, "status": "Active"}, session=session)
-                events.insert_one(
+        async def _insert_employee_retry_commit(session):
+            async with await session.start_transaction():
+                await employees.insert_one({"employee": 4, "status": "Active"}, session=session)
+                await events.insert_one(
                     {"employee": 4, "status": {"new": "Active", "old": None}}, session=session
                 )
 
-                commit_with_retry(session)
+                await commit_with_retry(session)
 
-        with client.start_session() as session:
-            run_transaction_with_retry(_insert_employee_retry_commit, session)
+        async with client.start_session() as session:
+            await run_transaction_with_retry(_insert_employee_retry_commit, session)
 
-        employee = employees.find_one({"employee": 4})
+        employee = await employees.find_one({"employee": 4})
         assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee["status"], "Active")
 
         # Start Transactions Retry Example 3
 
-        def run_transaction_with_retry(txn_func, session):
+        async def run_transaction_with_retry(txn_func, session):
             while True:
                 try:
-                    txn_func(session)  # performs transaction
+                    await txn_func(session)  # performs transaction
                     break
                 except (ConnectionFailure, OperationFailure) as exc:
                     # If transient error, retry the whole transaction
@@ -1125,11 +1127,11 @@ class TestTransactionExamples(IntegrationTest):
                     else:
                         raise
 
-        def commit_with_retry(session):
+        async def commit_with_retry(session):
             while True:
                 try:
                     # Commit uses write concern set at transaction start.
-                    session.commit_transaction()
+                    await session.commit_transaction()
                     print("Transaction committed.")
                     break
                 except (ConnectionFailure, OperationFailure) as exc:
@@ -1143,41 +1145,41 @@ class TestTransactionExamples(IntegrationTest):
 
         # Updates two collections in a transactions
 
-        def update_employee_info(session):
+        async def update_employee_info(session):
             employees_coll = session.client.hr.employees
             events_coll = session.client.reporting.events
 
-            with session.start_transaction(
+            async with await session.start_transaction(
                 read_concern=ReadConcern("snapshot"),
                 write_concern=WriteConcern(w="majority"),
                 read_preference=ReadPreference.PRIMARY,
             ):
-                employees_coll.update_one(
+                await employees_coll.update_one(
                     {"employee": 3}, {"$set": {"status": "Inactive"}}, session=session
                 )
-                events_coll.insert_one(
+                await events_coll.insert_one(
                     {"employee": 3, "status": {"new": "Inactive", "old": "Active"}}, session=session
                 )
 
-                commit_with_retry(session)
+                await commit_with_retry(session)
 
         # Start a session.
-        with client.start_session() as session:
+        async with client.start_session() as session:
             try:
-                run_transaction_with_retry(update_employee_info, session)
+                await run_transaction_with_retry(update_employee_info, session)
             except Exception:
                 # Do something with error.
                 raise
 
         # End Transactions Retry Example 3
 
-        employee = employees.find_one({"employee": 3})
+        employee = await employees.find_one({"employee": 3})
         assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee["status"], "Inactive")
 
-        def MongoClient(_):
-            return self.rs_client()
+        async def MongoClient(_):
+            return await self.async_rs_client()
 
         uriString = None
 
@@ -1188,26 +1190,26 @@ class TestTransactionExamples(IntegrationTest):
         # For a sharded cluster, connect to the mongos instances; e.g.
         # uriString = 'mongodb://mongos0.example.com:27017,mongos1.example.com:27017/'
 
-        client = MongoClient(uriString)
+        client = await MongoClient(uriString)
         wc_majority = WriteConcern("majority", wtimeout=1000)
 
         # Prereq: Create collections.
-        client.get_database("mydb1", write_concern=wc_majority).foo.insert_one({"abc": 0})
-        client.get_database("mydb2", write_concern=wc_majority).bar.insert_one({"xyz": 0})
+        await client.get_database("mydb1", write_concern=wc_majority).foo.insert_one({"abc": 0})
+        await client.get_database("mydb2", write_concern=wc_majority).bar.insert_one({"xyz": 0})
 
         # Step 1: Define the callback that specifies the sequence of operations to perform inside the transactions.
-        def callback(session):
+        async def callback(session):
             collection_one = session.client.mydb1.foo
             collection_two = session.client.mydb2.bar
 
             # Important:: You must pass the session to the operations.
-            collection_one.insert_one({"abc": 1}, session=session)
-            collection_two.insert_one({"xyz": 999}, session=session)
+            await collection_one.insert_one({"abc": 1}, session=session)
+            await collection_two.insert_one({"xyz": 999}, session=session)
 
         # Step 2: Start a client session.
-        with client.start_session() as session:
+        async with client.start_session() as session:
             # Step 3: Use with_transaction to start a transaction, execute the callback, and commit (or abort on error).
-            session.with_transaction(
+            await session.with_transaction(
                 callback,
                 read_concern=ReadConcern("local"),
                 write_concern=wc_majority,
@@ -1217,30 +1219,30 @@ class TestTransactionExamples(IntegrationTest):
         # End Transactions withTxn API Example 1
 
 
-class TestCausalConsistencyExamples(IntegrationTest):
-    @client_context.require_secondaries_count(1)
-    @client_context.require_no_mmap
-    def test_causal_consistency(self):
+class TestCausalConsistencyExamples(AsyncIntegrationTest):
+    @async_client_context.require_secondaries_count(1)
+    @async_client_context.require_no_mmap
+    async def test_causal_consistency(self):
         # Causal consistency examples
         client = self.client
-        self.addCleanup(client.drop_database, "test")
-        client.test.drop_collection("items")
-        client.test.items.insert_one(
+        self.addAsyncCleanup(client.drop_database, "test")
+        await client.test.drop_collection("items")
+        await client.test.items.insert_one(
             {"sku": "111", "name": "Peanuts", "start": datetime.datetime.today()}
         )
 
         # Start Causal Consistency Example 1
-        with client.start_session(causal_consistency=True) as s1:
+        async with client.start_session(causal_consistency=True) as s1:
             current_date = datetime.datetime.today()
             items = client.get_database(
                 "test",
                 read_concern=ReadConcern("majority"),
                 write_concern=WriteConcern("majority", wtimeout=1000),
             ).items
-            items.update_one(
+            await items.update_one(
                 {"sku": "111", "end": None}, {"$set": {"end": current_date}}, session=s1
             )
-            items.insert_one(
+            await items.insert_one(
                 {"sku": "nuts-111", "name": "Pecans", "start": current_date}, session=s1
             )
         # End Causal Consistency Example 1
@@ -1249,7 +1251,7 @@ class TestCausalConsistencyExamples(IntegrationTest):
         assert s1.operation_time is not None
 
         # Start Causal Consistency Example 2
-        with client.start_session(causal_consistency=True) as s2:
+        async with client.start_session(causal_consistency=True) as s2:
             s2.advance_cluster_time(s1.cluster_time)
             s2.advance_operation_time(s1.operation_time)
 
@@ -1259,55 +1261,55 @@ class TestCausalConsistencyExamples(IntegrationTest):
                 read_concern=ReadConcern("majority"),
                 write_concern=WriteConcern("majority", wtimeout=1000),
             ).items
-            for item in items.find({"end": None}, session=s2):
+            async for item in items.find({"end": None}, session=s2):
                 print(item)
         # End Causal Consistency Example 2
 
 
-class TestVersionedApiExamples(IntegrationTest):
-    @client_context.require_version_min(4, 7)
-    def test_versioned_api(self):
+class TestVersionedApiExamples(AsyncIntegrationTest):
+    @async_client_context.require_version_min(4, 7)
+    async def test_versioned_api(self):
         # Versioned API examples
-        def MongoClient(_, server_api):
-            return self.rs_client(server_api=server_api, connect=False)
+        async def MongoClient(_, server_api):
+            return await self.async_rs_client(server_api=server_api, connect=False)
 
         uri = None
 
         # Start Versioned API Example 1
         from pymongo.server_api import ServerApi
 
-        MongoClient(uri, server_api=ServerApi("1"))
+        await MongoClient(uri, server_api=ServerApi("1"))
         # End Versioned API Example 1
 
         # Start Versioned API Example 2
-        MongoClient(uri, server_api=ServerApi("1", strict=True))
+        await MongoClient(uri, server_api=ServerApi("1", strict=True))
         # End Versioned API Example 2
 
         # Start Versioned API Example 3
-        MongoClient(uri, server_api=ServerApi("1", strict=False))
+        await MongoClient(uri, server_api=ServerApi("1", strict=False))
         # End Versioned API Example 3
 
         # Start Versioned API Example 4
-        MongoClient(uri, server_api=ServerApi("1", deprecation_errors=True))
+        await MongoClient(uri, server_api=ServerApi("1", deprecation_errors=True))
         # End Versioned API Example 4
 
     @unittest.skip("PYTHON-3167 count has been added to API version 1")
-    @client_context.require_version_min(4, 7)
-    def test_versioned_api_migration(self):
+    @async_client_context.require_version_min(4, 7)
+    async def test_versioned_api_migration(self):
         # SERVER-58785
-        if client_context.is_topology_type(["sharded"]) and not client_context.version.at_least(
-            5, 0, 2
-        ):
+        if await async_client_context.is_topology_type(
+            ["sharded"]
+        ) and not async_client_context.version.at_least(5, 0, 2):
             self.skipTest("This test needs MongoDB 5.0.2 or newer")
 
-        client = self.rs_client(server_api=ServerApi("1", strict=True))
-        client.db.sales.drop()
+        client = await self.async_rs_client(server_api=ServerApi("1", strict=True))
+        await client.db.sales.drop()
 
         # Start Versioned API Example 5
         def strptime(s):
             return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ")
 
-        client.db.sales.insert_many(
+        await client.db.sales.insert_many(
             [
                 {
                     "_id": 1,
@@ -1373,13 +1375,13 @@ class TestVersionedApiExamples(IntegrationTest):
             OperationFailure,
             "Provided apiStrict:true, but the command count is not in API Version 1",
         ):
-            client.db.command("count", "sales", query={})
+            await client.db.command("count", "sales", query={})
         # Start Versioned API Example 6
         # pymongo.errors.OperationFailure: Provided apiStrict:true, but the command count is not in API Version 1, full error: {'ok': 0.0, 'errmsg': 'Provided apiStrict:true, but the command count is not in API Version 1', 'code': 323, 'codeName': 'APIStrictError'}
         # End Versioned API Example 6
 
         # Start Versioned API Example 7
-        client.db.sales.count_documents({})
+        await client.db.sales.count_documents({})
         # End Versioned API Example 7
 
         # Start Versioned API Example 8
@@ -1387,31 +1389,35 @@ class TestVersionedApiExamples(IntegrationTest):
         # End Versioned API Example 8
 
 
-class TestSnapshotQueryExamples(IntegrationTest):
-    @client_context.require_version_min(5, 0)
-    def test_snapshot_query(self):
+class TestSnapshotQueryExamples(AsyncIntegrationTest):
+    @async_client_context.require_version_min(5, 0)
+    async def test_snapshot_query(self):
         client = self.client
 
-        if not client_context.is_topology_type(["replicaset", "sharded"]):
+        if not await async_client_context.is_topology_type(["replicaset", "sharded"]):
             self.skipTest("Must be a sharded or replicaset")
 
-        self.addCleanup(client.drop_database, "pets")
+        self.addAsyncCleanup(client.drop_database, "pets")
         db = client.pets
-        db.drop_collection("cats")
-        db.drop_collection("dogs")
-        db.cats.insert_one({"name": "Whiskers", "color": "white", "age": 10, "adoptable": True})
-        db.dogs.insert_one({"name": "Pebbles", "color": "Brown", "age": 10, "adoptable": True})
+        await db.drop_collection("cats")
+        await db.drop_collection("dogs")
+        await db.cats.insert_one(
+            {"name": "Whiskers", "color": "white", "age": 10, "adoptable": True}
+        )
+        await db.dogs.insert_one(
+            {"name": "Pebbles", "color": "Brown", "age": 10, "adoptable": True}
+        )
 
-        wait_until(functools.partial(self.check_for_snapshot, db.cats), "success")
-        wait_until(functools.partial(self.check_for_snapshot, db.dogs), "success")
+        await async_wait_until(functools.partial(self.check_for_snapshot, db.cats), "success")
+        await async_wait_until(functools.partial(self.check_for_snapshot, db.dogs), "success")
 
         # Start Snapshot Query Example 1
 
         db = client.pets
-        with client.start_session(snapshot=True) as s:
+        async with client.start_session(snapshot=True) as s:
             adoptablePetsCount = (
-                (
-                    db.cats.aggregate(
+                await (
+                    await db.cats.aggregate(
                         [{"$match": {"adoptable": True}}, {"$count": "adoptableCatsCount"}],
                         session=s,
                     )
@@ -1419,8 +1425,8 @@ class TestSnapshotQueryExamples(IntegrationTest):
             )["adoptableCatsCount"]
 
             adoptablePetsCount += (
-                (
-                    db.dogs.aggregate(
+                await (
+                    await db.dogs.aggregate(
                         [{"$match": {"adoptable": True}}, {"$count": "adoptableDogsCount"}],
                         session=s,
                     )
@@ -1431,19 +1437,19 @@ class TestSnapshotQueryExamples(IntegrationTest):
 
         # End Snapshot Query Example 1
         db = client.retail
-        self.addCleanup(client.drop_database, "retail")
-        db.drop_collection("sales")
+        self.addAsyncCleanup(client.drop_database, "retail")
+        await db.drop_collection("sales")
 
         saleDate = datetime.datetime.now()
-        db.sales.insert_one({"shoeType": "boot", "price": 30, "saleDate": saleDate})
-        wait_until(functools.partial(self.check_for_snapshot, db.sales), "success")
+        await db.sales.insert_one({"shoeType": "boot", "price": 30, "saleDate": saleDate})
+        await async_wait_until(functools.partial(self.check_for_snapshot, db.sales), "success")
 
         # Start Snapshot Query Example 2
         db = client.retail
-        with client.start_session(snapshot=True) as s:
+        async with client.start_session(snapshot=True) as s:
             _ = (
-                (
-                    db.sales.aggregate(
+                await (
+                    await db.sales.aggregate(
                         [
                             {
                                 "$match": {
@@ -1470,14 +1476,14 @@ class TestSnapshotQueryExamples(IntegrationTest):
 
         # End Snapshot Query Example 2
 
-    def check_for_snapshot(self, collection):
+    async def check_for_snapshot(self, collection):
         """Wait for snapshot reads to become available to prevent this error:
         [246:SnapshotUnavailable]: Unable to read from a snapshot due to pending collection catalog changes; please retry the operation. Snapshot timestamp is Timestamp(1646666892, 4). Collection minimum is Timestamp(1646666892, 5) (on localhost:27017, modern retry, attempt 1)
         From https://github.com/mongodb/mongo-ruby-driver/commit/7c4117b58e3d12e237f7536f7521e18fc15f79ac
         """
-        with self.client.start_session(snapshot=True) as s:
+        async with self.client.start_session(snapshot=True) as s:
             try:
-                if collection.find_one(session=s):
+                if await collection.find_one(session=s):
                     return True
                 return False
             except OperationFailure as e:
