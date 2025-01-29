@@ -119,6 +119,8 @@ replacements = {
     "_async_create_lock": "_create_lock",
     "_async_create_condition": "_create_condition",
     "_async_cond_wait": "_cond_wait",
+    "AsyncDummyMonitor": "DummyMonitor",
+    "SpecRunnerTask": "SpecRunnerThread",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

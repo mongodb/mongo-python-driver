@@ -54,39 +54,82 @@ from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
 
+if _IS_SYNC:
 
-class SpecRunnerThread(threading.Thread):
-    def __init__(self, name):
-        super().__init__()
-        self.name = name
-        self.exc = None
-        self.daemon = True
-        self.cond = threading.Condition()
-        self.ops = []
-        self.stopped = False
+    class SpecRunnerThread(threading.Thread):
+        def __init__(self, name):
+            super().__init__()
+            self.name = name
+            self.exc = None
+            self.daemon = True
+            self.cond = threading.Condition()
+            self.ops = []
+            self.stopped = False
 
-    def schedule(self, work):
-        self.ops.append(work)
-        with self.cond:
-            self.cond.notify()
+        def schedule(self, work):
+            self.ops.append(work)
+            with self.cond:
+                self.cond.notify()
 
-    def stop(self):
-        self.stopped = True
-        with self.cond:
-            self.cond.notify()
+        def stop(self):
+            self.stopped = True
+            with self.cond:
+                self.cond.notify()
 
-    def run(self):
-        while not self.stopped or self.ops:
-            if not self.ops:
-                with self.cond:
-                    self.cond.wait(10)
-            if self.ops:
-                try:
-                    work = self.ops.pop(0)
-                    work()
-                except Exception as exc:
-                    self.exc = exc
-                    self.stop()
+        def run(self):
+            while not self.stopped or self.ops:
+                if not self.ops:
+                    with self.cond:
+                        self.cond.wait(10)
+                if self.ops:
+                    try:
+                        work = self.ops.pop(0)
+                        work()
+                    except Exception as exc:
+                        self.exc = exc
+                        self.stop()
+else:
+
+    class SpecRunnerThread:
+        def __init__(self, name):
+            self.name = name
+            self.exc = None
+            self.cond = asyncio.Condition()
+            self.ops = []
+            self.stopped = False
+            self.task = None
+
+        def schedule(self, work):
+            self.ops.append(work)
+            with self.cond:
+                self.cond.notify()
+
+        def stop(self):
+            self.stopped = True
+            with self.cond:
+                self.cond.notify()
+
+        def start(self):
+            self.task = asyncio.create_task(self.run(), name=self.name)
+
+        def join(self, timeout: int = 0):
+            asyncio.wait([self.task], timeout=timeout)
+
+        def is_alive(self):
+            return not self.stopped
+
+        def run(self):
+            while not self.stopped or self.ops:
+                if not self.ops:
+                    with self.cond:
+                        asyncio.wait_for(self.cond.wait(), timeout=10)
+                if self.ops:
+                    try:
+                        work = self.ops.pop(0)
+                        work()
+                    except Exception as exc:
+                        self.exc = exc
+                        self.stop()
 
 
 class SpecTestCreator:
