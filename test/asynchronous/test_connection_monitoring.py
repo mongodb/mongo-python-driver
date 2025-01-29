@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import os
+import pathlib
 import sys
 import time
 
@@ -83,7 +84,12 @@ OBJECT_TYPES = {
 
 class AsyncTestCMAP(AsyncIntegrationTest):
     # Location of JSON test specifications.
-    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "connection_monitoring")
+    if _IS_SYNC:
+        _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "connection_monitoring")
+    else:
+        _TEST_PATH = os.path.join(
+            pathlib.Path(__file__).resolve().parent.parent, "connection_monitoring"
+        )
 
     # Test operations:
 
@@ -128,7 +134,7 @@ class AsyncTestCMAP(AsyncIntegrationTest):
             if label:
                 self.labels[label] = conn
             else:
-                self.addAsyncCleanup(conn.aclose_conn, None)
+                self.addAsyncCleanup(conn.close_conn, None)
 
     def check_in(self, op):
         """Run the 'checkIn' operation."""
@@ -260,7 +266,6 @@ class AsyncTestCMAP(AsyncIntegrationTest):
                 client._topology.open()
             else:
                 client._get_topology()
-        self.addAsyncCleanup(client.close)
         self.pool = list(client._topology._servers.values())[0].pool
 
         # Map of target names to Thread objects.
@@ -317,13 +322,11 @@ class AsyncTestCMAP(AsyncIntegrationTest):
     #
     async def test_1_client_connection_pool_options(self):
         client = await self.async_rs_or_single_client(**self.POOL_OPTIONS)
-        self.addAsyncCleanup(client.close)
         pool_opts = (await async_get_pool(client)).opts
         self.assertEqual(pool_opts.non_default_options, self.POOL_OPTIONS)
 
     async def test_2_all_client_pools_have_same_options(self):
         client = await self.async_rs_or_single_client(**self.POOL_OPTIONS)
-        self.addAsyncCleanup(client.close)
         await client.admin.command("ping")
         # Discover at least one secondary.
         if await async_client_context.has_secondaries:
@@ -339,14 +342,12 @@ class AsyncTestCMAP(AsyncIntegrationTest):
         opts = "&".join([f"{k}={v}" for k, v in self.POOL_OPTIONS.items()])
         uri = f"mongodb://{await async_client_context.pair}/?{opts}"
         client = await self.async_rs_or_single_client(uri)
-        self.addAsyncCleanup(client.close)
         pool_opts = (await async_get_pool(client)).opts
         self.assertEqual(pool_opts.non_default_options, self.POOL_OPTIONS)
 
     async def test_4_subscribe_to_events(self):
         listener = CMAPListener()
         client = await self.async_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         self.assertEqual(listener.event_count(PoolCreatedEvent), 1)
 
         # Creates a new connection.
@@ -370,7 +371,6 @@ class AsyncTestCMAP(AsyncIntegrationTest):
     async def test_5_check_out_fails_connection_error(self):
         listener = CMAPListener()
         client = await self.async_single_client(event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
         pool = await async_get_pool(client)
 
         def mock_connect(*args, **kwargs):
@@ -399,7 +399,6 @@ class AsyncTestCMAP(AsyncIntegrationTest):
         client = await self.async_single_client_noauth(
             username="notauser", password="fail", event_listeners=[listener]
         )
-        self.addAsyncCleanup(client.close)
 
         # Attempt to create a new connection.
         with self.assertRaisesRegex(OperationFailure, "failed"):
@@ -471,8 +470,9 @@ class CMAPSpecTestCreator(AsyncSpecTestCreator):
         return [scenario_def]
 
 
-test_creator = CMAPSpecTestCreator(create_test, AsyncTestCMAP, AsyncTestCMAP.TEST_PATH)
-test_creator.create_tests()
+if _IS_SYNC:
+    test_creator = CMAPSpecTestCreator(create_test, AsyncTestCMAP, AsyncTestCMAP.TEST_PATH)
+    test_creator.create_tests()
 
 
 if __name__ == "__main__":
