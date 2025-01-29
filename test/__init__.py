@@ -868,30 +868,28 @@ class ClientContext:
 client_context = ClientContext()
 
 
-def reset_client_context():
-    if _IS_SYNC:
-        # sync tests don't need to reset a client context
-        return
-    elif client_context.client is not None:
-        client_context.client.close()
-        client_context.client = None
-    client_context._init_client()
-
-
 class PyMongoTestCase(unittest.TestCase):
     if not _IS_SYNC:
         # An async TestCase that uses a single event loop for all tests.
         # Inspired by TestCase.
         def __init__(self, methodName="runTest"):
             super().__init__(methodName)
+            self._loop = None
+
+        @property
+        def loop(self):
+            if self._loop:
+                return self._loop
             try:
                 with warnings.catch_warnings():
                     # Ignore DeprecationWarning: There is no current event loop
                     warnings.simplefilter("ignore", DeprecationWarning)
-                    self.loop = asyncio.get_event_loop()
+                    loop = asyncio.get_event_loop()
             except RuntimeError:
-                self.loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(self.loop)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            self._loop = loop
+            return loop
 
         def setUp(self):
             pass
@@ -1188,8 +1186,6 @@ class IntegrationTest(PyMongoTestCase):
 
     @client_context.require_connection
     def setUp(self) -> None:
-        if not _IS_SYNC:
-            reset_client_context()
         if client_context.load_balancer and not getattr(self, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")
         if client_context.serverless and not getattr(self, "RUN_ON_SERVERLESS", False):
