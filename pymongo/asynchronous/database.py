@@ -122,7 +122,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
         if not isinstance(name, str):
-            raise TypeError(f"name must be an instance of str, not {type(name)}.")
+            raise TypeError(f"name must be an instance of str, not {type(name)}")
 
         if not isinstance(client, AsyncMongoClient):
             # This is for compatibility with mocked and subclassed types, such as in Motor.
@@ -1310,7 +1310,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             name = name.name
 
         if not isinstance(name, str):
-            raise TypeError(f"name_or_collection must be an instance of str, not {type(name)}.")
+            raise TypeError(f"name_or_collection must be an instance of str, not {type(name)}")
         encrypted_fields = await self._get_encrypted_fields(
             {"encryptedFields": encrypted_fields},
             name,
@@ -1375,7 +1375,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(name, str):
             raise TypeError(
-                f"name_or_collection must be an instance of str or AsyncCollection, not {type(name)}."
+                f"name_or_collection must be an instance of str or AsyncCollection, not {type(name)}"
             )
         cmd = {"validate": name, "scandata": scandata, "full": full}
         if comment is not None:

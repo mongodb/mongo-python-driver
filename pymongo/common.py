@@ -202,7 +202,7 @@ def validate_integer(option: str, value: Any) -> int:
             return int(value)
         except ValueError:
             raise ValueError(f"The value of {option} must be an integer") from None
-    raise TypeError(f"Wrong type for {option}, value must be an integer, not {type(value)}.")
+    raise TypeError(f"Wrong type for {option}, value must be an integer, not {type(value)}")
 
 
 def validate_positive_integer(option: str, value: Any) -> int:
@@ -251,7 +251,7 @@ def validate_string(option: str, value: Any) -> str:
     if isinstance(value, str):
         return value
     raise TypeError(
-        f"Wrong type for {option}, value must be an instance of str, not {type(value)}."
+        f"Wrong type for {option}, value must be an instance of str, not {type(value)}"
     )
 
 
@@ -272,7 +272,7 @@ def validate_int_or_basestring(option: str, value: Any) -> Union[int, str]:
         except ValueError:
             return value
     raise TypeError(
-        f"Wrong type for {option}, value must be an integer or a string, not {type(value)}."
+        f"Wrong type for {option}, value must be an integer or a string, not {type(value)}"
     )
 
 
@@ -287,7 +287,7 @@ def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[in
             return value
         return validate_non_negative_integer(option, val)
     raise TypeError(
-        f"Wrong type for {option}, value must be an non negative integer or a string, not {type(value)}."
+        f"Wrong type for {option}, value must be an non negative integer or a string, not {type(value)}"
     )
 
 
@@ -371,7 +371,7 @@ def validate_max_staleness(option: str, value: Any) -> int:
 def validate_read_preference(dummy: Any, value: Any) -> _ServerMode:
     """Validate a read preference."""
     if not isinstance(value, _ServerMode):
-        raise TypeError(f"{value!r} is not a read preference.")
+        raise TypeError(f"{value!r} is not a read preference")
     return value
 
 
@@ -448,7 +448,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
     if not isinstance(value, str):
         if not isinstance(value, dict):
             raise ValueError(
-                f"Auth mechanism properties must be given as a string or a dictionary, not {type(value)}."
+                f"Auth mechanism properties must be given as a string or a dictionary, not {type(value)}"
             )
         for key, value in value.items():  # noqa: B020
             if isinstance(value, str):
@@ -461,7 +461,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
                 from pymongo.auth_oidc_shared import OIDCCallback
 
                 if not isinstance(value, OIDCCallback):
-                    raise ValueError(f"callback must be an OIDCCallback object, not {type(value)}.")
+                    raise ValueError(f"callback must be an OIDCCallback object, not {type(value)}")
                 props[key] = value
             else:
                 raise ValueError(f"Invalid type for auth mechanism property {key}, {type(value)}")
@@ -484,7 +484,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
             raise ValueError(
                 f"{key} is not a supported auth "
                 "mechanism property. Must be one of "
-                f"{tuple(_MECHANISM_PROPS)}."
+                f"{tuple(_MECHANISM_PROPS)}"
             )
 
         if key == "CANONICALIZE_HOST_NAME":
@@ -528,7 +528,7 @@ def validate_type_registry(option: Any, value: Any) -> Optional[TypeRegistry]:
 def validate_list(option: str, value: Any) -> list:
     """Validates that 'value' is a list."""
     if not isinstance(value, list):
-        raise TypeError(f"{option} must be a list, not {type(value)}.")
+        raise TypeError(f"{option} must be a list, not {type(value)}")
     return value
 
 
@@ -595,7 +595,7 @@ def validate_server_api_or_none(option: Any, value: Any) -> Optional[ServerApi]:
     if value is None:
         return value
     if not isinstance(value, ServerApi):
-        raise TypeError(f"{option} must be an instance of ServerApi, not {type(value)}.")
+        raise TypeError(f"{option} must be an instance of ServerApi, not {type(value)}")
     return value
 
 
@@ -604,7 +604,7 @@ def validate_is_callable_or_none(option: Any, value: Any) -> Optional[Callable]:
     if value is None:
         return value
     if not callable(value):
-        raise ValueError(f"{option} must be a callable, not {type(value)}.")
+        raise ValueError(f"{option} must be a callable, not {type(value)}")
     return value
 
 
@@ -659,7 +659,7 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[A
     from pymongo.encryption_options import AutoEncryptionOpts
 
     if not isinstance(value, AutoEncryptionOpts):
-        raise TypeError(f"{option} must be an instance of AutoEncryptionOpts, not {type(value)}.")
+        raise TypeError(f"{option} must be an instance of AutoEncryptionOpts, not {type(value)}")
 
     return value
 
@@ -677,7 +677,7 @@ def validate_datetime_conversion(option: Any, value: Any) -> Optional[DatetimeCo
         return DatetimeConversion(value)
 
     raise TypeError(
-        f"{option} must be a str or int representing DatetimeConversion, not {type(value)}."
+        f"{option} must be a str or int representing DatetimeConversion, not {type(value)}"
     )
 
 
@@ -938,13 +938,13 @@ class BaseObject:
 
         if not isinstance(write_concern, WriteConcern):
             raise TypeError(
-                f"write_concern must be an instance of pymongo.write_concern.WriteConcern, not {type(write_concern)}."
+                f"write_concern must be an instance of pymongo.write_concern.WriteConcern, not {type(write_concern)}"
             )
         self._write_concern = write_concern
 
         if not isinstance(read_concern, ReadConcern):
             raise TypeError(
-                f"read_concern must be an instance of pymongo.read_concern.ReadConcern, not {type(read_concern)}."
+                f"read_concern must be an instance of pymongo.read_concern.ReadConcern, not {type(read_concern)}"
             )
         self._read_concern = read_concern
 

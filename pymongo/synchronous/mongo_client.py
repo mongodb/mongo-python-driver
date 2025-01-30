@@ -748,7 +748,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if port is None:
             port = self.PORT
         if not isinstance(port, int):
-            raise TypeError(f"port must be an instance of int, not {type(port)}.")
+            raise TypeError(f"port must be an instance of int, not {type(port)}")
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
@@ -1965,7 +1965,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         The cursor is closed synchronously on the current thread.
         """
         if not isinstance(cursor_id, int):
-            raise TypeError(f"cursor_id must be an instance of int, not {type(cursor_id)}.")
+            raise TypeError(f"cursor_id must be an instance of int, not {type(cursor_id)}")
 
         try:
             if conn_mgr:
@@ -2088,7 +2088,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if session is not None:
             if not isinstance(session, client_session.ClientSession):
                 raise ValueError(
-                    f"'session' argument must be a ClientSession or None, not {type(session)}."
+                    f"'session' argument must be a ClientSession or None, not {type(session)}"
                 )
             # Don't call end_session.
             yield session
@@ -2238,7 +2238,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(name, str):
             raise TypeError(
-                f"name_or_database must be an instance of str or a Database, not {type(name)}."
+                f"name_or_database must be an instance of str or a Database, not {type(name)}"
             )
 
         with self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:

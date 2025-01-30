@@ -100,7 +100,7 @@ class AsyncGridFS:
         .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
         """
         if not isinstance(database, AsyncDatabase):
-            raise TypeError(f"database must be an instance of Database, not {type(database)}.")
+            raise TypeError(f"database must be an instance of Database, not {type(database)}")
 
         database = _clear_entity_type_registry(database)
 
@@ -503,7 +503,7 @@ class AsyncGridFSBucket:
         .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
         """
         if not isinstance(db, AsyncDatabase):
-            raise TypeError(f"database must be an instance of AsyncDatabase, not {type(db)}.")
+            raise TypeError(f"database must be an instance of AsyncDatabase, not {type(db)}")
 
         db = _clear_entity_type_registry(db)
 
@@ -1083,7 +1083,7 @@ class AsyncGridIn:
         """
         if not isinstance(root_collection, AsyncCollection):
             raise TypeError(
-                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}."
+                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}"
             )
 
         if not root_collection.write_concern.acknowledged:
@@ -1439,7 +1439,7 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         """
         if not isinstance(root_collection, AsyncCollection):
             raise TypeError(
-                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}."
+                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}"
             )
         _disallow_transactions(session)
 

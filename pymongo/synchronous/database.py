@@ -122,7 +122,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         from pymongo.synchronous.mongo_client import MongoClient
 
         if not isinstance(name, str):
-            raise TypeError(f"name must be an instance of str, not {type(name)}.")
+            raise TypeError(f"name must be an instance of str, not {type(name)}")
 
         if not isinstance(client, MongoClient):
             # This is for compatibility with mocked and subclassed types, such as in Motor.
@@ -1303,7 +1303,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             name = name.name
 
         if not isinstance(name, str):
-            raise TypeError(f"name_or_collection must be an instance of str, not {type(name)}.")
+            raise TypeError(f"name_or_collection must be an instance of str, not {type(name)}")
         encrypted_fields = self._get_encrypted_fields(
             {"encryptedFields": encrypted_fields},
             name,
@@ -1368,7 +1368,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(name, str):
             raise TypeError(
-                f"name_or_collection must be an instance of str or Collection, not {type(name)}."
+                f"name_or_collection must be an instance of str or Collection, not {type(name)}"
             )
         cmd = {"validate": name, "scandata": scandata, "full": full}
         if comment is not None:

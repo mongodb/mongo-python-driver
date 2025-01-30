@@ -146,9 +146,9 @@ class Cursor(Generic[_DocumentType]):
         spec: Mapping[str, Any] = filter or {}
         validate_is_mapping("filter", spec)
         if not isinstance(skip, int):
-            raise TypeError(f"skip must be an instance of int, not {type(skip)}.")
+            raise TypeError(f"skip must be an instance of int, not {type(skip)}")
         if not isinstance(limit, int):
-            raise TypeError(f"limit must be an instance of int, not {type(limit)}.")
+            raise TypeError(f"limit must be an instance of int, not {type(limit)}")
         validate_boolean("no_cursor_timeout", no_cursor_timeout)
         if no_cursor_timeout and not self._explicit_session:
             warnings.warn(
@@ -171,7 +171,7 @@ class Cursor(Generic[_DocumentType]):
         validate_boolean("allow_partial_results", allow_partial_results)
         validate_boolean("oplog_replay", oplog_replay)
         if not isinstance(batch_size, int):
-            raise TypeError(f"batch_size must be an integer, not {type(batch_size)}.")
+            raise TypeError(f"batch_size must be an integer, not {type(batch_size)}")
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
         # Only set if allow_disk_use is provided by the user, else None.
@@ -388,7 +388,7 @@ class Cursor(Generic[_DocumentType]):
         cursor.add_option(2)
         """
         if not isinstance(mask, int):
-            raise TypeError(f"mask must be an int, not {type(mask)}.")
+            raise TypeError(f"mask must be an int, not {type(mask)}")
         self._check_okay_to_chain()
 
         if mask & _QUERY_OPTIONS["exhaust"]:
@@ -408,7 +408,7 @@ class Cursor(Generic[_DocumentType]):
         cursor.remove_option(2)
         """
         if not isinstance(mask, int):
-            raise TypeError(f"mask must be an int, not {type(mask)}.")
+            raise TypeError(f"mask must be an int, not {type(mask)}")
         self._check_okay_to_chain()
 
         if mask & _QUERY_OPTIONS["exhaust"]:
@@ -432,7 +432,7 @@ class Cursor(Generic[_DocumentType]):
         .. versionadded:: 3.11
         """
         if not isinstance(allow_disk_use, bool):
-            raise TypeError(f"allow_disk_use must be a bool, not {type(allow_disk_use)}.")
+            raise TypeError(f"allow_disk_use must be a bool, not {type(allow_disk_use)}")
         self._check_okay_to_chain()
 
         self._allow_disk_use = allow_disk_use
@@ -451,7 +451,7 @@ class Cursor(Generic[_DocumentType]):
         .. seealso:: The MongoDB documentation on `limit <https://dochub.mongodb.org/core/limit>`_.
         """
         if not isinstance(limit, int):
-            raise TypeError(f"limit must be an integer, not {type(limit)}.")
+            raise TypeError(f"limit must be an integer, not {type(limit)}")
         if self._exhaust:
             raise InvalidOperation("Can't use limit and exhaust together.")
         self._check_okay_to_chain()
@@ -479,7 +479,7 @@ class Cursor(Generic[_DocumentType]):
         :param batch_size: The size of each batch of results requested.
         """
         if not isinstance(batch_size, int):
-            raise TypeError(f"batch_size must be an integer, not {type(batch_size)}.")
+            raise TypeError(f"batch_size must be an integer, not {type(batch_size)}")
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
         self._check_okay_to_chain()
@@ -499,7 +499,7 @@ class Cursor(Generic[_DocumentType]):
         :param skip: the number of results to skip
         """
         if not isinstance(skip, int):
-            raise TypeError(f"skip must be an integer, not {type(skip)}.")
+            raise TypeError(f"skip must be an integer, not {type(skip)}")
         if skip < 0:
             raise ValueError("skip must be >= 0")
         self._check_okay_to_chain()
@@ -520,7 +520,7 @@ class Cursor(Generic[_DocumentType]):
         :param max_time_ms: the time limit after which the operation is aborted
         """
         if not isinstance(max_time_ms, int) and max_time_ms is not None:
-            raise TypeError(f"max_time_ms must be an integer or None, not {type(max_time_ms)}.")
+            raise TypeError(f"max_time_ms must be an integer or None, not {type(max_time_ms)}")
         self._check_okay_to_chain()
 
         self._max_time_ms = max_time_ms
@@ -544,7 +544,7 @@ class Cursor(Generic[_DocumentType]):
         """
         if not isinstance(max_await_time_ms, int) and max_await_time_ms is not None:
             raise TypeError(
-                f"max_await_time_ms must be an integer or None, not {type(max_await_time_ms)}."
+                f"max_await_time_ms must be an integer or None, not {type(max_await_time_ms)}"
             )
         self._check_okay_to_chain()
 
@@ -679,7 +679,7 @@ class Cursor(Generic[_DocumentType]):
         .. versionadded:: 2.7
         """
         if not isinstance(spec, (list, tuple)):
-            raise TypeError(f"spec must be an instance of list or tuple, not {type(spec)}.")
+            raise TypeError(f"spec must be an instance of list or tuple, not {type(spec)}")
 
         self._check_okay_to_chain()
         self._max = dict(spec)
@@ -701,7 +701,7 @@ class Cursor(Generic[_DocumentType]):
         .. versionadded:: 2.7
         """
         if not isinstance(spec, (list, tuple)):
-            raise TypeError(f"spec must be an instance of list or tuple, not {type(spec)}.")
+            raise TypeError(f"spec must be an instance of list or tuple, not {type(spec)}")
 
         self._check_okay_to_chain()
         self._min = dict(spec)

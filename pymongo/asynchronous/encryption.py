@@ -323,7 +323,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         data_key_id = raw_doc.get("_id")
         if not isinstance(data_key_id, Binary) or data_key_id.subtype != UUID_SUBTYPE:
             raise TypeError(
-                f"data_key _id must be Binary with a UUID subtype, not {type(data_key_id)}."
+                f"data_key _id must be Binary with a UUID subtype, not {type(data_key_id)}"
             )
 
         assert self.key_vault_coll is not None
@@ -647,7 +647,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
 
         if not isinstance(codec_options, CodecOptions):
             raise TypeError(
-                f"codec_options must be an instance of bson.codec_options.CodecOptions, not {type(codec_options)}."
+                f"codec_options must be an instance of bson.codec_options.CodecOptions, not {type(codec_options)}"
             )
 
         if not isinstance(key_vault_client, AsyncMongoClient):

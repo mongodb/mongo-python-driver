@@ -38,7 +38,7 @@ class ReadConcern:
         if level is None or isinstance(level, str):
             self.__level = level
         else:
-            raise TypeError(f"level must be a string or None, not {type(level)}.")
+            raise TypeError(f"level must be a string or None, not {type(level)}")
 
     @property
     def level(self) -> Optional[str]:

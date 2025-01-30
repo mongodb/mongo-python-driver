@@ -310,7 +310,7 @@ class TransactionOptions:
         if max_commit_time_ms is not None:
             if not isinstance(max_commit_time_ms, int):
                 raise TypeError(
-                    f"max_commit_time_ms must be an integer or None, not {type(max_commit_time_ms)}."
+                    f"max_commit_time_ms must be an integer or None, not {type(max_commit_time_ms)}"
                 )
 
     @property
@@ -900,7 +900,7 @@ class ClientSession:
         """
         if not isinstance(cluster_time, _Mapping):
             raise TypeError(
-                f"cluster_time must be a subclass of collections.Mapping, not {type(cluster_time)}."
+                f"cluster_time must be a subclass of collections.Mapping, not {type(cluster_time)}"
             )
         if not isinstance(cluster_time.get("clusterTime"), Timestamp):
             raise ValueError("Invalid cluster_time")
@@ -923,7 +923,7 @@ class ClientSession:
         """
         if not isinstance(operation_time, Timestamp):
             raise TypeError(
-                f"operation_time must be an instance of bson.timestamp.Timestamp, not {type(operation_time)}."
+                f"operation_time must be an instance of bson.timestamp.Timestamp, not {type(operation_time)}"
             )
         self._advance_operation_time(operation_time)
 
