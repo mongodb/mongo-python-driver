@@ -1409,8 +1409,14 @@ class TestSnapshotQueryExamples(AsyncIntegrationTest):
             {"name": "Pebbles", "color": "Brown", "age": 10, "adoptable": True}
         )
 
-        await async_wait_until(functools.partial(self.check_for_snapshot, db.cats), "success")
-        await async_wait_until(functools.partial(self.check_for_snapshot, db.dogs), "success")
+        async def predicate_one():
+            return await self.check_for_snapshot(db.cats)
+
+        async def predicate_two():
+            return await self.check_for_snapshot(db.dogs)
+
+        await async_wait_until(predicate_two, "success")
+        await async_wait_until(predicate_one, "success")
 
         # Start Snapshot Query Example 1
 
@@ -1443,7 +1449,11 @@ class TestSnapshotQueryExamples(AsyncIntegrationTest):
 
         saleDate = datetime.datetime.now()
         await db.sales.insert_one({"shoeType": "boot", "price": 30, "saleDate": saleDate})
-        await async_wait_until(functools.partial(self.check_for_snapshot, db.sales), "success")
+
+        async def predicate_three():
+            return await self.check_for_snapshot(db.sales)
+
+        await async_wait_until(predicate_three, "success")
 
         # Start Snapshot Query Example 2
         db = client.retail

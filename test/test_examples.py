@@ -1403,8 +1403,14 @@ class TestSnapshotQueryExamples(IntegrationTest):
         db.cats.insert_one({"name": "Whiskers", "color": "white", "age": 10, "adoptable": True})
         db.dogs.insert_one({"name": "Pebbles", "color": "Brown", "age": 10, "adoptable": True})
 
-        wait_until(functools.partial(self.check_for_snapshot, db.cats), "success")
-        wait_until(functools.partial(self.check_for_snapshot, db.dogs), "success")
+        def predicate_one():
+            return self.check_for_snapshot(db.cats)
+
+        def predicate_two():
+            return self.check_for_snapshot(db.dogs)
+
+        wait_until(predicate_two, "success")
+        wait_until(predicate_one, "success")
 
         # Start Snapshot Query Example 1
 
@@ -1437,7 +1443,11 @@ class TestSnapshotQueryExamples(IntegrationTest):
 
         saleDate = datetime.datetime.now()
         db.sales.insert_one({"shoeType": "boot", "price": 30, "saleDate": saleDate})
-        wait_until(functools.partial(self.check_for_snapshot, db.sales), "success")
+
+        def predicate_three():
+            return self.check_for_snapshot(db.sales)
+
+        wait_until(predicate_three, "success")
 
         # Start Snapshot Query Example 2
         db = client.retail
