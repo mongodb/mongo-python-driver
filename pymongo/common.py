@@ -250,9 +250,7 @@ def validate_string(option: str, value: Any) -> str:
     """Validates that 'value' is an instance of `str`."""
     if isinstance(value, str):
         return value
-    raise TypeError(
-        f"Wrong type for {option}, value must be an instance of str, not {type(value)}"
-    )
+    raise TypeError(f"Wrong type for {option}, value must be an instance of str, not {type(value)}")
 
 
 def validate_string_or_none(option: str, value: Any) -> Optional[str]:
