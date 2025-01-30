@@ -611,8 +611,8 @@ def joinall(threads):
 async def asyncjoinall(tasks):
     """Join tasks with a 5-minute timeout, assert joins succeeded"""
     for t in tasks:
-        await asyncio.wait_for(t, 300)
-        assert t.done(), "Task %s hung" % t
+        await asyncio.wait_for(t.task, 300)
+        assert t.task.done(), "Task %s hung" % t
 
 
 def wait_until(predicate, success_description, timeout=10):
