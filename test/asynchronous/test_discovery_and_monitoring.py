@@ -20,11 +20,12 @@ import os
 import socketserver
 import sys
 import threading
+from asyncio import StreamReader
 from pathlib import Path
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, unittest
+from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, AsyncUnitTest, unittest
 from test.asynchronous.pymongo_mocks import DummyMonitor
 from test.asynchronous.unified_format import generate_test_classes
 from test.utils import (
@@ -226,7 +227,7 @@ def create_test(scenario_def):
     return run_scenario
 
 
-def create_tests():
+async def create_tests():
     for dirpath, _, filenames in os.walk(SDAM_PATH):
         dirname = os.path.split(dirpath)[-1]
         # SDAM unified tests are handled separately.
@@ -247,7 +248,6 @@ def create_tests():
             setattr(TestAllScenarios, new_test.__name__, new_test)
 
 
-create_tests()
 
 
 class TestClusterTimeComparison(unittest.IsolatedAsyncioTestCase):
@@ -277,45 +277,82 @@ class TestClusterTimeComparison(unittest.IsolatedAsyncioTestCase):
 
 
 class TestIgnoreStaleErrors(AsyncIntegrationTest):
-    @async_client_context.require_sync
-    async def test_ignore_stale_connection_errors(self):
-        N_THREADS = 5
-        barrier = threading.Barrier(N_THREADS, timeout=30)
-        client = await self.async_rs_or_single_client(minPoolSize=N_THREADS)
+    if _IS_SYNC:
+        async def test_ignore_stale_connection_errors(self):
+            N_THREADS = 5
+            barrier = threading.Barrier(N_THREADS, timeout=30)
+            client = await self.async_rs_or_single_client(minPoolSize=N_THREADS)
 
-        # Wait for initial discovery.
-        await client.admin.command("ping")
-        pool = await async_get_pool(client)
-        starting_generation = pool.gen.get_overall()
-        await async_wait_until(lambda: len(pool.conns) == N_THREADS, "created conns")
+            # Wait for initial discovery.
+            await client.admin.command("ping")
+            pool = await async_get_pool(client)
+            starting_generation = pool.gen.get_overall()
+            await async_wait_until(lambda: len(pool.conns) == N_THREADS, "created conns")
 
-        def mock_command(*args, **kwargs):
-            # Synchronize all threads to ensure they use the same generation.
-            barrier.wait()
-            raise AutoReconnect("mock AsyncConnection.command error")
+            def mock_command(*args, **kwargs):
+                # Synchronize all threads to ensure they use the same generation.
+                barrier.wait()
+                raise AutoReconnect("mock AsyncConnection.command error")
 
-        for conn in pool.conns:
-            conn.command = mock_command
+            for conn in pool.conns:
+                conn.command = mock_command
 
-        async def insert_command(i):
-            try:
-                await client.test.command("insert", "test", documents=[{"i": i}])
-            except AutoReconnect:
-                pass
+            async def insert_command(i):
+                try:
+                    await client.test.command("insert", "test", documents=[{"i": i}])
+                except AutoReconnect:
+                    pass
 
-        threads = []
-        for i in range(N_THREADS):
-            threads.append(threading.Thread(target=insert_command, args=(i,)))
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
+            threads = []
+            for i in range(N_THREADS):
+                threads.append(threading.Thread(target=insert_command, args=(i,)))
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
 
-        # Expect a single pool reset for the network error
-        self.assertEqual(starting_generation + 1, pool.gen.get_overall())
+            # Expect a single pool reset for the network error
+            self.assertEqual(starting_generation + 1, pool.gen.get_overall())
 
-        # Server should be selectable.
-        await client.admin.command("ping")
+            # Server should be selectable.
+            await client.admin.command("ping")
+    else:
+        async def test_ignore_stale_connection_errors(self):
+            N_TASKS = 5
+            barrier = asyncio.Barrier(N_TASKS)
+            client = await self.async_rs_or_single_client(minPoolSize=N_TASKS)
+
+            # Wait for initial discovery.
+            await client.admin.command("ping")
+            pool = await async_get_pool(client)
+            starting_generation = pool.gen.get_overall()
+            await async_wait_until(lambda: len(pool.conns) == N_TASKS, "created conns")
+
+            async def mock_command(*args, **kwargs):
+                # Synchronize all threads to ensure they use the same generation.
+                await asyncio.wait_for(barrier.wait(), timeout=30)
+                raise AutoReconnect("mock AsyncConnection.command error")
+
+            for conn in pool.conns:
+                conn.command = mock_command
+
+            async def insert_command(i):
+                try:
+                    await client.test.command("insert", "test", documents=[{"i": i}])
+                except AutoReconnect:
+                    pass
+
+            tasks = []
+            for i in range(N_TASKS):
+                tasks.append(asyncio.create_task(insert_command(i)))
+            for t in tasks:
+                await t
+
+            # Expect a single pool reset for the network error
+            self.assertEqual(starting_generation + 1, pool.gen.get_overall())
+
+            # Server should be selectable.
+            await client.admin.command("ping")
 
 
 class CMAPHeartbeatListener(HeartbeatEventListener, CMAPListener):
@@ -432,30 +469,62 @@ class TCPServer(socketserver.TCPServer):
 
 
 class TestHeartbeatStartOrdering(AsyncPyMongoTestCase):
-    @async_client_context.require_sync
-    async def test_heartbeat_start_ordering(self):
-        events = []
-        listener = HeartbeatEventsListListener(events)
-        server = TCPServer(("localhost", 9999), MockTCPHandler)
-        server.events = events
-        server_thread = threading.Thread(target=server.handle_request_and_shutdown)
-        server_thread.start()
-        _c = await self.simple_client(
-            "mongodb://localhost:9999", serverSelectionTimeoutMS=500, event_listeners=(listener,)
-        )
-        server_thread.join()
-        listener.wait_for_event(ServerHeartbeatStartedEvent, 1)
-        listener.wait_for_event(ServerHeartbeatFailedEvent, 1)
+    if _IS_SYNC:
+        async def test_heartbeat_start_ordering(self):
+            events = []
+            listener = HeartbeatEventsListListener(events)
+            server = TCPServer(("localhost", 9999), MockTCPHandler)
+            server.events = events
+            server_thread = threading.Thread(target=server.handle_request_and_shutdown)
+            server_thread.start()
+            _c = await self.simple_client(
+                "mongodb://localhost:9999", serverSelectionTimeoutMS=500, event_listeners=(listener,)
+            )
+            server_thread.join()
+            listener.wait_for_event(ServerHeartbeatStartedEvent, 1)
+            listener.wait_for_event(ServerHeartbeatFailedEvent, 1)
 
-        self.assertEqual(
-            events,
-            [
-                "serverHeartbeatStartedEvent",
-                "client connected",
-                "client hello received",
-                "serverHeartbeatFailedEvent",
-            ],
-        )
+            self.assertEqual(
+                events,
+                [
+                    "serverHeartbeatStartedEvent",
+                    "client connected",
+                    "client hello received",
+                    "serverHeartbeatFailedEvent",
+                ],
+            )
+    else:
+        async def test_heartbeat_start_ordering(self):
+            events = []
+
+            async def handle_client(reader: StreamReader, writer):
+                server.events.append("client connected")
+                print("clent connected")
+                if (await reader.read(1024)).strip():
+                    server.events.append("client hello received")
+                    print("client helllo recieved")
+            listener = HeartbeatEventsListListener(events)
+            server = await asyncio.start_server(handle_client, "localhost", 9999)
+            async with server:
+                server.events = events
+                _c = self.simple_client(
+                    "mongodb://localhost:9999", serverSelectionTimeoutMS=500, event_listeners=(listener,)
+                )
+                server.close()
+                server_task = asyncio.create_task(server.wait_closed())
+                await server_task
+                await listener.async_wait_for_event(ServerHeartbeatStartedEvent, 1)
+                await listener.async_wait_for_event(ServerHeartbeatFailedEvent, 1)
+
+                self.assertEqual(
+                    events,
+                    [
+                        "serverHeartbeatStartedEvent",
+                        "client connected",
+                        "client hello received",
+                        "serverHeartbeatFailedEvent",
+                    ],
+                )
 
 
 # Generate unified tests.
