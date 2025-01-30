@@ -39,6 +39,7 @@ from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import AsyncMongoClient, monitoring, operations, read_preferences
+from pymongo._asyncio_task import create_task
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
@@ -865,6 +866,22 @@ class ExceptionCatchingThread(threading.Thread):
     def run(self):
         try:
             super().run()
+        except BaseException as exc:
+            self.exc = exc
+            raise
+
+
+class ExceptionCatchingTask:
+    """A Task that stores any exception encountered from its task."""
+
+    def __init__(self, target):
+        self.exc = None
+        self.target = target
+        self.task = create_task(self.run())
+
+    async def run(self):
+        try:
+            await self.target()
         except BaseException as exc:
             self.exc = exc
             raise
