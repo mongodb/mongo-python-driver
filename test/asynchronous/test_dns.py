@@ -142,7 +142,7 @@ def create_test(test_case):
                     # tests.
                     copts["tlsAllowInvalidHostnames"] = True
 
-                client = AsyncPyMongoTestCase.unmanaged_simple_client(uri, **copts)
+                client = self.simple_client(uri, **copts)
                 if client._options.connect:
                     await client.aconnect()
                 if num_seeds is not None:
@@ -159,7 +159,6 @@ def create_test(test_case):
                     await client.admin.command("ping")
                 # XXX: we should block until SRV poller runs at least once
                 # and re-run these assertions.
-                await client.close()
         else:
             try:
                 parse_uri(uri)
