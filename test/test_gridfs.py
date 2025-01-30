@@ -75,7 +75,7 @@ if _IS_SYNC:
                 assert data == b"hello"
 else:
 
-    class JustWrite(asyncio.Task):
+    class JustWrite:
         def __init__(self, fs, n):
             def run():
                 for _ in range(self.n):
@@ -83,12 +83,12 @@ else:
                     file.write(b"hello")
                     file.close()
 
-            asyncio.Task.__init__(self, run())
+            self.task = asyncio.create_task(run())
             self.fs = fs
             self.n = n
             self.daemon = True
 
-    class JustRead(asyncio.Task):
+    class JustRead:
         def __init__(self, fs, n, results):
             def run():
                 for _ in range(self.n):
@@ -97,7 +97,7 @@ else:
                     self.results.append(data)
                     assert data == b"hello"
 
-            asyncio.Task.__init__(self, run())
+            self.task = asyncio.create_task(run())
             self.fs = fs
             self.n = n
             self.results = results
