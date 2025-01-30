@@ -77,31 +77,31 @@ else:
 
     class JustWrite:
         def __init__(self, fs, n):
-            def run():
-                for _ in range(self.n):
-                    file = self.fs.new_file(filename="test")
-                    file.write(b"hello")
-                    file.close()
-
-            self.task = asyncio.create_task(run())
+            self.task = asyncio.create_task(self.run())
             self.fs = fs
             self.n = n
             self.daemon = True
 
+        def run(self):
+            for _ in range(self.n):
+                file = self.fs.new_file(filename="test")
+                file.write(b"hello")
+                file.close()
+
     class JustRead:
         def __init__(self, fs, n, results):
-            def run():
-                for _ in range(self.n):
-                    file = self.fs.get("test")
-                    data = file.read()
-                    self.results.append(data)
-                    assert data == b"hello"
-
-            self.task = asyncio.create_task(run())
+            self.task = asyncio.create_task(self.run())
             self.fs = fs
             self.n = n
             self.results = results
             self.daemon = True
+
+        def run(self):
+            for _ in range(self.n):
+                file = self.fs.get("test")
+                data = file.read()
+                self.results.append(data)
+                assert data == b"hello"
 
 
 class TestGridfsNoConnect(unittest.TestCase):
