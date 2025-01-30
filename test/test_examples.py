@@ -842,7 +842,6 @@ class TestSampleShellCommands(IntegrationTest):
         db = self.db
 
         # Start Aggregation Example 1
-
         db.sales.aggregate([{"$match": {"items.fruit": "banana"}}, {"$sort": {"date": 1}}])
         # End Aggregation Example 1
 

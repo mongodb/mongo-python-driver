@@ -842,7 +842,6 @@ class TestSampleShellCommands(AsyncIntegrationTest):
         db = self.db
 
         # Start Aggregation Example 1
-
         await db.sales.aggregate([{"$match": {"items.fruit": "banana"}}, {"$sort": {"date": 1}}])
         # End Aggregation Example 1
 
