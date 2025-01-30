@@ -1374,7 +1374,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
 
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
