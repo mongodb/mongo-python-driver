@@ -207,6 +207,7 @@ converted_tests = [
     "test_data_lake.py",
     "test_encryption.py",
     "test_grid_file.py",
+    "test_json_util_integration.py",
     "test_logger.py",
     "test_monitoring.py",
     "test_raw_bson.py",
