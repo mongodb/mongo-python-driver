@@ -23,15 +23,15 @@ from functools import partial
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, connected, unittest
+from test.asynchronous import AsyncIntegrationTest, connected, unittest
 from test.utils import (
     ServerAndTopologyEventListener,
-    wait_until,
+    async_wait_until,
 )
 
 from pymongo.periodic_executor import _EXECUTORS
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 def unregistered(ref):
     gc.collect()
@@ -48,17 +48,17 @@ def get_executors(client):
     return [e for e in executors if e is not None]
 
 
-class TestMonitor(IntegrationTest):
-    def create_client(self):
+class TestMonitor(AsyncIntegrationTest):
+    async def create_client(self):
         listener = ServerAndTopologyEventListener()
-        client = self.unmanaged_single_client(event_listeners=[listener])
-        connected(client)
+        client = await self.unmanaged_async_single_client(event_listeners=[listener])
+        await connected(client)
         return client
 
-    def test_cleanup_executors_on_client_del(self):
+    async def test_cleanup_executors_on_client_del(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            client = self.create_client()
+            client = await self.create_client()
             executors = get_executors(client)
             self.assertEqual(len(executors), 4)
 
@@ -69,22 +69,22 @@ class TestMonitor(IntegrationTest):
             del client
 
             for ref, name in executor_refs:
-                wait_until(partial(unregistered, ref), f"unregister executor: {name}", timeout=5)
+                await async_wait_until(partial(unregistered, ref), f"unregister executor: {name}", timeout=5)
 
-    def test_cleanup_executors_on_client_close(self):
-        client = self.create_client()
+    async def test_cleanup_executors_on_client_close(self):
+        client = await self.create_client()
         executors = get_executors(client)
         self.assertEqual(len(executors), 4)
 
-        client.close()
+        await client.close()
 
         for executor in executors:
-            wait_until(lambda: executor._stopped, f"closed executor: {executor._name}", timeout=5)
+            await async_wait_until(lambda: executor._stopped, f"closed executor: {executor._name}", timeout=5)
 
-    def test_no_thread_start_runtime_err_on_shutdown(self):
-        """Test we silence noisy runtime errors fired when the MongoClient spawns a new thread
+    async def test_no_thread_start_runtime_err_on_shutdown(self):
+        """Test we silence noisy runtime errors fired when the AsyncMongoClient spawns a new thread
         on process shutdown."""
-        command = [sys.executable, "-c", "from pymongo import MongoClient; c = MongoClient()"]
+        command = [sys.executable, "-c", "from pymongo import AsyncMongoClient; c = AsyncMongoClient()"]
         completed_process: subprocess.CompletedProcess = subprocess.run(
             command, capture_output=True
         )

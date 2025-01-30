@@ -214,6 +214,7 @@ converted_tests = [
     "test_json_util_integration.py",
     "test_gridfs_spec.py",
     "test_logger.py",
+    "test_monitor.py",
     "test_monitoring.py",
     "test_raw_bson.py",
     "test_retryable_reads.py",
