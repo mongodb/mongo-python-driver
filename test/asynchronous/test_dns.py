@@ -143,6 +143,8 @@ def create_test(test_case):
                     copts["tlsAllowInvalidHostnames"] = True
 
                 client = AsyncPyMongoTestCase.unmanaged_simple_client(uri, **copts)
+                if client._options.connect:
+                    await client.aconnect()
                 if num_seeds is not None:
                     self.assertEqual(len(client._topology_settings.seeds), num_seeds)
                 if hosts is not None:
