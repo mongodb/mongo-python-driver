@@ -148,9 +148,7 @@ def create_test(test_case):
                 if num_seeds is not None:
                     self.assertEqual(len(client._topology_settings.seeds), num_seeds)
                 if hosts is not None:
-                    wait_until(
-                        lambda: hosts == client.nodes, "match test hosts to client nodes"
-                    )
+                    wait_until(lambda: hosts == client.nodes, "match test hosts to client nodes")
                 if num_hosts is not None:
                     wait_until(
                         lambda: num_hosts == len(client.nodes), "wait to connect to num_hosts"
