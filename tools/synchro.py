@@ -208,6 +208,7 @@ converted_tests = [
     "test_encryption.py",
     "test_grid_file.py",
     "test_load_balancer.py",
+    "test_gridfs_spec.py",
     "test_logger.py",
     "test_monitoring.py",
     "test_raw_bson.py",
