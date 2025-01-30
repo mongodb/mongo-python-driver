@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the GridFS unified spec tests."""
+"""Test the AsyncGridFS unified spec tests."""
 from __future__ import annotations
 
 import os
@@ -22,9 +22,9 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
