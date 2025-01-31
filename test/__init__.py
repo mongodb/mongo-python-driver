@@ -933,25 +933,29 @@ class PyMongoTestCase(unittest.TestCase):
     def assertEqualReply(self, expected, actual, msg=None):
         self.assertEqual(sanitize_reply(expected), sanitize_reply(actual), msg)
 
+    @staticmethod
+    def configure_fail_point(client, command_args):
+        cmd = {"configureFailPoint": "failCommand"}
+        cmd.update(command_args)
+        try:
+            client.admin.command(cmd)
+            return
+        except pymongo.errors.ConnectionFailure:
+            # Workaround PyPy bug described in PYTHON-5011.
+            if not _IS_SYNC and "PyPy" in sys.version:
+                client.admin.command(cmd)
+                return
+            raise
+
     @contextmanager
     def fail_point(self, command_args):
-        cmd_on = SON([("configureFailPoint", "failCommand")])
-        cmd_on.update(command_args)
-        client_context.client.admin.command(cmd_on)
+        name = command_args.get("configureFailPoint", "failCommand")
+        self.configure_fail_point(client_context.client, command_args)
         try:
             yield
         finally:
-            try:
-                client_context.client.admin.command(
-                    "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
-                )
-            except pymongo.errors.ConnectionFailure:
-                # Workaround PyPy bug described in PYTHON-5011.
-                if not _IS_SYNC and "PyPy" in sys.version:
-                    client_context.client.admin.command(
-                        "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
-                    )
-                raise
+            cmd_off = {"configureFailPoint": name, "mode": "off"}
+            self.configure_fail_point(client_context.client, cmd_off)
 
     @contextmanager
     def fork(
