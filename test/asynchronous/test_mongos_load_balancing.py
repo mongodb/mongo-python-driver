@@ -34,17 +34,11 @@ from pymongo.topology_description import TOPOLOGY_TYPE
 _IS_SYNC = False
 
 
-@async_client_context.require_connection
-@async_client_context.require_no_load_balancer
-def asyncSetUpModule():
-    pass
-
-
 if not _IS_SYNC:
 
     class SimpleOp:
         def __init__(self, client):
-            self.task: asyncio.Task
+            self.task = asyncio.create_task(self.run())
             self.client = client
             self.passed = False
 
@@ -53,7 +47,7 @@ if not _IS_SYNC:
             self.passed = True  # No exception raised.
 
         def start(self):
-            self.task = asyncio.create_task(self.run())
+            pass
 
         async def join(self):
             await self.task
@@ -70,15 +64,15 @@ else:
             self.passed = True  # No exception raised.
 
 
-async def do_simple_op(client, nthreads):
-    threads = [SimpleOp(client) for _ in range(nthreads)]
-    for t in threads:
+async def do_simple_op(client, ntasks):
+    tasks = [SimpleOp(client) for _ in range(ntasks)]
+    for t in tasks:
         t.start()
 
-    for t in threads:
+    for t in tasks:
         await t.join()
 
-    for t in threads:
+    for t in tasks:
         assert t.passed
 
 
@@ -90,6 +84,11 @@ async def writable_addresses(topology):
 
 
 class TestMongosLoadBalancing(AsyncMockClientTest):
+    @async_client_context.require_connection
+    @async_client_context.require_no_load_balancer
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+
     def mock_client(self, **kwargs):
         mock_client = AsyncMockClient(
             standalones=[],
