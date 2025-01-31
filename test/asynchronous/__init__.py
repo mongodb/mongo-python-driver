@@ -936,9 +936,12 @@ class AsyncPyMongoTestCase(unittest.TestCase):
         self.assertEqual(sanitize_reply(expected), sanitize_reply(actual), msg)
 
     @staticmethod
-    async def configure_fail_point(client, command_args):
+    async def configure_fail_point(client, command_args, off=False):
         cmd = {"configureFailPoint": "failCommand"}
         cmd.update(command_args)
+        if off:
+            cmd["mode"] = "off"
+            cmd.pop("data", None)
         try:
             await client.admin.command(cmd)
             return
@@ -951,13 +954,11 @@ class AsyncPyMongoTestCase(unittest.TestCase):
 
     @asynccontextmanager
     async def fail_point(self, command_args):
-        name = command_args.get("configureFailPoint", "failCommand")
         await self.configure_fail_point(async_client_context.client, command_args)
         try:
             yield
         finally:
-            cmd_off = {"configureFailPoint": name, "mode": "off"}
-            await self.configure_fail_point(async_client_context.client, cmd_off)
+            await self.configure_fail_point(async_client_context.client, command_args, off=True)
 
     @contextmanager
     def fork(
