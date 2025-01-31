@@ -23,22 +23,22 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import (
-    IntegrationTest,
-    PyMongoTestCase,
-    client_context,
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    async_client_context,
     unittest,
 )
-from test.utils import wait_until
+from test.utils import async_wait_until
 
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
 from pymongo.uri_parser import parse_uri, split_hosts
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-class TestDNSRepl(PyMongoTestCase):
+class TestDNSRepl(AsyncPyMongoTestCase):
     if _IS_SYNC:
         TEST_PATH = os.path.join(
             pathlib.Path(__file__).resolve().parent, "srv_seedlist", "replica-set"
@@ -49,12 +49,12 @@ class TestDNSRepl(PyMongoTestCase):
         )
     load_balanced = False
 
-    @client_context.require_replica_set
-    def setUp(self):
+    @async_client_context.require_replica_set
+    def asyncSetUp(self):
         pass
 
 
-class TestDNSLoadBalanced(PyMongoTestCase):
+class TestDNSLoadBalanced(AsyncPyMongoTestCase):
     if _IS_SYNC:
         TEST_PATH = os.path.join(
             pathlib.Path(__file__).resolve().parent, "srv_seedlist", "load-balanced"
@@ -65,12 +65,12 @@ class TestDNSLoadBalanced(PyMongoTestCase):
         )
     load_balanced = True
 
-    @client_context.require_load_balancer
-    def setUp(self):
+    @async_client_context.require_load_balancer
+    def asyncSetUp(self):
         pass
 
 
-class TestDNSSharded(PyMongoTestCase):
+class TestDNSSharded(AsyncPyMongoTestCase):
     if _IS_SYNC:
         TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "srv_seedlist", "sharded")
     else:
@@ -79,13 +79,13 @@ class TestDNSSharded(PyMongoTestCase):
         )
     load_balanced = False
 
-    @client_context.require_mongos
-    def setUp(self):
+    @async_client_context.require_mongos
+    def asyncSetUp(self):
         pass
 
 
 def create_test(test_case):
-    def run_test(self):
+    async def run_test(self):
         uri = test_case["uri"]
         seeds = test_case.get("seeds")
         num_seeds = test_case.get("numSeeds", len(seeds or []))
@@ -98,9 +98,9 @@ def create_test(test_case):
         parsed_options = test_case.get("parsed_options")
         # See DRIVERS-1324, unless tls is explicitly set to False we need TLS.
         needs_tls = not (options and (options.get("ssl") is False or options.get("tls") is False))
-        if needs_tls and not client_context.tls:
+        if needs_tls and not async_client_context.tls:
             self.skipTest("this test requires a TLS cluster")
-        if not needs_tls and client_context.tls:
+        if not needs_tls and async_client_context.tls:
             self.skipTest("this test requires a non-TLS cluster")
 
         if seeds:
@@ -131,30 +131,32 @@ def create_test(test_case):
                     elif opt == "auth_database" or opt == "db":
                         self.assertEqual(result["database"], expected)
 
-            hostname = next(iter(client_context.client.nodes))[0]
+            hostname = next(iter(async_client_context.client.nodes))[0]
             # The replica set members must be configured as 'localhost'.
             if hostname == "localhost":
-                copts = client_context.default_client_options.copy()
+                copts = async_client_context.default_client_options.copy()
                 # Remove tls since SRV parsing should add it automatically.
                 copts.pop("tls", None)
-                if client_context.tls:
+                if async_client_context.tls:
                     # Our test certs don't support the SRV hosts used in these
                     # tests.
                     copts["tlsAllowInvalidHostnames"] = True
 
                 client = self.simple_client(uri, **copts)
                 if client._options.connect:
-                    client._connect()
+                    await client.aconnect()
                 if num_seeds is not None:
                     self.assertEqual(len(client._topology_settings.seeds), num_seeds)
                 if hosts is not None:
-                    wait_until(lambda: hosts == client.nodes, "match test hosts to client nodes")
+                    await async_wait_until(
+                        lambda: hosts == client.nodes, "match test hosts to client nodes"
+                    )
                 if num_hosts is not None:
-                    wait_until(
+                    await async_wait_until(
                         lambda: num_hosts == len(client.nodes), "wait to connect to num_hosts"
                     )
                 if test_case.get("ping", True):
-                    client.admin.command("ping")
+                    await client.admin.command("ping")
                 # XXX: we should block until SRV poller runs at least once
                 # and re-run these assertions.
         else:
@@ -181,8 +183,8 @@ create_tests(TestDNSLoadBalanced)
 create_tests(TestDNSSharded)
 
 
-class TestParsingErrors(PyMongoTestCase):
-    def test_invalid_host(self):
+class TestParsingErrors(AsyncPyMongoTestCase):
+    async def test_invalid_host(self):
         self.assertRaisesRegex(
             ConfigurationError,
             "Invalid URI host: mongodb is not",
@@ -209,8 +211,8 @@ class TestParsingErrors(PyMongoTestCase):
         )
 
 
-class TestCaseInsensitive(IntegrationTest):
-    def test_connect_case_insensitive(self):
+class IsolatedAsyncioTestCaseInsensitive(AsyncIntegrationTest):
+    async def test_connect_case_insensitive(self):
         client = self.simple_client("mongodb+srv://TEST1.TEST.BUILD.10GEN.cc/")
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
 
