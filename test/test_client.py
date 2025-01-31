@@ -2399,7 +2399,7 @@ class TestMongoClientFailover(MockClientTest):
 
         # MongoClient discovers it's alone. The first attempt raises either
         # ServerSelectionTimeoutError or AutoReconnect (from
-        # AsyncMockPool.get_socket).
+        # MockPool.get_socket).
         with self.assertRaises(AutoReconnect):
             c.db.collection.find_one()
 
