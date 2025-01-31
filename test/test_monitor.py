@@ -15,6 +15,7 @@
 """Test the monitor module."""
 from __future__ import annotations
 
+import asyncio
 import gc
 import subprocess
 import sys
@@ -23,7 +24,7 @@ from functools import partial
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, connected, unittest
+from test import IntegrationTest, client_context, connected, unittest
 from test.utils import (
     ServerAndTopologyEventListener,
     wait_until,
@@ -32,6 +33,7 @@ from test.utils import (
 from pymongo.periodic_executor import _EXECUTORS
 
 _IS_SYNC = True
+
 
 def unregistered(ref):
     gc.collect()
@@ -81,6 +83,7 @@ class TestMonitor(IntegrationTest):
         for executor in executors:
             wait_until(lambda: executor._stopped, f"closed executor: {executor._name}", timeout=5)
 
+    @client_context.require_sync
     def test_no_thread_start_runtime_err_on_shutdown(self):
         """Test we silence noisy runtime errors fired when the MongoClient spawns a new thread
         on process shutdown."""

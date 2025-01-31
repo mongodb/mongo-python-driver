@@ -15,6 +15,7 @@
 """Test the monitor module."""
 from __future__ import annotations
 
+import asyncio
 import gc
 import subprocess
 import sys
@@ -23,7 +24,7 @@ from functools import partial
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, connected, unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context, connected, unittest
 from test.utils import (
     ServerAndTopologyEventListener,
     async_wait_until,
@@ -32,6 +33,7 @@ from test.utils import (
 from pymongo.periodic_executor import _EXECUTORS
 
 _IS_SYNC = False
+
 
 def unregistered(ref):
     gc.collect()
@@ -69,7 +71,9 @@ class TestMonitor(AsyncIntegrationTest):
             del client
 
             for ref, name in executor_refs:
-                await async_wait_until(partial(unregistered, ref), f"unregister executor: {name}", timeout=5)
+                await async_wait_until(
+                    partial(unregistered, ref), f"unregister executor: {name}", timeout=5
+                )
 
     async def test_cleanup_executors_on_client_close(self):
         client = await self.create_client()
@@ -79,12 +83,19 @@ class TestMonitor(AsyncIntegrationTest):
         await client.close()
 
         for executor in executors:
-            await async_wait_until(lambda: executor._stopped, f"closed executor: {executor._name}", timeout=5)
+            await async_wait_until(
+                lambda: executor._stopped, f"closed executor: {executor._name}", timeout=5
+            )
 
-    async def test_no_thread_start_runtime_err_on_shutdown(self):
+    @async_client_context.require_sync
+    def test_no_thread_start_runtime_err_on_shutdown(self):
         """Test we silence noisy runtime errors fired when the AsyncMongoClient spawns a new thread
         on process shutdown."""
-        command = [sys.executable, "-c", "from pymongo import AsyncMongoClient; c = AsyncMongoClient()"]
+        command = [
+            sys.executable,
+            "-c",
+            "from pymongo import AsyncMongoClient; c = AsyncMongoClient()",
+        ]
         completed_process: subprocess.CompletedProcess = subprocess.run(
             command, capture_output=True
         )
