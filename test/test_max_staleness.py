@@ -15,6 +15,7 @@
 """Test maxStalenessSeconds support."""
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import time
@@ -39,6 +40,7 @@ if _IS_SYNC:
     TEST_PATH = os.path.join(Path(__file__).resolve().parent, "max_staleness")
 else:
     TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "max_staleness")
+
 
 class TestAllScenarios(create_selection_tests(TEST_PATH)):  # type: ignore
     pass
@@ -139,6 +141,7 @@ class TestMaxStaleness(PyMongoTestCase):
         assert first is not None
 
         assert second is not None
+        print(second, first)
         self.assertGreater(second, first)
         self.assertLess(second, first + 10)
 

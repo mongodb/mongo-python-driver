@@ -15,6 +15,7 @@
 """Test maxStalenessSeconds support."""
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import time
@@ -39,6 +40,7 @@ if _IS_SYNC:
     TEST_PATH = os.path.join(Path(__file__).resolve().parent, "max_staleness")
 else:
     TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "max_staleness")
+
 
 class TestAllScenarios(create_selection_tests(TEST_PATH)):  # type: ignore
     pass
@@ -124,21 +126,22 @@ class TestMaxStaleness(AsyncPyMongoTestCase):
         client = await self.async_rs_or_single_client(heartbeatFrequencyMS=500)
         await client.pymongo_test.test.insert_one({})
         # Wait for the server description to be updated.
-        time.sleep(1)
+        await asyncio.sleep(1)
         server = await client._topology.select_server(writable_server_selector, _Op.TEST)
         first = server.description.last_write_date
         self.assertTrue(first)
         # The first last_write_date may correspond to a internal server write,
         # sleep so that the next write does not occur within the same second.
-        time.sleep(1)
+        await asyncio.sleep(1)
         await client.pymongo_test.test.insert_one({})
         # Wait for the server description to be updated.
-        time.sleep(1)
+        await asyncio.sleep(1)
         server = await client._topology.select_server(writable_server_selector, _Op.TEST)
         second = server.description.last_write_date
         assert first is not None
 
         assert second is not None
+        print(second, first)
         self.assertGreater(second, first)
         self.assertLess(second, first + 10)
 
