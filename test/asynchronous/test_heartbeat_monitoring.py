@@ -19,34 +19,34 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_knobs, unittest
-from test.utils import HeartbeatEventListener, MockPool, wait_until
+from test.asynchronous import AsyncIntegrationTest, client_knobs, unittest
+from test.utils import AsyncMockPool, HeartbeatEventListener, async_wait_until
 
+from pymongo.asynchronous.monitor import Monitor
 from pymongo.errors import ConnectionFailure
 from pymongo.hello import Hello, HelloCompat
-from pymongo.synchronous.monitor import Monitor
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-class TestHeartbeatMonitoring(IntegrationTest):
-    def create_mock_monitor(self, responses, uri, expected_results):
+class TestHeartbeatMonitoring(AsyncIntegrationTest):
+    async def create_mock_monitor(self, responses, uri, expected_results):
         listener = HeartbeatEventListener()
         with client_knobs(
             heartbeat_frequency=0.1, min_heartbeat_interval=0.1, events_queue_frequency=0.1
         ):
 
             class MockMonitor(Monitor):
-                def _check_with_socket(self, *args, **kwargs):
+                async def _check_with_socket(self, *args, **kwargs):
                     if isinstance(responses[1], Exception):
                         raise responses[1]
                     return Hello(responses[1]), 99
 
-            _ = self.single_client(
+            _ = await self.async_single_client(
                 h=uri,
                 event_listeners=(listener,),
                 _monitor_class=MockMonitor,
-                _pool_class=MockPool,
+                _pool_class=AsyncMockPool,
                 connect=True,
             )
 
@@ -54,7 +54,9 @@ class TestHeartbeatMonitoring(IntegrationTest):
             # Wait for *at least* expected_len number of results. The
             # monitor thread may run multiple times during the execution
             # of this test.
-            wait_until(lambda: len(listener.events) >= expected_len, "publish all events")
+            await async_wait_until(
+                lambda: len(listener.events) >= expected_len, "publish all events"
+            )
 
         # zip gives us len(expected_results) pairs.
         for expected, actual in zip(expected_results, listener.events):
@@ -67,7 +69,7 @@ class TestHeartbeatMonitoring(IntegrationTest):
                 else:
                     self.assertEqual(actual.reply, responses[1])
 
-    def test_standalone(self):
+    async def test_standalone(self):
         responses = (
             ("a", 27017),
             {HelloCompat.LEGACY_CMD: True, "maxWireVersion": 4, "minWireVersion": 0, "ok": 1},
@@ -75,9 +77,9 @@ class TestHeartbeatMonitoring(IntegrationTest):
         uri = "mongodb://a:27017"
         expected_results = ["ServerHeartbeatStartedEvent", "ServerHeartbeatSucceededEvent"]
 
-        self.create_mock_monitor(responses, uri, expected_results)
+        await self.create_mock_monitor(responses, uri, expected_results)
 
-    def test_standalone_error(self):
+    async def test_standalone_error(self):
         responses = (("a", 27017), ConnectionFailure("SPECIAL MESSAGE"))
         uri = "mongodb://a:27017"
         # _check_with_socket failing results in a second attempt.
@@ -88,7 +90,7 @@ class TestHeartbeatMonitoring(IntegrationTest):
             "ServerHeartbeatFailedEvent",
         ]
 
-        self.create_mock_monitor(responses, uri, expected_results)
+        await self.create_mock_monitor(responses, uri, expected_results)
 
 
 if __name__ == "__main__":
