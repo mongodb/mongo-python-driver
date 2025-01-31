@@ -711,7 +711,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         return await target.command(**kwargs)
 
     async def _databaseOperation_runCursorCommand(self, target, **kwargs):
-        return list(await self._databaseOperation_createCommandCursor(target, **kwargs))
+        return await (await self._databaseOperation_createCommandCursor(target, **kwargs)).to_list()
 
     async def _databaseOperation_createCommandCursor(self, target, **kwargs):
         self.__raise_if_unsupported("createCommandCursor", target, AsyncDatabase)

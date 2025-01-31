@@ -708,7 +708,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return target.command(**kwargs)
 
     def _databaseOperation_runCursorCommand(self, target, **kwargs):
-        return list(self._databaseOperation_createCommandCursor(target, **kwargs))
+        return (self._databaseOperation_createCommandCursor(target, **kwargs)).to_list()
 
     def _databaseOperation_createCommandCursor(self, target, **kwargs):
         self.__raise_if_unsupported("createCommandCursor", target, Database)
