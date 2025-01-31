@@ -44,7 +44,7 @@ from bson.son import SON
 from gridfs import GridFSBucket
 from gridfs.synchronous.grid_file import GridFSBucket
 from pymongo.errors import AutoReconnect, BulkWriteError, OperationFailure, PyMongoError
-from pymongo.lock import _create_condition, _create_lock
+from pymongo.lock import _cond_wait, _create_condition, _create_lock
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
@@ -98,10 +98,7 @@ class SpecRunnerThread(PARENT):
         while not self.stopped or self.ops:
             if not self.ops:
                 with self.cond:
-                    if _IS_SYNC:
-                        self.cond.wait(10)  # type: ignore[call-arg]
-                    else:
-                        asyncio.wait_for(self.cond.wait(), timeout=10)  # type: ignore[arg-type]
+                    _cond_wait(self.cond, 10)
             if self.ops:
                 try:
                     work = self.ops.pop(0)

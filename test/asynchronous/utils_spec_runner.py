@@ -47,7 +47,7 @@ from pymongo.asynchronous import client_session
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.errors import AutoReconnect, BulkWriteError, OperationFailure, PyMongoError
-from pymongo.lock import _async_create_condition, _async_create_lock
+from pymongo.lock import _async_cond_wait, _async_create_condition, _async_create_lock
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
@@ -98,10 +98,7 @@ class SpecRunnerTask(PARENT):
         while not self.stopped or self.ops:
             if not self.ops:
                 async with self.cond:
-                    if _IS_SYNC:
-                        await self.cond.wait(10)  # type: ignore[call-arg]
-                    else:
-                        await asyncio.wait_for(self.cond.wait(), timeout=10)  # type: ignore[arg-type]
+                    await _async_cond_wait(self.cond, 10)
             if self.ops:
                 try:
                     work = self.ops.pop(0)
