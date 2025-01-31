@@ -940,15 +940,15 @@ class PyMongoTestCase(unittest.TestCase):
         if off:
             cmd["mode"] = "off"
             cmd.pop("data", None)
-        try:
-            client.admin.command(cmd)
-            return
-        except pymongo.errors.ConnectionFailure:
-            # Workaround PyPy bug described in PYTHON-5011.
-            if not _IS_SYNC and "PyPy" in sys.version:
+        for _ in range(10):
+            try:
                 client.admin.command(cmd)
                 return
-            raise
+            except pymongo.errors.ConnectionFailure:
+                # Workaround PyPy bug described in PYTHON-5011.
+                if not _IS_SYNC and "PyPy" in sys.version:
+                    continue
+                raise
 
     @contextmanager
     def fail_point(self, command_args):
@@ -1270,7 +1270,14 @@ def teardown():
     c = client_context.client
     if c:
         if not client_context.is_data_lake:
-            c.drop_database("pymongo-pooling-tests")
+            for _ in range(10):
+                try:
+                    c.drop_database("pymongo-pooling-tests")
+                except pymongo.errors.ConnectionFailure:
+                    # Workaround PyPy bug described in PYTHON-5011.
+                    if not _IS_SYNC and "PyPy" in sys.version:
+                        continue
+                    raise
             c.drop_database("pymongo_test")
             c.drop_database("pymongo_test1")
             c.drop_database("pymongo_test2")

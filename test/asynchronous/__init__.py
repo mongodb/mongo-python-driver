@@ -942,15 +942,15 @@ class AsyncPyMongoTestCase(unittest.TestCase):
         if off:
             cmd["mode"] = "off"
             cmd.pop("data", None)
-        try:
-            await client.admin.command(cmd)
-            return
-        except pymongo.errors.ConnectionFailure:
-            # Workaround PyPy bug described in PYTHON-5011.
-            if not _IS_SYNC and "PyPy" in sys.version:
+        for _ in range(10):
+            try:
                 await client.admin.command(cmd)
                 return
-            raise
+            except pymongo.errors.ConnectionFailure:
+                # Workaround PyPy bug described in PYTHON-5011.
+                if not _IS_SYNC and "PyPy" in sys.version:
+                    continue
+                raise
 
     @asynccontextmanager
     async def fail_point(self, command_args):
@@ -1288,7 +1288,14 @@ async def async_teardown():
     c = async_client_context.client
     if c:
         if not async_client_context.is_data_lake:
-            await c.drop_database("pymongo-pooling-tests")
+            for _ in range(10):
+                try:
+                    await c.drop_database("pymongo-pooling-tests")
+                except pymongo.errors.ConnectionFailure:
+                    # Workaround PyPy bug described in PYTHON-5011.
+                    if not _IS_SYNC and "PyPy" in sys.version:
+                        continue
+                    raise
             await c.drop_database("pymongo_test")
             await c.drop_database("pymongo_test1")
             await c.drop_database("pymongo_test2")
