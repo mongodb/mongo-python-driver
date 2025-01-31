@@ -23,25 +23,25 @@ import pytest
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context
+from test.asynchronous import AsyncIntegrationTest, async_client_context
 
 from bson.codec_options import CodecOptions
-from pymongo.synchronous.encryption import (
+from pymongo.asynchronous.encryption import (
     _HAVE_PYMONGOCRYPT,
-    ClientEncryption,
+    AsyncClientEncryption,
     EncryptionError,
 )
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 pytestmark = pytest.mark.csfle
 
 
-class TestonDemandGCPCredentials(IntegrationTest):
+class TestonDemandGCPCredentials(AsyncIntegrationTest):
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    @client_context.require_version_min(4, 2, -1)
-    def setUp(self):
-        super().setUp()
+    @async_client_context.require_version_min(4, 2, -1)
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.master_key = {
             "projectId": "devprod-drivers",
             "location": "global",
@@ -50,65 +50,65 @@ class TestonDemandGCPCredentials(IntegrationTest):
         }
 
     @unittest.skipIf(not os.getenv("TEST_FLE_GCP_AUTO"), "Not testing FLE GCP auto")
-    def test_01_failure(self):
+    async def test_01_failure(self):
         if os.environ["SUCCESS"].lower() == "true":
             self.skipTest("Expecting success")
-        self.client_encryption = ClientEncryption(
+        self.client_encryption = AsyncClientEncryption(
             kms_providers={"gcp": {}},
             key_vault_namespace="keyvault.datakeys",
-            key_vault_client=client_context.client,
+            key_vault_client=async_client_context.client,
             codec_options=CodecOptions(),
         )
         with self.assertRaises(EncryptionError):
-            self.client_encryption.create_data_key("gcp", self.master_key)
+            await self.client_encryption.create_data_key("gcp", self.master_key)
 
     @unittest.skipIf(not os.getenv("TEST_FLE_GCP_AUTO"), "Not testing FLE GCP auto")
-    def test_02_success(self):
+    async def test_02_success(self):
         if os.environ["SUCCESS"].lower() == "false":
             self.skipTest("Expecting failure")
-        self.client_encryption = ClientEncryption(
+        self.client_encryption = AsyncClientEncryption(
             kms_providers={"gcp": {}},
             key_vault_namespace="keyvault.datakeys",
-            key_vault_client=client_context.client,
+            key_vault_client=async_client_context.client,
             codec_options=CodecOptions(),
         )
-        self.client_encryption.create_data_key("gcp", self.master_key)
+        await self.client_encryption.create_data_key("gcp", self.master_key)
 
 
-class TestonDemandAzureCredentials(IntegrationTest):
+class TestonDemandAzureCredentials(AsyncIntegrationTest):
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    @client_context.require_version_min(4, 2, -1)
-    def setUp(self):
-        super().setUp()
+    @async_client_context.require_version_min(4, 2, -1)
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.master_key = {
             "keyVaultEndpoint": os.environ["KEY_VAULT_ENDPOINT"],
             "keyName": os.environ["KEY_NAME"],
         }
 
     @unittest.skipIf(not os.getenv("TEST_FLE_AZURE_AUTO"), "Not testing FLE Azure auto")
-    def test_01_failure(self):
+    async def test_01_failure(self):
         if os.environ["SUCCESS"].lower() == "true":
             self.skipTest("Expecting success")
-        self.client_encryption = ClientEncryption(
+        self.client_encryption = AsyncClientEncryption(
             kms_providers={"azure": {}},
             key_vault_namespace="keyvault.datakeys",
-            key_vault_client=client_context.client,
+            key_vault_client=async_client_context.client,
             codec_options=CodecOptions(),
         )
         with self.assertRaises(EncryptionError):
-            self.client_encryption.create_data_key("azure", self.master_key)
+            await self.client_encryption.create_data_key("azure", self.master_key)
 
     @unittest.skipIf(not os.getenv("TEST_FLE_AZURE_AUTO"), "Not testing FLE Azure auto")
-    def test_02_success(self):
+    async def test_02_success(self):
         if os.environ["SUCCESS"].lower() == "false":
             self.skipTest("Expecting failure")
-        self.client_encryption = ClientEncryption(
+        self.client_encryption = AsyncClientEncryption(
             kms_providers={"azure": {}},
             key_vault_namespace="keyvault.datakeys",
-            key_vault_client=client_context.client,
+            key_vault_client=async_client_context.client,
             codec_options=CodecOptions(),
         )
-        self.client_encryption.create_data_key("azure", self.master_key)
+        await self.client_encryption.create_data_key("azure", self.master_key)
 
 
 if __name__ == "__main__":
