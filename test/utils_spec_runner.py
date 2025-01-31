@@ -61,14 +61,11 @@ else:
     PARENT = object
 
 
-class SpecRunnerThread(PARENT):
-    def __init__(self, name):
-        super().__init__()
+class ConcurrentRunner(PARENT):
+    def __init__(self, name, *args, **kwargs):
+        if _IS_SYNC:
+            super().__init__(*args, **kwargs)
         self.name = name
-        self.exc = None
-        self.daemon = True
-        self.cond = _create_condition(_create_lock())
-        self.ops = []
         self.stopped = False
         self.task = None
 
@@ -83,6 +80,15 @@ class SpecRunnerThread(PARENT):
 
         def is_alive(self):
             return not self.stopped
+
+
+class SpecRunnerThread(ConcurrentRunner):
+    def __init__(self, name):
+        super().__init__(name)
+        self.exc = None
+        self.daemon = True
+        self.cond = _create_condition(_create_lock())
+        self.ops = []
 
     def schedule(self, work):
         self.ops.append(work)
