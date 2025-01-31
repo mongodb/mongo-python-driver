@@ -941,9 +941,17 @@ class PyMongoTestCase(unittest.TestCase):
         try:
             yield
         finally:
-            client_context.client.admin.command(
-                "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
-            )
+            try:
+                client_context.client.admin.command(
+                    "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
+                )
+            except pymongo.errors.ConnectionFailure:
+                # Workaround PyPy bug described in PYTHON-5011.
+                if not _IS_SYNC and "PyPy" in sys.version:
+                    client_context.client.admin.command(
+                        "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
+                    )
+                raise
 
     @contextmanager
     def fork(
