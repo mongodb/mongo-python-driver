@@ -38,7 +38,7 @@ if not _IS_SYNC:
 
     class SimpleOp:
         def __init__(self, client):
-            self.task = asyncio.create_task(self.run())
+            self.task = None
             self.client = client
             self.passed = False
 
@@ -47,7 +47,7 @@ if not _IS_SYNC:
             self.passed = True  # No exception raised.
 
         def start(self):
-            pass
+            self.task = asyncio.create_task(self.run())
 
         async def join(self):
             await self.task
