@@ -141,7 +141,6 @@ class TestMaxStaleness(PyMongoTestCase):
         assert first is not None
 
         assert second is not None
-        print(second, first)
         self.assertGreater(second, first)
         self.assertLess(second, first + 10)
 
