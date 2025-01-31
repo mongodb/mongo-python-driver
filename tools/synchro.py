@@ -121,6 +121,8 @@ replacements = {
     "_async_cond_wait": "_cond_wait",
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",
+    "StopAsyncIteration": "StopIteration",
+    "asyncjoinall": "joinall",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -212,8 +214,9 @@ converted_tests = [
     "test_heartbeat_monitoring.py",
     "test_index_management.py",
     "test_grid_file.py",
-    "test_json_util_integration.py",
+    "test_gridfs.py",
     "test_gridfs_spec.py",
+    "test_json_util_integration.py",
     "test_logger.py",
     "test_max_staleness.py",
     "test_monitoring.py",
