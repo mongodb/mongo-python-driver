@@ -68,6 +68,8 @@ class ConcurrentRunner(PARENT):
         self.name = name
         self.stopped = False
         self.task = None
+        if "target" in kwargs:
+            self.target = kwargs["target"]
 
     if not _IS_SYNC:
 
@@ -80,6 +82,10 @@ class ConcurrentRunner(PARENT):
 
         def is_alive(self):
             return not self.stopped
+
+    def run(self):
+        if self.target:
+            self.target()
 
 
 class SpecRunnerThread(ConcurrentRunner):
