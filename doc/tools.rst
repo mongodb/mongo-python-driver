@@ -67,6 +67,14 @@ uMongo
   mongomock.  The source `is available on GitHub
   <https://github.com/Scille/umongo>`_
 
+Django MongoDB Backend
+  `Django MongoDB Backend <https://django-mongodb-backend.readthedocs.io>`_ is a
+  database backend library specifically made for Django. The integration takes
+  advantage of MongoDB's unique document model capabilities, which align
+  naturally with Django's philosophy of simplified data modeling and
+  reduced development complexity. The source is available
+  `on GitHub <https://github.com/mongodb-labs/django-mongodb-backend>`_.
+
 No longer maintained
 """"""""""""""""""""
 
