@@ -55,7 +55,7 @@ else:
 
     class SimpleOp:
         def __init__(self, client):
-            self.task = asyncio.create_task(self.run())
+            self.task: asyncio.Task
             self.client = client
             self.passed = False
 
@@ -64,7 +64,7 @@ else:
             self.passed = True  # No exception raised.
 
         def start(self):
-            pass
+            self.task = asyncio.create_task(self.run())
 
         def join(self):
             self.task
