@@ -219,6 +219,7 @@ converted_tests = [
     "test_on_demand_csfle.py",
     "test_raw_bson.py",
     "test_read_concern.py",
+    "test_read_write_concern_spec.py",
     "test_retryable_reads.py",
     "test_retryable_writes.py",
     "test_session.py",

@@ -1176,15 +1176,15 @@ class AsyncPyMongoTestCase(unittest.TestCase):
 
     async def disable_replication(self, client):
         """Disable replication on all secondaries."""
-        for h, p in client.secondaries:
+        for h, p in await client.secondaries:
             secondary = await self.async_single_client(h, p)
-            secondary.admin.command("configureFailPoint", "stopReplProducer", mode="alwaysOn")
+            await secondary.admin.command("configureFailPoint", "stopReplProducer", mode="alwaysOn")
 
     async def enable_replication(self, client):
         """Enable replication on all secondaries."""
-        for h, p in client.secondaries:
+        for h, p in await client.secondaries:
             secondary = await self.async_single_client(h, p)
-            secondary.admin.command("configureFailPoint", "stopReplProducer", mode="off")
+            await secondary.admin.command("configureFailPoint", "stopReplProducer", mode="off")
 
 
 class AsyncUnitTest(AsyncPyMongoTestCase):
