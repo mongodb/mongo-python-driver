@@ -933,17 +933,22 @@ class PyMongoTestCase(unittest.TestCase):
     def assertEqualReply(self, expected, actual, msg=None):
         self.assertEqual(sanitize_reply(expected), sanitize_reply(actual), msg)
 
+    @staticmethod
+    def configure_fail_point(client, command_args, off=False):
+        cmd = {"configureFailPoint": "failCommand"}
+        cmd.update(command_args)
+        if off:
+            cmd["mode"] = "off"
+            cmd.pop("data", None)
+        client.admin.command(cmd)
+
     @contextmanager
     def fail_point(self, command_args):
-        cmd_on = SON([("configureFailPoint", "failCommand")])
-        cmd_on.update(command_args)
-        client_context.client.admin.command(cmd_on)
+        self.configure_fail_point(client_context.client, command_args)
         try:
             yield
         finally:
-            client_context.client.admin.command(
-                "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
-            )
+            self.configure_fail_point(client_context.client, command_args, off=True)
 
     @contextmanager
     def fork(

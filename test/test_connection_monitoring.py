@@ -204,15 +204,10 @@ class TestCMAP(IntegrationTest):
         self.check_object(actual, expected)
         self.assertIn(message, str(actual))
 
-    def _set_fail_point(self, client, command_args):
-        cmd = SON([("configureFailPoint", "failCommand")])
-        cmd.update(command_args)
-        client.admin.command(cmd)
-
     def set_fail_point(self, command_args):
         if not client_context.supports_failCommand_fail_point:
             self.skipTest("failCommand fail point must be supported")
-        self._set_fail_point(self.client, command_args)
+        self.configure_fail_point(self.client, command_args)
 
     def run_scenario(self, scenario_def, test):
         """Run a CMAP spec test."""
