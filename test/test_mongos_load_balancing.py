@@ -40,18 +40,7 @@ def setUpModule():
     pass
 
 
-if _IS_SYNC:
-
-    class SimpleOp(threading.Thread):
-        def __init__(self, client):
-            super().__init__()
-            self.client = client
-            self.passed = False
-
-        def run(self):
-            self.client.db.command("ping")
-            self.passed = True  # No exception raised.
-else:
+if not _IS_SYNC:
 
     class SimpleOp:
         def __init__(self, client):
@@ -68,6 +57,17 @@ else:
 
         def join(self):
             self.task
+else:
+
+    class SimpleOp(threading.Thread):
+        def __init__(self, client):
+            super().__init__()
+            self.client = client
+            self.passed = False
+
+        def run(self):
+            self.client.db.command("ping")
+            self.passed = True  # No exception raised.
 
 
 def do_simple_op(client, nthreads):
