@@ -662,7 +662,7 @@ class TestMongosAndReadPreference(IntegrationTest):
             results = qcoll.find().sort([("_id", 1)]).to_list()
             self.assertEqual(first_id, results[0]["_id"])
             self.assertEqual(last_id, results[-1]["_id"])
-            results = qcoll.find().sort([("_id", -1)]).toList()
+            results = qcoll.find().sort([("_id", -1)]).to_list()
             self.assertEqual(first_id, results[-1]["_id"])
             self.assertEqual(last_id, results[0]["_id"])
 
