@@ -87,7 +87,11 @@ class TestMonitor(IntegrationTest):
     def test_no_thread_start_runtime_err_on_shutdown(self):
         """Test we silence noisy runtime errors fired when the MongoClient spawns a new thread
         on process shutdown."""
-        command = [sys.executable, "-c", "from pymongo import MongoClient; c = MongoClient()"]
+        command = [
+            sys.executable,
+            "-c",
+            "from pymongo import MongoClient; c = MongoClient()",
+        ]
         completed_process: subprocess.CompletedProcess = subprocess.run(
             command, capture_output=True
         )
