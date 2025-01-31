@@ -56,9 +56,9 @@ class DBRef:
         .. seealso:: The MongoDB documentation on `dbrefs <https://dochub.mongodb.org/core/dbrefs>`_.
         """
         if not isinstance(collection, str):
-            raise TypeError("collection must be an instance of str")
+            raise TypeError(f"collection must be an instance of str, not {type(collection)}")
         if database is not None and not isinstance(database, str):
-            raise TypeError("database must be an instance of str")
+            raise TypeError(f"database must be an instance of str, not {type(database)}")
 
         self.__collection = collection
         self.__id = id
