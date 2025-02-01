@@ -184,7 +184,7 @@ class TestProse(AsyncIntegrationTest):
         with self.fail_point(delay_finds):
             nodes = async_client_context.client.nodes
             self.assertEqual(len(nodes), 1)
-            delayed_server = await anext(iter(nodes))
+            delayed_server = next(iter(nodes))
             freqs = self.frequencies(client, listener)
             self.assertLessEqual(freqs[delayed_server], 0.25)
         listener.reset()
