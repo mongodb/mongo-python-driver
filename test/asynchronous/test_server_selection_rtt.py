@@ -26,7 +26,7 @@ from test import unittest
 
 from pymongo.read_preferences import MovingAverage
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
@@ -35,7 +35,7 @@ else:
     TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "server_selection/rtt")
 
 
-class TestAllScenarios(unittest.TestCase):
+class TestAllScenarios(unittest.IsolatedAsyncioTestCase):
     pass
 
 
