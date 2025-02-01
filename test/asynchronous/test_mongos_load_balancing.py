@@ -33,35 +33,34 @@ from pymongo.topology_description import TOPOLOGY_TYPE
 
 _IS_SYNC = False
 
+if _IS_SYNC:
+    PARENT = threading.Thread
+else:
+    PARENT = object
 
-if not _IS_SYNC:
 
-    class SimpleOp:
-        def __init__(self, client):
-            self.task = None
-            self.client = client
-            self.passed = False
+class SimpleOp(PARENT):
+    def __init__(self, client):
+        super().__init__()
+        self.client = client
+        self.passed = False
+        self.task = None
 
-        async def run(self):
-            await self.client.db.command("ping")
-            self.passed = True  # No exception raised.
+    async def run(self):
+        await self.client.db.command("ping")
+        self.passed = True  # No exception raised.
 
-        def start(self):
+    def start(self):
+        if _IS_SYNC:
+            super().start()
+        else:
             self.task = asyncio.create_task(self.run())
 
-        async def join(self):
+    async def join(self):
+        if _IS_SYNC:
+            super().join()
+        else:
             await self.task
-else:
-
-    class SimpleOp(threading.Thread):
-        def __init__(self, client):
-            super().__init__()
-            self.client = client
-            self.passed = False
-
-        def run(self):
-            self.client.db.command("ping")
-            self.passed = True  # No exception raised.
 
 
 async def do_simple_op(client, ntasks):
