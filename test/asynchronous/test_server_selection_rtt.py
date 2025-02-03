@@ -22,11 +22,12 @@ from pathlib import Path
 
 sys.path[0:0] = [""]
 
-from test import PyMongoTestCase, unittest
+from test import unittest
+from test.asynchronous import AsyncPyMongoTestCase
 
 from pymongo.read_preferences import MovingAverage
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
@@ -35,7 +36,7 @@ else:
     TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "server_selection/rtt")
 
 
-class TestAllScenarios(PyMongoTestCase):
+class TestAllScenarios(AsyncPyMongoTestCase):
     pass
 
 
