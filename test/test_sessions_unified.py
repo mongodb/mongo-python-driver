@@ -22,9 +22,9 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.synchronous.unified_format import generate_test_classes
+from test.unified_format import generate_test_classes
 
-_IS_SYNC = False
+_IS_SYNC = True
 
 # Location of JSON test specifications.
 if _IS_SYNC:
