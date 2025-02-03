@@ -20,7 +20,7 @@ import time
 
 sys.path[0:0] = [""]
 
-from test.synchronous import IntegrationTest, client_context, unittest
+from test import IntegrationTest, client_context, unittest
 from test.utils import (
     HeartbeatEventListener,
     ServerEventListener,
@@ -30,7 +30,7 @@ from test.utils import (
 from pymongo import monitoring
 from pymongo.hello import HelloCompat
 
-_IS_SYNC = False
+_IS_SYNC = True
 
 
 class TestStreamingProtocol(IntegrationTest):
@@ -79,7 +79,7 @@ class TestStreamingProtocol(IntegrationTest):
             def rediscovered():
                 return len(listener.matching(_discovered_node)) >= 1
 
-            # Topology events are published asynchronously
+            # Topology events are published synchronously
             wait_until(marked_unknown, "mark node unknown")
             wait_until(rediscovered, "rediscover node")
 
