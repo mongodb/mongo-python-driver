@@ -22,9 +22,9 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test import client_context, unittest
-from test.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
 @client_context.require_no_mmap
