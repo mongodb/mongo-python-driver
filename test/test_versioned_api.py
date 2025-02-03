@@ -18,9 +18,9 @@ from test import UnitTest
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import unittest
+from test import unittest
 
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi, ServerApiVersion
 
 
@@ -51,7 +51,7 @@ class TestServerApi(UnitTest):
         with self.assertRaises(TypeError):
             ServerApi("1", deprecation_errors="not-a-bool")  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            AsyncMongoClient(server_api="not-a-ServerApi")
+            MongoClient(server_api="not-a-ServerApi")
 
     def assertServerApi(self, event):
         self.assertIn("apiVersion", event.command)
