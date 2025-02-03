@@ -212,6 +212,7 @@ converted_tests = [
     "test_heartbeat_monitoring.py",
     "test_index_management.py",
     "test_grid_file.py",
+    "test_load_balancer.py",
     "test_json_util_integration.py",
     "test_gridfs_spec.py",
     "test_logger.py",
