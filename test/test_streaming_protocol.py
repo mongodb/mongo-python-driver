@@ -79,7 +79,7 @@ class TestStreamingProtocol(IntegrationTest):
             def rediscovered():
                 return len(listener.matching(_discovered_node)) >= 1
 
-            # Topology events are published synchronously
+            # Topology events are not published synchronously
             wait_until(marked_unknown, "mark node unknown")
             wait_until(rediscovered, "rediscover node")
 

@@ -79,7 +79,7 @@ class TestStreamingProtocol(AsyncIntegrationTest):
             def rediscovered():
                 return len(listener.matching(_discovered_node)) >= 1
 
-            # Topology events are published asynchronously
+            # Topology events are not published synchronously
             await async_wait_until(marked_unknown, "mark node unknown")
             await async_wait_until(rediscovered, "rediscover node")
 
