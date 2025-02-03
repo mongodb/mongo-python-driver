@@ -18,11 +18,11 @@ from __future__ import annotations
 import asyncio
 import functools
 import os
-import threading
 import unittest
 from asyncio import iscoroutinefunction
 from collections import abc
 from test.asynchronous import AsyncIntegrationTest, async_client_context, client_knobs
+from test.asynchronous.helpers import ConcurrentRunner
 from test.utils import (
     CMAPListener,
     CompareType,
@@ -54,38 +54,6 @@ from pymongo.results import BulkWriteResult, _WriteResult
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = False
-
-if _IS_SYNC:
-    PARENT = threading.Thread
-else:
-    PARENT = object
-
-
-class ConcurrentRunner(PARENT):
-    def __init__(self, name, *args, **kwargs):
-        if _IS_SYNC:
-            super().__init__(*args, **kwargs)
-        self.name = name
-        self.stopped = False
-        self.task = None
-        if "target" in kwargs:
-            self.target = kwargs["target"]
-
-    if not _IS_SYNC:
-
-        async def start(self):
-            self.task = asyncio.create_task(self.run(), name=self.name)
-
-        async def join(self, timeout: float | None = 0):  # type: ignore[override]
-            if self.task is not None:
-                await asyncio.wait([self.task], timeout=timeout)
-
-        def is_alive(self):
-            return not self.stopped
-
-    async def run(self):
-        if self.target:
-            await self.target()
 
 
 class SpecRunnerTask(ConcurrentRunner):
