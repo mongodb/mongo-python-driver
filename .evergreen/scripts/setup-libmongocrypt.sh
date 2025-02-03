@@ -2,11 +2,6 @@
 set -o errexit  # Exit the script with error if any of the commands fail
 set -o xtrace
 
-if [ -z "${DRIVERS_TOOLS}" ]; then
-    echo "Missing environment variable DRIVERS_TOOLS"
-    exit 1
-fi
-
 TARGET=""
 
 if [ "Windows_NT" = "${OS:-''}" ]; then # Magic variable in cygwin
@@ -51,10 +46,7 @@ tar xzf libmongocrypt.tar.gz -C ./libmongocrypt
 ls -la libmongocrypt
 ls -la libmongocrypt/nocrypto
 
-if [ -z "${SKIP_SERVERS:-}" ]; then
-    PYTHON_BINARY_OLD=${PYTHON_BINARY}
-    export PYTHON_BINARY=""
-    bash "${DRIVERS_TOOLS}"/.evergreen/csfle/setup-secrets.sh
-    export PYTHON_BINARY=$PYTHON_BINARY_OLD
-    bash "${DRIVERS_TOOLS}"/.evergreen/csfle/start-servers.sh
+if [ "Windows_NT" = "${OS:-''}" ]; then
+    # libmongocrypt's windows dll is not marked executable.
+    chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll
 fi

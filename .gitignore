@@ -26,6 +26,7 @@ libmongocrypt/
 expansion.yml
 *expansions.yml
 .evergreen/scripts/env.sh
+.evergreen/scripts/test-env.sh
 
 # Lambda temp files
 test/lambda/.aws-sam
