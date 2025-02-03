@@ -520,6 +520,8 @@ class Topology:
             and self._description.topology_type not in SRV_POLLING_TOPOLOGIES
         ):
             await self._srv_monitor.close()
+            if not _IS_SYNC:
+                await self._srv_monitor.join()
 
         # Clear the pool from a failed heartbeat.
         if reset_pool:
