@@ -189,6 +189,10 @@ class Monitor(MonitorBase):
         self._rtt_monitor.gc_safe_close()
         self.cancel_check()
 
+    def join(self, timeout: Optional[int] = None) -> None:
+        self._executor.join(timeout)
+        self._rtt_monitor.join()
+
     def close(self) -> None:
         self.gc_safe_close()
         self._rtt_monitor.close()

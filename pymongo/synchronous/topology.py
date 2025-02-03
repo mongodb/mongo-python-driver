@@ -520,6 +520,8 @@ class Topology:
             and self._description.topology_type not in SRV_POLLING_TOPOLOGIES
         ):
             self._srv_monitor.close()
+            if not _IS_SYNC:
+                self._srv_monitor.join()
 
         # Clear the pool from a failed heartbeat.
         if reset_pool:
@@ -703,6 +705,8 @@ class Topology:
             # Stop SRV polling thread.
             if self._srv_monitor:
                 self._srv_monitor.close()
+                if not _IS_SYNC:
+                    self._srv_monitor.join()
 
             self._opened = False
             self._closed = True
