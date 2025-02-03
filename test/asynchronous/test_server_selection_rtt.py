@@ -23,6 +23,7 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test import unittest
+from test.asynchronous import AsyncPyMongoTestCase
 
 from pymongo.read_preferences import MovingAverage
 

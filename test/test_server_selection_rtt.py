@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.path[0:0] = [""]
 
-from test import unittest
+from test import PyMongoTestCase, unittest
 
 from pymongo.read_preferences import MovingAverage
 
@@ -35,7 +35,7 @@ else:
     TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "server_selection/rtt")
 
 
-class TestAllScenarios(unittest.TestCase):
+class TestAllScenarios(PyMongoTestCase):
     pass
 
 
