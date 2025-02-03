@@ -35,7 +35,7 @@ else:
     TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "server_selection/rtt")
 
 
-class TestAllScenarios(unittest.IsolatedAsyncioTestCase):
+class TestAllScenarios(AsyncPyMongoTestCase):
     pass
 
 
