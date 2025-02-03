@@ -22,12 +22,12 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import (
+from test.asynchronous import (
     HAVE_IPADDRESS,
-    IntegrationTest,
-    PyMongoTestCase,
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
     SkipTest,
-    client_context,
+    async_client_context,
     connected,
     remove_all_users,
     unittest,
@@ -40,7 +40,7 @@ from test.utils import (
 )
 from urllib.parse import quote_plus
 
-from pymongo import MongoClient, ssl_support
+from pymongo import AsyncMongoClient, ssl_support
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.ssl_support import HAVE_SSL, _ssl, get_ssl_context
@@ -66,7 +66,7 @@ except ImportError:
 if HAVE_SSL:
     import ssl
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 if _IS_SYNC:
     CERT_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "certificates")
@@ -96,7 +96,7 @@ else:
 # use 'localhost' for the hostname of all hosts.
 
 
-class TestClientSSL(PyMongoTestCase):
+class TestClientSSL(AsyncPyMongoTestCase):
     @unittest.skipIf(HAVE_SSL, "The ssl module is available, can't test what happens without it.")
     def test_no_ssl_module(self):
         # Explicit
@@ -147,37 +147,37 @@ class TestClientSSL(PyMongoTestCase):
         self.assertEqual(2, len(trusted_ca_certs))
 
 
-class TestSSL(IntegrationTest):
+class TestSSL(AsyncIntegrationTest):
     saved_port: int
 
-    def assertClientWorks(self, client):
+    async def assertClientWorks(self, client):
         coll = client.pymongo_test.ssl_test.with_options(
-            write_concern=WriteConcern(w=client_context.w)
+            write_concern=WriteConcern(w=async_client_context.w)
         )
-        coll.drop()
-        coll.insert_one({"ssl": True})
-        self.assertTrue((coll.find_one())["ssl"])
-        coll.drop()
+        await coll.drop()
+        await coll.insert_one({"ssl": True})
+        self.assertTrue((await coll.find_one())["ssl"])
+        await coll.drop()
 
     @unittest.skipUnless(HAVE_SSL, "The ssl module is not available.")
-    def setUp(self):
-        super().setUp()
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
         # MongoClient should connect to the primary by default.
-        self.saved_port = MongoClient.PORT
-        MongoClient.PORT = client_context.port
+        self.saved_port = AsyncMongoClient.PORT
+        AsyncMongoClient.PORT = await async_client_context.port
 
-    def tearDown(self):
-        MongoClient.PORT = self.saved_port
+    async def asyncTearDown(self):
+        AsyncMongoClient.PORT = self.saved_port
 
-    @client_context.require_tls
-    def test_simple_ssl(self):
+    @async_client_context.require_tls
+    async def test_simple_ssl(self):
         # Expects the server to be running with ssl and with
         # no --sslPEMKeyFile or with --sslWeakCertificateValidation
-        self.assertClientWorks(self.client)
+        await self.assertClientWorks(self.client)
 
-    @client_context.require_tlsCertificateKeyFile
+    @async_client_context.require_tlsCertificateKeyFile
     @ignore_deprecations
-    def test_tlsCertificateKeyFilePassword(self):
+    async def test_tlsCertificateKeyFilePassword(self):
         # Expects the server to be running with server.pem and ca.pem
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
@@ -194,7 +194,7 @@ class TestSSL(IntegrationTest):
                 serverSelectionTimeoutMS=1000,
             )
         else:
-            connected(
+            await connected(
                 self.simple_client(
                     "localhost",
                     ssl=True,
@@ -211,14 +211,14 @@ class TestSSL(IntegrationTest):
                 "&tlsCertificateKeyFile=%s&tlsCertificateKeyFilePassword=qwerty"
                 "&tlsCAFile=%s&serverSelectionTimeoutMS=5000"
             )
-            connected(
+            await connected(
                 self.simple_client(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM), **self.credentials)  # type: ignore[arg-type]
             )
 
-    @client_context.require_tlsCertificateKeyFile
-    @client_context.require_no_auth
+    @async_client_context.require_tlsCertificateKeyFile
+    @async_client_context.require_no_auth
     @ignore_deprecations
-    def test_cert_ssl_implicitly_set(self):
+    async def test_cert_ssl_implicitly_set(self):
         # Expects the server to be running with server.pem and ca.pem
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
@@ -227,27 +227,27 @@ class TestSSL(IntegrationTest):
 
         # test that setting tlsCertificateKeyFile causes ssl to be set to True
         client = self.simple_client(
-            client_context.host,
-            client_context.port,
+            await async_client_context.host,
+            await async_client_context.port,
             tlsAllowInvalidCertificates=True,
             tlsCertificateKeyFile=CLIENT_PEM,
         )
-        response = client.admin.command(HelloCompat.LEGACY_CMD)
+        response = await client.admin.command(HelloCompat.LEGACY_CMD)
         if "setName" in response:
             client = self.simple_client(
-                client_context.pair,
+                await async_client_context.pair,
                 replicaSet=response["setName"],
                 w=len(response["hosts"]),
                 tlsAllowInvalidCertificates=True,
                 tlsCertificateKeyFile=CLIENT_PEM,
             )
 
-        self.assertClientWorks(client)
+        await self.assertClientWorks(client)
 
-    @client_context.require_tlsCertificateKeyFile
-    @client_context.require_no_auth
+    @async_client_context.require_tlsCertificateKeyFile
+    @async_client_context.require_no_auth
     @ignore_deprecations
-    def test_cert_ssl_validation(self):
+    async def test_cert_ssl_validation(self):
         # Expects the server to be running with server.pem and ca.pem
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
@@ -260,7 +260,7 @@ class TestSSL(IntegrationTest):
             tlsAllowInvalidCertificates=False,
             tlsCAFile=CA_PEM,
         )
-        response = client.admin.command(HelloCompat.LEGACY_CMD)
+        response = await client.admin.command(HelloCompat.LEGACY_CMD)
         if "setName" in response:
             if response["primary"].split(":")[0] != "localhost":
                 raise SkipTest(
@@ -278,7 +278,7 @@ class TestSSL(IntegrationTest):
                 tlsCAFile=CA_PEM,
             )
 
-        self.assertClientWorks(client)
+        await self.assertClientWorks(client)
 
         if HAVE_IPADDRESS:
             client = self.simple_client(
@@ -288,12 +288,12 @@ class TestSSL(IntegrationTest):
                 tlsAllowInvalidCertificates=False,
                 tlsCAFile=CA_PEM,
             )
-            self.assertClientWorks(client)
+            await self.assertClientWorks(client)
 
-    @client_context.require_tlsCertificateKeyFile
-    @client_context.require_no_auth
+    @async_client_context.require_tlsCertificateKeyFile
+    @async_client_context.require_no_auth
     @ignore_deprecations
-    def test_cert_ssl_uri_support(self):
+    async def test_cert_ssl_uri_support(self):
         # Expects the server to be running with server.pem and ca.pem
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
@@ -304,12 +304,12 @@ class TestSSL(IntegrationTest):
             "=%s&tlsCAFile=%s&tlsAllowInvalidHostnames=false"
         )
         client = self.simple_client(uri_fmt % (CLIENT_PEM, "true", CA_PEM))
-        self.assertClientWorks(client)
+        await self.assertClientWorks(client)
 
-    @client_context.require_tlsCertificateKeyFile
-    @client_context.require_server_resolvable
+    @async_client_context.require_tlsCertificateKeyFile
+    @async_client_context.require_server_resolvable
     @ignore_deprecations
-    def test_cert_ssl_validation_hostname_matching(self):
+    async def test_cert_ssl_validation_hostname_matching(self):
         # Expects the server to be running with server.pem and ca.pem
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
@@ -323,10 +323,10 @@ class TestSSL(IntegrationTest):
         ctx = get_ssl_context(None, None, None, None, False, False, False)
         self.assertTrue(ctx.check_hostname)
 
-        response = self.client.admin.command(HelloCompat.LEGACY_CMD)
+        response = await self.client.admin.command(HelloCompat.LEGACY_CMD)
 
         with self.assertRaises(ConnectionFailure):
-            connected(
+            await connected(
                 self.simple_client(
                     "server",
                     ssl=True,
@@ -338,7 +338,7 @@ class TestSSL(IntegrationTest):
                 )
             )
 
-        connected(
+        await connected(
             self.simple_client(
                 "server",
                 ssl=True,
@@ -353,7 +353,7 @@ class TestSSL(IntegrationTest):
 
         if "setName" in response:
             with self.assertRaises(ConnectionFailure):
-                connected(
+                await connected(
                     self.simple_client(
                         "server",
                         replicaSet=response["setName"],
@@ -366,7 +366,7 @@ class TestSSL(IntegrationTest):
                     )
                 )
 
-            connected(
+            await connected(
                 self.simple_client(
                     "server",
                     replicaSet=response["setName"],
@@ -380,9 +380,9 @@ class TestSSL(IntegrationTest):
                 )
             )
 
-    @client_context.require_tlsCertificateKeyFile
+    @async_client_context.require_tlsCertificateKeyFile
     @ignore_deprecations
-    def test_tlsCRLFile_support(self):
+    async def test_tlsCRLFile_support(self):
         if not hasattr(ssl, "VERIFY_CRL_CHECK_LEAF") or _ssl.IS_PYOPENSSL:
             self.assertRaises(
                 ConfigurationError,
@@ -394,7 +394,7 @@ class TestSSL(IntegrationTest):
                 serverSelectionTimeoutMS=1000,
             )
         else:
-            connected(
+            await connected(
                 self.simple_client(
                     "localhost",
                     ssl=True,
@@ -405,7 +405,7 @@ class TestSSL(IntegrationTest):
             )
 
             with self.assertRaises(ConnectionFailure):
-                connected(
+                await connected(
                     self.simple_client(
                         "localhost",
                         ssl=True,
@@ -417,21 +417,21 @@ class TestSSL(IntegrationTest):
                 )
 
             uri_fmt = "mongodb://localhost/?ssl=true&tlsCAFile=%s&serverSelectionTimeoutMS=1000"
-            connected(self.simple_client(uri_fmt % (CA_PEM,), **self.credentials))  # type: ignore
+            await connected(self.simple_client(uri_fmt % (CA_PEM,), **self.credentials))  # type: ignore
 
             uri_fmt = (
                 "mongodb://localhost/?ssl=true&tlsCRLFile=%s"
                 "&tlsCAFile=%s&serverSelectionTimeoutMS=1000"
             )
             with self.assertRaises(ConnectionFailure):
-                connected(
+                await connected(
                     self.simple_client(uri_fmt % (CRL_PEM, CA_PEM), **self.credentials)  # type: ignore[arg-type]
                 )
 
-    @client_context.require_tlsCertificateKeyFile
-    @client_context.require_server_resolvable
+    @async_client_context.require_tlsCertificateKeyFile
+    @async_client_context.require_server_resolvable
     @ignore_deprecations
-    def test_validation_with_system_ca_certs(self):
+    async def test_validation_with_system_ca_certs(self):
         # Expects the server to be running with server.pem and ca.pem.
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
@@ -441,14 +441,14 @@ class TestSSL(IntegrationTest):
         self.patch_system_certs(CA_PEM)
         with self.assertRaises(ConnectionFailure):
             # Server cert is verified but hostname matching fails
-            connected(
+            await connected(
                 self.simple_client(
                     "server", ssl=True, serverSelectionTimeoutMS=1000, **self.credentials
                 )  # type: ignore[arg-type]
             )
 
         # Server cert is verified. Disable hostname matching.
-        connected(
+        await connected(
             self.simple_client(
                 "server",
                 ssl=True,
@@ -459,14 +459,14 @@ class TestSSL(IntegrationTest):
         )
 
         # Server cert and hostname are verified.
-        connected(
+        await connected(
             self.simple_client(
                 "localhost", ssl=True, serverSelectionTimeoutMS=1000, **self.credentials
             )  # type: ignore[arg-type]
         )
 
         # Server cert and hostname are verified.
-        connected(
+        await connected(
             self.simple_client(
                 "mongodb://localhost/?ssl=true&serverSelectionTimeoutMS=1000",
                 **self.credentials,  # type: ignore[arg-type]
@@ -534,15 +534,15 @@ class TestSSL(IntegrationTest):
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, ssl_support._WINCERTS.name)
 
-    @client_context.require_auth
-    @client_context.require_tlsCertificateKeyFile
+    @async_client_context.require_auth
+    @async_client_context.require_tlsCertificateKeyFile
     @ignore_deprecations
-    def test_mongodb_x509_auth(self):
-        host, port = client_context.host, client_context.port
-        self.addCleanup(remove_all_users, client_context.client["$external"])
+    async def test_mongodb_x509_auth(self):
+        host, port = await async_client_context.host, await async_client_context.port
+        self.addAsyncCleanup(remove_all_users, async_client_context.client["$external"])
 
         # Give x509 user all necessary privileges.
-        client_context.create_user(
+        await async_client_context.create_user(
             "$external",
             MONGODB_X509_USERNAME,
             roles=[
@@ -552,18 +552,18 @@ class TestSSL(IntegrationTest):
         )
 
         noauth = self.simple_client(
-            client_context.pair,
+            await async_client_context.pair,
             ssl=True,
             tlsAllowInvalidCertificates=True,
             tlsCertificateKeyFile=CLIENT_PEM,
         )
 
         with self.assertRaises(OperationFailure):
-            noauth.pymongo_test.test.find_one()
+            await noauth.pymongo_test.test.find_one()
 
         listener = EventListener()
         auth = self.simple_client(
-            client_context.pair,
+            await async_client_context.pair,
             authMechanism="MONGODB-X509",
             ssl=True,
             tlsAllowInvalidCertificates=True,
@@ -572,9 +572,9 @@ class TestSSL(IntegrationTest):
         )
 
         # No error
-        auth.pymongo_test.test.find_one()
+        await auth.pymongo_test.test.find_one()
         names = listener.started_command_names()
-        if client_context.version.at_least(4, 4, -1):
+        if async_client_context.version.at_least(4, 4, -1):
             # Speculative auth skips the authenticate command.
             self.assertEqual(names, ["find"])
         else:
@@ -589,14 +589,14 @@ class TestSSL(IntegrationTest):
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
         # No error
-        client.pymongo_test.test.find_one()
+        await client.pymongo_test.test.find_one()
 
         uri = "mongodb://%s:%d/?authMechanism=MONGODB-X509" % (host, port)
         client = self.simple_client(
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
         # No error
-        client.pymongo_test.test.find_one()
+        await client.pymongo_test.test.find_one()
         # Auth should fail if username and certificate do not match
         uri = "mongodb://%s@%s:%d/?authMechanism=MONGODB-X509" % (
             quote_plus("not the username"),
@@ -609,10 +609,10 @@ class TestSSL(IntegrationTest):
         )
 
         with self.assertRaises(OperationFailure):
-            bad_client.pymongo_test.test.find_one()
+            await bad_client.pymongo_test.test.find_one()
 
         bad_client = self.simple_client(
-            client_context.pair,
+            await async_client_context.pair,
             username="not the username",
             authMechanism="MONGODB-X509",
             ssl=True,
@@ -621,7 +621,7 @@ class TestSSL(IntegrationTest):
         )
 
         with self.assertRaises(OperationFailure):
-            bad_client.pymongo_test.test.find_one()
+            await bad_client.pymongo_test.test.find_one()
 
         # Invalid certificate (using CA certificate as client certificate)
         uri = "mongodb://%s@%s:%d/?authMechanism=MONGODB-X509" % (
@@ -630,7 +630,7 @@ class TestSSL(IntegrationTest):
             port,
         )
         try:
-            connected(
+            await connected(
                 self.simple_client(
                     uri,
                     ssl=True,
@@ -644,9 +644,9 @@ class TestSSL(IntegrationTest):
         else:
             self.fail("Invalid certificate accepted.")
 
-    @client_context.require_tlsCertificateKeyFile
+    @async_client_context.require_tlsCertificateKeyFile
     @ignore_deprecations
-    def test_connect_with_ca_bundle(self):
+    async def test_connect_with_ca_bundle(self):
         def remove(path):
             try:
                 os.remove(path)
@@ -657,10 +657,10 @@ class TestSSL(IntegrationTest):
         self.addCleanup(remove, temp_ca_bundle)
         # Add the CA cert file to the bundle.
         cat_files(temp_ca_bundle, CA_BUNDLE_PEM, CA_PEM)
-        with self.simple_client(
+        async with self.simple_client(
             "localhost", tls=True, tlsCertificateKeyFile=CLIENT_PEM, tlsCAFile=temp_ca_bundle
         ) as client:
-            self.assertTrue(client.admin.command("ping"))
+            self.assertTrue(await client.admin.command("ping"))
 
 
 if __name__ == "__main__":
