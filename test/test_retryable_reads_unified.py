@@ -15,6 +15,7 @@
 """Test the Retryable Reads unified spec tests."""
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -23,8 +24,13 @@ sys.path[0:0] = [""]
 from test import unittest
 from test.unified_format import generate_test_classes
 
+_IS_SYNC = True
+
 # Location of JSON test specifications.
-TEST_PATH = Path(__file__).parent / "retryable_reads/unified"
+if _IS_SYNC:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "retryable_reads/unified")
+else:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "retryable_reads/unified")
 
 # Generate unified tests.
 # PyMongo does not support MapReduce, ListDatabaseObjects or ListCollectionObjects.
