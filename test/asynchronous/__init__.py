@@ -592,10 +592,10 @@ class AsyncClientContext:
 
     @property
     async def supports_secondary_read_pref(self):
-        if self.has_secondaries:
+        if await self.has_secondaries:
             return True
         if self.is_mongos:
-            shard = await self.client.config.shards.find_one()["host"]  # type:ignore[index]
+            shard = (await self.client.config.shards.find_one())["host"]  # type:ignore[index]
             num_members = shard.count(",") + 1
             return num_members > 1
         return False
