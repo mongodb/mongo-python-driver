@@ -70,20 +70,15 @@ _IS_SYNC = False
 
 if _IS_SYNC:
     CERT_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "certificates")
-    CLIENT_PEM = os.path.join(CERT_PATH, "client.pem")
-    CLIENT_ENCRYPTED_PEM = os.path.join(CERT_PATH, "password_protected.pem")
-    CA_PEM = os.path.join(CERT_PATH, "ca.pem")
-    CA_BUNDLE_PEM = os.path.join(CERT_PATH, "trusted-ca.pem")
-    CRL_PEM = os.path.join(CERT_PATH, "crl.pem")
-    MONGODB_X509_USERNAME = "C=US,ST=New York,L=New York City,O=MDB,OU=Drivers,CN=client"
 else:
     CERT_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "certificates")
-    CLIENT_PEM = os.path.join(CERT_PATH, "client.pem")
-    CLIENT_ENCRYPTED_PEM = os.path.join(CERT_PATH, "password_protected.pem")
-    CA_PEM = os.path.join(CERT_PATH, "ca.pem")
-    CA_BUNDLE_PEM = os.path.join(CERT_PATH, "trusted-ca.pem")
-    CRL_PEM = os.path.join(CERT_PATH, "crl.pem")
-    MONGODB_X509_USERNAME = "C=US,ST=New York,L=New York City,O=MDB,OU=Drivers,CN=client"
+
+CLIENT_PEM = os.path.join(CERT_PATH, "client.pem")
+CLIENT_ENCRYPTED_PEM = os.path.join(CERT_PATH, "password_protected.pem")
+CA_PEM = os.path.join(CERT_PATH, "ca.pem")
+CA_BUNDLE_PEM = os.path.join(CERT_PATH, "trusted-ca.pem")
+CRL_PEM = os.path.join(CERT_PATH, "crl.pem")
+MONGODB_X509_USERNAME = "C=US,ST=New York,L=New York City,O=MDB,OU=Drivers,CN=client"
 
 # To fully test this start a mongod instance (built with SSL support) like so:
 # mongod --dbpath /path/to/data/directory --sslOnNormalPorts \
