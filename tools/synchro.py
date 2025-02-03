@@ -225,6 +225,7 @@ converted_tests = [
     "test_retryable_reads_unified.py",
     "test_retryable_writes.py",
     "test_retryable_writes_unified.py",
+    "test_server_selection_in_window.py",
     "test_session.py",
     "test_srv_polling.py",
     "test_transactions.py",
