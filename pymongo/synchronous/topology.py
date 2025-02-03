@@ -703,6 +703,8 @@ class Topology:
             # Stop SRV polling thread.
             if self._srv_monitor:
                 self._srv_monitor.close()
+                if not _IS_SYNC:
+                    self._srv_monitor.join()
 
             self._opened = False
             self._closed = True

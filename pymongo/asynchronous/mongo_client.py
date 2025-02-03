@@ -1564,6 +1564,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             await self._encrypter.close()
+        if not _IS_SYNC:
+            await self._kill_cursors_executor.join()
         self._closed = True
 
     if not _IS_SYNC:

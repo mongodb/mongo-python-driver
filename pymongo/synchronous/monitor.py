@@ -111,6 +111,8 @@ class MonitorBase:
         open() restarts the monitor after closing.
         """
         self.gc_safe_close()
+        if not _IS_SYNC:
+            self._executor.join()
 
     def join(self, timeout: Optional[int] = None) -> None:
         """Wait for the monitor to stop."""
@@ -191,6 +193,8 @@ class Monitor(MonitorBase):
 
     def close(self) -> None:
         self.gc_safe_close()
+        if not _IS_SYNC:
+            self._executor.join()
         self._rtt_monitor.close()
         # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
@@ -460,6 +464,8 @@ class _RttMonitor(MonitorBase):
         self.gc_safe_close()
         # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
+        if not _IS_SYNC:
+            self._executor.join()
         self._pool.reset()
 
     def add_sample(self, sample: float) -> None:
