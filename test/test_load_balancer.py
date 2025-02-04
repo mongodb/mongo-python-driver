@@ -21,6 +21,8 @@ import os
 import pathlib
 import sys
 import threading
+from asyncio import Event
+from test.helpers import ConcurrentRunner, ExceptionCatchingTask
 
 import pytest
 
@@ -29,8 +31,7 @@ sys.path[0:0] = [""]
 from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
 from test.utils import (
-    ExceptionCatchingTask,
-    ExceptionCatchingThread,
+    create_event,
     get_pool,
     wait_until,
 )
@@ -116,35 +117,19 @@ class TestLB(IntegrationTest):
             if client_context.load_balancer:
                 self.assertEqual(pool.active_sockets, 1)  # Pinned.
 
-        if _IS_SYNC:
-            thread = PoolLocker(pool)
-            thread.start()
-            self.assertTrue(thread.locked.wait(5), "timed out")
-            # Garbage collect the resource while the pool is locked to ensure we
-            # don't deadlock.
-            del resource
-            # On PyPy it can take a few rounds to collect the cursor.
-            for _ in range(3):
-                gc.collect()
-            thread.unlock.set()
-            thread.join(5)
-            self.assertFalse(thread.is_alive())
-            self.assertIsNone(thread.exc)
-
-        else:
-            task = PoolLocker(pool)
-            self.assertTrue(asyncio.wait_for(task.locked.wait(), timeout=5), "timed out")  # type: ignore[arg-type]
-
-            # Garbage collect the resource while the pool is locked to ensure we
-            # don't deadlock.
-            del resource
-            # On PyPy it can take a few rounds to collect the cursor.
-            for _ in range(3):
-                gc.collect()
-            task.unlock.set()
-            task.run()
-            self.assertFalse(task.is_alive())
-            self.assertIsNone(task.exc)
+        task = PoolLocker(pool)
+        task.start()
+        self.assertTrue(task.wait(task.locked, 5), "timed out")
+        # Garbage collect the resource while the pool is locked to ensure we
+        # don't deadlock.
+        del resource
+        # On PyPy it can take a few rounds to collect the cursor.
+        for _ in range(3):
+            gc.collect()
+        task.unlock.set()
+        task.join(5)
+        self.assertFalse(task.is_alive())
+        self.assertIsNone(task.exc)
 
         wait_until(lambda: pool.active_sockets == 0, "return socket")
         # Run another operation to ensure the socket still works.
@@ -164,80 +149,50 @@ class TestLB(IntegrationTest):
         if client_context.load_balancer:
             self.assertEqual(pool.active_sockets, 1)  # Pinned.
 
-        if _IS_SYNC:
-            thread = PoolLocker(pool)
-            thread.start()
-            self.assertTrue(thread.locked.wait(5), "timed out")
-            # Garbage collect the session while the pool is locked to ensure we
-            # don't deadlock.
-            del session
-            # On PyPy it can take a few rounds to collect the session.
-            for _ in range(3):
-                gc.collect()
-            thread.unlock.set()
-            thread.join(5)
-            self.assertFalse(thread.is_alive())
-            self.assertIsNone(thread.exc)
-
-        else:
-            task = PoolLocker(pool)
-            self.assertTrue(asyncio.wait_for(task.locked.wait(), timeout=5), "timed out")  # type: ignore[arg-type]
-
-            # Garbage collect the session while the pool is locked to ensure we
-            # don't deadlock.
-            del session
-            # On PyPy it can take a few rounds to collect the cursor.
-            for _ in range(3):
-                gc.collect()
-            task.unlock.set()
-            task.run()
-            self.assertFalse(task.is_alive())
-            self.assertIsNone(task.exc)
+        task = PoolLocker(pool)
+        task.start()
+        self.assertTrue(task.wait(task.locked, 5), "timed out")
+        # Garbage collect the session while the pool is locked to ensure we
+        # don't deadlock.
+        del session
+        # On PyPy it can take a few rounds to collect the session.
+        for _ in range(3):
+            gc.collect()
+        task.unlock.set()
+        task.join(5)
+        self.assertFalse(task.is_alive())
+        self.assertIsNone(task.exc)
 
         wait_until(lambda: pool.active_sockets == 0, "return socket")
         # Run another operation to ensure the socket still works.
         client[self.db.name].test.delete_many({})
 
 
-if _IS_SYNC:
+class PoolLocker(ExceptionCatchingTask):
+    def __init__(self, pool):
+        super().__init__(target=self.lock_pool)
+        self.pool = pool
+        self.daemon = True
+        self.locked = create_event()
+        self.unlock = create_event()
 
-    class PoolLocker(ExceptionCatchingThread):
-        def __init__(self, pool):
-            super().__init__(target=self.lock_pool)
-            self.pool = pool
-            self.daemon = True
-            self.locked = threading.Event()
-            self.unlock = threading.Event()
+    def lock_pool(self):
+        with self.pool.lock:
+            self.locked.set()
+            # Wait for the unlock flag.
+            unlock_pool = self.wait(self.unlock, 10)
+            if not unlock_pool:
+                raise Exception("timed out waiting for unlock signal: deadlock?")
 
-        def lock_pool(self):
-            with self.pool.lock:
-                self.locked.set()
-                # Wait for the unlock flag.
-                unlock_pool = self.unlock.wait(10)
-                if not unlock_pool:
-                    raise Exception("timed out waiting for unlock signal: deadlock?")
-
-else:
-
-    class PoolLocker(ExceptionCatchingTask):
-        def __init__(self, pool):
-            super().__init__(self.lock_pool)
-            self.pool = pool
-            self.daemon = True
-            self.locked = asyncio.Event()
-            self.unlock = asyncio.Event()
-
-        def lock_pool(self):
-            with self.pool.lock:
-                self.locked.set()
-                # Wait for the unlock flag.
-                try:
-                    asyncio.wait_for(self.unlock.wait(), timeout=10)
-                except asyncio.TimeoutError:
-                    raise Exception("timed out waiting for unlock signal: deadlock?")
-
-        def is_alive(self):
-            return not self.task.done()
+    def wait(self, event: Event, timeout: int):
+        if _IS_SYNC:
+            return event.wait(timeout)
+        else:
+            try:
+                asyncio.wait_for(event.wait(), timeout=timeout)
+            except asyncio.TimeoutError:
+                return False
+            return True
 
 
 if __name__ == "__main__":
