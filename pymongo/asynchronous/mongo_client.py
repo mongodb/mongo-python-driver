@@ -1566,14 +1566,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             await self._encrypter.close()
         self._closed = True
         if not _IS_SYNC:
-            join_tasks = [self._kill_cursors_executor]
-            try:
-                while self._topology._monitor_tasks:
-                    join_tasks.append(self._topology._monitor_tasks.pop())
-            except IndexError:
-                pass
-            join_tasks = [t.join() for t in join_tasks]  # type: ignore[func-returns-value]
-            await asyncio.gather(*join_tasks)
+            await asyncio.gather(
+                *[self._topology.cleanup_monitors(), self._kill_cursors_executor.join()]  # type: ignore[func-returns-value]
+            )
 
     if not _IS_SYNC:
         # Add support for contextlib.aclosing.

@@ -289,26 +289,18 @@ class Topology:
         else:
             server_timeout = server_selection_timeout
 
+        # Cleanup any completed monitor tasks safely
+        if not _IS_SYNC and self._monitor_tasks:
+            self.cleanup_monitors()
+
         with self._lock:
             server_descriptions = self._select_servers_loop(
                 selector, server_timeout, operation, operation_id, address
             )
 
-            servers = [
+            return [
                 cast(Server, self.get_server_by_address(sd.address)) for sd in server_descriptions
             ]
-
-        if not _IS_SYNC and self._monitor_tasks:
-            join_tasks = []
-            try:
-                while self._monitor_tasks:
-                    join_tasks.append(self._monitor_tasks.pop())
-            except IndexError:
-                pass
-            join_tasks = [t.join() for t in join_tasks]  # type: ignore[func-returns-value]
-            asyncio.gather(*join_tasks)
-
-        return servers
 
     def _select_servers_loop(
         self,
@@ -1054,6 +1046,15 @@ class Topology:
                 return str(error)
             else:
                 return ",".join(str(server.error) for server in servers if server.error)
+
+    def cleanup_monitors(self) -> None:
+        tasks = []
+        try:
+            while self._monitor_tasks:
+                tasks.append(self._monitor_tasks.pop())
+        except IndexError:
+            pass
+        asyncio.gather(*[t.join() for t in tasks])  # type: ignore[func-returns-value]
 
     def __repr__(self) -> str:
         msg = ""
