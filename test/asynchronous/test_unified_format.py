@@ -21,11 +21,11 @@ from typing import Any
 sys.path[0:0] = [""]
 
 from test import UnitTest, unittest
-from test.unified_format import MatchEvaluatorUtil, generate_test_classes
+from test.asynchronous.unified_format import MatchEvaluatorUtil, generate_test_classes
 
 from bson import ObjectId
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:

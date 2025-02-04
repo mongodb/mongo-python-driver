@@ -18,11 +18,11 @@ from __future__ import annotations
 import asyncio
 import functools
 import os
-import threading
 import unittest
 from asyncio import iscoroutinefunction
 from collections import abc
 from test import IntegrationTest, client_context, client_knobs
+from test.helpers import ConcurrentRunner
 from test.utils import (
     CMAPListener,
     CompareType,
@@ -44,6 +44,7 @@ from bson.son import SON
 from gridfs import GridFSBucket
 from gridfs.synchronous.grid_file import GridFSBucket
 from pymongo.errors import AutoReconnect, BulkWriteError, OperationFailure, PyMongoError
+from pymongo.lock import _cond_wait, _create_condition, _create_lock
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
@@ -55,15 +56,13 @@ from pymongo.write_concern import WriteConcern
 _IS_SYNC = True
 
 
-class SpecRunnerThread(threading.Thread):
+class SpecRunnerThread(ConcurrentRunner):
     def __init__(self, name):
-        super().__init__()
-        self.name = name
+        super().__init__(name)
         self.exc = None
         self.daemon = True
-        self.cond = threading.Condition()
+        self.cond = _create_condition(_create_lock())
         self.ops = []
-        self.stopped = False
 
     def schedule(self, work):
         self.ops.append(work)
@@ -79,7 +78,7 @@ class SpecRunnerThread(threading.Thread):
         while not self.stopped or self.ops:
             if not self.ops:
                 with self.cond:
-                    self.cond.wait(10)
+                    _cond_wait(self.cond, 10)
             if self.ops:
                 try:
                     work = self.ops.pop(0)
