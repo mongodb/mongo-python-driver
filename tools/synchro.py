@@ -229,6 +229,7 @@ converted_tests = [
     "test_run_command.py",
     "test_session.py",
     "test_srv_polling.py",
+    "test_ssl.py",
     "test_transactions.py",
     "test_unified_format.py",
     "unified_format.py",
