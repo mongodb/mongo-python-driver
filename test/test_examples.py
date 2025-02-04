@@ -20,6 +20,7 @@ import datetime
 import functools
 import sys
 import threading
+import time
 from test.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
@@ -752,6 +753,7 @@ class TestSampleShellCommands(IntegrationTest):
             while not done:
                 db.inventory.insert_one({"username": "alice"})
                 db.inventory.delete_one({"username": "alice"})
+                time.sleep(0.005)
 
         t = ConcurrentRunner(target=insert_docs)
         t.start()

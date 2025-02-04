@@ -20,6 +20,7 @@ import datetime
 import functools
 import sys
 import threading
+import time
 from test.asynchronous.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
@@ -752,6 +753,7 @@ class TestSampleShellCommands(AsyncIntegrationTest):
             while not done:
                 await db.inventory.insert_one({"username": "alice"})
                 await db.inventory.delete_one({"username": "alice"})
+                await asyncio.sleep(0.005)
 
         t = ConcurrentRunner(target=insert_docs)
         await t.start()
