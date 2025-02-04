@@ -119,6 +119,7 @@ replacements = {
     "_async_create_lock": "_create_lock",
     "_async_create_condition": "_create_condition",
     "_async_cond_wait": "_cond_wait",
+    "SpecRunnerTask": "SpecRunnerThread",
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",
 }
