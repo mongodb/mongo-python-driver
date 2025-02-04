@@ -1,4 +1,4 @@
-# Copyright 2021-present MongoDB, Inc.
+# Copyright 2022-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the Retryable Writes unified spec tests."""
+"""Test the Retryable Reads unified spec tests."""
 from __future__ import annotations
 
 import os
@@ -22,18 +22,25 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "retryable_writes/unified")
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "retryable_reads/unified")
 else:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "retryable_writes/unified")
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "retryable_reads/unified")
 
 # Generate unified tests.
-globals().update(generate_test_classes(TEST_PATH, module=__name__))
+# PyMongo does not support MapReduce, ListDatabaseObjects or ListCollectionObjects.
+globals().update(
+    generate_test_classes(
+        TEST_PATH,
+        module=__name__,
+        expected_failures=["ListDatabaseObjects .*", "ListCollectionObjects .*", "MapReduce .*"],
+    )
+)
 
 if __name__ == "__main__":
     unittest.main()

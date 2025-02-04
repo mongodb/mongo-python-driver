@@ -46,7 +46,7 @@ def _get_azure_response(
     try:
         data = json.loads(body)
     except Exception:
-        raise ValueError("Azure IMDS response must be in JSON format.") from None
+        raise ValueError("Azure IMDS response must be in JSON format") from None
 
     for key in ["access_token", "expires_in"]:
         if not data.get(key):

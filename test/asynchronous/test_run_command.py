@@ -1,4 +1,4 @@
-# Copyright 2021-present MongoDB, Inc.
+# Copyright 2024-Present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,28 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the Retryable Writes unified spec tests."""
+"""Run Command unified tests."""
 from __future__ import annotations
 
 import os
-import sys
+import unittest
 from pathlib import Path
+from test.asynchronous.unified_format import generate_test_classes
 
-sys.path[0:0] = [""]
-
-from test import unittest
-from test.unified_format import generate_test_classes
-
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "retryable_writes/unified")
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "run_command")
 else:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "retryable_writes/unified")
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "run_command")
 
-# Generate unified tests.
-globals().update(generate_test_classes(TEST_PATH, module=__name__))
+
+globals().update(
+    generate_test_classes(
+        os.path.join(TEST_PATH, "unified"),
+        module=__name__,
+    )
+)
+
 
 if __name__ == "__main__":
     unittest.main()

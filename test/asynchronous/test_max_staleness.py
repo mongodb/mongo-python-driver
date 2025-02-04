@@ -22,18 +22,18 @@ import time
 import warnings
 from pathlib import Path
 
-from pymongo import MongoClient
+from pymongo import AsyncMongoClient
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
 
-from test import PyMongoTestCase, client_context, unittest
+from test.asynchronous import AsyncPyMongoTestCase, async_client_context, unittest
 from test.utils_selection_tests import create_selection_tests
 
 from pymongo.errors import ConfigurationError
 from pymongo.server_selectors import writable_server_selector
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
@@ -46,8 +46,8 @@ class TestAllScenarios(create_selection_tests(TEST_PATH)):  # type: ignore
     pass
 
 
-class TestMaxStaleness(PyMongoTestCase):
-    def test_max_staleness(self):
+class TestMaxStaleness(AsyncPyMongoTestCase):
+    async def test_max_staleness(self):
         client = self.simple_client()
         self.assertEqual(-1, client.read_preference.max_staleness)
 
@@ -87,9 +87,9 @@ class TestMaxStaleness(PyMongoTestCase):
             # Prohibit None.
             self.simple_client(maxStalenessSeconds=None, readPreference="nearest")
 
-    def test_max_staleness_float(self):
+    async def test_max_staleness_float(self):
         with self.assertRaises(TypeError) as ctx:
-            self.rs_or_single_client(maxStalenessSeconds=1.5, readPreference="nearest")
+            await self.async_rs_or_single_client(maxStalenessSeconds=1.5, readPreference="nearest")
 
         self.assertIn("must be an integer", str(ctx.exception))
 
@@ -103,10 +103,10 @@ class TestMaxStaleness(PyMongoTestCase):
             self.assertEqual(-1, client.read_preference.max_staleness)
             self.assertIn("must be an integer", str(ctx[0]))
 
-    def test_max_staleness_zero(self):
+    async def test_max_staleness_zero(self):
         # Zero is too small.
         with self.assertRaises(ValueError) as ctx:
-            self.rs_or_single_client(maxStalenessSeconds=0, readPreference="nearest")
+            await self.async_rs_or_single_client(maxStalenessSeconds=0, readPreference="nearest")
 
         self.assertIn("must be a positive integer", str(ctx.exception))
 
@@ -120,23 +120,23 @@ class TestMaxStaleness(PyMongoTestCase):
             self.assertEqual(-1, client.read_preference.max_staleness)
             self.assertIn("must be a positive integer", str(ctx[0]))
 
-    @client_context.require_replica_set
-    def test_last_write_date(self):
+    @async_client_context.require_replica_set
+    async def test_last_write_date(self):
         # From max-staleness-tests.rst, "Parse lastWriteDate".
-        client = self.rs_or_single_client(heartbeatFrequencyMS=500)
-        client.pymongo_test.test.insert_one({})
+        client = await self.async_rs_or_single_client(heartbeatFrequencyMS=500)
+        await client.pymongo_test.test.insert_one({})
         # Wait for the server description to be updated.
-        time.sleep(1)
-        server = client._topology.select_server(writable_server_selector, _Op.TEST)
+        await asyncio.sleep(1)
+        server = await client._topology.select_server(writable_server_selector, _Op.TEST)
         first = server.description.last_write_date
         self.assertTrue(first)
         # The first last_write_date may correspond to a internal server write,
         # sleep so that the next write does not occur within the same second.
-        time.sleep(1)
-        client.pymongo_test.test.insert_one({})
+        await asyncio.sleep(1)
+        await client.pymongo_test.test.insert_one({})
         # Wait for the server description to be updated.
-        time.sleep(1)
-        server = client._topology.select_server(writable_server_selector, _Op.TEST)
+        await asyncio.sleep(1)
+        server = await client._topology.select_server(writable_server_selector, _Op.TEST)
         second = server.description.last_write_date
         assert first is not None
 
