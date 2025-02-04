@@ -18,9 +18,9 @@ from __future__ import annotations
 import os
 import unittest
 from pathlib import Path
-from test.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
