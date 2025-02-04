@@ -20,6 +20,7 @@ import datetime
 import functools
 import sys
 import threading
+from test.asynchronous.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
 
@@ -741,102 +742,53 @@ class TestSampleShellCommands(AsyncIntegrationTest):
 
         self.assertEqual(await db.inventory.count_documents({}), 0)
 
-    if _IS_SYNC:
+    @async_client_context.require_change_streams
+    async def test_change_streams(self):
+        db = self.db
+        done = False
 
-        @async_client_context.require_change_streams
-        async def test_change_streams(self):
-            db = self.db
-            done = False
+        async def insert_docs():
+            nonlocal done
+            while not done:
+                await db.inventory.insert_one({"username": "alice"})
+                await db.inventory.delete_one({"username": "alice"})
 
-            async def insert_docs():
-                nonlocal done
-                while not done:
-                    await db.inventory.insert_one({"username": "alice"})
-                    await db.inventory.delete_one({"username": "alice"})
+        t = ConcurrentRunner(target=insert_docs)
+        await t.start()
 
-            t = threading.Thread(target=insert_docs)
-            t.start()
+        try:
+            # 1. The database for reactive, real-time applications
+            # Start Changestream Example 1
+            cursor = await db.inventory.watch()
+            await anext(cursor)
+            # End Changestream Example 1
+            await cursor.close()
 
-            try:
-                # 1. The database for reactive, real-time applications
-                # Start Changestream Example 1
-                cursor = await db.inventory.watch()
-                await anext(cursor)
-                # End Changestream Example 1
-                await cursor.close()
+            # Start Changestream Example 2
+            cursor = await db.inventory.watch(full_document="updateLookup")
+            await anext(cursor)
+            # End Changestream Example 2
+            await cursor.close()
 
-                # Start Changestream Example 2
-                cursor = await db.inventory.watch(full_document="updateLookup")
-                await anext(cursor)
-                # End Changestream Example 2
-                await cursor.close()
+            # Start Changestream Example 3
+            resume_token = cursor.resume_token
+            cursor = await db.inventory.watch(resume_after=resume_token)
+            await anext(cursor)
+            # End Changestream Example 3
+            await cursor.close()
 
-                # Start Changestream Example 3
-                resume_token = cursor.resume_token
-                cursor = await db.inventory.watch(resume_after=resume_token)
-                await anext(cursor)
-                # End Changestream Example 3
-                await cursor.close()
-
-                # Start Changestream Example 4
-                pipeline = [
-                    {"$match": {"fullDocument.username": "alice"}},
-                    {"$addFields": {"newField": "this is an added field!"}},
-                ]
-                cursor = await db.inventory.watch(pipeline=pipeline)
-                await anext(cursor)
-                # End Changestream Example 4
-                await cursor.close()
-            finally:
-                done = True
-                t.join()
-    else:
-
-        @async_client_context.require_change_streams
-        async def test_change_streams(self):
-            db = self.db
-            done = False
-
-            async def insert_docs():
-                nonlocal done
-                while not done:
-                    await db.inventory.insert_one({"username": "alice"})
-                    await db.inventory.delete_one({"username": "alice"})
-
-            t = asyncio.create_task(insert_docs())
-            try:
-                # 1. The database for reactive, real-time applications
-                # Start Changestream Example 1
-                cursor = await db.inventory.watch()
-                await anext(cursor)
-                # End Changestream Example 1
-                await cursor.close()
-
-                # Start Changestream Example 2
-                cursor = await db.inventory.watch(full_document="updateLookup")
-                await anext(cursor)
-                # End Changestream Example 2
-                await cursor.close()
-
-                # Start Changestream Example 3
-                resume_token = cursor.resume_token
-                cursor = await db.inventory.watch(resume_after=resume_token)
-                await anext(cursor)
-                # End Changestream Example 3
-                await cursor.close()
-
-                # Start Changestream Example 4
-                pipeline = [
-                    {"$match": {"fullDocument.username": "alice"}},
-                    {"$addFields": {"newField": "this is an added field!"}},
-                ]
-                cursor = await db.inventory.watch(pipeline=pipeline)
-                await anext(cursor)
-                # End Changestream Example 4
-                await cursor.close()
-            finally:
-                done = True
-                await t
+            # Start Changestream Example 4
+            pipeline = [
+                {"$match": {"fullDocument.username": "alice"}},
+                {"$addFields": {"newField": "this is an added field!"}},
+            ]
+            cursor = await db.inventory.watch(pipeline=pipeline)
+            await anext(cursor)
+            # End Changestream Example 4
+            await cursor.close()
+        finally:
+            done = True
+            await t.join()
 
     async def test_aggregate_examples(self):
         db = self.db

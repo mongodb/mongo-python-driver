@@ -381,14 +381,14 @@ else:
 
 
 class ConcurrentRunner(PARENT):
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, **kwargs):
         if _IS_SYNC:
-            super().__init__(*args, **kwargs)
-        self.name = name
+            super().__init__(**kwargs)
+        self.name = kwargs.get("name", "ConcurrentRunner")
         self.stopped = False
         self.task = None
-        if "target" in kwargs:
-            self.target = kwargs["target"]
+        self.target = kwargs.get("target", None)
+        self.args = kwargs.get("args", [])
 
     if not _IS_SYNC:
 
@@ -404,5 +404,8 @@ class ConcurrentRunner(PARENT):
 
     async def run(self):
         if self.target:
-            await self.target()
+            if self.args:
+                await self.target(*self.args)
+            else:
+                await self.target()
         self.stopped = True

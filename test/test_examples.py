@@ -20,6 +20,7 @@ import datetime
 import functools
 import sys
 import threading
+from test.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
 
@@ -741,102 +742,53 @@ class TestSampleShellCommands(IntegrationTest):
 
         self.assertEqual(db.inventory.count_documents({}), 0)
 
-    if _IS_SYNC:
+    @client_context.require_change_streams
+    def test_change_streams(self):
+        db = self.db
+        done = False
 
-        @client_context.require_change_streams
-        def test_change_streams(self):
-            db = self.db
-            done = False
+        def insert_docs():
+            nonlocal done
+            while not done:
+                db.inventory.insert_one({"username": "alice"})
+                db.inventory.delete_one({"username": "alice"})
 
-            def insert_docs():
-                nonlocal done
-                while not done:
-                    db.inventory.insert_one({"username": "alice"})
-                    db.inventory.delete_one({"username": "alice"})
+        t = ConcurrentRunner(target=insert_docs)
+        t.start()
 
-            t = threading.Thread(target=insert_docs)
-            t.start()
+        try:
+            # 1. The database for reactive, real-time applications
+            # Start Changestream Example 1
+            cursor = db.inventory.watch()
+            next(cursor)
+            # End Changestream Example 1
+            cursor.close()
 
-            try:
-                # 1. The database for reactive, real-time applications
-                # Start Changestream Example 1
-                cursor = db.inventory.watch()
-                next(cursor)
-                # End Changestream Example 1
-                cursor.close()
+            # Start Changestream Example 2
+            cursor = db.inventory.watch(full_document="updateLookup")
+            next(cursor)
+            # End Changestream Example 2
+            cursor.close()
 
-                # Start Changestream Example 2
-                cursor = db.inventory.watch(full_document="updateLookup")
-                next(cursor)
-                # End Changestream Example 2
-                cursor.close()
+            # Start Changestream Example 3
+            resume_token = cursor.resume_token
+            cursor = db.inventory.watch(resume_after=resume_token)
+            next(cursor)
+            # End Changestream Example 3
+            cursor.close()
 
-                # Start Changestream Example 3
-                resume_token = cursor.resume_token
-                cursor = db.inventory.watch(resume_after=resume_token)
-                next(cursor)
-                # End Changestream Example 3
-                cursor.close()
-
-                # Start Changestream Example 4
-                pipeline = [
-                    {"$match": {"fullDocument.username": "alice"}},
-                    {"$addFields": {"newField": "this is an added field!"}},
-                ]
-                cursor = db.inventory.watch(pipeline=pipeline)
-                next(cursor)
-                # End Changestream Example 4
-                cursor.close()
-            finally:
-                done = True
-                t.join()
-    else:
-
-        @client_context.require_change_streams
-        def test_change_streams(self):
-            db = self.db
-            done = False
-
-            def insert_docs():
-                nonlocal done
-                while not done:
-                    db.inventory.insert_one({"username": "alice"})
-                    db.inventory.delete_one({"username": "alice"})
-
-            t = asyncio.create_task(insert_docs())
-            try:
-                # 1. The database for reactive, real-time applications
-                # Start Changestream Example 1
-                cursor = db.inventory.watch()
-                next(cursor)
-                # End Changestream Example 1
-                cursor.close()
-
-                # Start Changestream Example 2
-                cursor = db.inventory.watch(full_document="updateLookup")
-                next(cursor)
-                # End Changestream Example 2
-                cursor.close()
-
-                # Start Changestream Example 3
-                resume_token = cursor.resume_token
-                cursor = db.inventory.watch(resume_after=resume_token)
-                next(cursor)
-                # End Changestream Example 3
-                cursor.close()
-
-                # Start Changestream Example 4
-                pipeline = [
-                    {"$match": {"fullDocument.username": "alice"}},
-                    {"$addFields": {"newField": "this is an added field!"}},
-                ]
-                cursor = db.inventory.watch(pipeline=pipeline)
-                next(cursor)
-                # End Changestream Example 4
-                cursor.close()
-            finally:
-                done = True
-                t
+            # Start Changestream Example 4
+            pipeline = [
+                {"$match": {"fullDocument.username": "alice"}},
+                {"$addFields": {"newField": "this is an added field!"}},
+            ]
+            cursor = db.inventory.watch(pipeline=pipeline)
+            next(cursor)
+            # End Changestream Example 4
+            cursor.close()
+        finally:
+            done = True
+            t.join()
 
     def test_aggregate_examples(self):
         db = self.db
