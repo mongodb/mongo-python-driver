@@ -91,7 +91,7 @@ def parse_userinfo(userinfo: str) -> tuple[str, str]:
     user, _, passwd = userinfo.partition(":")
     # No password is expected with GSSAPI authentication.
     if not user:
-        raise InvalidURI("The empty string is not valid username.")
+        raise InvalidURI("The empty string is not valid username")
 
     return unquote_plus(user), unquote_plus(passwd)
 
@@ -347,7 +347,7 @@ def split_options(
     semi_idx = opts.find(";")
     try:
         if and_idx >= 0 and semi_idx >= 0:
-            raise InvalidURI("Can not mix '&' and ';' for option separators.")
+            raise InvalidURI("Can not mix '&' and ';' for option separators")
         elif and_idx >= 0:
             options = _parse_options(opts, "&")
         elif semi_idx >= 0:
@@ -357,7 +357,7 @@ def split_options(
         else:
             raise ValueError
     except ValueError:
-        raise InvalidURI("MongoDB URI options are key=value pairs.") from None
+        raise InvalidURI("MongoDB URI options are key=value pairs") from None
 
     options = _handle_security_options(options)
 
@@ -389,7 +389,7 @@ def split_hosts(hosts: str, default_port: Optional[int] = DEFAULT_PORT) -> list[
     nodes = []
     for entity in hosts.split(","):
         if not entity:
-            raise ConfigurationError("Empty host (or extra comma in host list).")
+            raise ConfigurationError("Empty host (or extra comma in host list)")
         port = default_port
         # Unix socket entities don't have ports
         if entity.endswith(".sock"):
@@ -502,7 +502,7 @@ def parse_uri(
         raise InvalidURI(f"Invalid URI scheme: URI must begin with '{SCHEME}' or '{SRV_SCHEME}'")
 
     if not scheme_free:
-        raise InvalidURI("Must provide at least one hostname or IP.")
+        raise InvalidURI("Must provide at least one hostname or IP")
 
     user = None
     passwd = None
