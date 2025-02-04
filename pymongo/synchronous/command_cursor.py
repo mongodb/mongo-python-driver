@@ -94,7 +94,9 @@ class CommandCursor(Generic[_DocumentType]):
         self.batch_size(batch_size)
 
         if not isinstance(max_await_time_ms, int) and max_await_time_ms is not None:
-            raise TypeError("max_await_time_ms must be an integer or None")
+            raise TypeError(
+                f"max_await_time_ms must be an integer or None, not {type(max_await_time_ms)}"
+            )
 
     def __del__(self) -> None:
         self._die_no_lock()
@@ -115,7 +117,7 @@ class CommandCursor(Generic[_DocumentType]):
         :param batch_size: The size of each batch of results requested.
         """
         if not isinstance(batch_size, int):
-            raise TypeError("batch_size must be an integer")
+            raise TypeError(f"batch_size must be an integer, not {type(batch_size)}")
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
 

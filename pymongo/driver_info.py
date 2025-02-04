@@ -39,7 +39,7 @@ class DriverInfo(namedtuple("DriverInfo", ["name", "version", "platform"])):
         for key, value in self._asdict().items():
             if value is not None and not isinstance(value, str):
                 raise TypeError(
-                    f"Wrong type for DriverInfo {key} option, value must be an instance of str"
+                    f"Wrong type for DriverInfo {key} option, value must be an instance of str, not {type(value)}"
                 )
 
         return self
