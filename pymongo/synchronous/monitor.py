@@ -190,8 +190,7 @@ class Monitor(MonitorBase):
         self.cancel_check()
 
     def join(self) -> None:
-        self._executor.join()
-        self._rtt_monitor.join()
+        asyncio.gather(*[self._executor.join(), self._rtt_monitor.join()])
 
     def close(self) -> None:
         self.gc_safe_close()

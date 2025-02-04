@@ -1566,8 +1566,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             await self._encrypter.close()
         self._closed = True
         if not _IS_SYNC:
-            self._topology._monitor_tasks.append(self._kill_cursors_executor)  # type: ignore[arg-type]
-            join_tasks = [t.join() for t in self._topology._monitor_tasks]  # type: ignore[func-returns-value]
+            join_tasks = [self._kill_cursors_executor]
+            try:
+                while self._topology._monitor_tasks:
+                    join_tasks.append(self._topology._monitor_tasks.pop())
+            except IndexError:
+                pass
+            join_tasks = [t.join() for t in join_tasks]  # type: ignore[func-returns-value]
             await asyncio.gather(*join_tasks)
 
     if not _IS_SYNC:
