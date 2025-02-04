@@ -23,11 +23,12 @@ from pathlib import Path
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
-from test.unified_format import generate_test_classes
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.unified_format import generate_test_classes
 from test.utils import OvertCommandListener
 
 from pymongo import DESCENDING
+from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -37,10 +38,9 @@ from pymongo.errors import (
 )
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
@@ -49,31 +49,31 @@ else:
     TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "read_write_concern")
 
 
-class TestReadWriteConcernSpec(IntegrationTest):
-    def test_omit_default_read_write_concern(self):
+class TestReadWriteConcernSpec(AsyncIntegrationTest):
+    async def test_omit_default_read_write_concern(self):
         listener = OvertCommandListener()
         # Client with default readConcern and writeConcern
-        client = self.rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
-        collection.insert_many([{} for _ in range(10)])
-        self.addCleanup(collection.drop)
-        self.addCleanup(client.pymongo_test.collection2.drop)
+        await collection.insert_many([{} for _ in range(10)])
+        self.addAsyncCleanup(collection.drop)
+        self.addAsyncCleanup(client.pymongo_test.collection2.drop)
         # Commands MUST NOT send the default read/write concern to the server.
 
-        def rename_and_drop():
+        async def rename_and_drop():
             # Ensure collection exists.
-            collection.insert_one({})
-            collection.rename("collection2")
-            client.pymongo_test.collection2.drop()
+            await collection.insert_one({})
+            await collection.rename("collection2")
+            await client.pymongo_test.collection2.drop()
 
-        def insert_command_default_write_concern():
-            collection.database.command(
+        async def insert_command_default_write_concern():
+            await collection.database.command(
                 "insert", "collection", documents=[{}], write_concern=WriteConcern()
             )
 
-        def aggregate_op():
-            (collection.aggregate([])).to_list()
+        async def aggregate_op():
+            await (await collection.aggregate([])).to_list()
 
         ops = [
             ("aggregate", aggregate_op),
@@ -90,7 +90,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
 
         for name, f in ops:
             listener.reset()
-            f()
+            await f()
 
             self.assertGreaterEqual(len(listener.started_events), 1)
             for _i, event in enumerate(listener.started_events):
@@ -105,17 +105,17 @@ class TestReadWriteConcernSpec(IntegrationTest):
                     f"{name} sent default writeConcern with {event.command_name}",
                 )
 
-    def assertWriteOpsRaise(self, write_concern, expected_exception):
+    async def assertWriteOpsRaise(self, write_concern, expected_exception):
         wc = write_concern.document
         # Set socket timeout to avoid indefinite stalls
-        client = self.rs_or_single_client(
+        client = await self.async_rs_or_single_client(
             w=wc["w"], wTimeoutMS=wc["wtimeout"], socketTimeoutMS=30000
         )
         db = client.get_database("pymongo_test")
         coll = db.test
 
-        def insert_command():
-            coll.database.command(
+        async def insert_command():
+            await coll.database.command(
                 "insert",
                 "new_collection",
                 documents=[{}],
@@ -144,7 +144,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
             ("drop", lambda: db.new.drop()),
         ]
         # SERVER-47194: dropDatabase does not respect wtimeout in 3.6.
-        if client_context.version[:2] != (3, 6):
+        if async_client_context.version[:2] != (3, 6):
             ops.append(("drop_database", lambda: client.drop_database(db)))
 
         for name, f in ops:
@@ -154,32 +154,34 @@ class TestReadWriteConcernSpec(IntegrationTest):
             else:
                 expected = expected_exception
             with self.assertRaises(expected, msg=name) as cm:
-                f()
+                await f()
             if expected == BulkWriteError:
                 bulk_result = cm.exception.details
                 assert bulk_result is not None
                 wc_errors = bulk_result["writeConcernErrors"]
                 self.assertTrue(wc_errors)
 
-    @client_context.require_replica_set
-    def test_raise_write_concern_error(self):
-        self.addCleanup(client_context.client.drop_database, "pymongo_test")
-        assert client_context.w is not None
-        self.assertWriteOpsRaise(
-            WriteConcern(w=client_context.w + 1, wtimeout=1), WriteConcernError
+    @async_client_context.require_replica_set
+    async def test_raise_write_concern_error(self):
+        self.addAsyncCleanup(async_client_context.client.drop_database, "pymongo_test")
+        assert async_client_context.w is not None
+        await self.assertWriteOpsRaise(
+            WriteConcern(w=async_client_context.w + 1, wtimeout=1), WriteConcernError
         )
 
-    @client_context.require_secondaries_count(1)
-    @client_context.require_test_commands
-    def test_raise_wtimeout(self):
-        self.addCleanup(client_context.client.drop_database, "pymongo_test")
-        self.addCleanup(self.enable_replication, client_context.client)
+    @async_client_context.require_secondaries_count(1)
+    @async_client_context.require_test_commands
+    async def test_raise_wtimeout(self):
+        self.addAsyncCleanup(async_client_context.client.drop_database, "pymongo_test")
+        self.addAsyncCleanup(self.enable_replication, async_client_context.client)
         # Disable replication to guarantee a wtimeout error.
-        self.disable_replication(client_context.client)
-        self.assertWriteOpsRaise(WriteConcern(w=client_context.w, wtimeout=1), WTimeoutError)
+        await self.disable_replication(async_client_context.client)
+        await self.assertWriteOpsRaise(
+            WriteConcern(w=async_client_context.w, wtimeout=1), WTimeoutError
+        )
 
-    @client_context.require_failCommand_fail_point
-    def test_error_includes_errInfo(self):
+    @async_client_context.require_failCommand_fail_point
+    async def test_error_includes_errInfo(self):
         expected_wce = {
             "code": 100,
             "codeName": "UnsatisfiableWriteConcern",
@@ -191,15 +193,15 @@ class TestReadWriteConcernSpec(IntegrationTest):
             "mode": {"times": 2},
             "data": {"failCommands": ["insert"], "writeConcernError": expected_wce},
         }
-        with self.fail_point(cause_wce):
+        async with self.fail_point(cause_wce):
             # Write concern error on insert includes errInfo.
             with self.assertRaises(WriteConcernError) as ctx:
-                self.db.test.insert_one({})
+                await self.db.test.insert_one({})
             self.assertEqual(ctx.exception.details, expected_wce)
 
             # Test bulk_write as well.
             with self.assertRaises(BulkWriteError) as ctx:
-                self.db.test.bulk_write([InsertOne({})])
+                await self.db.test.bulk_write([InsertOne({})])
             expected_details = {
                 "writeErrors": [],
                 "writeConcernErrors": [expected_wce],
@@ -212,16 +214,16 @@ class TestReadWriteConcernSpec(IntegrationTest):
             }
             self.assertEqual(ctx.exception.details, expected_details)
 
-    @client_context.require_version_min(4, 9)
-    def test_write_error_details_exposes_errinfo(self):
+    @async_client_context.require_version_min(4, 9)
+    async def test_write_error_details_exposes_errinfo(self):
         listener = OvertCommandListener()
-        client = self.rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
         db = client.errinfotest
-        self.addCleanup(client.drop_database, "errinfotest")
+        self.addAsyncCleanup(client.drop_database, "errinfotest")
         validator = {"x": {"$type": "string"}}
-        db.create_collection("test", validator=validator)
+        await db.create_collection("test", validator=validator)
         with self.assertRaises(WriteError) as ctx:
-            db.test.insert_one({"x": 1})
+            await db.test.insert_one({"x": 1})
         self.assertEqual(ctx.exception.code, 121)
         self.assertIsNotNone(ctx.exception.details)
         assert ctx.exception.details is not None
@@ -254,13 +256,15 @@ def create_connection_string_test(test_case):
 
         if not valid:
             if warning is False:
-                self.assertRaises((ConfigurationError, ValueError), MongoClient, uri, connect=False)
+                self.assertRaises(
+                    (ConfigurationError, ValueError), AsyncMongoClient, uri, connect=False
+                )
             else:
                 with warnings.catch_warnings():
                     warnings.simplefilter("error", UserWarning)
-                    self.assertRaises(UserWarning, MongoClient, uri, connect=False)
+                    self.assertRaises(UserWarning, AsyncMongoClient, uri, connect=False)
         else:
-            client = MongoClient(uri, connect=False)
+            client = AsyncMongoClient(uri, connect=False)
             if "writeConcern" in test_case:
                 document = client.write_concern.document
                 self.assertEqual(document, normalize_write_concern(test_case["writeConcern"]))

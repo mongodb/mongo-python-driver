@@ -1,4 +1,4 @@
-# Copyright 2021-present MongoDB, Inc.
+# Copyright 2024-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the Sessions unified spec tests."""
+"""Run the server selection logging unified format spec tests."""
 from __future__ import annotations
 
 import os
@@ -22,19 +22,24 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "sessions")
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "server_selection_logging")
 else:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "sessions")
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "server_selection_logging")
 
 
-# Generate unified tests.
-globals().update(generate_test_classes(TEST_PATH, module=__name__))
+globals().update(
+    generate_test_classes(
+        TEST_PATH,
+        module=__name__,
+    )
+)
+
 
 if __name__ == "__main__":
     unittest.main()
