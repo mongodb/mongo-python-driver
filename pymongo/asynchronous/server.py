@@ -115,8 +115,6 @@ class Server:
             )
 
         await self._monitor.close()
-        if not _IS_SYNC:
-            await self._monitor.join()
         await self._pool.close()
 
     def request_check(self) -> None:

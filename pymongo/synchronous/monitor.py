@@ -112,9 +112,9 @@ class MonitorBase:
         """
         self.gc_safe_close()
 
-    def join(self, timeout: Optional[int] = None) -> None:
+    def join(self) -> None:
         """Wait for the monitor to stop."""
-        self._executor.join(timeout)
+        self._executor.join()
 
     def request_check(self) -> None:
         """If the monitor is sleeping, wake it soon."""
@@ -189,8 +189,8 @@ class Monitor(MonitorBase):
         self._rtt_monitor.gc_safe_close()
         self.cancel_check()
 
-    def join(self, timeout: Optional[int] = None) -> None:
-        self._executor.join(timeout)
+    def join(self) -> None:
+        self._executor.join()
         self._rtt_monitor.join()
 
     def close(self) -> None:

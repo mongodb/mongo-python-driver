@@ -1559,14 +1559,16 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # Stop the periodic task thread and then send pending killCursor
         # requests before closing the topology.
         self._kill_cursors_executor.close()
-        if not _IS_SYNC:
-            await self._kill_cursors_executor.join()
         await self._process_kill_cursors()
         await self._topology.close()
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             await self._encrypter.close()
         self._closed = True
+        if not _IS_SYNC:
+            self._topology._monitor_tasks.append(self._kill_cursors_executor)  # type: ignore[arg-type]
+            join_tasks = [t.join() for t in self._topology._monitor_tasks]  # type: ignore[func-returns-value]
+            await asyncio.gather(*join_tasks)
 
     if not _IS_SYNC:
         # Add support for contextlib.aclosing.
