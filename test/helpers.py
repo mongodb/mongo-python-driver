@@ -403,9 +403,5 @@ class ConcurrentRunner(PARENT):
             return not self.stopped
 
     def run(self):
-        if self.target:
-            if self.args:
-                self.target(*self.args)
-            else:
-                self.target()
+        self.target(*self.args)
         self.stopped = True
