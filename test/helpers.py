@@ -381,14 +381,16 @@ else:
 
 
 class ConcurrentRunner(PARENT):
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, **kwargs):
         if _IS_SYNC:
-            super().__init__(*args, **kwargs)
-        self.name = name
+            super().__init__(**kwargs)
+        self.name = kwargs.get("name", "ConcurrentRunner")
         self.stopped = False
         self.task = None
         if "target" in kwargs:
             self.target = kwargs["target"]
+        if "args" in kwargs:
+            self.args = kwargs["args"]
 
     if not _IS_SYNC:
 
@@ -407,23 +409,23 @@ class ConcurrentRunner(PARENT):
             if _IS_SYNC:
                 super().run()
             else:
-                self.target()
+                if self.args:
+                    self.target(*self.args)
+                else:
+                    self.target()
         self.stopped = True
 
 
 class ExceptionCatchingTask(ConcurrentRunner):
     """A Task that stores any exception encountered while running."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__("ExceptionCatchingTask", *args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.exc = None
 
     def run(self):
         try:
-            if _IS_SYNC:
-                super().run()
-            else:
-                self.target()
+            super().run()
         except BaseException as exc:
             self.exc = exc
             raise
