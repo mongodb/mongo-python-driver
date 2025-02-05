@@ -17,17 +17,23 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from test.utils import async_get_pool, get_pool, one
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest
+from test.asynchronous import AsyncIntegrationTest, connected
 
 
 class TestAsyncCancellation(AsyncIntegrationTest):
-    async def test_async_cancellation(self):
+    async def test_async_cancellation_does_not_close_connection(self):
+        client = await self.async_rs_or_single_client(maxPoolSize=1, retryReads=False)
+        pool = await async_get_pool(client)
+        await connected(client)
+        conn = one(pool.conns)
+
         async def task():
             while True:
-                await self.client.db.test.insert_one({"x": 1})
+                await client.db.test.insert_one({"x": 1})
                 await asyncio.sleep(0.005)
 
         task = asyncio.create_task(task())
@@ -38,3 +44,5 @@ class TestAsyncCancellation(AsyncIntegrationTest):
         task.cancel()
         with self.assertRaises(asyncio.CancelledError):
             await task
+
+        self.assertFalse(conn.closed)
