@@ -1068,7 +1068,7 @@ async def async_set_fail_point(client, command_args):
 
 
 def create_async_event():
-    return asyncio.Event
+    return asyncio.Event()
 
 
 def create_event():
