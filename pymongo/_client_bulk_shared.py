@@ -16,6 +16,7 @@
 """Constants, types, and classes shared across Client Bulk Write API implementations."""
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, NoReturn
 
 from pymongo.errors import ClientBulkWriteException, OperationFailure
@@ -75,5 +76,7 @@ def _throw_client_bulk_write_exception(
             )
             raise OperationFailure(errmsg, code, full_result)
     if isinstance(full_result["error"], BaseException):
+        if isinstance(full_result["error"], asyncio.CancelledError):
+            raise
         raise ClientBulkWriteException(full_result, verbose_results) from full_result["error"]
     raise ClientBulkWriteException(full_result, verbose_results)

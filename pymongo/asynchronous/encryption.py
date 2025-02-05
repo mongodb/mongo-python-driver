@@ -127,8 +127,6 @@ def _wrap_encryption_errors() -> Iterator[None]:
         # BSON encoding/decoding errors are unrelated to encryption so
         # we should propagate them unchanged.
         raise
-    except asyncio.CancelledError:
-        raise
     except Exception as exc:
         raise EncryptionError(exc) from exc
 
@@ -766,8 +764,6 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 await database.create_collection(name=name, **kwargs),
                 encrypted_fields,
             )
-        except asyncio.CancelledError:
-            raise
         except Exception as exc:
             raise EncryptedCollectionError(exc, encrypted_fields) from exc
 
