@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import atexit
 import logging
 import time
@@ -257,8 +256,6 @@ class Monitor(MonitorBase):
                 details = cast(Mapping[str, Any], exc.details)
                 await self._topology.receive_cluster_time(details.get("$clusterTime"))
                 raise
-        except asyncio.CancelledError:
-            raise
         except ReferenceError:
             raise
         except Exception as error:
@@ -424,8 +421,6 @@ class SrvMonitor(MonitorBase):
             if len(seedlist) == 0:
                 # As per the spec: this should be treated as a failure.
                 raise Exception
-        except asyncio.CancelledError:
-            raise
         except Exception:
             # As per the spec, upon encountering an error:
             # - An error must not be raised
@@ -489,8 +484,6 @@ class _RttMonitor(MonitorBase):
         except ReferenceError:
             # Topology was garbage-collected.
             await self.close()
-        except asyncio.CancelledError:
-            raise
         except Exception:
             await self._pool.reset()
 

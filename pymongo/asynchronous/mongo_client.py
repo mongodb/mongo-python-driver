@@ -32,7 +32,6 @@ access:
 """
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import os
 import warnings
@@ -2038,8 +2037,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         for address, cursor_id, conn_mgr in pinned_cursors:
             try:
                 await self._cleanup_cursor_lock(cursor_id, address, conn_mgr, None, False)
-            except asyncio.CancelledError:
-                raise
             except Exception as exc:
                 if isinstance(exc, InvalidOperation) and self._topology._closed:
                     # Raise the exception when client is closed so that it
@@ -2054,8 +2051,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
                     await self._kill_cursors(cursor_ids, address, topology, session=None)
-                except asyncio.CancelledError:
-                    raise
                 except Exception as exc:
                     if isinstance(exc, InvalidOperation) and self._topology._closed:
                         raise
@@ -2070,8 +2065,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         try:
             await self._process_kill_cursors()
             await self._topology.update_pool()
-        except asyncio.CancelledError:
-            raise
         except Exception as exc:
             if isinstance(exc, InvalidOperation) and self._topology._closed:
                 return
