@@ -387,10 +387,8 @@ class ConcurrentRunner(PARENT):
         self.name = kwargs.get("name", "ConcurrentRunner")
         self.stopped = False
         self.task = None
-        if "target" in kwargs:
-            self.target = kwargs["target"]
-        if "args" in kwargs:
-            self.args = kwargs["args"]
+        self.target = kwargs.get("target", None)
+        self.args = kwargs.get("args", [])
 
     if not _IS_SYNC:
 
@@ -405,15 +403,10 @@ class ConcurrentRunner(PARENT):
             return not self.stopped
 
     def run(self):
-        if self.target:
-            if _IS_SYNC:
-                super().run()
-            else:
-                if self.args:
-                    self.target(*self.args)
-                else:
-                    self.target()
-        self.stopped = True
+        try:
+            self.target(*self.args)
+        finally:
+            self.stopped = True
 
 
 class ExceptionCatchingTask(ConcurrentRunner):
@@ -429,5 +422,3 @@ class ExceptionCatchingTask(ConcurrentRunner):
         except BaseException as exc:
             self.exc = exc
             raise
-        finally:
-            self.stopped = True

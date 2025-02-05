@@ -112,9 +112,9 @@ class MonitorBase:
         """
         self.gc_safe_close()
 
-    async def join(self, timeout: Optional[int] = None) -> None:
+    async def join(self) -> None:
         """Wait for the monitor to stop."""
-        await self._executor.join(timeout)
+        await self._executor.join()
 
     def request_check(self) -> None:
         """If the monitor is sleeping, wake it soon."""
@@ -188,6 +188,11 @@ class Monitor(MonitorBase):
         self._executor.close()
         self._rtt_monitor.gc_safe_close()
         self.cancel_check()
+
+    async def join(self) -> None:
+        await asyncio.gather(
+            self._executor.join(), self._rtt_monitor.join(), return_exceptions=True
+        )  # type: ignore[func-returns-value]
 
     async def close(self) -> None:
         self.gc_safe_close()
