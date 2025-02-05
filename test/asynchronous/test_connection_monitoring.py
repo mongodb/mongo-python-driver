@@ -15,6 +15,7 @@
 """Execute Transactions Spec tests."""
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import time
@@ -23,8 +24,8 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, client_knobs, unittest
-from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator, SpecRunnerThread
-from test.pymongo_mocks import DummyMonitor
+from test.asynchronous.pymongo_mocks import DummyMonitor
+from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator, SpecRunnerTask
 from test.utils import (
     CMAPListener,
     async_client_context,
@@ -91,23 +92,23 @@ class AsyncTestCMAP(AsyncIntegrationTest):
 
     # Test operations:
 
-    def start(self, op):
+    async def start(self, op):
         """Run the 'start' thread operation."""
         target = op["target"]
-        thread = SpecRunnerThread(target)
-        thread.start()
+        thread = SpecRunnerTask(target)
+        await thread.start()
         self.targets[target] = thread
 
-    def wait(self, op):
+    async def wait(self, op):
         """Run the 'wait' operation."""
-        time.sleep(op["ms"] / 1000.0)
+        await asyncio.sleep(op["ms"] / 1000.0)
 
-    def wait_for_thread(self, op):
+    async def wait_for_thread(self, op):
         """Run the 'waitForThread' operation."""
         target = op["target"]
         thread = self.targets[target]
-        thread.stop()
-        thread.join()
+        await thread.stop()
+        await thread.join()
         if thread.exc:
             raise thread.exc
         self.assertFalse(thread.ops)
@@ -123,10 +124,10 @@ class AsyncTestCMAP(AsyncIntegrationTest):
             timeout=timeout,
         )
 
-    def check_out(self, op):
+    async def check_out(self, op):
         """Run the 'checkOut' operation."""
         label = op["label"]
-        with self.pool.checkout() as conn:
+        async with self.pool.checkout() as conn:
             # Call 'pin_cursor' so we can hold the socket.
             conn.pin_cursor()
             if label:
@@ -134,42 +135,42 @@ class AsyncTestCMAP(AsyncIntegrationTest):
             else:
                 self.addAsyncCleanup(conn.close_conn, None)
 
-    def check_in(self, op):
+    async def check_in(self, op):
         """Run the 'checkIn' operation."""
         label = op["connection"]
         conn = self.labels[label]
-        self.pool.checkin(conn)
+        await self.pool.checkin(conn)
 
-    def ready(self, op):
+    async def ready(self, op):
         """Run the 'ready' operation."""
-        self.pool.ready()
+        await self.pool.ready()
 
-    def clear(self, op):
+    async def clear(self, op):
         """Run the 'clear' operation."""
-        if "interruptInUseAsyncConnections" in op:
-            self.pool.reset(interrupt_connections=op["interruptInUseAsyncConnections"])
+        if "interruptInUseConnections" in op:
+            await self.pool.reset(interrupt_connections=op["interruptInUseConnections"])
         else:
-            self.pool.reset()
+            await self.pool.reset()
 
     async def close(self, op):
-        """Run the 'aclose' operation."""
-        await self.pool.aclose()
+        """Run the 'close' operation."""
+        await self.pool.close()
 
-    def run_operation(self, op):
+    async def run_operation(self, op):
         """Run a single operation in a test."""
         op_name = camel_to_snake(op["name"])
         thread = op["thread"]
         meth = getattr(self, op_name)
         if thread:
-            self.targets[thread].schedule(lambda: meth(op))
+            await self.targets[thread].schedule(lambda: meth(op))
         else:
-            meth(op)
+            await meth(op)
 
-    def run_operations(self, ops):
+    async def run_operations(self, ops):
         """Run a test's operations."""
         for op in ops:
             self._ops.append(op)
-            self.run_operation(op)
+            await self.run_operation(op)
 
     def check_object(self, actual, expected):
         """Assert that the actual object matches the expected object."""
@@ -215,10 +216,10 @@ class AsyncTestCMAP(AsyncIntegrationTest):
         cmd.update(command_args)
         await client.admin.command(cmd)
 
-    def set_fail_point(self, command_args):
+    async def set_fail_point(self, command_args):
         if not async_client_context.supports_failCommand_fail_point:
             self.skipTest("failCommand fail point must be supported")
-        self._set_fail_point(self.client, command_args)
+        await self._set_fail_point(self.client, command_args)
 
     async def run_scenario(self, scenario_def, test):
         """Run a CMAP spec test."""
@@ -231,7 +232,7 @@ class AsyncTestCMAP(AsyncIntegrationTest):
         # Configure the fail point before creating the client.
         if "failPoint" in test:
             fp = test["failPoint"]
-            self.set_fail_point(fp)
+            await self.set_fail_point(fp)
             self.addAsyncCleanup(
                 self.set_fail_point, {"configureFailPoint": fp["configureFailPoint"], "mode": "off"}
             )
@@ -254,16 +255,18 @@ class AsyncTestCMAP(AsyncIntegrationTest):
             # PoolReadyEvents. Instead, update the initial state before
             # opening the Topology.
             td = async_client_context.client._topology.description
-            sd = td.server_descriptions()[(async_client_context.host, async_client_context.port)]
+            sd = td.server_descriptions()[
+                (await async_client_context.host, await async_client_context.port)
+            ]
             client._topology._description = updated_topology_description(
                 client._topology._description, sd
             )
             # When backgroundThreadIntervalMS is negative we do not start the
             # background thread to ensure it never runs.
             if interval < 0:
-                client._topology.open()
+                await client._topology.open()
             else:
-                client._get_topology()
+                await client._get_topology()
         self.pool = list(client._topology._servers.values())[0].pool
 
         # Map of target names to Thread objects.
@@ -273,21 +276,21 @@ class AsyncTestCMAP(AsyncIntegrationTest):
 
         async def cleanup():
             for t in self.targets.values():
-                t.stop()
+                await t.stop()
             for t in self.targets.values():
-                t.join(5)
+                await t.join(5)
             for conn in self.labels.values():
-                await conn.aclose_conn(None)
+                conn.close_conn(None)
 
         self.addAsyncCleanup(cleanup)
 
         try:
             if test["error"]:
                 with self.assertRaises(PyMongoError) as ctx:
-                    self.run_operations(test["operations"])
+                    await self.run_operations(test["operations"])
                 self.check_error(ctx.exception, test["error"])
             else:
-                self.run_operations(test["operations"])
+                await self.run_operations(test["operations"])
 
             self.check_events(test["events"], test["ignore"])
         except Exception:
@@ -452,8 +455,8 @@ class AsyncTestCMAP(AsyncIntegrationTest):
 
 
 def create_test(scenario_def, test, name):
-    def run_scenario(self):
-        self.run_scenario(scenario_def, test)
+    async def run_scenario(self):
+        await self.run_scenario(scenario_def, test)
 
     return run_scenario
 
@@ -468,9 +471,8 @@ class CMAPSpecTestCreator(AsyncSpecTestCreator):
         return [scenario_def]
 
 
-if _IS_SYNC:
-    test_creator = CMAPSpecTestCreator(create_test, AsyncTestCMAP, AsyncTestCMAP.TEST_PATH)
-    test_creator.create_tests()
+test_creator = CMAPSpecTestCreator(create_test, AsyncTestCMAP, AsyncTestCMAP.TEST_PATH)
+test_creator.create_tests()
 
 
 if __name__ == "__main__":

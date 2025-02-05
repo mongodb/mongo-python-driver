@@ -15,6 +15,7 @@
 """Execute Transactions Spec tests."""
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import time
@@ -468,9 +469,8 @@ class CMAPSpecTestCreator(SpecTestCreator):
         return [scenario_def]
 
 
-if _IS_SYNC:
-    test_creator = CMAPSpecTestCreator(create_test, TestCMAP, TestCMAP.TEST_PATH)
-    test_creator.create_tests()
+test_creator = CMAPSpecTestCreator(create_test, TestCMAP, TestCMAP.TEST_PATH)
+test_creator.create_tests()
 
 
 if __name__ == "__main__":
