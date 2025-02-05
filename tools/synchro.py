@@ -210,6 +210,7 @@ converted_tests = [
     "test_data_lake.py",
     "test_dns.py",
     "test_encryption.py",
+    "test_examples.py",
     "test_heartbeat_monitoring.py",
     "test_index_management.py",
     "test_grid_file.py",
