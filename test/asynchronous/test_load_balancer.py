@@ -186,7 +186,7 @@ class PoolLocker(ExceptionCatchingTask):
 
     async def wait(self, event: Event, timeout: int):
         if _IS_SYNC:
-            return event.wait(timeout)
+            return event.wait(timeout)  # type: ignore[call-arg]
         else:
             try:
                 await asyncio.wait_for(event.wait(), timeout=timeout)

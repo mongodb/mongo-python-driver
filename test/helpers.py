@@ -40,7 +40,7 @@ try:
 except ImportError:
     HAVE_IPADDRESS = False
 from functools import wraps
-from typing import Any, Callable, Dict, Generator, no_type_check
+from typing import Any, Callable, Dict, Generator, Optional, no_type_check
 from unittest import SkipTest
 
 from bson.son import SON
@@ -395,7 +395,7 @@ class ConcurrentRunner(PARENT):
         def start(self):
             self.task = create_task(self.run(), name=self.name)
 
-        def join(self, timeout: float | None = 0):  # type: ignore[override]
+        def join(self, timeout: Optional[float] = None):  # type: ignore[override]
             if self.task is not None:
                 asyncio.wait([self.task], timeout=timeout)
 
