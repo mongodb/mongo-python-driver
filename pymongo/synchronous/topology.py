@@ -1054,7 +1054,7 @@ class Topology:
                 tasks.append(self._monitor_tasks.pop())
         except IndexError:
             pass
-        asyncio.gather(*[t.join() for t in tasks])  # type: ignore[func-returns-value]
+        asyncio.gather(*[t.join() for t in tasks], return_exceptions=True)  # type: ignore[func-returns-value]
 
     def __repr__(self) -> str:
         msg = ""
