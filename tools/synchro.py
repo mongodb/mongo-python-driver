@@ -236,6 +236,7 @@ converted_tests = [
     "test_ssl.py",
     "test_streaming_protocol.py",
     "test_transactions.py",
+    "test_transactions_unified.py",
     "test_unified_format.py",
     "unified_format.py",
 ]
