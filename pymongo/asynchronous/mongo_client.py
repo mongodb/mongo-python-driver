@@ -1567,7 +1567,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._closed = True
         if not _IS_SYNC:
             await asyncio.gather(
-                *[self._topology.cleanup_monitors(), self._kill_cursors_executor.join()],  # type: ignore[func-returns-value]
+                self._topology.cleanup_monitors(),  # type: ignore[func-returns-value]
+                self._kill_cursors_executor.join(),  # type: ignore[func-returns-value]
                 return_exceptions=True,
             )
 
