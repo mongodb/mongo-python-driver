@@ -239,6 +239,7 @@ converted_tests = [
     "test_transactions.py",
     "test_transactions_unified.py",
     "test_unified_format.py",
+    "test_versioned_api_integration.py",
     "unified_format.py",
 ]
 
