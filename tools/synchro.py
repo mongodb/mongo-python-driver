@@ -231,6 +231,7 @@ converted_tests = [
     "test_retryable_writes.py",
     "test_retryable_writes_unified.py",
     "test_run_command.py",
+    "test_sdam_monitoring_spec.py",
     "test_server_selection_logging.py",
     "test_session.py",
     "test_server_selection_rtt.py",
