@@ -11,7 +11,6 @@ Changes in Version 4.11.0 (YYYY/MM/DD)
    A future minor release of PyMongo will raise the minimum supported MongoDB Server version from 4.0 to 4.2.
    This is in accordance with [MongoDB Software Lifecycle Schedules](https://www.mongodb.com/legal/support-policy/lifecycles).
    **Support for MongoDB Server 4.0 will be dropped in a future release!**
-.. warning:: This version does not include wheels for ``ppc64le`` or ``s390x`` architectures, see `PYTHON-5058`_ for more information.
 
 PyMongo 4.11 brings a number of changes including:
 
@@ -50,7 +49,6 @@ in this release.
 .. _PyMongo 4.11 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40784
 .. _PYTHON-5027: https://jira.mongodb.org/browse/PYTHON-5027
 .. _PYTHON-5024: https://jira.mongodb.org/browse/PYTHON-5024
-.. _PYTHON-5058: https://jira.mongodb.org/browse/PYTHON-5058
 
 Changes in Version 4.10.1 (2024/10/01)
 --------------------------------------
