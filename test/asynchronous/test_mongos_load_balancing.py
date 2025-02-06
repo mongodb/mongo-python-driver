@@ -101,7 +101,7 @@ class TestMongosLoadBalancing(AsyncMockClientTest):
         await async_wait_until(lambda: len(client.nodes) == 3, "connect to all mongoses")
 
     async def test_failover(self):
-        nthreads = 10
+        ntasks = 10
         client = await connected(self.mock_client(localThresholdMS=0.001))
         await async_wait_until(lambda: len(client.nodes) == 3, "connect to all mongoses")
 
@@ -121,19 +121,14 @@ class TestMongosLoadBalancing(AsyncMockClientTest):
 
             passed.append(True)
 
-        if _IS_SYNC:
-            threads = [threading.Thread(target=f) for _ in range(nthreads)]
-            for t in threads:
-                t.start()
+        tasks = [ConcurrentRunner(target=f) for _ in range(ntasks)]
+        for t in tasks:
+            await t.start()
 
-            for t in threads:
-                t.join()
-        else:
-            tasks = [asyncio.create_task(f()) for _ in range(nthreads)]
-            for t in tasks:
-                await t
+        for t in tasks:
+            await t.join()
 
-        self.assertEqual(nthreads, len(passed))
+        self.assertEqual(ntasks, len(passed))
 
         # Down host removed from list.
         self.assertEqual(2, len(client.nodes))
