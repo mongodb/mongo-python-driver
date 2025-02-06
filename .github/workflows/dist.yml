@@ -62,7 +62,11 @@ jobs:
         if: runner.os == 'Linux'
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: all
+          # setup-qemu-action by default uses `tonistiigi/binfmt:latest` image,
+          # which is out of date. This causes seg faults during build.
+          # Here we manually fix the version.
+          image: tonistiigi/binfmt:qemu-v8.1.5
+          platforms: arm64
 
       - name: Install cibuildwheel
         # Note: the default manylinux is manylinux2014
