@@ -15,10 +15,12 @@
 """Test maxStalenessSeconds support."""
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import time
 import warnings
+from pathlib import Path
 
 from pymongo import MongoClient
 from pymongo.operations import _Op
@@ -31,11 +33,16 @@ from test.utils_selection_tests import create_selection_tests
 from pymongo.errors import ConfigurationError
 from pymongo.server_selectors import writable_server_selector
 
+_IS_SYNC = True
+
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "max_staleness")
+if _IS_SYNC:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "max_staleness")
+else:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "max_staleness")
 
 
-class TestAllScenarios(create_selection_tests(_TEST_PATH)):  # type: ignore
+class TestAllScenarios(create_selection_tests(TEST_PATH)):  # type: ignore
     pass
 
 
