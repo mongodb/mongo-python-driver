@@ -462,7 +462,7 @@ def create_test(scenario_def, test, name):
 
 
 class CMAPSpecTestCreator(AsyncSpecTestCreator):
-    async def tests(self, scenario_def):
+    def tests(self, scenario_def):
         """Extract the tests from a spec file.
 
         CMAP tests do not have a 'tests' field. The whole file represents

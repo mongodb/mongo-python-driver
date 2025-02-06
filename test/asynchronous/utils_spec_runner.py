@@ -222,7 +222,7 @@ class AsyncSpecTestCreator:
                 test_type = os.path.splitext(filename)[0]
 
                 # Construct test from scenario.
-                for test_def in await self.tests(scenario_def):
+                for test_def in self.tests(scenario_def):
                     test_name = "test_{}_{}_{}".format(
                         dirname,
                         test_type.replace("-", "_").replace(".", "_"),
