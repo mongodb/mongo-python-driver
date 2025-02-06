@@ -336,7 +336,7 @@ class TestSdamMonitoring(AsyncIntegrationTest):
                 and len(self.listener.matching(discovered_node)) >= 1
             )
 
-        # Topology events are published asynchronously
+        # Topology events are not published synchronously
         await async_wait_until(marked_unknown_and_rediscovered, "rediscover node")
 
         # Expect a single ServerDescriptionChangedEvent for the network error.
