@@ -58,9 +58,9 @@ class Timestamp:
                 time = time - offset
             time = int(calendar.timegm(time.timetuple()))
         if not isinstance(time, int):
-            raise TypeError("time must be an instance of int")
+            raise TypeError(f"time must be an instance of int, not {type(time)}")
         if not isinstance(inc, int):
-            raise TypeError("inc must be an instance of int")
+            raise TypeError(f"inc must be an instance of int, not {type(inc)}")
         if not 0 <= time < UPPERBOUND:
             raise ValueError("time must be contained in [0, 2**32)")
         if not 0 <= inc < UPPERBOUND:

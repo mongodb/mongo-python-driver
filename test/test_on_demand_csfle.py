@@ -26,18 +26,20 @@ sys.path[0:0] = [""]
 from test import IntegrationTest, client_context
 
 from bson.codec_options import CodecOptions
-from pymongo.synchronous.encryption import _HAVE_PYMONGOCRYPT, ClientEncryption, EncryptionError
+from pymongo.synchronous.encryption import (
+    _HAVE_PYMONGOCRYPT,
+    ClientEncryption,
+    EncryptionError,
+)
+
+_IS_SYNC = True
 
 pytestmark = pytest.mark.csfle
 
 
 class TestonDemandGCPCredentials(IntegrationTest):
-    @classmethod
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     @client_context.require_version_min(4, 2, -1)
-    def setUpClass(cls):
-        super().setUpClass()
-
     def setUp(self):
         super().setUp()
         self.master_key = {
@@ -74,12 +76,8 @@ class TestonDemandGCPCredentials(IntegrationTest):
 
 
 class TestonDemandAzureCredentials(IntegrationTest):
-    @classmethod
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     @client_context.require_version_min(4, 2, -1)
-    def setUpClass(cls):
-        super().setUpClass()
-
     def setUp(self):
         super().setUp()
         self.master_key = {

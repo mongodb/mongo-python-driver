@@ -43,7 +43,7 @@ from pymongo.cursor_shared import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.helpers_shared import _SENSITIVE_COMMANDS
-from pymongo.lock import _create_lock
+from pymongo.lock import _async_create_lock, _create_lock
 from pymongo.monitoring import (
     ConnectionCheckedInEvent,
     ConnectionCheckedOutEvent,
@@ -312,6 +312,22 @@ class HeartbeatEventsListListener(HeartbeatEventListener):
         self.event_list.append("serverHeartbeatFailedEvent")
 
 
+class AsyncMockConnection:
+    def __init__(self):
+        self.cancel_context = _CancellationContext()
+        self.more_to_come = False
+        self.id = random.randint(0, 100)
+
+    def close_conn(self, reason):
+        pass
+
+    def __aenter__(self):
+        return self
+
+    def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
 class MockConnection:
     def __init__(self):
         self.cancel_context = _CancellationContext()
@@ -325,6 +341,47 @@ class MockConnection:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class AsyncMockPool:
+    def __init__(self, address, options, handshake=True, client_id=None):
+        self.gen = _PoolGeneration()
+        self._lock = _async_create_lock()
+        self.opts = options
+        self.operation_count = 0
+        self.conns = []
+
+    def stale_generation(self, gen, service_id):
+        return self.gen.stale(gen, service_id)
+
+    @contextlib.asynccontextmanager
+    async def checkout(self, handler=None):
+        yield AsyncMockConnection()
+
+    async def checkin(self, *args, **kwargs):
+        pass
+
+    async def _reset(self, service_id=None):
+        async with self._lock:
+            self.gen.inc(service_id)
+
+    async def ready(self):
+        pass
+
+    async def reset(self, service_id=None, interrupt_connections=False):
+        await self._reset()
+
+    async def reset_without_pause(self):
+        await self._reset()
+
+    async def close(self):
+        await self._reset()
+
+    async def update_is_writable(self, is_writable):
+        pass
+
+    async def remove_stale_sockets(self, *args, **kwargs):
         pass
 
 

@@ -35,6 +35,7 @@ from test.asynchronous import (
     client_knobs,
     unittest,
 )
+from test.asynchronous.utils_spec_runner import SpecRunnerTask
 from test.unified_format_shared import (
     KMS_TLS_OPTS,
     PLACEHOLDER_MAP,
@@ -58,7 +59,6 @@ from test.utils import (
     snake_to_camel,
     wait_until,
 )
-from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
 from typing import Any, Dict, List, Mapping, Optional
 
@@ -382,8 +382,8 @@ class EntityMapUtil:
             return
         elif entity_type == "thread":
             name = spec["id"]
-            thread = SpecRunnerThread(name)
-            thread.start()
+            thread = SpecRunnerTask(name)
+            await thread.start()
             self[name] = thread
             return
 
@@ -711,7 +711,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         return await target.command(**kwargs)
 
     async def _databaseOperation_runCursorCommand(self, target, **kwargs):
-        return list(await self._databaseOperation_createCommandCursor(target, **kwargs))
+        return await (await self._databaseOperation_createCommandCursor(target, **kwargs)).to_list()
 
     async def _databaseOperation_createCommandCursor(self, target, **kwargs):
         self.__raise_if_unsupported("createCommandCursor", target, AsyncDatabase)
@@ -1177,16 +1177,16 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
         wait_until(primary_changed, "change primary", timeout=timeout)
 
-    def _testOperation_runOnThread(self, spec):
+    async def _testOperation_runOnThread(self, spec):
         """Run the 'runOnThread' operation."""
         thread = self.entity_map[spec["thread"]]
-        thread.schedule(lambda: self.run_entity_operation(spec["operation"]))
+        await thread.schedule(functools.partial(self.run_entity_operation, spec["operation"]))
 
-    def _testOperation_waitForThread(self, spec):
+    async def _testOperation_waitForThread(self, spec):
         """Run the 'waitForThread' operation."""
         thread = self.entity_map[spec["thread"]]
-        thread.stop()
-        thread.join(10)
+        await thread.stop()
+        await thread.join(10)
         if thread.exc:
             raise thread.exc
         self.assertFalse(thread.is_alive(), "Thread {} is still running".format(spec["thread"]))

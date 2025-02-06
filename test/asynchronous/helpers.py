@@ -15,6 +15,7 @@
 """Shared constants and helper methods for pymongo, bson, and gridfs test suites."""
 from __future__ import annotations
 
+import asyncio
 import base64
 import gc
 import multiprocessing
@@ -29,6 +30,8 @@ import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
+
+from pymongo._asyncio_task import create_task
 
 try:
     import ipaddress
@@ -369,3 +372,38 @@ class SystemCertsPatcher:
             os.environ.pop("SSL_CERT_FILE")
         else:
             os.environ["SSL_CERT_FILE"] = self.original_certs
+
+
+if _IS_SYNC:
+    PARENT = threading.Thread
+else:
+    PARENT = object
+
+
+class ConcurrentRunner(PARENT):
+    def __init__(self, **kwargs):
+        if _IS_SYNC:
+            super().__init__(**kwargs)
+        self.name = kwargs.get("name", "ConcurrentRunner")
+        self.stopped = False
+        self.task = None
+        self.target = kwargs.get("target", None)
+        self.args = kwargs.get("args", [])
+
+    if not _IS_SYNC:
+
+        async def start(self):
+            self.task = create_task(self.run(), name=self.name)
+
+        async def join(self, timeout: float | None = 0):  # type: ignore[override]
+            if self.task is not None:
+                await asyncio.wait([self.task], timeout=timeout)
+
+        def is_alive(self):
+            return not self.stopped
+
+    async def run(self):
+        try:
+            await self.target(*self.args)
+        finally:
+            self.stopped = True

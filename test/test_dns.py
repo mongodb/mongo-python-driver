@@ -18,22 +18,35 @@ from __future__ import annotations
 import glob
 import json
 import os
+import pathlib
 import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, PyMongoTestCase, client_context, unittest
+from test import (
+    IntegrationTest,
+    PyMongoTestCase,
+    client_context,
+    unittest,
+)
 from test.utils import wait_until
 
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
 from pymongo.uri_parser import parse_uri, split_hosts
 
+_IS_SYNC = True
+
 
 class TestDNSRepl(PyMongoTestCase):
-    TEST_PATH = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "srv_seedlist", "replica-set"
-    )
+    if _IS_SYNC:
+        TEST_PATH = os.path.join(
+            pathlib.Path(__file__).resolve().parent, "srv_seedlist", "replica-set"
+        )
+    else:
+        TEST_PATH = os.path.join(
+            pathlib.Path(__file__).resolve().parent.parent, "srv_seedlist", "replica-set"
+        )
     load_balanced = False
 
     @client_context.require_replica_set
@@ -42,9 +55,14 @@ class TestDNSRepl(PyMongoTestCase):
 
 
 class TestDNSLoadBalanced(PyMongoTestCase):
-    TEST_PATH = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "srv_seedlist", "load-balanced"
-    )
+    if _IS_SYNC:
+        TEST_PATH = os.path.join(
+            pathlib.Path(__file__).resolve().parent, "srv_seedlist", "load-balanced"
+        )
+    else:
+        TEST_PATH = os.path.join(
+            pathlib.Path(__file__).resolve().parent.parent, "srv_seedlist", "load-balanced"
+        )
     load_balanced = True
 
     @client_context.require_load_balancer
@@ -53,7 +71,12 @@ class TestDNSLoadBalanced(PyMongoTestCase):
 
 
 class TestDNSSharded(PyMongoTestCase):
-    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "srv_seedlist", "sharded")
+    if _IS_SYNC:
+        TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "srv_seedlist", "sharded")
+    else:
+        TEST_PATH = os.path.join(
+            pathlib.Path(__file__).resolve().parent.parent, "srv_seedlist", "sharded"
+        )
     load_balanced = False
 
     @client_context.require_mongos
@@ -119,7 +142,9 @@ def create_test(test_case):
                     # tests.
                     copts["tlsAllowInvalidHostnames"] = True
 
-                client = PyMongoTestCase.unmanaged_simple_client(uri, **copts)
+                client = self.simple_client(uri, **copts)
+                if client._options.connect:
+                    client._connect()
                 if num_seeds is not None:
                     self.assertEqual(len(client._topology_settings.seeds), num_seeds)
                 if hosts is not None:
@@ -132,7 +157,6 @@ def create_test(test_case):
                     client.admin.command("ping")
                 # XXX: we should block until SRV poller runs at least once
                 # and re-run these assertions.
-                client.close()
         else:
             try:
                 parse_uri(uri)
@@ -188,7 +212,6 @@ class TestParsingErrors(PyMongoTestCase):
 class TestCaseInsensitive(IntegrationTest):
     def test_connect_case_insensitive(self):
         client = self.simple_client("mongodb+srv://TEST1.TEST.BUILD.10GEN.cc/")
-        self.addCleanup(client.close)
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
 
 
