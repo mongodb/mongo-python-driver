@@ -1387,7 +1387,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         await self.kill_all_sessions()
-        self.addAsyncCleanup(self.kill_all_sessions)
 
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
