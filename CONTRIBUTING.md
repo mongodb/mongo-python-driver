@@ -178,7 +178,7 @@ documentation including narrative docs, and the [Sphinx docstring format](https:
 You can build the documentation locally by running:
 
 ```bash
-just docs-build
+just docs
 ```
 
 When updating docs, it can be helpful to run the live docs server as:
