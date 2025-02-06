@@ -20,6 +20,7 @@ import os
 import threading
 from pathlib import Path
 from test import IntegrationTest, client_context, unittest
+from test.helpers import ConcurrentRunner
 from test.utils import (
     CMAPListener,
     OvertCommandListener,
@@ -97,44 +98,26 @@ class CustomSpecTestCreator(SpecTestCreator):
 
 CustomSpecTestCreator(create_test, TestAllScenarios, TEST_PATH).create_tests()
 
-if _IS_SYNC:
-    PARENT = threading.Thread
-else:
-    PARENT = object
 
-
-class FinderThread(PARENT):
+class FinderTask(ConcurrentRunner):
     def __init__(self, collection, iterations):
         super().__init__()
         self.daemon = True
         self.collection = collection
         self.iterations = iterations
         self.passed = False
-        self.task = None
 
     def run(self):
         for _ in range(self.iterations):
             self.collection.find_one({})
         self.passed = True
 
-    def start(self):
-        if _IS_SYNC:
-            super().start()
-        else:
-            self.task = asyncio.create_task(self.run())
-
-    def join(self):
-        if _IS_SYNC:
-            super().join()
-        else:
-            self.task
-
 
 class TestProse(IntegrationTest):
     def frequencies(self, client, listener, n_finds=10):
         coll = client.test.test
         N_TASKS = 10
-        tasks = [FinderThread(coll, n_finds) for _ in range(N_TASKS)]
+        tasks = [FinderTask(coll, n_finds) for _ in range(N_TASKS)]
         for task in tasks:
             task.start()
         for task in tasks:
