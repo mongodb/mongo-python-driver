@@ -17,24 +17,24 @@ from __future__ import annotations
 
 import asyncio
 import sys
-import traceback
-
-from test.utils import async_get_pool, get_pool, one, delay
+from test.utils import async_get_pool, delay, one
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, connected, async_client_context
+from test.asynchronous import AsyncIntegrationTest, async_client_context, connected
 
 
 class TestAsyncCancellation(AsyncIntegrationTest):
     async def test_async_cancellation_closes_connection(self):
-        client = await self.async_rs_or_single_client()
+        client = await self.async_rs_or_single_client(maxPoolSize=1)
         pool = await async_get_pool(client)
         await connected(client)
         conn = one(pool.conns)
+        await client.db.test.insert_one({"x": 1})
+        self.addAsyncCleanup(client.db.test.drop)
 
         async def task():
-            await client.db.test.find_one({"$where": delay(1.0)})
+            await client.db.test.find_one({"$where": delay(0.2)})
 
         task = asyncio.create_task(task())
 
@@ -50,11 +50,13 @@ class TestAsyncCancellation(AsyncIntegrationTest):
     async def test_async_cancellation_aborts_transaction(self):
         client = await self.async_rs_or_single_client()
         await connected(client)
+        await client.db.test.insert_one({"x": 1})
+        self.addAsyncCleanup(client.db.test.drop)
 
         session = client.start_session()
 
         async def callback(session):
-            await client.db.test.find_one({"$where": delay(1.0)})
+            await client.db.test.find_one({"$where": delay(0.2)}, session=session)
 
         async def task():
             await session.with_transaction(callback)
@@ -69,3 +71,33 @@ class TestAsyncCancellation(AsyncIntegrationTest):
 
         self.assertFalse(session.in_transaction)
 
+    async def test_async_cancellation_kills_cursor(self):
+        client = await self.async_rs_or_single_client()
+        await connected(client)
+        for _ in range(2):
+            await client.db.test.insert_one({"x": 1})
+        self.addAsyncCleanup(client.db.test.drop)
+
+        cursor = client.db.test.find({}, batch_size=1)
+        await cursor.next()
+
+        # Make sure getMore commands block
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {"failCommands": ["getMore"], "blockConnection": True, "blockTimeMS": 200},
+        }
+
+        async def task():
+            async with self.fail_point(fail_command):
+                await cursor.next()
+
+        task = asyncio.create_task(task())
+
+        await asyncio.sleep(0.1)
+
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+
+        self.assertTrue(cursor._killed)

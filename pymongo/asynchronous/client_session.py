@@ -697,7 +697,7 @@ class AsyncClientSession:
             )
             try:
                 ret = await callback(self)
-            except Exception as exc:
+            except BaseException as exc:
                 if self.in_transaction:
                     await self.abort_transaction()
                 if (

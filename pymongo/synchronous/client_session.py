@@ -694,7 +694,7 @@ class ClientSession:
             self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
             try:
                 ret = callback(self)
-            except Exception as exc:
+            except BaseException as exc:
                 if self.in_transaction:
                     self.abort_transaction()
                 if (

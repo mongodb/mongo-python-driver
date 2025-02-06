@@ -1124,7 +1124,7 @@ class Cursor(Generic[_DocumentType]):
             self._killed = True
             self.close()
             raise
-        except Exception:
+        except BaseException:
             self.close()
             raise
 
