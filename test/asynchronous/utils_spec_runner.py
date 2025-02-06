@@ -229,7 +229,7 @@ class AsyncSpecTestCreator:
                         str(test_def["description"].replace(" ", "_").replace(".", "_")),
                     )
 
-                    new_test = await self._create_test(scenario_def, test_def, test_name)
+                    new_test = self._create_test(scenario_def, test_def, test_name)
                     new_test = self._ensure_min_max_server_version(scenario_def, new_test)
                     new_test = self.ensure_run_on(scenario_def, new_test)
 
