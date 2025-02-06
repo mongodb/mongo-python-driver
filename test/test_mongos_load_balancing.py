@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import sys
 import threading
+from test.helpers import ConcurrentRunner
 
 from pymongo.operations import _Op
 
@@ -33,34 +34,16 @@ from pymongo.topology_description import TOPOLOGY_TYPE
 
 _IS_SYNC = True
 
-if _IS_SYNC:
-    PARENT = threading.Thread
-else:
-    PARENT = object
 
-
-class SimpleOp(PARENT):
+class SimpleOp(ConcurrentRunner):
     def __init__(self, client):
         super().__init__()
         self.client = client
         self.passed = False
-        self.task = None
 
     def run(self):
         self.client.db.command("ping")
         self.passed = True  # No exception raised.
-
-    def start(self):
-        if _IS_SYNC:
-            super().start()
-        else:
-            self.task = asyncio.create_task(self.run())
-
-    def join(self):
-        if _IS_SYNC:
-            super().join()
-        else:
-            self.task
 
 
 def do_simple_op(client, ntasks):
