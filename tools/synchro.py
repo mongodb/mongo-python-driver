@@ -122,6 +122,7 @@ replacements = {
     "SpecRunnerTask": "SpecRunnerThread",
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",
+    "create_async_event": "create_event",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -211,9 +212,11 @@ converted_tests = [
     "test_data_lake.py",
     "test_dns.py",
     "test_encryption.py",
+    "test_examples.py",
     "test_heartbeat_monitoring.py",
     "test_index_management.py",
     "test_grid_file.py",
+    "test_load_balancer.py",
     "test_json_util_integration.py",
     "test_gridfs_spec.py",
     "test_logger.py",
@@ -222,6 +225,7 @@ converted_tests = [
     "test_on_demand_csfle.py",
     "test_raw_bson.py",
     "test_read_concern.py",
+    "test_read_preferences.py",
     "test_read_write_concern_spec.py",
     "test_retryable_reads.py",
     "test_retryable_reads_unified.py",
@@ -234,8 +238,11 @@ converted_tests = [
     "test_sessions_unified.py",
     "test_srv_polling.py",
     "test_ssl.py",
+    "test_streaming_protocol.py",
     "test_transactions.py",
+    "test_transactions_unified.py",
     "test_unified_format.py",
+    "test_versioned_api_integration.py",
     "unified_format.py",
 ]
 

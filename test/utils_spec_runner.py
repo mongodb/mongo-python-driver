@@ -58,7 +58,7 @@ _IS_SYNC = True
 
 class SpecRunnerThread(ConcurrentRunner):
     def __init__(self, name):
-        super().__init__(name)
+        super().__init__(name=name)
         self.exc = None
         self.daemon = True
         self.cond = _create_condition(_create_lock())

@@ -39,6 +39,7 @@ from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import AsyncMongoClient, monitoring, operations, read_preferences
+from pymongo._asyncio_task import create_task
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
@@ -912,21 +913,6 @@ def is_greenthread_patched():
     return gevent_monkey_patched() or eventlet_monkey_patched()
 
 
-class ExceptionCatchingThread(threading.Thread):
-    """A thread that stores any exception encountered from run()."""
-
-    def __init__(self, *args, **kwargs):
-        self.exc = None
-        super().__init__(*args, **kwargs)
-
-    def run(self):
-        try:
-            super().run()
-        except BaseException as exc:
-            self.exc = exc
-            raise
-
-
 def parse_read_preference(pref):
     # Make first letter lowercase to match read_pref's modes.
     mode_string = pref.get("mode", "primary")
@@ -1079,3 +1065,11 @@ async def async_set_fail_point(client, command_args):
     cmd = SON([("configureFailPoint", "failCommand")])
     cmd.update(command_args)
     await client.admin.command(cmd)
+
+
+def create_async_event():
+    return asyncio.Event()
+
+
+def create_event():
+    return threading.Event()
