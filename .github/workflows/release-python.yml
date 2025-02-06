@@ -37,6 +37,7 @@ jobs:
   pre-publish:
     environment: release
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'mongodb' || github.event_name == 'workflow_dispatch'
     permissions:
       id-token: write
       contents: write
