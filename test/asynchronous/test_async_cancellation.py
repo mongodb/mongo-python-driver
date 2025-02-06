@@ -71,6 +71,7 @@ class TestAsyncCancellation(AsyncIntegrationTest):
 
         self.assertFalse(session.in_transaction)
 
+    @async_client_context.require_failCommand_blockConnection
     async def test_async_cancellation_closes_cursor(self):
         client = await self.async_rs_or_single_client()
         await connected(client)
@@ -102,6 +103,7 @@ class TestAsyncCancellation(AsyncIntegrationTest):
 
         self.assertTrue(cursor._killed)
 
+    @async_client_context.require_change_streams
     async def test_async_cancellation_closes_change_stream(self):
         client = await self.async_rs_or_single_client()
         await connected(client)
