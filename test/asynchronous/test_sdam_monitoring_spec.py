@@ -24,24 +24,24 @@ from pathlib import Path
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, client_knobs, unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context, client_knobs, unittest
 from test.utils import (
     ServerAndTopologyEventListener,
+    async_wait_until,
     server_name_to_type,
-    wait_until,
 )
 
 from bson.json_util import object_hook
-from pymongo import MongoClient, monitoring
+from pymongo import AsyncMongoClient, monitoring
+from pymongo.asynchronous.collection import AsyncCollection
+from pymongo.asynchronous.monitor import Monitor
 from pymongo.common import clean_node
 from pymongo.errors import ConnectionFailure, NotPrimaryError
 from pymongo.hello import Hello
 from pymongo.server_description import ServerDescription
-from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.monitor import Monitor
 from pymongo.topology_description import TOPOLOGY_TYPE
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
@@ -149,7 +149,7 @@ def compare_events(expected_dict, actual):
                 "Previous TopologyDescription incorrect in TopologyDescriptionChangedEvent",
             )
 
-    elif expected_type == "topology_closed_event":
+    elif expected_type == "topology_await aclosed_event":
         if not isinstance(actual, monitoring.TopologyClosedEvent):
             return False, "Expected TopologyClosedEvent, got %s" % (actual.__class__)
 
@@ -177,37 +177,37 @@ def compare_multiple_events(i, expected_results, actual_results):
     return j, True, ""
 
 
-class TestAllScenarios(IntegrationTest):
-    def setUp(self):
-        super().setUp()
+class TestAllScenarios(AsyncIntegrationTest):
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
         self.all_listener = ServerAndTopologyEventListener()
 
 
 def create_test(scenario_def):
-    def run_scenario(self):
+    async def run_scenario(self):
         with client_knobs(events_queue_frequency=0.05, min_heartbeat_interval=0.05):
-            _run_scenario(self)
+            await _run_scenario(self)
 
-    def _run_scenario(self):
+    async def _run_scenario(self):
         class NoopMonitor(Monitor):
             """Override the _run method to do nothing."""
 
-            def _run(self):
-                time.sleep(0.05)
+            async def _run(self):
+                await asyncio.sleep(0.05)
 
-        m = MongoClient(
+        m = AsyncMongoClient(
             host=scenario_def["uri"],
             port=27017,
             event_listeners=[self.all_listener],
             _monitor_class=NoopMonitor,
         )
-        topology = m._get_topology()
+        topology = await m._get_topology()
 
         try:
             for phase in scenario_def["phases"]:
                 for source, response in phase.get("responses", []):
                     source_address = clean_node(source)
-                    topology.on_change(
+                    await topology.on_change(
                         ServerDescription(
                             address=source_address, hello=Hello(response), round_trip_time=0
                         )
@@ -215,14 +215,14 @@ def create_test(scenario_def):
 
                 expected_results = phase["outcome"]["events"]
                 expected_len = len(expected_results)
-                wait_until(
+                await async_wait_until(
                     lambda: len(self.all_listener.results) >= expected_len,
                     "publish all events",
                     timeout=15,
                 )
 
                 # Wait some time to catch possible lagging extra events.
-                wait_until(lambda: topology._events.empty(), "publish lagging events")
+                await async_wait_until(lambda: topology._events.empty(), "publish lagging events")
 
                 i = 0
                 while i < expected_len:
@@ -248,7 +248,7 @@ def create_test(scenario_def):
 
                 self.all_listener.reset()
         finally:
-            m.close()
+            await m.close()
 
     return run_scenario
 
@@ -268,11 +268,11 @@ def create_tests():
 create_tests()
 
 
-class TestSdamMonitoring(IntegrationTest):
+class TestSdamMonitoring(AsyncIntegrationTest):
     knobs: client_knobs
     listener: ServerAndTopologyEventListener
-    test_client: MongoClient
-    coll: Collection
+    test_client: AsyncMongoClient
+    coll: AsyncCollection
 
     @classmethod
     def setUpClass(cls):
@@ -287,23 +287,23 @@ class TestSdamMonitoring(IntegrationTest):
     def tearDownClass(cls):
         cls.knobs.disable()
 
-    @client_context.require_failCommand_fail_point
-    def setUp(self):
-        super().setUp()
+    @async_client_context.require_failCommand_fail_point
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
 
-        retry_writes = client_context.supports_transactions()
-        self.test_client = self.rs_or_single_client(
+        retry_writes = async_client_context.supports_transactions()
+        self.test_client = await self.async_rs_or_single_client(
             event_listeners=[self.listener], retryWrites=retry_writes
         )
         self.coll = self.test_client[self.client.db.name].test
-        self.coll.insert_one({})
+        await self.coll.insert_one({})
         self.listener.reset()
 
-    def tearDown(self):
-        super().tearDown()
+    async def asyncTearDown(self):
+        await super().asyncTearDown()
 
-    def _test_app_error(self, fail_command_opts, expected_error):
-        address = self.test_client.address
+    async def _test_app_error(self, fail_command_opts, expected_error):
+        address = await self.test_client.address
 
         # Test that an application error causes a ServerDescriptionChangedEvent
         # to be published.
@@ -314,13 +314,13 @@ class TestSdamMonitoring(IntegrationTest):
             "mode": {"times": 1},
             "data": data,
         }
-        with self.fail_point(fail_insert):
+        async with self.fail_point(fail_insert):
             if self.test_client.options.retry_writes:
-                self.coll.insert_one({})
+                await self.coll.insert_one({})
             else:
                 with self.assertRaises(expected_error):
-                    self.coll.insert_one({})
-                self.coll.insert_one({})
+                    await self.coll.insert_one({})
+                await self.coll.insert_one({})
 
         def marked_unknown(event):
             return (
@@ -344,27 +344,27 @@ class TestSdamMonitoring(IntegrationTest):
             )
 
         # Topology events are not published synchronously
-        wait_until(marked_unknown_and_rediscovered, "rediscover node")
+        await async_wait_until(marked_unknown_and_rediscovered, "rediscover node")
 
         # Expect a single ServerDescriptionChangedEvent for the network error.
         marked_unknown_events = self.listener.matching(marked_unknown)
         self.assertEqual(len(marked_unknown_events), 1, marked_unknown_events)
         self.assertIsInstance(marked_unknown_events[0].new_description.error, expected_error)
 
-    def test_network_error_publishes_events(self):
-        self._test_app_error({"closeConnection": True}, ConnectionFailure)
+    async def test_network_error_publishes_events(self):
+        await self._test_app_error({"closeConnection": True}, ConnectionFailure)
 
     # In 4.4+, not primary errors from failCommand don't cause SDAM state
     # changes because topologyVersion is not incremented.
-    @client_context.require_version_max(4, 3)
-    def test_not_primary_error_publishes_events(self):
-        self._test_app_error(
+    @async_client_context.require_version_max(4, 3)
+    async def test_not_primary_error_publishes_events(self):
+        await self._test_app_error(
             {"errorCode": 10107, "closeConnection": False, "errorLabels": ["RetryableWriteError"]},
             NotPrimaryError,
         )
 
-    def test_shutdown_error_publishes_events(self):
-        self._test_app_error(
+    async def test_shutdown_error_publishes_events(self):
+        await self._test_app_error(
             {"errorCode": 91, "closeConnection": False, "errorLabels": ["RetryableWriteError"]},
             NotPrimaryError,
         )
