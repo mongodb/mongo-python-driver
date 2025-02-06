@@ -1,7 +1,12 @@
 Changelog
 =========
 
-Changes in Version 4.11.0 (YYYY/MM/DD)
+Changes in Version 4.11.1 (2025/MM/DD)
+--------------------------------------
+
+- Fixed support for prebuilt ``ppc64le`` and ``s390x`` wheels.
+
+Changes in Version 4.11.0 (2025/01/28)
 --------------------------------------
 
 .. warning:: PyMongo 4.11 drops support for Python 3.8 and PyPy 3.9: Python 3.9+ or PyPy 3.10+ is now required.
