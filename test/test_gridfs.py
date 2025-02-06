@@ -228,10 +228,7 @@ class TestGridfs(IntegrationTest):
             tasks.append(JustRead(self.fs, 10, results))
             tasks[i].start()
 
-        if _IS_SYNC:
-            joinall(tasks)
-        else:
-            asyncio.wait([t.task for t in tasks if t.task is not None])
+        joinall(tasks)
 
         self.assertEqual(100 * [b"hello"], results)
 
@@ -241,10 +238,7 @@ class TestGridfs(IntegrationTest):
             tasks.append(JustWrite(self.fs, 10))
             tasks[i].start()
 
-        if _IS_SYNC:
-            joinall(tasks)
-        else:
-            asyncio.wait([t.task for t in tasks if t.task is not None])
+        joinall(tasks)
 
         f = self.fs.get_last_version("test")
         self.assertEqual(f.read(), b"hello")

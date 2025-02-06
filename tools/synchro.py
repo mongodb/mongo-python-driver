@@ -124,6 +124,7 @@ replacements = {
     "AsyncMockPool": "MockPool",
     "StopAsyncIteration": "StopIteration",
     "create_async_event": "create_event",
+    "async_joinall": "joinall",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

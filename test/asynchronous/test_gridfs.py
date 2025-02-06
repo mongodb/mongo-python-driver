@@ -28,7 +28,7 @@ from unittest.mock import patch
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils import joinall, one
+from test.utils import async_joinall, one
 
 import gridfs
 from bson.binary import Binary
@@ -230,10 +230,7 @@ class TestGridfs(AsyncIntegrationTest):
             tasks.append(JustRead(self.fs, 10, results))
             await tasks[i].start()
 
-        if _IS_SYNC:
-            joinall(tasks)
-        else:
-            await asyncio.wait([t.task for t in tasks if t.task is not None])
+        await async_joinall(tasks)
 
         self.assertEqual(100 * [b"hello"], results)
 
@@ -243,10 +240,7 @@ class TestGridfs(AsyncIntegrationTest):
             tasks.append(JustWrite(self.fs, 10))
             await tasks[i].start()
 
-        if _IS_SYNC:
-            joinall(tasks)
-        else:
-            await asyncio.wait([t.task for t in tasks if t.task is not None])
+        await async_joinall(tasks)
 
         f = await self.fs.get_last_version("test")
         self.assertEqual(await f.read(), b"hello")
