@@ -66,7 +66,7 @@ jobs:
           # which is out of date. This causes seg faults during build.
           # Here we manually fix the version.
           image: tonistiigi/binfmt:qemu-v8.1.5
-          platforms: arm64
+          platforms: all
 
       - name: Install cibuildwheel
         # Note: the default manylinux is manylinux2014
