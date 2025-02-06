@@ -21,14 +21,14 @@ import threading
 from pathlib import Path
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.helpers import ConcurrentRunner
+from test.asynchronous.utils_selection_tests import create_topology
+from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator
 from test.utils import (
     CMAPListener,
     OvertCommandListener,
     async_get_pool,
     async_wait_until,
 )
-from test.utils_selection_tests import create_topology
-from test.utils_spec_runner import SpecTestCreator
 
 from pymongo.common import clean_node
 from pymongo.monitoring import ConnectionReadyEvent
@@ -46,8 +46,8 @@ else:
 
 
 class TestAllScenarios(unittest.IsolatedAsyncioTestCase):
-    def run_scenario(self, scenario_def):
-        topology = create_topology(scenario_def)
+    async def run_scenario(self, scenario_def):
+        topology = await create_topology(scenario_def)
 
         # Update mock operation_count state:
         for mock in scenario_def["mocked_topology_state"]:
@@ -61,7 +61,7 @@ class TestAllScenarios(unittest.IsolatedAsyncioTestCase):
         # Number of times to repeat server selection
         iterations = scenario_def["iterations"]
         for _ in range(iterations):
-            server = topology.select_server(pref, _Op.TEST, server_selection_timeout=0)
+            server = await topology.select_server(pref, _Op.TEST, server_selection_timeout=0)
             counts[server.description.address] += 1
 
         # Verify expected_frequencies
@@ -80,13 +80,13 @@ class TestAllScenarios(unittest.IsolatedAsyncioTestCase):
 
 
 def create_test(scenario_def, test, name):
-    def run_scenario(self):
-        self.run_scenario(scenario_def)
+    async def run_scenario(self):
+        await self.run_scenario(scenario_def)
 
     return run_scenario
 
 
-class CustomSpecTestCreator(SpecTestCreator):
+class CustomSpecTestCreator(AsyncSpecTestCreator):
     def tests(self, scenario_def):
         """Extract the tests from a spec file.
 
@@ -164,7 +164,7 @@ class TestProse(AsyncIntegrationTest):
                 "appName": "loadBalancingTest",
             },
         }
-        with self.fail_point(delay_finds):
+        async with self.fail_point(delay_finds):
             nodes = async_client_context.client.nodes
             self.assertEqual(len(nodes), 1)
             delayed_server = next(iter(nodes))
