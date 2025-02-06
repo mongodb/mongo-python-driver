@@ -22,6 +22,7 @@ import sys
 import threading
 import time
 from io import BytesIO
+from test.helpers import ConcurrentRunner
 from unittest.mock import patch
 
 sys.path[0:0] = [""]
@@ -44,64 +45,35 @@ from pymongo.synchronous.mongo_client import MongoClient
 
 _IS_SYNC = True
 
-if _IS_SYNC:
 
-    class JustWrite(threading.Thread):
-        def __init__(self, fs, n):
-            threading.Thread.__init__(self)
-            self.fs = fs
-            self.n = n
-            self.daemon = True
+class JustWrite(ConcurrentRunner):
+    def __init__(self, fs, n):
+        super().__init__()
+        self.fs = fs
+        self.n = n
+        self.daemon = True
 
-        def run(self):
-            for _ in range(self.n):
-                file = self.fs.new_file(filename="test")
-                file.write(b"hello")
-                file.close()
+    def run(self):
+        for _ in range(self.n):
+            file = self.fs.new_file(filename="test")
+            file.write(b"hello")
+            file.close()
 
-    class JustRead(threading.Thread):
-        def __init__(self, fs, n, results):
-            threading.Thread.__init__(self)
-            self.fs = fs
-            self.n = n
-            self.results = results
-            self.daemon = True
 
-        def run(self):
-            for _ in range(self.n):
-                file = self.fs.get("test")
-                data = file.read()
-                self.results.append(data)
-                assert data == b"hello"
-else:
+class JustRead(ConcurrentRunner):
+    def __init__(self, fs, n, results):
+        super().__init__()
+        self.fs = fs
+        self.n = n
+        self.results = results
+        self.daemon = True
 
-    class JustWrite:
-        def __init__(self, fs, n):
-            self.task = asyncio.create_task(self.run())
-            self.fs = fs
-            self.n = n
-            self.daemon = True
-
-        def run(self):
-            for _ in range(self.n):
-                file = self.fs.new_file(filename="test")
-                file.write(b"hello")
-                file.close()
-
-    class JustRead:
-        def __init__(self, fs, n, results):
-            self.task = asyncio.create_task(self.run())
-            self.fs = fs
-            self.n = n
-            self.results = results
-            self.daemon = True
-
-        def run(self):
-            for _ in range(self.n):
-                file = self.fs.get("test")
-                data = file.read()
-                self.results.append(data)
-                assert data == b"hello"
+    def run(self):
+        for _ in range(self.n):
+            file = self.fs.get("test")
+            data = file.read()
+            self.results.append(data)
+            assert data == b"hello"
 
 
 class TestGridfsNoConnect(unittest.TestCase):
@@ -250,25 +222,29 @@ class TestGridfs(IntegrationTest):
     def test_threaded_reads(self):
         self.fs.put(b"hello", _id="test")
 
-        threads = []
+        tasks = []
         results: list = []
         for i in range(10):
-            threads.append(JustRead(self.fs, 10, results))
-            if _IS_SYNC:
-                threads[i].start()
+            tasks.append(JustRead(self.fs, 10, results))
+            tasks[i].start()
 
-        joinall(threads)
+        if _IS_SYNC:
+            joinall(tasks)
+        else:
+            asyncio.wait([t.task for t in tasks])
 
         self.assertEqual(100 * [b"hello"], results)
 
     def test_threaded_writes(self):
-        threads = []
+        tasks = []
         for i in range(10):
-            threads.append(JustWrite(self.fs, 10))
-            if _IS_SYNC:
-                threads[i].start()
+            tasks.append(JustWrite(self.fs, 10))
+            tasks[i].start()
 
-        joinall(threads)
+        if _IS_SYNC:
+            joinall(tasks)
+        else:
+            asyncio.wait([t.task for t in tasks])
 
         f = self.fs.get_last_version("test")
         self.assertEqual(f.read(), b"hello")
