@@ -274,15 +274,23 @@ class TestSdamMonitoring(IntegrationTest):
     test_client: MongoClient
     coll: Collection
 
+    @classmethod
+    def setUpClass(cls):
+        # Speed up the tests by decreasing the event publish frequency.
+        cls.knobs = client_knobs(
+            events_queue_frequency=0.1, heartbeat_frequency=0.1, min_heartbeat_interval=0.1
+        )
+        cls.knobs.enable()
+        cls.listener = ServerAndTopologyEventListener()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.knobs.disable()
+
     @client_context.require_failCommand_fail_point
     def setUp(self):
         super().setUp()
-        # Speed up the tests by decreasing the event publish frequency.
-        self.knobs = client_knobs(
-            events_queue_frequency=0.1, heartbeat_frequency=0.1, min_heartbeat_interval=0.1
-        )
-        self.knobs.enable()
-        self.listener = ServerAndTopologyEventListener()
+
         retry_writes = client_context.supports_transactions()
         self.test_client = self.rs_or_single_client(
             event_listeners=[self.listener], retryWrites=retry_writes
@@ -292,7 +300,6 @@ class TestSdamMonitoring(IntegrationTest):
         self.listener.reset()
 
     def tearDown(self):
-        self.knobs.disable()
         super().tearDown()
 
     def _test_app_error(self, fail_command_opts, expected_error):

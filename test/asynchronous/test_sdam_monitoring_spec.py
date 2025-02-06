@@ -274,15 +274,23 @@ class TestSdamMonitoring(AsyncIntegrationTest):
     test_client: AsyncMongoClient
     coll: AsyncCollection
 
+    @classmethod
+    def setUpClass(cls):
+        # Speed up the tests by decreasing the event publish frequency.
+        cls.knobs = client_knobs(
+            events_queue_frequency=0.1, heartbeat_frequency=0.1, min_heartbeat_interval=0.1
+        )
+        cls.knobs.enable()
+        cls.listener = ServerAndTopologyEventListener()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.knobs.disable()
+
     @async_client_context.require_failCommand_fail_point
     async def asyncSetUp(self):
         await super().asyncSetUp()
-        # Speed up the tests by decreasing the event publish frequency.
-        self.knobs = client_knobs(
-            events_queue_frequency=0.1, heartbeat_frequency=0.1, min_heartbeat_interval=0.1
-        )
-        self.knobs.enable()
-        self.listener = ServerAndTopologyEventListener()
+
         retry_writes = async_client_context.supports_transactions()
         self.test_client = await self.async_rs_or_single_client(
             event_listeners=[self.listener], retryWrites=retry_writes
@@ -292,7 +300,6 @@ class TestSdamMonitoring(AsyncIntegrationTest):
         self.listener.reset()
 
     async def asyncTearDown(self):
-        self.knobs.disable()
         await super().asyncTearDown()
 
     async def _test_app_error(self, fail_command_opts, expected_error):
