@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test that async cancellation performed by users raises the expected error."""
+"""Test that async cancellation performed by users clean up resources correctly."""
 from __future__ import annotations
 
 import asyncio
@@ -71,7 +71,7 @@ class TestAsyncCancellation(AsyncIntegrationTest):
 
         self.assertFalse(session.in_transaction)
 
-    async def test_async_cancellation_kills_cursor(self):
+    async def test_async_cancellation_closes_cursor(self):
         client = await self.async_rs_or_single_client()
         await connected(client)
         for _ in range(2):
@@ -101,3 +101,33 @@ class TestAsyncCancellation(AsyncIntegrationTest):
             await task
 
         self.assertTrue(cursor._killed)
+
+    async def test_async_cancellation_closes_change_stream(self):
+        client = await self.async_rs_or_single_client()
+        await connected(client)
+        self.addAsyncCleanup(client.db.test.drop)
+
+        change_stream = await client.db.test.watch(batch_size=2)
+
+        # Make sure getMore commands block
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {"failCommands": ["getMore"], "blockConnection": True, "blockTimeMS": 200},
+        }
+
+        async def task():
+            async with self.fail_point(fail_command):
+                for _ in range(2):
+                    await client.db.test.insert_one({"x": 1})
+                await change_stream.next()
+
+        task = asyncio.create_task(task())
+
+        await asyncio.sleep(0.1)
+
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+
+        self.assertTrue(change_stream._closed)
