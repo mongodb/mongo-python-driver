@@ -177,7 +177,7 @@ def create_test(scenario_def):
 
 
 def create_selection_tests(test_dir):
-    class TestAllScenarios(unittest.TestCase):
+    class TestAllScenarios(AsyncPyMongoTestCase):
         pass
 
     for dirpath, _, filenames in os.walk(test_dir):
