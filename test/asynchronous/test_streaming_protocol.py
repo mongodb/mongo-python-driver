@@ -20,32 +20,32 @@ import time
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils import (
     HeartbeatEventListener,
     ServerEventListener,
-    wait_until,
+    async_wait_until,
 )
 
 from pymongo import monitoring
 from pymongo.hello import HelloCompat
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-class TestStreamingProtocol(IntegrationTest):
-    @client_context.require_failCommand_appName
-    def test_failCommand_streaming(self):
+class TestStreamingProtocol(AsyncIntegrationTest):
+    @async_client_context.require_failCommand_appName
+    async def test_failCommand_streaming(self):
         listener = ServerEventListener()
         hb_listener = HeartbeatEventListener()
-        client = self.rs_or_single_client(
+        client = await self.async_rs_or_single_client(
             event_listeners=[listener, hb_listener],
             heartbeatFrequencyMS=500,
             appName="failingHeartbeatTest",
         )
         # Force a connection.
-        client.admin.command("ping")
-        address = client.address
+        await client.admin.command("ping")
+        address = await client.address
         listener.reset()
 
         fail_hello = {
@@ -58,7 +58,7 @@ class TestStreamingProtocol(IntegrationTest):
                 "appName": "failingHeartbeatTest",
             },
         }
-        with self.fail_point(fail_hello):
+        async with self.fail_point(fail_hello):
 
             def _marked_unknown(event):
                 return (
@@ -80,14 +80,14 @@ class TestStreamingProtocol(IntegrationTest):
                 return len(listener.matching(_discovered_node)) >= 1
 
             # Topology events are not published synchronously
-            wait_until(marked_unknown, "mark node unknown")
-            wait_until(rediscovered, "rediscover node")
+            await async_wait_until(marked_unknown, "mark node unknown")
+            await async_wait_until(rediscovered, "rediscover node")
 
         # Server should be selectable.
-        client.admin.command("ping")
+        await client.admin.command("ping")
 
-    @client_context.require_failCommand_appName
-    def test_streaming_rtt(self):
+    @async_client_context.require_failCommand_appName
+    async def test_streaming_rtt(self):
         listener = ServerEventListener()
         hb_listener = HeartbeatEventListener()
         # On Windows, RTT can actually be 0.0 because time.time() only has
@@ -105,17 +105,17 @@ class TestStreamingProtocol(IntegrationTest):
                 # 'appName': name,
             },
         }
-        with self.fail_point(delay_hello):
-            client = self.rs_or_single_client(
+        async with self.fail_point(delay_hello):
+            client = await self.async_rs_or_single_client(
                 event_listeners=[listener, hb_listener], heartbeatFrequencyMS=500, appName=name
             )
             # Force a connection.
-            client.admin.command("ping")
-            address = client.address
+            await client.admin.command("ping")
+            address = await client.address
 
         delay_hello["data"]["blockTimeMS"] = 500
         delay_hello["data"]["appName"] = name
-        with self.fail_point(delay_hello):
+        async with self.fail_point(delay_hello):
 
             def rtt_exceeds_250_ms():
                 # XXX: Add a public TopologyDescription getter to MongoClient?
@@ -124,10 +124,10 @@ class TestStreamingProtocol(IntegrationTest):
                 assert sd.round_trip_time is not None
                 return sd.round_trip_time > 0.250
 
-            wait_until(rtt_exceeds_250_ms, "exceed 250ms RTT")
+            await async_wait_until(rtt_exceeds_250_ms, "exceed 250ms RTT")
 
         # Server should be selectable.
-        client.admin.command("ping")
+        await client.admin.command("ping")
 
         def changed_event(event):
             return event.server_address == address and isinstance(
@@ -139,8 +139,8 @@ class TestStreamingProtocol(IntegrationTest):
         self.assertEqual(1, len(events))
         self.assertGreater(events[0].new_description.round_trip_time, 0)
 
-    @client_context.require_failCommand_appName
-    def test_monitor_waits_after_server_check_error(self):
+    @async_client_context.require_failCommand_appName
+    async def test_monitor_waits_after_server_check_error(self):
         # This test implements:
         # https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring-tests.md#monitors-sleep-at-least-minheartbeatfreqencyms-between-checks
         fail_hello = {
@@ -151,13 +151,13 @@ class TestStreamingProtocol(IntegrationTest):
                 "appName": "SDAMMinHeartbeatFrequencyTest",
             },
         }
-        with self.fail_point(fail_hello):
+        async with self.fail_point(fail_hello):
             start = time.time()
-            client = self.single_client(
+            client = await self.async_single_client(
                 appName="SDAMMinHeartbeatFrequencyTest", serverSelectionTimeoutMS=5000
             )
             # Force a connection.
-            client.admin.command("ping")
+            await client.admin.command("ping")
             duration = time.time() - start
             # Explanation of the expected events:
             # 0ms: run configureFailPoint
@@ -174,16 +174,16 @@ class TestStreamingProtocol(IntegrationTest):
             self.assertGreaterEqual(duration, 2)
             self.assertLessEqual(duration, 3.5)
 
-    @client_context.require_failCommand_appName
-    def test_heartbeat_awaited_flag(self):
+    @async_client_context.require_failCommand_appName
+    async def test_heartbeat_awaited_flag(self):
         hb_listener = HeartbeatEventListener()
-        client = self.single_client(
+        client = await self.async_single_client(
             event_listeners=[hb_listener],
             heartbeatFrequencyMS=500,
             appName="heartbeatEventAwaitedFlag",
         )
         # Force a connection.
-        client.admin.command("ping")
+        await client.admin.command("ping")
 
         def hb_succeeded(event):
             return isinstance(event, monitoring.ServerHeartbeatSucceededEvent)
@@ -199,10 +199,12 @@ class TestStreamingProtocol(IntegrationTest):
                 "appName": "heartbeatEventAwaitedFlag",
             },
         }
-        with self.fail_point(fail_heartbeat):
-            wait_until(lambda: hb_listener.matching(hb_failed), "published failed event")
+        async with self.fail_point(fail_heartbeat):
+            await async_wait_until(
+                lambda: hb_listener.matching(hb_failed), "published failed event"
+            )
         # Reconnect.
-        client.admin.command("ping")
+        await client.admin.command("ping")
 
         hb_succeeded_events = hb_listener.matching(hb_succeeded)
         hb_failed_events = hb_listener.matching(hb_failed)

@@ -58,7 +58,7 @@ _IS_SYNC = False
 
 class SpecRunnerTask(ConcurrentRunner):
     def __init__(self, name):
-        super().__init__(name)
+        super().__init__(name=name)
         self.exc = None
         self.daemon = True
         self.cond = _async_create_condition(_async_create_lock())
