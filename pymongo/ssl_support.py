@@ -115,4 +115,4 @@ else:
 
     def get_ssl_context(*dummy):  # type: ignore
         """No ssl module, raise ConfigurationError."""
-        raise ConfigurationError("The ssl module is not available.")
+        raise ConfigurationError("The ssl module is not available")

@@ -91,7 +91,7 @@ def validate_zlib_compression_level(option: str, value: Any) -> int:
     try:
         level = int(value)
     except Exception:
-        raise TypeError(f"{option} must be an integer, not {value!r}.") from None
+        raise TypeError(f"{option} must be an integer, not {value!r}") from None
     if level < -1 or level > 9:
         raise ValueError("%s must be between -1 and 9, not %d." % (option, level))
     return level

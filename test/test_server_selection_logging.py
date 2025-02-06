@@ -17,19 +17,25 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
 sys.path[0:0] = [""]
 
 from test import unittest
 from test.unified_format import generate_test_classes
 
+_IS_SYNC = True
+
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "server_selection_logging")
+if _IS_SYNC:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "server_selection_logging")
+else:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "server_selection_logging")
 
 
 globals().update(
     generate_test_classes(
-        _TEST_PATH,
+        TEST_PATH,
         module=__name__,
     )
 )
