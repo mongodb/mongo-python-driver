@@ -18,6 +18,7 @@ from __future__ import annotations
 import datetime
 import os
 import sys
+from test.synchronous import PyMongoTestCase
 
 sys.path[0:0] = [""]
 
@@ -173,7 +174,7 @@ def create_test(scenario_def):
 
 
 def create_selection_tests(test_dir):
-    class TestAllScenarios(unittest.TestCase):
+    class TestAllScenarios(PyMongoTestCase):
         pass
 
     for dirpath, _, filenames in os.walk(test_dir):
