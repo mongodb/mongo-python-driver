@@ -119,7 +119,7 @@ class TestProse(AsyncIntegrationTest):
         N_TASKS = 10
         tasks = [FinderTask(coll, n_finds) for _ in range(N_TASKS)]
         for task in tasks:
-            task.start()
+            await task.start()
         for task in tasks:
             task.join()
         for task in tasks:
