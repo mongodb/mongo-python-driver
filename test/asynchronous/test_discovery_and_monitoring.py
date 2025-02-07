@@ -20,7 +20,7 @@ import os
 import socketserver
 import sys
 import threading
-from asyncio import StreamReader
+from asyncio import StreamReader, StreamWriter
 from pathlib import Path
 
 sys.path[0:0] = [""]
@@ -227,7 +227,7 @@ def create_test(scenario_def):
     return run_scenario
 
 
-async def create_tests():
+def create_tests():
     for dirpath, _, filenames in os.walk(SDAM_PATH):
         dirname = os.path.split(dirpath)[-1]
         # SDAM unified tests are handled separately.
@@ -246,8 +246,6 @@ async def create_tests():
 
             new_test.__name__ = test_name
             setattr(TestAllScenarios, new_test.__name__, new_test)
-
-
 
 
 class TestClusterTimeComparison(unittest.IsolatedAsyncioTestCase):
@@ -278,6 +276,7 @@ class TestClusterTimeComparison(unittest.IsolatedAsyncioTestCase):
 
 class TestIgnoreStaleErrors(AsyncIntegrationTest):
     if _IS_SYNC:
+
         async def test_ignore_stale_connection_errors(self):
             N_THREADS = 5
             barrier = threading.Barrier(N_THREADS, timeout=30)
@@ -317,6 +316,7 @@ class TestIgnoreStaleErrors(AsyncIntegrationTest):
             # Server should be selectable.
             await client.admin.command("ping")
     else:
+
         async def test_ignore_stale_connection_errors(self):
             N_TASKS = 5
             barrier = asyncio.Barrier(N_TASKS)
@@ -469,62 +469,61 @@ class TCPServer(socketserver.TCPServer):
 
 
 class TestHeartbeatStartOrdering(AsyncPyMongoTestCase):
-    if _IS_SYNC:
-        async def test_heartbeat_start_ordering(self):
-            events = []
-            listener = HeartbeatEventsListListener(events)
+    async def test_heartbeat_start_ordering(self):
+        events = []
+        listener = HeartbeatEventsListListener(events)
+
+        if _IS_SYNC:
             server = TCPServer(("localhost", 9999), MockTCPHandler)
             server.events = events
             server_thread = threading.Thread(target=server.handle_request_and_shutdown)
             server_thread.start()
             _c = await self.simple_client(
-                "mongodb://localhost:9999", serverSelectionTimeoutMS=500, event_listeners=(listener,)
+                "mongodb://localhost:9999",
+                serverSelectionTimeoutMS=500,
+                event_listeners=(listener,),
             )
             server_thread.join()
             listener.wait_for_event(ServerHeartbeatStartedEvent, 1)
             listener.wait_for_event(ServerHeartbeatFailedEvent, 1)
 
-            self.assertEqual(
-                events,
-                [
-                    "serverHeartbeatStartedEvent",
-                    "client connected",
-                    "client hello received",
-                    "serverHeartbeatFailedEvent",
-                ],
-            )
-    else:
-        async def test_heartbeat_start_ordering(self):
-            events = []
+        else:
 
-            async def handle_client(reader: StreamReader, writer):
-                server.events.append("client connected")
-                print("clent connected")
+            async def handle_client(reader: StreamReader, writer: StreamWriter):
+                events.append("client connected")
                 if (await reader.read(1024)).strip():
-                    server.events.append("client hello received")
-                    print("client helllo recieved")
-            listener = HeartbeatEventsListListener(events)
-            server = await asyncio.start_server(handle_client, "localhost", 9999)
-            async with server:
-                server.events = events
-                _c = self.simple_client(
-                    "mongodb://localhost:9999", serverSelectionTimeoutMS=500, event_listeners=(listener,)
-                )
-                server.close()
-                server_task = asyncio.create_task(server.wait_closed())
-                await server_task
-                await listener.async_wait_for_event(ServerHeartbeatStartedEvent, 1)
-                await listener.async_wait_for_event(ServerHeartbeatFailedEvent, 1)
+                    events.append("client hello received")
+                writer.close()
+                await writer.wait_closed()
 
-                self.assertEqual(
-                    events,
-                    [
-                        "serverHeartbeatStartedEvent",
-                        "client connected",
-                        "client hello received",
-                        "serverHeartbeatFailedEvent",
-                    ],
-                )
+            server = await asyncio.start_server(handle_client, "localhost", 9999)
+            server.events = events
+            await server.start_serving()
+            print(server.is_serving())
+            _c = self.simple_client(
+                "mongodb://localhost:9999",
+                serverSelectionTimeoutMS=500,
+                event_listeners=(listener,),
+            )
+            if _c._options.connect:
+                await _c.aconnect()
+
+            await listener.async_wait_for_event(ServerHeartbeatStartedEvent, 1)
+            await listener.async_wait_for_event(ServerHeartbeatFailedEvent, 1)
+
+            server.close()
+            await server.wait_closed()
+            await _c.close()
+
+        self.assertEqual(
+            events,
+            [
+                "serverHeartbeatStartedEvent",
+                "client connected",
+                "client hello received",
+                "serverHeartbeatFailedEvent",
+            ],
+        )
 
 
 # Generate unified tests.
