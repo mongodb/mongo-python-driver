@@ -123,6 +123,7 @@ replacements = {
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",
     "create_async_event": "create_event",
+    "async_joinall": "joinall",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -223,6 +224,7 @@ converted_tests = [
     "test_monitoring.py",
     "test_mongos_load_balancing.py",
     "test_on_demand_csfle.py",
+    "test_pooling.py",
     "test_raw_bson.py",
     "test_read_concern.py",
     "test_read_preferences.py",
