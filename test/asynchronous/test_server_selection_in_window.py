@@ -121,7 +121,7 @@ class TestProse(AsyncIntegrationTest):
         for task in tasks:
             await task.start()
         for task in tasks:
-            task.join()
+            await task.join()
         for task in tasks:
             self.assertTrue(task.passed)
 
