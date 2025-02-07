@@ -114,7 +114,7 @@ class FinderTask(ConcurrentRunner):
 
 
 class TestProse(AsyncIntegrationTest):
-    def frequencies(self, client, listener, n_finds=10):
+    async def frequencies(self, client, listener, n_finds=10):
         coll = client.test.test
         N_TASKS = 10
         tasks = [FinderTask(coll, n_finds) for _ in range(N_TASKS)]
