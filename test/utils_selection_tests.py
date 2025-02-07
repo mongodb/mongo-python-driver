@@ -18,7 +18,7 @@ from __future__ import annotations
 import datetime
 import os
 import sys
-from test.synchronous import PyMongoTestCase
+from test import PyMongoTestCase
 
 sys.path[0:0] = [""]
 
@@ -38,6 +38,8 @@ from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology
+
+_IS_SYNC = True
 
 
 def get_topology_settings_dict(**kwargs):

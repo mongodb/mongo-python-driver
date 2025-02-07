@@ -39,6 +39,8 @@ from pymongo.errors import AutoReconnect, ConfigurationError
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
 
+_IS_SYNC = False
+
 
 def get_topology_settings_dict(**kwargs):
     settings = {

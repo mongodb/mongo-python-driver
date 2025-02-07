@@ -246,6 +246,7 @@ converted_tests = [
     "test_unified_format.py",
     "test_versioned_api_integration.py",
     "unified_format.py",
+    "utils_selection_tests.py",
 ]
 
 
