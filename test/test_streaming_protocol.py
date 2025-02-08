@@ -30,6 +30,8 @@ from test.utils import (
 from pymongo import monitoring
 from pymongo.hello import HelloCompat
 
+_IS_SYNC = True
+
 
 class TestStreamingProtocol(IntegrationTest):
     @client_context.require_failCommand_appName
@@ -41,7 +43,6 @@ class TestStreamingProtocol(IntegrationTest):
             heartbeatFrequencyMS=500,
             appName="failingHeartbeatTest",
         )
-        self.addCleanup(client.close)
         # Force a connection.
         client.admin.command("ping")
         address = client.address
@@ -78,7 +79,7 @@ class TestStreamingProtocol(IntegrationTest):
             def rediscovered():
                 return len(listener.matching(_discovered_node)) >= 1
 
-            # Topology events are published asynchronously
+            # Topology events are not published synchronously
             wait_until(marked_unknown, "mark node unknown")
             wait_until(rediscovered, "rediscover node")
 
@@ -108,7 +109,6 @@ class TestStreamingProtocol(IntegrationTest):
             client = self.rs_or_single_client(
                 event_listeners=[listener, hb_listener], heartbeatFrequencyMS=500, appName=name
             )
-            self.addCleanup(client.close)
             # Force a connection.
             client.admin.command("ping")
             address = client.address
@@ -156,7 +156,6 @@ class TestStreamingProtocol(IntegrationTest):
             client = self.single_client(
                 appName="SDAMMinHeartbeatFrequencyTest", serverSelectionTimeoutMS=5000
             )
-            self.addCleanup(client.close)
             # Force a connection.
             client.admin.command("ping")
             duration = time.time() - start
@@ -183,7 +182,6 @@ class TestStreamingProtocol(IntegrationTest):
             heartbeatFrequencyMS=500,
             appName="heartbeatEventAwaitedFlag",
         )
-        self.addCleanup(client.close)
         # Force a connection.
         client.admin.command("ping")
 

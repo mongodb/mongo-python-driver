@@ -23,7 +23,9 @@ env:
   SILK_ASSET_GROUP: mongodb-python-driver
   EVERGREEN_PROJECT: mongo-python-driver
   # Constant
-  DRY_RUN: ${{ inputs.dry_run == 'true' }}
+  # inputs will be empty on a scheduled run.  so, we only set dry_run
+  # to 'false' when the input is set to 'false'.
+  DRY_RUN: ${{ ! contains(inputs.dry_run, 'false') }}
   FOLLOWING_VERSION: ${{ inputs.following_version || '' }}
   VERSION: ${{ inputs.version || '10.10.10.10' }}
 
@@ -35,6 +37,7 @@ jobs:
   pre-publish:
     environment: release
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'mongodb' || github.event_name == 'workflow_dispatch'
     permissions:
       id-token: write
       contents: write

@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import os
+import pathlib
 import socket
 import sys
 
@@ -65,7 +66,13 @@ except ImportError:
 if HAVE_SSL:
     import ssl
 
-CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "certificates")
+_IS_SYNC = True
+
+if _IS_SYNC:
+    CERT_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "certificates")
+else:
+    CERT_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "certificates")
+
 CLIENT_PEM = os.path.join(CERT_PATH, "client.pem")
 CLIENT_ENCRYPTED_PEM = os.path.join(CERT_PATH, "password_protected.pem")
 CA_PEM = os.path.join(CERT_PATH, "ca.pem")
@@ -144,21 +151,18 @@ class TestSSL(IntegrationTest):
         )
         coll.drop()
         coll.insert_one({"ssl": True})
-        self.assertTrue(coll.find_one()["ssl"])
+        self.assertTrue((coll.find_one())["ssl"])
         coll.drop()
 
-    @classmethod
     @unittest.skipUnless(HAVE_SSL, "The ssl module is not available.")
-    def setUpClass(cls):
-        super().setUpClass()
+    def setUp(self):
+        super().setUp()
         # MongoClient should connect to the primary by default.
-        cls.saved_port = MongoClient.PORT
+        self.saved_port = MongoClient.PORT
         MongoClient.PORT = client_context.port
 
-    @classmethod
-    def tearDownClass(cls):
-        MongoClient.PORT = cls.saved_port
-        super().tearDownClass()
+    def tearDown(self):
+        MongoClient.PORT = self.saved_port
 
     @client_context.require_tls
     def test_simple_ssl(self):
@@ -548,7 +552,6 @@ class TestSSL(IntegrationTest):
             tlsAllowInvalidCertificates=True,
             tlsCertificateKeyFile=CLIENT_PEM,
         )
-        self.addCleanup(noauth.close)
 
         with self.assertRaises(OperationFailure):
             noauth.pymongo_test.test.find_one()
@@ -562,7 +565,6 @@ class TestSSL(IntegrationTest):
             tlsCertificateKeyFile=CLIENT_PEM,
             event_listeners=[listener],
         )
-        self.addCleanup(auth.close)
 
         # No error
         auth.pymongo_test.test.find_one()
@@ -581,7 +583,6 @@ class TestSSL(IntegrationTest):
         client = self.simple_client(
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
-        self.addCleanup(client.close)
         # No error
         client.pymongo_test.test.find_one()
 
@@ -589,7 +590,6 @@ class TestSSL(IntegrationTest):
         client = self.simple_client(
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
-        self.addCleanup(client.close)
         # No error
         client.pymongo_test.test.find_one()
         # Auth should fail if username and certificate do not match
@@ -602,7 +602,6 @@ class TestSSL(IntegrationTest):
         bad_client = self.simple_client(
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
-        self.addCleanup(bad_client.close)
 
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()
@@ -615,7 +614,6 @@ class TestSSL(IntegrationTest):
             tlsAllowInvalidCertificates=True,
             tlsCertificateKeyFile=CLIENT_PEM,
         )
-        self.addCleanup(bad_client.close)
 
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()

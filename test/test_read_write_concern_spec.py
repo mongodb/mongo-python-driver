@@ -19,6 +19,7 @@ import json
 import os
 import sys
 import warnings
+from pathlib import Path
 
 sys.path[0:0] = [""]
 
@@ -39,7 +40,13 @@ from pymongo.read_concern import ReadConcern
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "read_write_concern")
+_IS_SYNC = True
+
+# Location of JSON test specifications.
+if _IS_SYNC:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "read_write_concern")
+else:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "read_write_concern")
 
 
 class TestReadWriteConcernSpec(IntegrationTest):
@@ -47,7 +54,6 @@ class TestReadWriteConcernSpec(IntegrationTest):
         listener = OvertCommandListener()
         # Client with default readConcern and writeConcern
         client = self.rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
         collection.insert_many([{} for _ in range(10)])
@@ -66,9 +72,12 @@ class TestReadWriteConcernSpec(IntegrationTest):
                 "insert", "collection", documents=[{}], write_concern=WriteConcern()
             )
 
+        def aggregate_op():
+            (collection.aggregate([])).to_list()
+
         ops = [
-            ("aggregate", lambda: list(collection.aggregate([]))),
-            ("find", lambda: list(collection.find())),
+            ("aggregate", aggregate_op),
+            ("find", lambda: collection.find().to_list()),
             ("insert_one", lambda: collection.insert_one({})),
             ("update_one", lambda: collection.update_one({}, {"$set": {"x": 1}})),
             ("update_many", lambda: collection.update_many({}, {"$set": {"x": 1}})),
@@ -207,7 +216,6 @@ class TestReadWriteConcernSpec(IntegrationTest):
     def test_write_error_details_exposes_errinfo(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
         db = client.errinfotest
         self.addCleanup(client.drop_database, "errinfotest")
         validator = {"x": {"$type": "string"}}
@@ -286,7 +294,7 @@ def create_document_test(test_case):
 
 
 def create_tests():
-    for dirpath, _, filenames in os.walk(_TEST_PATH):
+    for dirpath, _, filenames in os.walk(TEST_PATH):
         dirname = os.path.split(dirpath)[-1]
 
         if dirname == "operation":
@@ -321,7 +329,7 @@ create_tests()
 # PyMongo does not support MapReduce.
 globals().update(
     generate_test_classes(
-        os.path.join(_TEST_PATH, "operation"),
+        os.path.join(TEST_PATH, "operation"),
         module=__name__,
         expected_failures=["MapReduce .*"],
     )

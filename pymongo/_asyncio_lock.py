@@ -160,7 +160,7 @@ class Lock(_ContextManagerMixin, _LoopBoundMixin):
             self._locked = False
             self._wake_up_first()
         else:
-            raise RuntimeError("Lock is not acquired.")
+            raise RuntimeError("Lock is not acquired")
 
     def _wake_up_first(self) -> None:
         """Ensure that the first waiter will wake up."""

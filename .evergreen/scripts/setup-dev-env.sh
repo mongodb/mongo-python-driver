@@ -34,8 +34,8 @@ if [ ! -d $BIN_DIR ]; then
   fi
   export UV_PYTHON=${PYTHON_BINARY}
   echo "export UV_PYTHON=$UV_PYTHON" >> $HERE/env.sh
+  echo "Using python $UV_PYTHON"
 fi
-echo "Using python $UV_PYTHON"
 uv sync --frozen
 uv run --frozen --with pip pip install -e .
 echo "Setting up python environment... done."
