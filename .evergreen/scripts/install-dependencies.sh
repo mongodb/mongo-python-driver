@@ -4,6 +4,7 @@ set -eu
 
 # On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
 if [ "${CI:-}" == "true" ]; then
+  echo "REALLY? $DRIVERS_TOOLS_BINARIES"
   _BIN_DIR=${DRIVERS_TOOLS_BINARIES:-}
 elif [ "Windows_NT" = "${OS:-}" ]; then
   _BIN_DIR=$HOME/cli_bin
