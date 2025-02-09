@@ -29,6 +29,7 @@ if [ -f "$ROOT_DIR/secrets-export.sh" ]; then
   source "$ROOT_DIR/secrets-export.sh"
 fi
 
+echo "PATH2=$PATH"
 PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implementation())")
 
 # Ensure C extensions if applicable.
