@@ -16,11 +16,20 @@ DRIVERS_TOOLS="$(dirname $PROJECT_DIRECTORY)/drivers-tools"
 CARGO_HOME=${CARGO_HOME:-${DRIVERS_TOOLS}/.cargo}
 UV_TOOL_DIR=$PROJECT_DIRECTORY/.local/uv/tools
 UV_CACHE_DIR=$PROJECT_DIRECTORY/.local/uv/cache
+MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
+DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
+MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
+
+# PATH needs to be a UNIX path, so set this before using cygpath.
+PATH="$MONGODB_BINARIES:$DRIVERS_TOOLS_BINARIES:$PATH"
 
 # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
 if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
     DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
     PROJECT_DIRECTORY=$(cygpath -m $PROJECT_DIRECTORY)
+    MONGODB_BINARIES=$(cygpath -m $MONGODB_BINARIES)
+    DRIVERS_TOOLS_BINARIES=$(cygpath -m DRIVERS_TOOLS_BINARIES)
+    MONGO_ORCHESTRATION_HOME=$(cygpath -m MONGO_ORCHESTRATION_HOME)
     CARGO_HOME=$(cygpath -m $CARGO_HOME)
     UV_TOOL_DIR=$(cygpath -m "$UV_TOOL_DIR")
     UV_CACHE_DIR=$(cygpath -m "$UV_CACHE_DIR")
@@ -33,10 +42,6 @@ if [ -f "$SCRIPT_DIR/env.sh" ]; then
   . "$SCRIPT_DIR/env.sh"
   exit 0
 fi
-
-export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
-export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
-export DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
 
 cat <<EOT > "$SCRIPT_DIR"/env.sh
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
@@ -67,7 +72,7 @@ export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
 export UV_TOOL_DIR="$UV_TOOL_DIR"
 export UV_CACHE_DIR="$UV_CACHE_DIR"
 export UV_TOOL_BIN_DIR="$DRIVERS_TOOLS_BINARIES"
-export PATH="$MONGODB_BINARIES:$DRIVERS_TOOLS_BINARIES:$PATH"
+export PATH="$PATH"
 # shellcheck disable=SC2154
 export PROJECT="${project:-mongo-python-driver}"
 export PIP_QUIET=1
