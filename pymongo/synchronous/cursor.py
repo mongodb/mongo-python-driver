@@ -1124,6 +1124,7 @@ class Cursor(Generic[_DocumentType]):
             self._killed = True
             self.close()
             raise
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             self.close()
             raise

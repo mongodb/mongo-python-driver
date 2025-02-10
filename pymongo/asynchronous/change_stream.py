@@ -391,6 +391,7 @@ class AsyncChangeStream(Generic[_DocumentType]):
             if not _resumable(exc) and not exc.timeout:
                 await self.close()
             raise
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             await self.close()
             raise

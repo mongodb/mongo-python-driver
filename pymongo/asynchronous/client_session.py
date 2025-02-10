@@ -697,6 +697,7 @@ class AsyncClientSession:
             )
             try:
                 ret = await callback(self)
+            # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
             except BaseException as exc:
                 if self.in_transaction:
                     await self.abort_transaction()

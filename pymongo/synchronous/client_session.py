@@ -694,6 +694,7 @@ class ClientSession:
             self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
             try:
                 ret = callback(self)
+            # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
             except BaseException as exc:
                 if self.in_transaction:
                     self.abort_transaction()
