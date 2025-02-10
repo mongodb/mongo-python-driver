@@ -274,7 +274,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param type_registry: instance of
             :class:`~bson.codec_options.TypeRegistry` to enable encoding
             and decoding of custom types.
-        :param kwargs: Additional optional parameters available as keyword arguments
+        :param kwargs: **Additional optional parameters available as keyword arguments:**
 
           - `datetime_conversion` (optional): Specifies how UTC datetimes should be decoded
             within BSON. Valid options include 'datetime_ms' to return as a
