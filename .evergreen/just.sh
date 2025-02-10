@@ -1,5 +1,5 @@
 #!/bin/bash
 set -eu
 
-. .evergreen/scripts/setup-dev-env.sh
+bash .evergreen/scripts/setup-dev-env.sh
 just "$@"
