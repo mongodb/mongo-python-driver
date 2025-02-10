@@ -11,7 +11,7 @@ export UV_FROZEN=1  # Do not modify lock files
 # Try to source the env file.
 if [ -f $SCRIPT_DIR/scripts/env.sh ]; then
   echo "Sourcing env inputs"
-  source $SCRIPT_DIR/scripts/env.sh
+  . $SCRIPT_DIR/scripts/env.sh
 else
   echo "Not sourcing env inputs"
 fi
@@ -19,14 +19,14 @@ fi
 # Ensure there are test inputs.
 if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
   echo "Sourcing test inputs"
-  source $SCRIPT_DIR/scripts/test-env.sh
+  . $SCRIPT_DIR/scripts/test-env.sh
 else
   echo "Missing test inputs, please run 'just setup-test'"
 fi
 
 # Source the local secrets export file if available.
 if [ -f "$ROOT_DIR/secrets-export.sh" ]; then
-  source "$ROOT_DIR/secrets-export.sh"
+  . "$ROOT_DIR/secrets-export.sh"
 fi
 
 echo "PATH2=$PATH"
