@@ -817,10 +817,23 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Ocsp tests
-  - name: ocsp-rhel8-v4.4-python3.9
+  - name: ocsp-rhel8-v4.2-python3.9
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 v4.4 Python3.9
+    display_name: OCSP RHEL8 v4.2 Python3.9
+    run_on:
+      - rhel87-small
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      VERSION: "4.2"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: ocsp-rhel8-v4.4-python3.10
+    tasks:
+      - name: .ocsp
+    display_name: OCSP RHEL8 v4.4 Python3.10
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -829,11 +842,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: "4.4"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: ocsp-rhel8-v5.0-python3.10
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: ocsp-rhel8-v5.0-python3.11
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 v5.0 Python3.10
+    display_name: OCSP RHEL8 v5.0 Python3.11
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -842,11 +855,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: "5.0"
-      PYTHON_BINARY: /opt/python/3.10/bin/python3
-  - name: ocsp-rhel8-v6.0-python3.11
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: ocsp-rhel8-v6.0-python3.12
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 v6.0 Python3.11
+    display_name: OCSP RHEL8 v6.0 Python3.12
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -855,11 +868,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: "6.0"
-      PYTHON_BINARY: /opt/python/3.11/bin/python3
-  - name: ocsp-rhel8-v7.0-python3.12
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: ocsp-rhel8-v7.0-python3.13
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 v7.0 Python3.12
+    display_name: OCSP RHEL8 v7.0 Python3.13
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -868,11 +881,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: "7.0"
-      PYTHON_BINARY: /opt/python/3.12/bin/python3
-  - name: ocsp-rhel8-v8.0-python3.13
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+  - name: ocsp-rhel8-v8.0-pypy3.10
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 v8.0 Python3.13
+    display_name: OCSP RHEL8 v8.0 PyPy3.10
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -881,11 +894,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: "8.0"
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
-  - name: ocsp-rhel8-rapid-pypy3.10
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  - name: ocsp-rhel8-rapid-python3.9
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 rapid PyPy3.10
+    display_name: OCSP RHEL8 rapid Python3.9
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -894,11 +907,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: rapid
-      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-  - name: ocsp-rhel8-latest-python3.9
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: ocsp-rhel8-latest-python3.10
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 latest Python3.9
+    display_name: OCSP RHEL8 latest Python3.10
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -907,7 +920,7 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: latest
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
   - name: ocsp-win64-v4.4-python3.9
     tasks:
       - name: .ocsp-rsa !.ocsp-staple
@@ -1338,6 +1351,7 @@ buildvariants:
   - name: storage-inmemory-rhel8-python3.9
     tasks:
       - name: .standalone .noauth .nossl .4.0 .sync_async
+      - name: .standalone .noauth .nossl .4.2 .sync_async
       - name: .standalone .noauth .nossl .4.4 .sync_async
       - name: .standalone .noauth .nossl .5.0 .sync_async
       - name: .standalone .noauth .nossl .6.0 .sync_async
