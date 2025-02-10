@@ -26,7 +26,7 @@ else
   PYMONGO_BIN_DIR=""
 fi
 echo "HI: $PYMONGO_BIN_DIR, $CI"
-
+exit 1
 # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
 if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
     DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
