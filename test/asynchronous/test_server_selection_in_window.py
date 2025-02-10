@@ -152,7 +152,7 @@ class TestProse(AsyncIntegrationTest):
         )
         await async_wait_until(lambda: len(client.nodes) == 2, "discover both nodes")
         # Wait for both pools to be populated.
-        cmap_listener.wait_for_event(ConnectionReadyEvent, 20)
+        await cmap_listener.async_wait_for_event(ConnectionReadyEvent, 20)
         # Delay find commands on only one mongos.
         delay_finds = {
             "configureFailPoint": "failCommand",
