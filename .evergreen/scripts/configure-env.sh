@@ -34,9 +34,9 @@ if [ -f "$SCRIPT_DIR/env.sh" ]; then
   exit 0
 fi
 
-MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
-DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
-MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
+export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
+export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
+export DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
 
 # On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
 if [ "${CI:-}" == "true" ]; then
@@ -72,7 +72,6 @@ export skip_ECS_auth_test="${skip_ECS_auth_test:-}"
 
 export CARGO_HOME="$CARGO_HOME"
 export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
-export PYMONGO_BIN_DIR="$PYMONGO_BIN_DIR"
 export UV_TOOL_DIR="$UV_TOOL_DIR"
 export UV_CACHE_DIR="$UV_CACHE_DIR"
 export UV_TOOL_BIN_DIR="$DRIVERS_TOOLS_BINARIES"
