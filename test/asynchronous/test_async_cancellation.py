@@ -27,10 +27,10 @@ from test.asynchronous import AsyncIntegrationTest, async_client_context, connec
 class TestAsyncCancellation(AsyncIntegrationTest):
     async def test_async_cancellation_closes_connection(self):
         pool = await async_get_pool(self.client)
-        await connected(self.client)
-        conn = one(pool.conns)
         await self.client.db.test.insert_one({"x": 1})
-        self.addAsyncCleanup(self.client.db.test.drop)
+        self.addAsyncCleanup(self.client.db.test.delete_many, {})
+
+        conn = one(pool.conns)
 
         async def task():
             await self.client.db.test.find_one({"$where": delay(0.2)})
@@ -47,9 +47,8 @@ class TestAsyncCancellation(AsyncIntegrationTest):
 
     @async_client_context.require_transactions
     async def test_async_cancellation_aborts_transaction(self):
-        await connected(self.client)
         await self.client.db.test.insert_one({"x": 1})
-        self.addAsyncCleanup(self.client.db.test.drop)
+        self.addAsyncCleanup(self.client.db.test.delete_many, {})
 
         session = self.client.start_session()
 
@@ -71,10 +70,8 @@ class TestAsyncCancellation(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_blockConnection
     async def test_async_cancellation_closes_cursor(self):
-        await connected(self.client)
-        for _ in range(2):
-            await self.client.db.test.insert_one({"x": 1})
-        self.addAsyncCleanup(self.client.db.test.drop)
+        await self.client.db.test.insert_many([{"x": 1}, {"x": 2}])
+        self.addAsyncCleanup(self.client.db.test.delete_many, {})
 
         cursor = self.client.db.test.find({}, batch_size=1)
         await cursor.next()
@@ -103,9 +100,7 @@ class TestAsyncCancellation(AsyncIntegrationTest):
     @async_client_context.require_change_streams
     @async_client_context.require_failCommand_blockConnection
     async def test_async_cancellation_closes_change_stream(self):
-        await connected(self.client)
-        self.addAsyncCleanup(self.client.db.test.drop)
-
+        self.addAsyncCleanup(self.client.db.test.delete_many, {})
         change_stream = await self.client.db.test.watch(batch_size=2)
 
         # Make sure getMore commands block
@@ -117,8 +112,7 @@ class TestAsyncCancellation(AsyncIntegrationTest):
 
         async def task():
             async with self.fail_point(fail_command):
-                for _ in range(2):
-                    await self.client.db.test.insert_one({"x": 1})
+                await self.client.db.test.insert_many([{"x": 1}, {"x": 2}])
                 await change_stream.next()
 
         task = asyncio.create_task(task())
