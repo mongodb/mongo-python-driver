@@ -75,6 +75,7 @@ export skip_ECS_auth_test="${skip_ECS_auth_test:-}"
 
 export CARGO_HOME="$CARGO_HOME"
 export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
+export PYMONGO_BIN_DIR="$PYMONGO_BIN_DIR"
 export UV_TOOL_DIR="$UV_TOOL_DIR"
 export UV_CACHE_DIR="$UV_CACHE_DIR"
 export UV_TOOL_BIN_DIR="$DRIVERS_TOOLS_BINARIES"
