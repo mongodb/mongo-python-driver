@@ -5,6 +5,8 @@ set -eu
 HERE=$(dirname ${BASH_SOURCE:-$0})
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
 
+echo "PATH=$PATH"
+
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
   source $HERE/env.sh
@@ -13,6 +15,9 @@ fi
 if [ -f $HERE/test-env.sh ]; then
   source $HERE/test-env.sh
 fi
+
+echo "PATH=$PATH"
+exit 1
 
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
