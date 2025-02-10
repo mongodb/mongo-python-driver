@@ -2,7 +2,7 @@
 
 set -eu
 
-_BIN_DIR=${DRIVERS_TOOLS_BINARIES:-}
+_BIN_DIR=${PYMONGO_BIN_DIR:-}
 
 # Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
