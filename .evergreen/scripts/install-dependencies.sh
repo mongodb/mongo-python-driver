@@ -2,6 +2,14 @@
 
 set -eu
 
+HERE=$(dirname ${BASH_SOURCE:-$0})
+pushd "$(dirname "$(dirname $HERE)")" > /dev/null
+
+# Source the env files to pick up common variables.
+if [ -f $HERE/env.sh ]; then
+  . $HERE/env.sh
+fi
+
 _BIN_DIR=${PYMONGO_BIN_DIR:-}
 
 # Helper function to pip install a dependency using a temporary python env.
