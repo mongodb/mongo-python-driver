@@ -6,7 +6,7 @@ pushd $HERE
 . env.sh
 
 rm -rf $DRIVERS_TOOLS
-git clone --branch det-uv-install https://github.com/eramongodb/drivers-evergreen-tools.git $DRIVERS_TOOLS
+git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
 echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" >$MONGO_ORCHESTRATION_HOME/orchestration.config
 
 popd
