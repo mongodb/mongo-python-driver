@@ -16,8 +16,6 @@ DRIVERS_TOOLS="$(dirname $PROJECT_DIRECTORY)/drivers-tools"
 CARGO_HOME=${CARGO_HOME:-${DRIVERS_TOOLS}/.cargo}
 UV_TOOL_DIR=$PROJECT_DIRECTORY/.local/uv/tools
 UV_CACHE_DIR=$PROJECT_DIRECTORY/.local/uv/cache
-DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
-MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
 
 # On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
 if [ "${CI:-}" == "true" ]; then
@@ -47,6 +45,8 @@ if [ -f "$SCRIPT_DIR/env.sh" ]; then
 fi
 
 MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
+DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
+MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
 PATH="$MONGODB_BINARIES:$DRIVERS_TOOLS_BINARIES:$PYMONGO_BIN_DIR:$PATH"
 
 cat <<EOT > "$SCRIPT_DIR"/env.sh
