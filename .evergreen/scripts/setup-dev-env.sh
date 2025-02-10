@@ -15,7 +15,7 @@ if [ -f $HERE/test-env.sh ]; then
 fi
 
 # Ensure dependencies are installed.
-. $HERE/install-dependencies.sh
+bash $HERE/install-dependencies.sh
 
 # Set the location of the python bin dir.
 if [ "Windows_NT" = "${OS:-}" ]; then
