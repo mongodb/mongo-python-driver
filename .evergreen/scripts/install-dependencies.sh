@@ -2,17 +2,7 @@
 
 set -eu
 
-# On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
-if [ "${CI:-}" == "true" ]; then
-  echo "REALLY? $DRIVERS_TOOLS_BINARIES"
-  _BIN_DIR=${DRIVERS_TOOLS_BINARIES:-}
-elif [ "Windows_NT" = "${OS:-}" ]; then
-  _BIN_DIR=$HOME/cli_bin
-else
-  _BIN_DIR=$HOME/.local/bin
-fi
-export PATH="$PATH:$_BIN_DIR"
-
+_BIN_DIR=${PYMONGO_BIN_DIR:-}
 
 # Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
@@ -29,6 +19,10 @@ function _pip_install() {
 
 # Ensure just is installed.
 if ! command -v just 2>/dev/null; then
+  if [ -z "${_BIN_DIR}" ]; then
+    echo "Please install just!"
+    exit 1
+  fi
   # On most systems we can install directly.
   _TARGET=""
   if [ "Windows_NT" = "${OS:-}" ]; then
@@ -44,6 +38,10 @@ fi
 
 # Install uv.
 if ! command -v uv 2>/dev/null; then
+  if [ -z "${_BIN_DIR}" ]; then
+    echo "Please install uv!"
+    exit 1
+  fi
   echo "Installing uv..."
   # On most systems we can install directly.
   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
