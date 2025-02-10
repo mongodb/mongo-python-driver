@@ -19,7 +19,7 @@ UV_CACHE_DIR=$PROJECT_DIRECTORY/.local/uv/cache
 
 # On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
 if [ "${CI:-}" == "true" ]; then
-  echo "1, ${CI:-}"
+  echo "1, 2${CI:-}2"
   PYMONGO_BIN_DIR=${DRIVERS_TOOLS_BINARIES:-}
 elif [ "Windows_NT" = "${OS:-}" ]; then
   echo "2"
