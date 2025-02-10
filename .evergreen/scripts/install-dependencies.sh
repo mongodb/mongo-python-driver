@@ -10,6 +10,8 @@ if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
+echo "HELLO?"
+cat $HERE/env.sh
 _BIN_DIR=${PYMONGO_BIN_DIR:-}
 
 # Helper function to pip install a dependency using a temporary python env.
