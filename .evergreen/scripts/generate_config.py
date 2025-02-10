@@ -26,7 +26,7 @@ from shrub.v3.shrub_service import ShrubService
 # Globals
 ##############
 
-ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
+ALL_VERSIONS = ["4.0", "4.2", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS

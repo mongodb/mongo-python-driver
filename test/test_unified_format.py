@@ -15,21 +15,28 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 from typing import Any
 
 sys.path[0:0] = [""]
 
-from test import unittest
+from test import UnitTest, unittest
 from test.unified_format import MatchEvaluatorUtil, generate_test_classes
 
 from bson import ObjectId
 
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "unified-test-format")
+_IS_SYNC = True
+
+# Location of JSON test specifications.
+if _IS_SYNC:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "unified-test-format")
+else:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "unified-test-format")
 
 
 globals().update(
     generate_test_classes(
-        os.path.join(_TEST_PATH, "valid-pass"),
+        os.path.join(TEST_PATH, "valid-pass"),
         module=__name__,
         class_name_prefix="UnifiedTestFormat",
         expected_failures=[
@@ -42,7 +49,7 @@ globals().update(
 
 globals().update(
     generate_test_classes(
-        os.path.join(_TEST_PATH, "valid-fail"),
+        os.path.join(TEST_PATH, "valid-fail"),
         module=__name__,
         class_name_prefix="UnifiedTestFormat",
         bypass_test_generation_errors=True,
@@ -54,7 +61,7 @@ globals().update(
 )
 
 
-class TestMatchEvaluatorUtil(unittest.TestCase):
+class TestMatchEvaluatorUtil(UnitTest):
     def setUp(self):
         self.match_evaluator = MatchEvaluatorUtil(self)
 

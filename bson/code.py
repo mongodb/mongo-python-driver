@@ -56,7 +56,7 @@ class Code(str):
         **kwargs: Any,
     ) -> Code:
         if not isinstance(code, str):
-            raise TypeError("code must be an instance of str")
+            raise TypeError(f"code must be an instance of str, not {type(code)}")
 
         self = str.__new__(cls, code)
 
@@ -67,7 +67,7 @@ class Code(str):
 
         if scope is not None:
             if not isinstance(scope, _Mapping):
-                raise TypeError("scope must be an instance of dict")
+                raise TypeError(f"scope must be an instance of dict, not {type(scope)}")
             if self.__scope is not None:
                 self.__scope.update(scope)  # type: ignore
             else:

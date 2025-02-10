@@ -708,7 +708,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return target.command(**kwargs)
 
     def _databaseOperation_runCursorCommand(self, target, **kwargs):
-        return list(self._databaseOperation_createCommandCursor(target, **kwargs))
+        return (self._databaseOperation_createCommandCursor(target, **kwargs)).to_list()
 
     def _databaseOperation_createCommandCursor(self, target, **kwargs):
         self.__raise_if_unsupported("createCommandCursor", target, Database)
@@ -1167,7 +1167,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _testOperation_runOnThread(self, spec):
         """Run the 'runOnThread' operation."""
         thread = self.entity_map[spec["thread"]]
-        thread.schedule(lambda: self.run_entity_operation(spec["operation"]))
+        thread.schedule(functools.partial(self.run_entity_operation, spec["operation"]))
 
     def _testOperation_waitForThread(self, spec):
         """Run the 'waitForThread' operation."""
