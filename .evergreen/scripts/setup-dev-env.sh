@@ -37,7 +37,7 @@ if [ ! -d $BIN_DIR ]; then
 fi
 
 # Add the default install path to the path if needed.
-if [ -z "${PYMONGO_BIN_DIR:-}" ] then
+if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
   export PATH="$PATH:$HOME/.local/bin"
 fi
 
