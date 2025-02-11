@@ -22,7 +22,7 @@ import sys
 import threading
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
-from test.asynchronous.helpers import ConcurrentRunner, async_barrier_wait, async_create_barrier
+from test.asynchronous.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
 
@@ -34,7 +34,9 @@ from test.utils import (
     HeartbeatEventListener,
     HeartbeatEventsListListener,
     assertion_context,
+    async_barrier_wait,
     async_client_context,
+    async_create_barrier,
     async_get_pool,
     async_wait_until,
     server_name_to_type,
