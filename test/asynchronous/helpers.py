@@ -408,7 +408,7 @@ class ConcurrentRunner(PARENT):
         finally:
             self.stopped = True
 
-            
+
 class ExceptionCatchingTask(ConcurrentRunner):
     """A Task that stores any exception encountered while running."""
 
@@ -425,7 +425,7 @@ class ExceptionCatchingTask(ConcurrentRunner):
 
 
 def create_barrier(N_TASKS, timeout: float | None = None):
-    return threading.Barrier(N_TASKS, timeout)
+    return threading.Barrier(N_TASKS, timeout=timeout)
 
 
 def async_create_barrier(N_TASKS, timeout: float | None = None):
@@ -437,5 +437,4 @@ def barrier_wait(barrier, timeout: float | None = None):
 
 
 async def async_barrier_wait(barrier, timeout: float | None = None):
-    await asyncio.wait_for(barrier.wait(), timeout)
-
+    await asyncio.wait_for(barrier.wait(), timeout=timeout)
