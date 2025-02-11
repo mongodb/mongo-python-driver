@@ -217,6 +217,7 @@ converted_tests = [
     "test_examples.py",
     "test_grid_file.py",
     "test_gridfs.py",
+    "test_gridfs_bucket.py",
     "test_gridfs_spec.py",
     "test_heartbeat_monitoring.py",
     "test_index_management.py",
