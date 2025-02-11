@@ -36,9 +36,9 @@ if [ ! -d $BIN_DIR ]; then
   echo "Using python $UV_PYTHON"
 fi
 
-# Add the default uv install path to the path.
-if ! command -v uv 2>/dev/null; then
-  export PATH="$HOME/.local/bin:$PATH"
+# Add the default install path to the path if needed.
+if [ -z "${PYMONGO_BIN_DIR:-}" ] then
+  export PATH="$PATH:$HOME/.local/bin"
 fi
 
 uv sync --frozen
