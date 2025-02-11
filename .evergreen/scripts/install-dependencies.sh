@@ -10,7 +10,7 @@ if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
-_BIN_DIR=${PYMONGO_BIN_DIR:-}
+_BIN_DIR=${PYMONGO_BIN_DIR:-.}
 
 # Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
