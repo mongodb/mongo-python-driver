@@ -247,9 +247,12 @@ def handle_test_env() -> None:
         DYLD_FALLBACK_LIBRARY_PATH = os.environ.get("DYLD_FALLBACK_LIBRARY_PATH", "")
         LD_LIBRARY_PATH = os.environ.get("LD_LIBRARY_PATH", "")
         PATH = os.environ["PATH"]
-        write_env("DYLD_FALLBACK_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:{DYLD_FALLBACK_LIBRARY_PATH}")
-        write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:{LD_LIBRARY_PATH}")
-        write_env("PATH", f"{CRYPT_SHARED_DIR}:{PATH}")
+        write_env(
+            "DYLD_FALLBACK_LIBRARY_PATH",
+            f"{CRYPT_SHARED_DIR}{os.pathsep}{DYLD_FALLBACK_LIBRARY_PATH}",
+        )
+        write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}{os.pathsep}{LD_LIBRARY_PATH}")
+        write_env("PATH", f"{CRYPT_SHARED_DIR}{os.pathsep}{PATH}")
 
     if is_set("TEST_FLE_AZURE_AUTO") or is_set("TEST_FLE_GCP_AUTO"):
         if "SUCCESS" not in os.environ:
