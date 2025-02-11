@@ -227,6 +227,186 @@ tasks:
       - noauth
       - nossl
       - sync_async
+  - name: test-4.2-standalone-auth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync
+          TEST_SUITES: default
+    tags:
+      - "4.2"
+      - standalone
+      - auth
+      - ssl
+      - sync
+  - name: test-4.2-standalone-auth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: async
+          TEST_SUITES: default_async
+    tags:
+      - "4.2"
+      - standalone
+      - auth
+      - ssl
+      - async
+  - name: test-4.2-standalone-auth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync_async
+          TEST_SUITES: ""
+    tags:
+      - "4.2"
+      - standalone
+      - auth
+      - ssl
+      - sync_async
+  - name: test-4.2-standalone-noauth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync
+          TEST_SUITES: default
+    tags:
+      - "4.2"
+      - standalone
+      - noauth
+      - ssl
+      - sync
+  - name: test-4.2-standalone-noauth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: async
+          TEST_SUITES: default_async
+    tags:
+      - "4.2"
+      - standalone
+      - noauth
+      - ssl
+      - async
+  - name: test-4.2-standalone-noauth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync_async
+          TEST_SUITES: ""
+    tags:
+      - "4.2"
+      - standalone
+      - noauth
+      - ssl
+      - sync_async
+  - name: test-4.2-standalone-noauth-nossl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync
+          TEST_SUITES: default
+    tags:
+      - "4.2"
+      - standalone
+      - noauth
+      - nossl
+      - sync
+  - name: test-4.2-standalone-noauth-nossl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: async
+          TEST_SUITES: default_async
+    tags:
+      - "4.2"
+      - standalone
+      - noauth
+      - nossl
+      - async
+  - name: test-4.2-standalone-noauth-nossl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync_async
+          TEST_SUITES: ""
+    tags:
+      - "4.2"
+      - standalone
+      - noauth
+      - nossl
+      - sync_async
   - name: test-4.4-standalone-auth-ssl-sync
     commands:
       - func: bootstrap mongo-orchestration
@@ -1667,6 +1847,186 @@ tasks:
       - noauth
       - nossl
       - sync_async
+  - name: test-4.2-replica_set-auth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync
+          TEST_SUITES: default
+    tags:
+      - "4.2"
+      - replica_set
+      - auth
+      - ssl
+      - sync
+  - name: test-4.2-replica_set-auth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: async
+          TEST_SUITES: default_async
+    tags:
+      - "4.2"
+      - replica_set
+      - auth
+      - ssl
+      - async
+  - name: test-4.2-replica_set-auth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync_async
+          TEST_SUITES: ""
+    tags:
+      - "4.2"
+      - replica_set
+      - auth
+      - ssl
+      - sync_async
+  - name: test-4.2-replica_set-noauth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync
+          TEST_SUITES: default
+    tags:
+      - "4.2"
+      - replica_set
+      - noauth
+      - ssl
+      - sync
+  - name: test-4.2-replica_set-noauth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: async
+          TEST_SUITES: default_async
+    tags:
+      - "4.2"
+      - replica_set
+      - noauth
+      - ssl
+      - async
+  - name: test-4.2-replica_set-noauth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync_async
+          TEST_SUITES: ""
+    tags:
+      - "4.2"
+      - replica_set
+      - noauth
+      - ssl
+      - sync_async
+  - name: test-4.2-replica_set-noauth-nossl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync
+          TEST_SUITES: default
+    tags:
+      - "4.2"
+      - replica_set
+      - noauth
+      - nossl
+      - sync
+  - name: test-4.2-replica_set-noauth-nossl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: async
+          TEST_SUITES: default_async
+    tags:
+      - "4.2"
+      - replica_set
+      - noauth
+      - nossl
+      - async
+  - name: test-4.2-replica_set-noauth-nossl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync_async
+          TEST_SUITES: ""
+    tags:
+      - "4.2"
+      - replica_set
+      - noauth
+      - nossl
+      - sync_async
   - name: test-4.4-replica_set-auth-ssl-sync
     commands:
       - func: bootstrap mongo-orchestration
@@ -3103,6 +3463,186 @@ tasks:
           TEST_SUITES: ""
     tags:
       - "4.0"
+      - sharded_cluster
+      - noauth
+      - nossl
+      - sync_async
+  - name: test-4.2-sharded_cluster-auth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync
+          TEST_SUITES: default
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - auth
+      - ssl
+      - sync
+  - name: test-4.2-sharded_cluster-auth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: async
+          TEST_SUITES: default_async
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - auth
+      - ssl
+      - async
+  - name: test-4.2-sharded_cluster-auth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync_async
+          TEST_SUITES: ""
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - auth
+      - ssl
+      - sync_async
+  - name: test-4.2-sharded_cluster-noauth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync
+          TEST_SUITES: default
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - noauth
+      - ssl
+      - sync
+  - name: test-4.2-sharded_cluster-noauth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: async
+          TEST_SUITES: default_async
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - noauth
+      - ssl
+      - async
+  - name: test-4.2-sharded_cluster-noauth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync_async
+          TEST_SUITES: ""
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - noauth
+      - ssl
+      - sync_async
+  - name: test-4.2-sharded_cluster-noauth-nossl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync
+          TEST_SUITES: default
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - noauth
+      - nossl
+      - sync
+  - name: test-4.2-sharded_cluster-noauth-nossl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: async
+          TEST_SUITES: default_async
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - noauth
+      - nossl
+      - async
+  - name: test-4.2-sharded_cluster-noauth-nossl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync_async
+          TEST_SUITES: ""
+    tags:
+      - "4.2"
       - sharded_cluster
       - noauth
       - nossl

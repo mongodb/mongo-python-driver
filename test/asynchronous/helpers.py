@@ -40,7 +40,7 @@ try:
 except ImportError:
     HAVE_IPADDRESS = False
 from functools import wraps
-from typing import Any, Callable, Dict, Generator, no_type_check
+from typing import Any, Callable, Dict, Generator, Optional, no_type_check
 from unittest import SkipTest
 
 from bson.son import SON
@@ -381,21 +381,21 @@ else:
 
 
 class ConcurrentRunner(PARENT):
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, **kwargs):
         if _IS_SYNC:
-            super().__init__(*args, **kwargs)
-        self.name = name
+            super().__init__(**kwargs)
+        self.name = kwargs.get("name", "ConcurrentRunner")
         self.stopped = False
         self.task = None
-        if "target" in kwargs:
-            self.target = kwargs["target"]
+        self.target = kwargs.get("target", None)
+        self.args = kwargs.get("args", [])
 
     if not _IS_SYNC:
 
         async def start(self):
             self.task = create_task(self.run(), name=self.name)
 
-        async def join(self, timeout: float | None = 0):  # type: ignore[override]
+        async def join(self, timeout: Optional[float] = None):  # type: ignore[override]
             if self.task is not None:
                 await asyncio.wait([self.task], timeout=timeout)
 
@@ -403,6 +403,22 @@ class ConcurrentRunner(PARENT):
             return not self.stopped
 
     async def run(self):
-        if self.target:
-            await self.target()
-        self.stopped = True
+        try:
+            await self.target(*self.args)
+        finally:
+            self.stopped = True
+
+
+class ExceptionCatchingTask(ConcurrentRunner):
+    """A Task that stores any exception encountered while running."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.exc = None
+
+    async def run(self):
+        try:
+            await super().run()
+        except BaseException as exc:
+            self.exc = exc
+            raise
