@@ -279,8 +279,9 @@ def create_server_variants() -> list[BuildVariant]:
     host = DEFAULT_HOST
     # Prefix the display name with an asterisk so it is sorted first.
     base_display_name = "* Test"
-    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
+    for python, c_ext in product([*MIN_MAX_PYTHON, PYPYS[-1]], C_EXTS):
         expansions = dict(COVERAGE="coverage")
+        handle_c_ext(c_ext, expansions)
         display_name = get_display_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
             [f".{t} .sync_async" for t in TOPOLOGIES],
