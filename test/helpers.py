@@ -407,3 +407,19 @@ class ConcurrentRunner(PARENT):
             self.target(*self.args)
         finally:
             self.stopped = True
+
+
+def create_barrier(N_TASKS, timeout: float | None = None):
+    return threading.Barrier(N_TASKS, timeout)
+
+
+def create_barrier(N_TASKS, timeout: float | None = None):
+    return asyncio.Barrier(N_TASKS)
+
+
+def barrier_wait(barrier, timeout: float | None = None):
+    barrier.wait()
+
+
+def barrier_wait(barrier, timeout: float | None = None):
+    asyncio.wait_for(barrier.wait(), timeout)

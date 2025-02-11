@@ -122,6 +122,8 @@ replacements = {
     "SpecRunnerTask": "SpecRunnerThread",
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",
+    "async_create_barrier": "create_barrier",
+    "async_barrier_wait": "barrier_wait",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

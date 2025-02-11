@@ -22,6 +22,7 @@ import sys
 import threading
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
+from test.helpers import ConcurrentRunner, barrier_wait, create_barrier
 
 sys.path[0:0] = [""]
 
@@ -275,84 +276,44 @@ class TestClusterTimeComparison(unittest.TestCase):
 
 
 class TestIgnoreStaleErrors(IntegrationTest):
-    if _IS_SYNC:
+    def test_ignore_stale_connection_errors(self):
+        N_TASKS = 5
+        barrier = create_barrier(N_TASKS, timeout=30)
+        client = self.rs_or_single_client(minPoolSize=N_TASKS)
 
-        def test_ignore_stale_connection_errors(self):
-            N_THREADS = 5
-            barrier = threading.Barrier(N_THREADS, timeout=30)
-            client = self.rs_or_single_client(minPoolSize=N_THREADS)
+        # Wait for initial discovery.
+        client.admin.command("ping")
+        pool = get_pool(client)
+        starting_generation = pool.gen.get_overall()
+        wait_until(lambda: len(pool.conns) == N_TASKS, "created conns")
 
-            # Wait for initial discovery.
-            client.admin.command("ping")
-            pool = get_pool(client)
-            starting_generation = pool.gen.get_overall()
-            wait_until(lambda: len(pool.conns) == N_THREADS, "created conns")
+        def mock_command(*args, **kwargs):
+            # Synchronize all threads to ensure they use the same generation.
+            barrier_wait(barrier, timeout=30)
+            raise AutoReconnect("mock Connection.command error")
 
-            def mock_command(*args, **kwargs):
-                # Synchronize all threads to ensure they use the same generation.
-                barrier.wait()
-                raise AutoReconnect("mock Connection.command error")
+        for conn in pool.conns:
+            conn.command = mock_command
 
-            for conn in pool.conns:
-                conn.command = mock_command
+        def insert_command(i):
+            try:
+                client.test.command("insert", "test", documents=[{"i": i}])
+            except AutoReconnect:
+                pass
 
-            def insert_command(i):
-                try:
-                    client.test.command("insert", "test", documents=[{"i": i}])
-                except AutoReconnect:
-                    pass
+        tasks = []
+        for i in range(N_TASKS):
+            tasks.append(ConcurrentRunner(target=insert_command, args=(i,)))
+        for t in tasks:
+            t.start()
+        for t in tasks:
+            t.join()
 
-            threads = []
-            for i in range(N_THREADS):
-                threads.append(threading.Thread(target=insert_command, args=(i,)))
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
+        # Expect a single pool reset for the network error
+        self.assertEqual(starting_generation + 1, pool.gen.get_overall())
 
-            # Expect a single pool reset for the network error
-            self.assertEqual(starting_generation + 1, pool.gen.get_overall())
-
-            # Server should be selectable.
-            client.admin.command("ping")
-    else:
-
-        def test_ignore_stale_connection_errors(self):
-            N_TASKS = 5
-            barrier = asyncio.Barrier(N_TASKS)
-            client = self.rs_or_single_client(minPoolSize=N_TASKS)
-
-            # Wait for initial discovery.
-            client.admin.command("ping")
-            pool = get_pool(client)
-            starting_generation = pool.gen.get_overall()
-            wait_until(lambda: len(pool.conns) == N_TASKS, "created conns")
-
-            def mock_command(*args, **kwargs):
-                # Synchronize all threads to ensure they use the same generation.
-                asyncio.wait_for(barrier.wait(), timeout=30)
-                raise AutoReconnect("mock Connection.command error")
-
-            for conn in pool.conns:
-                conn.command = mock_command
-
-            def insert_command(i):
-                try:
-                    client.test.command("insert", "test", documents=[{"i": i}])
-                except AutoReconnect:
-                    pass
-
-            tasks = []
-            for i in range(N_TASKS):
-                tasks.append(asyncio.create_task(insert_command(i)))
-            for t in tasks:
-                t
-
-            # Expect a single pool reset for the network error
-            self.assertEqual(starting_generation + 1, pool.gen.get_overall())
-
-            # Server should be selectable.
-            client.admin.command("ping")
+        # Server should be selectable.
+        client.admin.command("ping")
 
 
 class CMAPHeartbeatListener(HeartbeatEventListener, CMAPListener):
@@ -499,14 +460,12 @@ class TestHeartbeatStartOrdering(PyMongoTestCase):
             server = asyncio.start_server(handle_client, "localhost", 9999)
             server.events = events
             server.start_serving()
-            print(server.is_serving())
             _c = self.simple_client(
                 "mongodb://localhost:9999",
                 serverSelectionTimeoutMS=500,
                 event_listeners=(listener,),
             )
-            if _c._options.connect:
-                _c._connect()
+            _c._connect()
 
             listener.wait_for_event(ServerHeartbeatStartedEvent, 1)
             listener.wait_for_event(ServerHeartbeatFailedEvent, 1)
