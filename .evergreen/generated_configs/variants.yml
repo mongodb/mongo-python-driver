@@ -1079,6 +1079,19 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Server tests
+  - name: test-rhel8-python3.9-cov-no-c
+    tasks:
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
+    display_name: "* Test RHEL8 Python3.9 cov No C"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+    tags: [coverage_tag]
   - name: test-rhel8-python3.9-cov
     tasks:
       - name: .standalone .sync_async
@@ -1091,6 +1104,19 @@ buildvariants:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [coverage_tag]
+  - name: test-rhel8-python3.13-cov-no-c
+    tasks:
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
+    display_name: "* Test RHEL8 Python3.13 cov No C"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [coverage_tag]
   - name: test-rhel8-python3.13-cov
     tasks:
       - name: .standalone .sync_async
@@ -1102,6 +1128,19 @@ buildvariants:
     expansions:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [coverage_tag]
+  - name: test-rhel8-pypy3.10-cov-no-c
+    tasks:
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
+    display_name: "* Test RHEL8 PyPy3.10 cov No C"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
     tags: [coverage_tag]
   - name: test-rhel8-pypy3.10-cov
     tasks:
