@@ -10,7 +10,12 @@ if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
-_BIN_DIR=${PYMONGO_BIN_DIR:-$(pwd)}
+_BIN_DIR=${PYMONGO_BIN_DIR:-}
+
+# Handle remote containers/VMS.
+if [ -z "$BIN_DIR" ] &&  [ "$(uname -s)" = "Linux" ]; then
+  _BIN_DIR=/usr/local/bin
+fi
 
 # Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
@@ -28,6 +33,10 @@ function _pip_install() {
 
 # Ensure just is installed.
 if ! command -v just 2>/dev/null; then
+  if [ -z "$BIN_DIR" ]; then
+    echo "Please install just!"
+    exit 1
+  fi
   # On most systems we can install directly.
   _TARGET=""
   if [ "Windows_NT" = "${OS:-}" ]; then
@@ -43,6 +52,10 @@ fi
 
 # Install uv.
 if ! command -v uv 2>/dev/null; then
+  if [ -z "$BIN_DIR" ]; then
+    echo "Please install uv!"
+    exit 1
+  fi
   echo "Installing uv..."
   # On most systems we can install directly.
   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
