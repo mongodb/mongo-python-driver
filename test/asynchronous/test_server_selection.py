@@ -31,17 +31,17 @@ from pymongo.typings import strip_optional
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.utils_selection_tests import (
+    create_selection_tests,
+    get_addresses,
+    get_topology_settings_dict,
+    make_server_description,
+)
 from test.utils import (
     EventListener,
     FunctionCallRecorder,
     OvertCommandListener,
     async_wait_until,
-)
-from test.utils_selection_tests import (
-    create_selection_tests,
-    get_addresses,
-    get_topology_settings_dict,
-    make_server_description,
 )
 
 _IS_SYNC = False
