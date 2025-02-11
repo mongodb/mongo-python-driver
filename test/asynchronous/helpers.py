@@ -422,19 +422,3 @@ class ExceptionCatchingTask(ConcurrentRunner):
         except BaseException as exc:
             self.exc = exc
             raise
-
-
-def create_barrier(N_TASKS, timeout: float | None = None):
-    return threading.Barrier(N_TASKS, timeout=timeout)
-
-
-def async_create_barrier(N_TASKS, timeout: float | None = None):
-    return asyncio.Barrier(N_TASKS)
-
-
-def barrier_wait(barrier, timeout: float | None = None):
-    barrier.wait()
-
-
-async def async_barrier_wait(barrier, timeout: float | None = None):
-    await asyncio.wait_for(barrier.wait(), timeout=timeout)
