@@ -242,7 +242,7 @@ def handle_test_env() -> None:
         run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/start-servers.sh")
 
     if is_set("TEST_CRYPT_SHARED"):
-        CRYPT_SHARED_DIR = Path(os.environ["CRYPT_SHARED_LIB_PATH"]).parent
+        CRYPT_SHARED_DIR = Path(os.environ["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
         DYLD_FALLBACK_LIBRARY_PATH = os.environ.get("DYLD_FALLBACK_LIBRARY_PATH", "")
         LD_LIBRARY_PATH = os.environ.get("LD_LIBRARY_PATH", "")
