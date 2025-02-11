@@ -3,7 +3,6 @@
 set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
-CURRENT=$(pwd)
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
 
 # Source the env files to pick up common variables.
@@ -11,7 +10,7 @@ if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
-_BIN_DIR=${PYMONGO_BIN_DIR:-$CURRENT}
+_BIN_DIR=${PYMONGO_BIN_DIR:-$(pwd)}
 
 # Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
