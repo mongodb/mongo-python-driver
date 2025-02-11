@@ -11,6 +11,7 @@ if [ -f $HERE/env.sh ]; then
 fi
 
 _BIN_DIR=${PYMONGO_BIN_DIR:-$HOME/.local/bin}
+export PATH="$PATH:${_BIN_DIR}"
 
 # Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
