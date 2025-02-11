@@ -1126,7 +1126,8 @@ class AsyncCursor(Generic[_DocumentType]):
             self._killed = True
             await self.close()
             raise
-        except Exception:
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
+        except BaseException:
             await self.close()
             raise
 
