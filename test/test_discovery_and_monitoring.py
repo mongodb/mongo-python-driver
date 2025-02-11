@@ -277,6 +277,8 @@ class TestClusterTimeComparison(unittest.TestCase):
 
 class TestIgnoreStaleErrors(IntegrationTest):
     def test_ignore_stale_connection_errors(self):
+        if not _IS_SYNC and sys.version_info < (3, 11):
+            self.skipTest("Test requires asyncio.Barrier (added in Python 3.11)")
         N_TASKS = 5
         barrier = create_barrier(N_TASKS, timeout=30)
         client = self.rs_or_single_client(minPoolSize=N_TASKS)
