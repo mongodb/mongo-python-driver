@@ -159,7 +159,7 @@ class TestProse(AsyncIntegrationTest):
             "mode": {"times": 10000},
             "data": {
                 "failCommands": ["find"],
-                "blockAsyncConnection": True,
+                "blockConnection": True,
                 "blockTimeMS": 500,
                 "appName": "loadBalancingTest",
             },
