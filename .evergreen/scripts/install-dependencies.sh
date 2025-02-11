@@ -13,7 +13,7 @@ fi
 _BIN_DIR=${PYMONGO_BIN_DIR:-}
 
 # Handle remote containers/VMS.
-if [ -z "$BIN_DIR" ] &&  [ "$(uname -s)" = "Linux" ]; then
+if [ -z "$_BIN_DIR" ] &&  [ "$(uname -s)" = "Linux" ]; then
   _BIN_DIR=/usr/local/bin
 fi
 
@@ -33,7 +33,7 @@ function _pip_install() {
 
 # Ensure just is installed.
 if ! command -v just 2>/dev/null; then
-  if [ -z "$BIN_DIR" ]; then
+  if [ -z "$_BIN_DIR" ]; then
     echo "Please install just!"
     exit 1
   fi
@@ -52,7 +52,7 @@ fi
 
 # Install uv.
 if ! command -v uv 2>/dev/null; then
-  if [ -z "$BIN_DIR" ]; then
+  if [ -z "$_BIN_DIR" ]; then
     echo "Please install uv!"
     exit 1
   fi
