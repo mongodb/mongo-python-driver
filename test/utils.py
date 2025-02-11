@@ -832,7 +832,7 @@ async def async_get_pools(client):
     """Get all pools."""
     return [
         server.pool
-        async for server in await (await client._get_topology()).select_servers(
+        for server in await (await client._get_topology()).select_servers(
             any_server_selector, _Op.TEST
         )
     ]

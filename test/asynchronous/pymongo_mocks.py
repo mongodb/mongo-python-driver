@@ -66,7 +66,7 @@ class DummyMonitor:
     def cancel_check(self):
         pass
 
-    def join(self):
+    async def join(self):
         pass
 
     def open(self):
