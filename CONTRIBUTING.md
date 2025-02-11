@@ -178,7 +178,7 @@ documentation including narrative docs, and the [Sphinx docstring format](https:
 You can build the documentation locally by running:
 
 ```bash
-just docs-build
+just docs
 ```
 
 When updating docs, it can be helpful to run the live docs server as:
@@ -260,6 +260,11 @@ You can run `pre-commit run --all-files synchro` before running tests if you are
 To prevent the `synchro` hook from accidentally overwriting code, it first checks to see whether a sync version
 of a file is changing and not its async counterpart, and will fail.
 In the unlikely scenario that you want to override this behavior, first export `OVERRIDE_SYNCHRO_CHECK=1`.
+
+Sometimes, the `synchro` hook will fail and introduce changes many previously unmodified files. This is due to static
+Python errors, such as missing imports, incorrect syntax, or other fatal typos. To resolve these issues,
+run `pre-commit run --all-files --hook-stage manual ruff` and fix all reported errors before running the `synchro`
+hook again.
 
 ## Converting a test to async
 The `tools/convert_test_to_async.py` script takes in an existing synchronous test file and outputs a
