@@ -204,6 +204,7 @@ converted_tests = [
     "test_comment.py",
     "test_common.py",
     "test_connection_logging.py",
+    "test_connection_monitoring.py",
     "test_connections_survive_primary_stepdown_spec.py",
     "test_create_entities.py",
     "test_crud_unified.py",
