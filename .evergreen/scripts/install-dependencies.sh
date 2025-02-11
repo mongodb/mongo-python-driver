@@ -21,6 +21,7 @@ function _pip_install() {
   createvirtualenv "$(find_python3)" $_VENV_PATH
   python -m pip install $1
   ln -s "$(which $2)" $_BIN_DIR/$2
+  echo "Installed to ${_BIN_DIR}"
   echo "Installing $2 using pip... done."
 }
 
