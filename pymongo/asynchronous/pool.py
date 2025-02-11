@@ -40,7 +40,7 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
-from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.asynchronous.helpers import _getaddrinfo, _handle_reauth
 from pymongo.asynchronous.network import command, receive_message
 from pymongo.common import (
     MAX_BSON_SIZE,
@@ -559,7 +559,7 @@ class AsyncConnection:
             )
         except (OperationFailure, NotPrimaryError):
             raise
-        # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
+        # Catch socket.error, KeyboardInterrupt, CancelledError, etc. and close ourselves.
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -576,6 +576,7 @@ class AsyncConnection:
 
         try:
             await async_sendall(self.conn, message)
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -586,6 +587,7 @@ class AsyncConnection:
         """
         try:
             return await receive_message(self, request_id, self.max_message_size)
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -783,7 +785,7 @@ class AsyncConnection:
         )
 
 
-def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
+async def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
     """Given (host, port) and PoolOptions, connect and return a socket object.
 
     Can raise socket.error.
@@ -814,7 +816,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         family = socket.AF_UNSPEC
 
     err = None
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+    for res in await _getaddrinfo(host, port, family=family, type=socket.SOCK_STREAM):  # type: ignore[attr-defined]
         af, socktype, proto, dummy, sa = res
         # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
         # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
@@ -863,7 +865,7 @@ async def _configured_socket(
 
     Sets socket's SSL and timeout options.
     """
-    sock = _create_connection(address, options)
+    sock = await _create_connection(address, options)
     ssl_context = options._ssl_context
 
     if ssl_context is None:
@@ -1269,6 +1271,7 @@ class Pool:
 
         try:
             sock = await _configured_socket(self.address, self.opts)
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             async with self.lock:
                 self.active_contexts.discard(tmp_context)
@@ -1308,6 +1311,7 @@ class Pool:
                 handler.contribute_socket(conn, completed_handshake=False)
 
             await conn.authenticate()
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             async with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
@@ -1369,6 +1373,7 @@ class Pool:
             async with self.lock:
                 self.active_contexts.add(conn.cancel_context)
             yield conn
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             # Exception in caller. Ensure the connection gets returned.
             # Note that when pinned is True, the session owns the
@@ -1515,6 +1520,7 @@ class Pool:
                         async with self._max_connecting_cond:
                             self._pending -= 1
                             self._max_connecting_cond.notify()
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             if conn:
                 # We checked out a socket but authentication failed.

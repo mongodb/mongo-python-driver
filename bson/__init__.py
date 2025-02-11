@@ -1386,7 +1386,7 @@ def is_valid(bson: bytes) -> bool:
     :param bson: the data to be validated
     """
     if not isinstance(bson, bytes):
-        raise TypeError("BSON data must be an instance of a subclass of bytes")
+        raise TypeError(f"BSON data must be an instance of a subclass of bytes, not {type(bson)}")
 
     try:
         _bson_to_dict(bson, DEFAULT_CODEC_OPTIONS)

@@ -84,7 +84,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI, SSLError
 from pymongo.synchronous.client_session import _validate_session_write_concern
-from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.helpers import _getaddrinfo, _handle_reauth
 from pymongo.synchronous.network import command, receive_message
 
 if TYPE_CHECKING:
@@ -559,7 +559,7 @@ class Connection:
             )
         except (OperationFailure, NotPrimaryError):
             raise
-        # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
+        # Catch socket.error, KeyboardInterrupt, CancelledError, etc. and close ourselves.
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -576,6 +576,7 @@ class Connection:
 
         try:
             sendall(self.conn, message)
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -586,6 +587,7 @@ class Connection:
         """
         try:
             return receive_message(self, request_id, self.max_message_size)
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -812,7 +814,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         family = socket.AF_UNSPEC
 
     err = None
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+    for res in _getaddrinfo(host, port, family=family, type=socket.SOCK_STREAM):  # type: ignore[attr-defined]
         af, socktype, proto, dummy, sa = res
         # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
         # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
@@ -1263,6 +1265,7 @@ class Pool:
 
         try:
             sock = _configured_socket(self.address, self.opts)
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             with self.lock:
                 self.active_contexts.discard(tmp_context)
@@ -1302,6 +1305,7 @@ class Pool:
                 handler.contribute_socket(conn, completed_handshake=False)
 
             conn.authenticate()
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
@@ -1363,6 +1367,7 @@ class Pool:
             with self.lock:
                 self.active_contexts.add(conn.cancel_context)
             yield conn
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             # Exception in caller. Ensure the connection gets returned.
             # Note that when pinned is True, the session owns the
@@ -1509,6 +1514,7 @@ class Pool:
                         with self._max_connecting_cond:
                             self._pending -= 1
                             self._max_connecting_cond.notify()
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             if conn:
                 # We checked out a socket but authentication failed.

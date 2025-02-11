@@ -21,13 +21,13 @@ import re
 import sys
 import uuid
 from collections import OrderedDict
-from typing import Any, List, MutableMapping, Tuple, Type
+from typing import Any, Tuple, Type
 
 from bson.codec_options import CodecOptions, DatetimeConversion
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, unittest
+from test import unittest
 
 from bson import EPOCH_AWARE, EPOCH_NAIVE, SON, DatetimeMS, json_util
 from bson.binary import (
@@ -634,25 +634,6 @@ class TestJsonUtil(unittest.TestCase):
 
         expected_json = json_util.dumps(Binary(b"bin", USER_DEFINED_SUBTYPE))
         self.assertEqual(json_util.dumps(MyBinary(b"bin", USER_DEFINED_SUBTYPE)), expected_json)
-
-
-class TestJsonUtilRoundtrip(IntegrationTest):
-    def test_cursor(self):
-        db = self.db
-
-        db.drop_collection("test")
-        docs: List[MutableMapping[str, Any]] = [
-            {"foo": [1, 2]},
-            {"bar": {"hello": "world"}},
-            {"code": Code("function x() { return 1; }")},
-            {"bin": Binary(b"\x00\x01\x02\x03\x04", USER_DEFINED_SUBTYPE)},
-            {"dbref": {"_ref": DBRef("simple", ObjectId("509b8db456c02c5ab7e63c34"))}},
-        ]
-
-        db.test.insert_many(docs)
-        reloaded_docs = json_util.loads(json_util.dumps(db.test.find()))
-        for doc in docs:
-            self.assertTrue(doc in reloaded_docs)
 
 
 if __name__ == "__main__":

@@ -234,10 +234,7 @@ class ClientUnitTest(UnitTest):
 
     def test_iteration(self):
         client = self.client
-        if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
-            msg = "'NoneType' object is not callable"
-        else:
-            msg = "'MongoClient' object is not iterable"
+        msg = "'MongoClient' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in client:  # type: ignore[misc] # error: "None" not callable  [misc]
@@ -2402,7 +2399,7 @@ class TestMongoClientFailover(MockClientTest):
 
         # MongoClient discovers it's alone. The first attempt raises either
         # ServerSelectionTimeoutError or AutoReconnect (from
-        # AsyncMockPool.get_socket).
+        # MockPool.get_socket).
         with self.assertRaises(AutoReconnect):
             c.db.collection.find_one()
 

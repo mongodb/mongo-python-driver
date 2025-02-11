@@ -1,7 +1,0 @@
-mypy==1.14.1
-pyright==1.1.391
-typing_extensions
--r ./encryption.txt
--r ./ocsp.txt
--r ./zstd.txt
--r ./aws.txt

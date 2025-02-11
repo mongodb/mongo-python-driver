@@ -23,20 +23,20 @@ import pytest
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import IntegrationTest, UnitTest, client_context, unittest
 from test.unified_format import generate_test_classes
 from test.utils import (
     OvertCommandListener,
 )
 
+from pymongo.synchronous.helpers import next
+
+_IS_SYNC = True
+
 pytestmark = pytest.mark.data_lake
 
 
-# Location of JSON test specifications.
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data_lake")
-
-
-class TestDataLakeMustConnect(unittest.TestCase):
+class TestDataLakeMustConnect(UnitTest):
     def test_connected_to_data_lake(self):
         data_lake = os.environ.get("TEST_DATA_LAKE")
         if not data_lake:
@@ -55,10 +55,9 @@ class TestDataLakeProse(IntegrationTest):
     TEST_DB = "test"
     TEST_COLLECTION = "driverdata"
 
-    @classmethod
     @client_context.require_data_lake
-    def setUpClass(cls):
-        super().setUpClass()
+    def setUp(self):
+        super().setUp()
 
     # Test killCursors
     def test_1(self):
@@ -99,7 +98,10 @@ class TestDataLakeProse(IntegrationTest):
 
 
 # Location of JSON test specifications.
-TEST_PATH = Path(__file__).parent / "data_lake/unified"
+if _IS_SYNC:
+    TEST_PATH = Path(__file__).parent / "data_lake/unified"
+else:
+    TEST_PATH = Path(__file__).parent.parent / "data_lake/unified"
 
 # Generate unified tests.
 globals().update(generate_test_classes(TEST_PATH, module=__name__))

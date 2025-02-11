@@ -39,11 +39,12 @@ from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import AsyncMongoClient, monitoring, operations, read_preferences
+from pymongo._asyncio_task import create_task
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.helpers_shared import _SENSITIVE_COMMANDS
-from pymongo.lock import _create_lock
+from pymongo.lock import _async_create_lock, _create_lock
 from pymongo.monitoring import (
     ConnectionCheckedInEvent,
     ConnectionCheckedOutEvent,
@@ -312,6 +313,22 @@ class HeartbeatEventsListListener(HeartbeatEventListener):
         self.event_list.append("serverHeartbeatFailedEvent")
 
 
+class AsyncMockConnection:
+    def __init__(self):
+        self.cancel_context = _CancellationContext()
+        self.more_to_come = False
+        self.id = random.randint(0, 100)
+
+    def close_conn(self, reason):
+        pass
+
+    def __aenter__(self):
+        return self
+
+    def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
 class MockConnection:
     def __init__(self):
         self.cancel_context = _CancellationContext()
@@ -325,6 +342,47 @@ class MockConnection:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class AsyncMockPool:
+    def __init__(self, address, options, handshake=True, client_id=None):
+        self.gen = _PoolGeneration()
+        self._lock = _async_create_lock()
+        self.opts = options
+        self.operation_count = 0
+        self.conns = []
+
+    def stale_generation(self, gen, service_id):
+        return self.gen.stale(gen, service_id)
+
+    @contextlib.asynccontextmanager
+    async def checkout(self, handler=None):
+        yield AsyncMockConnection()
+
+    async def checkin(self, *args, **kwargs):
+        pass
+
+    async def _reset(self, service_id=None):
+        async with self._lock:
+            self.gen.inc(service_id)
+
+    async def ready(self):
+        pass
+
+    async def reset(self, service_id=None, interrupt_connections=False):
+        await self._reset()
+
+    async def reset_without_pause(self):
+        await self._reset()
+
+    async def close(self):
+        await self._reset()
+
+    async def update_is_writable(self, is_writable):
+        pass
+
+    async def remove_stale_sockets(self, *args, **kwargs):
         pass
 
 
@@ -608,6 +666,11 @@ def joinall(threads):
         assert not t.is_alive(), "Thread %s hung" % t
 
 
+async def async_joinall(tasks):
+    """Join threads with a 5-minute timeout, assert joins succeeded"""
+    await asyncio.wait([t.task for t in tasks if t is not None], timeout=300)
+
+
 def wait_until(predicate, success_description, timeout=10):
     """Wait up to 10 seconds (by default) for predicate to be true.
 
@@ -769,7 +832,7 @@ async def async_get_pools(client):
     """Get all pools."""
     return [
         server.pool
-        async for server in await (await client._get_topology()).select_servers(
+        for server in await (await client._get_topology()).select_servers(
             any_server_selector, _Op.TEST
         )
     ]
@@ -853,21 +916,6 @@ def eventlet_monkey_patched():
 
 def is_greenthread_patched():
     return gevent_monkey_patched() or eventlet_monkey_patched()
-
-
-class ExceptionCatchingThread(threading.Thread):
-    """A thread that stores any exception encountered from run()."""
-
-    def __init__(self, *args, **kwargs):
-        self.exc = None
-        super().__init__(*args, **kwargs)
-
-    def run(self):
-        try:
-            super().run()
-        except BaseException as exc:
-            self.exc = exc
-            raise
 
 
 def parse_read_preference(pref):
@@ -1022,3 +1070,11 @@ async def async_set_fail_point(client, command_args):
     cmd = SON([("configureFailPoint", "failCommand")])
     cmd.update(command_args)
     await client.admin.command(cmd)
+
+
+def create_async_event():
+    return asyncio.Event()
+
+
+def create_event():
+    return threading.Event()

@@ -107,7 +107,7 @@ def _build_credentials_tuple(
 ) -> MongoCredential:
     """Build and return a mechanism specific credentials tuple."""
     if mech not in ("MONGODB-X509", "MONGODB-AWS", "MONGODB-OIDC") and user is None:
-        raise ConfigurationError(f"{mech} requires a username.")
+        raise ConfigurationError(f"{mech} requires a username")
     if mech == "GSSAPI":
         if source is not None and source != "$external":
             raise ValueError("authentication source must be $external or None for GSSAPI")
@@ -219,7 +219,7 @@ def _build_credentials_tuple(
     else:
         source_database = source or database or "admin"
         if passwd is None:
-            raise ConfigurationError("A password is required.")
+            raise ConfigurationError("A password is required")
         return MongoCredential(mech, source_database, user, passwd, None, _Cache())
 
 

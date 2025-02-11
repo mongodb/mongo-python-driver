@@ -119,6 +119,12 @@ replacements = {
     "_async_create_lock": "_create_lock",
     "_async_create_condition": "_create_condition",
     "_async_cond_wait": "_cond_wait",
+    "SpecRunnerTask": "SpecRunnerThread",
+    "AsyncMockConnection": "MockConnection",
+    "AsyncMockPool": "MockPool",
+    "StopAsyncIteration": "StopIteration",
+    "create_async_event": "create_event",
+    "async_joinall": "joinall",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -149,6 +155,10 @@ _pymongo_dest_base = "./pymongo/synchronous/"
 _gridfs_dest_base = "./gridfs/synchronous/"
 _test_dest_base = "./test/"
 
+if not Path.exists(Path(_pymongo_dest_base)):
+    Path.mkdir(Path(_pymongo_dest_base))
+if not Path.exists(Path(_gridfs_dest_base)):
+    Path.mkdir(Path(_gridfs_dest_base))
 
 async_files = [
     _pymongo_base + f for f in listdir(_pymongo_base) if (Path(_pymongo_base) / f).is_file()
@@ -161,25 +171,13 @@ gridfs_files = [
 
 def async_only_test(f: str) -> bool:
     """Return True for async tests that should not be converted to sync."""
-    return f in ["test_locks.py", "test_concurrency.py"]
+    return f in ["test_locks.py", "test_concurrency.py", "test_async_cancellation.py"]
 
 
 test_files = [
     _test_base + f
     for f in listdir(_test_base)
     if (Path(_test_base) / f).is_file() and not async_only_test(f)
-]
-
-sync_files = [
-    _pymongo_dest_base + f
-    for f in listdir(_pymongo_dest_base)
-    if (Path(_pymongo_dest_base) / f).is_file()
-]
-
-sync_gridfs_files = [
-    _gridfs_dest_base + f
-    for f in listdir(_gridfs_dest_base)
-    if (Path(_gridfs_dest_base) / f).is_file()
 ]
 
 # Add each asynchronized test here as part of the converting PR
@@ -206,32 +204,61 @@ converted_tests = [
     "test_comment.py",
     "test_common.py",
     "test_connection_logging.py",
+    "test_connection_monitoring.py",
     "test_connections_survive_primary_stepdown_spec.py",
     "test_create_entities.py",
     "test_crud_unified.py",
     "test_cursor.py",
+    "test_custom_types.py",
     "test_database.py",
+    "test_data_lake.py",
+    "test_dns.py",
     "test_encryption.py",
+    "test_examples.py",
     "test_grid_file.py",
+    "test_gridfs.py",
+    "test_gridfs_bucket.py",
+    "test_gridfs_spec.py",
+    "test_heartbeat_monitoring.py",
+    "test_index_management.py",
+    "test_json_util_integration.py",
+    "test_load_balancer.py",
     "test_logger.py",
+    "test_max_staleness.py",
     "test_monitoring.py",
+    "test_mongos_load_balancing.py",
+    "test_on_demand_csfle.py",
     "test_raw_bson.py",
+    "test_read_concern.py",
+    "test_read_preferences.py",
+    "test_read_write_concern_spec.py",
     "test_retryable_reads.py",
+    "test_retryable_reads_unified.py",
     "test_retryable_writes.py",
+    "test_retryable_writes_unified.py",
+    "test_run_command.py",
+    "test_sdam_monitoring_spec.py",
+    "test_server_selection.py",
+    "test_server_selection_in_window.py",
+    "test_server_selection_logging.py",
+    "test_server_selection_rtt.py",
     "test_session.py",
+    "test_sessions_unified.py",
+    "test_srv_polling.py",
+    "test_ssl.py",
+    "test_streaming_protocol.py",
     "test_transactions.py",
+    "test_transactions_unified.py",
+    "test_unified_format.py",
+    "test_versioned_api_integration.py",
     "unified_format.py",
-]
-
-sync_test_files = [
-    _test_dest_base + f for f in converted_tests if (Path(_test_dest_base) / f).is_file()
+    "utils_selection_tests.py",
 ]
 
 
-docstring_translate_files = sync_files + sync_gridfs_files + sync_test_files
-
-
-def process_files(files: list[str]) -> None:
+def process_files(
+    files: list[str], docstring_translate_files: list[str], sync_test_files: list[str]
+) -> None:
     for file in files:
         if "__init__" not in file or "__init__" and "test" in file:
             with open(file, "r+") as f:
@@ -374,7 +401,27 @@ def main() -> None:
     unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
     unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
     unasync_directory(test_files, _test_base, _test_dest_base, replacements)
-    process_files(sync_files + sync_gridfs_files + sync_test_files)
+
+    sync_files = [
+        _pymongo_dest_base + f
+        for f in listdir(_pymongo_dest_base)
+        if (Path(_pymongo_dest_base) / f).is_file()
+    ]
+
+    sync_gridfs_files = [
+        _gridfs_dest_base + f
+        for f in listdir(_gridfs_dest_base)
+        if (Path(_gridfs_dest_base) / f).is_file()
+    ]
+    sync_test_files = [
+        _test_dest_base + f for f in converted_tests if (Path(_test_dest_base) / f).is_file()
+    ]
+
+    docstring_translate_files = sync_files + sync_gridfs_files + sync_test_files
+
+    process_files(
+        sync_files + sync_gridfs_files + sync_test_files, docstring_translate_files, sync_test_files
+    )
 
 
 if __name__ == "__main__":
