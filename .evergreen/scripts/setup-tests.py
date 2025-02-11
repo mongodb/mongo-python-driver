@@ -244,12 +244,14 @@ def handle_test_env() -> None:
     if is_set("TEST_CRYPT_SHARED"):
         CRYPT_SHARED_DIR = Path(os.environ["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
-        write_env(
-            "DYLD_FALLBACK_LIBRARY_PATH",
-            f"{CRYPT_SHARED_DIR}:$DYLD_FALLBACK_LIBRARY_PATH",
-        )
-        write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:$LD_LIBRARY_PATH")
-        write_env("PATH", f"{CRYPT_SHARED_DIR}:$PATH")
+        if os.name == "nt":
+            write_env("PATH", f"{CRYPT_SHARED_DIR}:$PATH")
+        else:
+            write_env(
+                "DYLD_FALLBACK_LIBRARY_PATH",
+                f"{CRYPT_SHARED_DIR}:${{DYLD_FALLBACK_LIBRARY_PATH:-}}",
+            )
+            write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:${{LD_LIBRARY_PATH:-}}")
 
     if is_set("TEST_FLE_AZURE_AUTO") or is_set("TEST_FLE_GCP_AUTO"):
         if "SUCCESS" not in os.environ:
