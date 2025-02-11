@@ -166,6 +166,9 @@ def check_outcome(self, topology, outcome):
             server_type_name(expected_server_type),
             server_type_name(actual_server_description.server_type),
         )
+        expected_error = expected_server.get("error")
+        if expected_error:
+            self.assertIn(expected_error, str(actual_server_description.error))
 
         self.assertEqual(expected_server.get("setName"), actual_server_description.replica_set_name)
 
