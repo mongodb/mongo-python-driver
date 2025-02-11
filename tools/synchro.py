@@ -122,6 +122,7 @@ replacements = {
     "SpecRunnerTask": "SpecRunnerThread",
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",
+    "create_async_event": "create_event",
     "async_create_barrier": "create_barrier",
     "async_barrier_wait": "barrier_wait",
 }
@@ -170,7 +171,7 @@ gridfs_files = [
 
 def async_only_test(f: str) -> bool:
     """Return True for async tests that should not be converted to sync."""
-    return f in ["test_locks.py", "test_concurrency.py"]
+    return f in ["test_locks.py", "test_concurrency.py", "test_async_cancellation.py"]
 
 
 test_files = [
@@ -217,11 +218,13 @@ converted_tests = [
     "test_heartbeat_monitoring.py",
     "test_index_management.py",
     "test_grid_file.py",
+    "test_load_balancer.py",
     "test_json_util_integration.py",
     "test_gridfs_spec.py",
     "test_logger.py",
     "test_max_staleness.py",
     "test_monitoring.py",
+    "test_mongos_load_balancing.py",
     "test_on_demand_csfle.py",
     "test_raw_bson.py",
     "test_read_concern.py",
@@ -232,6 +235,7 @@ converted_tests = [
     "test_retryable_writes.py",
     "test_retryable_writes_unified.py",
     "test_run_command.py",
+    "test_sdam_monitoring_spec.py",
     "test_server_selection_logging.py",
     "test_session.py",
     "test_server_selection_rtt.py",

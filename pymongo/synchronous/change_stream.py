@@ -389,7 +389,8 @@ class ChangeStream(Generic[_DocumentType]):
             if not _resumable(exc) and not exc.timeout:
                 self.close()
             raise
-        except Exception:
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
+        except BaseException:
             self.close()
             raise
 
