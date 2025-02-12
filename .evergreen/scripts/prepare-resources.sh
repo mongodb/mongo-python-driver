@@ -7,8 +7,6 @@ pushd $HERE
 
 rm -rf $DRIVERS_TOOLS
 git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
-echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" >$MONGO_ORCHESTRATION_HOME/orchestration.config
-
 popd
 
 # Copy PyMongo's test certificates over driver-evergreen-tools'
