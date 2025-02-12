@@ -122,7 +122,9 @@ replacements = {
     "SpecRunnerTask": "SpecRunnerThread",
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",
+    "StopAsyncIteration": "StopIteration",
     "create_async_event": "create_event",
+    "async_joinall": "joinall",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -202,6 +204,7 @@ converted_tests = [
     "test_comment.py",
     "test_common.py",
     "test_connection_logging.py",
+    "test_connection_monitoring.py",
     "test_connections_survive_primary_stepdown_spec.py",
     "test_create_entities.py",
     "test_crud_unified.py",
@@ -213,12 +216,14 @@ converted_tests = [
     "test_dns.py",
     "test_encryption.py",
     "test_examples.py",
+    "test_grid_file.py",
+    "test_gridfs.py",
+    "test_gridfs_bucket.py",
+    "test_gridfs_spec.py",
     "test_heartbeat_monitoring.py",
     "test_index_management.py",
-    "test_grid_file.py",
-    "test_load_balancer.py",
     "test_json_util_integration.py",
-    "test_gridfs_spec.py",
+    "test_load_balancer.py",
     "test_logger.py",
     "test_max_staleness.py",
     "test_monitoring.py",
@@ -234,9 +239,11 @@ converted_tests = [
     "test_retryable_writes_unified.py",
     "test_run_command.py",
     "test_sdam_monitoring_spec.py",
+    "test_server_selection.py",
+    "test_server_selection_in_window.py",
     "test_server_selection_logging.py",
-    "test_session.py",
     "test_server_selection_rtt.py",
+    "test_session.py",
     "test_sessions_unified.py",
     "test_srv_polling.py",
     "test_ssl.py",
@@ -246,6 +253,7 @@ converted_tests = [
     "test_unified_format.py",
     "test_versioned_api_integration.py",
     "unified_format.py",
+    "utils_selection_tests.py",
 ]
 
 

@@ -42,7 +42,7 @@ functions:
     # Make an evergreen expansion file with dynamic values
     - command: subprocess.exec
       params:
-        include_expansions_in_env: ["is_patch", "project", "version_id", "AUTH", "SSL", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "SETDEFAULTENCODING", "test_loadbalancer", "test_serverless", "SKIP_CSOT_TESTS", "MONGODB_STARTED", "DISABLE_TEST_COMMANDS", "GREEN_FRAMEWORK", "NO_EXT", "COVERAGE", "COMPRESSORS", "TEST_SUITES", "MONGODB_API_VERSION", "skip_crypt_shared", "VERSION", "TOPOLOGY", "STORAGE_ENGINE", "ORCHESTRATION_FILE", "REQUIRE_API_VERSION", "LOAD_BALANCER", "skip_web_identity_auth_test", "skip_ECS_auth_test"]
+        include_expansions_in_env: ["is_patch", "project", "version_id", "AUTH", "SSL", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL", "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "SETDEFAULTENCODING", "TEST_LOADBALANCER", "TEST_SEVERLESS", "SKIP_CSOT_TESTS", "MONGODB_STARTED", "DISABLE_TEST_COMMANDS", "GREEN_FRAMEWORK", "NO_EXT", "COVERAGE", "COMPRESSORS", "MONGODB_API_VERSION", "skip_crypt_shared", "VERSION", "TOPOLOGY", "STORAGE_ENGINE", "ORCHESTRATION_FILE", "REQUIRE_API_VERSION", "LOAD_BALANCER", "skip_web_identity_auth_test", "skip_ECS_auth_test"]
         binary: bash
         working_dir: "src"
         args:
@@ -274,39 +274,22 @@ functions:
 
   "run tests":
     - command: subprocess.exec
+      type: test
       params:
-        include_expansions_in_env: ["TEST_DATA_LAKE", "PYTHON_BINARY", "AUTH", "SSL", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE"]
+        include_expansions_in_env: ["TEST_DATA_LAKE", "PYTHON_BINARY", "AUTH", "SSL",
+          "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "TEST_SUITES",
+          "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "TEST_ENCRYPTION", "TEST_ENCRYPTION_PYOPENSSL",
+          "TEST_CRYPT_SHARED", "TEST_PYOPENSSL", "TEST_LOADBALANCER", "TEST_SEVERLESS", "MONGODB_URI"]
         binary: bash
         working_dir: "src"
         args:
           - .evergreen/scripts/setup-tests.sh
     - command: subprocess.exec
-      params:
-          working_dir: "src"
-          binary: bash
-          background: true
-          include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-          args:
-            - .evergreen/scripts/run-with-env.sh
-            - .evergreen/scripts/setup-encryption.sh
-    - command: subprocess.exec
       type: test
       params:
         working_dir: "src"
         binary: bash
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY", "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "SINGLE_MONGOS_LB_URI", "MULTI_MONGOS_LB_URI", "TEST_SUITES"]
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-tests.sh
-
-  "run direct tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        working_dir: "src"
-        binary: bash
-        include_expansions_in_env: ["PYTHON_BINARY"]
-        args: [ .evergreen/scripts/run-direct-tests.sh ]
+        args: [.evergreen/just.sh, test-eg]
 
   "run enterprise auth tests":
     - command: subprocess.exec
@@ -341,13 +324,6 @@ functions:
 
   "run aws auth test with regular aws credentials":
     - command: subprocess.exec
-      params:
-        include_expansions_in_env: ["TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
-    - command: subprocess.exec
       type: test
       params:
         include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
@@ -359,13 +335,6 @@ functions:
           - regular
 
   "run aws auth test with assume role credentials":
-    - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
     - command: subprocess.exec
       type: test
       params:
@@ -379,13 +348,6 @@ functions:
 
   "run aws auth test with aws EC2 credentials":
     - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
-    - command: subprocess.exec
       type: test
       params:
         include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
@@ -397,13 +359,6 @@ functions:
           - ec2
 
   "run aws auth test with aws web identity credentials":
-    - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
     - # Test with and without AWS_ROLE_SESSION_NAME set.
     - command: subprocess.exec
       type: test
@@ -430,13 +385,6 @@ functions:
 
   "run aws auth test with aws credentials as environment variables":
     - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
-    - command: subprocess.exec
       type: test
       params:
         include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
@@ -449,13 +397,6 @@ functions:
 
   "run aws auth test with aws credentials and session token as environment variables":
     - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
-    - command: subprocess.exec
       type: test
       params:
         include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
@@ -467,13 +408,6 @@ functions:
           - session-creds
 
   "run oidc auth test with test credentials":
-    - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
     - command: subprocess.exec
       type: test
       params:
@@ -562,13 +496,6 @@ functions:
 
   "run-ocsp-test":
     - command: subprocess.exec
-      params:
-        include_expansions_in_env: [ "TEST_DATA_LAKE", "TEST_INDEX_MANAGEMENT", "CRYPT_SHARED_LIB_PATH", "test_encryption", "test_encryption_pyopenssl", "test_crypt_shared", "test_pyopenssl", "test_loadbalancer", "test_serverless", "ORCHESTRATION_FILE" ]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/setup-tests.sh
-    - command: subprocess.exec
       type: test
       params:
         include_expansions_in_env: ["OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED", "PYTHON_BINARY"]
@@ -586,25 +513,6 @@ functions:
         include_expansions_in_env: [SERVER_TYPE, OCSP_ALGORITHM]
         args:
           - ${DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh
-
-  "run load-balancer":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        include_expansions_in_env: ["MONGODB_URI"]
-        args:
-          - src/.evergreen/scripts/run-with-env.sh
-          - src/.evergreen/scripts/run-load-balancer.sh
-    - command: expansions.update
-      params:
-        file: lb-expansion.yml
-
-  "stop load-balancer":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - src/.evergreen/scripts/stop-load-balancer.sh
 
   "teardown atlas":
     - command: subprocess.exec
@@ -882,6 +790,7 @@ tasks:
         - func: "run tests"
           vars:
             TEST_INDEX_MANAGEMENT: "1"
+            AUTH: "auth"
 
     - name: "mod-wsgi-standalone"
       tags: ["mod_wsgi"]
@@ -935,7 +844,7 @@ tasks:
           vars:
             VERSION: "8.0"
             TOPOLOGY: "replica_set"
-        - func: "run direct tests"
+        - func: "run tests"
 
     - name: "atlas-connect"
       tags: ["atlas-connect"]
@@ -1503,7 +1412,7 @@ tasks:
     - name: "testgcpkms-task"
       commands:
         - command: subprocess.exec
-          type: setup
+          type: test
           params:
             working_dir: "src"
             binary: bash
@@ -1531,6 +1440,7 @@ tasks:
     - name: testazurekms-task
       commands:
       - command: subprocess.exec
+        type: test
         params:
           binary: bash
           working_dir: src

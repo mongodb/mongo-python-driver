@@ -739,7 +739,7 @@ class AsyncTestSpec(AsyncSpecRunner):
         return errors
 
 
-async def create_test(scenario_def, test, name):
+def create_test(scenario_def, test, name):
     @async_client_context.require_test_commands
     async def run_scenario(self):
         await self.run_scenario(scenario_def, test)
