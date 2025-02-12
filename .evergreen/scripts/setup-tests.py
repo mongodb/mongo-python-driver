@@ -121,7 +121,7 @@ def handle_test_env() -> None:
 
     for env_var, suite in TEST_SUITE_MAP.items():
         if TEST_SUITES:
-            continue
+            break
         if env_var in os.environ:
             TEST_SUITES = suite
 
