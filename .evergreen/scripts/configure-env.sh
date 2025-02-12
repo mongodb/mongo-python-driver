@@ -73,7 +73,6 @@ export skip_web_identity_auth_test="${skip_web_identity_auth_test:-}"
 export skip_ECS_auth_test="${skip_ECS_auth_test:-}"
 
 export CARGO_HOME="$CARGO_HOME"
-export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
 export UV_TOOL_DIR="$UV_TOOL_DIR"
 export UV_CACHE_DIR="$UV_CACHE_DIR"
 export UV_TOOL_BIN_DIR="$DRIVERS_TOOLS_BINARIES"
@@ -82,6 +81,18 @@ export PATH="$MONGODB_BINARIES:$DRIVERS_TOOLS_BINARIES:$PYMONGO_BIN_DIR:$PATH"
 # shellcheck disable=SC2154
 export PROJECT="${project:-mongo-python-driver}"
 export PIP_QUIET=1
+EOT
+
+# Write the .env file for drivers-tools.
+rm -rf $DRIVERS_TOOLS
+git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+
+cat <<EOT > ${DRIVERS_TOOLS}/.env
+SKIP_LEGACY_SHELL=1
+DRIVERS_TOOLS="$DRIVERS_TOOLS"
+MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
+MONGODB_BINARIES="$MONGODB_BINARIES"
+TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
 EOT
 
 # Skip CSOT tests on non-linux platforms.
