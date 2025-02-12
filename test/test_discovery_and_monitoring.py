@@ -251,7 +251,7 @@ def create_tests():
             setattr(TestAllScenarios, new_test.__name__, new_test)
 
 
-class TestClusterTimeComparison(unittest.TestCase):
+class TestClusterTimeComparison(PyMongoTestCase):
     def test_cluster_time_comparison(self):
         t = create_mock_topology("mongodb://host")
 
@@ -297,7 +297,7 @@ class TestIgnoreStaleErrors(IntegrationTest):
         wait_until(lambda: len(pool.conns) == N_TASKS, "created conns")
 
         def mock_command(*args, **kwargs):
-            # Synchronize all threads to ensure they use the same generation.
+            # Synchronize all tasks to ensure they use the same generation.
             barrier_wait(barrier, timeout=30)
             raise AutoReconnect("mock Connection.command error")
 
@@ -446,7 +446,7 @@ class TestHeartbeatStartOrdering(PyMongoTestCase):
         if _IS_SYNC:
             server = TCPServer(("localhost", 9999), MockTCPHandler)
             server.events = events
-            server_thread = threading.Thread(target=server.handle_request_and_shutdown)
+            server_thread = ConcurrentRunner(target=server.handle_request_and_shutdown)
             server_thread.start()
             _c = self.simple_client(
                 "mongodb://localhost:9999",

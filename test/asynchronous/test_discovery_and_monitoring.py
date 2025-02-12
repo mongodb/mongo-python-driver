@@ -251,7 +251,7 @@ def create_tests():
             setattr(TestAllScenarios, new_test.__name__, new_test)
 
 
-class TestClusterTimeComparison(unittest.IsolatedAsyncioTestCase):
+class TestClusterTimeComparison(AsyncPyMongoTestCase):
     async def test_cluster_time_comparison(self):
         t = await create_mock_topology("mongodb://host")
 
@@ -297,7 +297,7 @@ class TestIgnoreStaleErrors(AsyncIntegrationTest):
         await async_wait_until(lambda: len(pool.conns) == N_TASKS, "created conns")
 
         async def mock_command(*args, **kwargs):
-            # Synchronize all threads to ensure they use the same generation.
+            # Synchronize all tasks to ensure they use the same generation.
             await async_barrier_wait(barrier, timeout=30)
             raise AutoReconnect("mock AsyncConnection.command error")
 
@@ -446,14 +446,14 @@ class TestHeartbeatStartOrdering(AsyncPyMongoTestCase):
         if _IS_SYNC:
             server = TCPServer(("localhost", 9999), MockTCPHandler)
             server.events = events
-            server_thread = threading.Thread(target=server.handle_request_and_shutdown)
-            server_thread.start()
+            server_thread = ConcurrentRunner(target=server.handle_request_and_shutdown)
+            await server_thread.start()
             _c = await self.simple_client(
                 "mongodb://localhost:9999",
                 serverSelectionTimeoutMS=500,
                 event_listeners=(listener,),
             )
-            server_thread.join()
+            await server_thread.join()
             listener.wait_for_event(ServerHeartbeatStartedEvent, 1)
             listener.wait_for_event(ServerHeartbeatFailedEvent, 1)
 
