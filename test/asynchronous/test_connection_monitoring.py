@@ -23,20 +23,21 @@ from pathlib import Path
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_knobs, unittest
-from test.pymongo_mocks import DummyMonitor
+from test.asynchronous import AsyncIntegrationTest, client_knobs, unittest
+from test.asynchronous.pymongo_mocks import DummyMonitor
+from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator, SpecRunnerTask
 from test.utils import (
     CMAPListener,
+    async_client_context,
+    async_get_pool,
+    async_get_pools,
+    async_wait_until,
     camel_to_snake,
-    client_context,
-    get_pool,
-    get_pools,
-    wait_until,
 )
-from test.utils_spec_runner import SpecRunnerThread, SpecTestCreator
 
 from bson.objectid import ObjectId
 from bson.son import SON
+from pymongo.asynchronous.pool import PoolState, _PoolClosedError
 from pymongo.errors import (
     ConnectionFailure,
     OperationFailure,
@@ -59,10 +60,9 @@ from pymongo.monitoring import (
     PoolReadyEvent,
 )
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.pool import PoolState, _PoolClosedError
 from pymongo.topology_description import updated_topology_description
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 OBJECT_TYPES = {
     # Event types.
@@ -83,7 +83,7 @@ OBJECT_TYPES = {
 }
 
 
-class TestCMAP(IntegrationTest):
+class AsyncTestCMAP(AsyncIntegrationTest):
     # Location of JSON test specifications.
     if _IS_SYNC:
         TEST_PATH = os.path.join(Path(__file__).resolve().parent, "connection_monitoring")
@@ -92,85 +92,85 @@ class TestCMAP(IntegrationTest):
 
     # Test operations:
 
-    def start(self, op):
+    async def start(self, op):
         """Run the 'start' thread operation."""
         target = op["target"]
-        thread = SpecRunnerThread(target)
-        thread.start()
+        thread = SpecRunnerTask(target)
+        await thread.start()
         self.targets[target] = thread
 
-    def wait(self, op):
+    async def wait(self, op):
         """Run the 'wait' operation."""
-        time.sleep(op["ms"] / 1000.0)
+        await asyncio.sleep(op["ms"] / 1000.0)
 
-    def wait_for_thread(self, op):
+    async def wait_for_thread(self, op):
         """Run the 'waitForThread' operation."""
         target = op["target"]
         thread = self.targets[target]
-        thread.stop()
-        thread.join()
+        await thread.stop()
+        await thread.join()
         if thread.exc:
             raise thread.exc
         self.assertFalse(thread.ops)
 
-    def wait_for_event(self, op):
+    async def wait_for_event(self, op):
         """Run the 'waitForEvent' operation."""
         event = OBJECT_TYPES[op["event"]]
         count = op["count"]
         timeout = op.get("timeout", 10000) / 1000.0
-        wait_until(
+        await async_wait_until(
             lambda: self.listener.event_count(event) >= count,
             f"find {count} {event} event(s)",
             timeout=timeout,
         )
 
-    def check_out(self, op):
+    async def check_out(self, op):
         """Run the 'checkOut' operation."""
         label = op["label"]
-        with self.pool.checkout() as conn:
+        async with self.pool.checkout() as conn:
             # Call 'pin_cursor' so we can hold the socket.
             conn.pin_cursor()
             if label:
                 self.labels[label] = conn
             else:
-                self.addCleanup(conn.close_conn, None)
+                self.addAsyncCleanup(conn.close_conn, None)
 
-    def check_in(self, op):
+    async def check_in(self, op):
         """Run the 'checkIn' operation."""
         label = op["connection"]
         conn = self.labels[label]
-        self.pool.checkin(conn)
+        await self.pool.checkin(conn)
 
-    def ready(self, op):
+    async def ready(self, op):
         """Run the 'ready' operation."""
-        self.pool.ready()
+        await self.pool.ready()
 
-    def clear(self, op):
+    async def clear(self, op):
         """Run the 'clear' operation."""
         if "interruptInUseConnections" in op:
-            self.pool.reset(interrupt_connections=op["interruptInUseConnections"])
+            await self.pool.reset(interrupt_connections=op["interruptInUseConnections"])
         else:
-            self.pool.reset()
+            await self.pool.reset()
 
-    def close(self, op):
+    async def close(self, op):
         """Run the 'close' operation."""
-        self.pool.close()
+        await self.pool.close()
 
-    def run_operation(self, op):
+    async def run_operation(self, op):
         """Run a single operation in a test."""
         op_name = camel_to_snake(op["name"])
         thread = op["thread"]
         meth = getattr(self, op_name)
         if thread:
-            self.targets[thread].schedule(lambda: meth(op))
+            await self.targets[thread].schedule(lambda: meth(op))
         else:
-            meth(op)
+            await meth(op)
 
-    def run_operations(self, ops):
+    async def run_operations(self, ops):
         """Run a test's operations."""
         for op in ops:
             self._ops.append(op)
-            self.run_operation(op)
+            await self.run_operation(op)
 
     def check_object(self, actual, expected):
         """Assert that the actual object matches the expected object."""
@@ -211,17 +211,17 @@ class TestCMAP(IntegrationTest):
         self.check_object(actual, expected)
         self.assertIn(message, str(actual))
 
-    def _set_fail_point(self, client, command_args):
+    async def _set_fail_point(self, client, command_args):
         cmd = SON([("configureFailPoint", "failCommand")])
         cmd.update(command_args)
-        client.admin.command(cmd)
+        await client.admin.command(cmd)
 
-    def set_fail_point(self, command_args):
-        if not client_context.supports_failCommand_fail_point:
+    async def set_fail_point(self, command_args):
+        if not async_client_context.supports_failCommand_fail_point:
             self.skipTest("failCommand fail point must be supported")
-        self._set_fail_point(self.client, command_args)
+        await self._set_fail_point(self.client, command_args)
 
-    def run_scenario(self, scenario_def, test):
+    async def run_scenario(self, scenario_def, test):
         """Run a CMAP spec test."""
         self.logs: list = []
         self.assertEqual(scenario_def["version"], 1)
@@ -232,8 +232,8 @@ class TestCMAP(IntegrationTest):
         # Configure the fail point before creating the client.
         if "failPoint" in test:
             fp = test["failPoint"]
-            self.set_fail_point(fp)
-            self.addCleanup(
+            await self.set_fail_point(fp)
+            self.addAsyncCleanup(
                 self.set_fail_point, {"configureFailPoint": fp["configureFailPoint"], "mode": "off"}
             )
 
@@ -248,47 +248,49 @@ class TestCMAP(IntegrationTest):
         else:
             kill_cursor_frequency = interval / 1000.0
         with client_knobs(kill_cursor_frequency=kill_cursor_frequency, min_heartbeat_interval=0.05):
-            client = self.single_client(**opts)
+            client = await self.async_single_client(**opts)
             # Update the SD to a known type because the DummyMonitor will not.
             # Note we cannot simply call topology.on_change because that would
             # internally call pool.ready() which introduces unexpected
             # PoolReadyEvents. Instead, update the initial state before
             # opening the Topology.
-            td = client_context.client._topology.description
-            sd = td.server_descriptions()[(client_context.host, client_context.port)]
+            td = async_client_context.client._topology.description
+            sd = td.server_descriptions()[
+                (await async_client_context.host, await async_client_context.port)
+            ]
             client._topology._description = updated_topology_description(
                 client._topology._description, sd
             )
             # When backgroundThreadIntervalMS is negative we do not start the
             # background thread to ensure it never runs.
             if interval < 0:
-                client._topology.open()
+                await client._topology.open()
             else:
-                client._get_topology()
+                await client._get_topology()
         self.pool = list(client._topology._servers.values())[0].pool
 
         # Map of target names to Thread objects.
         self.targets: dict = {}
-        # Map of label names to Connection objects
+        # Map of label names to AsyncConnection objects
         self.labels: dict = {}
 
-        def cleanup():
+        async def cleanup():
             for t in self.targets.values():
-                t.stop()
+                await t.stop()
             for t in self.targets.values():
-                t.join(5)
+                await t.join(5)
             for conn in self.labels.values():
                 conn.close_conn(None)
 
-        self.addCleanup(cleanup)
+        self.addAsyncCleanup(cleanup)
 
         try:
             if test["error"]:
                 with self.assertRaises(PyMongoError) as ctx:
-                    self.run_operations(test["operations"])
+                    await self.run_operations(test["operations"])
                 self.check_error(ctx.exception, test["error"])
             else:
-                self.run_operations(test["operations"])
+                await self.run_operations(test["operations"])
 
             self.check_events(test["events"], test["ignore"])
         except Exception:
@@ -299,7 +301,7 @@ class TestCMAP(IntegrationTest):
                 print(op)
             print("Threads:")
             print(self.targets)
-            print("Connections:")
+            print("AsyncConnections:")
             print(self.labels)
             print("Events:")
             for event in self.listener.events:
@@ -319,38 +321,38 @@ class TestCMAP(IntegrationTest):
     #
     # Prose tests. Numbers correspond to the prose test number in the spec.
     #
-    def test_1_client_connection_pool_options(self):
-        client = self.rs_or_single_client(**self.POOL_OPTIONS)
-        pool_opts = (get_pool(client)).opts
+    async def test_1_client_connection_pool_options(self):
+        client = await self.async_rs_or_single_client(**self.POOL_OPTIONS)
+        pool_opts = (await async_get_pool(client)).opts
         self.assertEqual(pool_opts.non_default_options, self.POOL_OPTIONS)
 
-    def test_2_all_client_pools_have_same_options(self):
-        client = self.rs_or_single_client(**self.POOL_OPTIONS)
-        client.admin.command("ping")
+    async def test_2_all_client_pools_have_same_options(self):
+        client = await self.async_rs_or_single_client(**self.POOL_OPTIONS)
+        await client.admin.command("ping")
         # Discover at least one secondary.
-        if client_context.has_secondaries:
-            client.admin.command("ping", read_preference=ReadPreference.SECONDARY)
-        pools = get_pools(client)
+        if await async_client_context.has_secondaries:
+            await client.admin.command("ping", read_preference=ReadPreference.SECONDARY)
+        pools = await async_get_pools(client)
         pool_opts = pools[0].opts
 
         self.assertEqual(pool_opts.non_default_options, self.POOL_OPTIONS)
         for pool in pools[1:]:
             self.assertEqual(pool.opts, pool_opts)
 
-    def test_3_uri_connection_pool_options(self):
+    async def test_3_uri_connection_pool_options(self):
         opts = "&".join([f"{k}={v}" for k, v in self.POOL_OPTIONS.items()])
-        uri = f"mongodb://{client_context.pair}/?{opts}"
-        client = self.rs_or_single_client(uri)
-        pool_opts = (get_pool(client)).opts
+        uri = f"mongodb://{await async_client_context.pair}/?{opts}"
+        client = await self.async_rs_or_single_client(uri)
+        pool_opts = (await async_get_pool(client)).opts
         self.assertEqual(pool_opts.non_default_options, self.POOL_OPTIONS)
 
-    def test_4_subscribe_to_events(self):
+    async def test_4_subscribe_to_events(self):
         listener = CMAPListener()
-        client = self.single_client(event_listeners=[listener])
+        client = await self.async_single_client(event_listeners=[listener])
         self.assertEqual(listener.event_count(PoolCreatedEvent), 1)
 
         # Creates a new connection.
-        client.admin.command("ping")
+        await client.admin.command("ping")
         self.assertEqual(listener.event_count(ConnectionCheckOutStartedEvent), 1)
         self.assertEqual(listener.event_count(ConnectionCreatedEvent), 1)
         self.assertEqual(listener.event_count(ConnectionReadyEvent), 1)
@@ -358,19 +360,19 @@ class TestCMAP(IntegrationTest):
         self.assertEqual(listener.event_count(ConnectionCheckedInEvent), 1)
 
         # Uses the existing connection.
-        client.admin.command("ping")
+        await client.admin.command("ping")
         self.assertEqual(listener.event_count(ConnectionCheckOutStartedEvent), 2)
         self.assertEqual(listener.event_count(ConnectionCheckedOutEvent), 2)
         self.assertEqual(listener.event_count(ConnectionCheckedInEvent), 2)
 
-        client.close()
+        await client.close()
         self.assertEqual(listener.event_count(PoolClosedEvent), 1)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 1)
 
-    def test_5_check_out_fails_connection_error(self):
+    async def test_5_check_out_fails_connection_error(self):
         listener = CMAPListener()
-        client = self.single_client(event_listeners=[listener])
-        pool = get_pool(client)
+        client = await self.async_single_client(event_listeners=[listener])
+        pool = await async_get_pool(client)
 
         def mock_connect(*args, **kwargs):
             raise ConnectionFailure("connect failed")
@@ -381,7 +383,7 @@ class TestCMAP(IntegrationTest):
 
         # Attempt to create a new connection.
         with self.assertRaisesRegex(ConnectionFailure, "connect failed"):
-            client.admin.command("ping")
+            await client.admin.command("ping")
 
         self.assertIsInstance(listener.events[0], PoolCreatedEvent)
         self.assertIsInstance(listener.events[1], PoolReadyEvent)
@@ -392,16 +394,16 @@ class TestCMAP(IntegrationTest):
         failed_event = listener.events[3]
         self.assertEqual(failed_event.reason, ConnectionCheckOutFailedReason.CONN_ERROR)
 
-    @client_context.require_no_fips
-    def test_5_check_out_fails_auth_error(self):
+    @async_client_context.require_no_fips
+    async def test_5_check_out_fails_auth_error(self):
         listener = CMAPListener()
-        client = self.single_client_noauth(
+        client = await self.async_single_client_noauth(
             username="notauser", password="fail", event_listeners=[listener]
         )
 
         # Attempt to create a new connection.
         with self.assertRaisesRegex(OperationFailure, "failed"):
-            client.admin.command("ping")
+            await client.admin.command("ping")
 
         self.assertIsInstance(listener.events[0], PoolCreatedEvent)
         self.assertIsInstance(listener.events[1], PoolReadyEvent)
@@ -420,7 +422,7 @@ class TestCMAP(IntegrationTest):
         self.assertEqual(type(new_obj), type(obj))
         self.assertEqual(repr(new_obj), repr(obj))
 
-    def test_events_repr(self):
+    async def test_events_repr(self):
         host = ("localhost", 27017)
         self.assertRepr(ConnectionCheckedInEvent(host, 1))
         self.assertRepr(ConnectionCheckedOutEvent(host, 1, time.monotonic()))
@@ -438,28 +440,28 @@ class TestCMAP(IntegrationTest):
         self.assertRepr(PoolClearedEvent(host, service_id=ObjectId()))
         self.assertRepr(PoolClosedEvent(host))
 
-    def test_close_leaves_pool_unpaused(self):
+    async def test_close_leaves_pool_unpaused(self):
         listener = CMAPListener()
-        client = self.single_client(event_listeners=[listener])
-        client.admin.command("ping")
-        pool = get_pool(client)
-        client.close()
+        client = await self.async_single_client(event_listeners=[listener])
+        await client.admin.command("ping")
+        pool = await async_get_pool(client)
+        await client.close()
         self.assertEqual(1, listener.event_count(PoolClosedEvent))
         self.assertEqual(PoolState.CLOSED, pool.state)
         # Checking out a connection should fail
         with self.assertRaises(_PoolClosedError):
-            with pool.checkout():
+            async with pool.checkout():
                 pass
 
 
 def create_test(scenario_def, test, name):
-    def run_scenario(self):
-        self.run_scenario(scenario_def, test)
+    async def run_scenario(self):
+        await self.run_scenario(scenario_def, test)
 
     return run_scenario
 
 
-class CMAPSpecTestCreator(SpecTestCreator):
+class CMAPSpecTestCreator(AsyncSpecTestCreator):
     def tests(self, scenario_def):
         """Extract the tests from a spec file.
 
@@ -469,7 +471,7 @@ class CMAPSpecTestCreator(SpecTestCreator):
         return [scenario_def]
 
 
-test_creator = CMAPSpecTestCreator(create_test, TestCMAP, TestCMAP.TEST_PATH)
+test_creator = CMAPSpecTestCreator(create_test, AsyncTestCMAP, AsyncTestCMAP.TEST_PATH)
 test_creator.create_tests()
 
 
