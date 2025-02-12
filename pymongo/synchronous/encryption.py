@@ -15,7 +15,6 @@
 """Support for explicit client-side field level encryption."""
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import enum
 import socket
@@ -126,8 +125,6 @@ def _wrap_encryption_errors() -> Iterator[None]:
     except BSONError:
         # BSON encoding/decoding errors are unrelated to encryption so
         # we should propagate them unchanged.
-        raise
-    except asyncio.CancelledError:
         raise
     except Exception as exc:
         raise EncryptionError(exc) from exc
@@ -760,8 +757,6 @@ class ClientEncryption(Generic[_DocumentType]):
                 database.create_collection(name=name, **kwargs),
                 encrypted_fields,
             )
-        except asyncio.CancelledError:
-            raise
         except Exception as exc:
             raise EncryptedCollectionError(exc, encrypted_fields) from exc
 

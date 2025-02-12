@@ -18,13 +18,13 @@ from __future__ import annotations
 import datetime
 import os
 import sys
-from test import PyMongoTestCase
+from test.asynchronous import AsyncPyMongoTestCase
 
 sys.path[0:0] = [""]
 
 from test import unittest
 from test.pymongo_mocks import DummyMonitor
-from test.utils import MockPool, parse_read_preference
+from test.utils import AsyncMockPool, parse_read_preference
 from test.utils_selection_tests_shared import (
     get_addresses,
     get_topology_type_name,
@@ -32,27 +32,27 @@ from test.utils_selection_tests_shared import (
 )
 
 from bson import json_util
+from pymongo.asynchronous.settings import TopologySettings
+from pymongo.asynchronous.topology import Topology
 from pymongo.common import HEARTBEAT_FREQUENCY
 from pymongo.errors import AutoReconnect, ConfigurationError
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
-from pymongo.synchronous.settings import TopologySettings
-from pymongo.synchronous.topology import Topology
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
 def get_topology_settings_dict(**kwargs):
     settings = {
         "monitor_class": DummyMonitor,
         "heartbeat_frequency": HEARTBEAT_FREQUENCY,
-        "pool_class": MockPool,
+        "pool_class": AsyncMockPool,
     }
     settings.update(kwargs)
     return settings
 
 
-def create_topology(scenario_def, **kwargs):
+async def create_topology(scenario_def, **kwargs):
     # Initialize topologies.
     if "heartbeatFrequencyMS" in scenario_def:
         frequency = int(scenario_def["heartbeatFrequencyMS"]) / 1000.0
@@ -73,12 +73,12 @@ def create_topology(scenario_def, **kwargs):
     # the set of servers matching both the ReadPreference's mode
     # and tag sets.
     topology = Topology(TopologySettings(**settings))
-    topology.open()
+    await topology.open()
 
     # Update topologies with server descriptions.
     for server in scenario_def["topology_description"]["servers"]:
         server_description = make_server_description(server, hosts)
-        topology.on_change(server_description)
+        await topology.on_change(server_description)
 
     # Assert that descriptions match
     assert (
@@ -89,17 +89,17 @@ def create_topology(scenario_def, **kwargs):
 
 
 def create_test(scenario_def):
-    def run_scenario(self):
+    async def run_scenario(self):
         _, hosts = get_addresses(scenario_def["topology_description"]["servers"])
         # "Eligible servers" is defined in the server selection spec as
         # the set of servers matching both the ReadPreference's mode
         # and tag sets.
-        top_latency = create_topology(scenario_def)
+        top_latency = await create_topology(scenario_def)
 
         # "In latency window" is defined in the server selection
         # spec as the subset of suitable_servers that falls within the
         # allowable latency window.
-        top_suitable = create_topology(scenario_def, local_threshold_ms=1000000)
+        top_suitable = await create_topology(scenario_def, local_threshold_ms=1000000)
 
         # Create server selector.
         if scenario_def.get("operation") == "write":
@@ -111,7 +111,7 @@ def create_test(scenario_def):
                 with self.assertRaises((ConfigurationError, ValueError)):
                     # Error can be raised when making Read Pref or selecting.
                     pref = parse_read_preference(pref_def)
-                    top_latency.select_server(pref, _Op.TEST)
+                    await top_latency.select_server(pref, _Op.TEST)
                 return
 
             pref = parse_read_preference(pref_def)
@@ -119,18 +119,22 @@ def create_test(scenario_def):
         # Select servers.
         if not scenario_def.get("suitable_servers"):
             with self.assertRaises(AutoReconnect):
-                top_suitable.select_server(pref, _Op.TEST, server_selection_timeout=0)
+                await top_suitable.select_server(pref, _Op.TEST, server_selection_timeout=0)
 
             return
 
         if not scenario_def["in_latency_window"]:
             with self.assertRaises(AutoReconnect):
-                top_latency.select_server(pref, _Op.TEST, server_selection_timeout=0)
+                await top_latency.select_server(pref, _Op.TEST, server_selection_timeout=0)
 
             return
 
-        actual_suitable_s = top_suitable.select_servers(pref, _Op.TEST, server_selection_timeout=0)
-        actual_latency_s = top_latency.select_servers(pref, _Op.TEST, server_selection_timeout=0)
+        actual_suitable_s = await top_suitable.select_servers(
+            pref, _Op.TEST, server_selection_timeout=0
+        )
+        actual_latency_s = await top_latency.select_servers(
+            pref, _Op.TEST, server_selection_timeout=0
+        )
 
         expected_suitable_servers = {}
         for server in scenario_def["suitable_servers"]:
@@ -176,7 +180,7 @@ def create_test(scenario_def):
 
 
 def create_selection_tests(test_dir):
-    class TestAllScenarios(PyMongoTestCase):
+    class TestAllScenarios(AsyncPyMongoTestCase):
         pass
 
     for dirpath, _, filenames in os.walk(test_dir):

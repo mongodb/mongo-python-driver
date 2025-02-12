@@ -19,23 +19,23 @@ import asyncio
 import os
 import threading
 from pathlib import Path
-from test import IntegrationTest, client_context, unittest
-from test.helpers import ConcurrentRunner
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.helpers import ConcurrentRunner
+from test.asynchronous.utils_selection_tests import create_topology
+from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator
 from test.utils import (
     CMAPListener,
     OvertCommandListener,
-    get_pool,
-    wait_until,
+    async_get_pool,
+    async_wait_until,
 )
-from test.utils_selection_tests import create_topology
-from test.utils_spec_runner import SpecTestCreator
 
 from pymongo.common import clean_node
 from pymongo.monitoring import ConnectionReadyEvent
 from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference
 
-_IS_SYNC = True
+_IS_SYNC = False
 # Location of JSON test specifications.
 if _IS_SYNC:
     TEST_PATH = os.path.join(Path(__file__).resolve().parent, "server_selection", "in_window")
@@ -45,9 +45,9 @@ else:
     )
 
 
-class TestAllScenarios(unittest.TestCase):
-    def run_scenario(self, scenario_def):
-        topology = create_topology(scenario_def)
+class TestAllScenarios(unittest.IsolatedAsyncioTestCase):
+    async def run_scenario(self, scenario_def):
+        topology = await create_topology(scenario_def)
 
         # Update mock operation_count state:
         for mock in scenario_def["mocked_topology_state"]:
@@ -61,7 +61,7 @@ class TestAllScenarios(unittest.TestCase):
         # Number of times to repeat server selection
         iterations = scenario_def["iterations"]
         for _ in range(iterations):
-            server = topology.select_server(pref, _Op.TEST, server_selection_timeout=0)
+            server = await topology.select_server(pref, _Op.TEST, server_selection_timeout=0)
             counts[server.description.address] += 1
 
         # Verify expected_frequencies
@@ -80,13 +80,13 @@ class TestAllScenarios(unittest.TestCase):
 
 
 def create_test(scenario_def, test, name):
-    def run_scenario(self):
-        self.run_scenario(scenario_def)
+    async def run_scenario(self):
+        await self.run_scenario(scenario_def)
 
     return run_scenario
 
 
-class CustomSpecTestCreator(SpecTestCreator):
+class CustomSpecTestCreator(AsyncSpecTestCreator):
     def tests(self, scenario_def):
         """Extract the tests from a spec file.
 
@@ -107,21 +107,21 @@ class FinderTask(ConcurrentRunner):
         self.iterations = iterations
         self.passed = False
 
-    def run(self):
+    async def run(self):
         for _ in range(self.iterations):
-            self.collection.find_one({})
+            await self.collection.find_one({})
         self.passed = True
 
 
-class TestProse(IntegrationTest):
-    def frequencies(self, client, listener, n_finds=10):
+class TestProse(AsyncIntegrationTest):
+    async def frequencies(self, client, listener, n_finds=10):
         coll = client.test.test
         N_TASKS = 10
         tasks = [FinderTask(coll, n_finds) for _ in range(N_TASKS)]
         for task in tasks:
-            task.start()
+            await task.start()
         for task in tasks:
-            task.join()
+            await task.join()
         for task in tasks:
             self.assertTrue(task.passed)
 
@@ -136,23 +136,23 @@ class TestProse(IntegrationTest):
             freqs[address] = freqs[address] / float(len(events))
         return freqs
 
-    @client_context.require_failCommand_appName
-    @client_context.require_multiple_mongoses
-    def test_load_balancing(self):
+    @async_client_context.require_failCommand_appName
+    @async_client_context.require_multiple_mongoses
+    async def test_load_balancing(self):
         listener = OvertCommandListener()
         cmap_listener = CMAPListener()
         # PYTHON-2584: Use a large localThresholdMS to avoid the impact of
         # varying RTTs.
-        client = self.rs_client(
-            client_context.mongos_seeds(),
+        client = await self.async_rs_client(
+            async_client_context.mongos_seeds(),
             appName="loadBalancingTest",
             event_listeners=[listener, cmap_listener],
             localThresholdMS=30000,
             minPoolSize=10,
         )
-        wait_until(lambda: len(client.nodes) == 2, "discover both nodes")
+        await async_wait_until(lambda: len(client.nodes) == 2, "discover both nodes")
         # Wait for both pools to be populated.
-        cmap_listener.wait_for_event(ConnectionReadyEvent, 20)
+        await cmap_listener.async_wait_for_event(ConnectionReadyEvent, 20)
         # Delay find commands on only one mongos.
         delay_finds = {
             "configureFailPoint": "failCommand",
@@ -164,14 +164,14 @@ class TestProse(IntegrationTest):
                 "appName": "loadBalancingTest",
             },
         }
-        with self.fail_point(delay_finds):
-            nodes = client_context.client.nodes
+        async with self.fail_point(delay_finds):
+            nodes = async_client_context.client.nodes
             self.assertEqual(len(nodes), 1)
             delayed_server = next(iter(nodes))
-            freqs = self.frequencies(client, listener)
+            freqs = await self.frequencies(client, listener)
             self.assertLessEqual(freqs[delayed_server], 0.25)
         listener.reset()
-        freqs = self.frequencies(client, listener, n_finds=150)
+        freqs = await self.frequencies(client, listener, n_finds=150)
         self.assertAlmostEqual(freqs[delayed_server], 0.50, delta=0.15)
 
 

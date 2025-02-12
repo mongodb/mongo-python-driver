@@ -231,7 +231,7 @@ class AsyncGridFS:
         try:
             doc = await anext(cursor)
             return AsyncGridOut(self._collection, file_document=doc, session=session)
-        except StopIteration:
+        except StopAsyncIteration:
             raise NoFile("no version %d for filename %r" % (version, filename)) from None
 
     async def get_last_version(
