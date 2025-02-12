@@ -127,8 +127,8 @@ def handle_test_env() -> None:
 
     if AUTH != "noauth":
         if is_set("TEST_DATA_LAKE"):
-            DB_USER = "mhuser"
-            DB_PASSWORD = "pencil"  # noqa: S105
+            DB_USER = os.environ["ADL_USERNAME"]
+            DB_PASSWORD = os.environ["ADL_PASSWORD"]
         elif is_set("TEST_SERVERLESS"):
             DB_USER = os.environ("SERVERLESS_ATLAS_USER")
             DB_PASSWORD = os.environ("SERVERLESS_ATLAS_PASSWORD")

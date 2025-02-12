@@ -51,3 +51,5 @@ if ! command -v uv 2>/dev/null; then
   }
   echo "Installing uv... done."
 fi
+
+popd > /dev/null
