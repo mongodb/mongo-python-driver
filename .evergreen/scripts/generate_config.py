@@ -344,11 +344,11 @@ def create_encryption_variants() -> list[BuildVariant]:
     batchtime = BATCHTIME_WEEK
 
     def get_encryption_expansions(encryption):
-        expansions = dict(test_encryption="true")
+        expansions = dict(TEST_ENCRYPTION="true")
         if "crypt_shared" in encryption:
-            expansions["test_crypt_shared"] = "true"
+            expansions["TEST_CRYPT_SHARED"] = "true"
         if "PyOpenSSL" in encryption:
-            expansions["test_encryption_pyopenssl"] = "true"
+            expansions["TEST_ENCRYPTION_PYOPENSSL"] = "true"
         return expansions
 
     host = DEFAULT_HOST
@@ -487,7 +487,7 @@ def create_enterprise_auth_variants():
 def create_pyopenssl_variants():
     base_name = "PyOpenSSL"
     batchtime = BATCHTIME_WEEK
-    expansions = dict(test_pyopenssl="true")
+    expansions = dict(TEST_PYOPENSSL="true")
     variants = []
 
     for python in ALL_PYTHONS:
@@ -645,7 +645,7 @@ def create_disable_test_commands_variants():
 def create_serverless_variants():
     host = DEFAULT_HOST
     batchtime = BATCHTIME_WEEK
-    expansions = dict(test_serverless="true", AUTH="auth", SSL="ssl")
+    expansions = dict(TEST_SERVERLESS="true", AUTH="auth", SSL="ssl")
     tasks = ["serverless_task_group"]
     base_name = "Serverless"
     return [
@@ -834,12 +834,9 @@ def create_load_balancer_tasks():
         tags = ["load-balancer", auth, ssl]
         bootstrap_vars = dict(TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, LOAD_BALANCER="true")
         bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
-        balancer_func = FunctionCall(func="run load-balancer")
-        test_vars = dict(AUTH=auth, SSL=ssl, test_loadbalancer="true")
+        test_vars = dict(AUTH=auth, SSL=ssl, TEST_LOADBALANCER="true")
         test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(
-            EvgTask(name=name, tags=tags, commands=[bootstrap_func, balancer_func, test_func])
-        )
+        tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
     return tasks
 
 
