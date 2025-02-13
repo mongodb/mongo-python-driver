@@ -15,9 +15,12 @@
 """Test the topology module's Server Selection Spec implementation."""
 from __future__ import annotations
 
+import asyncio
 import os
 import threading
+from pathlib import Path
 from test import IntegrationTest, client_context, unittest
+from test.helpers import ConcurrentRunner
 from test.utils import (
     CMAPListener,
     OvertCommandListener,
@@ -32,10 +35,14 @@ from pymongo.monitoring import ConnectionReadyEvent
 from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference
 
+_IS_SYNC = True
 # Location of JSON test specifications.
-TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), os.path.join("server_selection", "in_window")
-)
+if _IS_SYNC:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "server_selection", "in_window")
+else:
+    TEST_PATH = os.path.join(
+        Path(__file__).resolve().parent.parent, "server_selection", "in_window"
+    )
 
 
 class TestAllScenarios(unittest.TestCase):
@@ -92,7 +99,7 @@ class CustomSpecTestCreator(SpecTestCreator):
 CustomSpecTestCreator(create_test, TestAllScenarios, TEST_PATH).create_tests()
 
 
-class FinderThread(threading.Thread):
+class FinderTask(ConcurrentRunner):
     def __init__(self, collection, iterations):
         super().__init__()
         self.daemon = True
@@ -109,17 +116,17 @@ class FinderThread(threading.Thread):
 class TestProse(IntegrationTest):
     def frequencies(self, client, listener, n_finds=10):
         coll = client.test.test
-        N_THREADS = 10
-        threads = [FinderThread(coll, n_finds) for _ in range(N_THREADS)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-        for thread in threads:
-            self.assertTrue(thread.passed)
+        N_TASKS = 10
+        tasks = [FinderTask(coll, n_finds) for _ in range(N_TASKS)]
+        for task in tasks:
+            task.start()
+        for task in tasks:
+            task.join()
+        for task in tasks:
+            self.assertTrue(task.passed)
 
         events = listener.started_events
-        self.assertEqual(len(events), n_finds * N_THREADS)
+        self.assertEqual(len(events), n_finds * N_TASKS)
         nodes = client.nodes
         self.assertEqual(len(nodes), 2)
         freqs = {address: 0.0 for address in nodes}

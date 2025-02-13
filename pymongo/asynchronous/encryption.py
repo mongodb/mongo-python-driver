@@ -127,8 +127,6 @@ def _wrap_encryption_errors() -> Iterator[None]:
         # BSON encoding/decoding errors are unrelated to encryption so
         # we should propagate them unchanged.
         raise
-    except asyncio.CancelledError:
-        raise
     except Exception as exc:
         raise EncryptionError(exc) from exc
 
@@ -322,7 +320,9 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         data_key_id = raw_doc.get("_id")
         if not isinstance(data_key_id, Binary) or data_key_id.subtype != UUID_SUBTYPE:
-            raise TypeError("data_key _id must be Binary with a UUID subtype")
+            raise TypeError(
+                f"data_key _id must be Binary with a UUID subtype, not {type(data_key_id)}"
+            )
 
         assert self.key_vault_coll is not None
         await self.key_vault_coll.insert_one(raw_doc)
@@ -644,7 +644,9 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             )
 
         if not isinstance(codec_options, CodecOptions):
-            raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
+            raise TypeError(
+                f"codec_options must be an instance of bson.codec_options.CodecOptions, not {type(codec_options)}"
+            )
 
         if not isinstance(key_vault_client, AsyncMongoClient):
             # This is for compatibility with mocked and subclassed types, such as in Motor.
@@ -762,8 +764,6 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 await database.create_collection(name=name, **kwargs),
                 encrypted_fields,
             )
-        except asyncio.CancelledError:
-            raise
         except Exception as exc:
             raise EncryptedCollectionError(exc, encrypted_fields) from exc
 
