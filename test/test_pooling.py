@@ -21,7 +21,6 @@ import random
 import socket
 import sys
 import time
-from test.helpers import ConcurrentRunner
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -33,6 +32,7 @@ from pymongo.lock import _create_lock
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
+from test.helpers import ConcurrentRunner
 from test.utils import delay, get_pool, joinall
 
 from pymongo.socket_checker import SocketChecker
@@ -157,10 +157,6 @@ class _TestPoolingBase(IntegrationTest):
         db.test.drop()
         db.unique.insert_one({"_id": "jesse"})
         db.test.insert_many([{} for _ in range(10)])
-
-    def tearDown(self):
-        self.c.close()
-        super().tearDown()
 
     def create_pool(self, pair=None, *args, **kwargs):
         if pair is None:

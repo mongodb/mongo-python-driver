@@ -21,7 +21,6 @@ import random
 import socket
 import sys
 import time
-from test.asynchronous.helpers import ConcurrentRunner
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -33,6 +32,7 @@ from pymongo.lock import _async_create_lock
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.helpers import ConcurrentRunner
 from test.utils import async_get_pool, async_joinall, delay
 
 from pymongo.asynchronous.pool import Pool, PoolOptions
@@ -157,10 +157,6 @@ class _TestPoolingBase(AsyncIntegrationTest):
         await db.test.drop()
         await db.unique.insert_one({"_id": "jesse"})
         await db.test.insert_many([{} for _ in range(10)])
-
-    async def asyncTearDown(self):
-        await self.c.close()
-        await super().asyncTearDown()
 
     async def create_pool(self, pair=None, *args, **kwargs):
         if pair is None:
