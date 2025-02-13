@@ -17,6 +17,7 @@ CARGO_HOME=${CARGO_HOME:-${DRIVERS_TOOLS}/.cargo}
 UV_TOOL_DIR=$PROJECT_DIRECTORY/.local/uv/tools
 UV_CACHE_DIR=$PROJECT_DIRECTORY/.local/uv/cache
 DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
+MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
 
 # On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
 if [ "${CI:-}" == "true" ]; then
@@ -26,6 +27,8 @@ else
   PYMONGO_BIN_DIR=$HOME/cli_bin
 fi
 
+PATH_EXT="$MONGODB_BINARIES:$DRIVERS_TOOLS_BINARIES:$PYMONGO_BIN_DIR:\$PATH"
+
 # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
 if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
     DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
@@ -34,6 +37,7 @@ if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
     UV_TOOL_DIR=$(cygpath -m "$UV_TOOL_DIR")
     UV_CACHE_DIR=$(cygpath -m "$UV_CACHE_DIR")
     DRIVERS_TOOLS_BINARIES=$(cygpath -m "$DRIVERS_TOOLS_BINARIES")
+    MONGODB_BINARIES=$(cygpath -m "$MONGODB_BINARIES")
     PYMONGO_BIN_DIR=$(cygpath -m "$PYMONGO_BIN_DIR")
 fi
 
@@ -77,7 +81,7 @@ export UV_TOOL_DIR="$UV_TOOL_DIR"
 export UV_CACHE_DIR="$UV_CACHE_DIR"
 export UV_TOOL_BIN_DIR="$DRIVERS_TOOLS_BINARIES"
 export PYMONGO_BIN_DIR="$PYMONGO_BIN_DIR"
-export PATH="$MONGODB_BINARIES:$DRIVERS_TOOLS_BINARIES:$PYMONGO_BIN_DIR:$PATH"
+export PATH="$PATH_EXT"
 # shellcheck disable=SC2154
 export PROJECT="${project:-mongo-python-driver}"
 export PIP_QUIET=1

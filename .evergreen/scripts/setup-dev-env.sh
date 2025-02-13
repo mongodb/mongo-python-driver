@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eu
+set -eux
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
