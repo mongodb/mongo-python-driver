@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import io
 import logging
 import os
 import platform
@@ -139,8 +140,9 @@ def setup_libmongocrypt():
     LOGGER.info(f"Fetching {url}...")
     with request.urlopen(request.Request(url), timeout=15.0) as response:  # noqa: S310
         if response.status == 200:
-            with tarfile.open("libmongocrypt.tar.gz", fileobj=response) as fid:
-                fid.extractall(HERE / "libmongocrypt")
+            fileobj = io.BytesIO(response.read())
+        with tarfile.open("libmongocrypt.tar.gz", fileobj=fileobj) as fid:
+            fid.extractall(Path.cwd() / "libmongocrypt")
     LOGGER.info(f"Fetching {url}... done.")
 
     run_command("ls -la libmongocrypt")
