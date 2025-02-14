@@ -98,7 +98,6 @@ def run_command(cmd: str) -> None:
 
 def setup_libmongocrypt():
     target = ""
-    raise ValueError(f"{sys.platform=} {os.name=}")
     if os.name == "nt":
         # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
         if is_set("TEST_FLE_GCP_AUTO"):
