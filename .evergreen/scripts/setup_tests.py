@@ -111,7 +111,7 @@ def setup_libmongocrypt():
         name = ""
         version_id = ""
         arch = platform.machine()
-        with open("etc/os-release") as fid:
+        with open("/etc/os-release") as fid:
             for line in fid:
                 if line.startswith("NAME="):
                     _, _, name = line.strip().split("=")
