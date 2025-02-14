@@ -117,6 +117,7 @@ def setup_libmongocrypt():
                     _, _, name = line.strip().partition("=")
                 if line.startswith("VERSION_ID="):
                     _, _, version_id = line.strip().partition("=")
+        raise ValueError(f"{name=} {version_id}=")
         if name.startswith("Debian"):
             target = f"debian{version_id}"
         elif name.startswith("Red Hat"):
