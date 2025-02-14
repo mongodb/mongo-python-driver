@@ -1381,7 +1381,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             for i in range(attempts):
                 try:
                     return self._run_scenario(spec, uri)
-                except AssertionError:
+                except (AssertionError, OperationFailure) as exc:
+                    if isinstance(exc, OperationFailure) and "failpoint" not in exc._message:
+                        raise
                     if i < attempts - 1:
                         print(
                             f"Retrying after attempt {i+1} of {self.id()} failed with:\n"
