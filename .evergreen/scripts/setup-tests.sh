@@ -58,4 +58,4 @@ fi
 
 . $ROOT_DIR/.evergreen/utils.sh
 PYTHON=${PYTHON_BINARY:-$(find_python3)}
-$PYTHON $SCRIPT_DIR/setup-tests.py
+$PYTHON $SCRIPT_DIR/setup_tests.py
