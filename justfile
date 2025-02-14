@@ -1,7 +1,5 @@
 # See https://just.systems/man/en/ for instructions
 set shell := ["bash", "-c"]
-set dotenv-load
-set dotenv-filename := "./.evergreen/scripts/env.sh"
 
 # Commonly used command segments.
 uv_run := "uv run --isolated --frozen "
@@ -70,10 +68,10 @@ test-mockupdb *args:
 test-eg *args:
     bash ./.evergreen/run-tests.sh {{args}}
 
-[group('encryption')]
-setup-encryption:
-    bash .evergreen/setup-encryption.sh
+[group('test')]
+setup-test:
+    bash .evergreen/scripts/setup-tests.sh
 
-[group('encryption')]
-teardown-encryption:
-    bash .evergreen/teardown-encryption.sh
+[group('test')]
+teardown-test:
+    bash .evergreen/scripts/teardown-tests.sh
