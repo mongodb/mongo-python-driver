@@ -58,4 +58,5 @@ fi
 
 . $ROOT_DIR/.evergreen/utils.sh
 PYTHON=${PYTHON_BINARY:-$(find_python3)}
+cat /etc/os-release
 $PYTHON $SCRIPT_DIR/setup_tests.py
