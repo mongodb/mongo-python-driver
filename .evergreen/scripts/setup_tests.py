@@ -114,9 +114,9 @@ def setup_libmongocrypt():
         with open("/etc/os-release") as fid:
             for line in fid:
                 if line.startswith("NAME="):
-                    _, _, name = line.strip().split("=")
+                    _, _, name = line.strip().partition("=")
                 if line.startswith("VERSION_ID="):
-                    _, _, version = line.strip().split("=")
+                    _, _, version = line.strip().partition("=")
         if name.startswith("Debian"):
             target = f"debian{version_id}"
         elif name.startswith("Red Hat"):
