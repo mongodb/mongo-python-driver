@@ -5,11 +5,14 @@ import logging
 import os
 import platform
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 from pathlib import Path
 from typing import Any
+from urllib import request
 
 HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
@@ -90,6 +93,62 @@ def run_command(cmd: str) -> None:
     LOGGER.info("Running command %s...", cmd)
     subprocess.check_call(shlex.split(cmd))  # noqa: S603
     LOGGER.info("Running command %s... done.", cmd)
+
+
+def setup_libmongocrypt():
+    target = ""
+    if os.name == "nt":
+        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
+        if is_set("TEST_FLE_GCP_AUTO"):
+            run_command('powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/"')
+        target = "windows-test"
+
+    elif sys.platform == "darwin":
+        target = "macos"
+
+    else:
+        name = ""
+        version_id = ""
+        arch = platform.machine()
+        with open("etc/os-release") as fid:
+            for line in fid:
+                if line.startswith("NAME="):
+                    _, _, name = line.strip().split("=")
+                if line.startswith("VERSION_ID="):
+                    _, _, version = line.strip().split("=")
+        if name.startswith("Debian"):
+            target = f"debian{version_id}"
+        elif name.startswith("Red Hat"):
+            if version_id.startswith("7"):
+                target = "rhel-70-64-bit"
+            elif version_id.startswith("8"):
+                if arch == "aarch64":
+                    target = "rhel-82-arm64"
+                else:
+                    target = "rhel-80-64-bit"
+
+    if not is_set("LIBMONGOCRYPT_URL"):
+        if not target:
+            raise ValueError("Cannot find libmongocrypt target for current platform!")
+        url = f"https://s3.amazonaws.com/mciuploads/libmongocrypt/{target}/master/latest/libmongocrypt.tar.gz"
+    else:
+        url = os.environ["LIBMONGOCRYPT_URL"]
+
+    shutil.rmtree(HERE / "libmongocrypt", ignore_errors=True)
+
+    LOGGER.info(f"Fetching {url}...")
+    with request.urlopen(request.Request(url), timeout=15.0) as response:  # noqa: S310
+        if response.status == 200:
+            with tarfile.open("libmongocrypt.tar.gz", fileobj=response) as fid:
+                fid.extractall(HERE / "libmongocrypt")
+    LOGGER.info(f"Fetching {url}... done.")
+
+    run_command("ls -la libmongocrypt")
+    run_command("ls -la libmongocrypt/nocrypto")
+
+    if os.name == "nt":
+        # libmongocrypt's windows dll is not marked executable.
+        run_command("chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll")
 
 
 def handle_test_env() -> None:
@@ -214,7 +273,7 @@ def handle_test_env() -> None:
     if is_set("TEST_ENCRYPTION") or is_set("TEST_FLE_AZURE_AUTO") or is_set("TEST_FLE_GCP_AUTO"):
         # Check for libmongocrypt download.
         if not (ROOT / "libmongocrypt").exists():
-            run_command(f"bash {HERE.as_posix()}/setup-libmongocrypt.sh")
+            setup_libmongocrypt()
 
         # TODO: Test with 'pip install pymongocrypt'
         UV_ARGS.append("--group pymongocrypt_source")
