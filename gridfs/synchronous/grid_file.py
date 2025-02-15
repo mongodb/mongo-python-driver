@@ -1291,11 +1291,8 @@ class GridIn:
             raise ValueError("cannot write to a closed file")
 
         try:
-            if isinstance(data, GridOut):
-                read = data.read
-            else:
-                # file-like
-                read = data.read
+            # file-like
+            read = data.read
         except AttributeError:
             # string
             if not isinstance(data, (str, bytes)):
