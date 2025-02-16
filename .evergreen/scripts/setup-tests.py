@@ -100,8 +100,8 @@ def get_options():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("test_name", choices=sorted(TEST_SUITE_MAP), default="default")
-    parser.add_argument("sub_test_name")
+    parser.add_argument("test_name", choices=sorted(TEST_SUITE_MAP), nargs="?", default="default")
+    parser.add_argument("sub_test_name", nargs="?")
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Whether to log at the DEBUG level"
     )
