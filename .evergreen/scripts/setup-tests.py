@@ -34,7 +34,7 @@ TEST_SUITE_MAP = {
     "auth_aws": "auth_aws",
     "auth_oidc": "auth_oidc",
     "data_lake": "data_lake",
-    "default": "default or default_async",
+    "default": "",
     "default_async": "default_async",
     "default_sync": "default",
     "encryption": "encryption",
@@ -45,7 +45,7 @@ TEST_SUITE_MAP = {
     "mockupdb": "mockupdb",
     "ocsp": "ocsp",
     "perf": "perf",
-    "serverless": "default or default_async",
+    "serverless": "",
 }
 
 # Map the test name to test extra.
@@ -340,8 +340,9 @@ def handle_test_env() -> None:
         # Use --capture=tee-sys so pytest prints test output inline:
         # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
         TEST_ARGS = f"-v --capture=tee-sys --durations=5 {TEST_ARGS}"
-        TEST_SUITES = TEST_SUITE_MAP[test_name]
-        TEST_ARGS = f'-m "{TEST_SUITES}" {TEST_ARGS}'
+        TEST_SUITE = TEST_SUITE_MAP[test_name]
+        if TEST_SUITE:
+            TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
 
     write_env("TEST_ARGS", TEST_ARGS)
     write_env("UV_ARGS", " ".join(UV_ARGS))
