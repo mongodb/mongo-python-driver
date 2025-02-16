@@ -813,7 +813,7 @@ def create_server_tasks():
         bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
         test_vars = dict(AUTH=auth, SSL=ssl, SYNC=sync)
         if sync == "sync":
-            test_vars["TEST_NAME"] = "default"
+            test_vars["TEST_NAME"] = "default_sync"
         elif sync == "async":
             test_vars["TEST_NAME"] = "default_async"
         test_func = FunctionCall(func="run tests", vars=test_vars)
