@@ -265,7 +265,7 @@ functions:
           DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS]
         binary: bash
         working_dir: "src"
-        args: [.evergreen/just.sh, setup-tests, "${TEST_NAME}", "${SUB_TEST_NAME}"]
+        args: [.evergreen/just.sh, setup-test, "${TEST_NAME}", "${SUB_TEST_NAME}"]
     - command: subprocess.exec
       type: test
       params:
