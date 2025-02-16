@@ -1,6 +1,7 @@
 #!/bin/bash
 
-set -o xtrace
+set -eu
+
 
 # Enable core dumps if enabled on the machine
 # Copied from https://github.com/mongodb/mongo/blob/master/etc/evergreen.yml
@@ -27,10 +28,6 @@ if [ "$(uname -s)" = "Darwin" ]; then
         echo "Enabling coredumps"
         ulimit -c unlimited
     fi
-fi
-
-if [ -n "${skip_crypt_shared}" ]; then
-    export SKIP_CRYPT_SHARED=1
 fi
 
 MONGODB_VERSION=${VERSION} \

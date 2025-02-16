@@ -16,7 +16,7 @@ else
   echo "Not sourcing env inputs"
 fi
 
-# Ensure there are test inputs.
+# Handle test inputs.
 if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
   echo "Sourcing test inputs"
   . $SCRIPT_DIR/scripts/test-env.sh
@@ -54,7 +54,7 @@ uv run python -c 'import sys; print(sys.version)'
 PIP_QUIET=0 uv run ${UV_ARGS} --with pip pip list
 
 # Record the start time for a perf test.
-if [ -n "${PERF_TEST:-}" ]; then
+if [ -n "${TEST_PERF:-}" ]; then
     start_time=$(date +%s)
 fi
 
@@ -75,7 +75,7 @@ fi
 echo "Running tests with $TEST_ARGS... done."
 
 # Handle perf test post actions.
-if [ -n "${PERF_TEST:-}" ]; then
+if [ -n "${TEST_PERF:-}" ]; then
     end_time=$(date +%s)
     elapsed_secs=$((end_time-start_time))
 

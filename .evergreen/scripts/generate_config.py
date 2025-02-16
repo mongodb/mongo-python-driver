@@ -344,11 +344,11 @@ def create_encryption_variants() -> list[BuildVariant]:
     batchtime = BATCHTIME_WEEK
 
     def get_encryption_expansions(encryption):
-        expansions = dict(TEST_ENCRYPTION="true")
+        expansions = dict(TEST_NAME="encryption")
         if "crypt_shared" in encryption:
             expansions["TEST_CRYPT_SHARED"] = "true"
         if "PyOpenSSL" in encryption:
-            expansions["TEST_ENCRYPTION_PYOPENSSL"] = "true"
+            expansions["SUB_TEST_NAME"] = "pyopenssl"
         return expansions
 
     host = DEFAULT_HOST
@@ -487,7 +487,7 @@ def create_enterprise_auth_variants():
 def create_pyopenssl_variants():
     base_name = "PyOpenSSL"
     batchtime = BATCHTIME_WEEK
-    expansions = dict(TEST_PYOPENSSL="true")
+    expansions = dict(TEST_NAME="pyopenssl")
     variants = []
 
     for python in ALL_PYTHONS:
@@ -645,7 +645,7 @@ def create_disable_test_commands_variants():
 def create_serverless_variants():
     host = DEFAULT_HOST
     batchtime = BATCHTIME_WEEK
-    expansions = dict(TEST_SERVERLESS="true", AUTH="auth", SSL="ssl")
+    expansions = dict(TEST_NAME="serverless", AUTH="auth", SSL="ssl")
     tasks = ["serverless_task_group"]
     base_name = "Serverless"
     return [
@@ -811,19 +811,14 @@ def create_server_tasks():
             SSL=ssl,
         )
         bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
-        test_suites = ""
+        test_vars = dict(AUTH=auth, SSL=ssl, SYNC=sync)
         if sync == "sync":
-            test_suites = "default"
+            test_vars["TEST_NAME"] = "default"
         elif sync == "async":
-            test_suites = "default_async"
-        test_vars = dict(
-            AUTH=auth,
-            SSL=ssl,
-            SYNC=sync,
-            TEST_SUITES=test_suites,
-        )
+            test_vars["TEST_NAME"] = "default_async"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
+
     return tasks
 
 
@@ -834,9 +829,10 @@ def create_load_balancer_tasks():
         tags = ["load-balancer", auth, ssl]
         bootstrap_vars = dict(TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, LOAD_BALANCER="true")
         bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
-        test_vars = dict(AUTH=auth, SSL=ssl, TEST_LOADBALANCER="true")
+        test_vars = dict(AUTH=auth, SSL=ssl, TEST_NAME="load_balancer")
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
+
     return tasks
 
 

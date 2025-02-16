@@ -47,12 +47,12 @@ class TestAsyncClientContext(AsyncUnitTest):
         )
 
     def test_enableTestCommands_is_disabled(self):
-        if not os.environ.get("PYMONGO_DISABLE_TEST_COMMANDS"):
-            raise SkipTest("PYMONGO_DISABLE_TEST_COMMANDS is not set")
+        if not os.environ.get("DISABLE_TEST_COMMANDS"):
+            raise SkipTest("DISABLE_TEST_COMMANDS is not set")
 
         self.assertFalse(
             async_client_context.test_commands_enabled,
-            "enableTestCommands must be disabled when PYMONGO_DISABLE_TEST_COMMANDS is set.",
+            "enableTestCommands must be disabled when DISABLE_TEST_COMMANDS is set.",
         )
 
     def test_setdefaultencoding_worked(self):
