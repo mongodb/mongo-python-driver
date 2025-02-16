@@ -17,8 +17,8 @@ ROOT = HERE.parent.parent
 ENV_FILE = HERE / "test-env.sh"
 DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS", "").replace(os.sep, "/")
 
-logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
 # Passthrough environment variables.
 PASS_THROUGH_ENV = [
@@ -130,9 +130,15 @@ def handle_test_env() -> None:
     if opts.ssl or "auth" in test_name:
         AUTH = "ssl"
     TEST_ARGS = ""
+
     # Start compiling the args we'll pass to uv.
     # Run in an isolated environment so as not to pollute the base venv.
     UV_ARGS = ["--isolated --extra test"]
+
+    test_title = test_name
+    if sub_test_name:
+        test_title += f" {sub_test_name}"
+    LOGGER.info(f"Setting up '{test_title}' with {AUTH=} and {SSL=}...")
 
     # Create the test env file with the initial set of values.
     with ENV_FILE.open("w", newline="\n") as fid:
@@ -142,11 +148,15 @@ def handle_test_env() -> None:
 
     write_env("AUTH", AUTH)
     write_env("SSL", SSL)
+
     # Skip CSOT tests on non-linux platforms.
     if sys.platform != "Linux":
         write_env("SKIP_CSOT_TESTS")
-    # Set an environment variable for the test name.
+
+    # Set an environment variable for the test name and sub test name.
     write_env(f"TEST_{test_name.upper()}")
+    write_env("SUB_TEST_NAME", sub_test_name)
+
     # Handle pass through env vars.
     for var in PASS_THROUGH_ENV:
         if is_set(var):
@@ -335,6 +345,8 @@ def handle_test_env() -> None:
 
     write_env("TEST_ARGS", TEST_ARGS)
     write_env("UV_ARGS", " ".join(UV_ARGS))
+
+    LOGGER.info(f"Setting up test '{test_title}' with {AUTH=} and {SSL=}... done.")
 
 
 if __name__ == "__main__":
