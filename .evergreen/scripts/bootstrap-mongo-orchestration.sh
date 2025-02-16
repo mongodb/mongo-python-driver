@@ -30,6 +30,10 @@ if [ "$(uname -s)" = "Darwin" ]; then
     fi
 fi
 
+if [ -z "${TEST_CRYPT_SHARED:-}" ]; then
+    export SKIP_CRYPT_SHARED=1
+fi
+
 MONGODB_VERSION=${VERSION} \
     TOPOLOGY=${TOPOLOGY} \
     AUTH=${AUTH:-noauth} \

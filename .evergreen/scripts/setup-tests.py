@@ -65,7 +65,7 @@ EXTRAS_MAP = {
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 
 
-def write_env(name: str, value: Any) -> None:
+def write_env(name: str, value: Any = "1") -> None:
     with ENV_FILE.open("a", newline="\n") as fid:
         # Remove any existing quote chars.
         value = str(value).replace('"', "")
@@ -92,6 +92,7 @@ def read_env(path: Path) -> dict[str, Any]:
             name, _, value = line.partition("=")
             if value.startswith(('"', "'")):
                 value = value[1:-1]
+            name = name.replace("export ", "")
             config[name] = value
     return config
 
@@ -186,7 +187,7 @@ def handle_test_env() -> None:
         write_env("DB_PASSWORD", DB_PASSWORD)
         LOGGER.info("Added auth, DB_USER: %s", DB_USER)
 
-    if is_set("MONGODB_STARTED"):
+    if is_set("MONGODB_URI"):
         write_env("PYMONGO_MUST_CONNECT", "true")
 
     if is_set("DISABLE_TEST_COMMANDS"):
@@ -281,7 +282,8 @@ def handle_test_env() -> None:
             UV_ARGS.append("--extra ocsp")
 
     if is_set("TEST_CRYPT_SHARED"):
-        CRYPT_SHARED_DIR = Path(os.environ["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
+        config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
+        CRYPT_SHARED_DIR = Path(config["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
         if os.name == "nt":
             write_env("PATH", f"{CRYPT_SHARED_DIR}:$PATH")
