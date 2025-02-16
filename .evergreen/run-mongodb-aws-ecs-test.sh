@@ -26,7 +26,6 @@ apt-get -qq update  < /dev/null > /dev/null
 apt-get -qq install $PYTHON_VER $PYTHON_VER-venv build-essential $PYTHON_VER-dev -y  < /dev/null > /dev/null
 
 export PYTHON_BINARY=$PYTHON_VER
-export AUTH="auth"
 export SET_XTRACE_ON=1
 cd src
 rm -rf .venv

@@ -20,7 +20,7 @@ AZUREKMS_CMD="tar xf mongo-python-driver.tgz" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 echo "Untarring file ... end"
 echo "Running test ... begin"
-AZUREKMS_CMD="SUCCESS=true LIBMONGOCRYPT_URL=$LIBMONGOCRYPT_URL bash .evergreen/just.sh setup-test kms azure" \
+AZUREKMS_CMD="LIBMONGOCRYPT_URL=$LIBMONGOCRYPT_URL bash .evergreen/just.sh setup-test kms azure" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
 AZUREKMS_CMD="KEY_NAME=\"$AZUREKMS_KEYNAME\" KEY_VAULT_ENDPOINT=\"$AZUREKMS_KEYVAULTENDPOINT\" bash ./.evergreen/just.sh test-eg" \
     $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh

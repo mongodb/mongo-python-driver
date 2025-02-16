@@ -30,35 +30,36 @@ PASS_THROUGH_ENV = [
 ]
 
 # Map the test name to a test suite.
-TEST_SUITE_MAP = dict(
-    default="default or default_async",
-    default_sync="default",
-    default_async="default_async",
-    serverless="default or default_async",
-    data_lake="data_lake",
-    auth_oidc="auth_oidc",
-    index_management="index_management",
-    enterprise_auth="auth",
-    load_balancer="load_balancer",
-    encryption="encryption",
-    kms="csfle",
-    atlas="atlas",
-    ocsp="ocsp",
-    auth_aws="auth_aws",
-    perf="perf",
-    mockupdb="mockupdb",
-)
+TEST_SUITE_MAP = {
+    "atlas": "atlas",
+    "auth_aws": "auth_aws",
+    "auth_oidc": "auth_oidc",
+    "data_lake": "data_lake",
+    "default": "default or default_async",
+    "default_async": "default_async",
+    "default_sync": "default",
+    "encryption": "encryption",
+    "enterprise_auth": "auth",
+    "index_management": "index_management",
+    "kms": "csfle",
+    "load_balancer": "load_balancer",
+    "mockupdb": "mockupdb",
+    "ocsp": "ocsp",
+    "perf": "perf",
+    "serverless": "default or default_async",
+}
 
 # Map the test name to test extra.
-EXTRAS_MAP = dict(
-    auth_oidc="aws",
-    auth_aws="aws",
-    ocsp="ocsp",
-    pyopenssl="ocsp",
-    enterprise_auth="gssapi",
-    encryption="encryption",
-    kms="encryption",
-)
+EXTRAS_MAP = {
+    "auth_aws": "aws",
+    "auth_oidc": "aws",
+    "encryption": "encryption",
+    "enterprise_auth": "gssapi",
+    "kms": "encryption",
+    "ocsp": "ocsp",
+    "pyopenssl": "ocsp",
+}
+
 
 # Map the test name to test group.
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
@@ -126,7 +127,7 @@ def handle_test_env() -> None:
     if opts.auth:
         AUTH = "auth"
     SSL = os.environ.get("SSL", "nossl")
-    if opts.ssl:
+    if opts.ssl or "auth" in test_name:
         AUTH = "ssl"
     TEST_ARGS = ""
     # Start compiling the args we'll pass to uv.
@@ -292,15 +293,12 @@ def handle_test_env() -> None:
             write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:${{LD_LIBRARY_PATH:-}}")
 
     if test_name == "kms":
-        if "SUCCESS" not in os.environ:
-            raise RuntimeError("Must define SUCCESS")
-
-        if sub_test_name == "azure":
+        if sub_test_name.startswith("azure"):
             write_env("TEST_FLE_AZURE_AUTO")
         else:
             write_env("TEST_FLE_GCP_AUTO")
 
-        write_env("SUCCESS", os.environ["SUCCESS"])
+        write_env("SUCCESS", "fail" not in sub_test_name)
         MONGODB_URI = os.environ.get("MONGODB_URI", "")
         if "@" in MONGODB_URI:
             raise RuntimeError("MONGODB_URI unexpectedly contains user credentials in FLE test!")
@@ -325,7 +323,6 @@ def handle_test_env() -> None:
 
     if is_set("GREEN_FRAMEWORK"):
         framework = os.environ["GREEN_FRAMEWORK"]
-        write_env("GREEN_FRAMEWORK", framework)
         UV_ARGS.append(f"--group {framework}")
 
     else:
