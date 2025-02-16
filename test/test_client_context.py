@@ -55,12 +55,6 @@ class TestClientContext(UnitTest):
             "enableTestCommands must be disabled when DISABLE_TEST_COMMANDS is set.",
         )
 
-    def test_setdefaultencoding_worked(self):
-        if not os.environ.get("SETDEFAULTENCODING"):
-            raise SkipTest("SETDEFAULTENCODING is not set")
-
-        self.assertEqual(sys.getdefaultencoding(), os.environ["SETDEFAULTENCODING"])
-
     def test_free_threading_is_enabled(self):
         if "free-threading build" not in sys.version:
             raise SkipTest("this test requires the Python free-threading build")

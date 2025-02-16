@@ -9,7 +9,6 @@ set -eu
 #  COMPRESSORS          If non-empty, install appropriate compressor.
 #  LIBMONGOCRYPT_URL    The URL to download libmongocrypt.
 #  TEST_CRYPT_SHARED    If non-empty, install crypt_shared lib.
-#  SETDEFAULTENCODING   Whether to set default encoding in tests.
 #  MONGODB_API_VERSION  The mongodb api version to use in tests.
 #  MONGODB_URI          If non-empty, use as the MONGODB_URI in tests.
 

@@ -24,7 +24,6 @@ LOGGER = logging.getLogger(__name__)
 PASS_THROUGH_ENV = [
     "GREEN_FRAMEWORK",
     "NO_EXT",
-    "SETDEFAULTENCODING",
     "MONGODB_API_VERSION",
     "MONGODB_URI",
 ]
