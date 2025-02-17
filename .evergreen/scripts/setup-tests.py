@@ -49,6 +49,9 @@ TEST_SUITE_MAP = {
     "serverless": "",
 }
 
+# Tests that require a sub test suite.
+SUB_TEST_REQUIRED = ["auth_aws", "kms"]
+
 # Map the test name to test extra.
 EXTRAS_MAP = {
     "auth_aws": "aws",
@@ -124,6 +127,8 @@ def handle_test_env() -> None:
     opts = get_options()
     test_name = opts.test_name
     sub_test_name = opts.sub_test_name
+    if test_name in SUB_TEST_REQUIRED and not sub_test_name:
+        raise ValueError(f"Test '{test_name}' requires a sub_test_name")
     AUTH = os.environ.get("AUTH", "noauth")
     if opts.auth or "auth" in test_name:
         # Only 'auth_aws ecs' shouldn't have extra auth set.

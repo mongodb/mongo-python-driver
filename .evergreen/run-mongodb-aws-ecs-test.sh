@@ -29,5 +29,5 @@ export PYTHON_BINARY=$PYTHON_VER
 export SET_XTRACE_ON=1
 cd src
 rm -rf .venv
-bash ./.evergreen/just.sh setup-test auth_aws
+bash ./.evergreen/just.sh setup-test auth_aws ecs
 bash .evergreen/just.sh test-eg
