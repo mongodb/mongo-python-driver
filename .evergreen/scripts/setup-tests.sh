@@ -21,6 +21,3 @@ if [ -f $SCRIPT_DIR/env.sh ]; then
 fi
 
 uv run $SCRIPT_DIR/setup-tests.py $@
-
-cat $ROOT_DIR/.evergreen/scripts/test-env.sh
-exit 1
