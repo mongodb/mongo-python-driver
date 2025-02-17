@@ -189,7 +189,6 @@ def handle_test_env() -> None:
             write_env("SINGLE_MONGOS_LB_URI", config["SERVERLESS_URI"])
             write_env("MULTI_MONGOS_LB_URI", config["SERVERLESS_URI"])
         elif test_name == "auth_oidc":
-            config = read_env(f"{DRIVERS_TOOLS}/.evergreen/auth_oidc/secrets-export.sh")
             DB_USER = config["OIDC_ADMIN_USER"]
             DB_PASSWORD = config["OIDC_ADMIN_PWD"]
             write_env("DB_IP", config["MONGODB_URI"])
