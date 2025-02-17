@@ -130,9 +130,11 @@ def handle_test_env() -> None:
     if test_name in SUB_TEST_REQUIRED and not sub_test_name:
         raise ValueError(f"Test '{test_name}' requires a sub_test_name")
     AUTH = os.environ.get("AUTH", "noauth")
+    LOGGER.info(f"HI, {AUTH=}")  # TODO remove
     if opts.auth or "auth" in test_name:
         # Only 'auth_aws ecs' shouldn't have extra auth set.
         if not (test_name == "auth_aws" and sub_test_name == "ecs"):
+            LOGGER.info(f"Why am I setting this? '{sub_test_name=}'")
             AUTH = "auth"
     SSL = os.environ.get("SSL", "nossl")
     if opts.ssl:
