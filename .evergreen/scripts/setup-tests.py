@@ -43,6 +43,7 @@ TEST_SUITE_MAP = {
     "kms": "csfle",
     "load_balancer": "load_balancer",
     "mockupdb": "mockupdb",
+    "pyopenssl": "",
     "ocsp": "ocsp",
     "perf": "perf",
     "serverless": "",
@@ -171,24 +172,24 @@ def handle_test_env() -> None:
     if AUTH != "noauth":
         if test_name == "data_lake":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas_data_lake/secrets-export.sh")
-            DB_USER = config("ADL_USERNAME")
-            DB_PASSWORD = config("ADL_PASSWORD")
+            DB_USER = config["ADL_USERNAME"]
+            DB_PASSWORD = config["ADL_PASSWORD"]
         elif test_name == "serverless":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh")
-            DB_USER = config("SERVERLESS_ATLAS_USER")
-            DB_PASSWORD = config("SERVERLESS_ATLAS_PASSWORD")
-            write_env("MONGODB_URI", config("SERVERLESS_URI"))
-            write_env("SINGLE_MONGOS_LB_URI", config("SERVERLESS_URI"))
-            write_env("MULTI_MONGOS_LB_URI", config("SERVERLESS_URI"))
+            DB_USER = config["SERVERLESS_ATLAS_USER"]
+            DB_PASSWORD = config["SERVERLESS_ATLAS_PASSWORD"]
+            write_env("MONGODB_URI", config["SERVERLESS_URI"])
+            write_env("SINGLE_MONGOS_LB_URI", config["SERVERLESS_URI"])
+            write_env("MULTI_MONGOS_LB_URI", config["SERVERLESS_URI"])
         elif test_name == "auth_oidc":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/auth_oidc/secrets-export.sh")
-            DB_USER = config("OIDC_ADMIN_USER")
-            DB_PASSWORD = config("OIDC_ADMIN_PWD")
-            write_env("DB_IP", config("MONGODB_URI"))
+            DB_USER = config["OIDC_ADMIN_USER"]
+            DB_PASSWORD = config["OIDC_ADMIN_PWD"]
+            write_env("DB_IP", config["MONGODB_URI"])
         elif test_name == "index_management":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas/secrets-export.sh")
-            DB_USER = config("DRIVERS_ATLAS_LAMBDA_USER")
-            DB_PASSWORD = config("DRIVERS_ATLAS_LAMBDA_PASSWORD")
+            DB_USER = config["DRIVERS_ATLAS_LAMBDA_USER"]
+            DB_PASSWORD = config["DRIVERS_ATLAS_LAMBDA_PASSWORD"]
         else:
             DB_USER = "bob"
             DB_PASSWORD = "pwd123"  # noqa: S105
@@ -255,7 +256,7 @@ def handle_test_env() -> None:
     if compressors == "snappy":
         UV_ARGS.append("--extra snappy")
     elif compressors == "zstd":
-        UV_ARGS.append("--extra zstandard")
+        UV_ARGS.append("--extra zstd")
 
     if test_name in ["encryption", "kms"]:
         # Check for libmongocrypt download.
