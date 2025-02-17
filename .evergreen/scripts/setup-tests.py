@@ -21,12 +21,7 @@ LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
 # Passthrough environment variables.
-PASS_THROUGH_ENV = [
-    "GREEN_FRAMEWORK",
-    "NO_EXT",
-    "MONGODB_API_VERSION",
-    "MONGODB_URI",
-]
+PASS_THROUGH_ENV = ["GREEN_FRAMEWORK", "NO_EXT", "MONGODB_API_VERSION"]
 
 # Map the test name to a test suite.
 TEST_SUITE_MAP = {
@@ -132,10 +127,10 @@ def handle_test_env() -> None:
     AUTH = os.environ.get("AUTH", "noauth")
     LOGGER.info(f"HI, {AUTH=}")  # TODO remove
     if opts.auth or "auth" in test_name:
-        # Only 'auth_aws ecs' shouldn't have extra auth set.
-        if not (test_name == "auth_aws" and sub_test_name == "ecs"):
-            LOGGER.info(f"Why am I setting this? '{sub_test_name=}'")
-            AUTH = "auth"
+        AUTH = "auth"
+        # 'auth_aws ecs' shouldn't have extra auth set.
+        if test_name == "auth_aws" and sub_test_name == "ecs":
+            AUTH = "noauth"
     SSL = os.environ.get("SSL", "nossl")
     if opts.ssl:
         SSL = "ssl"
@@ -198,6 +193,7 @@ def handle_test_env() -> None:
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas/secrets-export.sh")
             DB_USER = config["DRIVERS_ATLAS_LAMBDA_USER"]
             DB_PASSWORD = config["DRIVERS_ATLAS_LAMBDA_PASSWORD"]
+            write_env("MONGODB_URI", config["MONGODB_URI"])
         else:
             DB_USER = "bob"
             DB_PASSWORD = "pwd123"  # noqa: S105
