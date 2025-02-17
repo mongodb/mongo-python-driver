@@ -207,7 +207,7 @@ def handle_test_env() -> None:
         config = read_env(f"{ROOT}/secrets-export.sh")
         if os.name == "nt":
             LOGGER.info("Setting GSSAPI_PASS")
-            write_env("GSSAPI_PASS", os.environ["SASL_PASS"])
+            write_env("GSSAPI_PASS", config["SASL_PASS"])
             write_env("GSSAPI_CANONICALIZE", "true")
         else:
             # BUILD-3830
@@ -215,20 +215,20 @@ def handle_test_env() -> None:
             krb_conf.touch()
             write_env("KRB5_CONFIG", krb_conf)
             LOGGER.info("Writing keytab")
-            keytab = base64.b64decode(os.environ["KEYTAB_BASE64"])
+            keytab = base64.b64decode(config["KEYTAB_BASE64"])
             keytab_file = ROOT / ".evergreen/drivers.keytab"
             with keytab_file.open("wb") as fid:
                 fid.write(keytab)
-            principal = os.environ["PRINCIPAL"]
+            principal = config["PRINCIPAL"]
             LOGGER.info("Running kinit")
             os.environ["KRB5_CONFIG"] = str(krb_conf)
             cmd = f"kinit -k -t {keytab_file} -p {principal}"
             run_command(cmd)
 
         LOGGER.info("Setting GSSAPI variables")
-        write_env("GSSAPI_HOST", os.environ["SASL_HOST"])
-        write_env("GSSAPI_PORT", os.environ["SASL_PORT"])
-        write_env("GSSAPI_PRINCIPAL", os.environ["PRINCIPAL"])
+        write_env("GSSAPI_HOST", config["SASL_HOST"])
+        write_env("GSSAPI_PORT", config["SASL_PORT"])
+        write_env("GSSAPI_PRINCIPAL", config["PRINCIPAL"])
 
     if test_name == "load_balancer":
         SINGLE_MONGOS_LB_URI = os.environ.get(
