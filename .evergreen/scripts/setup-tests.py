@@ -189,8 +189,8 @@ def handle_test_env() -> None:
             write_env("SINGLE_MONGOS_LB_URI", config["SERVERLESS_URI"])
             write_env("MULTI_MONGOS_LB_URI", config["SERVERLESS_URI"])
         elif test_name == "auth_oidc":
-            DB_USER = config["OIDC_ADMIN_USER"]
-            DB_PASSWORD = config["OIDC_ADMIN_PWD"]
+            DB_USER = os.environ["OIDC_ADMIN_USER"]
+            DB_PASSWORD = os.environ["OIDC_ADMIN_PWD"]
             write_env("DB_IP", config["MONGODB_URI"])
         elif test_name == "index_management":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas/secrets-export.sh")
