@@ -89,7 +89,7 @@ def read_env(path: Path | str) -> dict[str, Any]:
         for line in fid.readlines():
             if "=" not in line:
                 continue
-            name, _, value = line.partition("=")
+            name, _, value = line.strip().partition("=")
             if value.startswith(('"', "'")):
                 value = value[1:-1]
             name = name.replace("export ", "")
