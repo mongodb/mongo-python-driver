@@ -204,6 +204,7 @@ def handle_test_env() -> None:
         write_env("PYMONGO_DISABLE_TEST_COMMANDS", "1")
 
     if test_name == "enterprise_auth":
+        config = read_env(f"{ROOT}/secrets-export.sh")
         if os.name == "nt":
             LOGGER.info("Setting GSSAPI_PASS")
             write_env("GSSAPI_PASS", os.environ["SASL_PASS"])
