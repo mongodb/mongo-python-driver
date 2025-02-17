@@ -82,9 +82,9 @@ def run_command(cmd: str) -> None:
     LOGGER.info("Running command %s... done.", cmd)
 
 
-def read_env(path: Path) -> dict[str, Any]:
+def read_env(path: Path | str) -> dict[str, Any]:
     config = dict()
-    with path.open() as fid:
+    with Path(path).open() as fid:
         for line in fid.readlines():
             if "=" not in line:
                 continue
