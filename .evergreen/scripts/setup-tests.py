@@ -125,11 +125,13 @@ def handle_test_env() -> None:
     test_name = opts.test_name
     sub_test_name = opts.sub_test_name
     AUTH = os.environ.get("AUTH", "noauth")
-    if opts.auth:
-        AUTH = "auth"
+    if opts.auth or "auth" in test_name:
+        # Only 'auth_aws ecs' shouldn't have extra auth set.
+        if not (test_name == "auth_aws" and sub_test_name == "ecs"):
+            AUTH = "auth"
     SSL = os.environ.get("SSL", "nossl")
-    if opts.ssl or "auth" in test_name:
-        AUTH = "ssl"
+    if opts.ssl:
+        SSL = "ssl"
     TEST_ARGS = ""
 
     # Start compiling the args we'll pass to uv.
