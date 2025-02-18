@@ -251,6 +251,9 @@ def create_tests():
             setattr(TestAllScenarios, new_test.__name__, new_test)
 
 
+create_tests()
+
+
 class TestClusterTimeComparison(AsyncPyMongoTestCase):
     async def test_cluster_time_comparison(self):
         t = await create_mock_topology("mongodb://host")
@@ -496,6 +499,7 @@ class TestHeartbeatStartOrdering(AsyncPyMongoTestCase):
 
 # Generate unified tests.
 globals().update(generate_test_classes(os.path.join(SDAM_PATH, "unified"), module=__name__))
+
 
 if __name__ == "__main__":
     unittest.main()
