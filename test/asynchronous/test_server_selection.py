@@ -31,17 +31,17 @@ from pymongo.typings import strip_optional
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.utils import AsyncFunctionCallRecorder, async_wait_until
 from test.asynchronous.utils_selection_tests import (
     create_selection_tests,
-    get_addresses,
     get_topology_settings_dict,
+)
+from test.utils_selection_tests_shared import (
+    get_addresses,
     make_server_description,
 )
-from test.utils import (
-    EventListener,
-    FunctionCallRecorder,
+from test.utils_shared import (
     OvertCommandListener,
-    async_wait_until,
 )
 
 _IS_SYNC = False
@@ -122,7 +122,7 @@ class TestCustomServerSelectorFunction(AsyncIntegrationTest):
 
     @async_client_context.require_replica_set
     async def test_selector_called(self):
-        selector = FunctionCallRecorder(lambda x: x)
+        selector = AsyncFunctionCallRecorder(lambda x: x)
 
         # Client setup.
         mongo_client = await self.async_rs_or_single_client(server_selector=selector)
@@ -175,7 +175,7 @@ class TestCustomServerSelectorFunction(AsyncIntegrationTest):
 
     @async_client_context.require_replica_set
     async def test_server_selector_bypassed(self):
-        selector = FunctionCallRecorder(lambda x: x)
+        selector = AsyncFunctionCallRecorder(lambda x: x)
 
         scenario_def = {
             "topology_description": {

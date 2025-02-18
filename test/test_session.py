@@ -36,7 +36,7 @@ from test import (
     client_context,
     unittest,
 )
-from test.utils import (
+from test.utils_shared import (
     EventListener,
     OvertCommandListener,
     wait_until,

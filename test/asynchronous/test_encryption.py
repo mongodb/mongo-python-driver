@@ -64,7 +64,7 @@ from test.helpers import (
     KMIP_CREDS,
     LOCAL_MASTER_KEY,
 )
-from test.utils import (
+from test.utils_shared import (
     AllowListEventListener,
     OvertCommandListener,
     TopologyEventListener,

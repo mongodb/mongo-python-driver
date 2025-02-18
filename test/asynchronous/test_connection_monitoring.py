@@ -26,7 +26,7 @@ sys.path[0:0] = [""]
 from test.asynchronous import AsyncIntegrationTest, client_knobs, unittest
 from test.asynchronous.pymongo_mocks import DummyMonitor
 from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator, SpecRunnerTask
-from test.utils import (
+from test.utils_shared import (
     CMAPListener,
     async_client_context,
     async_get_pool,

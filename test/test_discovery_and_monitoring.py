@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 from test import IntegrationTest, PyMongoTestCase, unittest
 from test.pymongo_mocks import DummyMonitor
 from test.unified_format import generate_test_classes
-from test.utils import (
+from test.utils_shared import (
     CMAPListener,
     HeartbeatEventListener,
     HeartbeatEventsListListener,

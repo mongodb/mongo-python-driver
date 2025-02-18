@@ -24,7 +24,7 @@ from pymongo.synchronous.mongo_client import MongoClient
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, remove_all_users, unittest
-from test.utils import wait_until
+from test.utils_shared import wait_until
 
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions

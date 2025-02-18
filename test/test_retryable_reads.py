@@ -31,7 +31,7 @@ from test import (
     client_knobs,
     unittest,
 )
-from test.utils import (
+from test.utils_shared import (
     CMAPListener,
     OvertCommandListener,
     set_fail_point,

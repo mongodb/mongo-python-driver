@@ -30,7 +30,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
-from test.utils import (
+from test.utils_shared import (
     create_event,
     get_pool,
     wait_until,

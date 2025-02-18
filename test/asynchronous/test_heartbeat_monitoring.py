@@ -20,7 +20,7 @@ import sys
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, client_knobs, unittest
-from test.utils import AsyncMockPool, HeartbeatEventListener, async_wait_until
+from test.utils_shared import AsyncMockPool, HeartbeatEventListener, async_wait_until
 
 from pymongo.asynchronous.monitor import Monitor
 from pymongo.errors import ConnectionFailure

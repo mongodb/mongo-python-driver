@@ -24,8 +24,8 @@ sys.path[0:0] = [""]
 
 from test import unittest
 from test.pymongo_mocks import DummyMonitor
-from test.utils import MockPool, parse_read_preference
-from test.utils_selection_tests_shared import (
+from test.utils_shared import MockPool, parse_read_preference
+from test.utils_shared_selection_tests_shared import (
     get_addresses,
     get_topology_type_name,
     make_server_description,

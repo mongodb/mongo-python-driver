@@ -36,7 +36,7 @@ from test.asynchronous import (
     unittest,
 )
 from test.asynchronous.unified_format import generate_test_classes
-from test.utils import (
+from test.utils_shared import (
     AllowListEventListener,
     EventListener,
     OvertCommandListener,

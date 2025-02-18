@@ -28,7 +28,7 @@ from unittest.mock import patch
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils import async_joinall, one
+from test.utils_shared import async_joinall, one
 
 import gridfs
 from bson.binary import Binary

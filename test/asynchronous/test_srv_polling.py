@@ -23,7 +23,7 @@ from typing import Any
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncPyMongoTestCase, client_knobs, unittest
-from test.utils import FunctionCallRecorder, async_wait_until
+from test.asynchronous.utils import AsyncFunctionCallRecorder, async_wait_until
 
 import pymongo
 from pymongo import common
@@ -69,7 +69,7 @@ class SrvPollingKnobs:
 
         patch_func: Any
         if self.count_resolver_calls:
-            patch_func = FunctionCallRecorder(mock_get_hosts_and_min_ttl)
+            patch_func = AsyncFunctionCallRecorder(mock_get_hosts_and_min_ttl)
         else:
             patch_func = mock_get_hosts_and_min_ttl
 

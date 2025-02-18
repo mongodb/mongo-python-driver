@@ -25,7 +25,7 @@ from test.asynchronous import (
     unittest,
 )
 from test.asynchronous.helpers import async_repl_set_step_down
-from test.utils import (
+from test.utils_shared import (
     CMAPListener,
     async_ensure_all_connected,
 )

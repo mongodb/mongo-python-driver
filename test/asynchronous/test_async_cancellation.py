@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from test.utils import async_get_pool, delay, one
+from test.utils_shared import async_get_pool, delay, one
 
 sys.path[0:0] = [""]
 

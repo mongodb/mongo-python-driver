@@ -61,17 +61,19 @@ from test import (
 from test.pymongo_mocks import MockClient
 from test.test_binary import BinaryData
 from test.utils import (
-    NTHREADS,
-    CMAPListener,
     FunctionCallRecorder,
     assertRaisesExactly,
-    delay,
     get_pool,
+    wait_until,
+)
+from test.utils_shared import (
+    NTHREADS,
+    CMAPListener,
+    delay,
     gevent_monkey_patched,
     is_greenthread_patched,
     lazy_client_trial,
     one,
-    wait_until,
 )
 
 import bson

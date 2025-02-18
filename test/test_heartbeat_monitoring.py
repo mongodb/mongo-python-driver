@@ -20,7 +20,7 @@ import sys
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_knobs, unittest
-from test.utils import HeartbeatEventListener, MockPool, wait_until
+from test.utils_shared import HeartbeatEventListener, MockPool, wait_until
 
 from pymongo.errors import ConnectionFailure
 from pymongo.hello import Hello, HelloCompat

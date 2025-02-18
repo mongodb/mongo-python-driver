@@ -24,7 +24,7 @@ from functools import partial
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, connected, unittest
-from test.utils import (
+from test.utils_shared import (
     ServerAndTopologyEventListener,
     wait_until,
 )

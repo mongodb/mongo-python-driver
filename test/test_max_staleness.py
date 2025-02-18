@@ -28,7 +28,7 @@ from pymongo.operations import _Op
 sys.path[0:0] = [""]
 
 from test import PyMongoTestCase, client_context, unittest
-from test.utils_selection_tests import create_selection_tests
+from test.utils_shared_selection_tests import create_selection_tests
 
 from pymongo.errors import ConfigurationError
 from pymongo.server_selectors import writable_server_selector

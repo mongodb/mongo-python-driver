@@ -125,6 +125,7 @@ replacements = {
     "StopAsyncIteration": "StopIteration",
     "create_async_event": "create_event",
     "async_joinall": "joinall",
+    "AsyncFunctionCallRecorder": "FunctionCallRecorder",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -254,6 +255,7 @@ converted_tests = [
     "test_versioned_api_integration.py",
     "unified_format.py",
     "utils_selection_tests.py",
+    "utils.py",
 ]
 
 

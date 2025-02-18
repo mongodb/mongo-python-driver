@@ -33,7 +33,7 @@ from test.asynchronous import (  # TODO: fix sync imports in PYTHON-4528
     AsyncUnitTest,
     async_client_context,
 )
-from test.utils import (
+from test.utils_shared import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,
     OvertCommandListener,
