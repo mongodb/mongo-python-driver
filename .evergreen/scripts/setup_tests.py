@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import dataclasses
 import io
 import logging
 import os
@@ -79,6 +80,13 @@ EXTRAS_MAP = dict(
 )
 
 
+@dataclasses
+class Distro:
+    name: str
+    version_id: str
+    arch: str
+
+
 def write_env(name: str, value: Any) -> None:
     with ENV_FILE.open("a", newline="\n") as fid:
         # Remove any existing quote chars.
@@ -97,6 +105,20 @@ def run_command(cmd: str) -> None:
     LOGGER.info("Running command %s... done.", cmd)
 
 
+def get_distro() -> Distro:
+    name = ""
+    version_id = ""
+    arch = platform.machine()
+    with open("/etc/os-release") as fid:
+        for line in fid.readlines():
+            line = line.replace('"', "")  # noqa: PLW2901
+            if line.startswith("NAME="):
+                _, _, name = line.strip().partition("=")
+            if line.startswith("VERSION_ID="):
+                _, _, version_id = line.strip().partition("=")
+    return Distro(name=name, version_id=version_id, arch=arch)
+
+
 def setup_libmongocrypt():
     target = ""
     if PLATFORM == "windows":
@@ -109,23 +131,14 @@ def setup_libmongocrypt():
         target = "macos"
 
     else:
-        name = ""
-        version_id = ""
-        arch = platform.machine()
-        with open("/etc/os-release") as fid:
-            for line in fid.readlines():
-                line = line.replace('"', "")  # noqa: PLW2901
-                if line.startswith("NAME="):
-                    _, _, name = line.strip().partition("=")
-                if line.startswith("VERSION_ID="):
-                    _, _, version_id = line.strip().partition("=")
-        if name.startswith("Debian"):
-            target = f"debian{version_id}"
-        elif name.startswith("Red Hat"):
-            if version_id.startswith("7"):
+        distro = get_distro()
+        if distro.name.startswith("Debian"):
+            target = f"debian{distro.version_id}"
+        elif distro.name.startswith("Red Hat"):
+            if distro.version_id.startswith("7"):
                 target = "rhel-70-64-bit"
-            elif version_id.startswith("8"):
-                if arch == "aarch64":
+            elif distro.version_id.startswith("8"):
+                if distro.arch == "aarch64":
                     target = "rhel-82-arm64"
                 else:
                     target = "rhel-80-64-bit"
