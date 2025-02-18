@@ -19,6 +19,7 @@ HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
 ENV_FILE = HERE / "test-env.sh"
 DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS", "").replace(os.sep, "/")
+PLATFORM = "windows" if os.name == "nt" else sys.platform
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
@@ -98,13 +99,13 @@ def run_command(cmd: str) -> None:
 
 def setup_libmongocrypt():
     target = ""
-    if os.name == "nt":
+    if PLATFORM == "windows":
         # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
         if is_set("TEST_FLE_GCP_AUTO"):
             run_command('powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/"')
         target = "windows-test"
 
-    elif sys.platform == "darwin":
+    elif PLATFORM == "darwin":
         target = "macos"
 
     else:
@@ -149,7 +150,7 @@ def setup_libmongocrypt():
     run_command("ls -la libmongocrypt")
     run_command("ls -la libmongocrypt/nocrypto")
 
-    if os.name == "nt":
+    if PLATFORM == "windows":
         # libmongocrypt's windows dll is not marked executable.
         run_command("chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll")
 
@@ -218,7 +219,7 @@ def handle_test_env() -> None:
         write_env("PYMONGO_DISABLE_TEST_COMMANDS", "1")
 
     if is_set("TEST_ENTERPRISE_AUTH"):
-        if os.name == "nt":
+        if PLATFORM == "windows":
             LOGGER.info("Setting GSSAPI_PASS")
             write_env("GSSAPI_PASS", os.environ["SASL_PASS"])
             write_env("GSSAPI_CANONICALIZE", "true")
@@ -283,12 +284,12 @@ def handle_test_env() -> None:
 
         # Use the nocrypto build to avoid dependency issues with older windows/python versions.
         BASE = ROOT / "libmongocrypt/nocrypto"
-        if sys.platform == "linux":
+        if PLATFORM == "linux":
             if (BASE / "lib/libmongocrypt.so").exists():
                 PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.so"
             else:
                 PYMONGOCRYPT_LIB = BASE / "lib64/libmongocrypt.so"
-        elif sys.platform == "darwin":
+        elif PLATFORM == "darwin":
             PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.dylib"
         else:
             PYMONGOCRYPT_LIB = BASE / "bin/mongocrypt.dll"
@@ -306,7 +307,7 @@ def handle_test_env() -> None:
     if is_set("TEST_CRYPT_SHARED"):
         CRYPT_SHARED_DIR = Path(os.environ["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
-        if os.name == "nt":
+        if PLATFORM == "windows":
             write_env("PATH", f"{CRYPT_SHARED_DIR}:$PATH")
         else:
             write_env(
