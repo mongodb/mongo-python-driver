@@ -29,7 +29,8 @@ from unittest.mock import patch
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils_shared import joinall, one
+from test.utils import joinall
+from test.utils_shared import one
 
 import gridfs
 from bson.binary import Binary

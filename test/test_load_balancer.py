@@ -23,6 +23,7 @@ import sys
 import threading
 from asyncio import Event
 from test.helpers import ConcurrentRunner, ExceptionCatchingTask
+from test.utils import get_pool
 
 import pytest
 
@@ -32,7 +33,6 @@ from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
 from test.utils_shared import (
     create_event,
-    get_pool,
     wait_until,
 )
 

@@ -26,7 +26,6 @@ from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator
 from test.utils_shared import (
     CMAPListener,
     OvertCommandListener,
-    async_get_pool,
     async_wait_until,
 )
 

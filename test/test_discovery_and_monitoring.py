@@ -19,6 +19,7 @@ import os
 import socketserver
 import sys
 import threading
+from test.utils import get_pool
 
 sys.path[0:0] = [""]
 
@@ -31,7 +32,6 @@ from test.utils_shared import (
     HeartbeatEventsListListener,
     assertion_context,
     client_context,
-    get_pool,
     server_name_to_type,
     wait_until,
 )

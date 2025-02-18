@@ -19,17 +19,18 @@ import datetime
 import os
 import sys
 from test.asynchronous import AsyncPyMongoTestCase
+from test.asynchronous.utils import AsyncMockPool
 
 sys.path[0:0] = [""]
 
 from test import unittest
 from test.pymongo_mocks import DummyMonitor
-from test.utils_shared import AsyncMockPool, parse_read_preference
-from test.utils_shared_selection_tests_shared import (
+from test.utils_selection_tests_shared import (
     get_addresses,
     get_topology_type_name,
     make_server_description,
 )
+from test.utils_shared import parse_read_preference
 
 from bson import json_util
 from pymongo.asynchronous.settings import TopologySettings

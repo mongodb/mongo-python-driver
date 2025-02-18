@@ -23,7 +23,8 @@ sys.path[0:0] = [""]
 
 from test import client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
-from test.utils_shared import MockPool, wait_until
+from test.utils import MockPool
+from test.utils_shared import wait_until
 
 from bson.objectid import ObjectId
 from pymongo import common

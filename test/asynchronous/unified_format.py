@@ -35,6 +35,7 @@ from test.asynchronous import (
     client_knobs,
     unittest,
 )
+from test.asynchronous.utils import async_get_pool
 from test.asynchronous.utils_spec_runner import SpecRunnerTask
 from test.unified_format_shared import (
     KMS_TLS_OPTS,
@@ -50,7 +51,6 @@ from test.unified_format_shared import (
     with_metaclass,
 )
 from test.utils_shared import (
-    async_get_pool,
     async_wait_until,
     camel_to_snake,
     camel_to_snake_args,

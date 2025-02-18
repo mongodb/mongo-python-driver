@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import sys
+from test.asynchronous.utils import async_ensure_all_connected
 
 sys.path[0:0] = [""]
 
@@ -27,7 +28,6 @@ from test.asynchronous import (
 from test.asynchronous.helpers import async_repl_set_step_down
 from test.utils_shared import (
     CMAPListener,
-    async_ensure_all_connected,
 )
 
 from bson import SON

@@ -19,6 +19,7 @@ import os
 import pprint
 import sys
 import threading
+from test.utils import set_fail_point
 
 from pymongo.errors import AutoReconnect
 
@@ -34,7 +35,6 @@ from test import (
 from test.utils_shared import (
     CMAPListener,
     OvertCommandListener,
-    set_fail_point,
 )
 
 from pymongo.monitoring import (

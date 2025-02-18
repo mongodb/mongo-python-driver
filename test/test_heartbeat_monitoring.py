@@ -16,11 +16,12 @@
 from __future__ import annotations
 
 import sys
+from test.utils import MockPool
 
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_knobs, unittest
-from test.utils_shared import HeartbeatEventListener, MockPool, wait_until
+from test.utils_shared import HeartbeatEventListener, wait_until
 
 from pymongo.errors import ConnectionFailure
 from pymongo.hello import Hello, HelloCompat

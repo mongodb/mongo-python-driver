@@ -61,7 +61,6 @@ from test.asynchronous import (
 )
 from test.asynchronous.pymongo_mocks import AsyncMockClient
 from test.asynchronous.utils import (
-    AsyncFunctionCallRecorder,
     async_get_pool,
     async_wait_until,
     asyncAssertRaisesExactly,
@@ -70,6 +69,7 @@ from test.test_binary import BinaryData
 from test.utils_shared import (
     NTHREADS,
     CMAPListener,
+    FunctionCallRecorder,
     delay,
     gevent_monkey_patched,
     is_greenthread_patched,
@@ -513,7 +513,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         # Patch the resolver.
         from pymongo.srv_resolver import _resolve
 
-        patched_resolver = AsyncFunctionCallRecorder(_resolve)
+        patched_resolver = FunctionCallRecorder(_resolve)
         pymongo.srv_resolver._resolve = patched_resolver
 
         def reset_resolver():

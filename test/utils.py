@@ -17,56 +17,19 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import copy
-import functools
-import os
 import random
-import re
-import shutil
-import sys
-import threading
 import time
-import unittest
-import warnings
 from asyncio import iscoroutinefunction
-from collections import abc, defaultdict
-from functools import partial
-from test import client_context, db_pwd, db_user
-from typing import Any, List
 
-from bson import json_util
-from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import MongoClient, monitoring, operations, read_preferences
-from pymongo._asyncio_task import create_task
-from pymongo.cursor_shared import CursorType
-from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo import MongoClient
+from pymongo.errors import ConfigurationError
 from pymongo.hello import HelloCompat
-from pymongo.helpers_shared import _SENSITIVE_COMMANDS
 from pymongo.lock import _create_lock
-from pymongo.monitoring import (
-    ConnectionCheckedInEvent,
-    ConnectionCheckedOutEvent,
-    ConnectionCheckOutFailedEvent,
-    ConnectionCheckOutStartedEvent,
-    ConnectionClosedEvent,
-    ConnectionCreatedEvent,
-    ConnectionReadyEvent,
-    PoolClearedEvent,
-    PoolClosedEvent,
-    PoolCreatedEvent,
-    PoolReadyEvent,
-)
 from pymongo.operations import _Op
-from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import any_server_selector, writable_server_selector
-from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous.collection import ReturnDocument
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.pool import _CancellationContext, _PoolGeneration
-from pymongo.uri_parser import parse_uri
-from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
 
@@ -243,31 +206,3 @@ class MockPool:
 
     def remove_stale_sockets(self, *args, **kwargs):
         pass
-
-
-class FunctionCallRecorder:
-    """Utility class to wrap a callable and record its invocations."""
-
-    def __init__(self, function):
-        self._function = function
-        self._call_list = []
-
-    def __call__(self, *args, **kwargs):
-        self._call_list.append((args, kwargs))
-        if iscoroutinefunction(self._function):
-            return self._function(*args, **kwargs)
-        else:
-            return self._function(*args, **kwargs)
-
-    def reset(self):
-        """Wipes the call list."""
-        self._call_list = []
-
-    def call_list(self):
-        """Returns a copy of the call list."""
-        return self._call_list[:]
-
-    @property
-    def call_count(self):
-        """Returns the number of times the function has been called."""
-        return len(self._call_list)

@@ -61,7 +61,6 @@ from test import (
 from test.pymongo_mocks import MockClient
 from test.test_binary import BinaryData
 from test.utils import (
-    FunctionCallRecorder,
     assertRaisesExactly,
     get_pool,
     wait_until,
@@ -69,6 +68,7 @@ from test.utils import (
 from test.utils_shared import (
     NTHREADS,
     CMAPListener,
+    FunctionCallRecorder,
     delay,
     gevent_monkey_patched,
     is_greenthread_patched,

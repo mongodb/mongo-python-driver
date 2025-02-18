@@ -21,6 +21,7 @@ import re
 import sys
 from codecs import utf_8_decode
 from collections import defaultdict
+from test.utils import get_pool, is_mongos
 from typing import Any, Iterable, no_type_check
 
 from pymongo.synchronous.database import Database
@@ -37,8 +38,6 @@ from test.utils_shared import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,
     OvertCommandListener,
-    get_pool,
-    is_mongos,
     wait_until,
 )
 

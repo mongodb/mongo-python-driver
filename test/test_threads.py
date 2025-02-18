@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import threading
 from test import IntegrationTest, client_context, unittest
-from test.utils_shared import joinall
+from test.utils import joinall
 
 
 @client_context.require_connection

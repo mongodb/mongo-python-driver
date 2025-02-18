@@ -20,17 +20,15 @@ import os
 import sys
 import time
 from pathlib import Path
+from test.asynchronous.utils import async_get_pool, async_get_pools
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, client_knobs, unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context, client_knobs, unittest
 from test.asynchronous.pymongo_mocks import DummyMonitor
 from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator, SpecRunnerTask
 from test.utils_shared import (
     CMAPListener,
-    async_client_context,
-    async_get_pool,
-    async_get_pools,
     async_wait_until,
     camel_to_snake,
 )

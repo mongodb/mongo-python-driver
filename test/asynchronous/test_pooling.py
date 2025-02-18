@@ -21,6 +21,7 @@ import random
 import socket
 import sys
 import time
+from test.asynchronous.utils import async_get_pool, async_joinall
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -33,7 +34,7 @@ sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.helpers import ConcurrentRunner
-from test.utils_shared import async_get_pool, async_joinall, delay
+from test.utils_shared import delay
 
 from pymongo.asynchronous.pool import Pool, PoolOptions
 from pymongo.socket_checker import SocketChecker

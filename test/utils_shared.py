@@ -336,6 +336,34 @@ class CompareType:
         return isinstance(other, self.types)
 
 
+class FunctionCallRecorder:
+    """Utility class to wrap a callable and record its invocations."""
+
+    def __init__(self, function):
+        self._function = function
+        self._call_list = []
+
+    def __call__(self, *args, **kwargs):
+        self._call_list.append((args, kwargs))
+        if iscoroutinefunction(self._function):
+            return self._function(*args, **kwargs)
+        else:
+            return self._function(*args, **kwargs)
+
+    def reset(self):
+        """Wipes the call list."""
+        self._call_list = []
+
+    def call_list(self):
+        """Returns a copy of the call list."""
+        return self._call_list[:]
+
+    @property
+    def call_count(self):
+        """Returns the number of times the function has been called."""
+        return len(self._call_list)
+
+
 def one(s):
     """Get one element of a set"""
     return next(iter(s))

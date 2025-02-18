@@ -23,6 +23,7 @@ import sys
 import threading
 from asyncio import Event
 from test.asynchronous.helpers import ConcurrentRunner, ExceptionCatchingTask
+from test.asynchronous.utils import async_get_pool
 
 import pytest
 
@@ -31,7 +32,6 @@ sys.path[0:0] = [""]
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.unified_format import generate_test_classes
 from test.utils_shared import (
-    async_get_pool,
     async_wait_until,
     create_async_event,
 )

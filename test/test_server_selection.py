@@ -31,7 +31,7 @@ from pymongo.typings import strip_optional
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import FunctionCallRecorder, wait_until
+from test.utils import wait_until
 from test.utils_selection_tests import (
     create_selection_tests,
     get_topology_settings_dict,
@@ -41,6 +41,7 @@ from test.utils_selection_tests_shared import (
     make_server_description,
 )
 from test.utils_shared import (
+    FunctionCallRecorder,
     OvertCommandListener,
 )
 

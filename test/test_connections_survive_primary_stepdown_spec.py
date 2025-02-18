@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import sys
+from test.utils import ensure_all_connected
 
 sys.path[0:0] = [""]
 
@@ -27,7 +28,6 @@ from test import (
 from test.helpers import repl_set_step_down
 from test.utils_shared import (
     CMAPListener,
-    ensure_all_connected,
 )
 
 from bson import SON
