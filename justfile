@@ -1,7 +1,5 @@
 # See https://just.systems/man/en/ for instructions
 set shell := ["bash", "-c"]
-set dotenv-load
-set dotenv-filename := "./.evergreen/scripts/env.sh"
 
 # Commonly used command segments.
 uv_run := "uv run --isolated --frozen "
