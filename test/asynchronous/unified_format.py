@@ -1395,7 +1395,11 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 try:
                     return await self._run_scenario(spec, uri)
                 except (AssertionError, OperationFailure) as exc:
-                    if isinstance(exc, OperationFailure) and "failpoint" not in exc._message:
+                    if not (
+                        isinstance(exc, OperationFailure)
+                        and not _IS_SYNC
+                        and "failpoint" in exc._message
+                    ):
                         raise
                     if i < attempts - 1:
                         print(
