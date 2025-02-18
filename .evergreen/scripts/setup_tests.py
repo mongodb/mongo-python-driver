@@ -80,7 +80,7 @@ EXTRAS_MAP = dict(
 )
 
 
-@dataclasses
+@dataclasses.dataclass
 class Distro:
     name: str
     version_id: str
