@@ -18,11 +18,11 @@ from __future__ import annotations
 import asyncio
 import functools
 import os
-import threading
 import unittest
 from asyncio import iscoroutinefunction
 from collections import abc
 from test import IntegrationTest, client_context, client_knobs
+from test.helpers import ConcurrentRunner
 from test.utils import (
     CMAPListener,
     CompareType,
@@ -44,6 +44,7 @@ from bson.son import SON
 from gridfs import GridFSBucket
 from gridfs.synchronous.grid_file import GridFSBucket
 from pymongo.errors import AutoReconnect, BulkWriteError, OperationFailure, PyMongoError
+from pymongo.lock import _cond_wait, _create_condition, _create_lock
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult, _WriteResult
@@ -55,15 +56,13 @@ from pymongo.write_concern import WriteConcern
 _IS_SYNC = True
 
 
-class SpecRunnerThread(threading.Thread):
+class SpecRunnerThread(ConcurrentRunner):
     def __init__(self, name):
-        super().__init__()
-        self.name = name
+        super().__init__(name=name)
         self.exc = None
         self.daemon = True
-        self.cond = threading.Condition()
+        self.cond = _create_condition(_create_lock())
         self.ops = []
-        self.stopped = False
 
     def schedule(self, work):
         self.ops.append(work)
@@ -79,7 +78,7 @@ class SpecRunnerThread(threading.Thread):
         while not self.stopped or self.ops:
             if not self.ops:
                 with self.cond:
-                    self.cond.wait(10)
+                    _cond_wait(self.cond, 10)
             if self.ops:
                 try:
                     work = self.ops.pop(0)
@@ -283,7 +282,7 @@ class SpecRunner(IntegrationTest):
         clients = {c.address: c for c in self.mongos_clients}
         client = clients[session._pinned_address]
         self._set_fail_point(client, fail_point)
-        self.addCleanup(self.set_fail_point, {"mode": "off"})
+        self.addToCleanup(self.set_fail_point, {"mode": "off"})
 
     def assert_session_pinned(self, session):
         """Run the assertSessionPinned test operation.
@@ -472,7 +471,7 @@ class SpecRunner(IntegrationTest):
             result = cmd(**dict(arguments))
         # Cleanup open change stream cursors.
         if name == "watch":
-            self.addCleanup(result.close)
+            self.addToCleanup(result.close)
 
         if name == "aggregate":
             if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
@@ -651,7 +650,7 @@ class SpecRunner(IntegrationTest):
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
+        self.addToCleanup(self.kill_all_sessions)
         self.setup_scenario(scenario_def)
         database_name = self.get_scenario_db_name(scenario_def)
         collection_name = self.get_scenario_coll_name(scenario_def)
@@ -663,7 +662,7 @@ class SpecRunner(IntegrationTest):
         if "failPoint" in test:
             fp = test["failPoint"]
             self.set_fail_point(fp)
-            self.addCleanup(
+            self.addToCleanup(
                 self.set_fail_point, {"configureFailPoint": fp["configureFailPoint"], "mode": "off"}
             )
 
@@ -711,7 +710,7 @@ class SpecRunner(IntegrationTest):
             # Store lsid so we can access it after end_session, in check_events.
             session_ids[session_name] = s.session_id
 
-        self.addCleanup(end_sessions, sessions)
+        self.addToCleanup(end_sessions, sessions)
 
         collection = client[database_name][collection_name]
         self.run_test_ops(sessions, collection, test)

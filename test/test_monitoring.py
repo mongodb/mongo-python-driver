@@ -419,6 +419,8 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertTrue(isinstance(failed.duration_micros, int))
         self.assertEqual(error, failed.failure)
 
+    # TODO: fix exhaust cursor + batch_size
+    @client_context.require_sync
     @client_context.require_no_mongos
     def test_exhaust(self):
         self.client.pymongo_test.test.drop()

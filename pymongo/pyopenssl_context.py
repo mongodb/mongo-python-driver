@@ -125,7 +125,8 @@ class _sslConn(_SSL.Connection):
             try:
                 return call(*args, **kwargs)
             except BLOCKING_IO_ERRORS as exc:
-                if is_async:
+                # Do not retry if the connection is in non-blocking mode.
+                if is_async or timeout == 0:
                     raise exc
                 # Check for closed socket.
                 if self.fileno() == -1:
@@ -272,7 +273,7 @@ class SSLContext:
 
     check_ocsp_endpoint = property(__get_check_ocsp_endpoint, __set_check_ocsp_endpoint)
 
-    def __get_options(self) -> None:
+    def __get_options(self) -> int:
         # Calling set_options adds the option to the existing bitmask and
         # returns the new bitmask.
         # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_options

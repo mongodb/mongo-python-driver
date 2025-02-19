@@ -27,6 +27,8 @@ from bson.son import SON
 from pymongo.errors import OperationFailure
 from pymongo.read_concern import ReadConcern
 
+_IS_SYNC = True
+
 
 class TestReadConcern(IntegrationTest):
     listener: OvertCommandListener
@@ -71,14 +73,14 @@ class TestReadConcern(IntegrationTest):
     def test_find_command(self):
         # readConcern not sent in command if not specified.
         coll = self.db.coll
-        tuple(coll.find({"field": "value"}))
+        coll.find({"field": "value"}).to_list()
         self.assertNotIn("readConcern", self.listener.started_events[0].command)
 
         self.listener.reset()
 
         # Explicitly set readConcern to 'local'.
         coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
-        tuple(coll.find({"field": "value"}))
+        coll.find({"field": "value"}).to_list()
         self.assertEqualCommand(
             SON(
                 [
@@ -93,19 +95,19 @@ class TestReadConcern(IntegrationTest):
     def test_command_cursor(self):
         # readConcern not sent in command if not specified.
         coll = self.db.coll
-        tuple(coll.aggregate([{"$match": {"field": "value"}}]))
+        (coll.aggregate([{"$match": {"field": "value"}}])).to_list()
         self.assertNotIn("readConcern", self.listener.started_events[0].command)
 
         self.listener.reset()
 
         # Explicitly set readConcern to 'local'.
         coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
-        tuple(coll.aggregate([{"$match": {"field": "value"}}]))
+        (coll.aggregate([{"$match": {"field": "value"}}])).to_list()
         self.assertEqual({"level": "local"}, self.listener.started_events[0].command["readConcern"])
 
     def test_aggregate_out(self):
         coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
-        tuple(coll.aggregate([{"$match": {"field": "value"}}, {"$out": "output_collection"}]))
+        (coll.aggregate([{"$match": {"field": "value"}}, {"$out": "output_collection"}])).to_list()
 
         # Aggregate with $out supports readConcern MongoDB 4.2 onwards.
         if client_context.version >= (4, 1):

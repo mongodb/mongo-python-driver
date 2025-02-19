@@ -290,7 +290,7 @@ class Binary(bytes):
         subtype: int = BINARY_SUBTYPE,
     ) -> Binary:
         if not isinstance(subtype, int):
-            raise TypeError("subtype must be an instance of int")
+            raise TypeError(f"subtype must be an instance of int, not {type(subtype)}")
         if subtype >= 256 or subtype < 0:
             raise ValueError("subtype must be contained in [0, 256)")
         # Support any type that implements the buffer protocol.
@@ -321,7 +321,7 @@ class Binary(bytes):
         .. versionadded:: 3.11
         """
         if not isinstance(uuid, UUID):
-            raise TypeError("uuid must be an instance of uuid.UUID")
+            raise TypeError(f"uuid must be an instance of uuid.UUID, not {type(uuid)}")
 
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError(
@@ -405,14 +405,17 @@ class Binary(bytes):
     @classmethod
     @overload
     def from_vector(
-        cls: Type[Binary], vector: list[int, float], dtype: BinaryVectorDtype, padding: int = 0
+        cls: Type[Binary],
+        vector: Union[list[int], list[float]],
+        dtype: BinaryVectorDtype,
+        padding: int = 0,
     ) -> Binary:
         ...
 
     @classmethod
     def from_vector(
         cls: Type[Binary],
-        vector: Union[BinaryVector, list[int, float]],
+        vector: Union[BinaryVector, list[int], list[float]],
         dtype: Optional[BinaryVectorDtype] = None,
         padding: Optional[int] = None,
     ) -> Binary:
@@ -467,7 +470,7 @@ class Binary(bytes):
         """
 
         if self.subtype != VECTOR_SUBTYPE:
-            raise ValueError(f"Cannot decode subtype {self.subtype} as a vector.")
+            raise ValueError(f"Cannot decode subtype {self.subtype} as a vector")
 
         position = 0
         dtype, padding = struct.unpack_from("<sB", self, position)

@@ -29,7 +29,5 @@ else
     exit 1
 fi
 
-export TEST_AUTH_OIDC=1
-export COVERAGE=1
-export AUTH="auth"
-bash ./.evergreen/hatch.sh test:test-eg -- "${@:1}"
+TEST_AUTH_OIDC=1 COVERAGE=1 AUTH="auth" bash ./.evergreen/just.sh setup-test
+bash ./.evergreen/just.sh test-eg "${@:1}"

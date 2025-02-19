@@ -6,7 +6,7 @@
 # ]
 # ///
 
-# Note: Run this file with `hatch run`, `pipx run`, or `uv run`.
+# Note: Run this file with `pipx run`, or `uv run`.
 from __future__ import annotations
 
 import sys
@@ -26,9 +26,9 @@ from shrub.v3.shrub_service import ShrubService
 # Globals
 ##############
 
-ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
+ALL_VERSIONS = ["4.0", "4.2", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
-PYPYS = ["pypy3.9", "pypy3.10"]
+PYPYS = ["pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080
@@ -146,12 +146,16 @@ def get_python_binary(python: str, host: Host) -> str:
         else:
             base = "C:/python"
         python = python.replace(".", "")
+        if python == "313t":
+            return f"{base}/Python313/python3.13t.exe"
         return f"{base}/Python{python}/python.exe"
 
     if name in ["rhel8", "ubuntu22", "ubuntu20", "rhel7"]:
         return f"/opt/python/{python}/bin/python3"
 
     if name in ["macos", "macos-arm64"]:
+        if python == "3.13t":
+            return "/Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t"
         return f"/Library/Frameworks/Python.Framework/Versions/{python}/bin/python3"
 
     raise ValueError(f"no match found for python {python} on {name}")
@@ -275,8 +279,9 @@ def create_server_variants() -> list[BuildVariant]:
     host = DEFAULT_HOST
     # Prefix the display name with an asterisk so it is sorted first.
     base_display_name = "* Test"
-    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
+    for python, c_ext in product([*MIN_MAX_PYTHON, PYPYS[-1]], C_EXTS):
         expansions = dict(COVERAGE="coverage")
+        handle_c_ext(c_ext, expansions)
         display_name = get_display_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
             [f".{t} .sync_async" for t in TOPOLOGIES],
@@ -318,17 +323,32 @@ def create_server_variants() -> list[BuildVariant]:
     return variants
 
 
+def create_free_threaded_variants() -> list[BuildVariant]:
+    variants = []
+    for host_name in ("rhel8", "macos", "macos-arm64", "win64"):
+        if host_name == "win64":
+            # TODO: PYTHON-5027
+            continue
+        tasks = [".free-threading"]
+        host = HOSTS[host_name]
+        python = "3.13t"
+        display_name = get_display_name("Free-threaded", host, python=python)
+        variant = create_variant(tasks, display_name, python=python, host=host)
+        variants.append(variant)
+    return variants
+
+
 def create_encryption_variants() -> list[BuildVariant]:
     variants = []
     tags = ["encryption_tag"]
     batchtime = BATCHTIME_WEEK
 
     def get_encryption_expansions(encryption):
-        expansions = dict(test_encryption="true")
+        expansions = dict(TEST_ENCRYPTION="true")
         if "crypt_shared" in encryption:
-            expansions["test_crypt_shared"] = "true"
+            expansions["TEST_CRYPT_SHARED"] = "true"
         if "PyOpenSSL" in encryption:
-            expansions["test_encryption_pyopenssl"] = "true"
+            expansions["TEST_ENCRYPTION_PYOPENSSL"] = "true"
         return expansions
 
     host = DEFAULT_HOST
@@ -467,7 +487,7 @@ def create_enterprise_auth_variants():
 def create_pyopenssl_variants():
     base_name = "PyOpenSSL"
     batchtime = BATCHTIME_WEEK
-    expansions = dict(test_pyopenssl="true")
+    expansions = dict(TEST_PYOPENSSL="true")
     variants = []
 
     for python in ALL_PYTHONS:
@@ -554,7 +574,7 @@ def create_green_framework_variants():
     variants = []
     tasks = [".standalone .noauth .nossl .sync_async"]
     host = DEFAULT_HOST
-    for python, framework in product([CPYTHONS[0], CPYTHONS[-2]], ["eventlet", "gevent"]):
+    for python, framework in product([CPYTHONS[0], CPYTHONS[-1]], ["eventlet", "gevent"]):
         expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
         display_name = get_display_name(f"Green {framework.capitalize()}", host, python=python)
         variant = create_variant(
@@ -625,7 +645,7 @@ def create_disable_test_commands_variants():
 def create_serverless_variants():
     host = DEFAULT_HOST
     batchtime = BATCHTIME_WEEK
-    expansions = dict(test_serverless="true", AUTH="auth", SSL="ssl")
+    expansions = dict(TEST_SERVERLESS="true", AUTH="auth", SSL="ssl")
     tasks = ["serverless_task_group"]
     base_name = "Serverless"
     return [
@@ -744,7 +764,6 @@ def create_aws_auth_variants():
 
 
 def create_alternative_hosts_variants():
-    expansions = dict(SKIP_HATCH="true")
     batchtime = BATCHTIME_WEEK
     variants = []
 
@@ -752,23 +771,24 @@ def create_alternative_hosts_variants():
     variants.append(
         create_variant(
             [".5.0 .standalone !.sync_async"],
-            get_display_name("OpenSSL 1.0.2", host, python=CPYTHONS[0], **expansions),
+            get_display_name("OpenSSL 1.0.2", host, python=CPYTHONS[0]),
             host=host,
             python=CPYTHONS[0],
             batchtime=batchtime,
-            expansions=expansions,
         )
     )
 
+    expansions = dict()
+    handle_c_ext(C_EXTS[0], expansions)
     for host_name in OTHER_HOSTS:
         host = HOSTS[host_name]
         variants.append(
             create_variant(
                 [".6.0 .standalone !.sync_async"],
-                display_name=get_display_name("Other hosts", host, **expansions),
-                expansions=expansions,
+                display_name=get_display_name("Other hosts", host),
                 batchtime=batchtime,
                 host=host,
+                expansions=expansions,
             )
         )
     return variants
@@ -814,12 +834,9 @@ def create_load_balancer_tasks():
         tags = ["load-balancer", auth, ssl]
         bootstrap_vars = dict(TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, LOAD_BALANCER="true")
         bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
-        balancer_func = FunctionCall(func="run load-balancer")
-        test_vars = dict(AUTH=auth, SSL=ssl, test_loadbalancer="true")
+        test_vars = dict(AUTH=auth, SSL=ssl, TEST_LOADBALANCER="true")
         test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(
-            EvgTask(name=name, tags=tags, commands=[bootstrap_func, balancer_func, test_func])
-        )
+        tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
     return tasks
 
 

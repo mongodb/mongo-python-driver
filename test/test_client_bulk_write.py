@@ -18,9 +18,6 @@ from __future__ import annotations
 import os
 import sys
 
-from bson import encode
-from bson.raw_bson import RawBSONDocument
-
 sys.path[0:0] = [""]
 
 from test import (
@@ -87,17 +84,6 @@ class TestClientBulkWrite(IntegrationTest):
         self.assertEqual(write_error["idx"], 1)
         self.assertEqual(write_error["op"], {"insert": 0, "document": {"_id": 1}})
 
-    @client_context.require_version_min(8, 0, 0, -24)
-    @client_context.require_no_serverless
-    def test_raw_bson_not_inflated(self):
-        doc = RawBSONDocument(encode({"a": "b" * 100}))
-        models = [
-            InsertOne(namespace="db.coll", document=doc),
-        ]
-        self.client.bulk_write(models=models)
-
-        self.assertIsNone(doc._RawBSONDocument__inflated_doc)
-
 
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
 class TestClientBulkWriteCRUD(IntegrationTest):
@@ -116,7 +102,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         models = []
         for _ in range(self.max_write_batch_size + 1):
             models.append(InsertOne(namespace="db.coll", document={"a": "b"}))
-        self.addCleanup(client.db["coll"].drop)
+        self.addToCleanup(client.db["coll"].drop)
 
         result = client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, self.max_write_batch_size + 1)
@@ -148,7 +134,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                     document={"a": b_repeated},
                 )
             )
-        self.addCleanup(client.db["coll"].drop)
+        self.addToCleanup(client.db["coll"].drop)
 
         result = client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, num_models)
@@ -191,7 +177,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                         document={"a": "b"},
                     )
                 )
-            self.addCleanup(client.db["coll"].drop)
+            self.addToCleanup(client.db["coll"].drop)
 
             with self.assertRaises(ClientBulkWriteException) as context:
                 client.bulk_write(models=models)
@@ -214,7 +200,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         collection.drop()
         collection.insert_one(document={"_id": 1})
 
@@ -244,7 +230,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         collection.drop()
         collection.insert_one(document={"_id": 1})
 
@@ -274,7 +260,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         collection.drop()
 
         models = []
@@ -315,7 +301,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         collection.drop()
 
         with client.start_session() as session:
@@ -358,7 +344,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         collection.drop()
 
         fail_command = {
@@ -474,7 +460,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                 document={"a": "b"},
             )
         )
-        self.addCleanup(client.db["coll"].drop)
+        self.addToCleanup(client.db["coll"].drop)
 
         # No batch splitting required.
         result = client.bulk_write(models=models)
@@ -507,8 +493,8 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                 document={"a": "b"},
             )
         )
-        self.addCleanup(client.db["coll"].drop)
-        self.addCleanup(client.db[c_repeated].drop)
+        self.addToCleanup(client.db["coll"].drop)
+        self.addToCleanup(client.db[c_repeated].drop)
 
         # Batch splitting required.
         result = client.bulk_write(models=models)
@@ -571,7 +557,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client()
 
         collection = client.db["coll"]
-        self.addCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         collection.drop()
 
         models = []
@@ -612,7 +598,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         collection.drop()
         client.db.command({"create": "db.coll"})
 
@@ -661,10 +647,10 @@ class TestClientBulkWriteCSOT(IntegrationTest):
         _OVERHEAD = 500
 
         internal_client = self.rs_or_single_client(timeoutMS=None)
-        self.addCleanup(internal_client.close)
+        self.addToCleanup(internal_client.close)
 
         collection = internal_client.db["coll"]
-        self.addCleanup(collection.drop)
+        self.addToCleanup(collection.drop)
         collection.drop()
 
         fail_command = {

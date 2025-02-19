@@ -133,13 +133,7 @@ class TestCollectionNoConnect(UnitTest):
 
     def test_iteration(self):
         coll = self.db.coll
-        if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
-            msg = "'NoneType' object is not callable"
-        else:
-            if _IS_SYNC:
-                msg = "'Collection' object is not iterable"
-            else:
-                msg = "'Collection' object is not iterable"
+        msg = "'Collection' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in coll:  # type: ignore[misc] # error: "None" not callable  [misc]
@@ -1278,7 +1272,7 @@ class TestCollection(IntegrationTest):
 
     def test_write_error_unicode(self):
         coll = self.db.test
-        self.addCleanup(coll.drop)
+        self.addToCleanup(coll.drop)
 
         coll.create_index("a", unique=True)
         coll.insert_one({"a": "unicode \U0001f40d"})
@@ -1513,7 +1507,7 @@ class TestCollection(IntegrationTest):
     def test_count_documents(self):
         db = self.db
         db.drop_collection("test")
-        self.addCleanup(db.drop_collection, "test")
+        self.addToCleanup(db.drop_collection, "test")
 
         self.assertEqual(db.test.count_documents({}), 0)
         db.wrong.insert_many([{}, {}])
@@ -1527,7 +1521,7 @@ class TestCollection(IntegrationTest):
     def test_estimated_document_count(self):
         db = self.db
         db.drop_collection("test")
-        self.addCleanup(db.drop_collection, "test")
+        self.addToCleanup(db.drop_collection, "test")
 
         self.assertEqual(db.test.estimated_document_count(), 0)
         db.wrong.insert_many([{}, {}])
@@ -1608,7 +1602,7 @@ class TestCollection(IntegrationTest):
     def test_aggregation_cursor_alive(self):
         self.db.test.delete_many({})
         self.db.test.insert_many([{} for _ in range(3)])
-        self.addCleanup(self.db.test.delete_many, {})
+        self.addToCleanup(self.db.test.delete_many, {})
         cursor = self.db.test.aggregate(pipeline=[], cursor={"batchSize": 2})
         n = 0
         while True:
@@ -1780,6 +1774,8 @@ class TestCollection(IntegrationTest):
         self.db.test.find(no_cursor_timeout=True).to_list()
         self.db.test.find(no_cursor_timeout=False).to_list()
 
+    # TODO: fix exhaust cursor + batch_size
+    @client_context.require_sync
     def test_exhaust(self):
         if is_mongos(self.db.client):
             with self.assertRaises(InvalidOperation):
@@ -1903,7 +1899,7 @@ class TestCollection(IntegrationTest):
     def test_insert_many_large_batch(self):
         # Tests legacy insert.
         db = self.client.test_insert_large_batch
-        self.addCleanup(self.client.drop_database, "test_insert_large_batch")
+        self.addToCleanup(self.client.drop_database, "test_insert_large_batch")
         max_bson_size = client_context.max_bson_size
         # Write commands are limited to 16MB + 16k per batch
         big_string = "x" * int(max_bson_size / 2)

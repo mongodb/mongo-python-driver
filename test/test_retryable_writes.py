@@ -137,6 +137,7 @@ class IgnoreDeprecationsTest(IntegrationTest):
         self.deprecation_filter = DeprecationFilter()
 
     def tearDown(self) -> None:
+        super().tearDown()
         self.deprecation_filter.stop()
 
 
@@ -194,6 +195,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                 SON([("configureFailPoint", "onPrimaryTransactionalWrite"), ("mode", "off")])
             )
         self.knobs.disable()
+        super().tearDown()
 
     def test_supported_single_statement_no_retry(self):
         listener = OvertCommandListener()
@@ -244,6 +246,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                     event.command,
                     f"{msg} sent txnNumber with {event.command_name}",
                 )
+        print("woo!")
 
     def test_server_selection_timeout_not_retried(self):
         """A ServerSelectionTimeoutError is not retried."""

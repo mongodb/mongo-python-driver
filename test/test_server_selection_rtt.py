@@ -18,18 +18,24 @@ from __future__ import annotations
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path[0:0] = [""]
 
-from test import unittest
+from test import PyMongoTestCase, unittest
 
 from pymongo.read_preferences import MovingAverage
 
+_IS_SYNC = True
+
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "server_selection/rtt")
+if _IS_SYNC:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "server_selection/rtt")
+else:
+    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "server_selection/rtt")
 
 
-class TestAllScenarios(unittest.TestCase):
+class TestAllScenarios(PyMongoTestCase):
     pass
 
 
@@ -49,7 +55,7 @@ def create_test(scenario_def):
 
 
 def create_tests():
-    for dirpath, _, filenames in os.walk(_TEST_PATH):
+    for dirpath, _, filenames in os.walk(TEST_PATH):
         dirname = os.path.split(dirpath)[-1]
 
         for filename in filenames:

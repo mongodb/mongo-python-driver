@@ -441,6 +441,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
+    TEST_PATH = ""  # This gets filled in by generate_test_classes
     mongos_clients: list[MongoClient] = []
 
     @staticmethod
@@ -686,7 +687,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("MMAPv1 does not support change streams")
         self.__raise_if_unsupported("createChangeStream", target, MongoClient, Database, Collection)
         stream = target.watch(*args, **kwargs)
-        self.addCleanup(stream.close)
+        self.addToCleanup(stream.close)
         return stream
 
     def _clientOperation_createChangeStream(self, target, *args, **kwargs):
@@ -707,7 +708,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return target.command(**kwargs)
 
     def _databaseOperation_runCursorCommand(self, target, **kwargs):
-        return list(self._databaseOperation_createCommandCursor(target, **kwargs))
+        return (self._databaseOperation_createCommandCursor(target, **kwargs)).to_list()
 
     def _databaseOperation_createCommandCursor(self, target, **kwargs):
         self.__raise_if_unsupported("createCommandCursor", target, Database)
@@ -784,7 +785,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "filter" not in kwargs:
             self.fail('createFindCursor requires a "filter" argument')
         cursor = NonLazyCursor.create(target.find(*args, **kwargs), target.database.client)
-        self.addCleanup(cursor.close)
+        self.addToCleanup(cursor.close)
         return cursor
 
     def _collectionOperation_count(self, target, *args, **kwargs):
@@ -1001,7 +1002,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         cmd_on = SON([("configureFailPoint", "failCommand")])
         cmd_on.update(command_args)
         client.admin.command(cmd_on)
-        self.addCleanup(
+        self.addToCleanup(
             client.admin.command, "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
         )
 
@@ -1166,7 +1167,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _testOperation_runOnThread(self, spec):
         """Run the 'runOnThread' operation."""
         thread = self.entity_map[spec["thread"]]
-        thread.schedule(lambda: self.run_entity_operation(spec["operation"]))
+        thread.schedule(functools.partial(self.run_entity_operation, spec["operation"]))
 
     def _testOperation_waitForThread(self, spec):
         """Run the 'waitForThread' operation."""
@@ -1373,7 +1374,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
+        self.addToCleanup(self.kill_all_sessions)
 
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.

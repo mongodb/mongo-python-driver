@@ -301,7 +301,6 @@ class TestBulk(BulkTestBase):
 
     def test_bulk_max_message_size(self):
         self.coll.delete_many({})
-        self.addCleanup(self.coll.delete_many, {})
         _16_MB = 16 * 1000 * 1000
         # Generate a list of documents such that the first batched OP_MSG is
         # as close as possible to the 48MB limit.
@@ -315,6 +314,7 @@ class TestBulk(BulkTestBase):
             docs.append({"_id": i})
         result = self.coll.insert_many(docs)
         self.assertEqual(len(docs), len(result.inserted_ids))
+        self.coll.delete_many({})
 
     def test_generator_insert(self):
         def gen():
@@ -503,7 +503,7 @@ class TestBulk(BulkTestBase):
 
     def test_single_error_ordered_batch(self):
         self.coll.create_index("a", unique=True)
-        self.addCleanup(self.coll.drop_index, [("a", 1)])
+        self.addToCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
             UpdateOne({"b": 2}, {"$set": {"a": 1}}, upsert=True),
@@ -545,7 +545,7 @@ class TestBulk(BulkTestBase):
 
     def test_multiple_error_ordered_batch(self):
         self.coll.create_index("a", unique=True)
-        self.addCleanup(self.coll.drop_index, [("a", 1)])
+        self.addToCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
             UpdateOne({"b": 2}, {"$set": {"a": 1}}, upsert=True),
@@ -614,7 +614,7 @@ class TestBulk(BulkTestBase):
 
     def test_single_error_unordered_batch(self):
         self.coll.create_index("a", unique=True)
-        self.addCleanup(self.coll.drop_index, [("a", 1)])
+        self.addToCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
             UpdateOne({"b": 2}, {"$set": {"a": 1}}, upsert=True),
@@ -657,7 +657,7 @@ class TestBulk(BulkTestBase):
 
     def test_multiple_error_unordered_batch(self):
         self.coll.create_index("a", unique=True)
-        self.addCleanup(self.coll.drop_index, [("a", 1)])
+        self.addToCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
             UpdateOne({"b": 2}, {"$set": {"a": 3}}, upsert=True),
@@ -959,7 +959,6 @@ class TestBulkWriteConcern(BulkTestBase):
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     def test_write_concern_failure_ordered(self):
-        self.skipTest("Skipping until PYTHON-4865 is resolved.")
         details = None
 
         # Ensure we don't raise on wnote.
@@ -1001,7 +1000,7 @@ class TestBulkWriteConcern(BulkTestBase):
 
         self.coll.delete_many({})
         self.coll.create_index("a", unique=True)
-        self.addCleanup(self.coll.drop_index, [("a", 1)])
+        self.addToCleanup(self.coll.drop_index, [("a", 1)])
 
         # Fail due to write concern support as well
         # as duplicate key error on ordered batch.
@@ -1074,7 +1073,7 @@ class TestBulkWriteConcern(BulkTestBase):
 
         self.coll.delete_many({})
         self.coll.create_index("a", unique=True)
-        self.addCleanup(self.coll.drop_index, [("a", 1)])
+        self.addToCleanup(self.coll.drop_index, [("a", 1)])
 
         # Fail due to write concern support as well
         # as duplicate key error on unordered batch.

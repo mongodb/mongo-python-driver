@@ -102,10 +102,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
 
     def test_iteration(self):
         db = self.client.pymongo_test
-        if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
-            msg = "'NoneType' object is not callable"
-        else:
-            msg = "'Database' object is not iterable"
+        msg = "'Database' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in db:  # type: ignore[misc] # error: "None" not callable  [misc]
@@ -212,7 +209,7 @@ class TestDatabase(IntegrationTest):
         db.create_collection("capped", capped=True, size=4096)
         db.capped.insert_one({})
         db.non_capped.insert_one({})
-        self.addCleanup(client.drop_database, db.name)
+        self.addToCleanup(client.drop_database, db.name)
         filter: Union[None, Mapping[str, Any]]
         # Should not send nameOnly.
         for filter in ({"options.capped": True}, {"options.capped": True, "name": "capped"}):
@@ -738,7 +735,7 @@ class TestDatabaseAggregation(IntegrationTest):
             write_stage = {"$merge": {"into": {"db": db_name, "coll": coll_name}}}
         output_coll = self.client[db_name][coll_name]
         output_coll.drop()
-        self.addCleanup(output_coll.drop)
+        self.addToCleanup(output_coll.drop)
 
         admin = self.admin.with_options(write_concern=WriteConcern(w=0))
         pipeline = self.pipeline[:]

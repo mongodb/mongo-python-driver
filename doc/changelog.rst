@@ -4,17 +4,24 @@ Changelog
 Changes in Version 4.11.0 (YYYY/MM/DD)
 --------------------------------------
 
-.. warning:: PyMongo 4.11 drops support for Python 3.8: Python 3.9+ or PyPy 3.9+ is now required.
+.. warning:: PyMongo 4.11 drops support for Python 3.8 and PyPy 3.9: Python 3.9+ or PyPy 3.10+ is now required.
 .. warning:: PyMongo 4.11 drops support for MongoDB 3.6. PyMongo now supports MongoDB 4.0+.
    Driver support for MongoDB 3.6 reached end of life in April 2024.
+.. warning:: Driver support for MongoDB 4.0 reaches end of life in April 2025.
+   A future minor release of PyMongo will raise the minimum supported MongoDB Server version from 4.0 to 4.2.
+   This is in accordance with [MongoDB Software Lifecycle Schedules](https://www.mongodb.com/legal/support-policy/lifecycles).
+   **Support for MongoDB Server 4.0 will be dropped in a future release!**
+.. warning:: This version does not include wheels for ``ppc64le`` or ``s390x`` architectures, see `PYTHON-5058`_ for more information.
 
 PyMongo 4.11 brings a number of changes including:
 
-- Dropped support for Python 3.8.
+- Dropped support for Python 3.8 and PyPy 3.9.
 - Dropped support for MongoDB 3.6.
 - Dropped support for the MONGODB-CR authenticate mechanism, which is no longer supported by MongoDB 4.0+.
+- pymongocrypt>=1.12 is now required for :ref:`In-Use Encryption` support.
 - Added support for free-threaded Python with the GIL disabled. For more information see:
   `Free-threaded CPython <https://docs.python.org/3.13/whatsnew/3.13.html#whatsnew313-free-threaded-cpython>`_.
+  We do not yet support free-threaded Python on Windows (`PYTHON-5027`_) or with In-Use Encryption (`PYTHON-5024`_).
 - :attr:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.address` and
   :attr:`~pymongo.mongo_client.MongoClient.address` now correctly block when called on unconnected clients
   until either connection succeeds or a server selection timeout error is raised.
@@ -41,6 +48,9 @@ See the `PyMongo 4.11 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.11 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=40784
+.. _PYTHON-5027: https://jira.mongodb.org/browse/PYTHON-5027
+.. _PYTHON-5024: https://jira.mongodb.org/browse/PYTHON-5024
+.. _PYTHON-5058: https://jira.mongodb.org/browse/PYTHON-5058
 
 Changes in Version 4.10.1 (2024/10/01)
 --------------------------------------

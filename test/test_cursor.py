@@ -18,6 +18,7 @@ from __future__ import annotations
 import copy
 import gc
 import itertools
+import os
 import random
 import re
 import sys
@@ -1070,7 +1071,7 @@ class TestCursor(IntegrationTest):
         db = self.db
         db.drop_collection("test")
         db.create_collection("test", capped=True, size=1000, max=3)
-        self.addCleanup(db.drop_collection, "test")
+        self.addToCleanup(db.drop_collection, "test")
         cursor = db.test.find(cursor_type=CursorType.TAILABLE)
 
         db.test.insert_one({"x": 1})
@@ -1233,7 +1234,7 @@ class TestCursor(IntegrationTest):
     def test_alive(self):
         self.db.test.delete_many({})
         self.db.test.insert_many([{} for _ in range(3)])
-        self.addCleanup(self.db.test.delete_many, {})
+        self.addToCleanup(self.db.test.delete_many, {})
         cursor = self.db.test.find().batch_size(2)
         n = 0
         while True:
@@ -1354,7 +1355,7 @@ class TestCursor(IntegrationTest):
 
         coll.delete_many({})
         coll.insert_many([{} for _ in range(5)])
-        self.addCleanup(coll.drop)
+        self.addToCleanup(coll.drop)
 
         coll.find(batch_size=3).to_list()
         started = listener.started_events
@@ -1376,7 +1377,7 @@ class TestCursor(IntegrationTest):
         c = oplog.find(
             {"ts": {"$gte": ts}}, cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
         ).max_await_time_ms(1)
-        self.addCleanup(c.close)
+        self.addToCleanup(c.close)
         # Wait for the change to be read.
         docs = []
         while not docs:
@@ -1391,7 +1392,7 @@ class TestCursor(IntegrationTest):
     def test_to_list_length(self):
         coll = self.db.test
         coll.insert_many([{} for _ in range(5)])
-        self.addCleanup(coll.drop)
+        self.addToCleanup(coll.drop)
         c = coll.find()
         docs = c.to_list(3)
         self.assertEqual(len(docs), 3)
@@ -1403,6 +1404,8 @@ class TestCursor(IntegrationTest):
         self.assertEqual(len(docs), 2)
 
     def test_to_list_csot_applied(self):
+        if os.environ.get("SKIP_CSOT_TESTS", ""):
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         client = self.single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
         # Initialize the client with a larger timeout to help make test less flakey
@@ -1417,7 +1420,7 @@ class TestCursor(IntegrationTest):
     def test_command_cursor_to_list(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
         c = self.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
-        self.addCleanup(c.close)
+        self.addToCleanup(c.close)
         docs = c.to_list()
         self.assertGreaterEqual(len(docs), 0)
 
@@ -1425,7 +1428,7 @@ class TestCursor(IntegrationTest):
     def test_command_cursor_to_list_empty(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
         c = self.db.does_not_exist.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
-        self.addCleanup(c.close)
+        self.addToCleanup(c.close)
         docs = c.to_list()
         self.assertEqual([], docs)
 
@@ -1444,6 +1447,8 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_failCommand_blockConnection
     def test_command_cursor_to_list_csot_applied(self):
+        if os.environ.get("SKIP_CSOT_TESTS", ""):
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         client = self.single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
         # Initialize the client with a larger timeout to help make test less flakey
@@ -1796,6 +1801,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
 
     @client_context.require_version_min(5, 0, -1)
     @client_context.require_no_mongos
+    @client_context.require_sync
     def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
@@ -1805,7 +1811,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
 
         listener.reset()
 
-        result = c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1).to_list()
+        result = list(c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1))
 
         self.assertEqual(len(result), 3)
 

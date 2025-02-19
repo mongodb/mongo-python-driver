@@ -122,7 +122,7 @@ def _index_list(
     """
     if direction is not None:
         if not isinstance(key_or_list, str):
-            raise TypeError("Expected a string and a direction")
+            raise TypeError(f"Expected a string and a direction, not {type(key_or_list)}")
         return [(key_or_list, direction)]
     else:
         if isinstance(key_or_list, str):
@@ -132,7 +132,9 @@ def _index_list(
         elif isinstance(key_or_list, abc.Mapping):
             return list(key_or_list.items())
         elif not isinstance(key_or_list, (list, tuple)):
-            raise TypeError("if no direction is specified, key_or_list must be an instance of list")
+            raise TypeError(
+                f"if no direction is specified, key_or_list must be an instance of list, not {type(key_or_list)}"
+            )
         values: list[tuple[str, int]] = []
         for item in key_or_list:
             if isinstance(item, str):
@@ -172,11 +174,12 @@ def _index_document(index_list: _IndexList) -> dict[str, Any]:
 
 def _validate_index_key_pair(key: Any, value: Any) -> None:
     if not isinstance(key, str):
-        raise TypeError("first item in each key pair must be an instance of str")
+        raise TypeError(f"first item in each key pair must be an instance of str, not {type(key)}")
     if not isinstance(value, (str, int, abc.Mapping)):
         raise TypeError(
             "second item in each key pair must be 1, -1, "
             "'2d', or another valid MongoDB index specifier."
+            f", not {type(value)}"
         )
 
 

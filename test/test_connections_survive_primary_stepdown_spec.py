@@ -104,7 +104,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         self.set_fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["insert"], "errorCode": error_code}}
         )
-        self.addCleanup(self.set_fail_point, {"mode": "off"})
+        self.addToCleanup(self.set_fail_point, {"mode": "off"})
         # Insert record and verify failure.
         with self.assertRaises(NotPrimaryError) as exc:
             self.coll.insert_one({"test": 1})

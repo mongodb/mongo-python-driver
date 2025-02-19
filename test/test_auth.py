@@ -40,7 +40,7 @@ from pymongo.errors import OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.read_preferences import ReadPreference
 from pymongo.saslprep import HAVE_STRINGPREP
-from pymongo.synchronous.auth import HAVE_KERBEROS
+from pymongo.synchronous.auth import HAVE_KERBEROS, _canonicalize_hostname
 
 _IS_SYNC = True
 
@@ -96,10 +96,11 @@ class TestGSSAPI(PyMongoTestCase):
         cls.service_realm_required = (
             GSSAPI_SERVICE_REALM is not None and GSSAPI_SERVICE_REALM not in GSSAPI_PRINCIPAL
         )
-        mech_properties = f"SERVICE_NAME:{GSSAPI_SERVICE_NAME}"
-        mech_properties += f",CANONICALIZE_HOST_NAME:{GSSAPI_CANONICALIZE}"
+        mech_properties = dict(
+            SERVICE_NAME=GSSAPI_SERVICE_NAME, CANONICALIZE_HOST_NAME=GSSAPI_CANONICALIZE
+        )
         if GSSAPI_SERVICE_REALM is not None:
-            mech_properties += f",SERVICE_REALM:{GSSAPI_SERVICE_REALM}"
+            mech_properties["SERVICE_REALM"] = GSSAPI_SERVICE_REALM
         cls.mech_properties = mech_properties
 
     def test_credentials_hashing(self):
@@ -167,7 +168,10 @@ class TestGSSAPI(PyMongoTestCase):
         client[GSSAPI_DB].collection.find_one()
 
         # Log in using URI, with authMechanismProperties.
-        mech_uri = uri + f"&authMechanismProperties={self.mech_properties}"
+        mech_properties_str = ""
+        for key, value in self.mech_properties.items():
+            mech_properties_str += f"{key}:{value},"
+        mech_uri = uri + f"&authMechanismProperties={mech_properties_str[:-1]}"
         client = self.simple_client(mech_uri)
         client[GSSAPI_DB].collection.find_one()
 
@@ -267,6 +271,58 @@ class TestGSSAPI(PyMongoTestCase):
             for thread in threads:
                 thread.join()
                 self.assertTrue(thread.success)
+
+    def test_gssapi_canonicalize_host_name(self):
+        # Test the low level method.
+        assert GSSAPI_HOST is not None
+        result = _canonicalize_hostname(GSSAPI_HOST, "forward")
+        if "compute-1.amazonaws.com" not in result:
+            self.assertEqual(result, GSSAPI_HOST)
+        result = _canonicalize_hostname(GSSAPI_HOST, "forwardAndReverse")
+        self.assertEqual(result, GSSAPI_HOST)
+
+        # Use the equivalent named CANONICALIZE_HOST_NAME.
+        props = self.mech_properties.copy()
+        if props["CANONICALIZE_HOST_NAME"] == "true":
+            props["CANONICALIZE_HOST_NAME"] = "forwardAndReverse"
+        else:
+            props["CANONICALIZE_HOST_NAME"] = "none"
+        client = self.simple_client(
+            GSSAPI_HOST,
+            GSSAPI_PORT,
+            username=GSSAPI_PRINCIPAL,
+            password=GSSAPI_PASS,
+            authMechanism="GSSAPI",
+            authMechanismProperties=props,
+        )
+        client.server_info()
+
+    def test_gssapi_host_name(self):
+        props = self.mech_properties
+        props["SERVICE_HOST"] = "example.com"
+
+        # Authenticate with authMechanismProperties.
+        client = self.simple_client(
+            GSSAPI_HOST,
+            GSSAPI_PORT,
+            username=GSSAPI_PRINCIPAL,
+            password=GSSAPI_PASS,
+            authMechanism="GSSAPI",
+            authMechanismProperties=self.mech_properties,
+        )
+        with self.assertRaises(OperationFailure):
+            client.server_info()
+
+        props["SERVICE_HOST"] = GSSAPI_HOST
+        client = self.simple_client(
+            GSSAPI_HOST,
+            GSSAPI_PORT,
+            username=GSSAPI_PRINCIPAL,
+            password=GSSAPI_PASS,
+            authMechanism="GSSAPI",
+            authMechanismProperties=self.mech_properties,
+        )
+        client.server_info()
 
 
 class TestSASLPlain(PyMongoTestCase):

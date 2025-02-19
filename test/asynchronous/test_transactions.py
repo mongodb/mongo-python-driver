@@ -498,9 +498,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
                 },
             }
         )
-        self.addToCleanup(
-            self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"}
-        )
+        self.addToCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
         listener.reset()
 
         async with client.start_session() as s:
@@ -529,9 +527,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
                 "data": {"failCommands": ["commitTransaction"], "closeConnection": True},
             }
         )
-        self.addToCleanup(
-            self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"}
-        )
+        self.addToCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
         listener.reset()
 
         async with client.start_session() as s:

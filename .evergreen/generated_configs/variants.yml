@@ -8,7 +8,6 @@ buildvariants:
       - rhel79-small
     batchtime: 10080
     expansions:
-      SKIP_HATCH: "true"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: other-hosts-rhel9-fips
     tasks:
@@ -18,7 +17,7 @@ buildvariants:
       - rhel92-fips
     batchtime: 10080
     expansions:
-      SKIP_HATCH: "true"
+      NO_EXT: "1"
   - name: other-hosts-rhel8-zseries
     tasks:
       - name: .6.0 .standalone !.sync_async
@@ -27,7 +26,7 @@ buildvariants:
       - rhel8-zseries-small
     batchtime: 10080
     expansions:
-      SKIP_HATCH: "true"
+      NO_EXT: "1"
   - name: other-hosts-rhel8-power8
     tasks:
       - name: .6.0 .standalone !.sync_async
@@ -36,7 +35,7 @@ buildvariants:
       - rhel8-power-small
     batchtime: 10080
     expansions:
-      SKIP_HATCH: "true"
+      NO_EXT: "1"
   - name: other-hosts-rhel8-arm64
     tasks:
       - name: .6.0 .standalone !.sync_async
@@ -45,7 +44,7 @@ buildvariants:
       - rhel82-arm64-small
     batchtime: 10080
     expansions:
-      SKIP_HATCH: "true"
+      NO_EXT: "1"
 
   # Atlas connect tests
   - name: atlas-connect-rhel8-python3.9
@@ -257,15 +256,15 @@ buildvariants:
     expansions:
       COMPRESSORS: zstd
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: compression-snappy-rhel8-pypy3.9
+  - name: compression-snappy-rhel8-pypy3.10
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Compression snappy RHEL8 PyPy3.9
+    display_name: Compression snappy RHEL8 PyPy3.10
     run_on:
       - rhel87-small
     expansions:
       COMPRESSORS: snappy
-      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
   - name: compression-zlib-rhel8-pypy3.10
     tasks:
       - name: .standalone .noauth .nossl .sync_async
@@ -275,15 +274,15 @@ buildvariants:
     expansions:
       COMPRESSORS: zlib
       PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
-  - name: compression-zstd-rhel8-pypy3.9
+  - name: compression-zstd-rhel8-pypy3.10
     tasks:
       - name: .standalone .noauth .nossl .sync_async !.4.0
-    display_name: Compression zstd RHEL8 PyPy3.9
+    display_name: Compression zstd RHEL8 PyPy3.10
     run_on:
       - rhel87-small
     expansions:
       COMPRESSORS: zstd
-      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
   # Disable test commands tests
   - name: disable-test-commands-rhel8-python3.9
@@ -319,7 +318,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
+      TEST_ENCRYPTION: "true"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [encryption_tag]
   - name: encryption-rhel8-python3.13
@@ -332,7 +331,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
+      TEST_ENCRYPTION: "true"
       PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [encryption_tag]
   - name: encryption-rhel8-pypy3.10
@@ -345,7 +344,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
+      TEST_ENCRYPTION: "true"
       PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
     tags: [encryption_tag]
   - name: encryption-crypt_shared-rhel8-python3.9
@@ -358,8 +357,8 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
-      test_crypt_shared: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_CRYPT_SHARED: "true"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [encryption_tag]
   - name: encryption-crypt_shared-rhel8-python3.13
@@ -372,8 +371,8 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
-      test_crypt_shared: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_CRYPT_SHARED: "true"
       PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [encryption_tag]
   - name: encryption-crypt_shared-rhel8-pypy3.10
@@ -386,8 +385,8 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
-      test_crypt_shared: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_CRYPT_SHARED: "true"
       PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8-python3.9
@@ -400,8 +399,8 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
-      test_encryption_pyopenssl: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_ENCRYPTION_PYOPENSSL: "true"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8-python3.13
@@ -414,8 +413,8 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
-      test_encryption_pyopenssl: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_ENCRYPTION_PYOPENSSL: "true"
       PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8-pypy3.10
@@ -428,8 +427,8 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
-      test_encryption_pyopenssl: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_ENCRYPTION_PYOPENSSL: "true"
       PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
     tags: [encryption_tag]
   - name: encryption-rhel8-python3.10
@@ -439,7 +438,7 @@ buildvariants:
     run_on:
       - rhel87-small
     expansions:
-      test_encryption: "true"
+      TEST_ENCRYPTION: "true"
       PYTHON_BINARY: /opt/python/3.10/bin/python3
   - name: encryption-crypt_shared-rhel8-python3.11
     tasks:
@@ -448,8 +447,8 @@ buildvariants:
     run_on:
       - rhel87-small
     expansions:
-      test_encryption: "true"
-      test_crypt_shared: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_CRYPT_SHARED: "true"
       PYTHON_BINARY: /opt/python/3.11/bin/python3
   - name: encryption-pyopenssl-rhel8-python3.12
     tasks:
@@ -458,18 +457,9 @@ buildvariants:
     run_on:
       - rhel87-small
     expansions:
-      test_encryption: "true"
-      test_encryption_pyopenssl: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_ENCRYPTION_PYOPENSSL: "true"
       PYTHON_BINARY: /opt/python/3.12/bin/python3
-  - name: encryption-rhel8-pypy3.9
-    tasks:
-      - name: .sharded_cluster .auth .ssl .sync_async
-    display_name: Encryption RHEL8 PyPy3.9
-    run_on:
-      - rhel87-small
-    expansions:
-      test_encryption: "true"
-      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
   - name: encryption-macos-python3.9
     tasks:
       - name: .latest .replica_set .sync_async
@@ -478,7 +468,7 @@ buildvariants:
       - macos-14
     batchtime: 10080
     expansions:
-      test_encryption: "true"
+      TEST_ENCRYPTION: "true"
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
     tags: [encryption_tag]
   - name: encryption-macos-python3.13
@@ -489,7 +479,7 @@ buildvariants:
       - macos-14
     batchtime: 10080
     expansions:
-      test_encryption: "true"
+      TEST_ENCRYPTION: "true"
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
     tags: [encryption_tag]
   - name: encryption-crypt_shared-macos-python3.9
@@ -500,8 +490,8 @@ buildvariants:
       - macos-14
     batchtime: 10080
     expansions:
-      test_encryption: "true"
-      test_crypt_shared: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_CRYPT_SHARED: "true"
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
     tags: [encryption_tag]
   - name: encryption-crypt_shared-macos-python3.13
@@ -512,8 +502,8 @@ buildvariants:
       - macos-14
     batchtime: 10080
     expansions:
-      test_encryption: "true"
-      test_crypt_shared: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_CRYPT_SHARED: "true"
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
     tags: [encryption_tag]
   - name: encryption-win64-python3.9
@@ -524,7 +514,7 @@ buildvariants:
       - windows-64-vsMulti-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
+      TEST_ENCRYPTION: "true"
       PYTHON_BINARY: C:/python/Python39/python.exe
     tags: [encryption_tag]
   - name: encryption-win64-python3.13
@@ -535,7 +525,7 @@ buildvariants:
       - windows-64-vsMulti-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
+      TEST_ENCRYPTION: "true"
       PYTHON_BINARY: C:/python/Python313/python.exe
     tags: [encryption_tag]
   - name: encryption-crypt_shared-win64-python3.9
@@ -546,8 +536,8 @@ buildvariants:
       - windows-64-vsMulti-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
-      test_crypt_shared: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_CRYPT_SHARED: "true"
       PYTHON_BINARY: C:/python/Python39/python.exe
     tags: [encryption_tag]
   - name: encryption-crypt_shared-win64-python3.13
@@ -558,8 +548,8 @@ buildvariants:
       - windows-64-vsMulti-small
     batchtime: 10080
     expansions:
-      test_encryption: "true"
-      test_crypt_shared: "true"
+      TEST_ENCRYPTION: "true"
+      TEST_CRYPT_SHARED: "true"
       PYTHON_BINARY: C:/python/Python313/python.exe
     tags: [encryption_tag]
 
@@ -609,15 +599,6 @@ buildvariants:
     expansions:
       AUTH: auth
       PYTHON_BINARY: C:/python/Python313/python.exe
-  - name: auth-enterprise-rhel8-pypy3.9-auth
-    tasks:
-      - name: test-enterprise-auth
-    display_name: Auth Enterprise RHEL8 PyPy3.9 Auth
-    run_on:
-      - rhel87-small
-    expansions:
-      AUTH: auth
-      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
   - name: auth-enterprise-rhel8-pypy3.10-auth
     tasks:
       - name: test-enterprise-auth
@@ -627,6 +608,32 @@ buildvariants:
     expansions:
       AUTH: auth
       PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+
+  # Free threaded tests
+  - name: free-threaded-rhel8-python3.13t
+    tasks:
+      - name: .free-threading
+    display_name: Free-threaded RHEL8 Python3.13t
+    run_on:
+      - rhel87-small
+    expansions:
+      PYTHON_BINARY: /opt/python/3.13t/bin/python3
+  - name: free-threaded-macos-python3.13t
+    tasks:
+      - name: .free-threading
+    display_name: Free-threaded macOS Python3.13t
+    run_on:
+      - macos-14
+    expansions:
+      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
+  - name: free-threaded-macos-arm64-python3.13t
+    tasks:
+      - name: .free-threading
+    display_name: Free-threaded macOS Arm64 Python3.13t
+    run_on:
+      - macos-14-arm64
+    expansions:
+      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
 
   # Green framework tests
   - name: green-eventlet-rhel8-python3.9
@@ -651,28 +658,28 @@ buildvariants:
       AUTH: auth
       SSL: ssl
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: green-eventlet-rhel8-python3.12
+  - name: green-eventlet-rhel8-python3.13
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Eventlet RHEL8 Python3.12
+    display_name: Green Eventlet RHEL8 Python3.13
     run_on:
       - rhel87-small
     expansions:
       GREEN_FRAMEWORK: eventlet
       AUTH: auth
       SSL: ssl
-      PYTHON_BINARY: /opt/python/3.12/bin/python3
-  - name: green-gevent-rhel8-python3.12
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+  - name: green-gevent-rhel8-python3.13
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Gevent RHEL8 Python3.12
+    display_name: Green Gevent RHEL8 Python3.13
     run_on:
       - rhel87-small
     expansions:
       GREEN_FRAMEWORK: gevent
       AUTH: auth
       SSL: ssl
-      PYTHON_BINARY: /opt/python/3.12/bin/python3
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Load balancer tests
   - name: load-balancer-rhel8-v6.0-python3.9
@@ -810,10 +817,23 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Ocsp tests
-  - name: ocsp-rhel8-v4.4-python3.9
+  - name: ocsp-rhel8-v4.2-python3.9
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 v4.4 Python3.9
+    display_name: OCSP RHEL8 v4.2 Python3.9
+    run_on:
+      - rhel87-small
+    batchtime: 20160
+    expansions:
+      AUTH: noauth
+      SSL: ssl
+      TOPOLOGY: server
+      VERSION: "4.2"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: ocsp-rhel8-v4.4-python3.10
+    tasks:
+      - name: .ocsp
+    display_name: OCSP RHEL8 v4.4 Python3.10
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -822,11 +842,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: "4.4"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: ocsp-rhel8-v5.0-python3.10
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: ocsp-rhel8-v5.0-python3.11
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 v5.0 Python3.10
+    display_name: OCSP RHEL8 v5.0 Python3.11
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -835,11 +855,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: "5.0"
-      PYTHON_BINARY: /opt/python/3.10/bin/python3
-  - name: ocsp-rhel8-v6.0-python3.11
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: ocsp-rhel8-v6.0-python3.12
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 v6.0 Python3.11
+    display_name: OCSP RHEL8 v6.0 Python3.12
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -848,11 +868,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: "6.0"
-      PYTHON_BINARY: /opt/python/3.11/bin/python3
-  - name: ocsp-rhel8-v7.0-python3.12
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: ocsp-rhel8-v7.0-python3.13
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 v7.0 Python3.12
+    display_name: OCSP RHEL8 v7.0 Python3.13
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -861,11 +881,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: "7.0"
-      PYTHON_BINARY: /opt/python/3.12/bin/python3
-  - name: ocsp-rhel8-v8.0-python3.13
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+  - name: ocsp-rhel8-v8.0-pypy3.10
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 v8.0 Python3.13
+    display_name: OCSP RHEL8 v8.0 PyPy3.10
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -874,11 +894,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: "8.0"
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
-  - name: ocsp-rhel8-rapid-pypy3.9
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  - name: ocsp-rhel8-rapid-python3.9
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 rapid PyPy3.9
+    display_name: OCSP RHEL8 rapid Python3.9
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -887,11 +907,11 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: rapid
-      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
-  - name: ocsp-rhel8-latest-pypy3.10
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: ocsp-rhel8-latest-python3.10
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8 latest PyPy3.10
+    display_name: OCSP RHEL8 latest Python3.10
     run_on:
       - rhel87-small
     batchtime: 20160
@@ -900,7 +920,7 @@ buildvariants:
       SSL: ssl
       TOPOLOGY: server
       VERSION: latest
-      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
   - name: ocsp-win64-v4.4-python3.9
     tasks:
       - name: .ocsp-rsa !.ocsp-staple
@@ -990,7 +1010,7 @@ buildvariants:
       - macos-14
     batchtime: 10080
     expansions:
-      test_pyopenssl: "true"
+      TEST_PYOPENSSL: "true"
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
   - name: pyopenssl-rhel8-python3.10
     tasks:
@@ -1001,7 +1021,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_pyopenssl: "true"
+      TEST_PYOPENSSL: "true"
       PYTHON_BINARY: /opt/python/3.10/bin/python3
   - name: pyopenssl-rhel8-python3.11
     tasks:
@@ -1012,7 +1032,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_pyopenssl: "true"
+      TEST_PYOPENSSL: "true"
       PYTHON_BINARY: /opt/python/3.11/bin/python3
   - name: pyopenssl-rhel8-python3.12
     tasks:
@@ -1023,7 +1043,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_pyopenssl: "true"
+      TEST_PYOPENSSL: "true"
       PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: pyopenssl-win64-python3.13
     tasks:
@@ -1034,19 +1054,8 @@ buildvariants:
       - windows-64-vsMulti-small
     batchtime: 10080
     expansions:
-      test_pyopenssl: "true"
+      TEST_PYOPENSSL: "true"
       PYTHON_BINARY: C:/python/Python313/python.exe
-  - name: pyopenssl-rhel8-pypy3.9
-    tasks:
-      - name: .replica_set .auth .ssl .sync_async
-      - name: .7.0 .auth .ssl .sync_async
-    display_name: PyOpenSSL RHEL8 PyPy3.9
-    run_on:
-      - rhel87-small
-    batchtime: 10080
-    expansions:
-      test_pyopenssl: "true"
-      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
   - name: pyopenssl-rhel8-pypy3.10
     tasks:
       - name: .replica_set .auth .ssl .sync_async
@@ -1056,7 +1065,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_pyopenssl: "true"
+      TEST_PYOPENSSL: "true"
       PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
   # Search index tests
@@ -1070,6 +1079,19 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Server tests
+  - name: test-rhel8-python3.9-cov-no-c
+    tasks:
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
+    display_name: "* Test RHEL8 Python3.9 cov No C"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+    tags: [coverage_tag]
   - name: test-rhel8-python3.9-cov
     tasks:
       - name: .standalone .sync_async
@@ -1082,6 +1104,19 @@ buildvariants:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [coverage_tag]
+  - name: test-rhel8-python3.13-cov-no-c
+    tasks:
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
+    display_name: "* Test RHEL8 Python3.13 cov No C"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [coverage_tag]
   - name: test-rhel8-python3.13-cov
     tasks:
       - name: .standalone .sync_async
@@ -1093,6 +1128,19 @@ buildvariants:
     expansions:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [coverage_tag]
+  - name: test-rhel8-pypy3.10-cov-no-c
+    tasks:
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
+    display_name: "* Test RHEL8 PyPy3.10 cov No C"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
     tags: [coverage_tag]
   - name: test-rhel8-pypy3.10-cov
     tasks:
@@ -1139,17 +1187,6 @@ buildvariants:
     expansions:
       COVERAGE: coverage
       PYTHON_BINARY: /opt/python/3.12/bin/python3
-  - name: test-rhel8-pypy3.9
-    tasks:
-      - name: .sharded_cluster .auth .ssl .sync_async
-      - name: .replica_set .noauth .ssl .sync_async
-      - name: .standalone .noauth .nossl .sync_async
-    display_name: "* Test RHEL8 PyPy3.9"
-    run_on:
-      - rhel87-small
-    expansions:
-      COVERAGE: coverage
-      PYTHON_BINARY: /opt/python/pypy3.9/bin/python3
   - name: test-macos-python3.9
     tasks:
       - name: .sharded_cluster .auth .ssl !.sync_async
@@ -1264,7 +1301,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_serverless: "true"
+      TEST_SERVERLESS: "true"
       AUTH: auth
       SSL: ssl
       PYTHON_BINARY: /opt/python/3.9/bin/python3
@@ -1276,7 +1313,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      test_serverless: "true"
+      TEST_SERVERLESS: "true"
       AUTH: auth
       SSL: ssl
       PYTHON_BINARY: /opt/python/3.13/bin/python3
@@ -1353,6 +1390,7 @@ buildvariants:
   - name: storage-inmemory-rhel8-python3.9
     tasks:
       - name: .standalone .noauth .nossl .4.0 .sync_async
+      - name: .standalone .noauth .nossl .4.2 .sync_async
       - name: .standalone .noauth .nossl .4.4 .sync_async
       - name: .standalone .noauth .nossl .5.0 .sync_async
       - name: .standalone .noauth .nossl .6.0 .sync_async

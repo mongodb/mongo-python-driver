@@ -16,4 +16,5 @@ export OUTPUT_FILE="${PROJECT_DIRECTORY}/results.json"
 export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
 export PERF_TEST=1
 
-bash ./.evergreen/hatch.sh test:test-eg
+bash ./.evergreen/just.sh setup-test
+bash ./.evergreen/just.sh test-eg

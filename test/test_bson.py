@@ -33,7 +33,7 @@ from io import BytesIO
 sys.path[0:0] = [""]
 
 from test import qcheck, unittest
-from test.utils import ExceptionCatchingThread
+from test.helpers import ExceptionCatchingTask
 
 import bson
 from bson import (
@@ -1075,7 +1075,7 @@ class TestBSON(unittest.TestCase):
                 my_int = type(f"MyInt_{i}_{j}", (int,), {})
                 bson.encode({"my_int": my_int()})
 
-        threads = [ExceptionCatchingThread(target=target, args=(i,)) for i in range(3)]
+        threads = [ExceptionCatchingTask(target=target, args=(i,)) for i in range(3)]
         for t in threads:
             t.start()
 
@@ -1098,6 +1098,47 @@ class TestBSON(unittest.TestCase):
             InvalidDocument, "cannot encode object: 1, of type: " + repr(Wrapper)
         ):
             encode({"t": Wrapper(1)})
+
+    def test_doc_in_invalid_document_error_message(self):
+        class Wrapper:
+            def __init__(self, val):
+                self.val = val
+
+            def __repr__(self):
+                return repr(self.val)
+
+        self.assertEqual("1", repr(Wrapper(1)))
+        doc = {"t": Wrapper(1)}
+        with self.assertRaisesRegex(InvalidDocument, f"Invalid document {doc}"):
+            encode(doc)
+
+    def test_doc_in_invalid_document_error_message_mapping(self):
+        class MyMapping(abc.Mapping):
+            def keys(self):
+                return ["t"]
+
+            def __getitem__(self, name):
+                if name == "_id":
+                    return None
+                return Wrapper(name)
+
+            def __len__(self):
+                return 1
+
+            def __iter__(self):
+                return iter(["t"])
+
+        class Wrapper:
+            def __init__(self, val):
+                self.val = val
+
+            def __repr__(self):
+                return repr(self.val)
+
+        self.assertEqual("1", repr(Wrapper(1)))
+        doc = MyMapping()
+        with self.assertRaisesRegex(InvalidDocument, f"Invalid document {doc}"):
+            encode(doc)
 
 
 class TestCodecOptions(unittest.TestCase):

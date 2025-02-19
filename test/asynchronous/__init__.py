@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import gc
+import inspect
 import logging
 import multiprocessing
 import os
@@ -30,6 +31,33 @@ import traceback
 import unittest
 import warnings
 from asyncio import iscoroutinefunction
+
+from pymongo.uri_parser import parse_uri
+
+try:
+    import ipaddress
+
+    HAVE_IPADDRESS = True
+except ImportError:
+    HAVE_IPADDRESS = False
+from contextlib import asynccontextmanager, contextmanager
+from functools import partial, wraps
+from typing import Any, Callable, Dict, Generator, overload
+from unittest import SkipTest
+from urllib.parse import quote_plus
+
+import pymongo
+import pymongo.errors
+from bson.son import SON
+from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from pymongo.common import partition_node
+from pymongo.hello import HelloCompat
+from pymongo.server_api import ServerApi
+from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
+
+sys.path[0:0] = [""]
+
 from test.helpers import (
     COMPRESSORS,
     IS_SRV,
@@ -52,31 +80,7 @@ from test.helpers import (
     sanitize_cmd,
     sanitize_reply,
 )
-
-from pymongo.uri_parser import parse_uri
-
-try:
-    import ipaddress
-
-    HAVE_IPADDRESS = True
-except ImportError:
-    HAVE_IPADDRESS = False
-from contextlib import asynccontextmanager, contextmanager
-from functools import partial, wraps
 from test.version import Version
-from typing import Any, Callable, Dict, Generator, overload
-from unittest import SkipTest
-from urllib.parse import quote_plus
-
-import pymongo
-import pymongo.errors
-from bson.son import SON
-from pymongo.asynchronous.database import AsyncDatabase
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.common import partition_node
-from pymongo.hello import HelloCompat
-from pymongo.server_api import ServerApi
-from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 
 _IS_SYNC = False
 
@@ -588,10 +592,10 @@ class AsyncClientContext:
 
     @property
     async def supports_secondary_read_pref(self):
-        if self.has_secondaries:
+        if await self.has_secondaries:
             return True
         if self.is_mongos:
-            shard = await self.client.config.shards.find_one()["host"]  # type:ignore[index]
+            shard = (await self.client.config.shards.find_one())["host"]  # type:ignore[index]
             num_members = shard.count(",") + 1
             return num_members > 1
         return False
@@ -865,25 +869,71 @@ class AsyncClientContext:
 # Reusable client context
 async_client_context = AsyncClientContext()
 
+# Global event loop for async tests.
+LOOP = None
 
-class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
-    def __init__(self, methodName: str = "runTest"):
-        super().__init__(methodName)
-        self.cleanups = []
+
+def get_loop() -> asyncio.AbstractEventLoop:
+    """Get the test suite's global event loop."""
+    global LOOP
+    if LOOP is None:
+        try:
+            LOOP = asyncio.get_running_loop()
+        except RuntimeError:
+            # no running event loop, fallback to get_event_loop.
+            try:
+                # Ignore DeprecationWarning: There is no current event loop
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", DeprecationWarning)
+                    LOOP = asyncio.get_event_loop()
+            except RuntimeError:
+                LOOP = asyncio.new_event_loop()
+                asyncio.set_event_loop(LOOP)
+    return LOOP
+
+
+class AsyncPyMongoTestCase(unittest.TestCase):
+    if not _IS_SYNC:
+        # An async TestCase that uses a single event loop for all tests.
+        # Inspired by IsolatedAsyncioTestCase.
+        async def asyncSetUp(self):
+            pass
+
+        async def asyncTearDown(self):
+            pass
+
+        def addAsyncCleanup(self, func, /, *args, **kwargs):
+            self.addCleanup(*(func, *args), **kwargs)
+
+        def _callSetUp(self):
+            self.setUp()
+            self._callAsync(self.asyncSetUp)
+
+        def _callTestMethod(self, method):
+            self._callMaybeAsync(method)
+
+        def _callTearDown(self):
+            self._callAsync(self.asyncTearDown)
+            self.tearDown()
+
+        def _callCleanup(self, function, *args, **kwargs):
+            self._callMaybeAsync(function, *args, **kwargs)
+
+        def _callAsync(self, func, /, *args, **kwargs):
+            assert inspect.iscoroutinefunction(func), f"{func!r} is not an async function"
+            return get_loop().run_until_complete(func(*args, **kwargs))
+
+        def _callMaybeAsync(self, func, /, *args, **kwargs):
+            if inspect.iscoroutinefunction(func):
+                return get_loop().run_until_complete(func(*args, **kwargs))
+            else:
+                return func(*args, **kwargs)
 
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)
 
     def assertEqualReply(self, expected, actual, msg=None):
         self.assertEqual(sanitize_reply(expected), sanitize_reply(actual), msg)
-
-    def addToCleanup(self, func, *args, **kwargs):
-        self.cleanups.append(func(*args, **kwargs))
-
-    async def asyncTearDown(self) -> None:
-        for coro in reversed(self.cleanups):
-            await coro
-
 
     @asynccontextmanager
     async def fail_point(self, command_args):
@@ -1015,7 +1065,7 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
         client = AsyncMongoClient(uri, port, **client_options)
         if client._options.connect:
             await client.aconnect()
-        self.addToCleanup(client.close)
+        self.addAsyncCleanup(client.close)
         return client
 
     @classmethod
@@ -1111,7 +1161,7 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
             client = AsyncMongoClient(**kwargs)
         else:
             client = AsyncMongoClient(h, p, **kwargs)
-        self.addToCleanup(client.close)
+        self.addAsyncCleanup(client.close)
         return client
 
     @classmethod
@@ -1126,21 +1176,24 @@ class AsyncPyMongoTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def disable_replication(self, client):
         """Disable replication on all secondaries."""
-        for h, p in client.secondaries:
+        for h, p in await client.secondaries:
             secondary = await self.async_single_client(h, p)
-            secondary.admin.command("configureFailPoint", "stopReplProducer", mode="alwaysOn")
+            await secondary.admin.command("configureFailPoint", "stopReplProducer", mode="alwaysOn")
 
     async def enable_replication(self, client):
         """Enable replication on all secondaries."""
-        for h, p in client.secondaries:
+        for h, p in await client.secondaries:
             secondary = await self.async_single_client(h, p)
-            secondary.admin.command("configureFailPoint", "stopReplProducer", mode="off")
+            await secondary.admin.command("configureFailPoint", "stopReplProducer", mode="off")
 
 
 class AsyncUnitTest(AsyncPyMongoTestCase):
     """Async base class for TestCases that don't require a connection to MongoDB."""
 
     async def asyncSetUp(self) -> None:
+        pass
+
+    async def asyncTearDown(self) -> None:
         pass
 
 
@@ -1151,9 +1204,8 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
     db: AsyncDatabase
     credentials: Dict[str, str]
 
+    @async_client_context.require_connection
     async def asyncSetUp(self) -> None:
-        if not _IS_SYNC:
-            await async_client_context._init_client()
         if async_client_context.load_balancer and not getattr(self, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")
         if async_client_context.serverless and not getattr(self, "RUN_ON_SERVERLESS", False):
@@ -1164,12 +1216,6 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
             self.credentials = {"username": db_user, "password": db_pwd}
         else:
             self.credentials = {}
-
-    async def asyncTearDown(self) -> None:
-        if not _IS_SYNC:
-            await super().asyncTearDown()
-            await async_client_context.client.close()
-            async_client_context.client = None
 
     async def cleanup_colls(self, *collections):
         """Cleanup collections faster than drop_collection."""
@@ -1208,6 +1254,9 @@ class AsyncMockClientTest(AsyncUnitTest):
 
 
 async def async_setup():
+    if not _IS_SYNC:
+        # Set up the event loop.
+        get_loop()
     await async_client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")
@@ -1223,19 +1272,17 @@ async def async_teardown():
         garbage.append(f"  gc.get_referrers: {gc.get_referrers(g)!r}")
     if garbage:
         raise AssertionError("\n".join(garbage))
-    # TODO: Fix or remove entirely as part of PYTHON-5036.
-    if _IS_SYNC:
-        c = async_client_context.client
-        if c:
-            if not async_client_context.is_data_lake:
-                await c.drop_database("pymongo-pooling-tests")
-                await c.drop_database("pymongo_test")
-                await c.drop_database("pymongo_test1")
-                await c.drop_database("pymongo_test2")
-                await c.drop_database("pymongo_test_mike")
-                await c.drop_database("pymongo_test_bernie")
-            await c.close()
-        print_running_clients()
+    c = async_client_context.client
+    if c:
+        if not async_client_context.is_data_lake:
+            await c.drop_database("pymongo-pooling-tests")
+            await c.drop_database("pymongo_test")
+            await c.drop_database("pymongo_test1")
+            await c.drop_database("pymongo_test2")
+            await c.drop_database("pymongo_test_mike")
+            await c.drop_database("pymongo_test_bernie")
+        await c.close()
+    print_running_clients()
 
 
 def test_cases(suite):

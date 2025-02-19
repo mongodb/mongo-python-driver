@@ -20,8 +20,8 @@ import collections
 import errno
 import socket
 import struct
+import sys
 import time
-import traceback
 from typing import (
     TYPE_CHECKING,
     Optional,
@@ -84,6 +84,7 @@ class NetworkingInterfaceBase:
     def sock(self):
         raise NotImplementedError
 
+
 class AsyncNetworkingInterface(NetworkingInterfaceBase):
     def __init__(self, conn: tuple[asyncio.BaseTransport, PyMongoProtocol]):
         super().__init__(conn)
@@ -134,6 +135,15 @@ class NetworkingInterface(NetworkingInterfaceBase):
     @property
     def sock(self):
         return self.conn
+
+    def fileno(self):
+        return self.conn.fileno()
+
+    def pending(self):
+        return self.conn.pending()
+
+    def recv_into(self, buffer: bytes) -> int:
+        return self.conn.recv_into(buffer)
 
 
 class PyMongoProtocol(asyncio.BufferedProtocol):
@@ -193,7 +203,13 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
             self._debug = debug
             self._max_message_size = max_message_size
             self._request_id = request_id
-            self._length, self._overflow_length, self._body_length, self._op_code, self._overflow = (
+            (
+                self._length,
+                self._overflow_length,
+                self._body_length,
+                self._op_code,
+                self._overflow,
+            ) = (
                 0,
                 0,
                 0,
@@ -231,23 +247,21 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
                 if self._is_compressed:
                     header_size = 25
                     return decompress(
-                        memoryview(self._buffer[start + header_size:end]),
+                        memoryview(self._buffer[start + header_size : end]),
                         self._compressor_id,
                     ), self._op_code
                 else:
-                    return memoryview(self._buffer[start + header_size:end]), self._op_code
+                    return memoryview(self._buffer[start + header_size : end]), self._op_code
         raise OSError("connection closed")
 
     def get_buffer(self, sizehint: int):
         """Called to allocate a new receive buffer."""
         if self._overflow is not None:
-            return self._overflow[self._overflow_length:]
-        return self._buffer[self._length:]
+            return self._overflow[self._overflow_length :]
+        return self._buffer[self._length :]
 
     def buffer_updated(self, nbytes: int):
         """Called when the buffer was updated with the received data"""
-        if self._debug:
-            print(f"buffer_updated for {nbytes}")
         if nbytes == 0:
             self.connection_lost(OSError("connection closed"))
             return
@@ -267,19 +281,22 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
                             bytearray(self._body_length - (self._buffer_size - nbytes) + 1000)
                         )
                 self._length += nbytes
-            if self._length + self._overflow_length >= self._body_length and self._pending_messages and not self._pending_messages[0].done():
+            if (
+                self._length + self._overflow_length >= self._body_length
+                and self._pending_messages
+                and not self._pending_messages[0].done()
+            ):
                 done = self._pending_messages.popleft()
                 done.set_result((self._start, self._body_length))
                 self._done_messages.append(done)
                 if self._length > self._body_length:
-                        print("Larger than expected length")
-                        self._read_waiter = asyncio.get_running_loop().create_future()
-                        self._pending_messages.append(self._read_waiter)
-                        self._start = self._body_length
-                        extra = self._length - self._body_length
-                        self._length -= extra
-                        self._expecting_header = True
-                        self.buffer_updated(extra)
+                    self._read_waiter = asyncio.get_running_loop().create_future()
+                    self._pending_messages.append(self._read_waiter)
+                    self._start = self._body_length
+                    extra = self._length - self._body_length
+                    self._length -= extra
+                    self._expecting_header = True
+                    self.buffer_updated(extra)
 
     def process_header(self):
         """Unpack a MongoDB Wire Protocol header."""
@@ -321,7 +338,7 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
 
     def connection_lost(self, exc):
         self._connection_lost = True
-        pending = [msg for msg in self._pending_messages]
+        pending = list(self._pending_messages)
         for msg in pending:
             if exc is None:
                 msg.set_result(None)
@@ -383,6 +400,41 @@ async def _poll_cancellation(conn: AsyncConnection) -> None:
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
 BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
+_PYPY = "PyPy" in sys.version
+
+
+def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
+    """Block until at least one byte is read, or a timeout, or a cancel."""
+    sock = conn.conn
+    timed_out = False
+    # Check if the connection's socket has been manually closed
+    if sock.fileno() == -1:
+        return
+    while True:
+        # SSLSocket can have buffered data which won't be caught by select.
+        if hasattr(sock, "pending") and sock.pending() > 0:
+            readable = True
+        else:
+            # Wait up to 500ms for the socket to become readable and then
+            # check for cancellation.
+            if deadline:
+                remaining = deadline - time.monotonic()
+                # When the timeout has expired perform one final check to
+                # see if the socket is readable. This helps avoid spurious
+                # timeouts on AWS Lambda and other FaaS environments.
+                if remaining <= 0:
+                    timed_out = True
+                timeout = max(min(remaining, _POLL_TIMEOUT), 0)
+            else:
+                timeout = _POLL_TIMEOUT
+            readable = conn.socket_checker.select(sock, read=True, timeout=timeout)
+        if conn.cancel_context.cancelled:
+            raise _OperationCancelled("operation cancelled")
+        if readable:
+            return
+        if timed_out:
+            raise socket.timeout("timed out")
+
 
 def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> memoryview:
     buf = bytearray(length)
@@ -392,19 +444,26 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
     # check for the cancellation signal after each timeout. Alternatively we
     # could close the socket but that does not reliably cancel recv() calls
     # on all OSes.
+    # When the timeout has expired we perform one final non-blocking recv.
+    # This helps avoid spurious timeouts when the response is actually already
+    # buffered on the client.
     orig_timeout = conn.conn.gettimeout()
     try:
         while bytes_read < length:
-            if deadline is not None:
-                # CSOT: Update timeout. When the timeout has expired perform one
-                # final non-blocking recv. This helps avoid spurious timeouts when
-                # the response is actually already buffered on the client.
-                short_timeout = min(max(deadline - time.monotonic(), 0), _POLL_TIMEOUT)
-            else:
-                short_timeout = _POLL_TIMEOUT
-            conn.set_conn_timeout(short_timeout)
             try:
-                chunk_length = conn.conn.get_conn.recv_into(mv[bytes_read:])
+                # Use the legacy wait_for_read cancellation approach on PyPy due to PYTHON-5011.
+                if _PYPY:
+                    wait_for_read(conn, deadline)
+                    if _csot.get_timeout() and deadline is not None:
+                        conn.set_conn_timeout(max(deadline - time.monotonic(), 0))
+                else:
+                    if deadline is not None:
+                        short_timeout = min(max(deadline - time.monotonic(), 0), _POLL_TIMEOUT)
+                    else:
+                        short_timeout = _POLL_TIMEOUT
+                    conn.set_conn_timeout(short_timeout)
+
+                chunk_length = conn.conn.recv_into(mv[bytes_read:])
             except BLOCKING_IO_ERRORS:
                 if conn.cancel_context.cancelled:
                     raise _OperationCancelled("operation cancelled") from None
@@ -413,6 +472,9 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
             except socket.timeout:
                 if conn.cancel_context.cancelled:
                     raise _OperationCancelled("operation cancelled") from None
+                if _PYPY:
+                    # We reached the true deadline.
+                    raise
                 continue
             except OSError as exc:
                 if conn.cancel_context.cancelled:

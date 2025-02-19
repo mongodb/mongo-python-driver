@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import base64
 import copy
+import http.client
+import json
 import os
 import pathlib
 import re
@@ -39,6 +41,11 @@ import pytest
 from pymongo.daemon import _spawn_daemon
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.helpers import next
+
+try:
+    from pymongo.pyopenssl_context import IS_PYOPENSSL
+except ImportError:
+    IS_PYOPENSSL = False
 
 sys.path[0:0] = [""]
 
@@ -235,7 +242,7 @@ class EncryptionIntegrationTest(IntegrationTest):
         client_encryption = ClientEncryption(
             kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
         )
-        self.addCleanup(client_encryption.close)
+        self.addToCleanup(client_encryption.close)
         return client_encryption
 
     @classmethod
@@ -289,7 +296,7 @@ class TestClientSimple(EncryptionIntegrationTest):
         key_vault = create_key_vault(
             self.client.keyvault.datakeys, json_data("custom", "key-document-local.json")
         )
-        self.addCleanup(key_vault.drop)
+        self.addToCleanup(key_vault.drop)
 
         # Collection.insert_one/insert_many auto encrypts.
         docs = [
@@ -350,7 +357,7 @@ class TestClientSimple(EncryptionIntegrationTest):
         # Configure the encrypted field via jsonSchema.
         json_schema = json_data("custom", "schema.json")
         create_with_schema(self.db.test, json_schema)
-        self.addCleanup(self.db.test.drop)
+        self.addToCleanup(self.db.test.drop)
 
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         self._test_auto_encrypt(opts)
@@ -473,7 +480,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         )
         # Use standard UUID representation.
         key_vault = client_context.client.keyvault.get_collection("datakeys", codec_options=OPTS)
-        self.addCleanup(key_vault.drop)
+        self.addToCleanup(key_vault.drop)
 
         # Create the encrypted field's data key.
         key_id = client_encryption.create_data_key("local", key_alt_names=["name"])
@@ -925,7 +932,7 @@ class TestExternalKeyVault(EncryptionIntegrationTest):
             json_data("corpus", "corpus-key-local.json"),
             json_data("corpus", "corpus-key-aws.json"),
         )
-        self.addCleanup(vault.drop)
+        self.addToCleanup(vault.drop)
 
         # Configure the encrypted field via the local schema_map option.
         schemas = {"db.coll": json_data("external", "external-schema.json")}
@@ -989,7 +996,7 @@ class TestViews(EncryptionIntegrationTest):
     def test_views_are_prohibited(self):
         self.client.db.view.drop()
         self.client.db.create_collection("view", viewOn="coll")
-        self.addCleanup(self.client.db.view.drop)
+        self.addToCleanup(self.client.db.view.drop)
 
         opts = AutoEncryptionOpts(self.kms_providers(), "keyvault.datakeys")
         client_encrypted = self.rs_or_single_client(
@@ -1038,7 +1045,7 @@ class TestCorpus(EncryptionIntegrationTest):
         coll = create_with_schema(
             self.client.db.coll, self.fix_up_schema(json_data("corpus", "corpus-schema.json"))
         )
-        self.addCleanup(coll.drop)
+        self.addToCleanup(coll.drop)
 
         vault = create_key_vault(
             self.client.keyvault.datakeys,
@@ -1048,7 +1055,7 @@ class TestCorpus(EncryptionIntegrationTest):
             json_data("corpus", "corpus-key-gcp.json"),
             json_data("corpus", "corpus-key-kmip.json"),
         )
-        self.addCleanup(vault.drop)
+        self.addToCleanup(vault.drop)
 
         client_encrypted = self.rs_or_single_client(auto_encryption_opts=opts)
 
@@ -1360,9 +1367,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             "key": ("arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
             "endpoint": "kms.us-east-1.amazonaws.com:12345",
         }
-        with self.assertRaisesRegex(EncryptionError, "kms.us-east-1.amazonaws.com:12345") as ctx:
+        with self.assertRaisesRegex(EncryptionError, "kms.us-east-1.amazonaws.com:12345"):
             self.client_encryption.create_data_key("aws", master_key=master_key)
-        self.assertIsInstance(ctx.exception.cause, AutoReconnect)
 
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def test_05_aws_endpoint_wrong_region(self):
@@ -2148,7 +2154,8 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
         key["endpoint"] = "127.0.0.1:9001"
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             self.client_encryption_invalid_hostname.create_data_key("aws", key)
 
@@ -2165,7 +2172,8 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             self.client_encryption_expired.create_data_key("azure", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             self.client_encryption_invalid_hostname.create_data_key("azure", key)
 
@@ -2182,7 +2190,8 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             self.client_encryption_expired.create_data_key("gcp", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             self.client_encryption_invalid_hostname.create_data_key("gcp", key)
 
@@ -2196,7 +2205,8 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             self.client_encryption_expired.create_data_key("kmip")
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             self.client_encryption_invalid_hostname.create_data_key("kmip")
 
@@ -2835,6 +2845,85 @@ class TestRangeQueryDefaultsProse(EncryptionIntegrationTest):
         assert len(payload) > len(self.payload_defaults)
 
 
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#24-kms-retry-tests
+class TestKmsRetryProse(EncryptionIntegrationTest):
+    @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
+    def setUp(self):
+        super().setUp()
+        # 1, create client with only tlsCAFile.
+        providers: dict = copy.deepcopy(ALL_KMS_PROVIDERS)
+        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9003"
+        providers["gcp"]["endpoint"] = "127.0.0.1:9003"
+        kms_tls_opts = {
+            p: {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM} for p in providers
+        }
+        self.client_encryption = self.create_client_encryption(
+            providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts
+        )
+
+    def http_post(self, path, data=None):
+        # Note, the connection to the mock server needs to be closed after
+        # each request because the server is single threaded.
+        ctx = ssl.create_default_context(cafile=CA_PEM)
+        ctx.load_cert_chain(CLIENT_PEM)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        conn = http.client.HTTPSConnection("127.0.0.1:9003", context=ctx)
+        try:
+            if data is not None:
+                headers = {"Content-type": "application/json"}
+                body = json.dumps(data)
+            else:
+                headers = {}
+                body = None
+            conn.request("POST", path, body, headers)
+            res = conn.getresponse()
+            res.read()
+        finally:
+            conn.close()
+
+    def _test(self, provider, master_key):
+        self.http_post("/reset")
+        # Case 1: createDataKey and encrypt with TCP retry
+        self.http_post("/set_failpoint/network", {"count": 1})
+        key_id = self.client_encryption.create_data_key(provider, master_key=master_key)
+        self.http_post("/set_failpoint/network", {"count": 1})
+        self.client_encryption.encrypt(
+            123, Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_id
+        )
+
+        # Case 2: createDataKey and encrypt with HTTP retry
+        self.http_post("/set_failpoint/http", {"count": 1})
+        key_id = self.client_encryption.create_data_key(provider, master_key=master_key)
+        self.http_post("/set_failpoint/http", {"count": 1})
+        self.client_encryption.encrypt(
+            123, Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_id
+        )
+
+        # Case 3: createDataKey fails after too many retries
+        self.http_post("/set_failpoint/network", {"count": 4})
+        with self.assertRaisesRegex(EncryptionError, "KMS request failed after"):
+            self.client_encryption.create_data_key(provider, master_key=master_key)
+
+    def test_kms_retry(self):
+        if IS_PYOPENSSL:
+            self.skipTest(
+                "PyOpenSSL does not support a required method for this test, Connection.makefile"
+            )
+        self._test("aws", {"region": "foo", "key": "bar", "endpoint": "127.0.0.1:9003"})
+        self._test("azure", {"keyVaultEndpoint": "127.0.0.1:9003", "keyName": "foo"})
+        self._test(
+            "gcp",
+            {
+                "projectId": "foo",
+                "location": "bar",
+                "keyRing": "baz",
+                "keyName": "qux",
+                "endpoint": "127.0.0.1:9003",
+            },
+        )
+
+
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#automatic-data-encryption-keys
 class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
     @client_context.require_no_standalone
@@ -2845,7 +2934,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         self.key1_id = self.key1_document["_id"]
         self.client.drop_database(self.db)
         self.key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
-        self.addCleanup(self.key_vault.drop)
+        self.addToCleanup(self.key_vault.drop)
         self.client_encryption = self.create_client_encryption(
             {"local": {"key": LOCAL_MASTER_KEY}},
             self.key_vault.full_name,

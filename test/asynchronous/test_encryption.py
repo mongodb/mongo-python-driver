@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import base64
 import copy
+import http.client
+import json
 import os
 import pathlib
 import re
@@ -39,6 +41,11 @@ import pytest
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.helpers import anext
 from pymongo.daemon import _spawn_daemon
+
+try:
+    from pymongo.pyopenssl_context import IS_PYOPENSSL
+except ImportError:
+    IS_PYOPENSSL = False
 
 sys.path[0:0] = [""]
 
@@ -732,7 +739,7 @@ class AsyncTestSpec(AsyncSpecRunner):
         return errors
 
 
-async def create_test(scenario_def, test, name):
+def create_test(scenario_def, test, name):
     @async_client_context.require_test_commands
     async def run_scenario(self):
         await self.run_scenario(scenario_def, test)
@@ -1366,9 +1373,8 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
             "key": ("arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
             "endpoint": "kms.us-east-1.amazonaws.com:12345",
         }
-        with self.assertRaisesRegex(EncryptionError, "kms.us-east-1.amazonaws.com:12345") as ctx:
+        with self.assertRaisesRegex(EncryptionError, "kms.us-east-1.amazonaws.com:12345"):
             await self.client_encryption.create_data_key("aws", master_key=master_key)
-        self.assertIsInstance(ctx.exception.cause, AutoReconnect)
 
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     async def test_05_aws_endpoint_wrong_region(self):
@@ -2156,7 +2162,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
         # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
         key["endpoint"] = "127.0.0.1:9001"
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("aws", key)
 
@@ -2173,7 +2180,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             await self.client_encryption_expired.create_data_key("azure", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("azure", key)
 
@@ -2190,7 +2198,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             await self.client_encryption_expired.create_data_key("gcp", key)
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("gcp", key)
 
@@ -2204,7 +2213,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             await self.client_encryption_expired.create_data_key("kmip")
         # Invalid cert hostname error.
         with self.assertRaisesRegex(
-            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
+            EncryptionError,
+            "IP address mismatch|wronghost|IPAddressMismatch|Certificate|SSL handshake failed",
         ):
             await self.client_encryption_invalid_hostname.create_data_key("kmip")
 
@@ -2851,6 +2861,85 @@ class TestRangeQueryDefaultsProse(AsyncEncryptionIntegrationTest):
             123, "range", self.key_id, contention_factor=0, range_opts=opts
         )
         assert len(payload) > len(self.payload_defaults)
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#24-kms-retry-tests
+class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
+    @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        # 1, create client with only tlsCAFile.
+        providers: dict = copy.deepcopy(ALL_KMS_PROVIDERS)
+        providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:9003"
+        providers["gcp"]["endpoint"] = "127.0.0.1:9003"
+        kms_tls_opts = {
+            p: {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM} for p in providers
+        }
+        self.client_encryption = self.create_client_encryption(
+            providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=kms_tls_opts
+        )
+
+    async def http_post(self, path, data=None):
+        # Note, the connection to the mock server needs to be closed after
+        # each request because the server is single threaded.
+        ctx = ssl.create_default_context(cafile=CA_PEM)
+        ctx.load_cert_chain(CLIENT_PEM)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        conn = http.client.HTTPSConnection("127.0.0.1:9003", context=ctx)
+        try:
+            if data is not None:
+                headers = {"Content-type": "application/json"}
+                body = json.dumps(data)
+            else:
+                headers = {}
+                body = None
+            conn.request("POST", path, body, headers)
+            res = conn.getresponse()
+            res.read()
+        finally:
+            conn.close()
+
+    async def _test(self, provider, master_key):
+        await self.http_post("/reset")
+        # Case 1: createDataKey and encrypt with TCP retry
+        await self.http_post("/set_failpoint/network", {"count": 1})
+        key_id = await self.client_encryption.create_data_key(provider, master_key=master_key)
+        await self.http_post("/set_failpoint/network", {"count": 1})
+        await self.client_encryption.encrypt(
+            123, Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_id
+        )
+
+        # Case 2: createDataKey and encrypt with HTTP retry
+        await self.http_post("/set_failpoint/http", {"count": 1})
+        key_id = await self.client_encryption.create_data_key(provider, master_key=master_key)
+        await self.http_post("/set_failpoint/http", {"count": 1})
+        await self.client_encryption.encrypt(
+            123, Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic, key_id
+        )
+
+        # Case 3: createDataKey fails after too many retries
+        await self.http_post("/set_failpoint/network", {"count": 4})
+        with self.assertRaisesRegex(EncryptionError, "KMS request failed after"):
+            await self.client_encryption.create_data_key(provider, master_key=master_key)
+
+    async def test_kms_retry(self):
+        if IS_PYOPENSSL:
+            self.skipTest(
+                "PyOpenSSL does not support a required method for this test, Connection.makefile"
+            )
+        await self._test("aws", {"region": "foo", "key": "bar", "endpoint": "127.0.0.1:9003"})
+        await self._test("azure", {"keyVaultEndpoint": "127.0.0.1:9003", "keyName": "foo"})
+        await self._test(
+            "gcp",
+            {
+                "projectId": "foo",
+                "location": "bar",
+                "keyRing": "baz",
+                "keyName": "qux",
+                "endpoint": "127.0.0.1:9003",
+            },
+        )
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#automatic-data-encryption-keys

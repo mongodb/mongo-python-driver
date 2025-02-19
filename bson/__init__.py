@@ -1006,7 +1006,10 @@ def _dict_to_bson(
             elements.append(_name_value_to_bson(b"_id\x00", doc["_id"], check_keys, opts))
         for key, value in doc.items():
             if not top_level or key != "_id":
-                elements.append(_element_to_bson(key, value, check_keys, opts))
+                try:
+                    elements.append(_element_to_bson(key, value, check_keys, opts))
+                except InvalidDocument as err:
+                    raise InvalidDocument(f"Invalid document {doc} | {err}") from err
     except AttributeError:
         raise TypeError(f"encoder expected a mapping type but got: {doc!r}") from None
 
@@ -1383,7 +1386,7 @@ def is_valid(bson: bytes) -> bool:
     :param bson: the data to be validated
     """
     if not isinstance(bson, bytes):
-        raise TypeError("BSON data must be an instance of a subclass of bytes")
+        raise TypeError(f"BSON data must be an instance of a subclass of bytes, not {type(bson)}")
 
     try:
         _bson_to_dict(bson, DEFAULT_CODEC_OPTIONS)

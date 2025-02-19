@@ -15,10 +15,10 @@
 """Support for explicit client-side field level encryption."""
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import enum
 import socket
+import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
 from copy import deepcopy
@@ -36,6 +36,8 @@ from typing import (
     Union,
     cast,
 )
+
+from pymongo.synchronous.pool import _async_configured_socket
 
 try:
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
@@ -67,13 +69,13 @@ from pymongo.errors import (
     EncryptedCollectionError,
     EncryptionError,
     InvalidOperation,
-    PyMongoError,
+    NetworkTimeout,
     ServerSelectionTimeoutError,
 )
 from pymongo.network_layer import sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
-from pymongo.pool_shared import _configured_socket, _raise_connection_failure
+from pymongo.pool_shared import _get_timeout_details, _raise_connection_failure
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
@@ -87,6 +89,9 @@ from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
+
+    from pymongo.pyopenssl_context import _sslConn
+    from pymongo.typings import _Address
 
 
 _IS_SYNC = True
@@ -103,6 +108,13 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
+def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
+    try:
+        return _async_configured_socket(address, opts)
+    except Exception as exc:
+        _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
+
+
 @contextlib.contextmanager
 def _wrap_encryption_errors() -> Iterator[None]:
     """Context manager to wrap encryption related errors."""
@@ -111,8 +123,6 @@ def _wrap_encryption_errors() -> Iterator[None]:
     except BSONError:
         # BSON encoding/decoding errors are unrelated to encryption so
         # we should propagate them unchanged.
-        raise
-    except asyncio.CancelledError:
         raise
     except Exception as exc:
         raise EncryptionError(exc) from exc
@@ -166,8 +176,8 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                 None,  # crlfile
                 False,  # allow_invalid_certificates
                 False,  # allow_invalid_hostnames
-                False,
-            )  # disable_ocsp_endpoint_check
+                False,  # disable_ocsp_endpoint_check
+            )
         # CSOT: set timeout for socket creation.
         connect_timeout = max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
         opts = PoolOptions(
@@ -175,9 +185,13 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             socket_timeout=connect_timeout,
             ssl_context=ctx,
         )
-        host, port = parse_host(endpoint, _HTTPS_PORT)
+        address = parse_host(endpoint, _HTTPS_PORT)
+        sleep_u = kms_context.usleep
+        if sleep_u:
+            sleep_sec = float(sleep_u) / 1e6
+            time.sleep(sleep_sec)
         try:
-            conn = _configured_socket((host, port), opts)
+            conn = _connect_kms(address, opts)
             try:
                 sendall(conn, message)
                 while kms_context.bytes_needed > 0:
@@ -194,20 +208,36 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                     if not data:
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
-            # Async raises an OSError instead of returning empty bytes
-            except OSError as err:
-                raise OSError("KMS connection closed") from err
-            except BLOCKING_IO_ERRORS:
-                raise socket.timeout("timed out") from None
+            except MongoCryptError:
+                raise  # Propagate MongoCryptError errors directly.
+            except Exception as exc:
+                # Wrap I/O errors in PyMongo exceptions.
+                if isinstance(exc, BLOCKING_IO_ERRORS):
+                    exc = socket.timeout("timed out")
+                # Async raises an OSError instead of returning empty bytes.
+                if isinstance(exc, OSError):
+                    msg_prefix = "KMS connection closed"
+                else:
+                    msg_prefix = None
+                _raise_connection_failure(
+                    address, exc, msg_prefix=msg_prefix, timeout_details=_get_timeout_details(opts)
+                )
             finally:
                 conn.close()
-        except (PyMongoError, MongoCryptError):
-            raise  # Propagate pymongo errors directly.
-        except asyncio.CancelledError:
-            raise
-        except Exception as error:
-            # Wrap I/O errors in PyMongo exceptions.
-            _raise_connection_failure((host, port), error)
+        except MongoCryptError:
+            raise  # Propagate MongoCryptError errors directly.
+        except Exception as exc:
+            remaining = _csot.remaining()
+            if isinstance(exc, NetworkTimeout) or (remaining is not None and remaining <= 0):
+                raise
+            # Mark this attempt as failed and defer to libmongocrypt to retry.
+            try:
+                kms_context.fail()
+            except MongoCryptError as final_err:
+                exc = MongoCryptError(
+                    f"{final_err}, last attempt failed with: {exc}", final_err.code
+                )
+                raise exc from final_err
 
     def collection_info(self, database: str, filter: bytes) -> Optional[bytes]:
         """Get the collection info for a namespace.
@@ -285,7 +315,9 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         data_key_id = raw_doc.get("_id")
         if not isinstance(data_key_id, Binary) or data_key_id.subtype != UUID_SUBTYPE:
-            raise TypeError("data_key _id must be Binary with a UUID subtype")
+            raise TypeError(
+                f"data_key _id must be Binary with a UUID subtype, not {type(data_key_id)}"
+            )
 
         assert self.key_vault_coll is not None
         self.key_vault_coll.insert_one(raw_doc)
@@ -607,7 +639,9 @@ class ClientEncryption(Generic[_DocumentType]):
             )
 
         if not isinstance(codec_options, CodecOptions):
-            raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
+            raise TypeError(
+                f"codec_options must be an instance of bson.codec_options.CodecOptions, not {type(codec_options)}"
+            )
 
         if not isinstance(key_vault_client, MongoClient):
             # This is for compatibility with mocked and subclassed types, such as in Motor.
@@ -721,8 +755,6 @@ class ClientEncryption(Generic[_DocumentType]):
                 database.create_collection(name=name, **kwargs),
                 encrypted_fields,
             )
-        except asyncio.CancelledError:
-            raise
         except Exception as exc:
             raise EncryptedCollectionError(exc, encrypted_fields) from exc
 

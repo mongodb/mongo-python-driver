@@ -15,6 +15,7 @@
 """Shared constants and helper methods for pymongo, bson, and gridfs test suites."""
 from __future__ import annotations
 
+import asyncio
 import base64
 import gc
 import multiprocessing
@@ -30,6 +31,8 @@ import unittest
 import warnings
 from asyncio import iscoroutinefunction
 
+from pymongo._asyncio_task import create_task
+
 try:
     import ipaddress
 
@@ -37,7 +40,7 @@ try:
 except ImportError:
     HAVE_IPADDRESS = False
 from functools import wraps
-from typing import Any, Callable, Dict, Generator, no_type_check
+from typing import Any, Callable, Dict, Generator, Optional, no_type_check
 from unittest import SkipTest
 
 from bson.son import SON
@@ -369,3 +372,53 @@ class SystemCertsPatcher:
             os.environ.pop("SSL_CERT_FILE")
         else:
             os.environ["SSL_CERT_FILE"] = self.original_certs
+
+
+if _IS_SYNC:
+    PARENT = threading.Thread
+else:
+    PARENT = object
+
+
+class ConcurrentRunner(PARENT):
+    def __init__(self, **kwargs):
+        if _IS_SYNC:
+            super().__init__(**kwargs)
+        self.name = kwargs.get("name", "ConcurrentRunner")
+        self.stopped = False
+        self.task = None
+        self.target = kwargs.get("target", None)
+        self.args = kwargs.get("args", [])
+
+    if not _IS_SYNC:
+
+        def start(self):
+            self.task = create_task(self.run(), name=self.name)
+
+        def join(self, timeout: Optional[float] = None):  # type: ignore[override]
+            if self.task is not None:
+                asyncio.wait([self.task], timeout=timeout)
+
+        def is_alive(self):
+            return not self.stopped
+
+    def run(self):
+        try:
+            self.target(*self.args)
+        finally:
+            self.stopped = True
+
+
+class ExceptionCatchingTask(ConcurrentRunner):
+    """A Task that stores any exception encountered while running."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.exc = None
+
+    def run(self):
+        try:
+            super().run()
+        except BaseException as exc:
+            self.exc = exc
+            raise

@@ -39,6 +39,8 @@ class TestCSOT(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
     def test_timeout_nested(self):
+        if os.environ.get("SKIP_CSOT_TESTS", ""):
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         coll = self.db.coll
         self.assertEqual(_csot.get_timeout(), None)
         self.assertEqual(_csot.get_deadline(), float("inf"))
@@ -76,6 +78,8 @@ class TestCSOT(IntegrationTest):
 
     @client_context.require_change_streams
     def test_change_stream_can_resume_after_timeouts(self):
+        if os.environ.get("SKIP_CSOT_TESTS", ""):
+            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         coll = self.db.test
         coll.insert_one({})
         with coll.watch() as stream:
