@@ -1272,7 +1272,7 @@ class TestCollection(IntegrationTest):
 
     def test_write_error_unicode(self):
         coll = self.db.test
-        self.addToCleanup(coll.drop)
+        self.addCleanup(coll.drop)
 
         coll.create_index("a", unique=True)
         coll.insert_one({"a": "unicode \U0001f40d"})
@@ -1507,7 +1507,7 @@ class TestCollection(IntegrationTest):
     def test_count_documents(self):
         db = self.db
         db.drop_collection("test")
-        self.addToCleanup(db.drop_collection, "test")
+        self.addCleanup(db.drop_collection, "test")
 
         self.assertEqual(db.test.count_documents({}), 0)
         db.wrong.insert_many([{}, {}])
@@ -1521,7 +1521,7 @@ class TestCollection(IntegrationTest):
     def test_estimated_document_count(self):
         db = self.db
         db.drop_collection("test")
-        self.addToCleanup(db.drop_collection, "test")
+        self.addCleanup(db.drop_collection, "test")
 
         self.assertEqual(db.test.estimated_document_count(), 0)
         db.wrong.insert_many([{}, {}])
@@ -1602,7 +1602,7 @@ class TestCollection(IntegrationTest):
     def test_aggregation_cursor_alive(self):
         self.db.test.delete_many({})
         self.db.test.insert_many([{} for _ in range(3)])
-        self.addToCleanup(self.db.test.delete_many, {})
+        self.addCleanup(self.db.test.delete_many, {})
         cursor = self.db.test.aggregate(pipeline=[], cursor={"batchSize": 2})
         n = 0
         while True:
@@ -1899,7 +1899,7 @@ class TestCollection(IntegrationTest):
     def test_insert_many_large_batch(self):
         # Tests legacy insert.
         db = self.client.test_insert_large_batch
-        self.addToCleanup(self.client.drop_database, "test_insert_large_batch")
+        self.addCleanup(self.client.drop_database, "test_insert_large_batch")
         max_bson_size = client_context.max_bson_size
         # Write commands are limited to 16MB + 16k per batch
         big_string = "x" * int(max_bson_size / 2)

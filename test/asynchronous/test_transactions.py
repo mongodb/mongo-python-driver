@@ -217,7 +217,7 @@ class TestTransactions(AsyncTransactionsBase):
         client = async_client_context.client
         db = client.pymongo_test
         coll = db.test_create_collection
-        self.addToCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
 
         # Use with_transaction to avoid StaleConfig errors on sharded clusters.
         async def create_and_insert(session):
@@ -322,7 +322,7 @@ class TestTransactions(AsyncTransactionsBase):
         coll = client[self.db.name].test
         await coll.delete_many({})
         listener.reset()
-        self.addToCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
         large_str = "\0" * (1 * 1024 * 1024)
         ops: List[InsertOne[RawBSONDocument]] = [
             InsertOne(RawBSONDocument(encode({"a": large_str}))) for _ in range(48)
@@ -498,7 +498,9 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
                 },
             }
         )
-        self.addToCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
+        self.addAsyncCleanup(
+            self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"}
+        )
         listener.reset()
 
         async with client.start_session() as s:
@@ -527,7 +529,9 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
                 "data": {"failCommands": ["commitTransaction"], "closeConnection": True},
             }
         )
-        self.addToCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
+        self.addAsyncCleanup(
+            self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"}
+        )
         listener.reset()
 
         async with client.start_session() as s:
@@ -547,7 +551,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
         client = async_client_context.client
         coll = client.test.testcollection
         await coll.insert_one({})
-        self.addToCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
 
         async with client.start_session() as s:
             self.assertFalse(s.in_transaction)

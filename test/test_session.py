@@ -371,7 +371,7 @@ class TestSession(IntegrationTest):
         coll = self.client.pymongo_test.collection
         # Ensure some batches.
         coll.insert_many({} for _ in range(10))
-        self.addToCleanup(coll.drop)
+        self.addCleanup(coll.drop)
 
         with self.client.start_session() as s:
             cursor = coll.find(session=s)
@@ -608,7 +608,7 @@ class TestSession(IntegrationTest):
 
         # Now with documents.
         coll.insert_many([{} for _ in range(10)])
-        self.addToCleanup(coll.drop)
+        self.addCleanup(coll.drop)
         self._test_ops(client, (agg, [], {}))
 
     def test_killcursors(self):
@@ -1128,8 +1128,8 @@ class TestClusterTime(IntegrationTest):
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
         collection.insert_many([{} for _ in range(10)])
-        self.addToCleanup(collection.drop)
-        self.addToCleanup(client.pymongo_test.collection2.drop)
+        self.addCleanup(collection.drop)
+        self.addCleanup(client.pymongo_test.collection2.drop)
 
         def rename_and_drop():
             # Ensure collection exists.

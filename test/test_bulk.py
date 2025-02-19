@@ -503,7 +503,7 @@ class TestBulk(BulkTestBase):
 
     def test_single_error_ordered_batch(self):
         self.coll.create_index("a", unique=True)
-        self.addToCleanup(self.coll.drop_index, [("a", 1)])
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
             UpdateOne({"b": 2}, {"$set": {"a": 1}}, upsert=True),
@@ -545,7 +545,7 @@ class TestBulk(BulkTestBase):
 
     def test_multiple_error_ordered_batch(self):
         self.coll.create_index("a", unique=True)
-        self.addToCleanup(self.coll.drop_index, [("a", 1)])
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
             UpdateOne({"b": 2}, {"$set": {"a": 1}}, upsert=True),
@@ -614,7 +614,7 @@ class TestBulk(BulkTestBase):
 
     def test_single_error_unordered_batch(self):
         self.coll.create_index("a", unique=True)
-        self.addToCleanup(self.coll.drop_index, [("a", 1)])
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
             UpdateOne({"b": 2}, {"$set": {"a": 1}}, upsert=True),
@@ -657,7 +657,7 @@ class TestBulk(BulkTestBase):
 
     def test_multiple_error_unordered_batch(self):
         self.coll.create_index("a", unique=True)
-        self.addToCleanup(self.coll.drop_index, [("a", 1)])
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
         requests: list = [
             InsertOne({"b": 1, "a": 1}),
             UpdateOne({"b": 2}, {"$set": {"a": 3}}, upsert=True),
@@ -1000,7 +1000,7 @@ class TestBulkWriteConcern(BulkTestBase):
 
         self.coll.delete_many({})
         self.coll.create_index("a", unique=True)
-        self.addToCleanup(self.coll.drop_index, [("a", 1)])
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
 
         # Fail due to write concern support as well
         # as duplicate key error on ordered batch.
@@ -1073,7 +1073,7 @@ class TestBulkWriteConcern(BulkTestBase):
 
         self.coll.delete_many({})
         self.coll.create_index("a", unique=True)
-        self.addToCleanup(self.coll.drop_index, [("a", 1)])
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
 
         # Fail due to write concern support as well
         # as duplicate key error on unordered batch.

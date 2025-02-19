@@ -165,7 +165,7 @@ class APITestsMixin:
         coll = self.watched_collection().with_options(write_concern=WriteConcern("majority"))
         await coll.drop()
         await coll.insert_one({})
-        self.addToCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
         async with await self.change_stream(max_await_time_ms=250) as stream:
             self.assertIsNone(await stream.try_next())  # No changes initially.
             await coll.insert_one({})  # Generate a change.
@@ -191,7 +191,7 @@ class APITestsMixin:
         # Create the watched collection before starting the change stream to
         # skip any "create" events.
         await coll.insert_one({"_id": 1})
-        self.addToCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
         async with await self.change_stream_with_client(client, max_await_time_ms=250) as stream:
             self.assertEqual(listener.started_command_names(), ["aggregate"])
             listener.reset()
@@ -249,7 +249,7 @@ class APITestsMixin:
         # Create the watched collection before starting the change stream to
         # skip any "create" events.
         await coll.insert_one({"_id": 1})
-        self.addToCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
         # Expected batchSize.
         expected = {"batchSize": 23}
         async with await self.change_stream_with_client(
@@ -489,7 +489,7 @@ class ProseSpecTestsMixin:
         client = await AsyncPyMongoTestCase.unmanaged_async_rs_or_single_client(
             event_listeners=[listener]
         )
-        self.addToCleanup(client.close)
+        self.addAsyncCleanup(client.close)
         return client, listener
 
     @no_type_check
@@ -1156,7 +1156,7 @@ class TestAllLegacyScenarios(AsyncIntegrationTest):
         fail_cmd = SON([("configureFailPoint", "failCommand")])
         fail_cmd.update(fail_point)
         await async_client_context.client.admin.command(fail_cmd)
-        self.addToCleanup(
+        self.addAsyncCleanup(
             async_client_context.client.admin.command,
             "configureFailPoint",
             fail_cmd["configureFailPoint"],

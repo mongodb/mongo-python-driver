@@ -102,7 +102,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         models = []
         for _ in range(self.max_write_batch_size + 1):
             models.append(InsertOne(namespace="db.coll", document={"a": "b"}))
-        self.addToCleanup(client.db["coll"].drop)
+        self.addCleanup(client.db["coll"].drop)
 
         result = client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, self.max_write_batch_size + 1)
@@ -134,7 +134,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                     document={"a": b_repeated},
                 )
             )
-        self.addToCleanup(client.db["coll"].drop)
+        self.addCleanup(client.db["coll"].drop)
 
         result = client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, num_models)
@@ -177,7 +177,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                         document={"a": "b"},
                     )
                 )
-            self.addToCleanup(client.db["coll"].drop)
+            self.addCleanup(client.db["coll"].drop)
 
             with self.assertRaises(ClientBulkWriteException) as context:
                 client.bulk_write(models=models)
@@ -200,7 +200,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addToCleanup(collection.drop)
+        self.addCleanup(collection.drop)
         collection.drop()
         collection.insert_one(document={"_id": 1})
 
@@ -230,7 +230,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addToCleanup(collection.drop)
+        self.addCleanup(collection.drop)
         collection.drop()
         collection.insert_one(document={"_id": 1})
 
@@ -260,7 +260,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addToCleanup(collection.drop)
+        self.addCleanup(collection.drop)
         collection.drop()
 
         models = []
@@ -301,7 +301,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addToCleanup(collection.drop)
+        self.addCleanup(collection.drop)
         collection.drop()
 
         with client.start_session() as session:
@@ -344,7 +344,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addToCleanup(collection.drop)
+        self.addCleanup(collection.drop)
         collection.drop()
 
         fail_command = {
@@ -460,7 +460,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                 document={"a": "b"},
             )
         )
-        self.addToCleanup(client.db["coll"].drop)
+        self.addCleanup(client.db["coll"].drop)
 
         # No batch splitting required.
         result = client.bulk_write(models=models)
@@ -493,8 +493,8 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                 document={"a": "b"},
             )
         )
-        self.addToCleanup(client.db["coll"].drop)
-        self.addToCleanup(client.db[c_repeated].drop)
+        self.addCleanup(client.db["coll"].drop)
+        self.addCleanup(client.db[c_repeated].drop)
 
         # Batch splitting required.
         result = client.bulk_write(models=models)
@@ -557,7 +557,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client()
 
         collection = client.db["coll"]
-        self.addToCleanup(collection.drop)
+        self.addCleanup(collection.drop)
         collection.drop()
 
         models = []
@@ -598,7 +598,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         collection = client.db["coll"]
-        self.addToCleanup(collection.drop)
+        self.addCleanup(collection.drop)
         collection.drop()
         client.db.command({"create": "db.coll"})
 
@@ -647,10 +647,9 @@ class TestClientBulkWriteCSOT(IntegrationTest):
         _OVERHEAD = 500
 
         internal_client = self.rs_or_single_client(timeoutMS=None)
-        self.addToCleanup(internal_client.close)
 
         collection = internal_client.db["coll"]
-        self.addToCleanup(collection.drop)
+        self.addCleanup(collection.drop)
         collection.drop()
 
         fail_command = {

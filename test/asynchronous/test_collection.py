@@ -1286,7 +1286,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
     async def test_write_error_unicode(self):
         coll = self.db.test
-        self.addToCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
 
         await coll.create_index("a", unique=True)
         await coll.insert_one({"a": "unicode \U0001f40d"})
@@ -1525,7 +1525,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_count_documents(self):
         db = self.db
         await db.drop_collection("test")
-        self.addToCleanup(db.drop_collection, "test")
+        self.addAsyncCleanup(db.drop_collection, "test")
 
         self.assertEqual(await db.test.count_documents({}), 0)
         await db.wrong.insert_many([{}, {}])
@@ -1539,7 +1539,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_estimated_document_count(self):
         db = self.db
         await db.drop_collection("test")
-        self.addToCleanup(db.drop_collection, "test")
+        self.addAsyncCleanup(db.drop_collection, "test")
 
         self.assertEqual(await db.test.estimated_document_count(), 0)
         await db.wrong.insert_many([{}, {}])
@@ -1620,7 +1620,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_aggregation_cursor_alive(self):
         await self.db.test.delete_many({})
         await self.db.test.insert_many([{} for _ in range(3)])
-        self.addToCleanup(self.db.test.delete_many, {})
+        self.addAsyncCleanup(self.db.test.delete_many, {})
         cursor = await self.db.test.aggregate(pipeline=[], cursor={"batchSize": 2})
         n = 0
         while True:
@@ -1917,7 +1917,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_insert_many_large_batch(self):
         # Tests legacy insert.
         db = self.client.test_insert_large_batch
-        self.addToCleanup(self.client.drop_database, "test_insert_large_batch")
+        self.addAsyncCleanup(self.client.drop_database, "test_insert_large_batch")
         max_bson_size = await async_client_context.max_bson_size
         # Write commands are limited to 16MB + 16k per batch
         big_string = "x" * int(max_bson_size / 2)

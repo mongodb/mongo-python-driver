@@ -282,7 +282,7 @@ class SpecRunner(IntegrationTest):
         clients = {c.address: c for c in self.mongos_clients}
         client = clients[session._pinned_address]
         self._set_fail_point(client, fail_point)
-        self.addToCleanup(self.set_fail_point, {"mode": "off"})
+        self.addCleanup(self.set_fail_point, {"mode": "off"})
 
     def assert_session_pinned(self, session):
         """Run the assertSessionPinned test operation.
@@ -471,7 +471,7 @@ class SpecRunner(IntegrationTest):
             result = cmd(**dict(arguments))
         # Cleanup open change stream cursors.
         if name == "watch":
-            self.addToCleanup(result.close)
+            self.addCleanup(result.close)
 
         if name == "aggregate":
             if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
@@ -650,7 +650,7 @@ class SpecRunner(IntegrationTest):
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         self.kill_all_sessions()
-        self.addToCleanup(self.kill_all_sessions)
+        self.addCleanup(self.kill_all_sessions)
         self.setup_scenario(scenario_def)
         database_name = self.get_scenario_db_name(scenario_def)
         collection_name = self.get_scenario_coll_name(scenario_def)
@@ -662,7 +662,7 @@ class SpecRunner(IntegrationTest):
         if "failPoint" in test:
             fp = test["failPoint"]
             self.set_fail_point(fp)
-            self.addToCleanup(
+            self.addCleanup(
                 self.set_fail_point, {"configureFailPoint": fp["configureFailPoint"], "mode": "off"}
             )
 
@@ -710,7 +710,7 @@ class SpecRunner(IntegrationTest):
             # Store lsid so we can access it after end_session, in check_events.
             session_ids[session_name] = s.session_id
 
-        self.addToCleanup(end_sessions, sessions)
+        self.addCleanup(end_sessions, sessions)
 
         collection = client[database_name][collection_name]
         self.run_test_ops(sessions, collection, test)

@@ -242,7 +242,7 @@ class EncryptionIntegrationTest(IntegrationTest):
         client_encryption = ClientEncryption(
             kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
         )
-        self.addToCleanup(client_encryption.close)
+        self.addCleanup(client_encryption.close)
         return client_encryption
 
     @classmethod
@@ -296,7 +296,7 @@ class TestClientSimple(EncryptionIntegrationTest):
         key_vault = create_key_vault(
             self.client.keyvault.datakeys, json_data("custom", "key-document-local.json")
         )
-        self.addToCleanup(key_vault.drop)
+        self.addCleanup(key_vault.drop)
 
         # Collection.insert_one/insert_many auto encrypts.
         docs = [
@@ -357,7 +357,7 @@ class TestClientSimple(EncryptionIntegrationTest):
         # Configure the encrypted field via jsonSchema.
         json_schema = json_data("custom", "schema.json")
         create_with_schema(self.db.test, json_schema)
-        self.addToCleanup(self.db.test.drop)
+        self.addCleanup(self.db.test.drop)
 
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         self._test_auto_encrypt(opts)
@@ -480,7 +480,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         )
         # Use standard UUID representation.
         key_vault = client_context.client.keyvault.get_collection("datakeys", codec_options=OPTS)
-        self.addToCleanup(key_vault.drop)
+        self.addCleanup(key_vault.drop)
 
         # Create the encrypted field's data key.
         key_id = client_encryption.create_data_key("local", key_alt_names=["name"])
@@ -932,7 +932,7 @@ class TestExternalKeyVault(EncryptionIntegrationTest):
             json_data("corpus", "corpus-key-local.json"),
             json_data("corpus", "corpus-key-aws.json"),
         )
-        self.addToCleanup(vault.drop)
+        self.addCleanup(vault.drop)
 
         # Configure the encrypted field via the local schema_map option.
         schemas = {"db.coll": json_data("external", "external-schema.json")}
@@ -996,7 +996,7 @@ class TestViews(EncryptionIntegrationTest):
     def test_views_are_prohibited(self):
         self.client.db.view.drop()
         self.client.db.create_collection("view", viewOn="coll")
-        self.addToCleanup(self.client.db.view.drop)
+        self.addCleanup(self.client.db.view.drop)
 
         opts = AutoEncryptionOpts(self.kms_providers(), "keyvault.datakeys")
         client_encrypted = self.rs_or_single_client(
@@ -1045,7 +1045,7 @@ class TestCorpus(EncryptionIntegrationTest):
         coll = create_with_schema(
             self.client.db.coll, self.fix_up_schema(json_data("corpus", "corpus-schema.json"))
         )
-        self.addToCleanup(coll.drop)
+        self.addCleanup(coll.drop)
 
         vault = create_key_vault(
             self.client.keyvault.datakeys,
@@ -1055,7 +1055,7 @@ class TestCorpus(EncryptionIntegrationTest):
             json_data("corpus", "corpus-key-gcp.json"),
             json_data("corpus", "corpus-key-kmip.json"),
         )
-        self.addToCleanup(vault.drop)
+        self.addCleanup(vault.drop)
 
         client_encrypted = self.rs_or_single_client(auto_encryption_opts=opts)
 
@@ -2934,7 +2934,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         self.key1_id = self.key1_document["_id"]
         self.client.drop_database(self.db)
         self.key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
-        self.addToCleanup(self.key_vault.drop)
+        self.addCleanup(self.key_vault.drop)
         self.client_encryption = self.create_client_encryption(
             {"local": {"key": LOCAL_MASTER_KEY}},
             self.key_vault.full_name,

@@ -1075,8 +1075,8 @@ class TestClient(IntegrationTest):
     def test_auth_from_uri(self):
         host, port = client_context.host, client_context.port
         client_context.create_user("admin", "admin", "pass")
-        self.addToCleanup(client_context.drop_user, "admin", "admin")
-        self.addToCleanup(remove_all_users, self.client.pymongo_test)
+        self.addCleanup(client_context.drop_user, "admin", "admin")
+        self.addCleanup(remove_all_users, self.client.pymongo_test)
 
         client_context.create_user("pymongo_test", "user", "pass", roles=["userAdmin", "readWrite"])
 
@@ -1114,7 +1114,7 @@ class TestClient(IntegrationTest):
     @client_context.require_auth
     def test_username_and_password(self):
         client_context.create_user("admin", "ad min", "pa/ss")
-        self.addToCleanup(client_context.drop_user, "admin", "ad min")
+        self.addCleanup(client_context.drop_user, "admin", "ad min")
 
         c = self.rs_or_single_client_noauth(username="ad min", password="pa/ss")
 
@@ -1221,7 +1221,6 @@ class TestClient(IntegrationTest):
         no_timeout = self.client
         timeout_sec = 1
         timeout = self.rs_or_single_client(socketTimeoutMS=1000 * timeout_sec)
-        self.addToCleanup(timeout.close)
 
         no_timeout.pymongo_test.drop_collection("test")
         no_timeout.pymongo_test.test.insert_one({"x": 1})
@@ -1284,7 +1283,7 @@ class TestClient(IntegrationTest):
         self.assertRaises(ValueError, MongoClient, tz_aware="foo")
 
         aware = self.rs_or_single_client(tz_aware=True)
-        self.addToCleanup(aware.close)
+        self.addCleanup(aware.close)
         naive = self.client
         aware.pymongo_test.drop_collection("test")
 
@@ -1436,7 +1435,7 @@ class TestClient(IntegrationTest):
         # Use a separate collection to avoid races where we're still
         # completing an operation on a collection while the next test begins.
         client_context.client.drop_database("test_lazy_connect_w0")
-        self.addToCleanup(client_context.client.drop_database, "test_lazy_connect_w0")
+        self.addCleanup(client_context.client.drop_database, "test_lazy_connect_w0")
 
         client = self.rs_or_single_client(connect=False, w=0)
         client.test_lazy_connect_w0.test.insert_one({})
@@ -2117,7 +2116,7 @@ class TestExhaustCursor(IntegrationTest):
         collection.drop()
 
         collection.insert_many([{} for _ in range(200)])
-        self.addToCleanup(client_context.client.pymongo_test.test.drop)
+        self.addCleanup(client_context.client.pymongo_test.test.drop)
 
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -2362,7 +2361,7 @@ class TestMongoClientFailover(MockClientTest):
             replicaSet="rs",
             heartbeatFrequencyMS=500,
         )
-        self.addToCleanup(c.close)
+        self.addCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 3, "connect")
 
@@ -2389,7 +2388,7 @@ class TestMongoClientFailover(MockClientTest):
             retryReads=False,
             serverSelectionTimeoutMS=1000,
         )
-        self.addToCleanup(c.close)
+        self.addCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 3, "connect")
 
@@ -2427,7 +2426,7 @@ class TestMongoClientFailover(MockClientTest):
                 serverSelectionTimeoutMS=1000,
             )
 
-            self.addToCleanup(c.close)
+            self.addCleanup(c.close)
 
             # Set host-specific information so we can test whether it is reset.
             c.set_wire_version_range("a:1", 2, MIN_SUPPORTED_WIRE_VERSION)
@@ -2503,7 +2502,7 @@ class TestClientPool(MockClientTest):
             minPoolSize=1,  # minPoolSize
             event_listeners=[listener],
         )
-        self.addToCleanup(c.close)
+        self.addCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 3, "connect")
         self.assertEqual(c.address, ("a", 1))
@@ -2533,7 +2532,7 @@ class TestClientPool(MockClientTest):
             minPoolSize=1,  # minPoolSize
             event_listeners=[listener],
         )
-        self.addToCleanup(c.close)
+        self.addCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 1, "connect")
         self.assertEqual(c.address, ("c", 3))

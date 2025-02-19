@@ -1102,8 +1102,8 @@ class TestClient(AsyncIntegrationTest):
     async def test_auth_from_uri(self):
         host, port = await async_client_context.host, await async_client_context.port
         await async_client_context.create_user("admin", "admin", "pass")
-        self.addToCleanup(async_client_context.drop_user, "admin", "admin")
-        self.addToCleanup(remove_all_users, self.client.pymongo_test)
+        self.addAsyncCleanup(async_client_context.drop_user, "admin", "admin")
+        self.addAsyncCleanup(remove_all_users, self.client.pymongo_test)
 
         await async_client_context.create_user(
             "pymongo_test", "user", "pass", roles=["userAdmin", "readWrite"]
@@ -1149,7 +1149,7 @@ class TestClient(AsyncIntegrationTest):
     @async_client_context.require_auth
     async def test_username_and_password(self):
         await async_client_context.create_user("admin", "ad min", "pa/ss")
-        self.addToCleanup(async_client_context.drop_user, "admin", "ad min")
+        self.addAsyncCleanup(async_client_context.drop_user, "admin", "ad min")
 
         c = await self.async_rs_or_single_client_noauth(username="ad min", password="pa/ss")
 
@@ -1258,7 +1258,6 @@ class TestClient(AsyncIntegrationTest):
         no_timeout = self.client
         timeout_sec = 1
         timeout = await self.async_rs_or_single_client(socketTimeoutMS=1000 * timeout_sec)
-        self.addToCleanup(timeout.close)
 
         await no_timeout.pymongo_test.drop_collection("test")
         await no_timeout.pymongo_test.test.insert_one({"x": 1})
@@ -1325,7 +1324,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertRaises(ValueError, AsyncMongoClient, tz_aware="foo")
 
         aware = await self.async_rs_or_single_client(tz_aware=True)
-        self.addToCleanup(aware.close)
+        self.addAsyncCleanup(aware.close)
         naive = self.client
         await aware.pymongo_test.drop_collection("test")
 
@@ -1477,7 +1476,7 @@ class TestClient(AsyncIntegrationTest):
         # Use a separate collection to avoid races where we're still
         # completing an operation on a collection while the next test begins.
         await async_client_context.client.drop_database("test_lazy_connect_w0")
-        self.addToCleanup(async_client_context.client.drop_database, "test_lazy_connect_w0")
+        self.addAsyncCleanup(async_client_context.client.drop_database, "test_lazy_connect_w0")
 
         client = await self.async_rs_or_single_client(connect=False, w=0)
         await client.test_lazy_connect_w0.test.insert_one({})
@@ -2160,7 +2159,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
         await collection.drop()
 
         await collection.insert_many([{} for _ in range(200)])
-        self.addToCleanup(async_client_context.client.pymongo_test.test.drop)
+        self.addAsyncCleanup(async_client_context.client.pymongo_test.test.drop)
 
         pool = await async_get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -2407,7 +2406,7 @@ class TestMongoClientFailover(AsyncMockClientTest):
             replicaSet="rs",
             heartbeatFrequencyMS=500,
         )
-        self.addToCleanup(c.close)
+        self.addAsyncCleanup(c.close)
 
         await async_wait_until(lambda: len(c.nodes) == 3, "connect")
 
@@ -2434,7 +2433,7 @@ class TestMongoClientFailover(AsyncMockClientTest):
             retryReads=False,
             serverSelectionTimeoutMS=1000,
         )
-        self.addToCleanup(c.close)
+        self.addAsyncCleanup(c.close)
 
         await async_wait_until(lambda: len(c.nodes) == 3, "connect")
 
@@ -2472,7 +2471,7 @@ class TestMongoClientFailover(AsyncMockClientTest):
                 serverSelectionTimeoutMS=1000,
             )
 
-            self.addToCleanup(c.close)
+            self.addAsyncCleanup(c.close)
 
             # Set host-specific information so we can test whether it is reset.
             c.set_wire_version_range("a:1", 2, MIN_SUPPORTED_WIRE_VERSION)
@@ -2548,7 +2547,7 @@ class TestClientPool(AsyncMockClientTest):
             minPoolSize=1,  # minPoolSize
             event_listeners=[listener],
         )
-        self.addToCleanup(c.close)
+        self.addAsyncCleanup(c.close)
 
         await async_wait_until(lambda: len(c.nodes) == 3, "connect")
         self.assertEqual(await c.address, ("a", 1))
@@ -2578,7 +2577,7 @@ class TestClientPool(AsyncMockClientTest):
             minPoolSize=1,  # minPoolSize
             event_listeners=[listener],
         )
-        self.addToCleanup(c.close)
+        self.addAsyncCleanup(c.close)
 
         await async_wait_until(lambda: len(c.nodes) == 1, "connect")
         self.assertEqual(await c.address, ("c", 3))

@@ -1080,7 +1080,7 @@ class TestCursor(AsyncIntegrationTest):
         db = self.db
         await db.drop_collection("test")
         await db.create_collection("test", capped=True, size=1000, max=3)
-        self.addToCleanup(db.drop_collection, "test")
+        self.addAsyncCleanup(db.drop_collection, "test")
         cursor = db.test.find(cursor_type=CursorType.TAILABLE)
 
         await db.test.insert_one({"x": 1})
@@ -1243,7 +1243,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_alive(self):
         await self.db.test.delete_many({})
         await self.db.test.insert_many([{} for _ in range(3)])
-        self.addToCleanup(self.db.test.delete_many, {})
+        self.addAsyncCleanup(self.db.test.delete_many, {})
         cursor = self.db.test.find().batch_size(2)
         n = 0
         while True:
@@ -1364,7 +1364,7 @@ class TestCursor(AsyncIntegrationTest):
 
         await coll.delete_many({})
         await coll.insert_many([{} for _ in range(5)])
-        self.addToCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
 
         await coll.find(batch_size=3).to_list()
         started = listener.started_events
@@ -1386,7 +1386,7 @@ class TestCursor(AsyncIntegrationTest):
         c = oplog.find(
             {"ts": {"$gte": ts}}, cursor_type=pymongo.CursorType.TAILABLE_AWAIT, oplog_replay=True
         ).max_await_time_ms(1)
-        self.addToCleanup(c.close)
+        self.addAsyncCleanup(c.close)
         # Wait for the change to be read.
         docs = []
         while not docs:
@@ -1401,7 +1401,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_to_list_length(self):
         coll = self.db.test
         await coll.insert_many([{} for _ in range(5)])
-        self.addToCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
         c = coll.find()
         docs = await c.to_list(3)
         self.assertEqual(len(docs), 3)
@@ -1429,7 +1429,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_command_cursor_to_list(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
         c = await self.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
-        self.addToCleanup(c.close)
+        self.addAsyncCleanup(c.close)
         docs = await c.to_list()
         self.assertGreaterEqual(len(docs), 0)
 
@@ -1437,7 +1437,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_command_cursor_to_list_empty(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
         c = await self.db.does_not_exist.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
-        self.addToCleanup(c.close)
+        self.addAsyncCleanup(c.close)
         docs = await c.to_list()
         self.assertEqual([], docs)
 

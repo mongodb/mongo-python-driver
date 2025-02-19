@@ -210,7 +210,7 @@ class TestDatabase(AsyncIntegrationTest):
         await db.create_collection("capped", capped=True, size=4096)
         await db.capped.insert_one({})
         await db.non_capped.insert_one({})
-        self.addToCleanup(client.drop_database, db.name)
+        self.addAsyncCleanup(client.drop_database, db.name)
         filter: Union[None, Mapping[str, Any]]
         # Should not send nameOnly.
         for filter in ({"options.capped": True}, {"options.capped": True, "name": "capped"}):
@@ -744,7 +744,7 @@ class TestDatabaseAggregation(AsyncIntegrationTest):
             write_stage = {"$merge": {"into": {"db": db_name, "coll": coll_name}}}
         output_coll = self.client[db_name][coll_name]
         await output_coll.drop()
-        self.addToCleanup(output_coll.drop)
+        self.addAsyncCleanup(output_coll.drop)
 
         admin = self.admin.with_options(write_concern=WriteConcern(w=0))
         pipeline = self.pipeline[:]

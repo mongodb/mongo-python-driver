@@ -371,7 +371,7 @@ class TestSession(AsyncIntegrationTest):
         coll = self.client.pymongo_test.collection
         # Ensure some batches.
         await coll.insert_many({} for _ in range(10))
-        self.addToCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
 
         async with self.client.start_session() as s:
             cursor = coll.find(session=s)
@@ -608,7 +608,7 @@ class TestSession(AsyncIntegrationTest):
 
         # Now with documents.
         await coll.insert_many([{} for _ in range(10)])
-        self.addToCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
         await self._test_ops(client, (agg, [], {}))
 
     async def test_killcursors(self):
@@ -1144,8 +1144,8 @@ class TestClusterTime(AsyncIntegrationTest):
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
         await collection.insert_many([{} for _ in range(10)])
-        self.addToCleanup(collection.drop)
-        self.addToCleanup(client.pymongo_test.collection2.drop)
+        self.addAsyncCleanup(collection.drop)
+        self.addAsyncCleanup(client.pymongo_test.collection2.drop)
 
         async def rename_and_drop():
             # Ensure collection exists.

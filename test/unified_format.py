@@ -687,7 +687,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("MMAPv1 does not support change streams")
         self.__raise_if_unsupported("createChangeStream", target, MongoClient, Database, Collection)
         stream = target.watch(*args, **kwargs)
-        self.addToCleanup(stream.close)
+        self.addCleanup(stream.close)
         return stream
 
     def _clientOperation_createChangeStream(self, target, *args, **kwargs):
@@ -785,7 +785,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "filter" not in kwargs:
             self.fail('createFindCursor requires a "filter" argument')
         cursor = NonLazyCursor.create(target.find(*args, **kwargs), target.database.client)
-        self.addToCleanup(cursor.close)
+        self.addCleanup(cursor.close)
         return cursor
 
     def _collectionOperation_count(self, target, *args, **kwargs):
@@ -1002,7 +1002,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         cmd_on = SON([("configureFailPoint", "failCommand")])
         cmd_on.update(command_args)
         client.admin.command(cmd_on)
-        self.addToCleanup(
+        self.addCleanup(
             client.admin.command, "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
         )
 
@@ -1374,7 +1374,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         self.kill_all_sessions()
-        self.addToCleanup(self.kill_all_sessions)
+        self.addCleanup(self.kill_all_sessions)
 
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.

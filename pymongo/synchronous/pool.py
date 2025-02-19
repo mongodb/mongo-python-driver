@@ -445,7 +445,7 @@ class Connection:
             raise
         # Catch socket.error, KeyboardInterrupt, CancelledError, etc. and close ourselves.
         except BaseException as error:
-            _raise_connection_failure(error)
+            self._raise_connection_failure(error)
 
     def send_message(self, message: bytes, max_doc_size: int) -> None:
         """Send a raw BSON message or raise ConnectionFailure.
@@ -462,7 +462,7 @@ class Connection:
             sendall(self.conn.get_conn, message)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
-            _raise_connection_failure(error)
+            self._raise_connection_failure(error)
 
     def receive_message(self, request_id: Optional[int]) -> Union[_OpReply, _OpMsg]:
         """Receive a raw BSON message or raise ConnectionFailure.
@@ -473,7 +473,7 @@ class Connection:
             return receive_message(self, request_id, self.max_message_size)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
-            _raise_connection_failure(error)
+            self._raise_connection_failure(error)
 
     def _raise_if_not_writable(self, unacknowledged: bool) -> None:
         """Raise NotPrimaryError on unacknowledged write if this socket is not
