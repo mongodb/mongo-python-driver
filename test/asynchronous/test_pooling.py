@@ -124,7 +124,7 @@ class SocketGetter(MongoTask):
         self.state = "connection"
 
     def __del__(self):
-        if self.sock:
+        if _IS_SYNC and self.sock:
             self.sock.close_conn(None)
 
 
@@ -215,7 +215,7 @@ class TestPooling(_TestPoolingBase):
 
         async with cx_pool.checkout() as conn:
             # Use Connection's API to close the socket.
-            conn.close_conn(None)
+            await conn.close_conn(None)
 
         self.assertEqual(0, len(cx_pool.conns))
 
@@ -228,7 +228,7 @@ class TestPooling(_TestPoolingBase):
         async with cx_pool.checkout() as conn:
             # Simulate a closed socket without telling the Connection it's
             # closed.
-            conn.conn.close()
+            await conn.conn.close()
             self.assertTrue(conn.conn_closed())
 
         async with cx_pool.checkout() as new_connection:
@@ -302,7 +302,7 @@ class TestPooling(_TestPoolingBase):
         async with cx_pool.checkout() as conn:
             # Simulate a closed socket without telling the Connection it's
             # closed.
-            conn.conn.close()
+            await conn.conn.close()
 
         # Swap pool's address with a bad one.
         address, cx_pool.address = cx_pool.address, ("foo.com", 1234)
@@ -373,7 +373,7 @@ class TestPooling(_TestPoolingBase):
             self.assertEqual(t.state, "get_socket")
 
         for socket_info in socks:
-            socket_info.close_conn(None)
+            await socket_info.close_conn(None)
 
     async def test_maxConnecting(self):
         client = await self.async_rs_or_single_client()

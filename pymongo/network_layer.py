@@ -101,7 +101,7 @@ class AsyncNetworkingInterface(NetworkingInterfaceBase):
         await self.conn[1].wait_closed()
 
     def is_closing(self):
-        self.conn[0].is_closing()
+        return self.conn[0].is_closing()
 
     @property
     def get_conn(self) -> PyMongoProtocol:
@@ -340,10 +340,11 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         self._connection_lost = True
         pending = list(self._pending_messages)
         for msg in pending:
-            if exc is None:
-                msg.set_result(None)
-            else:
-                msg.set_exception(exc)
+            if not msg.done():
+                if exc is None:
+                    msg.set_result(None)
+                else:
+                    msg.set_exception(exc)
             self._done_messages.append(msg)
 
         if not self._closed.done():
@@ -374,7 +375,7 @@ class PyMongoProtocol(asyncio.BufferedProtocol):
         return self._buffer
 
     async def wait_closed(self):
-        await self._closed
+        await asyncio.wait([self._closed])
 
 
 async def async_sendall(conn: PyMongoProtocol, buf: bytes) -> None:
@@ -500,10 +501,10 @@ async def async_receive_message(
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     timeout: Optional[Union[float, int]]
+    timeout = conn.conn.gettimeout
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
     else:
-        timeout = conn.conn.get_conn.gettimeout
         if timeout:
             deadline = time.monotonic() + timeout
         else:
@@ -517,24 +518,31 @@ async def async_receive_message(
     cancellation_task = create_task(_poll_cancellation(conn))
     read_task = create_task(conn.conn.get_conn.read(request_id, max_message_size, debug))
     tasks = [read_task, cancellation_task]
-    done, pending = await asyncio.wait(tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
-    for task in pending:
-        task.cancel()
-    if pending:
-        await asyncio.wait(pending)
-    if len(done) == 0:
-        raise socket.timeout("timed out")
-    if read_task in done:
-        data, op_code = read_task.result()
-
-        try:
-            unpack_reply = _UNPACK_REPLY[op_code]
-        except KeyError:
-            raise ProtocolError(
-                f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
-            ) from None
-        return unpack_reply(data)
-    raise _OperationCancelled("operation cancelled")
+    try:
+        done, pending = await asyncio.wait(
+            tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED
+        )
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.wait(pending)
+        if len(done) == 0:
+            raise socket.timeout("timed out")
+        if read_task in done:
+            data, op_code = read_task.result()
+            try:
+                unpack_reply = _UNPACK_REPLY[op_code]
+            except KeyError:
+                raise ProtocolError(
+                    f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
+                ) from None
+            return unpack_reply(data)
+        raise _OperationCancelled("operation cancelled")
+    except asyncio.CancelledError:
+        for task in tasks:
+            task.cancel()
+        await asyncio.wait(tasks)
+        raise
 
 
 def receive_message(
