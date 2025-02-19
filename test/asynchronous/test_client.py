@@ -1849,7 +1849,6 @@ class TestClient(AsyncIntegrationTest):
             expected = "{}:{}: ".format(*(await client.address))
             with self.assertRaisesRegex(AutoReconnect, expected):
                 await client.pymongo_test.test.find_one({})
-            print("woo!")
 
     @unittest.skipIf("PyPy" in sys.version, "PYTHON-2938 could fail on PyPy")
     async def test_process_periodic_tasks(self):

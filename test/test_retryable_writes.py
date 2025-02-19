@@ -246,7 +246,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                     event.command,
                     f"{msg} sent txnNumber with {event.command_name}",
                 )
-        print("woo!")
 
     def test_server_selection_timeout_not_retried(self):
         """A ServerSelectionTimeoutError is not retried."""

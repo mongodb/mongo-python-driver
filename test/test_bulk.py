@@ -301,6 +301,7 @@ class TestBulk(BulkTestBase):
 
     def test_bulk_max_message_size(self):
         self.coll.delete_many({})
+        self.addCleanup(self.coll.delete_many, {})
         _16_MB = 16 * 1000 * 1000
         # Generate a list of documents such that the first batched OP_MSG is
         # as close as possible to the 48MB limit.
@@ -314,7 +315,6 @@ class TestBulk(BulkTestBase):
             docs.append({"_id": i})
         result = self.coll.insert_many(docs)
         self.assertEqual(len(docs), len(result.inserted_ids))
-        self.coll.delete_many({})
 
     def test_generator_insert(self):
         def gen():

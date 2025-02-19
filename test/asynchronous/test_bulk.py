@@ -301,6 +301,7 @@ class AsyncTestBulk(AsyncBulkTestBase):
 
     async def test_bulk_max_message_size(self):
         await self.coll.delete_many({})
+        self.addAsyncCleanup(self.coll.delete_many, {})
         _16_MB = 16 * 1000 * 1000
         # Generate a list of documents such that the first batched OP_MSG is
         # as close as possible to the 48MB limit.
@@ -314,7 +315,6 @@ class AsyncTestBulk(AsyncBulkTestBase):
             docs.append({"_id": i})
         result = await self.coll.insert_many(docs)
         self.assertEqual(len(docs), len(result.inserted_ids))
-        await self.coll.delete_many({})
 
     async def test_generator_insert(self):
         def gen():
