@@ -20,4 +20,4 @@ if [ -f $SCRIPT_DIR/env.sh ]; then
   source $SCRIPT_DIR/env.sh
 fi
 
-uv run $SCRIPT_DIR/setup-tests.py $@
+uv run $SCRIPT_DIR/setup_tests.py $@
