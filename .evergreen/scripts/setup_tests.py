@@ -2,20 +2,26 @@ from __future__ import annotations
 
 import argparse
 import base64
+import dataclasses
+import io
 import logging
 import os
 import platform
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 from pathlib import Path
 from typing import Any
+from urllib import request
 
 HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
 ENV_FILE = HERE / "test-env.sh"
 DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS", "").replace(os.sep, "/")
+PLATFORM = "windows" if os.name == "nt" else sys.platform
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
@@ -61,6 +67,13 @@ EXTRAS_MAP = {
 
 # Map the test name to test group.
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
+
+
+@dataclasses.dataclass
+class Distro:
+    name: str
+    version_id: str
+    arch: str
 
 
 def write_env(name: str, value: Any = "1") -> None:
@@ -116,6 +129,69 @@ def get_options():
     elif opts.quiet:
         LOGGER.setLevel(logging.WARNING)
     return opts
+
+
+def get_distro() -> Distro:
+    name = ""
+    version_id = ""
+    arch = platform.machine()
+    with open("/etc/os-release") as fid:
+        for line in fid.readlines():
+            line = line.replace('"', "")  # noqa: PLW2901
+            if line.startswith("NAME="):
+                _, _, name = line.strip().partition("=")
+            if line.startswith("VERSION_ID="):
+                _, _, version_id = line.strip().partition("=")
+    return Distro(name=name, version_id=version_id, arch=arch)
+
+
+def setup_libmongocrypt():
+    target = ""
+    if PLATFORM == "windows":
+        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
+        if is_set("TEST_FLE_GCP_AUTO"):
+            run_command('powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/"')
+        target = "windows-test"
+
+    elif PLATFORM == "darwin":
+        target = "macos"
+
+    else:
+        distro = get_distro()
+        if distro.name.startswith("Debian"):
+            target = f"debian{distro.version_id}"
+        elif distro.name.startswith("Red Hat"):
+            if distro.version_id.startswith("7"):
+                target = "rhel-70-64-bit"
+            elif distro.version_id.startswith("8"):
+                if distro.arch == "aarch64":
+                    target = "rhel-82-arm64"
+                else:
+                    target = "rhel-80-64-bit"
+
+    if not is_set("LIBMONGOCRYPT_URL"):
+        if not target:
+            raise ValueError("Cannot find libmongocrypt target for current platform!")
+        url = f"https://s3.amazonaws.com/mciuploads/libmongocrypt/{target}/master/latest/libmongocrypt.tar.gz"
+    else:
+        url = os.environ["LIBMONGOCRYPT_URL"]
+
+    shutil.rmtree(HERE / "libmongocrypt", ignore_errors=True)
+
+    LOGGER.info(f"Fetching {url}...")
+    with request.urlopen(request.Request(url), timeout=15.0) as response:  # noqa: S310
+        if response.status == 200:
+            fileobj = io.BytesIO(response.read())
+        with tarfile.open("libmongocrypt.tar.gz", fileobj=fileobj) as fid:
+            fid.extractall(Path.cwd() / "libmongocrypt")
+    LOGGER.info(f"Fetching {url}... done.")
+
+    run_command("ls -la libmongocrypt")
+    run_command("ls -la libmongocrypt/nocrypto")
+
+    if PLATFORM == "windows":
+        # libmongocrypt's windows dll is not marked executable.
+        run_command("chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll")
 
 
 def handle_test_env() -> None:
@@ -209,7 +285,7 @@ def handle_test_env() -> None:
 
     if test_name == "enterprise_auth":
         config = read_env(f"{ROOT}/secrets-export.sh")
-        if os.name == "nt":
+        if PLATFORM == "windows":
             LOGGER.info("Setting GSSAPI_PASS")
             write_env("GSSAPI_PASS", config["SASL_PASS"])
             write_env("GSSAPI_CANONICALIZE", "true")
@@ -266,19 +342,19 @@ def handle_test_env() -> None:
     if test_name in ["encryption", "kms"]:
         # Check for libmongocrypt download.
         if not (ROOT / "libmongocrypt").exists():
-            run_command(f"bash {HERE.as_posix()}/setup-libmongocrypt.sh")
+            setup_libmongocrypt()
 
         # TODO: Test with 'pip install pymongocrypt'
         UV_ARGS.append("--group pymongocrypt_source")
 
         # Use the nocrypto build to avoid dependency issues with older windows/python versions.
         BASE = ROOT / "libmongocrypt/nocrypto"
-        if sys.platform == "linux":
+        if PLATFORM == "linux":
             if (BASE / "lib/libmongocrypt.so").exists():
                 PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.so"
             else:
                 PYMONGOCRYPT_LIB = BASE / "lib64/libmongocrypt.so"
-        elif sys.platform == "darwin":
+        elif PLATFORM == "darwin":
             PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.dylib"
         else:
             PYMONGOCRYPT_LIB = BASE / "bin/mongocrypt.dll"
@@ -300,7 +376,7 @@ def handle_test_env() -> None:
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
         CRYPT_SHARED_DIR = Path(config["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
-        if os.name == "nt":
+        if PLATFORM == "windows":
             write_env("PATH", f"{CRYPT_SHARED_DIR}:$PATH")
         else:
             write_env(
