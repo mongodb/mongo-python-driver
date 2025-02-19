@@ -89,7 +89,7 @@ EOT
 
 # Write the .env file for drivers-tools.
 rm -rf $DRIVERS_TOOLS
-git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+git clone --branch reinterpret-latest https://github.com/kevinAlbs/drivers-evergreen-tools.git $DRIVERS_TOOLS
 
 cat <<EOT > ${DRIVERS_TOOLS}/.env
 SKIP_LEGACY_SHELL=1
