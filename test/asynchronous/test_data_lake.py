@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, AsyncUnitTest, async_client_context, unittest
 from test.asynchronous.unified_format import generate_test_classes
-from test.utils import (
+from test.utils_shared import (
     OvertCommandListener,
 )
 

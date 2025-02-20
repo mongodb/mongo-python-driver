@@ -30,7 +30,7 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
-from test.utils import AllowListEventListener, delay, ignore_deprecations
+from test.utils_shared import AllowListEventListener, delay, ignore_deprecations
 
 import pytest
 

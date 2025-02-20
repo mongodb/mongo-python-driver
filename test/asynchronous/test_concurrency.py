@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 import time
 from test.asynchronous import AsyncIntegrationTest, async_client_context
-from test.utils import delay
+from test.utils_shared import delay
 
 _IS_SYNC = False
 

@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
 from test.test_custom_types import DECIMAL_CODECOPTS
-from test.utils import (
+from test.utils_shared import (
     IMPOSSIBLE_WRITE_CONCERN,
     OvertCommandListener,
     wait_until,

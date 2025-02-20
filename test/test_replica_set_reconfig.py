@@ -21,7 +21,7 @@ sys.path[0:0] = [""]
 
 from test import MockClientTest, client_context, client_knobs, unittest
 from test.pymongo_mocks import MockClient
-from test.utils import wait_until
+from test.utils_shared import wait_until
 
 from pymongo import ReadPreference
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError

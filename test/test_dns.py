@@ -29,7 +29,7 @@ from test import (
     client_context,
     unittest,
 )
-from test.utils import wait_until
+from test.utils_shared import wait_until
 
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError

@@ -21,7 +21,7 @@ from test.asynchronous.unified_format import generate_test_classes
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils import OvertCommandListener
+from test.utils_shared import OvertCommandListener
 
 from pymongo.server_api import ServerApi
 

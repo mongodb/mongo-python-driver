@@ -22,7 +22,7 @@ import sys
 sys.path[0:0] = [""]
 from asyncio import iscoroutinefunction
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils import OvertCommandListener
+from test.utils_shared import OvertCommandListener
 
 from bson.dbref import DBRef
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor

@@ -29,7 +29,7 @@ from test.asynchronous import (
     sanitize_cmd,
     unittest,
 )
-from test.utils import (
+from test.utils_shared import (
     EventListener,
     OvertCommandListener,
     async_wait_until,

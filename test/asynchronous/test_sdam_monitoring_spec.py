@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, client_knobs, unittest
-from test.utils import (
+from test.utils_shared import (
     ServerAndTopologyEventListener,
     async_wait_until,
     server_name_to_type,
