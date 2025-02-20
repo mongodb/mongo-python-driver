@@ -5,8 +5,6 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 SCRIPT_DIR="$( cd -- "$SCRIPT_DIR" > /dev/null 2>&1 && pwd )"
 ROOT_DIR="$(dirname "$(dirname $SCRIPT_DIR)")"
 
-pushd $ROOT_DIR
-
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 export UV_FROZEN=1  # Do not modify lock files
@@ -26,6 +24,8 @@ if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
 else
   echo "Missing test inputs, please run 'just setup-test'"
 fi
+
+pushd $ROOT_DIR
 
 # Source the local secrets export file if available.
 if [ -f "./secrets-export.sh" ]; then
