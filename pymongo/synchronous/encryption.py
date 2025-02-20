@@ -72,7 +72,7 @@ from pymongo.errors import (
     NetworkTimeout,
     ServerSelectionTimeoutError,
 )
-from pymongo.network_layer import sendall
+from pymongo.network_layer import async_socket_sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import _get_timeout_details, _raise_connection_failure
@@ -193,7 +193,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         try:
             conn = _connect_kms(address, opts)
             try:
-                sendall(conn, message)
+                async_socket_sendall(conn, message)
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
                     conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))

@@ -241,7 +241,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
 
 
 async def _configured_protocol(address: _Address, options: PoolOptions) -> AsyncNetworkingInterface:
-    """Given (host, port) and PoolOptions, return a configured transport, protocol pair.
+    """Given (host, port) and PoolOptions, return a configured AsyncNetworkingInterface.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
 
@@ -262,7 +262,7 @@ async def _configured_protocol(address: _Address, options: PoolOptions) -> Async
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
-        transport, protocol = await asyncio.get_running_loop().create_connection(
+        transport, protocol = await asyncio.get_running_loop().create_connection(  # type: ignore[call-overload]
             lambda: PyMongoProtocol(timeout=timeout, buffer_size=2**14),
             sock=sock,
             server_hostname=host,
