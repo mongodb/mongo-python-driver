@@ -1155,7 +1155,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         self.assertIsInstance(description, TopologyDescription)
         self.assertEqual(description.topology_type_name, spec["topologyType"])
 
-    def _testOperation_waitForPrimaryChange(self, spec: dict) -> None:
+    async def _testOperation_waitForPrimaryChange(self, spec: dict) -> None:
         """Run the waitForPrimaryChange test operation."""
         client = self.entity_map[spec["client"]]
         old_description: TopologyDescription = self.entity_map[spec["priorTopologyDescription"]]
@@ -1169,13 +1169,13 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
         old_primary = get_primary(old_description)
 
-        def primary_changed() -> bool:
-            primary = client.primary
+        async def primary_changed() -> bool:
+            primary = await client.primary
             if primary is None:
                 return False
             return primary != old_primary
 
-        wait_until(primary_changed, "change primary", timeout=timeout)
+        await async_wait_until(primary_changed, "change primary", timeout=timeout)
 
     async def _testOperation_runOnThread(self, spec):
         """Run the 'runOnThread' operation."""
