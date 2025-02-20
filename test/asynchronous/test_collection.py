@@ -1792,8 +1792,6 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await self.db.test.find(no_cursor_timeout=True).to_list()
         await self.db.test.find(no_cursor_timeout=False).to_list()
 
-    # TODO: fix exhaust cursor + batch_size
-    @async_client_context.require_sync
     async def test_exhaust(self):
         if await async_is_mongos(self.db.client):
             with self.assertRaises(InvalidOperation):

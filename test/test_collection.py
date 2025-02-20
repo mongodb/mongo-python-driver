@@ -1774,8 +1774,6 @@ class TestCollection(IntegrationTest):
         self.db.test.find(no_cursor_timeout=True).to_list()
         self.db.test.find(no_cursor_timeout=False).to_list()
 
-    # TODO: fix exhaust cursor + batch_size
-    @client_context.require_sync
     def test_exhaust(self):
         if is_mongos(self.db.client):
             with self.assertRaises(InvalidOperation):
