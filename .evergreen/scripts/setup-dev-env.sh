@@ -27,7 +27,9 @@ fi
 
 # Ensure there is a python venv.
 if [ ! -d $BIN_DIR ]; then
-  . $ROOT/.evergreen/utils.sh
+  ls
+  ls .evergreen
+  . .evergreen/utils.sh
 
   if [ -z "${PYTHON_BINARY:-}" ]; then
       PYTHON_BINARY=$(find_python3)
