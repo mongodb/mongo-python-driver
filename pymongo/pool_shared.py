@@ -286,7 +286,7 @@ async def _configured_protocol(address: _Address, options: PoolOptions) -> Async
         and not options.tls_allow_invalid_hostnames
     ):
         try:
-            ssl.match_hostname(transport.get_extra_info("peercert"), hostname=host)  # type:ignore[attr-defined]
+            ssl.match_hostname(transport.get_extra_info("peercert"), hostname=host)  # type:ignore[attr-defined,unused-ignore]
         except _CertificateError:
             transport.abort()
             raise
@@ -334,7 +334,7 @@ def _configured_socket(address: _Address, options: PoolOptions) -> NetworkingInt
         and not options.tls_allow_invalid_hostnames
     ):
         try:
-            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined]
+            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined,unused-ignore]
         except _CertificateError:
             ssl_sock.close()
             raise
