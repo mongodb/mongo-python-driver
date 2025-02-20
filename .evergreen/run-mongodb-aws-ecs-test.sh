@@ -33,5 +33,4 @@ cd src
 rm -rf .venv
 rm -f .evergreen/scripts/test-env.sh || true
 bash ./.evergreen/just.sh setup-test
-cat .evergreen/scripts/test-env.sh
 bash .evergreen/just.sh test-eg
