@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eu
 
 pushd "${PROJECT_DIRECTORY}/.evergreen"
 bash scripts/setup-dev-env.sh
