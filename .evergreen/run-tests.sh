@@ -1,10 +1,11 @@
 #!/bin/bash
-set -eu
+set -eux
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 SCRIPT_DIR="$( cd -- "$SCRIPT_DIR" > /dev/null 2>&1 && pwd )"
 ROOT_DIR="$(dirname "$(dirname $SCRIPT_DIR)")"
 
+pwd
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 export UV_FROZEN=1  # Do not modify lock files
@@ -25,6 +26,7 @@ else
   echo "Missing test inputs, please run 'just setup-test'"
 fi
 
+pwd
 pushd $ROOT_DIR
 
 # Source the local secrets export file if available.
@@ -34,6 +36,7 @@ fi
 
 PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implementation())")
 
+pwd
 # Ensure C extensions if applicable.
 if [ -z "${NO_EXT:-}" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     uv run --frozen tools/fail_if_no_c.py
