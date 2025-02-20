@@ -604,7 +604,7 @@ class PyMongoProtocol(BufferedProtocol):
                     self._expecting_header = False
                     if self._body_length > self._buffer_size:
                         self._overflow = memoryview(
-                            bytearray(self._body_length - (self._buffer_size - nbytes) + 1000)
+                            bytearray(self._body_length - (self._length + nbytes) + 1024)
                         )
                 self._length += nbytes
             if (
