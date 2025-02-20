@@ -2,6 +2,7 @@
 set -eu
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
+SCRIPT_DIR="$( cd -- "$SCRIPT_DIR" > /dev/null 2>&1 && pwd )"
 ROOT_DIR="$(dirname "$(dirname $SCRIPT_DIR)")"
 
 export PIP_QUIET=1  # Quiet by default
