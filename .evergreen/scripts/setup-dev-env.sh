@@ -6,6 +6,10 @@ HERE=$(dirname ${BASH_SOURCE:-$0})
 ROOT=$(dirname "$(dirname $HERE)")
 pushd $ROOT > /dev/null
 
+pwd
+
+echo "ROOT=$ROOT"
+
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
@@ -18,6 +22,7 @@ fi
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
+pwd
 # Set the location of the python bin dir.
 if [ "Windows_NT" = "${OS:-}" ]; then
   BIN_DIR=.venv/Scripts
