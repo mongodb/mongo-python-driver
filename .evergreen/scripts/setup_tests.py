@@ -399,6 +399,9 @@ def handle_test_env() -> None:
         write_env("CA_FILE", os.environ["CA_FILE"])
         write_env("OCSP_TLS_SHOULD_SUCCEED", os.environ["OCSP_TLS_SHOULD_SUCCEED"])
 
+    if test_name == "auth_aws":
+        write_env("MONGODB_URI", os.environ["MONGODB_URI"])
+
     if test_name == "perf":
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
         # affects the benchmark results.
