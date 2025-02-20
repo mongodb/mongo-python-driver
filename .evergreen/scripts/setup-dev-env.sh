@@ -3,12 +3,9 @@
 set -eux
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
+HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 ROOT=$(dirname "$(dirname $HERE)")
 pushd $ROOT > /dev/null
-
-pwd
-
-echo "ROOT=$ROOT"
 
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
@@ -22,7 +19,6 @@ fi
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
-pwd
 # Set the location of the python bin dir.
 if [ "Windows_NT" = "${OS:-}" ]; then
   BIN_DIR=.venv/Scripts
@@ -32,9 +28,7 @@ fi
 
 # Ensure there is a python venv.
 if [ ! -d $BIN_DIR ]; then
-  ls
-  ls .evergreen
-  . .evergreen/utils.sh
+  . $ROOT/.evergreen/utils.sh
 
   if [ -z "${PYTHON_BINARY:-}" ]; then
       PYTHON_BINARY=$(find_python3)
