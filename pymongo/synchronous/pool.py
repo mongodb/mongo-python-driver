@@ -53,7 +53,6 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     DocumentTooLarge,
     ExecutionTimeout,
     InvalidOperation,
-    NetworkTimeout,
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
@@ -76,8 +75,16 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
 )
-from pymongo.network_layer import sendall
+from pymongo.network_layer import NetworkingInterface, receive_message, sendall
 from pymongo.pool_options import PoolOptions
+from pymongo.pool_shared import (
+    _CancellationContext,
+    _configured_socket,
+    _get_timeout_details,
+    _raise_connection_failure,
+    _set_keepalive_times,
+    format_timeout_details,
+)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -85,7 +92,7 @@ from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI, SSLError
 from pymongo.synchronous.client_session import _validate_session_write_concern
 from pymongo.synchronous.helpers import _getaddrinfo, _handle_reauth
-from pymongo.synchronous.network import command, receive_message
+from pymongo.synchronous.network import command
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -123,133 +130,6 @@ except ImportError:
 
 _IS_SYNC = True
 
-_MAX_TCP_KEEPIDLE = 120
-_MAX_TCP_KEEPINTVL = 10
-_MAX_TCP_KEEPCNT = 9
-
-if sys.platform == "win32":
-    try:
-        import _winreg as winreg
-    except ImportError:
-        import winreg
-
-    def _query(key, name, default):
-        try:
-            value, _ = winreg.QueryValueEx(key, name)
-            # Ensure the value is a number or raise ValueError.
-            return int(value)
-        except (OSError, ValueError):
-            # QueryValueEx raises OSError when the key does not exist (i.e.
-            # the system is using the Windows default value).
-            return default
-
-    try:
-        with winreg.OpenKey(
-            winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"
-        ) as key:
-            _WINDOWS_TCP_IDLE_MS = _query(key, "KeepAliveTime", 7200000)
-            _WINDOWS_TCP_INTERVAL_MS = _query(key, "KeepAliveInterval", 1000)
-    except OSError:
-        # We could not check the default values because winreg.OpenKey failed.
-        # Assume the system is using the default values.
-        _WINDOWS_TCP_IDLE_MS = 7200000
-        _WINDOWS_TCP_INTERVAL_MS = 1000
-
-    def _set_keepalive_times(sock):
-        idle_ms = min(_WINDOWS_TCP_IDLE_MS, _MAX_TCP_KEEPIDLE * 1000)
-        interval_ms = min(_WINDOWS_TCP_INTERVAL_MS, _MAX_TCP_KEEPINTVL * 1000)
-        if idle_ms < _WINDOWS_TCP_IDLE_MS or interval_ms < _WINDOWS_TCP_INTERVAL_MS:
-            sock.ioctl(socket.SIO_KEEPALIVE_VALS, (1, idle_ms, interval_ms))
-
-else:
-
-    def _set_tcp_option(sock: socket.socket, tcp_option: str, max_value: int) -> None:
-        if hasattr(socket, tcp_option):
-            sockopt = getattr(socket, tcp_option)
-            try:
-                # PYTHON-1350 - NetBSD doesn't implement getsockopt for
-                # TCP_KEEPIDLE and friends. Don't attempt to set the
-                # values there.
-                default = sock.getsockopt(socket.IPPROTO_TCP, sockopt)
-                if default > max_value:
-                    sock.setsockopt(socket.IPPROTO_TCP, sockopt, max_value)
-            except OSError:
-                pass
-
-    def _set_keepalive_times(sock: socket.socket) -> None:
-        _set_tcp_option(sock, "TCP_KEEPIDLE", _MAX_TCP_KEEPIDLE)
-        _set_tcp_option(sock, "TCP_KEEPINTVL", _MAX_TCP_KEEPINTVL)
-        _set_tcp_option(sock, "TCP_KEEPCNT", _MAX_TCP_KEEPCNT)
-
-
-def _raise_connection_failure(
-    address: Any,
-    error: Exception,
-    msg_prefix: Optional[str] = None,
-    timeout_details: Optional[dict[str, float]] = None,
-) -> NoReturn:
-    """Convert a socket.error to ConnectionFailure and raise it."""
-    host, port = address
-    # If connecting to a Unix socket, port will be None.
-    if port is not None:
-        msg = "%s:%d: %s" % (host, port, error)
-    else:
-        msg = f"{host}: {error}"
-    if msg_prefix:
-        msg = msg_prefix + msg
-    if "configured timeouts" not in msg:
-        msg += format_timeout_details(timeout_details)
-    if isinstance(error, socket.timeout):
-        raise NetworkTimeout(msg) from error
-    elif isinstance(error, SSLError) and "timed out" in str(error):
-        # Eventlet does not distinguish TLS network timeouts from other
-        # SSLErrors (https://github.com/eventlet/eventlet/issues/692).
-        # Luckily, we can work around this limitation because the phrase
-        # 'timed out' appears in all the timeout related SSLErrors raised.
-        raise NetworkTimeout(msg) from error
-    else:
-        raise AutoReconnect(msg) from error
-
-
-def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
-    details = {}
-    timeout = _csot.get_timeout()
-    socket_timeout = options.socket_timeout
-    connect_timeout = options.connect_timeout
-    if timeout:
-        details["timeoutMS"] = timeout * 1000
-    if socket_timeout and not timeout:
-        details["socketTimeoutMS"] = socket_timeout * 1000
-    if connect_timeout:
-        details["connectTimeoutMS"] = connect_timeout * 1000
-    return details
-
-
-def format_timeout_details(details: Optional[dict[str, float]]) -> str:
-    result = ""
-    if details:
-        result += " (configured timeouts:"
-        for timeout in ["socketTimeoutMS", "timeoutMS", "connectTimeoutMS"]:
-            if timeout in details:
-                result += f" {timeout}: {details[timeout]}ms,"
-        result = result[:-1]
-        result += ")"
-    return result
-
-
-class _CancellationContext:
-    def __init__(self) -> None:
-        self._cancelled = False
-
-    def cancel(self) -> None:
-        """Cancel this context."""
-        self._cancelled = True
-
-    @property
-    def cancelled(self) -> bool:
-        """Was cancel called?"""
-        return self._cancelled
-
 
 class Connection:
     """Store a connection with some metadata.
@@ -261,7 +141,11 @@ class Connection:
     """
 
     def __init__(
-        self, conn: Union[socket.socket, _sslConn], pool: Pool, address: tuple[str, int], id: int
+        self,
+        conn: NetworkingInterface,
+        pool: Pool,
+        address: tuple[str, int],
+        id: int,
     ):
         self.pool_ref = weakref.ref(pool)
         self.conn = conn
@@ -316,7 +200,7 @@ class Connection:
         if timeout == self.last_timeout:
             return
         self.last_timeout = timeout
-        self.conn.settimeout(timeout)
+        self.conn.get_conn.settimeout(timeout)
 
     def apply_timeout(
         self, client: MongoClient, cmd: Optional[MutableMapping[str, Any]]
@@ -575,7 +459,7 @@ class Connection:
             )
 
         try:
-            sendall(self.conn, message)
+            sendall(self.conn.get_conn, message)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             self._raise_connection_failure(error)
@@ -709,7 +593,10 @@ class Connection:
 
     def conn_closed(self) -> bool:
         """Return True if we know socket has been closed, False otherwise."""
-        return self.socket_checker.socket_closed(self.conn)
+        if _IS_SYNC:
+            return self.socket_checker.socket_closed(self.conn.get_conn)
+        else:
+            return self.conn.is_closing()
 
     def send_cluster_time(
         self,
@@ -781,7 +668,7 @@ class Connection:
         )
 
 
-def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
+def _async_create_connection(address: _Address, options: PoolOptions) -> socket.socket:
     """Given (host, port) and PoolOptions, connect and return a socket object.
 
     Can raise socket.error.
@@ -852,14 +739,16 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         raise OSError("getaddrinfo failed")
 
 
-def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
+def _async_configured_socket(
+    address: _Address, options: PoolOptions
+) -> Union[socket.socket, _sslConn]:
     """Given (host, port) and PoolOptions, return a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
 
     Sets socket's SSL and timeout options.
     """
-    sock = _create_connection(address, options)
+    sock = _async_create_connection(address, options)
     ssl_context = options._ssl_context
 
     if ssl_context is None:
@@ -1262,7 +1151,7 @@ class Pool:
             )
 
         try:
-            sock = _configured_socket(self.address, self.opts)
+            networking_interface = _configured_socket(self.address, self.opts)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             with self.lock:
@@ -1289,7 +1178,7 @@ class Pool:
 
             raise
 
-        conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
+        conn = Connection(networking_interface, self, self.address, conn_id)  # type: ignore[arg-type]
         with self.lock:
             self.active_contexts.add(conn.cancel_context)
             self.active_contexts.discard(tmp_context)
@@ -1299,8 +1188,8 @@ class Pool:
             if self.handshake:
                 conn.hello()
                 self.is_writable = conn.is_writable
-            if handler:
-                handler.contribute_socket(conn, completed_handshake=False)
+            # if handler:
+            #     handler.contribute_socket(conn, completed_handshake=False)
 
             conn.authenticate()
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
@@ -1693,9 +1582,9 @@ class Pool:
             f"maxPoolSize: {self.opts.max_pool_size}, timeout: {timeout}"
         )
 
-    def __del__(self) -> None:
-        # Avoid ResourceWarnings in Python 3
-        # Close all sockets without calling reset() or close() because it is
-        # not safe to acquire a lock in __del__.
-        for conn in self.conns:
-            conn.close_conn(None)
+    # def __del__(self) -> None:
+    #     # Avoid ResourceWarnings in Python 3
+    #     # Close all sockets without calling reset() or close() because it is
+    #     # not safe to acquire a lock in __del__.
+    #     for conn in self.conns:
+    #         conn.close_conn(None)

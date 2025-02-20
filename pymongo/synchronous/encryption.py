@@ -37,6 +37,8 @@ from typing import (
     cast,
 )
 
+from pymongo.synchronous.pool import _async_configured_socket
+
 try:
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
@@ -70,21 +72,17 @@ from pymongo.errors import (
     NetworkTimeout,
     ServerSelectionTimeoutError,
 )
-from pymongo.network_layer import BLOCKING_IO_ERRORS, sendall
+from pymongo.network_layer import async_socket_sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
+from pymongo.pool_shared import _get_timeout_details, _raise_connection_failure
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
-from pymongo.ssl_support import get_ssl_context
+from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.pool import (
-    _configured_socket,
-    _get_timeout_details,
-    _raise_connection_failure,
-)
 from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
@@ -112,7 +110,7 @@ _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
     try:
-        return _configured_socket(address, opts)
+        return _async_configured_socket(address, opts)
     except Exception as exc:
         _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
@@ -195,7 +193,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         try:
             conn = _connect_kms(address, opts)
             try:
-                sendall(conn, message)
+                async_socket_sendall(conn, message)
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
                     conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
