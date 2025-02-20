@@ -239,7 +239,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
     base_display = "OCSP"
 
     # OCSP tests on default host with all servers v4.4+ and all python versions.
-    versions = [v for v in ALL_VERSIONS if v != "4.0"]
+    versions = get_versions_from("4.4")
     for version, python in zip_cycle(versions, ALL_PYTHONS):
         host = DEFAULT_HOST
         variant = create_variant(
