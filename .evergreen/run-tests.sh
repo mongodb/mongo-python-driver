@@ -5,6 +5,8 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 SCRIPT_DIR="$( cd -- "$SCRIPT_DIR" > /dev/null 2>&1 && pwd )"
 ROOT_DIR="$(dirname "$(dirname $SCRIPT_DIR)")"
 
+pushd $ROOT_DIR
+
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
 export UV_FROZEN=1  # Do not modify lock files
@@ -26,8 +28,8 @@ else
 fi
 
 # Source the local secrets export file if available.
-if [ -f "$ROOT_DIR/secrets-export.sh" ]; then
-  . "$ROOT_DIR/secrets-export.sh"
+if [ -f "./secrets-export.sh" ]; then
+  . "./secrets-export.sh"
 fi
 
 PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implementation())")
@@ -91,3 +93,5 @@ fi
 if [ -n "${COVERAGE:-}" ]; then
     rm -rf .pytest_cache
 fi
+
+popd
