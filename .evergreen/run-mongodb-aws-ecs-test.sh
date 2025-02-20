@@ -31,7 +31,7 @@ export AUTH="auth"
 export SET_XTRACE_ON=1
 cd src
 rm -rf .venv
-env
+rm -f .evergreen/scripts/test-env.sh || true
 bash ./.evergreen/just.sh setup-test
 cat .evergreen/scripts/test-env.sh
 bash .evergreen/just.sh test-eg
