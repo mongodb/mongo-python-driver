@@ -1,8 +1,11 @@
 #!/bin/bash
-set -eu
+set -eux
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
-ROOT_DIR="$(dirname "$(dirname $SCRIPT_DIR)")"
+SCRIPT_DIR="$( cd -- "$SCRIPT_DIR" > /dev/null 2>&1 && pwd )"
+ROOT_DIR="$(dirname $SCRIPT_DIR)"
+
+pushd $ROOT_DIR
 
 export PIP_QUIET=1  # Quiet by default
 export PIP_PREFER_BINARY=1 # Prefer binary dists by default
@@ -16,7 +19,7 @@ else
   echo "Not sourcing env inputs"
 fi
 
-# Ensure there are test inputs.
+# Handle test inputs.
 if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
   echo "Sourcing test inputs"
   . $SCRIPT_DIR/scripts/test-env.sh
@@ -24,9 +27,10 @@ else
   echo "Missing test inputs, please run 'just setup-test'"
 fi
 
+
 # Source the local secrets export file if available.
-if [ -f "$ROOT_DIR/secrets-export.sh" ]; then
-  . "$ROOT_DIR/secrets-export.sh"
+if [ -f "./secrets-export.sh" ]; then
+  . "./secrets-export.sh"
 fi
 
 PYTHON_IMPL=$(uv run python -c "import platform; print(platform.python_implementation())")
@@ -54,7 +58,7 @@ uv run python -c 'import sys; print(sys.version)'
 PIP_QUIET=0 uv run ${UV_ARGS} --with pip pip list
 
 # Record the start time for a perf test.
-if [ -n "${PERF_TEST:-}" ]; then
+if [ -n "${TEST_PERF:-}" ]; then
     start_time=$(date +%s)
 fi
 
@@ -75,7 +79,7 @@ fi
 echo "Running tests with $TEST_ARGS... done."
 
 # Handle perf test post actions.
-if [ -n "${PERF_TEST:-}" ]; then
+if [ -n "${TEST_PERF:-}" ]; then
     end_time=$(date +%s)
     elapsed_secs=$((end_time-start_time))
 
@@ -90,3 +94,5 @@ fi
 if [ -n "${COVERAGE:-}" ]; then
     rm -rf .pytest_cache
 fi
+
+popd
