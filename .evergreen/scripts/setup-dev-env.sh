@@ -51,3 +51,5 @@ echo "Setting up python environment... done."
 if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
     uv run --frozen pre-commit install
 fi
+
+popd > /dev/null

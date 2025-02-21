@@ -818,7 +818,6 @@ def create_server_tasks():
             test_vars["TEST_NAME"] = "default_async"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
-
     return tasks
 
 
