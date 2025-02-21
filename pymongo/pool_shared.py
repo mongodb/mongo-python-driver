@@ -312,7 +312,7 @@ async def _async_configured_socket(
         and not options.tls_allow_invalid_hostnames
     ):
         try:
-            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined]
+            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined, unused-ignore]
         except _CertificateError:
             ssl_sock.close()
             raise
@@ -488,7 +488,7 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
         and not options.tls_allow_invalid_hostnames
     ):
         try:
-            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined]
+            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined, unused-ignore]
         except _CertificateError:
             ssl_sock.close()
             raise
