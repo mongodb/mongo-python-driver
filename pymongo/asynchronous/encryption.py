@@ -38,8 +38,6 @@ from typing import (
     cast,
 )
 
-from pymongo.asynchronous.connection_helpers import _async_configured_socket
-
 try:
     from pymongocrypt.asynchronous.auto_encrypter import AsyncAutoEncrypter  # type:ignore[import]
     from pymongocrypt.asynchronous.explicit_encrypter import (  # type:ignore[import]
@@ -80,7 +78,11 @@ from pymongo.errors import (
 from pymongo.network_layer import async_socket_sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
-from pymongo.pool_shared import _get_timeout_details, _raise_connection_failure
+from pymongo.pool_shared import (
+    _async_configured_socket,
+    _get_timeout_details,
+    _raise_connection_failure,
+)
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context

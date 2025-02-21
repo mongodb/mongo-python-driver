@@ -37,8 +37,6 @@ from typing import (
     cast,
 )
 
-from pymongo.synchronous.connection_helpers import _configured_socket
-
 try:
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
@@ -75,7 +73,11 @@ from pymongo.errors import (
 from pymongo.network_layer import sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
-from pymongo.pool_shared import _get_timeout_details, _raise_connection_failure
+from pymongo.pool_shared import (
+    _configured_socket,
+    _get_timeout_details,
+    _raise_connection_failure,
+)
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context

@@ -36,7 +36,6 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
-from pymongo.asynchronous.connection_helpers import _configured_protocol_interface
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.asynchronous.network import command
 from pymongo.common import (
@@ -77,6 +76,7 @@ from pymongo.network_layer import AsyncNetworkingInterface, async_receive_messag
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
     _CancellationContext,
+    _configured_protocol_interface,
     _get_timeout_details,
     _raise_connection_failure,
     format_timeout_details,

@@ -73,6 +73,7 @@ from pymongo.network_layer import NetworkingInterface, receive_message, sendall
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
     _CancellationContext,
+    _configured_socket_interface,
     _get_timeout_details,
     _raise_connection_failure,
     format_timeout_details,
@@ -83,7 +84,6 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import SSLError
 from pymongo.synchronous.client_session import _validate_session_write_concern
-from pymongo.synchronous.connection_helpers import _configured_socket_interface
 from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.synchronous.network import command
 
