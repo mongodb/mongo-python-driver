@@ -588,7 +588,7 @@ def create_no_c_ext_variants():
     variants = []
     host = DEFAULT_HOST
     for python, topology in zip_cycle(CPYTHONS, TOPOLOGIES):
-        tasks = [f".{topology} .noauth .nossl .sync_async"]
+        tasks = [f".{topology} .noauth .nossl !.sync_async"]
         expansions = dict()
         handle_c_ext(C_EXTS[0], expansions)
         display_name = get_display_name("No C Ext", host, python=python)

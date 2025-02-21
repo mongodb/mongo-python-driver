@@ -21,7 +21,7 @@ HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
 ENV_FILE = HERE / "test-env.sh"
 DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS", "").replace(os.sep, "/")
-PLATFORM = "windows" if os.name == "nt" else sys.platform
+PLATFORM = "windows" if os.name == "nt" else sys.platform.lower()
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
@@ -230,7 +230,7 @@ def handle_test_env() -> None:
     write_env("SSL", SSL)
 
     # Skip CSOT tests on non-linux platforms.
-    if sys.platform != "Linux":
+    if PLATFORM != "linux":
         write_env("SKIP_CSOT_TESTS")
 
     # Set an environment variable for the test name and sub test name.

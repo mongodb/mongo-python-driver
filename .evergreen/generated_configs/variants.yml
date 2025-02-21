@@ -772,7 +772,7 @@ buildvariants:
   # No c ext tests
   - name: no-c-ext-rhel8-python3.9
     tasks:
-      - name: .standalone .noauth .nossl .sync_async
+      - name: .standalone .noauth .nossl !.sync_async
     display_name: No C Ext RHEL8 Python3.9
     run_on:
       - rhel87-small
@@ -781,7 +781,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: no-c-ext-rhel8-python3.10
     tasks:
-      - name: .replica_set .noauth .nossl .sync_async
+      - name: .replica_set .noauth .nossl !.sync_async
     display_name: No C Ext RHEL8 Python3.10
     run_on:
       - rhel87-small
@@ -790,7 +790,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.10/bin/python3
   - name: no-c-ext-rhel8-python3.11
     tasks:
-      - name: .sharded_cluster .noauth .nossl .sync_async
+      - name: .sharded_cluster .noauth .nossl !.sync_async
     display_name: No C Ext RHEL8 Python3.11
     run_on:
       - rhel87-small
@@ -799,7 +799,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.11/bin/python3
   - name: no-c-ext-rhel8-python3.12
     tasks:
-      - name: .standalone .noauth .nossl .sync_async
+      - name: .standalone .noauth .nossl !.sync_async
     display_name: No C Ext RHEL8 Python3.12
     run_on:
       - rhel87-small
@@ -808,7 +808,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: no-c-ext-rhel8-python3.13
     tasks:
-      - name: .replica_set .noauth .nossl .sync_async
+      - name: .replica_set .noauth .nossl !.sync_async
     display_name: No C Ext RHEL8 Python3.13
     run_on:
       - rhel87-small
