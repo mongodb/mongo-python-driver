@@ -53,7 +53,7 @@ def get_executors(client):
 class TestMonitor(AsyncIntegrationTest):
     async def create_client(self):
         listener = ServerAndTopologyEventListener()
-        client = await self.unmanaged_async_single_client(event_listeners=[listener])
+        client = await self.async_single_client(event_listeners=[listener])
         await connected(client)
         return client
 
