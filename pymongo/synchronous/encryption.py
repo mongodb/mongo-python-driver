@@ -37,7 +37,7 @@ from typing import (
     cast,
 )
 
-from pymongo.synchronous.pool import _async_configured_socket
+from pymongo.pool_shared import _configured_socket
 
 try:
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
@@ -72,7 +72,7 @@ from pymongo.errors import (
     NetworkTimeout,
     ServerSelectionTimeoutError,
 )
-from pymongo.network_layer import async_socket_sendall
+from pymongo.network_layer import sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import _get_timeout_details, _raise_connection_failure
@@ -110,7 +110,7 @@ _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
     try:
-        return _async_configured_socket(address, opts)
+        return _configured_socket(address, opts)
     except Exception as exc:
         _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
@@ -193,7 +193,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         try:
             conn = _connect_kms(address, opts)
             try:
-                async_socket_sendall(conn, message)
+                sendall(conn, message)
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
                     conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
