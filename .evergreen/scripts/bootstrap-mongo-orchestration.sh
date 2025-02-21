@@ -1,6 +1,7 @@
 #!/bin/bash
 
-set -o xtrace
+set -eu
+
 
 # Enable core dumps if enabled on the machine
 # Copied from https://github.com/mongodb/mongo/blob/master/etc/evergreen.yml
@@ -29,7 +30,7 @@ if [ "$(uname -s)" = "Darwin" ]; then
     fi
 fi
 
-if [ -n "${skip_crypt_shared}" ]; then
+if [ -z "${TEST_CRYPT_SHARED:-}" ]; then
     export SKIP_CRYPT_SHARED=1
 fi
 
