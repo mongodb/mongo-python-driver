@@ -529,19 +529,11 @@ class PyMongoProtocol(BufferedProtocol):
             self._debug = debug
             self._max_message_size = max_message_size
             self._request_id = request_id
-            (
-                self._length,
-                self._overflow_length,
-                self._body_length,
-                self._op_code,
-                self._overflow,
-            ) = (
-                0,
-                0,
-                0,
-                None,  # type: ignore[assignment]
-                None,
-            )
+            self._length = 0
+            self._overflow_length = 0
+            self._body_length = 0
+            self._op_code = None  # type: ignore[assignment]
+            self._overflow = None
             if self.transport.is_closing():
                 raise OSError("Connection is closed")
             read_waiter = asyncio.get_running_loop().create_future()

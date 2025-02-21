@@ -1045,8 +1045,8 @@ class Pool:
             if self.handshake:
                 await conn.hello()
                 self.is_writable = conn.is_writable
-            # if handler:
-            #     handler.contribute_socket(conn, completed_handshake=False)
+            if handler:
+                handler.contribute_socket(conn, completed_handshake=False)
 
             await conn.authenticate()
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
