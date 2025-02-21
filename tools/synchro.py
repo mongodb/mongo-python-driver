@@ -121,7 +121,7 @@ replacements = {
     "_async_create_condition": "_create_condition",
     "_async_cond_wait": "_cond_wait",
     "AsyncNetworkingInterface": "NetworkingInterface",
-    "_configured_protocol": "_configured_socket",
+    "_configured_protocol_interface": "_configured_socket_interface",
     "_async_configured_socket": "_configured_socket",
     "SpecRunnerTask": "SpecRunnerThread",
     "AsyncMockConnection": "MockConnection",
@@ -129,6 +129,7 @@ replacements = {
     "StopAsyncIteration": "StopIteration",
     "create_async_event": "create_event",
     "async_joinall": "joinall",
+    "_async_create_connection": "_create_connection",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

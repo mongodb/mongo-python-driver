@@ -37,7 +37,7 @@ from typing import (
     cast,
 )
 
-from pymongo.pool_shared import _configured_socket
+from pymongo.synchronous.connection_helpers import _configured_socket
 
 try:
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]

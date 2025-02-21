@@ -38,7 +38,7 @@ from typing import (
     cast,
 )
 
-from pymongo.pool_shared import _async_configured_socket
+from pymongo.asynchronous.connection_helpers import _async_configured_socket
 
 try:
     from pymongocrypt.asynchronous.auto_encrypter import AsyncAutoEncrypter  # type:ignore[import]

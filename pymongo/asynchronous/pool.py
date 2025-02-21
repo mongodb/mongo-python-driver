@@ -36,6 +36,7 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
+from pymongo.asynchronous.connection_helpers import _configured_protocol_interface
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.asynchronous.network import command
 from pymongo.common import (
@@ -76,7 +77,6 @@ from pymongo.network_layer import AsyncNetworkingInterface, async_receive_messag
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
     _CancellationContext,
-    _configured_protocol,
     _get_timeout_details,
     _raise_connection_failure,
     format_timeout_details,
@@ -1008,7 +1008,7 @@ class Pool:
             )
 
         try:
-            networking_interface = await _configured_protocol(self.address, self.opts)
+            networking_interface = await _configured_protocol_interface(self.address, self.opts)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             async with self.lock:
@@ -1439,9 +1439,10 @@ class Pool:
             f"maxPoolSize: {self.opts.max_pool_size}, timeout: {timeout}"
         )
 
-    # def __del__(self) -> None:
-    #     # Avoid ResourceWarnings in Python 3
-    #     # Close all sockets without calling reset() or close() because it is
-    #     # not safe to acquire a lock in __del__.
-    #     for conn in self.conns:
-    #         conn.close_conn(None)
+    def __del__(self) -> None:
+        # Avoid ResourceWarnings in Python 3
+        # Close all sockets without calling reset() or close() because it is
+        # not safe to acquire a lock in __del__.
+        if _IS_SYNC:
+            for conn in self.conns:
+                conn.close_conn(None)
