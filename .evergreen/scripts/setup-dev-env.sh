@@ -3,7 +3,9 @@
 set -eux
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
-pushd "$(dirname "$(dirname $HERE)")" > /dev/null
+HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
+ROOT=$(dirname "$(dirname $HERE)")
+pushd $ROOT > /dev/null
 
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
@@ -26,7 +28,7 @@ fi
 
 # Ensure there is a python venv.
 if [ ! -d $BIN_DIR ]; then
-  . .evergreen/utils.sh
+  . $ROOT/.evergreen/utils.sh
 
   if [ -z "${PYTHON_BINARY:-}" ]; then
       PYTHON_BINARY=$(find_python3)
@@ -49,3 +51,5 @@ echo "Setting up python environment... done."
 if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
     uv run --frozen pre-commit install
 fi
+
+popd > /dev/null

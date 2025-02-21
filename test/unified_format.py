@@ -1374,7 +1374,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
 
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
@@ -1382,7 +1381,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             for i in range(attempts):
                 try:
                     return self._run_scenario(spec, uri)
-                except AssertionError:
+                except (AssertionError, OperationFailure) as exc:
+                    if isinstance(exc, OperationFailure) and (
+                        _IS_SYNC or "failpoint" not in exc._message
+                    ):
+                        raise
                     if i < attempts - 1:
                         print(
                             f"Retrying after attempt {i+1} of {self.id()} failed with:\n"
