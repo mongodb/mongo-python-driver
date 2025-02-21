@@ -23,8 +23,6 @@ fi
 if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
   echo "Sourcing test inputs"
   . $SCRIPT_DIR/scripts/test-env.sh
-  cat $SCRIPT_DIR/scripts/test-env.sh
-  exit 1
 else
   echo "Missing test inputs, please run 'just setup-test'"
 fi
