@@ -18,7 +18,7 @@ echo "Untarring file ... begin"
 GCPKMS_CMD="tar xf mongo-python-driver.tgz" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 echo "Untarring file ... end"
 echo "Running test ... begin"
-GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 bash ./.evergreen/just.sh setup-test" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+GCPKMS_CMD="bash ./.evergreen/just.sh setup-test kms gcp" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 GCPKMS_CMD="./.evergreen/just.sh test-eg" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 echo "Running test ... end"
 bash $HERE/scripts/teardown-tests.sh

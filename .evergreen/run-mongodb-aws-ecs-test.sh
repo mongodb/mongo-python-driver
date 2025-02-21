@@ -26,11 +26,9 @@ apt-get -qq update  < /dev/null > /dev/null
 apt-get -qq install $PYTHON_VER $PYTHON_VER-venv build-essential $PYTHON_VER-dev -y  < /dev/null > /dev/null
 
 export PYTHON_BINARY=$PYTHON_VER
-export TEST_AUTH_AWS=1
-export AUTH="auth"
 export SET_XTRACE_ON=1
 cd src
 rm -rf .venv
 rm -f .evergreen/scripts/test-env.sh || true
-bash ./.evergreen/just.sh setup-test
+bash ./.evergreen/just.sh setup-test auth_aws ecs
 bash .evergreen/just.sh test-eg

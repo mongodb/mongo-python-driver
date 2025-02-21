@@ -2,5 +2,5 @@
 set -eu
 HERE=$(dirname ${BASH_SOURCE:-$0})
 . $HERE/env.sh
-SUCCESS=false TEST_FLE_GCP_AUTO=1 bash $HERE/setup-tests.sh
+./.evergreen/just.sh setup-test kms gcp-fail
 bash ./.evergreen/just.sh test-eg

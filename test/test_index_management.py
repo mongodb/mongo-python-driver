@@ -51,8 +51,6 @@ _NAME = "test-search-index"
 
 class TestCreateSearchIndex(IntegrationTest):
     def test_inputs(self):
-        if not os.environ.get("TEST_INDEX_MANAGEMENT"):
-            raise unittest.SkipTest("Skipping index management tests")
         listener = AllowListEventListener("createSearchIndexes")
         client = self.simple_client(event_listeners=[listener])
         coll = client.test.test
@@ -90,8 +88,6 @@ class SearchIndexIntegrationBase(PyMongoTestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        if not os.environ.get("TEST_INDEX_MANAGEMENT"):
-            raise unittest.SkipTest("Skipping index management tests")
         cls.url = os.environ.get("MONGODB_URI")
         cls.username = os.environ["DB_USER"]
         cls.password = os.environ["DB_PASSWORD"]

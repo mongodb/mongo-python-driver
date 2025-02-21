@@ -14,7 +14,6 @@ export TEST_PATH="${PROJECT_DIRECTORY}/specifications/source/benchmarking/data"
 export OUTPUT_FILE="${PROJECT_DIRECTORY}/results.json"
 
 export PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3
-export PERF_TEST=1
 
-bash ./.evergreen/just.sh setup-test
+bash ./.evergreen/just.sh setup-test perf
 bash ./.evergreen/just.sh test-eg
