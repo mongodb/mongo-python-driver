@@ -15,8 +15,6 @@ import pytest
 
 HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
-DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS", "").replace(os.sep, "/")
-PLATFORM = "windows" if os.name == "nt" else sys.platform.lower()
 AUTH = os.environ.get("AUTH", "noauth")
 SSL = os.environ.get("SSL", "nossl")
 UV_ARGS = os.environ.get("UV_ARGS", "")
@@ -27,32 +25,7 @@ TEST_ARGS = os.environ.get("TEST_ARGS", "").split()
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
-# Ensure C extensions if applicable.
-if not os.environ.get("NO_EXT") and platform.python_implementation() == "CPython":
-    sys.path.insert(0, str(ROOT / "tools"))
-    from fail_if_no_c import main as fail_if_no_c
-
-    fail_if_no_c()
-
-if os.environ.get("PYMONGOCRYPT_LIB"):
-    # Ensure pymongocrypt is working properly.
-    import pymongocrypt
-
-    LOGGER.info(f"pymongocrypt version: {pymongocrypt.__version__})")
-    LOGGER.info(f"libmongocrypt version: {pymongocrypt.libmongocrypt_version()})")
-
-LOGGER.info(f"Running {AUTH} tests over {SSL} with python {sys.executable}")
-
-# Show the installed packages.  Pip can only be run as a cli.
-env = os.environ.copy()
-env["PIP_QUIET"] = "0"
-subprocess.run(shlex.split(f"uv run {UV_ARGS} --with pip pip list"), env=env, check=True)  # noqa: S603
-
-# Record the start time for a perf test.
-if TEST_PERF:
-    start_time = datetime.now()
-
-# Handle green frameworks.
+# Handle green frameworks first so they can patch modules.
 if GREEN_FRAMEWORK:
     if GREEN_FRAMEWORK == "eventlet":
         import eventlet
@@ -73,6 +46,33 @@ if GREEN_FRAMEWORK:
             if "-m" in TEST_ARGS[i]:
                 TEST_ARGS[i + 1] = f"not default_async and {TEST_ARGS[i + 1]}"
 
+    LOGGER.info(f"Running tests with {GREEN_FRAMEWORK}...")
+
+# Ensure C extensions if applicable.
+if not os.environ.get("NO_EXT") and platform.python_implementation() == "CPython":
+    sys.path.insert(0, str(ROOT / "tools"))
+    from fail_if_no_c import main as fail_if_no_c
+
+    fail_if_no_c()
+
+if os.environ.get("PYMONGOCRYPT_LIB"):
+    # Ensure pymongocrypt is working properly.
+    import pymongocrypt
+
+    LOGGER.info(f"pymongocrypt version: {pymongocrypt.__version__})")
+    LOGGER.info(f"libmongocrypt version: {pymongocrypt.libmongocrypt_version()})")
+
+# Show the installed packages.  Pip can only be run as a cli.
+env = os.environ.copy()
+env["PIP_QUIET"] = "0"
+LOGGER.info("Installed packages:")
+subprocess.run(shlex.split(f"uv run {UV_ARGS} --with pip pip list"), env=env, check=True)  # noqa: S603
+
+LOGGER.info(f"Test setup:\n{AUTH=}\n{SSL=}\n{UV_ARGS=}\n{TEST_ARGS=}")
+
+# Record the start time for a perf test.
+if TEST_PERF:
+    start_time = datetime.now()
 
 # Run the tests.
 pytest.main(TEST_ARGS)
@@ -82,7 +82,7 @@ if TEST_PERF:
     end_time = datetime.now()
     elapsed_secs = (end_time - start_time).total_seconds()
     with open("results.json") as fid:
-        print(json.dump(fid, indent=2))  # noqa: T201
+        LOGGER.info("results.json:\n%s", json.dump(fid, indent=2))
 
     results = dict(
         status="pass",
@@ -93,7 +93,7 @@ if TEST_PERF:
         elapsed=elapsed_secs,
     )
     report = dict(failures=0, results=results)
-    print(json.dumps(report, indent=2))  # noqa: T201
+    LOGGER.info("report.json\n%s", json.dumps(report, indent=2))
 
     with open("report.json", "w", newline="\n") as fid:
         json.dump(report, fid)
