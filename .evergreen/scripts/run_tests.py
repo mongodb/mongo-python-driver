@@ -81,8 +81,8 @@ if TEST_PERF:
         status="pass",
         exit_code=0,
         test_file="BenchMarkTests",
-        start=start_time.timestamp(),
-        end=end_time.timestamp(),
+        start=int(start_time.timestamp()),
+        end=int(end_time.timestamp()),
         elapsed=elapsed_secs,
     )
     report = dict(failures=0, results=results)
