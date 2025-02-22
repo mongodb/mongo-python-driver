@@ -29,7 +29,7 @@ if [ -f "./secrets-export.sh" ]; then
   . "./secrets-export.sh"
 fi
 
-# List the packages
+# List the packages.
 PIP_QUIET=0 uv run ${UV_ARGS} --with pip pip list
 
 # Start the test runner.

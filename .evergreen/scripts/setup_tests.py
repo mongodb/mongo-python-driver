@@ -228,9 +228,9 @@ def handle_test_env() -> None:
 
     write_env("AUTH", AUTH)
     write_env("SSL", SSL)
-    write_env("PIP_QUIET")  # Quiet by default
-    write_env("PIP_PREFER_BINARY")  # Prefer binary dists by default
-    write_env("UV_FROZEN")  # Do not modify lock files
+    write_env("PIP_QUIET")  # Quiet by default.
+    write_env("PIP_PREFER_BINARY")  # Prefer binary dists by default.
+    write_env("UV_FROZEN")  # Do not modify lock files.
 
     # Skip CSOT tests on non-linux platforms.
     if PLATFORM != "linux":

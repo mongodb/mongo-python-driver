@@ -23,8 +23,29 @@ TEST_ARGS = os.environ.get("TEST_ARGS", "").split()
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
-# Handle green frameworks first so they can patch modules.
-if GREEN_FRAMEWORK:
+
+def handle_perf(start_time: datetime, end_time: datetime):
+    elapsed_secs = (end_time - start_time).total_seconds()
+    with open("results.json") as fid:
+        results = json.load(fid)
+    LOGGER.info("results.json:\n%s", json.dumps(results, indent=2))
+
+    results = dict(
+        status="pass",
+        exit_code=0,
+        test_file="BenchMarkTests",
+        start=int(start_time.timestamp()),
+        end=int(end_time.timestamp()),
+        elapsed=elapsed_secs,
+    )
+    report = dict(failures=0, results=results)
+    LOGGER.info("report.json\n%s", json.dumps(report, indent=2))
+
+    with open("report.json", "w", newline="\n") as fid:
+        json.dump(report, fid)
+
+
+def handle_green_framework() -> None:
     if GREEN_FRAMEWORK == "eventlet":
         import eventlet
 
@@ -46,52 +67,44 @@ if GREEN_FRAMEWORK:
 
     LOGGER.info(f"Running tests with {GREEN_FRAMEWORK}...")
 
-# Ensure C extensions if applicable.
-if not os.environ.get("NO_EXT") and platform.python_implementation() == "CPython":
-    sys.path.insert(0, str(ROOT / "tools"))
-    from fail_if_no_c import main as fail_if_no_c
 
-    fail_if_no_c()
+def run() -> None:
+    # Handle green frameworks first so they can patch modules.
+    if GREEN_FRAMEWORK:
+        handle_green_framework()
 
-if os.environ.get("PYMONGOCRYPT_LIB"):
-    # Ensure pymongocrypt is working properly.
-    import pymongocrypt
+    # Ensure C extensions if applicable.
+    if not os.environ.get("NO_EXT") and platform.python_implementation() == "CPython":
+        sys.path.insert(0, str(ROOT / "tools"))
+        from fail_if_no_c import main as fail_if_no_c
 
-    LOGGER.info(f"pymongocrypt version: {pymongocrypt.__version__})")
-    LOGGER.info(f"libmongocrypt version: {pymongocrypt.libmongocrypt_version()})")
+        fail_if_no_c()
 
-LOGGER.info(f"Test setup:\n{AUTH=}\n{SSL=}\n{UV_ARGS=}\n{TEST_ARGS=}")
+    if os.environ.get("PYMONGOCRYPT_LIB"):
+        # Ensure pymongocrypt is working properly.
+        import pymongocrypt
 
-# Record the start time for a perf test.
-if TEST_PERF:
-    start_time = datetime.now()
+        LOGGER.info(f"pymongocrypt version: {pymongocrypt.__version__})")
+        LOGGER.info(f"libmongocrypt version: {pymongocrypt.libmongocrypt_version()})")
 
-# Run the tests.
-pytest.main(TEST_ARGS)
+    LOGGER.info(f"Test setup:\n{AUTH=}\n{SSL=}\n{UV_ARGS=}\n{TEST_ARGS=}")
 
-# Handle perf test post actions.
-if TEST_PERF:
-    end_time = datetime.now()
-    elapsed_secs = (end_time - start_time).total_seconds()
-    with open("results.json") as fid:
-        results = json.load(fid)
-    LOGGER.info("results.json:\n%s", json.dumps(results, indent=2))
+    # Record the start time for a perf test.
+    if TEST_PERF:
+        start_time = datetime.now()
 
-    results = dict(
-        status="pass",
-        exit_code=0,
-        test_file="BenchMarkTests",
-        start=int(start_time.timestamp()),
-        end=int(end_time.timestamp()),
-        elapsed=elapsed_secs,
-    )
-    report = dict(failures=0, results=results)
-    LOGGER.info("report.json\n%s", json.dumps(report, indent=2))
+    # Run the tests.
+    pytest.main(TEST_ARGS)
 
-    with open("report.json", "w", newline="\n") as fid:
-        json.dump(report, fid)
+    # Handle perf test post actions.
+    if TEST_PERF:
+        end_time = datetime.now()
+        handle_perf(start_time, end_time)
+
+    # Handle coverage post actions.
+    if os.environ.get("COVERAGE"):
+        shutil.rmtree(".pytest_cache", ignore_errors=True)
 
 
-# Handle coverage post actions.
-if os.environ.get("COVERAGE"):
-    shutil.rmtree(".pytest_cache", ignore_errors=True)
+if __name__ == "__main__":
+    run()
