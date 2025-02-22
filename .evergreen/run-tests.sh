@@ -24,6 +24,9 @@ else
   exit 1
 fi
 
+env
+exit 1
+
 # Source the local secrets export file if available.
 if [ -f "./secrets-export.sh" ]; then
   . "./secrets-export.sh"
