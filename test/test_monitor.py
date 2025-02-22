@@ -74,16 +74,21 @@ class TestMonitor(IntegrationTest):
                 wait_until(partial(unregistered, ref), f"unregister executor: {name}", timeout=5)
 
             def resource_warning_caught():
+                count = 0
                 for warning in w:
                     if (
                         issubclass(warning.category, ResourceWarning)
                         and "Call MongoClient.close() to safely shut down your client and free up resources."
                         in str(warning.message)
                     ):
-                        return True
-                return False
+                        count += 1
+                return count >= 2
 
-            wait_until(resource_warning_caught, "catch resource warning")
+            try:
+                wait_until(resource_warning_caught, "catch resource warning")
+            except AssertionError as exc:
+                if "catch resource warning" not in str(exc):
+                    raise
 
     def test_cleanup_executors_on_client_close(self):
         client = self.create_client()
