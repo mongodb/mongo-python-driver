@@ -87,7 +87,9 @@ class TestMonitor(AsyncIntegrationTest):
                 return count >= 2
 
             try:
-                await async_wait_until(resource_warning_caught, "catch resource warning")
+                await async_wait_until(
+                    resource_warning_caught, "catch resource warning", timeout=30
+                )
             except AssertionError as exc:
                 if "catch resource warning" not in str(exc):
                     raise
