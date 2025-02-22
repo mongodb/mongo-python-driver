@@ -77,7 +77,11 @@ class TestMonitor(AsyncIntegrationTest):
 
             def resource_warning_caught():
                 for warning in w:
-                    if isinstance(warning.message, ResourceWarning):
+                    if (
+                        issubclass(warning.category, ResourceWarning)
+                        and "Call AsyncMongoClient.close() to safely shut down your client and free up resources."
+                        in str(warning.message)
+                    ):
                         return True
                 return False
 
