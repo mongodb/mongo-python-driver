@@ -31,14 +31,14 @@ def handle_perf(start_time: datetime, end_time: datetime):
     LOGGER.info("results.json:\n%s", json.dumps(results, indent=2))
 
     results = dict(
-        status="pass",
+        status="PASS",
         exit_code=0,
         test_file="BenchMarkTests",
         start=int(start_time.timestamp()),
         end=int(end_time.timestamp()),
         elapsed=elapsed_secs,
     )
-    report = dict(failures=0, results=results)
+    report = dict(failures=0, results=[results])
     LOGGER.info("report.json\n%s", json.dumps(report, indent=2))
 
     with open("report.json", "w", newline="\n") as fid:
