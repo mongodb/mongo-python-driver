@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eu
+set -eux
 
 
 # Enable core dumps if enabled on the machine
