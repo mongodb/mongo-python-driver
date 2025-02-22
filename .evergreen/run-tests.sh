@@ -29,6 +29,6 @@ if [ -f "./secrets-export.sh" ]; then
 fi
 
 # Start the test runner.
-uv run ${UV_ARGS} $SCRIPT_DIR/scripts/run_tests.py
+uv run ${UV_ARGS} .evergreen/scripts/run_tests.py
 
 popd
