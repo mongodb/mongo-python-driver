@@ -29,19 +29,10 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
 # Ensure C extensions if applicable.
 if not os.environ.get("NO_EXT") and platform.python_implementation() == "CPython":
-    import bson
-    import pymongo
+    sys.path.insert(0, str(ROOT / "tools"))
+    from fail_if_no_c import main as fail_if_no_c
 
-    if not pymongo.has_c() or not bson.has_c():
-        try:
-            from pymongo import _cmessage  # type:ignore[attr-defined] # noqa: F401
-        except Exception as e:
-            LOGGER.exception(e)
-        try:
-            from bson import _cbson  # type:ignore[attr-defined] # noqa: F401
-        except Exception as e:
-            LOGGER.exception(e)
-        sys.exit("could not load C extensions")
+    fail_if_no_c()
 
 if os.environ.get("PYMONGOCRYPT_LIB"):
     # Ensure pymongocrypt is working properly.
