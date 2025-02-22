@@ -4,9 +4,7 @@ import json
 import logging
 import os
 import platform
-import shlex
 import shutil
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -62,12 +60,6 @@ if os.environ.get("PYMONGOCRYPT_LIB"):
     LOGGER.info(f"pymongocrypt version: {pymongocrypt.__version__})")
     LOGGER.info(f"libmongocrypt version: {pymongocrypt.libmongocrypt_version()})")
 
-# Show the installed packages.  Pip can only be run as a cli.
-env = os.environ.copy()
-env["PIP_QUIET"] = "0"
-LOGGER.info("Installed packages:")
-subprocess.run(shlex.split(f"uv run {UV_ARGS} --with pip pip list"), env=env, check=True)  # noqa: S603
-
 LOGGER.info(f"Test setup:\n{AUTH=}\n{SSL=}\n{UV_ARGS=}\n{TEST_ARGS=}")
 
 # Record the start time for a perf test.
@@ -82,7 +74,8 @@ if TEST_PERF:
     end_time = datetime.now()
     elapsed_secs = (end_time - start_time).total_seconds()
     with open("results.json") as fid:
-        LOGGER.info("results.json:\n%s", json.dump(fid, indent=2))
+        results = json.load(fid)
+    LOGGER.info("results.json:\n%s", json.dumps(results, indent=2))
 
     results = dict(
         status="pass",

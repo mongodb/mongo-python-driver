@@ -21,12 +21,16 @@ if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
   . $SCRIPT_DIR/scripts/test-env.sh
 else
   echo "Missing test inputs, please run 'just setup-test'"
+  exit 1
 fi
 
 # Source the local secrets export file if available.
 if [ -f "./secrets-export.sh" ]; then
   . "./secrets-export.sh"
 fi
+
+# List the packages
+PIP_QUIET=0 uv run ${UV_ARGS} --with pip pip list
 
 # Start the test runner.
 uv run ${UV_ARGS} .evergreen/scripts/run_tests.py
