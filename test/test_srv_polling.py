@@ -18,12 +18,13 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
+from test.utils_shared import FunctionCallRecorder
 from typing import Any
 
 sys.path[0:0] = [""]
 
 from test import PyMongoTestCase, client_knobs, unittest
-from test.utils import FunctionCallRecorder, wait_until
+from test.utils import wait_until
 
 import pymongo
 from pymongo import common

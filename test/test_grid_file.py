@@ -33,7 +33,7 @@ from pymongo.synchronous.database import Database
 
 sys.path[0:0] = [""]
 
-from test.utils import OvertCommandListener
+from test.utils_shared import OvertCommandListener
 
 from bson.objectid import ObjectId
 from gridfs.errors import NoFile

@@ -26,7 +26,7 @@ from test.asynchronous.helpers import ConcurrentRunner
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils import async_wait_until
+from test.utils_shared import async_wait_until
 
 import pymongo
 from pymongo.asynchronous.helpers import anext

@@ -35,7 +35,7 @@ from test.helpers import (
     KMIP_CREDS,
     LOCAL_MASTER_KEY,
 )
-from test.utils import CMAPListener, camel_to_snake, parse_collection_options
+from test.utils_shared import CMAPListener, camel_to_snake, parse_collection_options
 from typing import Any, Union
 
 from bson import (

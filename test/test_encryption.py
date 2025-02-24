@@ -63,7 +63,7 @@ from test.helpers import (
 )
 from test.test_bulk import BulkTestBase
 from test.unified_format import generate_test_classes
-from test.utils import (
+from test.utils_shared import (
     AllowListEventListener,
     OvertCommandListener,
     TopologyEventListener,

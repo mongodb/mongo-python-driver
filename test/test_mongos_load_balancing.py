@@ -26,7 +26,7 @@ sys.path[0:0] = [""]
 
 from test import MockClientTest, client_context, connected, unittest
 from test.pymongo_mocks import MockClient
-from test.utils import wait_until
+from test.utils_shared import wait_until
 
 from pymongo.errors import AutoReconnect, InvalidOperation
 from pymongo.server_selectors import writable_server_selector

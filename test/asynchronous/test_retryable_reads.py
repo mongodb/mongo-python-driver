@@ -19,6 +19,7 @@ import os
 import pprint
 import sys
 import threading
+from test.asynchronous.utils import async_set_fail_point
 
 from pymongo.errors import AutoReconnect
 
@@ -31,10 +32,9 @@ from test.asynchronous import (
     client_knobs,
     unittest,
 )
-from test.utils import (
+from test.utils_shared import (
     CMAPListener,
     OvertCommandListener,
-    async_set_fail_point,
 )
 
 from pymongo.monitoring import (

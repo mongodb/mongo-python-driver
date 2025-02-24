@@ -29,7 +29,7 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
-from test.utils import async_wait_until
+from test.utils_shared import async_wait_until
 
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError

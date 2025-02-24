@@ -21,7 +21,7 @@ import time
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils import (
+from test.utils_shared import (
     HeartbeatEventListener,
     ServerEventListener,
     async_wait_until,

@@ -29,7 +29,7 @@ sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, unittest
 from test.asynchronous.unified_format import generate_test_classes
-from test.utils import AllowListEventListener, OvertCommandListener
+from test.utils_shared import AllowListEventListener, OvertCommandListener
 
 from pymongo.errors import OperationFailure
 from pymongo.operations import SearchIndexModel

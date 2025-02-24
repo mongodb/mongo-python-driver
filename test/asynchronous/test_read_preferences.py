@@ -33,7 +33,7 @@ from test.asynchronous import (
     connected,
     unittest,
 )
-from test.utils import (
+from test.utils_shared import (
     OvertCommandListener,
     async_wait_until,
     one,

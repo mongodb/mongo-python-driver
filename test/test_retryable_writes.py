@@ -20,6 +20,7 @@ import copy
 import pprint
 import sys
 import threading
+from test.utils import set_fail_point
 
 sys.path[0:0] = [""]
 
@@ -30,12 +31,11 @@ from test import (
     unittest,
 )
 from test.helpers import client_knobs
-from test.utils import (
+from test.utils_shared import (
     CMAPListener,
     DeprecationFilter,
     EventListener,
     OvertCommandListener,
-    set_fail_point,
 )
 from test.version import Version
 

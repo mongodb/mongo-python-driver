@@ -21,6 +21,7 @@ import re
 import sys
 from codecs import utf_8_decode
 from collections import defaultdict
+from test.asynchronous.utils import async_get_pool, async_is_mongos
 from typing import Any, Iterable, no_type_check
 
 from pymongo.asynchronous.database import AsyncDatabase
@@ -33,12 +34,10 @@ from test.asynchronous import (  # TODO: fix sync imports in PYTHON-4528
     AsyncUnitTest,
     async_client_context,
 )
-from test.utils import (
+from test.utils_shared import (
     IMPOSSIBLE_WRITE_CONCERN,
     EventListener,
     OvertCommandListener,
-    async_get_pool,
-    async_is_mongos,
     async_wait_until,
 )
 

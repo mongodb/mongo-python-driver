@@ -24,7 +24,7 @@ from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils import (
+from test.utils_shared import (
     OvertCommandListener,
     async_wait_until,
 )

@@ -24,7 +24,7 @@ from multiprocessing import Pipe
 sys.path[0:0] = [""]
 
 from test import IntegrationTest
-from test.utils import is_greenthread_patched
+from test.utils_shared import is_greenthread_patched
 
 from bson.objectid import ObjectId
 
