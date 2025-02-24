@@ -16,6 +16,8 @@ UV_ARGS = os.environ.get("UV_ARGS", "")
 TEST_PERF = os.environ.get("TEST_PERF")
 GREEN_FRAMEWORK = os.environ.get("GREEN_FRAMEWORK")
 TEST_ARGS = os.environ.get("TEST_ARGS", "").split()
+TEST_NAME = os.environ.get("TEST_NAME")
+SUB_TEST_NAME = os.environ.get("SUB_TEST_NAME")
 
 
 def handle_perf(start_time: datetime):
@@ -97,7 +99,14 @@ def run() -> None:
     if TEST_PERF:
         start_time = datetime.now()
 
-    # Run the tests.
+    # Run remote kms tests.
+    if TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
+        from kms_tester import test_kms_vm
+
+        test_kms_vm(SUB_TEST_NAME)
+        return
+
+    # Run local tests.
     pytest.main(TEST_ARGS)
 
     # Handle perf test post actions.
