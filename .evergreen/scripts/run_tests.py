@@ -1,27 +1,21 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 import platform
 import shutil
 import sys
 from datetime import datetime
-from pathlib import Path
 
 import pytest
+from utils import LOGGER, ROOT
 
-HERE = Path(__file__).absolute().parent
-ROOT = HERE.parent.parent
 AUTH = os.environ.get("AUTH", "noauth")
 SSL = os.environ.get("SSL", "nossl")
 UV_ARGS = os.environ.get("UV_ARGS", "")
 TEST_PERF = os.environ.get("TEST_PERF")
 GREEN_FRAMEWORK = os.environ.get("GREEN_FRAMEWORK")
 TEST_ARGS = os.environ.get("TEST_ARGS", "").split()
-
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
 
 def handle_perf(start_time: datetime):

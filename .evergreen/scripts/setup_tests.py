@@ -2,29 +2,28 @@ from __future__ import annotations
 
 import argparse
 import base64
-import dataclasses
 import io
 import logging
 import os
 import platform
-import shlex
 import shutil
 import stat
-import subprocess
-import sys
 import tarfile
 from pathlib import Path
-from typing import Any
 from urllib import request
 
-HERE = Path(__file__).absolute().parent
-ROOT = HERE.parent.parent
-ENV_FILE = HERE / "test-env.sh"
-DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS", "").replace(os.sep, "/")
-PLATFORM = "windows" if os.name == "nt" else sys.platform.lower()
-
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
+from utils import (
+    DRIVERS_TOOLS,
+    ENV_FILE,
+    HERE,
+    LOGGER,
+    PLATFORM,
+    ROOT,
+    Distro,
+    read_env,
+    run_command,
+    write_env,
+)
 
 # Passthrough environment variables.
 PASS_THROUGH_ENV = ["GREEN_FRAMEWORK", "NO_EXT", "MONGODB_API_VERSION"]
@@ -69,43 +68,9 @@ EXTRAS_MAP = {
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 
 
-@dataclasses.dataclass
-class Distro:
-    name: str
-    version_id: str
-    arch: str
-
-
-def write_env(name: str, value: Any = "1") -> None:
-    with ENV_FILE.open("a", newline="\n") as fid:
-        # Remove any existing quote chars.
-        value = str(value).replace('"', "")
-        fid.write(f'export {name}="{value}"\n')
-
-
 def is_set(var: str) -> bool:
     value = os.environ.get(var, "")
     return len(value.strip()) > 0
-
-
-def run_command(cmd: str) -> None:
-    LOGGER.info("Running command %s...", cmd)
-    subprocess.check_call(shlex.split(cmd))  # noqa: S603
-    LOGGER.info("Running command %s... done.", cmd)
-
-
-def read_env(path: Path | str) -> dict[str, Any]:
-    config = dict()
-    with Path(path).open() as fid:
-        for line in fid.readlines():
-            if "=" not in line:
-                continue
-            name, _, value = line.strip().partition("=")
-            if value.startswith(('"', "'")):
-                value = value[1:-1]
-            name = name.replace("export ", "")
-            config[name] = value
-    return config
 
 
 def get_options():
@@ -388,15 +353,9 @@ def handle_test_env() -> None:
             write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:${{LD_LIBRARY_PATH:-}}")
 
     if test_name == "kms":
-        if sub_test_name.startswith("azure"):
-            write_env("TEST_FLE_AZURE_AUTO")
-        else:
-            write_env("TEST_FLE_GCP_AUTO")
+        from .setup_kms import setup_kms
 
-        write_env("SUCCESS", "fail" not in sub_test_name)
-        MONGODB_URI = os.environ.get("MONGODB_URI", "")
-        if "@" in MONGODB_URI:
-            raise RuntimeError("MONGODB_URI unexpectedly contains user credentials in FLE test!")
+        setup_kms(sub_test_name)
 
     if test_name == "ocsp":
         write_env("CA_FILE", os.environ["CA_FILE"])

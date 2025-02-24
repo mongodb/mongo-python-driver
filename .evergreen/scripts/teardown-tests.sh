@@ -27,3 +27,10 @@ fi
 if [ -n "${TEST_LOAD_BALANCER:-}" ]; then
     bash "${DRIVERS_TOOLS}"/.evergreen/run-load-balancer.sh stop
 fi
+
+# TODO: move this to a python file.
+if [ "TEST_NAME" == "kms" ]; then
+    if "gcp":
+        bash ${DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/teardown.sh
+    else:
+         ${DRIVERS_TOOLS}/.evergreen/csfle/azurekms/teardown.sh
