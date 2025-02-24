@@ -8,14 +8,14 @@ TMP_DRIVER_FILE = "/tmp/mongo-python-driver.tgz"  # noqa: S108
 CSFLE_FOLDER = f"{DRIVERS_TOOLS}/.evergreen/csfle"
 
 
-def setup_azure_vm() -> None:
+def setup_azure_vm(base_env: dict[str, str]) -> None:
     LOGGER.info("Setting up Azure VM...")
-    env = os.environ.copy()
+    env = base_env.copy()
     env["AZUREKMS_SRC"] = TMP_DRIVER_FILE
     env["AZUREKMS_DST"] = "~/"
     run_command(f"{CSFLE_FOLDER}/azurekms/copy-file.sh", env=env)
 
-    env = os.environ.copy()
+    env = base_env.copy()
     env["AZUREKMS_CMD"] = "tar xf mongo-python-driver.tgz"
     run_command(f"{CSFLE_FOLDER}/azurekms/run-command.sh", env=env)
 
@@ -24,14 +24,14 @@ def setup_azure_vm() -> None:
     LOGGER.info("Setting up Azure VM... done.")
 
 
-def setup_gcp_vm(instance_name: str) -> None:
+def setup_gcp_vm(base_env: dict[str, str]) -> None:
     LOGGER.info("Setting up GCP VM...")
-    env = os.environ.copy()
+    env = base_env.copy()
     env["GCPKMS_SRC"] = TMP_DRIVER_FILE
-    env["GCPKMS_DST"] = f"{instance_name}:"
+    env["GCPKMS_DST"] = f"{env['GCPKMS_INSTANCENAME']}:"
     run_command(f"{CSFLE_FOLDER}/gcpkms/copy-file.sh", env=env)
 
-    env = os.environ.copy()
+    env = base_env.copy()
     env["GCPKMS_CMD"] = "tar xf mongo-python-driver.tgz"
     run_command("{CSFLE_FOLDER}/gcpkms/run-command.sh", env=env)
 
@@ -72,18 +72,23 @@ def setup_kms(sub_test_name: str) -> None:
         os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
 
     run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup-secrets.sh")
-    config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
 
     if success:
-        run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup.sh")
         create_archive()
 
+        run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup.sh")
+        config = read_env(f"{CSFLE_FOLDER}/gcpkms/secrets-export.sh")
+        base_env = os.environ.copy()
+        for key, value in config.items():
+            base_env[key] = str(value)
+
         if sub_test_target == "azure":
-            setup_azure_vm()
+            setup_azure_vm(base_env)
         else:
-            setup_gcp_vm(config["GCPKMS_INSTANCENAME"])
+            setup_gcp_vm(base_env)
 
     if sub_test_target == "azure":
+        config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
         write_env("KEY_NAME", config["AZUREKMS_KEYNAME"])
         write_env("KEY_VAULT_ENDPOINT", config["AZUREKMS_KEYVAULTENDPOINT"])
 
