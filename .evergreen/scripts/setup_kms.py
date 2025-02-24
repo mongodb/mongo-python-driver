@@ -33,7 +33,7 @@ def create_archive():
     run_command(f"git archive -o {TMP_DRIVER_FILE} HEAD", cwd=ROOT)
 
 
-def setup_kms(sub_test_name: str, success: bool) -> None:
+def setup_kms(sub_test_name: str) -> None:
     success = "fail" not in sub_test_name
     sub_test_type = sub_test_name.split("-")[0]
     if sub_test_name.startswith("azure"):
