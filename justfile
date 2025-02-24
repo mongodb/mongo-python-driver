@@ -61,16 +61,12 @@ test *args="-v --durations=5 --maxfail=10":
     {{uv_run}} --extra test pytest {{args}}
 
 [group('test')]
-test-mockupdb *args:
-    {{uv_run}} -v --extra test --group mockupdb pytest -m mockupdb {{args}}
-
-[group('test')]
 test-eg *args:
     bash ./.evergreen/run-tests.sh {{args}}
 
 [group('test')]
-setup-test:
-    bash .evergreen/scripts/setup-tests.sh
+setup-test *args="":
+    bash .evergreen/scripts/setup-tests.sh {{args}}
 
 [group('test')]
 teardown-test:
