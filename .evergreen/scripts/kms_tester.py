@@ -46,8 +46,8 @@ def setup_kms(sub_test_name: str) -> None:
         sub_test_target = sub_test_name
         sub_test_type = ""
 
-    assert sub_test_target in ["azure", "kms"]
-    assert sub_test_type in ["", "remote", "fail"]
+    assert sub_test_target in ["azure", "gcp"], sub_test_target
+    assert sub_test_type in ["", "remote", "fail"], sub_test_type
     success = sub_test_type != "fail"
 
     if sub_test_target == "azure":
@@ -64,18 +64,18 @@ def setup_kms(sub_test_name: str) -> None:
     if sub_test_target == "azure":
         os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
 
-    run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup-secrets.sh")
-    config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
     if success:
         run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup.sh")
         create_archive()
 
         if sub_test_target == "azure":
-            setup_azure_vm(config)
+            setup_azure_vm()
         else:
-            setup_gcp_vm(config)
+            setup_gcp_vm()
 
     if sub_test_target == "azure":
+        run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup-secrets.sh")
+        config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
         write_env("KEY_NAME", config["AZUREKMS_KEYNAME"])
         write_env("KEY_VAULT_ENDPOINT", config["AZUREKMS_KEYVAULTENDPOINT"])
 
