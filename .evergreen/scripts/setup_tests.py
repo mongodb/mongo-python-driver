@@ -353,7 +353,7 @@ def handle_test_env() -> None:
             write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:${{LD_LIBRARY_PATH:-}}")
 
     if test_name == "kms":
-        from .setup_kms import setup_kms
+        from setup_kms import setup_kms
 
         setup_kms(sub_test_name)
 
