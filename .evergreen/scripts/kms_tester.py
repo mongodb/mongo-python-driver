@@ -8,7 +8,7 @@ TMP_DRIVER_FILE = "/tmp/mongo-python-driver.tgz"  # noqa: S108
 CSFLE_FOLDER = f"{DRIVERS_TOOLS}/.evergreen/csfle"
 
 
-def setup_azure_vm(base_env: dict[str, str]) -> None:
+def _setup_azure_vm(base_env: dict[str, str]) -> None:
     LOGGER.info("Setting up Azure VM...")
     env = base_env.copy()
     env["AZUREKMS_SRC"] = TMP_DRIVER_FILE
@@ -24,7 +24,7 @@ def setup_azure_vm(base_env: dict[str, str]) -> None:
     LOGGER.info("Setting up Azure VM... done.")
 
 
-def setup_gcp_vm(base_env: dict[str, str]) -> None:
+def _setup_gcp_vm(base_env: dict[str, str]) -> None:
     LOGGER.info("Setting up GCP VM...")
     env = base_env.copy()
     env["GCPKMS_SRC"] = TMP_DRIVER_FILE
@@ -33,14 +33,14 @@ def setup_gcp_vm(base_env: dict[str, str]) -> None:
 
     env = base_env.copy()
     env["GCPKMS_CMD"] = "tar xf mongo-python-driver.tgz"
-    run_command("{CSFLE_FOLDER}/gcpkms/run-command.sh", env=env)
+    run_command(f"{CSFLE_FOLDER}/gcpkms/run-command.sh", env=env)
 
     env["GCPKMS_CMD"] = "bash ./.evergreen/just.sh setup-test kms gcp-remote"
-    run_command("{CSFLE_FOLDER}/gcpkms/run-command.sh", env=env)
+    run_command(f"{CSFLE_FOLDER}/gcpkms/run-command.sh", env=env)
     LOGGER.info("Setting up GCP VM...")
 
 
-def create_archive():
+def _create_archive():
     run_command("git add .", cwd=ROOT)
     run_command('git commit -m "add files"', check=False, cwd=ROOT)
     run_command(f"git archive -o {TMP_DRIVER_FILE} HEAD", cwd=ROOT)
@@ -68,26 +68,23 @@ def setup_kms(sub_test_name: str) -> None:
     if sub_test_type == "remote":
         return
 
-    if sub_test_target == "azure":
-        os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
-
-    run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup-secrets.sh")
-
     if success:
-        create_archive()
-
+        _create_archive()
+        if sub_test_target == "azure":
+            os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
         run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup.sh")
-        config = read_env(f"{CSFLE_FOLDER}/gcpkms/secrets-export.sh")
+        config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}/secrets-export.sh")
         base_env = os.environ.copy()
         for key, value in config.items():
             base_env[key] = str(value)
 
         if sub_test_target == "azure":
-            setup_azure_vm(base_env)
+            _setup_azure_vm(base_env)
         else:
-            setup_gcp_vm(base_env)
+            _setup_gcp_vm(base_env)
 
     if sub_test_target == "azure":
+        run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup-secrets.sh")
         config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
         write_env("KEY_NAME", config["AZUREKMS_KEYNAME"])
         write_env("KEY_VAULT_ENDPOINT", config["AZUREKMS_KEYVAULTENDPOINT"])
@@ -106,6 +103,10 @@ def test_kms_vm(sub_test_name: str) -> None:
         env["GCPKMS_CMD"] = "./.evergreen/just.sh run-tests"
         cmd = f"{CSFLE_FOLDER}/gcpkms/run-command.sh"
     run_command(cmd, env=env)
+
+
+def teardown_kms(sub_test_name: str) -> None:
+    run_command(f"bash {CSFLE_FOLDER}/{sub_test_name}kms/teardown.sh")
 
 
 if __name__ == "__main__":

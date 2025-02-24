@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 
-from utils import DRIVERS_TOOLS, run_command
+from utils import DRIVERS_TOOLS, LOGGER, run_command
 
-TEST_NAME = os.environ.get("TEST_NAME")
+TEST_NAME = os.environ.get("TEST_NAME", "unconfigured")
 SUB_TEST_NAME = os.environ.get("SUB_TEST_NAME")
+
+LOGGER.info(f"Tearing down tests of type '{TEST_NAME}'...")
 
 # Shut down csfle servers if applicable
 if TEST_NAME == "encryption":
@@ -17,4 +19,8 @@ elif TEST_NAME == "load-balancer":
 
 # Tear down kms VM if applicable.
 elif TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
-    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/{SUB_TEST_NAME}kms/teardown.sh")
+    from kms_tester import teardown_kms
+
+    teardown_kms(SUB_TEST_NAME)
+
+LOGGER.info(f"Tearing down tests of type '{TEST_NAME}'... done.")

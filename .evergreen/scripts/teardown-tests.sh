@@ -8,7 +8,7 @@ ROOT_DIR="$(dirname $SCRIPT_DIR)"
 pushd $ROOT_DIR > /dev/null
 
 # Try to source the env file.
-if [ -f $SCRIPT_DIR/scripts/env.sh ]; then
+if [ -f $SCRIPT_DIR/env.sh ]; then
   echo "Sourcing env inputs"
   . $SCRIPT_DIR/env.sh
 else
@@ -16,7 +16,7 @@ else
 fi
 
 # Handle test inputs.
-if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
+if [ -f $SCRIPT_DIR/test-env.sh ]; then
   echo "Sourcing test inputs"
   . $SCRIPT_DIR/test-env.sh
 else
