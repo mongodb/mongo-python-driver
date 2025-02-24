@@ -4,8 +4,8 @@ import os
 
 from utils import DRIVERS_TOOLS, run_command
 
-TEST_NAME = os.environ["TEST_NAME"]
-SUB_TEST_NAME = os.environ["SUB_TEST_NAME"]
+TEST_NAME = os.environ.get("TEST_NAME")
+SUB_TEST_NAME = os.environ.get("SUB_TEST_NAME")
 
 # Shut down csfle servers if applicable
 if TEST_NAME == "encryption":
