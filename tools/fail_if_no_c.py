@@ -18,34 +18,30 @@ Only really intended to be used by internal build scripts.
 """
 from __future__ import annotations
 
-import os
-import subprocess
+import logging
 import sys
-from pathlib import Path
+
+LOGGER = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
 sys.path[0:0] = [""]
 
 import bson  # noqa: E402
 import pymongo  # noqa: E402
 
-if not pymongo.has_c() or not bson.has_c():
-    try:
-        from pymongo import _cmessage  # type:ignore[attr-defined] # noqa: F401
-    except Exception as e:
-        print(e)
-    try:
-        from bson import _cbson  # type:ignore[attr-defined] # noqa: F401
-    except Exception as e:
-        print(e)
-    sys.exit("could not load C extensions")
 
-if os.environ.get("ENSURE_UNIVERSAL2") == "1":
-    parent_dir = Path(pymongo.__path__[0]).parent
-    for pkg in ["pymongo", "bson", "grifs"]:
-        for so_file in Path(f"{parent_dir}/{pkg}").glob("*.so"):
-            print(f"Checking universal2 compatibility in {so_file}...")
-            output = subprocess.check_output(["file", so_file])  # noqa: S603, S607
-            if "arm64" not in output.decode("utf-8"):
-                sys.exit("Universal wheel was not compiled with arm64 support")
-            if "x86_64" not in output.decode("utf-8"):
-                sys.exit("Universal wheel was not compiled with x86_64 support")
+def main() -> None:
+    if not pymongo.has_c() or not bson.has_c():
+        try:
+            from pymongo import _cmessage  # type:ignore[attr-defined] # noqa: F401
+        except Exception as e:
+            LOGGER.exception(e)
+        try:
+            from bson import _cbson  # type:ignore[attr-defined] # noqa: F401
+        except Exception as e:
+            LOGGER.exception(e)
+        sys.exit("could not load C extensions")
+
+
+if __name__ == "__main__":
+    main()
