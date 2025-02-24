@@ -10,26 +10,33 @@ CSFLE_FOLDER = f"{DRIVERS_TOOLS}/.evergreen/csfle"
 
 def setup_azure_vm() -> None:
     LOGGER.info("Setting up Azure VM...")
-    cmd = f"""AZUREKMS_SRC="{TMP_DRIVER_FILE}" AZUREKMS_DST="~/" \
-        {CSFLE_FOLDER}/azurekms/copy-file.sh"""
-    run_command(cmd)
-    cmd = """AZUREKMS_CMD="tar xf mongo-python-driver.tgz" \
-        {CSFLE_FOLDER}/azurekms/run-command.sh"""
-    run_command(cmd)
-    cmd = f"""AZUREKMS_CMD="bash .evergreen/just.sh setup-test kms azure-remote" \
-        {CSFLE_FOLDER}/azurekms/run-command.sh"""
-    run_command(cmd)
+    env = os.environ.copy()
+    env["AZUREKMS_SRC"] = TMP_DRIVER_FILE
+    env["AZUREKMS_DST"] = "~/"
+    run_command(f"{CSFLE_FOLDER}/azurekms/copy-file.sh", env=env)
+
+    env = os.environ.copy()
+    env["AZUREKMS_CMD"] = "tar xf mongo-python-driver.tgz"
+    run_command(f"{CSFLE_FOLDER}/azurekms/run-command.sh", env=env)
+
+    env["AZUREKMS_CMD"] = "bash .evergreen/just.sh setup-test kms azure-remote"
+    run_command(f"{CSFLE_FOLDER}/azurekms/run-command.sh", env=env)
     LOGGER.info("Setting up Azure VM... done.")
 
 
-def setup_gcp_vm() -> None:
+def setup_gcp_vm(instance_name: str) -> None:
     LOGGER.info("Setting up GCP VM...")
-    cmd = f"GCPKMS_SRC={TMP_DRIVER_FILE} GCPKMS_DST=$GCPKMS_INSTANCENAME: {CSFLE_FOLDER}/gcpkms/copy-file.sh"
-    run_command(cmd)
-    cmd = f'GCPKMS_CMD="tar xf mongo-python-driver.tgz" {CSFLE_FOLDER}/gcpkms/run-command.sh'
-    run_command(cmd)
-    cmd = f'GCPKMS_CMD="bash ./.evergreen/just.sh setup-test kms gcp-remote" {CSFLE_FOLDER}/gcpkms/run-command.sh'
-    run_command(cmd)
+    env = os.environ.copy()
+    env["GCPKMS_SRC"] = TMP_DRIVER_FILE
+    env["GCPKMS_DST"] = f"{instance_name}:"
+    run_command(f"{CSFLE_FOLDER}/gcpkms/copy-file.sh", env=env)
+
+    env = os.environ.copy()
+    env["GCPKMS_CMD"] = "tar xf mongo-python-driver.tgz"
+    run_command("{CSFLE_FOLDER}/gcpkms/run-command.sh", env=env)
+
+    env["GCPKMS_CMD"] = "bash ./.evergreen/just.sh setup-test kms gcp-remote"
+    run_command("{CSFLE_FOLDER}/gcpkms/run-command.sh", env=env)
     LOGGER.info("Setting up GCP VM...")
 
 
@@ -64,6 +71,9 @@ def setup_kms(sub_test_name: str) -> None:
     if sub_test_target == "azure":
         os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
 
+    run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup-secrets.sh")
+    config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
+
     if success:
         run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup.sh")
         create_archive()
@@ -71,26 +81,26 @@ def setup_kms(sub_test_name: str) -> None:
         if sub_test_target == "azure":
             setup_azure_vm()
         else:
-            setup_gcp_vm()
+            setup_gcp_vm(config["GCPKMS_INSTANCENAME"])
 
     if sub_test_target == "azure":
-        run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup-secrets.sh")
-        config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
         write_env("KEY_NAME", config["AZUREKMS_KEYNAME"])
         write_env("KEY_VAULT_ENDPOINT", config["AZUREKMS_KEYVAULTENDPOINT"])
 
 
 def test_kms_vm(sub_test_name: str) -> None:
+    env = os.environ.copy()
     if sub_test_name == "azure":
         key_name = os.environ["KEY_NAME"]
         key_vault_endpoint = os.environ["KEY_VAULT_ENDPOINT"]
-        cmd = (
-            f'AZUREKMS_CMD="KEY_NAME="{key_name}" KEY_VAULT_ENDPOINT="{key_vault_endpoint}" bash ./.evergreen/just.sh test-eg"'
-            f"{CSFLE_FOLDER}/azurekms/run-command.sh"
-        )
+        env[
+            "AZUREKMS_CMD"
+        ] = f'KEY_NAME="{key_name}" KEY_VAULT_ENDPOINT="{key_vault_endpoint}" bash ./.evergreen/just.sh run-tests'
+        cmd = f"{CSFLE_FOLDER}/azurekms/run-command.sh"
     else:
-        cmd = f'GCPKMS_CMD="./.evergreen/just.sh test-eg" {CSFLE_FOLDER}/gcpkms/run-command.sh'
-    run_command(cmd)
+        env["GCPKMS_CMD"] = "./.evergreen/just.sh run-tests"
+        cmd = f"{CSFLE_FOLDER}/gcpkms/run-command.sh"
+    run_command(cmd, env=env)
 
 
 if __name__ == "__main__":
