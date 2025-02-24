@@ -75,9 +75,7 @@ class TestMonitor(IntegrationTest):
 
             def resource_warning_caught():
                 gc.collect()
-                print(w)
                 for warning in w:
-                    print(warning)
                     if (
                         issubclass(warning.category, ResourceWarning)
                         and "Call MongoClient.close() to safely shut down your client and free up resources."
