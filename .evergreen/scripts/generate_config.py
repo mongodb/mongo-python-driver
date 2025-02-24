@@ -839,7 +839,7 @@ def create_kms_tasks():
     tasks = []
     for kms_type in ["gcp", "azure"]:
         for success in [True, False]:
-            name = f"test-{kms_type}"
+            name = f"test-{kms_type}kms"
             sub_test_name = kms_type
             if not success:
                 name += "-fail"
