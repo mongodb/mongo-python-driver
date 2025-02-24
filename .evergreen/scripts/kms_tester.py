@@ -41,7 +41,7 @@ def create_archive():
 
 def setup_kms(sub_test_name: str) -> None:
     if "-" in sub_test_name:
-        sub_test_target, sub_test_type = sub_test_name.split("-")[0]
+        sub_test_target, sub_test_type = sub_test_name.split("-")
     else:
         sub_test_target = sub_test_name
         sub_test_type = ""
