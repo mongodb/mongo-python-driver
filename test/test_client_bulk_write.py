@@ -647,7 +647,6 @@ class TestClientBulkWriteCSOT(IntegrationTest):
         _OVERHEAD = 500
 
         internal_client = self.rs_or_single_client(timeoutMS=None)
-        self.addCleanup(internal_client.close)
 
         collection = internal_client.db["coll"]
         self.addCleanup(collection.drop)

@@ -124,7 +124,7 @@ class SocketGetter(MongoTask):
         self.state = "connection"
 
     def __del__(self):
-        if self.sock:
+        if _IS_SYNC and self.sock:
             self.sock.close_conn(None)
 
 
