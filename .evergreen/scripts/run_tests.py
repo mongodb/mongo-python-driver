@@ -24,7 +24,8 @@ LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
 
-def handle_perf(start_time: datetime, end_time: datetime):
+def handle_perf(start_time: datetime):
+    end_time = datetime.now()
     elapsed_secs = (end_time - start_time).total_seconds()
     with open("results.json") as fid:
         results = json.load(fid)
@@ -68,24 +69,33 @@ def handle_green_framework() -> None:
     LOGGER.info(f"Running tests with {GREEN_FRAMEWORK}...")
 
 
+def handle_c_ext() -> None:
+    if platform.python_implementation() != "CPython":
+        return
+    sys.path.insert(0, str(ROOT / "tools"))
+    from fail_if_no_c import main as fail_if_no_c
+
+    fail_if_no_c()
+
+
+def handle_pymongocrypt() -> None:
+    import pymongocrypt
+
+    LOGGER.info(f"pymongocrypt version: {pymongocrypt.__version__})")
+    LOGGER.info(f"libmongocrypt version: {pymongocrypt.libmongocrypt_version()})")
+
+
 def run() -> None:
-    # Handle green frameworks first so they can patch modules.
+    # Handle green framework first so they can patch modules.
     if GREEN_FRAMEWORK:
         handle_green_framework()
 
     # Ensure C extensions if applicable.
-    if not os.environ.get("NO_EXT") and platform.python_implementation() == "CPython":
-        sys.path.insert(0, str(ROOT / "tools"))
-        from fail_if_no_c import main as fail_if_no_c
-
-        fail_if_no_c()
+    if not os.environ.get("NO_EXT"):
+        handle_c_ext()
 
     if os.environ.get("PYMONGOCRYPT_LIB"):
-        # Ensure pymongocrypt is working properly.
-        import pymongocrypt
-
-        LOGGER.info(f"pymongocrypt version: {pymongocrypt.__version__})")
-        LOGGER.info(f"libmongocrypt version: {pymongocrypt.libmongocrypt_version()})")
+        handle_pymongocrypt()
 
     LOGGER.info(f"Test setup:\n{AUTH=}\n{SSL=}\n{UV_ARGS=}\n{TEST_ARGS=}")
 
@@ -98,8 +108,7 @@ def run() -> None:
 
     # Handle perf test post actions.
     if TEST_PERF:
-        end_time = datetime.now()
-        handle_perf(start_time, end_time)
+        handle_perf(start_time)
 
     # Handle coverage post actions.
     if os.environ.get("COVERAGE"):
