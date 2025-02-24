@@ -265,13 +265,13 @@ functions:
           DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION]
         binary: bash
         working_dir: "src"
-        args: [.evergreen/just.sh, setup-test, "${TEST_NAME}", "${SUB_TEST_NAME}"]
+        args: [.evergreen/just.sh, setup-tests, "${TEST_NAME}", "${SUB_TEST_NAME}"]
     - command: subprocess.exec
       type: test
       params:
         working_dir: "src"
         binary: bash
-        args: [.evergreen/just.sh, test-eg]
+        args: [.evergreen/just.sh, run-tests]
 
   "run enterprise auth tests":
     - command: subprocess.exec
@@ -443,13 +443,12 @@ functions:
         binary: bash
         working_dir: "src"
         args:
-          - ${DRIVERS_TOOLS}/.evergreen/csfle/teardown.sh
+          - ${DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh
     - command: subprocess.exec
       params:
-        binary: bash
-        working_dir: "src"
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh
+          binary: bash
+          working_dir: "src"
+          args: [.evergreen/just.sh, teardown-tests]
     - command: subprocess.exec
       params:
         binary: bash

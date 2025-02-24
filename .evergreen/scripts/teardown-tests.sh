@@ -2,35 +2,29 @@
 set -eu
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
-ROOT_DIR="$(dirname "$(dirname $SCRIPT_DIR)")"
+SCRIPT_DIR="$( cd -- "$SCRIPT_DIR" > /dev/null 2>&1 && pwd )"
+ROOT_DIR="$(dirname $SCRIPT_DIR)"
 
-# Remove temporary test files.
 pushd $ROOT_DIR > /dev/null
-rm -rf libmongocrypt/ libmongocrypt.tar.gz mongocryptd.pid > /dev/null
-popd > /dev/null
 
-if [ ! -f $SCRIPT_DIR/test-env.sh ]; then
-    exit 0
-fi
-if [ -f $SCRIPT_DIR/env.sh ]; then
-    source $SCRIPT_DIR/env.sh
-fi
-
-source $SCRIPT_DIR/test-env.sh
-
-# Shut down csfle servers if applicable
-if [ -n "${TEST_ENCRYPTION:-}" ]; then
-    bash ${DRIVERS_TOOLS}/.evergreen/csfle/stop-servers.sh
+# Try to source the env file.
+if [ -f $SCRIPT_DIR/scripts/env.sh ]; then
+  echo "Sourcing env inputs"
+  . $SCRIPT_DIR/scripts/env.sh
+else
+  echo "Not sourcing env inputs"
 fi
 
-# Shut down load balancer if applicable.
-if [ -n "${TEST_LOAD_BALANCER:-}" ]; then
-    bash "${DRIVERS_TOOLS}"/.evergreen/run-load-balancer.sh stop
+# Handle test inputs.
+if [ -f $SCRIPT_DIR/scripts/test-env.sh ]; then
+  echo "Sourcing test inputs"
+  . $SCRIPT_DIR/scripts/test-env.sh
+else
+  echo "Missing test inputs, please run 'just setup-test'"
+  exit 1
 fi
 
-# TODO: move this to a python file.
-if [ "TEST_NAME" == "kms" ]; then
-    if "gcp":
-        bash ${DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/teardown.sh
-    else:
-         ${DRIVERS_TOOLS}/.evergreen/csfle/azurekms/teardown.sh
+# Start the test runner.
+uv run $SCRIPT_DIR/teardown_tests.py
+
+popd /dev/null
