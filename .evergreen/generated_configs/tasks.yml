@@ -1,4 +1,32 @@
 tasks:
+  # Kms tests
+  - name: test-gcp
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: gcp
+  - name: test-gcp-fail
+    commands:
+      - func: bootstrap mongo-orchestration
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: gcp fail
+  - name: test-azure
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: azure
+  - name: test-azure-fail
+    commands:
+      - func: bootstrap mongo-orchestration
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: azure fail
+
   # Load balancer tests
   - name: test-load-balancer-auth-ssl
     commands:

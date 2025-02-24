@@ -835,7 +835,7 @@ def create_load_balancer_tasks():
     return tasks
 
 
-def create_kms_tests():
+def create_kms_tasks():
     tasks = []
     for kms_type in ["gcp", "azure"]:
         for success in [True, False]:
@@ -851,6 +851,7 @@ def create_kms_tests():
             test_func = FunctionCall(func="run tests", vars=test_vars)
             commands.append(test_func)
             tasks.append(EvgTask(name=name, commands=commands))
+    return tasks
 
 
 ##################
