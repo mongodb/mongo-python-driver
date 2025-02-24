@@ -47,7 +47,7 @@ def setup_kms(sub_test_name: str) -> None:
         os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
 
     run_command(f"{DRIVERS_TOOLS}/.evergreen/csfle/{sub_test_type}kms/setup-secrets.sh")
-    config = read_env(f"{DRIVERS_TOOLS}/csfle/a{sub_test_type}kms/secrets-export.sh")
+    config = read_env(f"{DRIVERS_TOOLS}/csfle/{sub_test_type}kms/secrets-export.sh")
     if success:
         run_command(f"{DRIVERS_TOOLS}/.evergreen/csfle/{sub_test_type}kms/setup.sh")
         create_archive()
