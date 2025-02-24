@@ -35,7 +35,7 @@ def create_archive():
 
 def setup_kms(sub_test_name: str, success: bool) -> None:
     success = "fail" not in sub_test_name
-    sub_test_type = sub_test_name.split()[0]
+    sub_test_type = sub_test_name.split("-")[0]
     if sub_test_name.startswith("azure"):
         write_env("TEST_FLE_AZURE_AUTO")
     else:

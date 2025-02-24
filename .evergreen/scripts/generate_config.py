@@ -843,7 +843,7 @@ def create_kms_tasks():
             sub_test_name = kms_type
             if not success:
                 name += "-fail"
-                sub_test_name += " fail"
+                sub_test_name += "-fail"
             commands = []
             if not success:
                 commands.append(FunctionCall(func="bootstrap mongo-orchestration"))
