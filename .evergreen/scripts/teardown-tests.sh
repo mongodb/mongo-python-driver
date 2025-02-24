@@ -24,6 +24,6 @@ if [ -n "${TEST_ENCRYPTION:-}" ]; then
 fi
 
 # Shut down load balancer if applicable.
-if [ -n "${TEST_LOADBALANCER:-}" ]; then
+if [ -n "${TEST_LOAD_BALANCER:-}" ]; then
     bash "${DRIVERS_TOOLS}"/.evergreen/run-load-balancer.sh stop
 fi
