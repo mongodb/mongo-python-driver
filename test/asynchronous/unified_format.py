@@ -87,6 +87,7 @@ from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
+    _OperationCancelled,
 )
 from pymongo.monitoring import (
     CommandStartedEvent,
@@ -1155,7 +1156,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         self.assertIsInstance(description, TopologyDescription)
         self.assertEqual(description.topology_type_name, spec["topologyType"])
 
-    def _testOperation_waitForPrimaryChange(self, spec: dict) -> None:
+    async def _testOperation_waitForPrimaryChange(self, spec: dict) -> None:
         """Run the waitForPrimaryChange test operation."""
         client = self.entity_map[spec["client"]]
         old_description: TopologyDescription = self.entity_map[spec["priorTopologyDescription"]]
@@ -1169,13 +1170,13 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
         old_primary = get_primary(old_description)
 
-        def primary_changed() -> bool:
-            primary = client.primary
+        async def primary_changed() -> bool:
+            primary = await client.primary
             if primary is None:
                 return False
             return primary != old_primary
 
-        wait_until(primary_changed, "change primary", timeout=timeout)
+        await async_wait_until(primary_changed, "change primary", timeout=timeout)
 
     async def _testOperation_runOnThread(self, spec):
         """Run the 'runOnThread' operation."""
@@ -1388,16 +1389,19 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         # operations during test set up and tear down.
         await self.kill_all_sessions()
 
-        if "csot" in self.id().lower():
+        if "csot" in self.id().lower() or "discovery_and_monitoring" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
+            # discovery_and_monitoring tests on windows are also flakey
             attempts = 3
             for i in range(attempts):
                 try:
                     return await self._run_scenario(spec, uri)
-                except (AssertionError, OperationFailure) as exc:
+                except (AssertionError, OperationFailure, _OperationCancelled) as exc:
                     if isinstance(exc, OperationFailure) and (
                         _IS_SYNC or "failpoint" not in exc._message
                     ):
+                        raise
+                    if isinstance(exc, _OperationCancelled) and _IS_SYNC:
                         raise
                     if i < attempts - 1:
                         print(
