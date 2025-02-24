@@ -5,24 +5,25 @@ import os
 from utils import DRIVERS_TOOLS, LOGGER, ROOT, read_env, run_command, write_env
 
 TMP_DRIVER_FILE = "/tmp/mongo-python-driver.tgz"  # noqa: S108
+CSFLE_FOLDER = f"{DRIVERS_TOOLS}/.evergreen/csfle"
 
 
 def setup_azurekms() -> None:
     LOGGER.info("Copying files to Azure VM...")
     cmd = f"""AZUREKMS_SRC="{TMP_DRIVER_FILE}" AZUREKMS_DST="~/" \
-        {DRIVERS_TOOLS}/.evergreen/csfle/azurekms/copy-file.sh"""
+        {CSFLE_FOLDER}/azurekms/copy-file.sh"""
     run_command(cmd)
     cmd = """AZUREKMS_CMD="tar xf mongo-python-driver.tgz" \
-        {DRIVERS_TOOLS}/.evergreen/csfle/azurekms/run-command.sh"""
+        {CSFLE_FOLDER}/azurekms/run-command.sh"""
     run_command(cmd)
     LOGGER.info("Copying files to Azure VM... done.")
 
 
 def setup_gcpkms() -> None:
     LOGGER.info("Copying files to GCP VM...")
-    cmd = f"GCPKMS_SRC={TMP_DRIVER_FILE} GCPKMS_DST=$GCPKMS_INSTANCENAME: {DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/copy-file.sh"
+    cmd = f"GCPKMS_SRC={TMP_DRIVER_FILE} GCPKMS_DST=$GCPKMS_INSTANCENAME: {CSFLE_FOLDER}/gcpkms/copy-file.sh"
     run_command(cmd)
-    cmd = f'GCPKMS_CMD="tar xf mongo-python-driver.tgz" {DRIVERS_TOOLS}/.evergreen/csfle/gcpkms/run-command.sh'
+    cmd = f'GCPKMS_CMD="tar xf mongo-python-driver.tgz" {CSFLE_FOLDER}/gcpkms/run-command.sh'
     run_command(cmd)
     LOGGER.info("Copying files to GCP VM...")
 
@@ -46,10 +47,10 @@ def setup_kms(sub_test_name: str) -> None:
     if sub_test_type == "azure":
         os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
 
-    run_command(f"{DRIVERS_TOOLS}/.evergreen/csfle/{sub_test_type}kms/setup-secrets.sh")
-    config = read_env(f"{DRIVERS_TOOLS}/csfle/{sub_test_type}kms/secrets-export.sh")
+    run_command(f"{CSFLE_FOLDER}/{sub_test_type}kms/setup-secrets.sh")
+    config = read_env(f"{CSFLE_FOLDER}/{sub_test_type}kms/secrets-export.sh")
     if success:
-        run_command(f"{DRIVERS_TOOLS}/.evergreen/csfle/{sub_test_type}kms/setup.sh")
+        run_command(f"{CSFLE_FOLDER}/{sub_test_type}kms/setup.sh")
         create_archive()
 
         if sub_test_name == "azure":
