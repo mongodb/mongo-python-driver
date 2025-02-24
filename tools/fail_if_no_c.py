@@ -30,7 +30,7 @@ import bson  # noqa: E402
 import pymongo  # noqa: E402
 
 
-def main():
+def main() -> None:
     if not pymongo.has_c() or not bson.has_c():
         try:
             from pymongo import _cmessage  # type:ignore[attr-defined] # noqa: F401
