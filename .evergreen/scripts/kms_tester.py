@@ -80,6 +80,7 @@ def setup_kms(sub_test_name: str) -> None:
         _create_archive()
         if sub_test_target == "azure":
             os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
+
         run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup.sh")
         base_env = _load_kms_config(sub_test_target)
 
@@ -93,6 +94,7 @@ def setup_kms(sub_test_name: str) -> None:
         config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
         write_env("KEY_NAME", config["AZUREKMS_KEYNAME"])
         write_env("KEY_VAULT_ENDPOINT", config["AZUREKMS_KEYVAULTENDPOINT"])
+        write_env("AZUREKMS_VMNAME", config["AZUREKMS_KEYNAME"])
 
 
 def test_kms_vm(sub_test_name: str) -> None:
