@@ -101,9 +101,9 @@ def run() -> None:
 
     # Run remote kms tests.
     if TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
-        from kms_tester import test_kms_vm
+        from kms_tester import test_kms_remote
 
-        test_kms_vm(SUB_TEST_NAME)
+        test_kms_remote(SUB_TEST_NAME)
         return
 
     # Run local tests.

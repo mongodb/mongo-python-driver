@@ -83,6 +83,9 @@ def setup_kms(sub_test_name: str) -> None:
     if sub_test_type == "remote":
         return
 
+    if sub_test_target == "azure":
+        run_command("./setup-secrets.sh", cwd=kms_dir)
+
     if success:
         _create_archive()
         if sub_test_target == "azure":
@@ -97,14 +100,13 @@ def setup_kms(sub_test_name: str) -> None:
             _setup_gcp_vm(base_env)
 
     if sub_test_target == "azure":
-        run_command("./setup-secrets.sh", cwd=kms_dir)
         config = read_env(f"{kms_dir}/secrets-export.sh")
         write_env("KEY_NAME", config["AZUREKMS_KEYNAME"])
         write_env("KEY_VAULT_ENDPOINT", config["AZUREKMS_KEYVAULTENDPOINT"])
-        write_env("AZUREKMS_VMNAME", config["AZUREKMS_KEYNAME"])
+        write_env("AZUREKMS_VMNAME", config["AZUREKMS_VMNAME"])
 
 
-def test_kms_vm(sub_test_name: str) -> None:
+def test_kms_remote(sub_test_name: str) -> None:
     env = _load_kms_config(sub_test_name)
     if sub_test_name == "azure":
         key_name = os.environ["KEY_NAME"]
