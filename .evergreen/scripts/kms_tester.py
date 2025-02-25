@@ -101,9 +101,11 @@ def setup_kms(sub_test_name: str) -> None:
 
     if sub_test_target == "azure":
         config = read_env(f"{kms_dir}/secrets-export.sh")
-        write_env("KEY_NAME", config["AZUREKMS_KEYNAME"])
-        write_env("KEY_VAULT_ENDPOINT", config["AZUREKMS_KEYVAULTENDPOINT"])
-        write_env("AZUREKMS_VMNAME", config["AZUREKMS_VMNAME"])
+        if success:
+            write_env("AZUREKMS_VMNAME", config["AZUREKMS_VMNAME"])
+        else:
+            write_env("KEY_NAME", config["AZUREKMS_KEYNAME"])
+            write_env("KEY_VAULT_ENDPOINT", config["AZUREKMS_KEYVAULTENDPOINT"])
 
 
 def test_kms_remote(sub_test_name: str) -> None:
