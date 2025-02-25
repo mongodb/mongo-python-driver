@@ -5,7 +5,7 @@ import os
 from utils import DRIVERS_TOOLS, LOGGER, ROOT, read_env, run_command, write_env
 
 TMP_DRIVER_FILE = "/tmp/mongo-python-driver.tgz"  # noqa: S108
-CSFLE_FOLDER = f"{DRIVERS_TOOLS}/.evergreen/csfle"
+CSFLE_DIR = f"{DRIVERS_TOOLS}/.evergreen/csfle"
 
 
 def _setup_azure_vm(base_env: dict[str, str]) -> None:
@@ -13,14 +13,14 @@ def _setup_azure_vm(base_env: dict[str, str]) -> None:
     env = base_env.copy()
     env["AZUREKMS_SRC"] = TMP_DRIVER_FILE
     env["AZUREKMS_DST"] = "~/"
-    run_command(f"{CSFLE_FOLDER}/azurekms/copy-file.sh", env=env)
+    run_command(f"{CSFLE_DIR}/azurekms/copy-file.sh", env=env)
 
     env = base_env.copy()
     env["AZUREKMS_CMD"] = "tar xf mongo-python-driver.tgz"
-    run_command(f"{CSFLE_FOLDER}/azurekms/run-command.sh", env=env)
+    run_command(f"{CSFLE_DIR}/azurekms/run-command.sh", env=env)
 
     env["AZUREKMS_CMD"] = "bash .evergreen/just.sh setup-tests kms azure-remote"
-    run_command(f"{CSFLE_FOLDER}/azurekms/run-command.sh", env=env)
+    run_command(f"{CSFLE_DIR}/azurekms/run-command.sh", env=env)
     LOGGER.info("Setting up Azure VM... done.")
 
 
@@ -29,14 +29,14 @@ def _setup_gcp_vm(base_env: dict[str, str]) -> None:
     env = base_env.copy()
     env["GCPKMS_SRC"] = TMP_DRIVER_FILE
     env["GCPKMS_DST"] = f"{env['GCPKMS_INSTANCENAME']}:"
-    run_command(f"{CSFLE_FOLDER}/gcpkms/copy-file.sh", env=env)
+    run_command(f"{CSFLE_DIR}/gcpkms/copy-file.sh", env=env)
 
     env = base_env.copy()
     env["GCPKMS_CMD"] = "tar xf mongo-python-driver.tgz"
-    run_command(f"{CSFLE_FOLDER}/gcpkms/run-command.sh", env=env)
+    run_command(f"{CSFLE_DIR}/gcpkms/run-command.sh", env=env)
 
     env["GCPKMS_CMD"] = "bash ./.evergreen/just.sh setup-tests kms gcp-remote"
-    run_command(f"{CSFLE_FOLDER}/gcpkms/run-command.sh", env=env)
+    run_command(f"{CSFLE_DIR}/gcpkms/run-command.sh", env=env)
     LOGGER.info("Setting up GCP VM...")
 
 
@@ -47,7 +47,7 @@ def _create_archive() -> None:
 
 
 def _load_kms_config(sub_test_target: str) -> dict[str, str]:
-    config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
+    config = read_env(f"{CSFLE_DIR}/{sub_test_target}kms/secrets-export.sh")
     base_env = os.environ.copy()
     for key, value in config.items():
         base_env[key] = str(value)
@@ -64,6 +64,7 @@ def setup_kms(sub_test_name: str) -> None:
     assert sub_test_target in ["azure", "gcp"], sub_test_target
     assert sub_test_type in ["", "remote", "fail"], sub_test_type
     success = sub_test_type != "fail"
+    kms_dir = f"{CSFLE_DIR}/{sub_test_target}kms"
 
     if sub_test_target == "azure":
         write_env("TEST_FLE_AZURE_AUTO")
@@ -81,7 +82,7 @@ def setup_kms(sub_test_name: str) -> None:
         if sub_test_target == "azure":
             os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
 
-        run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup.sh")
+        run_command("setup.sh", cwd=kms_dir)
         base_env = _load_kms_config(sub_test_target)
 
         if sub_test_target == "azure":
@@ -90,8 +91,8 @@ def setup_kms(sub_test_name: str) -> None:
             _setup_gcp_vm(base_env)
 
     if sub_test_target == "azure":
-        run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup-secrets.sh")
-        config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
+        run_command("setup-secrets.sh", cwd=kms_dir)
+        config = read_env(f"{kms_dir}/secrets-export.sh")
         write_env("KEY_NAME", config["AZUREKMS_KEYNAME"])
         write_env("KEY_VAULT_ENDPOINT", config["AZUREKMS_KEYVAULTENDPOINT"])
         write_env("AZUREKMS_VMNAME", config["AZUREKMS_KEYNAME"])
@@ -107,12 +108,12 @@ def test_kms_vm(sub_test_name: str) -> None:
         ] = f'KEY_NAME="{key_name}" KEY_VAULT_ENDPOINT="{key_vault_endpoint}" bash ./.evergreen/just.sh run-tests'
     else:
         env["GCPKMS_CMD"] = "./.evergreen/just.sh run-tests"
-    cmd = f"{CSFLE_FOLDER}/{sub_test_name}kms/run-command.sh"
+    cmd = f"{CSFLE_DIR}/{sub_test_name}kms/run-command.sh"
     run_command(cmd, env=env)
 
 
 def teardown_kms(sub_test_name: str) -> None:
-    run_command(f"bash {CSFLE_FOLDER}/{sub_test_name}kms/teardown.sh")
+    run_command(f"{CSFLE_DIR}/{sub_test_name}kms/teardown.sh")
 
 
 if __name__ == "__main__":
