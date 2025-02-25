@@ -19,7 +19,7 @@ def _setup_azure_vm(base_env: dict[str, str]) -> None:
     env["AZUREKMS_CMD"] = "tar xf mongo-python-driver.tgz"
     run_command(f"{CSFLE_FOLDER}/azurekms/run-command.sh", env=env)
 
-    env["AZUREKMS_CMD"] = "bash .evergreen/just.sh setup-test kms azure-remote"
+    env["AZUREKMS_CMD"] = "bash .evergreen/just.sh setup-tests kms azure-remote"
     run_command(f"{CSFLE_FOLDER}/azurekms/run-command.sh", env=env)
     LOGGER.info("Setting up Azure VM... done.")
 
@@ -35,7 +35,7 @@ def _setup_gcp_vm(base_env: dict[str, str]) -> None:
     env["GCPKMS_CMD"] = "tar xf mongo-python-driver.tgz"
     run_command(f"{CSFLE_FOLDER}/gcpkms/run-command.sh", env=env)
 
-    env["GCPKMS_CMD"] = "bash ./.evergreen/just.sh setup-test kms gcp-remote"
+    env["GCPKMS_CMD"] = "bash ./.evergreen/just.sh setup-tests kms gcp-remote"
     run_command(f"{CSFLE_FOLDER}/gcpkms/run-command.sh", env=env)
     LOGGER.info("Setting up GCP VM...")
 

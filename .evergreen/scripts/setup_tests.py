@@ -40,7 +40,7 @@ TEST_SUITE_MAP = {
     "encryption": "encryption",
     "enterprise_auth": "auth",
     "index_management": "index_management",
-    "kms": "csfle",
+    "kms": "kms",
     "load_balancer": "load_balancer",
     "mockupdb": "mockupdb",
     "pyopenssl": "",
@@ -77,8 +77,14 @@ def get_options():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("test_name", choices=sorted(TEST_SUITE_MAP), nargs="?", default="default")
-    parser.add_argument("sub_test_name", nargs="?")
+    parser.add_argument(
+        "test_name",
+        choices=sorted(TEST_SUITE_MAP),
+        nargs="?",
+        default="default",
+        help="The name of the test suite to set up, typically the same name as a pytest marker.",
+    )
+    parser.add_argument("sub_test_name", nargs="?", help="The sub test name, for example 'azure'")
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Whether to log at the DEBUG level"
     )
