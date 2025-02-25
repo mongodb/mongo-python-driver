@@ -203,6 +203,7 @@ def handle_test_env() -> None:
 
     # Set an environment variable for the test name and sub test name.
     write_env(f"TEST_{test_name.upper()}")
+    write_env("TEST_NAME", test_name)
     write_env("SUB_TEST_NAME", sub_test_name)
 
     # Handle pass through env vars.

@@ -73,7 +73,7 @@ def setup_kms(sub_test_name: str) -> None:
         if sub_test_target == "azure":
             os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
         run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup.sh")
-        config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}/secrets-export.sh")
+        config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
         base_env = os.environ.copy()
         for key, value in config.items():
             base_env[key] = str(value)
