@@ -6,7 +6,7 @@ HERE=$(dirname ${BASH_SOURCE:-$0})
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 ROOT=$(dirname "$(dirname $HERE)")
 
-if [ "Windows_NT" = "${OS:-}" ];
+if [ "Windows_NT" = "${OS:-}" ]; then
     ROOT=$(cygpath -m $ROOT)
 fi
 
