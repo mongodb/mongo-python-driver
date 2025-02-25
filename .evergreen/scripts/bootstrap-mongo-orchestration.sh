@@ -6,10 +6,6 @@ HERE=$(dirname ${BASH_SOURCE:-$0})
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 ROOT=$(dirname "$(dirname $HERE)")
 
-if [ "Windows_NT" = "${OS:-}" ]; then
-    ROOT=$(cygpath -m $ROOT)
-fi
-
 if [ -z "${TEST_CRYPT_SHARED:-}" ]; then
     export SKIP_CRYPT_SHARED=1
 fi
