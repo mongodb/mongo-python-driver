@@ -254,8 +254,6 @@ class Monitor(MonitorBase):
         start = time.monotonic()
         try:
             return self._check_once()
-        except asyncio.CancelledError:
-            raise
         except ReferenceError:
             raise
         except Exception as error:
