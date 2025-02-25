@@ -12,6 +12,8 @@ fi
 
 # Override the tls files if applicable.
 if [ "${SSL:-}" == "ssl" ]; then
+    echo $ROOT
+    exit 1
     export TLS_CERT_KEY_FILE=${ROOT}/test/certificates/client.pem
     export TLS_PEM_KEY_FILE=${ROOT}/test/certificates/server.pem
     export TLS_CA_FILE=${ROOT}/test/certificates/ca.pem
