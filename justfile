@@ -1,7 +1,5 @@
 # See https://just.systems/man/en/ for instructions
 set shell := ["bash", "-c"]
-set dotenv-load
-set dotenv-filename := "./.evergreen/scripts/env.sh"
 
 # Commonly used command segments.
 uv_run := "uv run --isolated --frozen "
@@ -63,17 +61,13 @@ test *args="-v --durations=5 --maxfail=10":
     {{uv_run}} --extra test pytest {{args}}
 
 [group('test')]
-test-mockupdb *args:
-    {{uv_run}} -v --extra test --group mockupdb pytest -m mockupdb {{args}}
-
-[group('test')]
-test-eg *args:
+run-tests *args:
     bash ./.evergreen/run-tests.sh {{args}}
 
-[group('encryption')]
-setup-encryption:
-    bash .evergreen/setup-encryption.sh
+[group('test')]
+setup-tests *args="":
+    bash .evergreen/scripts/setup-tests.sh {{args}}
 
-[group('encryption')]
-teardown-encryption:
-    bash .evergreen/teardown-encryption.sh
+[group('test')]
+teardown-tests:
+    bash .evergreen/scripts/teardown-tests.sh

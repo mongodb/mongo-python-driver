@@ -34,7 +34,7 @@ from pymongo.synchronous.encryption import (
 
 _IS_SYNC = True
 
-pytestmark = pytest.mark.csfle
+pytestmark = pytest.mark.kms
 
 
 class TestonDemandGCPCredentials(IntegrationTest):

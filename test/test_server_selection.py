@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
 from pymongo import MongoClient, ReadPreference
 from pymongo.errors import ServerSelectionTimeoutError
@@ -43,11 +44,17 @@ from test.utils_selection_tests import (
     make_server_description,
 )
 
+_IS_SYNC = True
+
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    os.path.join("server_selection", "server_selection"),
-)
+if _IS_SYNC:
+    TEST_PATH = os.path.join(
+        Path(__file__).resolve().parent, "server_selection", "server_selection"
+    )
+else:
+    TEST_PATH = os.path.join(
+        Path(__file__).resolve().parent.parent, "server_selection", "server_selection"
+    )
 
 
 class SelectionStoreSelector:
@@ -61,7 +68,7 @@ class SelectionStoreSelector:
         return selection
 
 
-class TestAllScenarios(create_selection_tests(_TEST_PATH)):  # type: ignore
+class TestAllScenarios(create_selection_tests(TEST_PATH)):  # type: ignore
     pass
 
 
@@ -79,13 +86,12 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         client = self.rs_or_single_client(
             server_selector=custom_selector, event_listeners=[listener]
         )
-        self.addCleanup(client.close)
         coll = client.get_database("testdb", read_preference=ReadPreference.NEAREST).coll
         self.addCleanup(client.drop_database, "testdb")
 
         # Wait the node list to be fully populated.
         def all_hosts_started():
-            return len(client.admin.command(HelloCompat.LEGACY_CMD)["hosts"]) == len(
+            return len((client.admin.command(HelloCompat.LEGACY_CMD))["hosts"]) == len(
                 client._topology._description.readable_servers
             )
 
@@ -121,7 +127,6 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         # Client setup.
         mongo_client = self.rs_or_single_client(server_selector=selector)
         test_collection = mongo_client.testdb.test_collection
-        self.addCleanup(mongo_client.close)
         self.addCleanup(mongo_client.drop_database, "testdb")
 
         # Do N operations and test selector is called at least N times.

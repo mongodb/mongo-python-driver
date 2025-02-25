@@ -708,7 +708,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return target.command(**kwargs)
 
     def _databaseOperation_runCursorCommand(self, target, **kwargs):
-        return list(self._databaseOperation_createCommandCursor(target, **kwargs))
+        return (self._databaseOperation_createCommandCursor(target, **kwargs)).to_list()
 
     def _databaseOperation_createCommandCursor(self, target, **kwargs):
         self.__raise_if_unsupported("createCommandCursor", target, Database)
@@ -1163,7 +1163,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _testOperation_runOnThread(self, spec):
         """Run the 'runOnThread' operation."""
         thread = self.entity_map[spec["thread"]]
-        thread.schedule(lambda: self.run_entity_operation(spec["operation"]))
+        thread.schedule(functools.partial(self.run_entity_operation, spec["operation"]))
 
     def _testOperation_waitForThread(self, spec):
         """Run the 'waitForThread' operation."""
@@ -1370,7 +1370,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
 
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
@@ -1378,7 +1377,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             for i in range(attempts):
                 try:
                     return self._run_scenario(spec, uri)
-                except AssertionError:
+                except (AssertionError, OperationFailure) as exc:
+                    if isinstance(exc, OperationFailure) and (
+                        _IS_SYNC or "failpoint" not in exc._message
+                    ):
+                        raise
                     if i < attempts - 1:
                         print(
                             f"Retrying after attempt {i+1} of {self.id()} failed with:\n"

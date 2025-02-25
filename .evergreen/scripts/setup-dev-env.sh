@@ -3,16 +3,21 @@
 set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
-pushd "$(dirname "$(dirname $HERE)")" > /dev/null
+HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
+ROOT=$(dirname "$(dirname $HERE)")
+pushd $ROOT > /dev/null
 
-# Source the env file to pick up common variables.
+# Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
-  source $HERE/env.sh
+  . $HERE/env.sh
+fi
+# PYTHON_BINARY may be defined in test-env.sh.
+if [ -f $HERE/test-env.sh ]; then
+  . $HERE/test-env.sh
 fi
 
 # Ensure dependencies are installed.
-. $HERE/install-dependencies.sh
-
+bash $HERE/install-dependencies.sh
 
 # Set the location of the python bin dir.
 if [ "Windows_NT" = "${OS:-}" ]; then
@@ -23,7 +28,7 @@ fi
 
 # Ensure there is a python venv.
 if [ ! -d $BIN_DIR ]; then
-  . .evergreen/utils.sh
+  . $ROOT/.evergreen/utils.sh
 
   if [ -z "${PYTHON_BINARY:-}" ]; then
       PYTHON_BINARY=$(find_python3)
@@ -32,6 +37,12 @@ if [ ! -d $BIN_DIR ]; then
   echo "export UV_PYTHON=$UV_PYTHON" >> $HERE/env.sh
   echo "Using python $UV_PYTHON"
 fi
+
+# Add the default install path to the path if needed.
+if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
+  export PATH="$PATH:$HOME/.local/bin"
+fi
+
 uv sync --frozen
 uv run --frozen --with pip pip install -e .
 echo "Setting up python environment... done."
@@ -40,3 +51,5 @@ echo "Setting up python environment... done."
 if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
     uv run --frozen pre-commit install
 fi
+
+popd > /dev/null

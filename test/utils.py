@@ -39,6 +39,7 @@ from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import AsyncMongoClient, monitoring, operations, read_preferences
+from pymongo._asyncio_task import create_task
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
@@ -665,6 +666,11 @@ def joinall(threads):
         assert not t.is_alive(), "Thread %s hung" % t
 
 
+async def async_joinall(tasks):
+    """Join threads with a 5-minute timeout, assert joins succeeded"""
+    await asyncio.wait([t.task for t in tasks if t is not None], timeout=300)
+
+
 def wait_until(predicate, success_description, timeout=10):
     """Wait up to 10 seconds (by default) for predicate to be true.
 
@@ -826,7 +832,7 @@ async def async_get_pools(client):
     """Get all pools."""
     return [
         server.pool
-        async for server in await (await client._get_topology()).select_servers(
+        for server in await (await client._get_topology()).select_servers(
             any_server_selector, _Op.TEST
         )
     ]
@@ -910,21 +916,6 @@ def eventlet_monkey_patched():
 
 def is_greenthread_patched():
     return gevent_monkey_patched() or eventlet_monkey_patched()
-
-
-class ExceptionCatchingThread(threading.Thread):
-    """A thread that stores any exception encountered from run()."""
-
-    def __init__(self, *args, **kwargs):
-        self.exc = None
-        super().__init__(*args, **kwargs)
-
-    def run(self):
-        try:
-            super().run()
-        except BaseException as exc:
-            self.exc = exc
-            raise
 
 
 def parse_read_preference(pref):
@@ -1079,3 +1070,11 @@ async def async_set_fail_point(client, command_args):
     cmd = SON([("configureFailPoint", "failCommand")])
     cmd.update(command_args)
     await client.admin.command(cmd)
+
+
+def create_async_event():
+    return asyncio.Event()
+
+
+def create_event():
+    return threading.Event()

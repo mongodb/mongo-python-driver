@@ -274,7 +274,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param type_registry: instance of
             :class:`~bson.codec_options.TypeRegistry` to enable encoding
             and decoding of custom types.
-        :param datetime_conversion: Specifies how UTC datetimes should be decoded
+        :param kwargs: **Additional optional parameters available as keyword arguments:**
+
+          - `datetime_conversion` (optional): Specifies how UTC datetimes should be decoded
             within BSON. Valid options include 'datetime_ms' to return as a
             DatetimeMS, 'datetime' to return as a datetime.datetime and
             raising a ValueError for out-of-range values, 'datetime_auto' to
@@ -282,9 +284,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             out-of-range and 'datetime_clamp' to clamp to the minimum and
             maximum possible datetimes. Defaults to 'datetime'. See
             :ref:`handling-out-of-range-datetimes` for details.
-
-          | **Other optional parameters can be passed as keyword arguments:**
-
           - `directConnection` (optional): if ``True``, forces this client to
              connect directly to the specified MongoDB host as a standalone.
              If ``false``, the client connects to the entire replica set of
@@ -1559,6 +1558,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
         self._closed = True
+        if not _IS_SYNC:
+            asyncio.gather(
+                self._topology.cleanup_monitors(),  # type: ignore[func-returns-value]
+                self._kill_cursors_executor.join(),  # type: ignore[func-returns-value]
+                return_exceptions=True,
+            )
 
     if not _IS_SYNC:
         # Add support for contextlib.closing.
@@ -2032,8 +2037,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         for address, cursor_id, conn_mgr in pinned_cursors:
             try:
                 self._cleanup_cursor_lock(cursor_id, address, conn_mgr, None, False)
-            except asyncio.CancelledError:
-                raise
             except Exception as exc:
                 if isinstance(exc, InvalidOperation) and self._topology._closed:
                     # Raise the exception when client is closed so that it
@@ -2048,8 +2051,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
                     self._kill_cursors(cursor_ids, address, topology, session=None)
-                except asyncio.CancelledError:
-                    raise
                 except Exception as exc:
                     if isinstance(exc, InvalidOperation) and self._topology._closed:
                         raise
@@ -2064,8 +2065,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         try:
             self._process_kill_cursors()
             self._topology.update_pool()
-        except asyncio.CancelledError:
-            raise
         except Exception as exc:
             if isinstance(exc, InvalidOperation) and self._topology._closed:
                 return

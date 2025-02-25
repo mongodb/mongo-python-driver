@@ -75,6 +75,8 @@ class AsyncPeriodicExecutor:
         callback; see monitor.py.
         """
         self._stopped = True
+        if self._task is not None:
+            self._task.cancel()
 
     async def join(self, timeout: Optional[int] = None) -> None:
         if self._task is not None:
@@ -98,6 +100,7 @@ class AsyncPeriodicExecutor:
                 if not await self._target():
                     self._stopped = True
                     break
+            # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
             except BaseException:
                 self._stopped = True
                 raise
@@ -230,6 +233,7 @@ class PeriodicExecutor:
                 if not self._target():
                     self._stopped = True
                     break
+            # Catch KeyboardInterrupt, etc. and cleanup.
             except BaseException:
                 with self._lock:
                     self._stopped = True

@@ -1,4 +1,32 @@
 tasks:
+  # Kms tests
+  - name: test-gcpkms
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: gcp
+  - name: test-gcpkms-fail
+    commands:
+      - func: bootstrap mongo-orchestration
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: gcp-fail
+  - name: test-azurekms
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: azure
+  - name: test-azurekms-fail
+    commands:
+      - func: bootstrap mongo-orchestration
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: azure-fail
+
   # Load balancer tests
   - name: test-load-balancer-auth-ssl
     commands:
@@ -8,12 +36,11 @@ tasks:
           AUTH: auth
           SSL: ssl
           LOAD_BALANCER: "true"
-      - func: run load-balancer
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
-          test_loadbalancer: "true"
+          TEST_NAME: load_balancer
     tags: [load-balancer, auth, ssl]
   - name: test-load-balancer-noauth-ssl
     commands:
@@ -23,12 +50,11 @@ tasks:
           AUTH: noauth
           SSL: ssl
           LOAD_BALANCER: "true"
-      - func: run load-balancer
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
-          test_loadbalancer: "true"
+          TEST_NAME: load_balancer
     tags: [load-balancer, noauth, ssl]
   - name: test-load-balancer-noauth-nossl
     commands:
@@ -38,12 +64,11 @@ tasks:
           AUTH: noauth
           SSL: nossl
           LOAD_BALANCER: "true"
-      - func: run load-balancer
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
-          test_loadbalancer: "true"
+          TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
 
   # Server tests
@@ -60,7 +85,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - standalone
@@ -80,7 +105,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - standalone
@@ -100,7 +125,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - standalone
@@ -120,7 +144,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - standalone
@@ -140,7 +164,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - standalone
@@ -160,7 +184,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - standalone
@@ -180,7 +203,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - standalone
@@ -200,7 +223,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - standalone
@@ -220,9 +243,185 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
+      - standalone
+      - noauth
+      - nossl
+      - sync_async
+  - name: test-4.2-standalone-auth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync
+          TEST_NAME: default_sync
+    tags:
+      - "4.2"
+      - standalone
+      - auth
+      - ssl
+      - sync
+  - name: test-4.2-standalone-auth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: async
+          TEST_NAME: default_async
+    tags:
+      - "4.2"
+      - standalone
+      - auth
+      - ssl
+      - async
+  - name: test-4.2-standalone-auth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync_async
+    tags:
+      - "4.2"
+      - standalone
+      - auth
+      - ssl
+      - sync_async
+  - name: test-4.2-standalone-noauth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync
+          TEST_NAME: default_sync
+    tags:
+      - "4.2"
+      - standalone
+      - noauth
+      - ssl
+      - sync
+  - name: test-4.2-standalone-noauth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: async
+          TEST_NAME: default_async
+    tags:
+      - "4.2"
+      - standalone
+      - noauth
+      - ssl
+      - async
+  - name: test-4.2-standalone-noauth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync_async
+    tags:
+      - "4.2"
+      - standalone
+      - noauth
+      - ssl
+      - sync_async
+  - name: test-4.2-standalone-noauth-nossl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync
+          TEST_NAME: default_sync
+    tags:
+      - "4.2"
+      - standalone
+      - noauth
+      - nossl
+      - sync
+  - name: test-4.2-standalone-noauth-nossl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: async
+          TEST_NAME: default_async
+    tags:
+      - "4.2"
+      - standalone
+      - noauth
+      - nossl
+      - async
+  - name: test-4.2-standalone-noauth-nossl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: server
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync_async
+    tags:
+      - "4.2"
       - standalone
       - noauth
       - nossl
@@ -240,7 +439,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - standalone
@@ -260,7 +459,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - standalone
@@ -280,7 +479,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - standalone
@@ -300,7 +498,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - standalone
@@ -320,7 +518,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - standalone
@@ -340,7 +538,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - standalone
@@ -360,7 +557,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - standalone
@@ -380,7 +577,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - standalone
@@ -400,7 +597,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - standalone
@@ -420,7 +616,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - standalone
@@ -440,7 +636,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - standalone
@@ -460,7 +656,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - standalone
@@ -480,7 +675,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - standalone
@@ -500,7 +695,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - standalone
@@ -520,7 +715,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - standalone
@@ -540,7 +734,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - standalone
@@ -560,7 +754,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - standalone
@@ -580,7 +774,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - standalone
@@ -600,7 +793,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - standalone
@@ -620,7 +813,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - standalone
@@ -640,7 +833,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - standalone
@@ -660,7 +852,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - standalone
@@ -680,7 +872,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - standalone
@@ -700,7 +892,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - standalone
@@ -720,7 +911,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - standalone
@@ -740,7 +931,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - standalone
@@ -760,7 +951,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - standalone
@@ -780,7 +970,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - standalone
@@ -800,7 +990,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - standalone
@@ -820,7 +1010,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - standalone
@@ -840,7 +1029,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - standalone
@@ -860,7 +1049,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - standalone
@@ -880,7 +1069,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - standalone
@@ -900,7 +1088,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - standalone
@@ -920,7 +1108,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - standalone
@@ -940,7 +1128,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - standalone
@@ -960,7 +1147,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - standalone
@@ -980,7 +1167,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - standalone
@@ -1000,7 +1187,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - standalone
@@ -1020,7 +1206,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - standalone
@@ -1040,7 +1226,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - standalone
@@ -1060,7 +1246,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - standalone
@@ -1080,7 +1265,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - standalone
@@ -1100,7 +1285,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - standalone
@@ -1120,7 +1305,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - standalone
@@ -1140,7 +1324,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - standalone
@@ -1160,7 +1344,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - standalone
@@ -1180,7 +1364,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - standalone
@@ -1200,7 +1383,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - standalone
@@ -1220,7 +1403,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - standalone
@@ -1240,7 +1423,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - standalone
@@ -1260,7 +1442,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - standalone
@@ -1280,7 +1462,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - standalone
@@ -1300,7 +1482,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - standalone
@@ -1320,7 +1501,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - standalone
@@ -1340,7 +1521,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - standalone
@@ -1360,7 +1541,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - standalone
@@ -1380,7 +1560,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - standalone
@@ -1400,7 +1580,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - standalone
@@ -1420,7 +1600,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - standalone
@@ -1440,7 +1619,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - standalone
@@ -1460,7 +1639,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - standalone
@@ -1480,7 +1659,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - standalone
@@ -1500,7 +1678,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - replica_set
@@ -1520,7 +1698,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - replica_set
@@ -1540,7 +1718,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - replica_set
@@ -1560,7 +1737,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - replica_set
@@ -1580,7 +1757,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - replica_set
@@ -1600,7 +1777,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - replica_set
@@ -1620,7 +1796,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - replica_set
@@ -1640,7 +1816,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - replica_set
@@ -1660,9 +1836,185 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
+      - replica_set
+      - noauth
+      - nossl
+      - sync_async
+  - name: test-4.2-replica_set-auth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync
+          TEST_NAME: default_sync
+    tags:
+      - "4.2"
+      - replica_set
+      - auth
+      - ssl
+      - sync
+  - name: test-4.2-replica_set-auth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: async
+          TEST_NAME: default_async
+    tags:
+      - "4.2"
+      - replica_set
+      - auth
+      - ssl
+      - async
+  - name: test-4.2-replica_set-auth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync_async
+    tags:
+      - "4.2"
+      - replica_set
+      - auth
+      - ssl
+      - sync_async
+  - name: test-4.2-replica_set-noauth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync
+          TEST_NAME: default_sync
+    tags:
+      - "4.2"
+      - replica_set
+      - noauth
+      - ssl
+      - sync
+  - name: test-4.2-replica_set-noauth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: async
+          TEST_NAME: default_async
+    tags:
+      - "4.2"
+      - replica_set
+      - noauth
+      - ssl
+      - async
+  - name: test-4.2-replica_set-noauth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync_async
+    tags:
+      - "4.2"
+      - replica_set
+      - noauth
+      - ssl
+      - sync_async
+  - name: test-4.2-replica_set-noauth-nossl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync
+          TEST_NAME: default_sync
+    tags:
+      - "4.2"
+      - replica_set
+      - noauth
+      - nossl
+      - sync
+  - name: test-4.2-replica_set-noauth-nossl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: async
+          TEST_NAME: default_async
+    tags:
+      - "4.2"
+      - replica_set
+      - noauth
+      - nossl
+      - async
+  - name: test-4.2-replica_set-noauth-nossl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync_async
+    tags:
+      - "4.2"
       - replica_set
       - noauth
       - nossl
@@ -1680,7 +2032,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - replica_set
@@ -1700,7 +2052,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - replica_set
@@ -1720,7 +2072,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - replica_set
@@ -1740,7 +2091,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - replica_set
@@ -1760,7 +2111,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - replica_set
@@ -1780,7 +2131,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - replica_set
@@ -1800,7 +2150,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - replica_set
@@ -1820,7 +2170,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - replica_set
@@ -1840,7 +2190,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - replica_set
@@ -1860,7 +2209,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - replica_set
@@ -1880,7 +2229,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - replica_set
@@ -1900,7 +2249,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - replica_set
@@ -1920,7 +2268,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - replica_set
@@ -1940,7 +2288,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - replica_set
@@ -1960,7 +2308,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - replica_set
@@ -1980,7 +2327,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - replica_set
@@ -2000,7 +2347,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - replica_set
@@ -2020,7 +2367,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - replica_set
@@ -2040,7 +2386,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - replica_set
@@ -2060,7 +2406,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - replica_set
@@ -2080,7 +2426,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - replica_set
@@ -2100,7 +2445,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - replica_set
@@ -2120,7 +2465,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - replica_set
@@ -2140,7 +2485,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - replica_set
@@ -2160,7 +2504,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - replica_set
@@ -2180,7 +2524,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - replica_set
@@ -2200,7 +2544,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - replica_set
@@ -2220,7 +2563,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - replica_set
@@ -2240,7 +2583,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - replica_set
@@ -2260,7 +2603,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - replica_set
@@ -2280,7 +2622,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - replica_set
@@ -2300,7 +2642,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - replica_set
@@ -2320,7 +2662,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - replica_set
@@ -2340,7 +2681,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - replica_set
@@ -2360,7 +2701,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - replica_set
@@ -2380,7 +2721,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - replica_set
@@ -2400,7 +2740,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - replica_set
@@ -2420,7 +2760,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - replica_set
@@ -2440,7 +2780,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - replica_set
@@ -2460,7 +2799,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - replica_set
@@ -2480,7 +2819,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - replica_set
@@ -2500,7 +2839,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - replica_set
@@ -2520,7 +2858,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - replica_set
@@ -2540,7 +2878,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - replica_set
@@ -2560,7 +2898,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - replica_set
@@ -2580,7 +2917,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - replica_set
@@ -2600,7 +2937,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - replica_set
@@ -2620,7 +2957,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - replica_set
@@ -2640,7 +2976,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - replica_set
@@ -2660,7 +2996,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - replica_set
@@ -2680,7 +3016,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - replica_set
@@ -2700,7 +3035,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - replica_set
@@ -2720,7 +3055,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - replica_set
@@ -2740,7 +3075,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - replica_set
@@ -2760,7 +3094,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - replica_set
@@ -2780,7 +3114,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - replica_set
@@ -2800,7 +3134,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - replica_set
@@ -2820,7 +3153,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - replica_set
@@ -2840,7 +3173,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - replica_set
@@ -2860,7 +3193,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - replica_set
@@ -2880,7 +3212,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - replica_set
@@ -2900,7 +3232,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - replica_set
@@ -2920,7 +3252,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - replica_set
@@ -2940,7 +3271,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - sharded_cluster
@@ -2960,7 +3291,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - sharded_cluster
@@ -2980,7 +3311,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - sharded_cluster
@@ -3000,7 +3330,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - sharded_cluster
@@ -3020,7 +3350,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - sharded_cluster
@@ -3040,7 +3370,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - sharded_cluster
@@ -3060,7 +3389,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - sharded_cluster
@@ -3080,7 +3409,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - sharded_cluster
@@ -3100,9 +3429,185 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
+      - sharded_cluster
+      - noauth
+      - nossl
+      - sync_async
+  - name: test-4.2-sharded_cluster-auth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync
+          TEST_NAME: default_sync
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - auth
+      - ssl
+      - sync
+  - name: test-4.2-sharded_cluster-auth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: async
+          TEST_NAME: default_async
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - auth
+      - ssl
+      - async
+  - name: test-4.2-sharded_cluster-auth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          SYNC: sync_async
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - auth
+      - ssl
+      - sync_async
+  - name: test-4.2-sharded_cluster-noauth-ssl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync
+          TEST_NAME: default_sync
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - noauth
+      - ssl
+      - sync
+  - name: test-4.2-sharded_cluster-noauth-ssl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: async
+          TEST_NAME: default_async
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - noauth
+      - ssl
+      - async
+  - name: test-4.2-sharded_cluster-noauth-ssl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          SYNC: sync_async
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - noauth
+      - ssl
+      - sync_async
+  - name: test-4.2-sharded_cluster-noauth-nossl-sync
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync
+          TEST_NAME: default_sync
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - noauth
+      - nossl
+      - sync
+  - name: test-4.2-sharded_cluster-noauth-nossl-async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: async
+          TEST_NAME: default_async
+    tags:
+      - "4.2"
+      - sharded_cluster
+      - noauth
+      - nossl
+      - async
+  - name: test-4.2-sharded_cluster-noauth-nossl-sync_async
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          VERSION: "4.2"
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          SYNC: sync_async
+    tags:
+      - "4.2"
       - sharded_cluster
       - noauth
       - nossl
@@ -3120,7 +3625,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - sharded_cluster
@@ -3140,7 +3645,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - sharded_cluster
@@ -3160,7 +3665,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - sharded_cluster
@@ -3180,7 +3684,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - sharded_cluster
@@ -3200,7 +3704,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - sharded_cluster
@@ -3220,7 +3724,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - sharded_cluster
@@ -3240,7 +3743,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - sharded_cluster
@@ -3260,7 +3763,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - sharded_cluster
@@ -3280,7 +3783,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - sharded_cluster
@@ -3300,7 +3802,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - sharded_cluster
@@ -3320,7 +3822,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - sharded_cluster
@@ -3340,7 +3842,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - sharded_cluster
@@ -3360,7 +3861,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - sharded_cluster
@@ -3380,7 +3881,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - sharded_cluster
@@ -3400,7 +3901,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - sharded_cluster
@@ -3420,7 +3920,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - sharded_cluster
@@ -3440,7 +3940,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - sharded_cluster
@@ -3460,7 +3960,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - sharded_cluster
@@ -3480,7 +3979,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - sharded_cluster
@@ -3500,7 +3999,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - sharded_cluster
@@ -3520,7 +4019,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - sharded_cluster
@@ -3540,7 +4038,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - sharded_cluster
@@ -3560,7 +4058,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - sharded_cluster
@@ -3580,7 +4078,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - sharded_cluster
@@ -3600,7 +4097,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - sharded_cluster
@@ -3620,7 +4117,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - sharded_cluster
@@ -3640,7 +4137,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - sharded_cluster
@@ -3660,7 +4156,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - sharded_cluster
@@ -3680,7 +4176,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - sharded_cluster
@@ -3700,7 +4196,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - sharded_cluster
@@ -3720,7 +4215,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - sharded_cluster
@@ -3740,7 +4235,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - sharded_cluster
@@ -3760,7 +4255,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - sharded_cluster
@@ -3780,7 +4274,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - sharded_cluster
@@ -3800,7 +4294,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - sharded_cluster
@@ -3820,7 +4314,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - sharded_cluster
@@ -3840,7 +4333,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - sharded_cluster
@@ -3860,7 +4353,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - sharded_cluster
@@ -3880,7 +4373,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - sharded_cluster
@@ -3900,7 +4392,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - sharded_cluster
@@ -3920,7 +4412,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - sharded_cluster
@@ -3940,7 +4432,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - sharded_cluster
@@ -3960,7 +4451,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - sharded_cluster
@@ -3980,7 +4471,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - sharded_cluster
@@ -4000,7 +4491,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - sharded_cluster
@@ -4020,7 +4510,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - sharded_cluster
@@ -4040,7 +4530,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - sharded_cluster
@@ -4060,7 +4550,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - sharded_cluster
@@ -4080,7 +4569,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - sharded_cluster
@@ -4100,7 +4589,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - sharded_cluster
@@ -4120,7 +4609,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - sharded_cluster
@@ -4140,7 +4628,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - sharded_cluster
@@ -4160,7 +4648,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - sharded_cluster
@@ -4180,7 +4668,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - sharded_cluster
@@ -4200,7 +4687,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - sharded_cluster
@@ -4220,7 +4707,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - sharded_cluster
@@ -4240,7 +4727,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - sharded_cluster
@@ -4260,7 +4746,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - sharded_cluster
@@ -4280,7 +4766,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - sharded_cluster
@@ -4300,7 +4786,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - sharded_cluster
@@ -4320,7 +4805,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - sharded_cluster
@@ -4340,7 +4825,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - sharded_cluster
@@ -4360,7 +4845,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - sharded_cluster

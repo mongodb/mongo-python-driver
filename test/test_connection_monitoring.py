@@ -15,9 +15,11 @@
 """Execute Transactions Spec tests."""
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import time
+from pathlib import Path
 
 sys.path[0:0] = [""]
 
@@ -60,6 +62,8 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.pool import PoolState, _PoolClosedError
 from pymongo.topology_description import updated_topology_description
 
+_IS_SYNC = True
+
 OBJECT_TYPES = {
     # Event types.
     "ConnectionCheckedIn": ConnectionCheckedInEvent,
@@ -81,7 +85,10 @@ OBJECT_TYPES = {
 
 class TestCMAP(IntegrationTest):
     # Location of JSON test specifications.
-    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "connection_monitoring")
+    if _IS_SYNC:
+        TEST_PATH = os.path.join(Path(__file__).resolve().parent, "connection_monitoring")
+    else:
+        TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "connection_monitoring")
 
     # Test operations:
 
@@ -253,7 +260,6 @@ class TestCMAP(IntegrationTest):
                 client._topology.open()
             else:
                 client._get_topology()
-        self.addCleanup(client.close)
         self.pool = list(client._topology._servers.values())[0].pool
 
         # Map of target names to Thread objects.
@@ -310,13 +316,11 @@ class TestCMAP(IntegrationTest):
     #
     def test_1_client_connection_pool_options(self):
         client = self.rs_or_single_client(**self.POOL_OPTIONS)
-        self.addCleanup(client.close)
-        pool_opts = get_pool(client).opts
+        pool_opts = (get_pool(client)).opts
         self.assertEqual(pool_opts.non_default_options, self.POOL_OPTIONS)
 
     def test_2_all_client_pools_have_same_options(self):
         client = self.rs_or_single_client(**self.POOL_OPTIONS)
-        self.addCleanup(client.close)
         client.admin.command("ping")
         # Discover at least one secondary.
         if client_context.has_secondaries:
@@ -332,14 +336,12 @@ class TestCMAP(IntegrationTest):
         opts = "&".join([f"{k}={v}" for k, v in self.POOL_OPTIONS.items()])
         uri = f"mongodb://{client_context.pair}/?{opts}"
         client = self.rs_or_single_client(uri)
-        self.addCleanup(client.close)
-        pool_opts = get_pool(client).opts
+        pool_opts = (get_pool(client)).opts
         self.assertEqual(pool_opts.non_default_options, self.POOL_OPTIONS)
 
     def test_4_subscribe_to_events(self):
         listener = CMAPListener()
         client = self.single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
         self.assertEqual(listener.event_count(PoolCreatedEvent), 1)
 
         # Creates a new connection.
@@ -363,7 +365,6 @@ class TestCMAP(IntegrationTest):
     def test_5_check_out_fails_connection_error(self):
         listener = CMAPListener()
         client = self.single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
         pool = get_pool(client)
 
         def mock_connect(*args, **kwargs):
@@ -392,7 +393,6 @@ class TestCMAP(IntegrationTest):
         client = self.single_client_noauth(
             username="notauser", password="fail", event_listeners=[listener]
         )
-        self.addCleanup(client.close)
 
         # Attempt to create a new connection.
         with self.assertRaisesRegex(OperationFailure, "failed"):

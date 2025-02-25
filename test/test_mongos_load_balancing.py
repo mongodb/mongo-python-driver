@@ -15,8 +15,10 @@
 """Test MongoClient's mongos load balancing using a mock."""
 from __future__ import annotations
 
+import asyncio
 import sys
 import threading
+from test.helpers import ConcurrentRunner
 
 from pymongo.operations import _Op
 
@@ -30,14 +32,10 @@ from pymongo.errors import AutoReconnect, InvalidOperation
 from pymongo.server_selectors import writable_server_selector
 from pymongo.topology_description import TOPOLOGY_TYPE
 
-
-@client_context.require_connection
-@client_context.require_no_load_balancer
-def setUpModule():
-    pass
+_IS_SYNC = True
 
 
-class SimpleOp(threading.Thread):
+class SimpleOp(ConcurrentRunner):
     def __init__(self, client):
         super().__init__()
         self.client = client
@@ -48,15 +46,15 @@ class SimpleOp(threading.Thread):
         self.passed = True  # No exception raised.
 
 
-def do_simple_op(client, nthreads):
-    threads = [SimpleOp(client) for _ in range(nthreads)]
-    for t in threads:
+def do_simple_op(client, ntasks):
+    tasks = [SimpleOp(client) for _ in range(ntasks)]
+    for t in tasks:
         t.start()
 
-    for t in threads:
+    for t in tasks:
         t.join()
 
-    for t in threads:
+    for t in tasks:
         assert t.passed
 
 
@@ -68,6 +66,11 @@ def writable_addresses(topology):
 
 
 class TestMongosLoadBalancing(MockClientTest):
+    @client_context.require_connection
+    @client_context.require_no_load_balancer
+    def setUp(self):
+        super().setUp()
+
     def mock_client(self, **kwargs):
         mock_client = MockClient(
             standalones=[],
@@ -98,7 +101,7 @@ class TestMongosLoadBalancing(MockClientTest):
         wait_until(lambda: len(client.nodes) == 3, "connect to all mongoses")
 
     def test_failover(self):
-        nthreads = 10
+        ntasks = 10
         client = connected(self.mock_client(localThresholdMS=0.001))
         wait_until(lambda: len(client.nodes) == 3, "connect to all mongoses")
 
@@ -118,14 +121,14 @@ class TestMongosLoadBalancing(MockClientTest):
 
             passed.append(True)
 
-        threads = [threading.Thread(target=f) for _ in range(nthreads)]
-        for t in threads:
+        tasks = [ConcurrentRunner(target=f) for _ in range(ntasks)]
+        for t in tasks:
             t.start()
 
-        for t in threads:
+        for t in tasks:
             t.join()
 
-        self.assertEqual(nthreads, len(passed))
+        self.assertEqual(ntasks, len(passed))
 
         # Down host removed from list.
         self.assertEqual(2, len(client.nodes))
@@ -183,8 +186,11 @@ class TestMongosLoadBalancing(MockClientTest):
         client.mock_rtts["a:1"] = 0.045
 
         # Discover only b is within latency window.
+        def predicate():
+            return {("b", 2)} == writable_addresses(topology)
+
         wait_until(
-            lambda: {("b", 2)} == writable_addresses(topology),
+            predicate,
             'discover server "a" is too far',
         )
 

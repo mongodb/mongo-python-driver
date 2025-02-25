@@ -178,7 +178,7 @@ documentation including narrative docs, and the [Sphinx docstring format](https:
 You can build the documentation locally by running:
 
 ```bash
-just docs-build
+just docs
 ```
 
 When updating docs, it can be helpful to run the live docs server as:
@@ -211,18 +211,18 @@ the pages will re-render and the browser will automatically refresh.
     `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
 -   Start the servers using
     `LOAD_BALANCER=true TOPOLOGY=sharded_cluster AUTH=noauth SSL=nossl MONGODB_VERSION=6.0 DRIVERS_TOOLS=$PWD/drivers-evergreen-tools MONGO_ORCHESTRATION_HOME=$PWD/drivers-evergreen-tools/.evergreen/orchestration $PWD/drivers-evergreen-tools/.evergreen/run-orchestration.sh`.
--   Start the load balancer using:
-    `MONGODB_URI='mongodb://localhost:27017,localhost:27018/' $PWD/drivers-evergreen-tools/.evergreen/run-load-balancer.sh start`.
+-   Set up the test using:
+    `MONGODB_URI='mongodb://localhost:27017,localhost:27018/' just setup-tests load-balancer`.
 -   Run the tests from the `pymongo` checkout directory using:
-    `TEST_LOADBALANCER=1 just test-eg`.
+    `just run-tests`.
 
 ## Running Encryption Tests Locally
 - Clone `drivers-evergreen-tools`:
   `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
 - Run `export DRIVERS_TOOLS=$PWD/drivers-evergreen-tools`
-- Run `AWS_PROFILE=<profile> just setup-encryption` after setting up your AWS profile with `aws configure sso`.
-- Run the tests with `TEST_ENCRYPTION=1 just test-eg`.
-- When done, run `just teardown-encryption` to clean up.
+- Run `AWS_PROFILE=<profile> just setup-tests encryption` after setting up your AWS profile with `aws configure sso`.
+- Run the tests with `just run-tests`.
+- When done, run `just teardown-tests` to clean up.
 
 ## Re-sync Spec Tests
 
@@ -260,6 +260,11 @@ You can run `pre-commit run --all-files synchro` before running tests if you are
 To prevent the `synchro` hook from accidentally overwriting code, it first checks to see whether a sync version
 of a file is changing and not its async counterpart, and will fail.
 In the unlikely scenario that you want to override this behavior, first export `OVERRIDE_SYNCHRO_CHECK=1`.
+
+Sometimes, the `synchro` hook will fail and introduce changes many previously unmodified files. This is due to static
+Python errors, such as missing imports, incorrect syntax, or other fatal typos. To resolve these issues,
+run `pre-commit run --all-files --hook-stage manual ruff` and fix all reported errors before running the `synchro`
+hook again.
 
 ## Converting a test to async
 The `tools/convert_test_to_async.py` script takes in an existing synchronous test file and outputs a
