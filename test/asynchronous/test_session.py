@@ -15,10 +15,13 @@
 """Test the client_session module."""
 from __future__ import annotations
 
+import asyncio
 import copy
 import sys
 import time
+from asyncio import iscoroutinefunction
 from io import BytesIO
+from test.asynchronous.helpers import ExceptionCatchingTask
 from typing import Any, Callable, List, Set, Tuple
 
 from pymongo.synchronous.mongo_client import MongoClient
@@ -36,7 +39,6 @@ from test.asynchronous import (
 from test.asynchronous.helpers import client_knobs
 from test.utils import (
     EventListener,
-    ExceptionCatchingThread,
     HeartbeatEventListener,
     OvertCommandListener,
     async_wait_until,
@@ -186,8 +188,7 @@ class TestSession(AsyncIntegrationTest):
                         f"{f.__name__} did not return implicit session to pool",
                     )
 
-    @async_client_context.require_sync
-    def test_implicit_sessions_checkout(self):
+    async def test_implicit_sessions_checkout(self):
         # "To confirm that implicit sessions only allocate their server session after a
         # successful connection checkout" test from Driver Sessions Spec.
         succeeded = False
@@ -195,7 +196,7 @@ class TestSession(AsyncIntegrationTest):
         failures = 0
         for _ in range(5):
             listener = OvertCommandListener()
-            client = self.async_rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
+            client = await self.async_rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
             cursor = client.db.test.find({})
             ops: List[Tuple[Callable, List[Any]]] = [
                 (client.db.test.find_one, [{"_id": 1}]),
@@ -212,26 +213,27 @@ class TestSession(AsyncIntegrationTest):
                 (cursor.distinct, ["_id"]),
                 (client.db.list_collections, []),
             ]
-            threads = []
+            tasks = []
             listener.reset()
 
-            def thread_target(op, *args):
-                res = op(*args)
+            async def target(op, *args):
+                if iscoroutinefunction(op):
+                    res = await op(*args)
+                else:
+                    res = op(*args)
                 if isinstance(res, (AsyncCursor, AsyncCommandCursor)):
-                    list(res)  # type: ignore[call-overload]
+                    await res.to_list()
 
             for op, args in ops:
-                threads.append(
-                    ExceptionCatchingThread(
-                        target=thread_target, args=[op, *args], name=op.__name__
-                    )
+                tasks.append(
+                    ExceptionCatchingTask(target=target, args=[op, *args], name=op.__name__)
                 )
-                threads[-1].start()
-            self.assertEqual(len(threads), len(ops))
-            for thread in threads:
-                thread.join()
-                self.assertIsNone(thread.exc)
-            client.close()
+                await tasks[-1].start()
+            self.assertEqual(len(tasks), len(ops))
+            for t in tasks:
+                await t.join()
+                self.assertIsNone(t.exc)
+            await client.close()
             lsid_set.clear()
             for i in listener.started_events:
                 if i.command.get("lsid"):

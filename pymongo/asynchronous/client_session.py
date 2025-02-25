@@ -21,7 +21,7 @@ Causally Consistent Reads
 
 .. code-block:: python
 
-  with client.start_session(causal_consistency=True) as session:
+  async with client.start_session(causal_consistency=True) as session:
       collection = client.db.collection
       await collection.update_one({"_id": 1}, {"$set": {"x": 10}}, session=session)
       secondary_c = collection.with_options(read_preference=ReadPreference.SECONDARY)
@@ -53,8 +53,8 @@ operation:
 
   orders = client.db.orders
   inventory = client.db.inventory
-  with client.start_session() as session:
-      async with session.start_transaction():
+  async with client.start_session() as session:
+      async with await session.start_transaction():
           await orders.insert_one({"sku": "abc123", "qty": 100}, session=session)
           await inventory.update_one(
               {"sku": "abc123", "qty": {"$gte": 100}},
@@ -62,7 +62,7 @@ operation:
               session=session,
           )
 
-Upon normal completion of ``async with session.start_transaction()`` block, the
+Upon normal completion of ``async with await session.start_transaction()`` block, the
 transaction automatically calls :meth:`AsyncClientSession.commit_transaction`.
 If the block exits with an exception, the transaction automatically calls
 :meth:`AsyncClientSession.abort_transaction`.
@@ -113,7 +113,7 @@ replica set secondaries.
 .. code-block:: python
 
   # Each read using this session reads data from the same point in time.
-  with client.start_session(snapshot=True) as session:
+  async with client.start_session(snapshot=True) as session:
       order = await orders.find_one({"sku": "abc123"}, session=session)
       inventory = await inventory.find_one({"sku": "abc123"}, session=session)
 
@@ -310,7 +310,9 @@ class TransactionOptions:
                 )
         if max_commit_time_ms is not None:
             if not isinstance(max_commit_time_ms, int):
-                raise TypeError("max_commit_time_ms must be an integer or None")
+                raise TypeError(
+                    f"max_commit_time_ms must be an integer or None, not {type(max_commit_time_ms)}"
+                )
 
     @property
     def read_concern(self) -> Optional[ReadConcern]:
@@ -617,7 +619,7 @@ class AsyncClientSession:
               await inventory.update_one({"sku": "abc123", "qty": {"$gte": 100}},
                                    {"$inc": {"qty": -100}}, session=session)
 
-          with client.start_session() as session:
+          async with client.start_session() as session:
               await session.with_transaction(callback)
 
         To pass arbitrary arguments to the ``callback``, wrap your callable
@@ -626,7 +628,7 @@ class AsyncClientSession:
           async def callback(session, custom_arg, custom_kwarg=None):
               # Transaction operations...
 
-          with client.start_session() as session:
+          async with client.start_session() as session:
               await session.with_transaction(
                   lambda s: callback(s, "custom_arg", custom_kwarg=1))
 
@@ -695,7 +697,8 @@ class AsyncClientSession:
             )
             try:
                 ret = await callback(self)
-            except Exception as exc:
+            # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
+            except BaseException as exc:
                 if self.in_transaction:
                     await self.abort_transaction()
                 if (
@@ -902,7 +905,9 @@ class AsyncClientSession:
             another `AsyncClientSession` instance.
         """
         if not isinstance(cluster_time, _Mapping):
-            raise TypeError("cluster_time must be a subclass of collections.Mapping")
+            raise TypeError(
+                f"cluster_time must be a subclass of collections.Mapping, not {type(cluster_time)}"
+            )
         if not isinstance(cluster_time.get("clusterTime"), Timestamp):
             raise ValueError("Invalid cluster_time")
         self._advance_cluster_time(cluster_time)
@@ -923,7 +928,9 @@ class AsyncClientSession:
             another `AsyncClientSession` instance.
         """
         if not isinstance(operation_time, Timestamp):
-            raise TypeError("operation_time must be an instance of bson.timestamp.Timestamp")
+            raise TypeError(
+                f"operation_time must be an instance of bson.timestamp.Timestamp, not {type(operation_time)}"
+            )
         self._advance_operation_time(operation_time)
 
     def _process_response(self, reply: Mapping[str, Any]) -> None:

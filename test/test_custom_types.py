@@ -23,10 +23,11 @@ from decimal import Decimal
 from random import random
 from typing import Any, Tuple, Type, no_type_check
 
+from gridfs.synchronous.grid_file import GridIn, GridOut
+
 sys.path[0:0] = [""]
 
-from test import client_context, unittest
-from test.test_client import IntegrationTest
+from test import IntegrationTest, client_context, unittest
 
 from bson import (
     _BUILT_IN_TYPES,
@@ -50,10 +51,12 @@ from bson.codec_options import (
 from bson.errors import InvalidDocument
 from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
-from gridfs import GridIn, GridOut
 from pymongo.errors import DuplicateKeyError
 from pymongo.message import _CursorAddress
 from pymongo.synchronous.collection import ReturnDocument
+from pymongo.synchronous.helpers import next
+
+_IS_SYNC = True
 
 
 class DecimalEncoder(TypeEncoder):
@@ -707,7 +710,7 @@ class TestCollectionWCustomType(IntegrationTest):
         ]
         result = test.aggregate(pipeline)
 
-        res = list(result)[0]
+        res = (result.to_list())[0]
         self.assertEqual(res["_id"], "complete")
         self.assertIsInstance(res["total_qty"], UndecipherableInt64Type)
         self.assertEqual(res["total_qty"].value, 20)
@@ -774,6 +777,7 @@ class TestGridFileCustomType(IntegrationTest):
         one.close()
 
         two = GridOut(db.fs, 5)
+        two.open()
 
         self.assertEqual("my_file", two.name)
         self.assertEqual("my_file", two.filename)
@@ -970,7 +974,6 @@ class TestClusterChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustom
             kwargs["type_registry"] = codec_options.type_registry
             kwargs["document_class"] = codec_options.document_class
         self.watched_target = self.rs_client(*args, **kwargs)
-        self.addCleanup(self.watched_target.close)
         self.input_target = self.watched_target[self.db.name].test
         # Insert a record to ensure db, coll are created.
         self.input_target.insert_one({"data": "dummy"})

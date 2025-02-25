@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import queue
@@ -61,7 +62,7 @@ from pymongo.server_selectors import (
     writable_server_selector,
 )
 from pymongo.synchronous.client_session import _ServerSession, _ServerSessionPool
-from pymongo.synchronous.monitor import SrvMonitor
+from pymongo.synchronous.monitor import MonitorBase, SrvMonitor
 from pymongo.synchronous.pool import Pool
 from pymongo.synchronous.server import Server
 from pymongo.topology_description import (
@@ -207,6 +208,9 @@ class Topology:
         if self._settings.fqdn is not None and not self._settings.load_balanced:
             self._srv_monitor = SrvMonitor(self, self._settings)
 
+        # Stores all monitor tasks that need to be joined on close or server selection
+        self._monitor_tasks: list[MonitorBase] = []
+
     def open(self) -> None:
         """Start monitoring, or restart after a fork.
 
@@ -241,6 +245,8 @@ class Topology:
                 # Close servers and clear the pools.
                 for server in self._servers.values():
                     server.close()
+                    if not _IS_SYNC:
+                        self._monitor_tasks.append(server._monitor)
                 # Reset the session pool to avoid duplicate sessions in
                 # the child process.
                 self._session_pool.reset()
@@ -282,6 +288,10 @@ class Topology:
             server_timeout = self.get_server_selection_timeout()
         else:
             server_timeout = server_selection_timeout
+
+        # Cleanup any completed monitor tasks safely
+        if not _IS_SYNC and self._monitor_tasks:
+            self.cleanup_monitors()
 
         with self._lock:
             server_descriptions = self._select_servers_loop(
@@ -521,6 +531,8 @@ class Topology:
             and self._description.topology_type not in SRV_POLLING_TOPOLOGIES
         ):
             self._srv_monitor.close()
+            if not _IS_SYNC:
+                self._monitor_tasks.append(self._srv_monitor)
 
         # Clear the pool from a failed heartbeat.
         if reset_pool:
@@ -694,6 +706,8 @@ class Topology:
             old_td = self._description
             for server in self._servers.values():
                 server.close()
+                if not _IS_SYNC:
+                    self._monitor_tasks.append(server._monitor)
 
             # Mark all servers Unknown.
             self._description = self._description.reset()
@@ -704,6 +718,8 @@ class Topology:
             # Stop SRV polling thread.
             if self._srv_monitor:
                 self._srv_monitor.close()
+                if not _IS_SYNC:
+                    self._monitor_tasks.append(self._srv_monitor)
 
             self._opened = False
             self._closed = True
@@ -943,6 +959,8 @@ class Topology:
         for address, server in list(self._servers.items()):
             if not self._description.has_server(address):
                 server.close()
+                if not _IS_SYNC:
+                    self._monitor_tasks.append(server._monitor)
                 self._servers.pop(address)
 
     def _create_pool_for_server(self, address: _Address) -> Pool:
@@ -1029,6 +1047,15 @@ class Topology:
                 return str(error)
             else:
                 return ",".join(str(server.error) for server in servers if server.error)
+
+    def cleanup_monitors(self) -> None:
+        tasks = []
+        try:
+            while self._monitor_tasks:
+                tasks.append(self._monitor_tasks.pop())
+        except IndexError:
+            pass
+        asyncio.gather(*[t.join() for t in tasks], return_exceptions=True)  # type: ignore[func-returns-value]
 
     def __repr__(self) -> str:
         msg = ""

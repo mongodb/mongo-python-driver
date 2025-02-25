@@ -112,9 +112,9 @@ class MonitorBase:
         """
         self.gc_safe_close()
 
-    async def join(self, timeout: Optional[int] = None) -> None:
+    async def join(self) -> None:
         """Wait for the monitor to stop."""
-        await self._executor.join(timeout)
+        await self._executor.join()
 
     def request_check(self) -> None:
         """If the monitor is sleeping, wake it soon."""
@@ -188,6 +188,11 @@ class Monitor(MonitorBase):
         self._executor.close()
         self._rtt_monitor.gc_safe_close()
         self.cancel_check()
+
+    async def join(self) -> None:
+        await asyncio.gather(
+            self._executor.join(), self._rtt_monitor.join(), return_exceptions=True
+        )  # type: ignore[func-returns-value]
 
     async def close(self) -> None:
         self.gc_safe_close()
@@ -417,8 +422,6 @@ class SrvMonitor(MonitorBase):
             if len(seedlist) == 0:
                 # As per the spec: this should be treated as a failure.
                 raise Exception
-        except asyncio.CancelledError:
-            raise
         except Exception:
             # As per the spec, upon encountering an error:
             # - An error must not be raised
@@ -482,8 +485,6 @@ class _RttMonitor(MonitorBase):
         except ReferenceError:
             # Topology was garbage-collected.
             await self.close()
-        except asyncio.CancelledError:
-            raise
         except Exception:
             await self._pool.reset()
 

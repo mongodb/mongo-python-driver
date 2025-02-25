@@ -15,10 +15,13 @@
 """Test the client_session module."""
 from __future__ import annotations
 
+import asyncio
 import copy
 import sys
 import time
+from asyncio import iscoroutinefunction
 from io import BytesIO
+from test.helpers import ExceptionCatchingTask
 from typing import Any, Callable, List, Set, Tuple
 
 from pymongo.synchronous.mongo_client import MongoClient
@@ -36,7 +39,6 @@ from test import (
 from test.helpers import client_knobs
 from test.utils import (
     EventListener,
-    ExceptionCatchingThread,
     HeartbeatEventListener,
     OvertCommandListener,
     wait_until,
@@ -186,7 +188,6 @@ class TestSession(IntegrationTest):
                         f"{f.__name__} did not return implicit session to pool",
                     )
 
-    @client_context.require_sync
     def test_implicit_sessions_checkout(self):
         # "To confirm that implicit sessions only allocate their server session after a
         # successful connection checkout" test from Driver Sessions Spec.
@@ -212,25 +213,26 @@ class TestSession(IntegrationTest):
                 (cursor.distinct, ["_id"]),
                 (client.db.list_collections, []),
             ]
-            threads = []
+            tasks = []
             listener.reset()
 
-            def thread_target(op, *args):
-                res = op(*args)
+            def target(op, *args):
+                if iscoroutinefunction(op):
+                    res = op(*args)
+                else:
+                    res = op(*args)
                 if isinstance(res, (Cursor, CommandCursor)):
-                    list(res)  # type: ignore[call-overload]
+                    res.to_list()
 
             for op, args in ops:
-                threads.append(
-                    ExceptionCatchingThread(
-                        target=thread_target, args=[op, *args], name=op.__name__
-                    )
+                tasks.append(
+                    ExceptionCatchingTask(target=target, args=[op, *args], name=op.__name__)
                 )
-                threads[-1].start()
-            self.assertEqual(len(threads), len(ops))
-            for thread in threads:
-                thread.join()
-                self.assertIsNone(thread.exc)
+                tasks[-1].start()
+            self.assertEqual(len(tasks), len(ops))
+            for t in tasks:
+                t.join()
+                self.assertIsNone(t.exc)
             client.close()
             lsid_set.clear()
             for i in listener.started_events:

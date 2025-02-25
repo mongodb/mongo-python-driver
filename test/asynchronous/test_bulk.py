@@ -961,7 +961,6 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     async def test_write_concern_failure_ordered(self):
-        self.skipTest("Skipping until PYTHON-4865 is resolved.")
         details = None
 
         # Ensure we don't raise on wnote.

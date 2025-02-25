@@ -420,3 +420,10 @@ the collection:
    DuplicateKeyError: E11000 duplicate key error index: test_database.profiles.$user_id_1 dup key: { : 212 }
 
 .. seealso:: The MongoDB documentation on `indexes <https://www.mongodb.com/docs/manual/indexes/>`_
+
+Task Cancellation
+-----------------
+`Cancelling <https://docs.python.org/3/library/asyncio-task.html#task-cancellation>`_ an asyncio Task
+that is running a PyMongo operation is treated as a fatal interrupt. Any connections, cursors, and transactions
+involved in a cancelled Task will be safely closed and cleaned up as part of the cancellation. If those resources are
+also used elsewhere, attempting to utilize them after the cancellation will result in an error.

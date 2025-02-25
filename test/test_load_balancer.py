@@ -15,10 +15,14 @@
 """Test the Load Balancer unified spec tests."""
 from __future__ import annotations
 
+import asyncio
 import gc
 import os
+import pathlib
 import sys
 import threading
+from asyncio import Event
+from test.helpers import ConcurrentRunner, ExceptionCatchingTask
 
 import pytest
 
@@ -26,15 +30,26 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
-from test.utils import ExceptionCatchingThread, get_pool, wait_until
+from test.utils import (
+    create_event,
+    get_pool,
+    wait_until,
+)
+
+from pymongo.synchronous.helpers import next
+
+_IS_SYNC = True
 
 pytestmark = pytest.mark.load_balancer
 
 # Location of JSON test specifications.
-TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "load_balancer")
+if _IS_SYNC:
+    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "load_balancer")
+else:
+    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "load_balancer")
 
 # Generate unified tests.
-globals().update(generate_test_classes(TEST_PATH, module=__name__))
+globals().update(generate_test_classes(_TEST_PATH, module=__name__))
 
 
 class TestLB(IntegrationTest):
@@ -49,13 +64,12 @@ class TestLB(IntegrationTest):
         n_conns = len(pool.conns)
         self.db.test.find_one({})
         self.assertEqual(len(pool.conns), n_conns)
-        list(self.db.test.aggregate([{"$limit": 1}]))
+        (self.db.test.aggregate([{"$limit": 1}])).to_list()
         self.assertEqual(len(pool.conns), n_conns)
 
     @client_context.require_load_balancer
     def test_unpin_committed_transaction(self):
         client = self.rs_client()
-        self.addCleanup(client.close)
         pool = get_pool(client)
         coll = client[self.db.name].test
         with client.start_session() as session:
@@ -86,7 +100,6 @@ class TestLB(IntegrationTest):
 
     def _test_no_gc_deadlock(self, create_resource):
         client = self.rs_client()
-        self.addCleanup(client.close)
         pool = get_pool(client)
         coll = client[self.db.name].test
         coll.insert_many([{} for _ in range(10)])
@@ -104,19 +117,19 @@ class TestLB(IntegrationTest):
             if client_context.load_balancer:
                 self.assertEqual(pool.active_sockets, 1)  # Pinned.
 
-        thread = PoolLocker(pool)
-        thread.start()
-        self.assertTrue(thread.locked.wait(5), "timed out")
+        task = PoolLocker(pool)
+        task.start()
+        self.assertTrue(task.wait(task.locked, 5), "timed out")
         # Garbage collect the resource while the pool is locked to ensure we
         # don't deadlock.
         del resource
         # On PyPy it can take a few rounds to collect the cursor.
         for _ in range(3):
             gc.collect()
-        thread.unlock.set()
-        thread.join(5)
-        self.assertFalse(thread.is_alive())
-        self.assertIsNone(thread.exc)
+        task.unlock.set()
+        task.join(5)
+        self.assertFalse(task.is_alive())
+        self.assertIsNone(task.exc)
 
         wait_until(lambda: pool.active_sockets == 0, "return socket")
         # Run another operation to ensure the socket still works.
@@ -125,7 +138,6 @@ class TestLB(IntegrationTest):
     @client_context.require_transactions
     def test_session_gc(self):
         client = self.rs_client()
-        self.addCleanup(client.close)
         pool = get_pool(client)
         session = client.start_session()
         session.start_transaction()
@@ -137,40 +149,50 @@ class TestLB(IntegrationTest):
         if client_context.load_balancer:
             self.assertEqual(pool.active_sockets, 1)  # Pinned.
 
-        thread = PoolLocker(pool)
-        thread.start()
-        self.assertTrue(thread.locked.wait(5), "timed out")
+        task = PoolLocker(pool)
+        task.start()
+        self.assertTrue(task.wait(task.locked, 5), "timed out")
         # Garbage collect the session while the pool is locked to ensure we
         # don't deadlock.
         del session
         # On PyPy it can take a few rounds to collect the session.
         for _ in range(3):
             gc.collect()
-        thread.unlock.set()
-        thread.join(5)
-        self.assertFalse(thread.is_alive())
-        self.assertIsNone(thread.exc)
+        task.unlock.set()
+        task.join(5)
+        self.assertFalse(task.is_alive())
+        self.assertIsNone(task.exc)
 
         wait_until(lambda: pool.active_sockets == 0, "return socket")
         # Run another operation to ensure the socket still works.
         client[self.db.name].test.delete_many({})
 
 
-class PoolLocker(ExceptionCatchingThread):
+class PoolLocker(ExceptionCatchingTask):
     def __init__(self, pool):
         super().__init__(target=self.lock_pool)
         self.pool = pool
         self.daemon = True
-        self.locked = threading.Event()
-        self.unlock = threading.Event()
+        self.locked = create_event()
+        self.unlock = create_event()
 
     def lock_pool(self):
         with self.pool.lock:
             self.locked.set()
             # Wait for the unlock flag.
-            unlock_pool = self.unlock.wait(10)
+            unlock_pool = self.wait(self.unlock, 10)
             if not unlock_pool:
                 raise Exception("timed out waiting for unlock signal: deadlock?")
+
+    def wait(self, event: Event, timeout: int):
+        if _IS_SYNC:
+            return event.wait(timeout)  # type: ignore[call-arg]
+        else:
+            try:
+                asyncio.wait_for(event.wait(), timeout=timeout)
+            except asyncio.TimeoutError:
+                return False
+            return True
 
 
 if __name__ == "__main__":

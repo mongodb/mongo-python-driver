@@ -29,7 +29,5 @@ else
     exit 1
 fi
 
-export TEST_AUTH_OIDC=1
-export COVERAGE=1
-export AUTH="auth"
+COVERAGE=1 bash ./.evergreen/just.sh setup-test auth_oidc
 bash ./.evergreen/just.sh test-eg "${@:1}"
