@@ -23,7 +23,7 @@ else
   echo "Missing test inputs, please run 'just setup-tests'"
 fi
 
-# Start the test runner.
+# Teardown the test runner.
 uv run $SCRIPT_DIR/teardown_tests.py
 
 popd > /dev/null
