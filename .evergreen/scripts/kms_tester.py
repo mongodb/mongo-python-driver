@@ -46,11 +46,12 @@ def _create_archive() -> None:
     run_command(f"git archive -o {TMP_DRIVER_FILE} HEAD", cwd=ROOT)
 
 
-def _load_kms_config(sub_test_target: str) -> None:
+def _load_kms_config(sub_test_target: str) -> dict[str, str]:
     config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
     base_env = os.environ.copy()
     for key, value in config.items():
         base_env[key] = str(value)
+    return base_env
 
 
 def setup_kms(sub_test_name: str) -> None:
