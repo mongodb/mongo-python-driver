@@ -40,10 +40,17 @@ def _setup_gcp_vm(base_env: dict[str, str]) -> None:
     LOGGER.info("Setting up GCP VM...")
 
 
-def _create_archive():
+def _create_archive() -> None:
     run_command("git add .", cwd=ROOT)
     run_command('git commit -m "add files"', check=False, cwd=ROOT)
     run_command(f"git archive -o {TMP_DRIVER_FILE} HEAD", cwd=ROOT)
+
+
+def _load_kms_config(sub_test_target: str) -> None:
+    config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
+    base_env = os.environ.copy()
+    for key, value in config.items():
+        base_env[key] = str(value)
 
 
 def setup_kms(sub_test_name: str) -> None:
@@ -73,10 +80,7 @@ def setup_kms(sub_test_name: str) -> None:
         if sub_test_target == "azure":
             os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
         run_command(f"{CSFLE_FOLDER}/{sub_test_target}kms/setup.sh")
-        config = read_env(f"{CSFLE_FOLDER}/{sub_test_target}kms/secrets-export.sh")
-        base_env = os.environ.copy()
-        for key, value in config.items():
-            base_env[key] = str(value)
+        base_env = _load_kms_config(sub_test_target)
 
         if sub_test_target == "azure":
             _setup_azure_vm(base_env)
@@ -91,17 +95,16 @@ def setup_kms(sub_test_name: str) -> None:
 
 
 def test_kms_vm(sub_test_name: str) -> None:
-    env = os.environ.copy()
+    env = _load_kms_config(sub_test_name)
     if sub_test_name == "azure":
         key_name = os.environ["KEY_NAME"]
         key_vault_endpoint = os.environ["KEY_VAULT_ENDPOINT"]
         env[
             "AZUREKMS_CMD"
         ] = f'KEY_NAME="{key_name}" KEY_VAULT_ENDPOINT="{key_vault_endpoint}" bash ./.evergreen/just.sh run-tests'
-        cmd = f"{CSFLE_FOLDER}/azurekms/run-command.sh"
     else:
         env["GCPKMS_CMD"] = "./.evergreen/just.sh run-tests"
-        cmd = f"{CSFLE_FOLDER}/gcpkms/run-command.sh"
+    cmd = f"{CSFLE_FOLDER}/{sub_test_name}kms/run-command.sh"
     run_command(cmd, env=env)
 
 
