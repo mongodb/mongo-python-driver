@@ -189,7 +189,7 @@ Issues Resolved
 See the `PyMongo 4.9 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _Is PyMongo Fork-Safe : https://www.mongodb.com/docs/languages/python/pymongo-driver/current/faq/#is-pymongo-fork-safe-
+.. _Is PyMongo Fork-Safe: https://www.mongodb.com/docs/languages/python/pymongo-driver/current/troubleshooting/#forking-a-process-causes-a-deadlock
 .. _PyMongo 4.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39940
 
 
