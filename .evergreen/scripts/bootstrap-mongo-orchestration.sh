@@ -2,15 +2,19 @@
 
 set -eu
 
+HERE=$(dirname ${BASH_SOURCE:-$0})
+HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
+ROOT=$(dirname "$(dirname $HERE)")
+
 if [ -z "${TEST_CRYPT_SHARED:-}" ]; then
     export SKIP_CRYPT_SHARED=1
 fi
 
 # Override the tls files if applicable.
 if [ "${SSL:-}" == "ssl" ]; then
-    export TLS_CERT_KEY_FILE=${PROJECT_DIRECTORY}/test/certificates/client.pem
-    export TLS_PEM_KEY_FILE=${PROJECT_DIRECTORY}/test/certificates/server.pem
-    export TLS_CA_FILE=${PROJECT_DIRECTORY}/test/certificates/ca.pem
+    export TLS_CERT_KEY_FILE=${ROOT}/test/certificates/client.pem
+    export TLS_PEM_KEY_FILE=${ROOT}/test/certificates/server.pem
+    export TLS_CA_FILE=${ROOT}/test/certificates/ca.pem
 fi
 
 MONGODB_VERSION=${VERSION:-} \
