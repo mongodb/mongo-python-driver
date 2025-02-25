@@ -82,7 +82,7 @@ def setup_kms(sub_test_name: str) -> None:
         if sub_test_target == "azure":
             os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
 
-        run_command("setup.sh", cwd=kms_dir)
+        run_command("./setup.sh", cwd=kms_dir)
         base_env = _load_kms_config(sub_test_target)
 
         if sub_test_target == "azure":
@@ -91,7 +91,7 @@ def setup_kms(sub_test_name: str) -> None:
             _setup_gcp_vm(base_env)
 
     if sub_test_target == "azure":
-        run_command("setup-secrets.sh", cwd=kms_dir)
+        run_command("./setup-secrets.sh", cwd=kms_dir)
         config = read_env(f"{kms_dir}/secrets-export.sh")
         write_env("KEY_NAME", config["AZUREKMS_KEYNAME"])
         write_env("KEY_VAULT_ENDPOINT", config["AZUREKMS_KEYVAULTENDPOINT"])
