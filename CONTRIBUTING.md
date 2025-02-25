@@ -212,17 +212,17 @@ the pages will re-render and the browser will automatically refresh.
 -   Start the servers using
     `LOAD_BALANCER=true TOPOLOGY=sharded_cluster AUTH=noauth SSL=nossl MONGODB_VERSION=6.0 DRIVERS_TOOLS=$PWD/drivers-evergreen-tools MONGO_ORCHESTRATION_HOME=$PWD/drivers-evergreen-tools/.evergreen/orchestration $PWD/drivers-evergreen-tools/.evergreen/run-orchestration.sh`.
 -   Set up the test using:
-    `MONGODB_URI='mongodb://localhost:27017,localhost:27018/' just setup-test load-balancer`.
+    `MONGODB_URI='mongodb://localhost:27017,localhost:27018/' just setup-tests load-balancer`.
 -   Run the tests from the `pymongo` checkout directory using:
-    `just test-eg`.
+    `just run-tests`.
 
 ## Running Encryption Tests Locally
 - Clone `drivers-evergreen-tools`:
   `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
 - Run `export DRIVERS_TOOLS=$PWD/drivers-evergreen-tools`
-- Run `AWS_PROFILE=<profile> just setup-test encryption` after setting up your AWS profile with `aws configure sso`.
-- Run the tests with `just test-eg`.
-- When done, run `just teardown-test` to clean up.
+- Run `AWS_PROFILE=<profile> just setup-tests encryption` after setting up your AWS profile with `aws configure sso`.
+- Run the tests with `just run-tests`.
+- When done, run `just teardown-tests` to clean up.
 
 ## Re-sync Spec Tests
 

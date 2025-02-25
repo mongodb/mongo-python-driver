@@ -34,7 +34,7 @@ from pymongo.asynchronous.encryption import (
 
 _IS_SYNC = False
 
-pytestmark = pytest.mark.csfle
+pytestmark = pytest.mark.kms
 
 
 class TestonDemandGCPCredentials(AsyncIntegrationTest):

@@ -61,13 +61,13 @@ test *args="-v --durations=5 --maxfail=10":
     {{uv_run}} --extra test pytest {{args}}
 
 [group('test')]
-test-eg *args:
+run-tests *args:
     bash ./.evergreen/run-tests.sh {{args}}
 
 [group('test')]
-setup-test *args="":
+setup-tests *args="":
     bash .evergreen/scripts/setup-tests.sh {{args}}
 
 [group('test')]
-teardown-test:
+teardown-tests:
     bash .evergreen/scripts/teardown-tests.sh
