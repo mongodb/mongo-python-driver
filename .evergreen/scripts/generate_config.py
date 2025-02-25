@@ -835,6 +835,25 @@ def create_load_balancer_tasks():
     return tasks
 
 
+def create_kms_tasks():
+    tasks = []
+    for kms_type in ["gcp", "azure"]:
+        for success in [True, False]:
+            name = f"test-{kms_type}kms"
+            sub_test_name = kms_type
+            if not success:
+                name += "-fail"
+                sub_test_name += "-fail"
+            commands = []
+            if not success:
+                commands.append(FunctionCall(func="bootstrap mongo-orchestration"))
+            test_vars = dict(TEST_NAME="kms", SUB_TEST_NAME=sub_test_name)
+            test_func = FunctionCall(func="run tests", vars=test_vars)
+            commands.append(test_func)
+            tasks.append(EvgTask(name=name, commands=commands))
+    return tasks
+
+
 ##################
 # Generate Config
 ##################
