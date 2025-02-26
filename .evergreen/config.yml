@@ -127,6 +127,26 @@ functions:
         include:
           - "./**.core"
           - "./**.mdmp" # Windows: minidumps
+    - command: shell.exec
+      params:
+        script: |
+          . src/.evergreen/scripts/env.sh
+          set -o xtrace
+          mkdir out_dir
+          find $MONGO_ORCHESTRATION_HOME -name \*.log -exec sh -c 'x="{}"; mv $x $PWD/out_dir/$(basename $(dirname $x))_$(basename $x)' \;
+          tar zcvf mongodb-logs.tar.gz -C out_dir/ .
+          rm -rf out_dir
+    - command: s3.put
+      params:
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        local_file: mongodb-logs.tar.gz
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-mongodb-logs.tar.gz
+        bucket: ${bucket_name}
+        permissions: public-read
+        content_type: ${content_type|application/x-gzip}
+        display_name: "mongodb-logs.tar.gz"
     - command: s3.put
       params:
         aws_key: ${AWS_ACCESS_KEY_ID}
