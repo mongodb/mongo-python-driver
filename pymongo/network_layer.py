@@ -599,12 +599,11 @@ class PyMongoProtocol(BufferedProtocol):
                             bytearray(self._body_length - (self._length + nbytes) + 1024)
                         )
                 self._length += nbytes
-            if (
-                self._length + self._overflow_length >= self._body_length
-                and self._pending_messages
-                and not self._pending_messages[0].done()
-            ):
-                done = self._pending_messages.popleft()
+            if self._length + self._overflow_length >= self._body_length:
+                if self._pending_messages:
+                    done = self._pending_messages.popleft()
+                else:
+                    done = asyncio.get_event_loop().create_future()
                 done.set_result((self._start, self._body_length))
                 self._done_messages.append(done)
                 if self._length > self._body_length:
