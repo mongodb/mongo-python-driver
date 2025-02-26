@@ -359,13 +359,12 @@ class Monitor(MonitorBase):
         ):
             # Initiate streaming hello (MongoDB 4.4+).
             response = conn._hello(
-                None,
                 self._server_description.topology_version,
                 self._settings.heartbeat_frequency,
             )
         else:
             # New connection handshake or polling hello (MongoDB <4.4).
-            response = conn._hello(None, None, None)
+            response = conn._hello(None, None)
         duration = _monotonic_duration(start)
         return response, duration
 

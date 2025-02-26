@@ -102,7 +102,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.auth import _AuthContext
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient, _MongoClientErrorHandler
-    from pymongo.typings import ClusterTime, _Address, _CollationIn
+    from pymongo.typings import _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
 try:
@@ -376,11 +376,10 @@ class Connection:
             return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
 
     def hello(self) -> Hello:
-        return self._hello(None, None, None)
+        return self._hello(None, None)
 
     def _hello(
         self,
-        cluster_time: Optional[ClusterTime],
         topology_version: Optional[Any],
         heartbeat_frequency: Optional[int],
     ) -> Hello[dict[str, Any]]:
@@ -402,9 +401,6 @@ class Connection:
             # If connect_timeout is None there is no timeout.
             if self.opts.connect_timeout:
                 self.set_conn_timeout(self.opts.connect_timeout + heartbeat_frequency)
-
-        if not performing_handshake and cluster_time is not None:
-            cmd["$clusterTime"] = cluster_time
 
         creds = self.opts._credentials
         if creds:

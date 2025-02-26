@@ -102,7 +102,7 @@ if TYPE_CHECKING:
     from pymongo.pyopenssl_context import _sslConn
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import ClusterTime, _Address, _CollationIn
+    from pymongo.typings import _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
 try:
@@ -376,11 +376,10 @@ class AsyncConnection:
             return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
 
     async def hello(self) -> Hello:
-        return await self._hello(None, None, None)
+        return await self._hello(None, None)
 
     async def _hello(
         self,
-        cluster_time: Optional[ClusterTime],
         topology_version: Optional[Any],
         heartbeat_frequency: Optional[int],
     ) -> Hello[dict[str, Any]]:
@@ -402,9 +401,6 @@ class AsyncConnection:
             # If connect_timeout is None there is no timeout.
             if self.opts.connect_timeout:
                 self.set_conn_timeout(self.opts.connect_timeout + heartbeat_frequency)
-
-        if not performing_handshake and cluster_time is not None:
-            cmd["$clusterTime"] = cluster_time
 
         creds = self.opts._credentials
         if creds:
