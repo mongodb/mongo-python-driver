@@ -521,7 +521,8 @@ class PyMongoProtocol(BufferedProtocol):
         self, request_id: Optional[int], max_message_size: int, debug: bool = False
     ) -> tuple[bytes, int]:
         """Read a single MongoDB Wire Protocol message from this connection."""
-        self.transport.resume_reading()
+        if self.transport:
+            self.transport.resume_reading()
         if self._done_messages:
             message = await self._done_messages.popleft()
         else:
@@ -532,9 +533,10 @@ class PyMongoProtocol(BufferedProtocol):
             self._length = 0
             self._overflow_length = 0
             self._body_length = 0
+            self._start = 0
             self._op_code = None  # type: ignore[assignment]
             self._overflow = None
-            if self.transport.is_closing():
+            if self.transport and self.transport.is_closing():
                 raise OSError("Connection is closed")
             read_waiter = asyncio.get_running_loop().create_future()
             self._pending_messages.append(read_waiter)
@@ -545,10 +547,12 @@ class PyMongoProtocol(BufferedProtocol):
                     self._done_messages.remove(read_waiter)
         if message:
             start, end, op_code = message[0], message[1], message[2]
-            header_size = 16
+            if self._is_compressed:
+                header_size = 25
+            else:
+                header_size = 16
             if self._body_length > self._buffer_size and self._overflow is not None:
                 if self._is_compressed and self._compressor_id is not None:
-                    header_size = 25
                     return decompress(
                         memoryview(
                             bytearray(self._buffer[header_size : self._length])
@@ -563,7 +567,6 @@ class PyMongoProtocol(BufferedProtocol):
                     ), op_code
             else:
                 if self._is_compressed and self._compressor_id is not None:
-                    header_size = 25
                     return decompress(
                         memoryview(self._buffer[start + header_size : end]),
                         self._compressor_id,
@@ -594,24 +597,24 @@ class PyMongoProtocol(BufferedProtocol):
                         self.connection_lost(exc)
                         return
                     self._expecting_header = False
+                    # TODO: account for multiple messages processed within a single read() call
                     if self._body_length > self._buffer_size:
                         self._overflow = memoryview(
                             bytearray(self._body_length - (self._length + nbytes) + 1024)
                         )
                 self._length += nbytes
-            if self._length + self._overflow_length >= self._body_length:
+            if self._length + self._overflow_length - self._start >= self._body_length:
                 if self._pending_messages:
                     done = self._pending_messages.popleft()
                 else:
                     done = asyncio.get_running_loop().create_future()
-                done.set_result((self._start, self._body_length, self._op_code))
-                self._start = 0
+                done.set_result((self._start, self._body_length + self._start, self._op_code))
+                self._start += self._body_length
                 self._done_messages.append(done)
-                if self._length > self._body_length:
+                if self._length - self._start > self._body_length:
                     self._read_waiter = asyncio.get_running_loop().create_future()
                     self._pending_messages.append(self._read_waiter)
-                    self._start = self._body_length
-                    extra = self._length - self._body_length
+                    extra = self._length - self._start
                     self._length -= extra
                     self._expecting_header = True
                     self._body_length = 0
@@ -621,7 +624,9 @@ class PyMongoProtocol(BufferedProtocol):
 
     def process_header(self) -> tuple[int, int]:
         """Unpack a MongoDB Wire Protocol header."""
-        length, _, response_to, op_code = _UNPACK_HEADER(self._buffer[self._start : 16])
+        length, _, response_to, op_code = _UNPACK_HEADER(
+            self._buffer[self._start : self._start + 16]
+        )
         # No request_id for exhaust cursor "getMore".
         if self._request_id is not None:
             if self._request_id != response_to:
@@ -640,7 +645,9 @@ class PyMongoProtocol(BufferedProtocol):
         if op_code == 2012:
             self._is_compressed = True
             if self._length >= 25:
-                op_code, _, self._compressor_id = _UNPACK_COMPRESSION_HEADER(self._buffer[16:25])
+                op_code, _, self._compressor_id = _UNPACK_COMPRESSION_HEADER(
+                    self._buffer[self._start + 16 : self._start + 25]
+                )
             else:
                 self._need_compression_header = True
 
