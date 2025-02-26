@@ -501,7 +501,6 @@ class Topology:
 
         self._description = new_td
         await self._update_servers()
-        self._receive_cluster_time_no_lock(server_description.cluster_time)
 
         if self._publish_tp and not suppress_event:
             assert self._events is not None
