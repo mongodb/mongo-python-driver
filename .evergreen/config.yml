@@ -270,6 +270,7 @@ functions:
       type: test
       params:
         working_dir: "src"
+        include_expansions_in_env: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN]
         binary: bash
         args: [.evergreen/just.sh, run-tests]
 
@@ -421,13 +422,6 @@ functions:
           - .evergreen/scripts/cleanup.sh
 
   "teardown system":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        working_dir: "src"
-        args:
-          # Ensure the instance profile is reassigned for aws tests.
-          - ${DRIVERS_TOOLS}/.evergreen/auth_aws/teardown.sh
     - command: subprocess.exec
       params:
         binary: bash
