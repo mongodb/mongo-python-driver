@@ -368,11 +368,15 @@ def handle_test_env() -> None:
         write_env("CA_FILE", os.environ["CA_FILE"])
         write_env("OCSP_TLS_SHOULD_SUCCEED", os.environ["OCSP_TLS_SHOULD_SUCCEED"])
 
-    if test_name == "auth_aws":
+    if test_name == "auth_aws" and sub_test_name != "ecs-remote":
         run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/setup-secrets.sh")
-        write_env("MONGODB_URI", os.environ["MONGODB_URI"])
+        aws_setup = f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh"
+        aws_test_type = os.environ["AWS_TEST_TYPE"]
         if sub_test_name != "ecs":
-            run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh ${sub_test_name}")
+            run_command(f"{aws_setup} {aws_test_type}")
+            creds = read_env(f"{DRIVERS_TOOLS}.evergreen/auth_aws/test-env.sh")
+            for name, value in creds.items():
+                write_env(name, value)
 
     if test_name == "perf":
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
