@@ -270,7 +270,6 @@ functions:
       type: test
       params:
         working_dir: "src"
-        include_expansions_in_env: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN]
         binary: bash
         args: [.evergreen/just.sh, run-tests]
 
