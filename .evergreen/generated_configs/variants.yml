@@ -108,7 +108,6 @@ buildvariants:
   - name: auth-aws-ubuntu-20-python3.9
     tasks:
       - name: .auth-aws
-      - name: .auth-aws-ecs
     display_name: Auth AWS Ubuntu-20 Python3.9
     run_on:
       - ubuntu2004-small
@@ -117,7 +116,6 @@ buildvariants:
   - name: auth-aws-ubuntu-20-python3.13
     tasks:
       - name: .auth-aws
-      - name: .auth-aws-ecs
     display_name: Auth AWS Ubuntu-20 Python3.13
     run_on:
       - ubuntu2004-small

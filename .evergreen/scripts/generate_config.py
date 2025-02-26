@@ -738,8 +738,6 @@ def create_aws_auth_variants():
     for host_name, python in product(["ubuntu20", "win64", "macos"], MIN_MAX_PYTHON):
         expansions = dict()
         tasks = [".auth-aws"]
-        if host_name == "ubuntu20":
-            tasks += [".auth-aws-ecs"]
         host = HOSTS[host_name]
         variant = create_variant(
             tasks,
@@ -845,10 +843,18 @@ def create_kms_tasks():
 
 def create_aws_tasks():
     tasks = []
-    aws_test_types = ["regular", "assume-role", "ec2", "env-creds", "session-creds", "web-identity"]
+    aws_test_types = [
+        "regular",
+        "assume-role",
+        "ec2",
+        "env-creds",
+        "session-creds",
+        "web-identity",
+        "ecs",
+    ]
     for version in get_versions_from("4.4"):
         name = f"test-auth-aws-{version}"
-        tags = ["auth-aws", version]
+        tags = ["auth-aws"]
         bootstrap_vars = dict(
             AUTH="auth", ORCHESTRATION_FILE="auth-aws.json", TOPOLOGY="server", VERSION=version
         )
@@ -865,11 +871,6 @@ def create_aws_tasks():
         funcs = [bootstrap_func, assume_func, *test_funcs]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
-        tags = ["auth-aws-ecs"]
-        name = f"test-auth-aws-ecs-{version}"
-        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME="ecs")
-        ecs_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, ecs_func]))
     return tasks
 
 

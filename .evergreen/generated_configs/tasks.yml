@@ -36,22 +36,13 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, "4.4"]
-  - name: test-auth-aws-ecs-4.4
-    commands:
-      - func: bootstrap mongo-orchestration
-        vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
-          VERSION: "4.4"
+          SUB_TEST_NAME: ecs
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws-ecs]
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws]
   - name: test-auth-aws-5.0
     commands:
       - func: bootstrap mongo-orchestration
@@ -88,22 +79,13 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, "5.0"]
-  - name: test-auth-aws-ecs-5.0
-    commands:
-      - func: bootstrap mongo-orchestration
-        vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
-          VERSION: "5.0"
+          SUB_TEST_NAME: ecs
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws-ecs]
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws]
   - name: test-auth-aws-6.0
     commands:
       - func: bootstrap mongo-orchestration
@@ -140,22 +122,13 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, "6.0"]
-  - name: test-auth-aws-ecs-6.0
-    commands:
-      - func: bootstrap mongo-orchestration
-        vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
-          VERSION: "6.0"
+          SUB_TEST_NAME: ecs
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws-ecs]
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws]
   - name: test-auth-aws-7.0
     commands:
       - func: bootstrap mongo-orchestration
@@ -192,22 +165,13 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, "7.0"]
-  - name: test-auth-aws-ecs-7.0
-    commands:
-      - func: bootstrap mongo-orchestration
-        vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
-          VERSION: "7.0"
+          SUB_TEST_NAME: ecs
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws-ecs]
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws]
   - name: test-auth-aws-8.0
     commands:
       - func: bootstrap mongo-orchestration
@@ -244,22 +208,13 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, "8.0"]
-  - name: test-auth-aws-ecs-8.0
-    commands:
-      - func: bootstrap mongo-orchestration
-        vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
-          VERSION: "8.0"
+          SUB_TEST_NAME: ecs
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws-ecs]
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws]
   - name: test-auth-aws-rapid
     commands:
       - func: bootstrap mongo-orchestration
@@ -296,22 +251,13 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, rapid]
-  - name: test-auth-aws-ecs-rapid
-    commands:
-      - func: bootstrap mongo-orchestration
-        vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
-          VERSION: rapid
+          SUB_TEST_NAME: ecs
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws-ecs]
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws]
   - name: test-auth-aws-latest
     commands:
       - func: bootstrap mongo-orchestration
@@ -348,22 +294,13 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, latest]
-  - name: test-auth-aws-ecs-latest
-    commands:
-      - func: bootstrap mongo-orchestration
-        vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
-          VERSION: latest
+          SUB_TEST_NAME: ecs
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws-ecs]
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws]
 
   # Kms tests
   - name: test-gcpkms
