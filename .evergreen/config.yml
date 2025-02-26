@@ -260,7 +260,8 @@ functions:
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: [AUTH, SSL, COVERAGE, PYTHON_BINARY, LIBMONGOCRYPT_URL, MONGODB_URI,
+        include_expansions_in_env: [AUTH, SSL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+          AWS_SESSION_TOKEN, COVERAGE, PYTHON_BINARY, LIBMONGOCRYPT_URL, MONGODB_URI,
           DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION]
         binary: bash
         working_dir: "src"
