@@ -603,8 +603,9 @@ class PyMongoProtocol(BufferedProtocol):
                 if self._pending_messages:
                     done = self._pending_messages.popleft()
                 else:
-                    done = asyncio.get_event_loop().create_future()
+                    done = asyncio.get_running_loop().create_future()
                 done.set_result((self._start, self._body_length))
+                self._start = 0
                 self._done_messages.append(done)
                 if self._length > self._body_length:
                     self._read_waiter = asyncio.get_running_loop().create_future()
@@ -613,12 +614,14 @@ class PyMongoProtocol(BufferedProtocol):
                     extra = self._length - self._body_length
                     self._length -= extra
                     self._expecting_header = True
+                    self._body_length = 0
+                    self._op_code = None  # type: ignore[assignment]
                     self.buffer_updated(extra)
                 self.transport.pause_reading()
 
     def process_header(self) -> tuple[int, int]:
         """Unpack a MongoDB Wire Protocol header."""
-        length, _, response_to, op_code = _UNPACK_HEADER(self._buffer[:16])
+        length, _, response_to, op_code = _UNPACK_HEADER(self._buffer[self._start : 16])
         # No request_id for exhaust cursor "getMore".
         if self._request_id is not None:
             if self._request_id != response_to:
