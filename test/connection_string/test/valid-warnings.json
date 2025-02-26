@@ -108,11 +108,7 @@
       ],
       "auth": null,
       "options": {
-        "authMechanism": "MONGODB-OIDC",
-        "authmechanismProperties": {
-          "TOKEN_RESOURCE": "mongodb://test-cluster",
-          "ENVIRONMENT": "azure"
-        }
+        "authMechanism": "MONGODB-OIDC"
       }
     }
   ]
