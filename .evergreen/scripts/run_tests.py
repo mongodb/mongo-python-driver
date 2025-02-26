@@ -82,10 +82,6 @@ def handle_pymongocrypt() -> None:
 
 
 def run() -> None:
-    if os.environ.get("SKIP_TESTS"):
-        LOGGER.info("Skipping tests")
-        return
-
     # Handle green framework first so they can patch modules.
     if GREEN_FRAMEWORK:
         handle_green_framework()
