@@ -281,7 +281,10 @@ tasks:
           ORCHESTRATION_FILE: auth-aws.json
           TOPOLOGY: server
           VERSION: latest
-      - func: run aws ECS auth test
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: ecs
     tags: [auth-aws-ecs]
 
   # Kms tests

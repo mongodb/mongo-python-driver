@@ -411,16 +411,6 @@ functions:
         args:
           - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
-  "run aws ECS auth test":
-    - command: subprocess.exec
-      type: test
-      params:
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-aws-ecs-auth-test.sh
-
   "cleanup":
     - command: subprocess.exec
       params:

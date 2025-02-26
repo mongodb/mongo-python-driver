@@ -866,7 +866,8 @@ def create_aws_tasks():
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     ecs_name = "test-auth-aws-ecs"
-    ecs_func = FunctionCall(func="run aws ECS auth test")
+    test_vars = dict(TEST_AUTH_AWS="true", AWS_TEST_TYPE="ecs")
+    ecs_func = FunctionCall(func="run tests", vars=test_vars)
     tags = ["auth-aws-ecs"]
     tasks.append(EvgTask(name=ecs_name, tags=tags, commands=[bootstrap_func, ecs_func]))
     return tasks
