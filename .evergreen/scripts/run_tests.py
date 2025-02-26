@@ -112,7 +112,9 @@ def run() -> None:
         return
 
     # Run local tests.
-    pytest.main(TEST_ARGS)
+    ret = pytest.main(TEST_ARGS)
+    if ret != 0:
+        sys.exit(ret)
 
     # Handle perf test post actions.
     if TEST_PERF:
