@@ -544,7 +544,7 @@ class PyMongoProtocol(BufferedProtocol):
                 if read_waiter in self._done_messages:
                     self._done_messages.remove(read_waiter)
         if message:
-            start, end = message[0], message[1]
+            start, end, op_code = message[0], message[1], message[2]
             header_size = 16
             if self._body_length > self._buffer_size and self._overflow is not None:
                 if self._is_compressed and self._compressor_id is not None:
@@ -555,21 +555,21 @@ class PyMongoProtocol(BufferedProtocol):
                             + bytearray(self._overflow[: self._overflow_length])
                         ),
                         self._compressor_id,
-                    ), self._op_code
+                    ), op_code
                 else:
                     return memoryview(
                         bytearray(self._buffer[header_size : self._length])
                         + bytearray(self._overflow[: self._overflow_length])
-                    ), self._op_code
+                    ), op_code
             else:
                 if self._is_compressed and self._compressor_id is not None:
                     header_size = 25
                     return decompress(
                         memoryview(self._buffer[start + header_size : end]),
                         self._compressor_id,
-                    ), self._op_code
+                    ), op_code
                 else:
-                    return memoryview(self._buffer[start + header_size : end]), self._op_code
+                    return memoryview(self._buffer[start + header_size : end]), op_code
         raise OSError("connection closed")
 
     def get_buffer(self, sizehint: int) -> memoryview:
@@ -604,7 +604,7 @@ class PyMongoProtocol(BufferedProtocol):
                     done = self._pending_messages.popleft()
                 else:
                     done = asyncio.get_running_loop().create_future()
-                done.set_result((self._start, self._body_length))
+                done.set_result((self._start, self._body_length, self._op_code))
                 self._start = 0
                 self._done_messages.append(done)
                 if self._length > self._body_length:
