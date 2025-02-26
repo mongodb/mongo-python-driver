@@ -856,17 +856,17 @@ def create_aws_tasks():
         assume_func = FunctionCall(func="assume ec2 role")
         test_funcs = []
         for test_type in aws_test_types:
-            test_vars = dict(TEST_TYPE="auth_aws", AWS_TEST_TYPE=test_type)
+            test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type)
             test_funcs.append(FunctionCall(func="run tests", vars=test_vars))
         test_vars = dict(
-            TEST_TYPE="auth_aws", AWS_TEST_TYPE="web-identity", AWS_ROLE_SESSION_NAME="test"
+            TEST_NAME="auth_aws", SUB_TEST_NAME="web-identity", AWS_ROLE_SESSION_NAME="test"
         )
         test_funcs.append(FunctionCall(func="run tests", vars=test_vars))
         funcs = [bootstrap_func, assume_func, *test_funcs]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     ecs_name = "test-auth-aws-ecs"
-    test_vars = dict(TEST_TYPE="auth_aws", AWS_TEST_TYPE="ecs")
+    test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME="ecs")
     ecs_func = FunctionCall(func="run tests", vars=test_vars)
     tags = ["auth-aws-ecs"]
     tasks.append(EvgTask(name=ecs_name, tags=tags, commands=[bootstrap_func, ecs_func]))

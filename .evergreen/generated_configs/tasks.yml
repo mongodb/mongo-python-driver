@@ -11,32 +11,32 @@ tasks:
       - func: assume ec2 role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: regular
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: assume-role
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: ec2
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: env-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: session-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, "4.4"]
   - name: test-auth-aws-5.0
@@ -50,32 +50,32 @@ tasks:
       - func: assume ec2 role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: regular
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: assume-role
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: ec2
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: env-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: session-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, "5.0"]
   - name: test-auth-aws-6.0
@@ -89,32 +89,32 @@ tasks:
       - func: assume ec2 role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: regular
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: assume-role
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: ec2
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: env-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: session-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, "6.0"]
   - name: test-auth-aws-7.0
@@ -128,32 +128,32 @@ tasks:
       - func: assume ec2 role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: regular
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: assume-role
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: ec2
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: env-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: session-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, "7.0"]
   - name: test-auth-aws-8.0
@@ -167,32 +167,32 @@ tasks:
       - func: assume ec2 role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: regular
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: assume-role
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: ec2
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: env-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: session-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, "8.0"]
   - name: test-auth-aws-rapid
@@ -206,32 +206,32 @@ tasks:
       - func: assume ec2 role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: regular
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: assume-role
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: ec2
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: env-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: session-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, rapid]
   - name: test-auth-aws-latest
@@ -245,32 +245,32 @@ tasks:
       - func: assume ec2 role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: regular
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: assume-role
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: ec2
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: env-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: session-creds
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: web-identity
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, latest]
   - name: test-auth-aws-ecs
@@ -283,8 +283,8 @@ tasks:
           VERSION: latest
       - func: run tests
         vars:
-          TEST_TYPE: auth_aws
-          AWS_TEST_TYPE: ecs
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ecs
     tags: [auth-aws-ecs]
 
   # Kms tests
