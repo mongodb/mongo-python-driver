@@ -372,6 +372,8 @@ def handle_test_env() -> None:
         run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/setup-secrets.sh")
         aws_setup = f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh"
         aws_test_type = os.environ["AWS_TEST_TYPE"]
+        if "AWS_ROLE_SESSION_NAME" in os.environ:
+            write_env("AWS_ROLE_SESSION_NAME")
         if sub_test_name != "ecs":
             run_command(f"{aws_setup} {aws_test_type}")
             creds = read_env(f"{DRIVERS_TOOLS}.evergreen/auth_aws/test-env.sh")
