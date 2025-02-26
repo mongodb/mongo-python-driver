@@ -369,7 +369,10 @@ def handle_test_env() -> None:
         write_env("OCSP_TLS_SHOULD_SUCCEED", os.environ["OCSP_TLS_SHOULD_SUCCEED"])
 
     if test_name == "auth_aws":
+        run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/setup-secrets.sh")
         write_env("MONGODB_URI", os.environ["MONGODB_URI"])
+        if sub_test_name != "ecs":
+            run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh ${sub_test_name}")
 
     if test_name == "perf":
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively

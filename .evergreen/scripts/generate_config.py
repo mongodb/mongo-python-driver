@@ -734,23 +734,12 @@ def create_atlas_connect_variants():
 
 def create_aws_auth_variants():
     variants = []
-    tasks = [
-        "aws-auth-test-4.4",
-        "aws-auth-test-5.0",
-        "aws-auth-test-6.0",
-        "aws-auth-test-7.0",
-        "aws-auth-test-8.0",
-        "aws-auth-test-rapid",
-        "aws-auth-test-latest",
-    ]
 
     for host_name, python in product(["ubuntu20", "win64", "macos"], MIN_MAX_PYTHON):
         expansions = dict()
-        if host_name != "ubuntu20":
-            expansions["skip_ECS_auth_test"] = "true"
-        if host_name == "macos":
-            expansions["skip_EC2_auth_test"] = "true"
-            expansions["skip_web_identity_auth_test"] = "true"
+        tasks = [".auth-aws"]
+        if host_name == "ubuntu20":
+            tasks += [".auth-aws-ecs"]
         host = HOSTS[host_name]
         variant = create_variant(
             tasks,
@@ -851,6 +840,31 @@ def create_kms_tasks():
             test_func = FunctionCall(func="run tests", vars=test_vars)
             commands.append(test_func)
             tasks.append(EvgTask(name=name, commands=commands))
+    return tasks
+
+
+def create_aws_tasks():
+    tasks = []
+    aws_test_types = ["regular", "assume-role", "ec2", "env-creds", "session-creds", "web-identity"]
+    for version in get_versions_from("4.4"):
+        name = f"test-auth-aws-{version}"
+        tags = ["auth-aws", version]
+        bootstrap_vars = dict(
+            AUTH="auth", ORCHESTRATION_FILE="auth-aws.json", TOPOLOGY="server", VERSION=version
+        )
+        bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
+        assume_func = FunctionCall(func="assume ec2 role")
+        test_funcs = []
+        for test_type in aws_test_types:
+            test_vars = dict(TEST_AUTH_AWS="true", AWS_TEST_TYPE=test_type)
+            test_funcs.append(FunctionCall(func="run tests", vars=test_vars))
+        funcs = [bootstrap_func, assume_func, *test_funcs]
+        tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
+
+        ecs_name = f"test-auth-aws-ecs-{version}"
+        ecs_func = FunctionCall(func="run aws ECS auth test")
+        tags = ["auth-aws-ecs", version]
+        tasks.append(EvgTask(name=ecs_name, tags=tags, commands=[bootstrap_func, ecs_func]))
     return tasks
 
 

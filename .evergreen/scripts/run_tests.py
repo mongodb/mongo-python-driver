@@ -8,7 +8,7 @@ import sys
 from datetime import datetime
 
 import pytest
-from utils import LOGGER, ROOT
+from utils import DRIVERS_TOOLS, LOGGER, ROOT, run_command
 
 AUTH = os.environ.get("AUTH", "noauth")
 SSL = os.environ.get("SSL", "nossl")
@@ -104,6 +104,11 @@ def run() -> None:
         from kms_tester import test_kms_remote
 
         test_kms_remote(SUB_TEST_NAME)
+        return
+
+    # Run remote ecs tests.
+    if TEST_NAME == "auth_aws" and SUB_TEST_NAME == "ecs":
+        run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh ecs")
         return
 
     # Run local tests.

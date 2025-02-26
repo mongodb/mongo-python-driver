@@ -1,4 +1,314 @@
 tasks:
+  # Aws tests
+  - name: test-auth-aws-4.4
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: "4.4"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: regular
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: assume-role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: ec2
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: env-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: session-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: web-identity
+    tags: [auth-aws, "4.4"]
+  - name: test-auth-aws-ecs-4.4
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: "4.4"
+      - func: run aws ECS auth test
+    tags: [auth-aws-ecs, "4.4"]
+  - name: test-auth-aws-5.0
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: "5.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: regular
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: assume-role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: ec2
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: env-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: session-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: web-identity
+    tags: [auth-aws, "5.0"]
+  - name: test-auth-aws-ecs-5.0
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: "5.0"
+      - func: run aws ECS auth test
+    tags: [auth-aws-ecs, "5.0"]
+  - name: test-auth-aws-6.0
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: "6.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: regular
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: assume-role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: ec2
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: env-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: session-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: web-identity
+    tags: [auth-aws, "6.0"]
+  - name: test-auth-aws-ecs-6.0
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: "6.0"
+      - func: run aws ECS auth test
+    tags: [auth-aws-ecs, "6.0"]
+  - name: test-auth-aws-7.0
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: "7.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: regular
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: assume-role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: ec2
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: env-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: session-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: web-identity
+    tags: [auth-aws, "7.0"]
+  - name: test-auth-aws-ecs-7.0
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: "7.0"
+      - func: run aws ECS auth test
+    tags: [auth-aws-ecs, "7.0"]
+  - name: test-auth-aws-8.0
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: "8.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: regular
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: assume-role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: ec2
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: env-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: session-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: web-identity
+    tags: [auth-aws, "8.0"]
+  - name: test-auth-aws-ecs-8.0
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: "8.0"
+      - func: run aws ECS auth test
+    tags: [auth-aws-ecs, "8.0"]
+  - name: test-auth-aws-rapid
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: rapid
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: regular
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: assume-role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: ec2
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: env-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: session-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: web-identity
+    tags: [auth-aws, rapid]
+  - name: test-auth-aws-ecs-rapid
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: rapid
+      - func: run aws ECS auth test
+    tags: [auth-aws-ecs, rapid]
+  - name: test-auth-aws-latest
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: latest
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: regular
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: assume-role
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: ec2
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: env-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: session-creds
+      - func: run tests
+        vars:
+          TEST_AUTH_AWS: "true"
+          AWS_TEST_TYPE: web-identity
+    tags: [auth-aws, latest]
+  - name: test-auth-aws-ecs-latest
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH: auth
+          ORCHESTRATION_FILE: auth-aws.json
+          TOPOLOGY: server
+          VERSION: latest
+      - func: run aws ECS auth test
+    tags: [auth-aws-ecs, latest]
+
   # Kms tests
   - name: test-gcpkms
     commands:
