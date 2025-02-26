@@ -370,15 +370,16 @@ def handle_test_env() -> None:
 
     if test_name == "auth_aws" and sub_test_name != "ecs-remote":
         auth_aws_dir = f"{DRIVERS_TOOLS}/.evergreen/auth_aws"
-        run_command(f"{auth_aws_dir}/setup-secrets.sh")
-        aws_setup = f"{auth_aws_dir}/aws_setup.sh"
         if "AWS_ROLE_SESSION_NAME" in os.environ:
             write_env("AWS_ROLE_SESSION_NAME")
         if sub_test_name != "ecs":
+            aws_setup = f"{auth_aws_dir}/aws_setup.sh"
             run_command(f"{aws_setup} {sub_test_name}")
             creds = read_env(f"{auth_aws_dir}/test-env.sh")
             for name, value in creds.items():
                 write_env(name, value)
+        else:
+            run_command(f"{auth_aws_dir}/setup-secrets.sh")
 
     if test_name == "perf":
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
