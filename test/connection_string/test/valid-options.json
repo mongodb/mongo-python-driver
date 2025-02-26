@@ -40,7 +40,7 @@
     },
     {
       "description": "Colon in a key value pair",
-      "uri": "mongodb://example.com/?authMechanism=MONGODB-OIDC&authMechanismProperties=TOKEN_RESOURCE:mongodb://test-cluster",
+      "uri": "mongodb://example.com/?authMechanism=MONGODB-OIDC&authMechanismProperties=TOKEN_RESOURCE:mongodb://test-cluster,ENVIRONMENT:azure",
       "valid": true,
       "warning": false,
       "hosts": [
@@ -53,7 +53,8 @@
       "auth": null,
       "options": {
         "authmechanismProperties": {
-          "TOKEN_RESOURCE": "mongodb://test-cluster"
+          "TOKEN_RESOURCE": "mongodb://test-cluster",
+          "ENVIRONMENT": "azure"
         }
       }
     }
