@@ -2,23 +2,34 @@
 
 set -eu
 
-# On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
-if [ "${CI:-}" == "true" ]; then
-  _BIN_DIR=${DRIVERS_TOOLS_BINARIES:-}
-else
-  _BIN_DIR=$HOME/.local/bin
+HERE=$(dirname ${BASH_SOURCE:-$0})
+pushd "$(dirname "$(dirname $HERE)")" > /dev/null
+
+# Source the env files to pick up common variables.
+if [ -f $HERE/env.sh ]; then
+  . $HERE/env.sh
 fi
 
+_BIN_DIR=${PYMONGO_BIN_DIR:-$HOME/.local/bin}
+export PATH="$PATH:${_BIN_DIR}"
 
 # Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
   _HERE=$(dirname ${BASH_SOURCE:-$0})
   . $_HERE/../utils.sh
   _VENV_PATH=$(mktemp -d)
+  if [ "Windows_NT" = "${OS:-}" ]; then
+    _VENV_PATH=$(cygpath -m $_VENV_PATH)
+  fi
   echo "Installing $2 using pip..."
   createvirtualenv "$(find_python3)" $_VENV_PATH
   python -m pip install $1
-  ln -s "$(which $2)" $_BIN_DIR/$2
+  if [ "Windows_NT" = "${OS:-}" ]; then
+    ln -s "$(which $2)" $_BIN_DIR/$2.exe
+  else
+    ln -s "$(which $2)" $_BIN_DIR/$2
+  fi
+  echo "Installed to ${_BIN_DIR}"
   echo "Installing $2 using pip... done."
 }
 
@@ -35,9 +46,6 @@ if ! command -v just 2>/dev/null; then
   curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- $_TARGET --to "$_BIN_DIR" || {
     _pip_install rust-just just
   }
-  if ! command -v just 2>/dev/null; then
-    export PATH="$PATH:$_BIN_DIR"
-  fi
   echo "Installing just... done."
 fi
 
@@ -48,8 +56,10 @@ if ! command -v uv 2>/dev/null; then
   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
      _pip_install uv uv
   }
-  if ! command -v uv 2>/dev/null; then
-    export PATH="$PATH:$_BIN_DIR"
+  if [ "Windows_NT" = "${OS:-}" ]; then
+    chmod +x "$(cygpath -u $_BIN_DIR)/uv.exe"
   fi
   echo "Installing uv... done."
 fi
+
+popd > /dev/null

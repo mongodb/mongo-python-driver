@@ -1008,12 +1008,8 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         if not async_client_context.test_commands_enabled:
             self.skipTest("Test commands must be enabled")
 
-        cmd_on = SON([("configureFailPoint", "failCommand")])
-        cmd_on.update(command_args)
-        await client.admin.command(cmd_on)
-        self.addAsyncCleanup(
-            client.admin.command, "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
-        )
+        await self.configure_fail_point(client, command_args)
+        self.addAsyncCleanup(self.configure_fail_point, client, command_args, off=True)
 
     async def _testOperation_failPoint(self, spec):
         await self.__set_fail_point(
@@ -1387,7 +1383,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         await self.kill_all_sessions()
-        self.addAsyncCleanup(self.kill_all_sessions)
 
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
@@ -1395,7 +1390,11 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             for i in range(attempts):
                 try:
                     return await self._run_scenario(spec, uri)
-                except AssertionError:
+                except (AssertionError, OperationFailure) as exc:
+                    if isinstance(exc, OperationFailure) and (
+                        _IS_SYNC or "failpoint" not in exc._message
+                    ):
+                        raise
                     if i < attempts - 1:
                         print(
                             f"Retrying after attempt {i+1} of {self.id()} failed with:\n"

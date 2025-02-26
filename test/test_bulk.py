@@ -959,7 +959,6 @@ class TestBulkWriteConcern(BulkTestBase):
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     def test_write_concern_failure_ordered(self):
-        self.skipTest("Skipping until PYTHON-4865 is resolved.")
         details = None
 
         # Ensure we don't raise on wnote.
