@@ -247,7 +247,7 @@ class BinaryVector:
         self.dtype = dtype
         self.padding = padding
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"BinaryVector - {self.dtype=}, {self.dtype},{self.padding=}, {self.data=}"
 
 
