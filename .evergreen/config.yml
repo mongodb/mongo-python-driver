@@ -337,7 +337,6 @@ functions:
       params:
           binary: bash
           working_dir: "src"
-          include_expansions_in_env: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN]
           args: [.evergreen/just.sh, teardown-tests]
     - command: subprocess.exec
       params:
