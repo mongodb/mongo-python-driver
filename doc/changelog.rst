@@ -4,15 +4,14 @@ Changelog
 Changes in Version 4.11.2 (YYYY/MM/DD)
 --------------------------------------
 
-Version 4.11.1 is a bug fix release.
+Version 4.11.2 is a bug fix release.
 
 - Fixed a bug where :meth:`~pymongo.database.Database.command` would fail when attempting to run the bulkWrite command.
 
 Issues Resolved
 ...............
 
-See the `PyMongo 4.11.2 release notes in JIRA`_ for the list of resolved issues
-in this release.
+See the `PyMongo 4.11.2 release notes in JIRA`_ for the list of resolved issues in this release.
 
 .. _PyMongo 4.11.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=42506
 
