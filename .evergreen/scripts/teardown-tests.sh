@@ -24,6 +24,7 @@ else
 fi
 
 # Teardown the test runner.
+ls $SCRIPT_DIR
 uv run $SCRIPT_DIR/teardown_tests.py
 
 popd > /dev/null
