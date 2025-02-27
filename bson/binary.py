@@ -247,6 +247,9 @@ class BinaryVector:
         self.dtype = dtype
         self.padding = padding
 
+    def __repr__(self):
+        return f"BinaryVector - {self.dtype=}, {self.dtype},{self.padding=}, {self.data=}"
+
 
 class Binary(bytes):
     """Representation of BSON binary data.
