@@ -372,7 +372,7 @@ def handle_test_env() -> None:
         if sub_test_name in ["ec2", "web_identity"] and PLATFORM == "darwin":
             write_env("SKIP_TESTS")
             return
-        if sub_test_name == "ec2" and PLATFORM != "linux":
+        if sub_test_name == "ecs" and PLATFORM != "linux":
             write_env("SKIP_TESTS")
             return
         auth_aws_dir = f"{DRIVERS_TOOLS}/.evergreen/auth_aws"
