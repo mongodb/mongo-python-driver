@@ -427,13 +427,14 @@ class TestDatabase(IntegrationTest):
 
     def test_command_bulkWrite(self):
         # Ensure bulk write commands can be run directly via db.command().
-        self.client.admin.command(
-            {
-                "bulkWrite": 1,
-                "nsInfo": [{"ns": self.db.test.full_name}],
-                "ops": [{"insert": 0, "document": {}}],
-            }
-        )
+        if client_context.version.at_least(8, 0):
+            self.client.admin.command(
+                {
+                    "bulkWrite": 1,
+                    "nsInfo": [{"ns": self.db.test.full_name}],
+                    "ops": [{"insert": 0, "document": {}}],
+                }
+            )
         self.db.command({"insert": "test", "documents": [{}]})
         self.db.command({"update": "test", "updates": [{"q": {}, "u": {"$set": {"x": 1}}}]})
         self.db.command({"delete": "test", "deletes": [{"q": {}, "limit": 1}]})
