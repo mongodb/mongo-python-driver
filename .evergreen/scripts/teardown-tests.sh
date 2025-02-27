@@ -22,6 +22,7 @@ if [ -f $SCRIPT_DIR/test-env.sh ]; then
 else
   echo "Missing test inputs, please run 'just setup-tests'"
 fi
+set -x
 
 # Teardown the test runner.
 ls $SCRIPT_DIR
