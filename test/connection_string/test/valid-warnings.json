@@ -96,7 +96,7 @@
     },
     {
       "description": "Comma in a key value pair causes a warning",
-      "uri": "mongodb://localhost?authMechanism=MONGODB-OIDC&authMechanismProperties=TOKEN_RESOURCE:mongodb://host1%2Chost2",
+      "uri": "mongodb://localhost?authMechanism=MONGODB-OIDC&authMechanismProperties=TOKEN_RESOURCE:mongodb://host1%2Chost2,ENVIRONMENT:azure",
       "valid": true,
       "warning": true,
       "hosts": [

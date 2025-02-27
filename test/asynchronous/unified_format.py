@@ -1009,12 +1009,8 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         if not async_client_context.test_commands_enabled:
             self.skipTest("Test commands must be enabled")
 
-        cmd_on = SON([("configureFailPoint", "failCommand")])
-        cmd_on.update(command_args)
-        await client.admin.command(cmd_on)
-        self.addAsyncCleanup(
-            client.admin.command, "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
-        )
+        await self.configure_fail_point(client, command_args)
+        self.addAsyncCleanup(self.configure_fail_point, client, command_args, off=True)
 
     async def _testOperation_failPoint(self, spec):
         await self.__set_fail_point(

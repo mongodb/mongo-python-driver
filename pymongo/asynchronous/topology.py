@@ -236,9 +236,7 @@ class Topology:
             warnings.warn(  # type: ignore[call-overload] # noqa: B028
                 "AsyncMongoClient opened before fork. May not be entirely fork-safe, "
                 "proceed with caution. See PyMongo's documentation for details: "
-                "https://www.mongodb.com/docs/languages/"
-                "python/pymongo-driver/current/faq/"
-                "#is-pymongo-fork-safe-",
+                "https://www.mongodb.com/docs/languages/python/pymongo-driver/current/troubleshooting/#forking-a-process-causes-a-deadlock",
                 **kwargs,
             )
             async with self._lock:
@@ -503,7 +501,6 @@ class Topology:
 
         self._description = new_td
         await self._update_servers()
-        self._receive_cluster_time_no_lock(server_description.cluster_time)
 
         if self._publish_tp and not suppress_event:
             assert self._events is not None

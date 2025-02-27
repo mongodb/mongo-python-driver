@@ -229,6 +229,7 @@ converted_tests = [
     "test_load_balancer.py",
     "test_logger.py",
     "test_max_staleness.py",
+    "test_monitor.py",
     "test_monitoring.py",
     "test_mongos_load_balancing.py",
     "test_on_demand_csfle.py",

@@ -1000,12 +1000,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if not client_context.test_commands_enabled:
             self.skipTest("Test commands must be enabled")
 
-        cmd_on = SON([("configureFailPoint", "failCommand")])
-        cmd_on.update(command_args)
-        client.admin.command(cmd_on)
-        self.addCleanup(
-            client.admin.command, "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
-        )
+        self.configure_fail_point(client, command_args)
+        self.addCleanup(self.configure_fail_point, client, command_args, off=True)
 
     def _testOperation_failPoint(self, spec):
         self.__set_fail_point(
