@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eu
+set -eux
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 SCRIPT_DIR="$( cd -- "$SCRIPT_DIR" > /dev/null 2>&1 && pwd )"
