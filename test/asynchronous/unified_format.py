@@ -1385,19 +1385,17 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         # operations during test set up and tear down.
         await self.kill_all_sessions()
 
-        if "csot" in self.id().lower() or "discovery_and_monitoring" in self.id().lower():
+        if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
             # discovery_and_monitoring tests on windows are also flakey
             attempts = 3
             for i in range(attempts):
                 try:
                     return await self._run_scenario(spec, uri)
-                except (AssertionError, OperationFailure, _OperationCancelled) as exc:
+                except (AssertionError, OperationFailure) as exc:
                     if isinstance(exc, OperationFailure) and (
                         _IS_SYNC or "failpoint" not in exc._message
                     ):
-                        raise
-                    if isinstance(exc, _OperationCancelled) and _IS_SYNC:
                         raise
                     if i < attempts - 1:
                         print(

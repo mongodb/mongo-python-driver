@@ -258,7 +258,7 @@ class TestClusterTimeComparison(AsyncPyMongoTestCase):
     async def test_cluster_time_comparison(self):
         t = await create_mock_topology("mongodb://host")
 
-        async def send_cluster_time(time, inc, should_update):
+        async def send_cluster_time(time, inc):
             old = t.max_cluster_time()
             new = {"clusterTime": Timestamp(time, inc)}
             await got_hello(
@@ -273,16 +273,14 @@ class TestClusterTimeComparison(AsyncPyMongoTestCase):
             )
 
             actual = t.max_cluster_time()
-            if should_update:
-                self.assertEqual(actual, new)
-            else:
-                self.assertEqual(actual, old)
+            # We never update $clusterTime from monitoring connections.
+            self.assertEqual(actual, old)
 
-        await send_cluster_time(0, 1, True)
-        await send_cluster_time(2, 2, True)
-        await send_cluster_time(2, 1, False)
-        await send_cluster_time(1, 3, False)
-        await send_cluster_time(2, 3, True)
+        await send_cluster_time(0, 1)
+        await send_cluster_time(2, 2)
+        await send_cluster_time(2, 1)
+        await send_cluster_time(1, 3)
+        await send_cluster_time(2, 3)
 
 
 class TestIgnoreStaleErrors(AsyncIntegrationTest):
