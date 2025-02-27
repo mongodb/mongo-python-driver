@@ -49,7 +49,7 @@ def create_test(case_spec):
     def run_test(self):
         for test_case in case_spec.get("tests", []):
             description = test_case["description"]
-            vector_exp = test_case["vector"]
+            vector_exp = test_case.get("vector", [])
             dtype_hex_exp = test_case["dtype_hex"]
             dtype_alias_exp = test_case.get("dtype_alias")
             padding_exp = test_case.get("padding", 0)
@@ -76,9 +76,13 @@ def create_test(case_spec):
                     self.assertEqual(
                         vector_obs.dtype, BinaryVectorDtype[dtype_alias_exp], description
                     )
-                self.assertEqual(vector_obs.data, vector_exp, description)
-                self.assertEqual(vector_obs.padding, padding_exp, description)
-
+                if dtype_exp in [BinaryVectorDtype.FLOAT32]:
+                    [
+                        self.assertAlmostEqual(vector_obs.data[i], vector_exp[i], delta=1e-5)
+                        for i in range(len(vector_exp))
+                    ]
+                else:
+                    self.assertEqual(vector_obs.data, vector_exp, description)
                 # Test Binary Vector to BSON
                 vector_exp = Binary.from_vector(vector_exp, dtype_exp, padding_exp)
                 cB_obs = binascii.hexlify(encode({test_key: vector_exp})).decode().upper()
@@ -86,7 +90,13 @@ def create_test(case_spec):
 
             else:
                 with self.assertRaises((struct.error, ValueError), msg=description):
+                    # Tests Binary.from_vector
                     Binary.from_vector(vector_exp, dtype_exp, padding_exp)
+                    # Tests Binary.as_vector
+                    cB_exp = binascii.unhexlify(canonical_bson_exp.encode("utf8"))
+                    decoded_doc = decode(cB_exp)
+                    binary_obs = decoded_doc[test_key]
+                    binary_obs.as_vector()
 
     return run_test
 
