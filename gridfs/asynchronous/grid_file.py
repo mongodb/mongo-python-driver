@@ -1301,11 +1301,8 @@ class AsyncGridIn:
             raise ValueError("cannot write to a closed file")
 
         try:
-            if isinstance(data, AsyncGridOut):
-                read = data.read
-            else:
-                # file-like
-                read = data.read
+            # file-like
+            read = data.read
         except AttributeError:
             # string
             if not isinstance(data, (str, bytes)):
@@ -1317,7 +1314,7 @@ class AsyncGridIn:
                     raise TypeError(
                         "must specify an encoding for file in order to write str"
                     ) from None
-            read = io.BytesIO(data).read  # type: ignore[assignment]
+            read = io.BytesIO(data).read
 
         if inspect.iscoroutinefunction(read):
             await self._write_async(read)
@@ -1331,15 +1328,15 @@ class AsyncGridIn:
                     except BaseException:
                         await self.abort()
                         raise
-                    self._buffer.write(to_write)  # type: ignore
-                    if len(to_write) < space:  # type: ignore
+                    self._buffer.write(to_write)
+                    if len(to_write) < space:
                         return  # EOF or incomplete
                 await self._flush_buffer()
             to_write = read(self.chunk_size)
-            while to_write and len(to_write) == self.chunk_size:  # type: ignore
+            while to_write and len(to_write) == self.chunk_size:
                 await self._flush_data(to_write)
                 to_write = read(self.chunk_size)
-            self._buffer.write(to_write)  # type: ignore
+            self._buffer.write(to_write)
 
     async def _write_async(self, read: Any) -> None:
         if self._buffer.tell() > 0:
