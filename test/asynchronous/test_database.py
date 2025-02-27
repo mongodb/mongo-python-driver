@@ -430,6 +430,20 @@ class TestDatabase(AsyncIntegrationTest):
         for doc in result["cursor"]["firstBatch"]:
             self.assertTrue(isinstance(doc["r"], Regex))
 
+    async def test_command_bulkWrite(self):
+        # Ensure bulk write commands can be run directly via db.command().
+        await self.client.admin.command(
+            {
+                "bulkWrite": 1,
+                "nsInfo": [{"ns": self.db.test.full_name}],
+                "ops": [{"insert": 0, "document": {}}],
+            }
+        )
+        await self.db.command({"insert": "test", "documents": [{}]})
+        await self.db.command({"update": "test", "updates": [{"q": {}, "u": {"$set": {"x": 1}}}]})
+        await self.db.command({"delete": "test", "deletes": [{"q": {}, "limit": 1}]})
+        await self.db.test.drop()
+
     async def test_cursor_command(self):
         db = self.client.pymongo_test
         await db.test.drop()
