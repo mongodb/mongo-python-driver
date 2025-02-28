@@ -809,6 +809,30 @@ class TestBSON(unittest.TestCase):
                 dtype=BinaryVectorDtype.PACKED_BIT,
             )  # type: ignore[call-overload]
 
+    def test_binaryvector_repr(self):
+        """Tests of repr(BinaryVector)"""
+        data = [127, 7]
+        zero = BinaryVector([], BinaryVectorDtype.INT8)
+        self.assertEqual(
+            repr(zero), "BinaryVector(dtype=BinaryVectorDtype.INT8, padding=0, data=[])"
+        )
+        one = BinaryVector(data, BinaryVectorDtype.INT8)
+        self.assertEqual(
+            repr(one), f"BinaryVector(dtype=BinaryVectorDtype.INT8, padding=0, data={data})"
+        )
+        two = BinaryVector(data, BinaryVectorDtype.FLOAT32)
+        self.assertEqual(
+            repr(two), f"BinaryVector(dtype=BinaryVectorDtype.FLOAT32, padding=0, data={data})"
+        )
+        three = BinaryVector(data, BinaryVectorDtype.FLOAT32, padding=0)
+        self.assertEqual(
+            repr(three), f"BinaryVector(dtype=BinaryVectorDtype.FLOAT32, padding=0, data={data})"
+        )
+        four = BinaryVector(data, BinaryVectorDtype.PACKED_BIT, padding=3)
+        self.assertEqual(
+            repr(four), f"BinaryVector(dtype=BinaryVectorDtype.PACKED_BIT, padding=3, data={data})"
+        )
+
     def test_unicode_regex(self):
         """Tests we do not get a segfault for C extension on unicode RegExs.
         This had been happening.
