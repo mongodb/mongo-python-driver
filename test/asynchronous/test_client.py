@@ -1790,6 +1790,29 @@ class TestClient(AsyncIntegrationTest):
             # Each ping command should not take more than 2 seconds
             self.assertLess(total, 2)
 
+    async def test_background_connections_log_on_error(self):
+        with self.assertLogs("pymongo.client", level="ERROR") as cm:
+            client = await self.async_rs_or_single_client(minPoolSize=1)
+            # Create a single connection in the pool.
+            await client.admin.command("ping")
+
+            # Cause new connections to fail.
+            pool = await async_get_pool(client)
+
+            async def fail_connect(*args, **kwargs):
+                raise Exception("failed to connect")
+
+            pool.connect = fail_connect
+            # Un-patch Pool.connect to break the cyclic reference.
+            self.addCleanup(delattr, pool, "connect")
+
+            await pool.reset_without_pause()
+
+            await async_wait_until(lambda: len(cm.records) > 0, "start creating connections")
+            log_output = "".join(cm.output)
+            self.assertIn("failed to connect", log_output)
+            self.assertIn("MongoClient background task encountered an error", log_output)
+
     @async_client_context.require_replica_set
     async def test_direct_connection(self):
         # direct_connection=True should result in Single topology.
