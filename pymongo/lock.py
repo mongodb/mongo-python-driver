@@ -82,9 +82,11 @@ def _release_locks() -> None:
 
 
 async def _async_cond_wait(condition: Condition, timeout: Optional[float]) -> bool:
+    fut = asyncio.ensure_future(condition.wait())
     try:
-        return await wait_for(condition.wait(), timeout)
+        return await wait_for(fut, timeout)
     except asyncio.TimeoutError:
+        await fut
         return False
 
 
