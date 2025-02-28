@@ -550,6 +550,8 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             and not _IS_SYNC
         ):
             self.skipTest("PYTHON-5170 tests are flakey")
+        if "Driver extends timeout while streaming" in spec["description"] and not _IS_SYNC:
+            self.skipTest("PYTHON-5174 tests are flakey")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
