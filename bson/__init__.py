@@ -1109,7 +1109,9 @@ def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> lis
         while position < end:
             obj_size = _UNPACK_INT_FROM(data, position)[0]
             if data_len - position < obj_size:
-                raise InvalidBSON("invalid object size")
+                raise InvalidBSON(
+                    f"invalid object size: expected {obj_size}, got {data_len - position}"
+                )
             obj_end = position + obj_size - 1
             if data[obj_end] != 0:
                 raise InvalidBSON("bad eoo")
