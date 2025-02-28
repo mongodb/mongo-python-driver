@@ -294,7 +294,7 @@ _PYPY = "PyPy" in sys.version
 
 def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
-    sock = conn.conn
+    sock = conn.conn.sock
     timed_out = False
     # Check if the connection's socket has been manually closed
     if sock.fileno() == -1:
@@ -460,9 +460,6 @@ class NetworkingInterface(NetworkingInterfaceBase):
 
     def fileno(self) -> int:
         return self.conn.fileno()
-
-    def pending(self) -> int:
-        return self.conn.pending()
 
     def recv_into(self, buffer: bytes) -> int:
         return self.conn.recv_into(buffer)
