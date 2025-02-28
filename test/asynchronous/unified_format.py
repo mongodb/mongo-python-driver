@@ -545,6 +545,12 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
+        if (
+            "Error returned from connection pool clear with interruptInUseConnections=true is retryable"
+            in spec["description"]
+            and not _IS_SYNC
+        ):
+            self.skipTest("PYTHON-5170 tests are flakey")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
@@ -1387,7 +1393,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
-            # discovery_and_monitoring tests on windows are also flakey
             attempts = 3
             for i in range(attempts):
                 try:
