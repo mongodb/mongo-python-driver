@@ -87,7 +87,6 @@ from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
-    _OperationCancelled,
 )
 from pymongo.monitoring import (
     CommandStartedEvent,
