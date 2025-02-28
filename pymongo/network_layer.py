@@ -598,6 +598,7 @@ class PyMongoProtocol(BufferedProtocol):
                 if self._expecting_header:
                     try:
                         self._body_size, self._op_code = self.process_header()
+                        self._request_id = None
                     except ProtocolError as exc:
                         self.connection_lost(exc)
                         return
@@ -626,8 +627,12 @@ class PyMongoProtocol(BufferedProtocol):
                         self._overflow_index,
                     )
                 )
+                # If the current message has an overflow buffer, then the entire default buffer is full
+                if self._overflow:
+                    self._start_index = self._end_index
                 # Update the buffer's first written offset to reflect this message's size
-                self._start_index += self._body_size
+                else:
+                    self._start_index += self._body_size
                 self._done_messages.append(result)
                 # If at least one header's worth of data remains after the current message, reprocess all leftover data
                 if self._end_index - self._start_index >= 16:
