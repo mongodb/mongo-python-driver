@@ -125,7 +125,7 @@ class TestClusterTime(PyMongoTestCase):
 
         for _ in range(3):
             request = server.receives("ismaster")
-            # No $clusterTime heartbeats or handshakes.
+            # No $clusterTime in heartbeats or handshakes.
             self.assertNotIn("$clusterTime", request)
             request.ok(reply)
         client.close()
