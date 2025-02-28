@@ -575,7 +575,11 @@ class PyMongoProtocol(BufferedProtocol):
         raise OSError("connection closed")
 
     def get_buffer(self, sizehint: int) -> memoryview:
-        """Called to allocate a new receive buffer."""
+        """Called to allocate a new receive buffer.
+        The asyncio loop calls this method expecting to receive a non-empty buffer to fill with data.
+        If any data does not fit into the returned buffer, this method will be called again until
+        either no data remains or an empty buffer is returned.
+        """
         if self._overflow is not None:
             return self._overflow[self._overflow_index :]
         return self._buffer[self._end_index :]
