@@ -76,7 +76,11 @@ EOT
 
 # Write the .env file for drivers-tools.
 rm -rf $DRIVERS_TOOLS
-git clone --branch aws-output-file https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
+BRANCH=master
+ORG=mongodb-labs
+BRANCH=aws-output-file
+ORG=blink1073
+git clone --branch $BRANCH https://github.com/$ORG/drivers-evergreen-tools.git $DRIVERS_TOOLS
 
 cat <<EOT > ${DRIVERS_TOOLS}/.env
 SKIP_LEGACY_SHELL=1
