@@ -4,9 +4,7 @@ tasks:
     commands:
       - func: bootstrap mongo-orchestration
         vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
+          AUTH_AWS: "1"
           VERSION: "4.4"
       - func: assume ec2 role
       - func: run tests
@@ -47,9 +45,7 @@ tasks:
     commands:
       - func: bootstrap mongo-orchestration
         vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
+          AUTH_AWS: "1"
           VERSION: "5.0"
       - func: assume ec2 role
       - func: run tests
@@ -90,9 +86,7 @@ tasks:
     commands:
       - func: bootstrap mongo-orchestration
         vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
+          AUTH_AWS: "1"
           VERSION: "6.0"
       - func: assume ec2 role
       - func: run tests
@@ -133,9 +127,7 @@ tasks:
     commands:
       - func: bootstrap mongo-orchestration
         vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
+          AUTH_AWS: "1"
           VERSION: "7.0"
       - func: assume ec2 role
       - func: run tests
@@ -176,9 +168,7 @@ tasks:
     commands:
       - func: bootstrap mongo-orchestration
         vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
+          AUTH_AWS: "1"
           VERSION: "8.0"
       - func: assume ec2 role
       - func: run tests
@@ -219,9 +209,7 @@ tasks:
     commands:
       - func: bootstrap mongo-orchestration
         vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
+          AUTH_AWS: "1"
           VERSION: rapid
       - func: assume ec2 role
       - func: run tests
@@ -262,9 +250,7 @@ tasks:
     commands:
       - func: bootstrap mongo-orchestration
         vars:
-          AUTH: auth
-          ORCHESTRATION_FILE: auth-aws.json
-          TOPOLOGY: server
+          AUTH_AWS: "1"
           VERSION: latest
       - func: assume ec2 role
       - func: run tests

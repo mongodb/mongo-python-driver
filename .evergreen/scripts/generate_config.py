@@ -855,9 +855,7 @@ def create_aws_tasks():
     for version in get_versions_from("4.4"):
         name = f"test-auth-aws-{version}"
         tags = ["auth-aws"]
-        bootstrap_vars = dict(
-            AUTH="auth", ORCHESTRATION_FILE="auth-aws.json", TOPOLOGY="server", VERSION=version
-        )
+        bootstrap_vars = dict(AUTH_AWS="1", VERSION=version)
         bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
         assume_func = FunctionCall(func="assume ec2 role")
         test_funcs = []

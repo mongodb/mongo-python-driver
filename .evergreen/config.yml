@@ -206,7 +206,7 @@ functions:
       params:
         binary: bash
         include_expansions_in_env: [VERSION, TOPOLOGY, AUTH, SSL, ORCHESTRATION_FILE, LOAD_BALANCER,
-          STORAGE_ENGINE, REQUIRE_API_VERSION, DRIVERS_TOOLS, TEST_CRYPT_SHARED]
+          STORAGE_ENGINE, REQUIRE_API_VERSION, DRIVERS_TOOLS, TEST_CRYPT_SHARED, AUTH_AWS]
         args:
           - src/.evergreen/scripts/bootstrap-mongo-orchestration.sh
     - command: expansions.update
