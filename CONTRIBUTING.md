@@ -224,6 +224,10 @@ the pages will re-render and the browser will automatically refresh.
 - Run the tests with `just run-tests`.
 - When done, run `just teardown-tests` to clean up.
 
+## Enable Debug Logs
+- Use `-o log_cli_level="DEBUG" -o log_cli=1` with `just test` or `pytest`.
+- Add `log_cli_level = "DEBUG` and `log_cli = 1` to the `tool.pytest.ini_options` section in `pyproject.toml` for Evergreen patches or to enable debug logs by default on your machine.
+
 ## Re-sync Spec Tests
 
 If you would like to re-sync the copy of the specification tests in the
