@@ -318,6 +318,7 @@ class AsyncMockConnection:
         self.cancel_context = _CancellationContext()
         self.more_to_come = False
         self.id = random.randint(0, 100)
+        self.server_connection_id = random.randint(0, 100)
 
     def close_conn(self, reason):
         pass
@@ -334,6 +335,7 @@ class MockConnection:
         self.cancel_context = _CancellationContext()
         self.more_to_come = False
         self.id = random.randint(0, 100)
+        self.server_connection_id = random.randint(0, 100)
 
     def close_conn(self, reason):
         pass

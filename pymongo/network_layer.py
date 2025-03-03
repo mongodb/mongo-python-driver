@@ -483,7 +483,6 @@ class PyMongoProtocol(BufferedProtocol):
         self._timeout = timeout
         self._is_compressed = False
         self._compressor_id: Optional[int] = None
-        self._need_compression_header = False
         self._max_message_size = MAX_MESSAGE_SIZE
         self._request_id: Optional[int] = None
         self._closed = asyncio.get_running_loop().create_future()
@@ -539,25 +538,27 @@ class PyMongoProtocol(BufferedProtocol):
                 if read_waiter in self._done_messages:
                     self._done_messages.remove(read_waiter)
         if message:
-            start, end, op_code, overflow, overflow_index = (
+            start, end, op_code, is_compressed, compressor_id, overflow, overflow_index = (
                 message[0],
                 message[1],
                 message[2],
                 message[3],
                 message[4],
+                message[5],
+                message[6],
             )
-            if self._is_compressed:
+            if is_compressed:
                 header_size = 25
             else:
                 header_size = 16
             if overflow is not None:
-                if self._is_compressed and self._compressor_id is not None:
+                if is_compressed and compressor_id is not None:
                     return decompress(
                         memoryview(
                             bytearray(self._buffer[start + header_size : self._end_index])
                             + bytearray(overflow[:overflow_index])
                         ),
-                        self._compressor_id,
+                        compressor_id,
                     ), op_code
                 else:
                     return memoryview(
@@ -565,10 +566,10 @@ class PyMongoProtocol(BufferedProtocol):
                         + bytearray(overflow[:overflow_index])
                     ), op_code
             else:
-                if self._is_compressed and self._compressor_id is not None:
+                if is_compressed and compressor_id is not None:
                     return decompress(
                         memoryview(self._buffer[start + header_size : end]),
-                        self._compressor_id,
+                        compressor_id,
                     ), op_code
                 else:
                     return memoryview(self._buffer[start + header_size : end]), op_code
@@ -624,6 +625,8 @@ class PyMongoProtocol(BufferedProtocol):
                         self._start_index,
                         self._body_size + self._start_index,
                         self._op_code,
+                        self._is_compressed,
+                        self._compressor_id,
                         self._overflow,
                         self._overflow_index,
                     )
@@ -635,18 +638,20 @@ class PyMongoProtocol(BufferedProtocol):
                 else:
                     self._start_index += self._body_size
                 self._done_messages.append(result)
+                # Reset internal state to expect a new message
+                self._expecting_header = True
+                self._body_size = 0
+                self._op_code = None  # type: ignore[assignment]
+                self._overflow = None
+                self._overflow_index = 0
+                self._is_compressed = False
+                self._compressor_id = None
                 # If at least one header's worth of data remains after the current message, reprocess all leftover data
                 if self._end_index - self._start_index >= 16:
                     self._read_waiter = asyncio.get_running_loop().create_future()
                     self._pending_messages.append(self._read_waiter)
                     nbytes_reprocess = self._end_index - self._start_index
                     self._end_index -= nbytes_reprocess
-                    # Reset internal state to expect a new message
-                    self._expecting_header = True
-                    self._body_size = 0
-                    self._op_code = None  # type: ignore[assignment]
-                    self._overflow = None
-                    self._overflow_index = 0
                     self.buffer_updated(nbytes_reprocess)
                 # Pause reading to avoid storing an arbitrary number of messages in memory before necessary
                 self.transport.pause_reading()
@@ -673,12 +678,9 @@ class PyMongoProtocol(BufferedProtocol):
             )
         if op_code == 2012:
             self._is_compressed = True
-            if self._end_index >= 25:
-                op_code, _, self._compressor_id = _UNPACK_COMPRESSION_HEADER(
-                    self._buffer[self._start_index + 16 : self._start_index + 25]
-                )
-            else:
-                self._need_compression_header = True
+            op_code, _, self._compressor_id = _UNPACK_COMPRESSION_HEADER(
+                self._buffer[self._start_index + 16 : self._start_index + 25]
+            )
 
         return length, op_code
 

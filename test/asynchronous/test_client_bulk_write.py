@@ -676,14 +676,8 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
             listener = OvertCommandListener()
             client = await self.async_rs_or_single_client(
                 event_listeners=[listener],
-                readConcernLevel="majority",
-                readPreference="primary",
                 timeoutMS=2000,
-                w="majority",
             )
-            # Initialize the client with a larger timeout to help make test less flakey
-            with pymongo.timeout(10):
-                await client.admin.command("ping")
             with self.assertRaises(ClientBulkWriteException) as context:
                 await client.bulk_write(models=models)
             self.assertIsInstance(context.exception.error, NetworkTimeout)
