@@ -419,6 +419,7 @@ class AsyncNetworkingInterface(NetworkingInterfaceBase):
         self.conn[1].settimeout(timeout)
 
     async def close(self) -> None:
+        # print(f"Closing network interface from {''.join(traceback.format_stack())}")
         self.conn[0].abort()
         await self.conn[1].wait_closed()
 
@@ -528,8 +529,10 @@ class PyMongoProtocol(BufferedProtocol):
             self._start_index = 0
             self._op_code = None  # type: ignore[assignment]
             self._overflow = None
+            self._is_compressed = False
+            self._compressor_id = None
             if self.transport and self.transport.is_closing():
-                raise OSError("Connection is closed")
+                raise OSError("connection is already closed")
             read_waiter = asyncio.get_running_loop().create_future()
             self._pending_messages.append(read_waiter)
             try:
@@ -581,6 +584,9 @@ class PyMongoProtocol(BufferedProtocol):
         If any data does not fit into the returned buffer, this method will be called again until
         either no data remains or an empty buffer is returned.
         """
+        # TODO: This is super hacky and is purely for debugging purposes
+        if sizehint == 0:
+            return memoryview(bytearray(256))
         if self._overflow is not None:
             return self._overflow[self._overflow_index :]
         return self._buffer[self._end_index :]
