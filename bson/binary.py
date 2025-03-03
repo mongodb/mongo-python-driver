@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Type, Union, overload
 from uuid import UUID
@@ -231,21 +231,20 @@ class BinaryVectorDtype(Enum):
 class BinaryVector:
     """Vector of numbers along with metadata for binary interoperability.
     .. versionadded:: 4.10
+
+    :param data: Sequence of numbers representing the mathematical vector.
+    :param dtype:  The data type stored in binary
+    :param padding: The number of bits in the final byte that are to be ignored
+      when a vector element's size is less than a byte
+      and the length of the vector is not a multiple of 8.
+      Defaults to 0.
     """
 
     __slots__ = ("data", "dtype", "padding")
 
-    def __init__(self, data: Sequence[float | int], dtype: BinaryVectorDtype, padding: int = 0):
-        """
-        :param data: Sequence of numbers representing the mathematical vector.
-        :param dtype:  The data type stored in binary
-        :param padding: The number of bits in the final byte that are to be ignored
-          when a vector element's size is less than a byte
-          and the length of the vector is not a multiple of 8.
-        """
-        self.data = data
-        self.dtype = dtype
-        self.padding = padding
+    data: Sequence[float | int]
+    dtype: BinaryVectorDtype
+    padding: int = field(default=0)
 
 
 class Binary(bytes):
