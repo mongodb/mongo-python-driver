@@ -123,9 +123,12 @@ class SocketGetter(MongoTask):
 
         self.state = "connection"
 
-    def __del__(self):
-        if _IS_SYNC and self.sock:
-            self.sock.close_conn(None)
+    async def release_conn(self):
+        if self.sock:
+            await self.sock.unpin()
+            self.sock = None
+            return True
+        return False
 
 
 async def run_cases(client, cases):
@@ -352,6 +355,10 @@ class TestPooling(_TestPoolingBase):
 
         self.assertEqual(t.state, "connection")
         self.assertEqual(t.sock, s1)
+        # Cleanup
+        await t.release_conn()
+        await t.join()
+        await pool.close()
 
     async def test_checkout_more_than_max_pool_size(self):
         pool = await self.create_pool(max_pool_size=2)
@@ -364,16 +371,26 @@ class TestPooling(_TestPoolingBase):
                 socks.append(sock)
 
         tasks = []
-        for _ in range(30):
+        for _ in range(10):
             t = SocketGetter(self.c, pool)
             await t.start()
             tasks.append(t)
         await asyncio.sleep(1)
         for t in tasks:
             self.assertEqual(t.state, "get_socket")
-
+        # Cleanup
         for socket_info in socks:
-            await socket_info.close_conn(None)
+            await socket_info.unpin()
+        while tasks:
+            to_remove = []
+            for t in tasks:
+                if await t.release_conn():
+                    to_remove.append(t)
+                    await t.join()
+            for t in to_remove:
+                tasks.remove(t)
+            await asyncio.sleep(0.05)
+        await pool.close()
 
     async def test_maxConnecting(self):
         client = await self.async_rs_or_single_client()

@@ -1430,10 +1430,10 @@ buildvariants:
     - debian11-small
   tasks:
     - name: test-gcpkms
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+      batchtime: 10080  # 7 days
     - name: test-gcpkms-fail
     - name: test-azurekms
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+      batchtime: 10080  # 7 days
     - name: test-azurekms-fail
 
 - name: rhel8-test-lambda

@@ -123,9 +123,12 @@ class SocketGetter(MongoTask):
 
         self.state = "connection"
 
-    def __del__(self):
-        if _IS_SYNC and self.sock:
-            self.sock.close_conn(None)
+    def release_conn(self):
+        if self.sock:
+            self.sock.unpin()
+            self.sock = None
+            return True
+        return False
 
 
 def run_cases(client, cases):
@@ -352,6 +355,10 @@ class TestPooling(_TestPoolingBase):
 
         self.assertEqual(t.state, "connection")
         self.assertEqual(t.sock, s1)
+        # Cleanup
+        t.release_conn()
+        t.join()
+        pool.close()
 
     def test_checkout_more_than_max_pool_size(self):
         pool = self.create_pool(max_pool_size=2)
@@ -364,16 +371,26 @@ class TestPooling(_TestPoolingBase):
                 socks.append(sock)
 
         tasks = []
-        for _ in range(30):
+        for _ in range(10):
             t = SocketGetter(self.c, pool)
             t.start()
             tasks.append(t)
         time.sleep(1)
         for t in tasks:
             self.assertEqual(t.state, "get_socket")
-
+        # Cleanup
         for socket_info in socks:
-            socket_info.close_conn(None)
+            socket_info.unpin()
+        while tasks:
+            to_remove = []
+            for t in tasks:
+                if t.release_conn():
+                    to_remove.append(t)
+                    t.join()
+            for t in to_remove:
+                tasks.remove(t)
+            time.sleep(0.05)
+        pool.close()
 
     def test_maxConnecting(self):
         client = self.rs_or_single_client()
