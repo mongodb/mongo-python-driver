@@ -80,7 +80,7 @@ from pymongo.lock import (
     _create_lock,
     _release_locks,
 )
-from pymongo.logger import _CLIENT_LOGGER, _log_or_warn
+from pymongo.logger import _CLIENT_LOGGER, _log_client_error, _log_or_warn
 from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason
 from pymongo.operations import (
@@ -2043,7 +2043,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     # can be caught in _process_periodic_tasks
                     raise
                 else:
-                    helpers_shared._handle_exception()
+                    _log_client_error()
 
         # Don't re-open topology if it's closed and there's no pending cursors.
         if address_to_cursor_ids:
@@ -2055,7 +2055,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     if isinstance(exc, InvalidOperation) and self._topology._closed:
                         raise
                     else:
-                        helpers_shared._handle_exception()
+                        _log_client_error()
 
     # This method is run periodically by a background thread.
     def _process_periodic_tasks(self) -> None:
@@ -2069,7 +2069,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             if isinstance(exc, InvalidOperation) and self._topology._closed:
                 return
             else:
-                helpers_shared._handle_exception()
+                _log_client_error()
 
     def _return_server_session(
         self, server_session: Union[_ServerSession, _EmptyServerSession]
