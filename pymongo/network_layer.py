@@ -419,7 +419,6 @@ class AsyncNetworkingInterface(NetworkingInterfaceBase):
         self.conn[1].settimeout(timeout)
 
     async def close(self) -> None:
-        # print(f"Closing network interface from {''.join(traceback.format_stack())}")
         self.conn[0].abort()
         await self.conn[1].wait_closed()
 
@@ -516,7 +515,11 @@ class PyMongoProtocol(BufferedProtocol):
     async def read(self, request_id: Optional[int], max_message_size: int) -> tuple[bytes, int]:
         """Read a single MongoDB Wire Protocol message from this connection."""
         if self.transport:
-            self.transport.resume_reading()
+            try:
+                self.transport.resume_reading()
+            # Known bug in SSL Protocols, fixed in Python 3.11: https://github.com/python/cpython/issues/89322
+            except AttributeError:
+                raise OSError("connection is already closed") from None
         if self._done_messages:
             message = await self._done_messages.popleft()
         else:
@@ -557,25 +560,23 @@ class PyMongoProtocol(BufferedProtocol):
             if overflow is not None:
                 if is_compressed and compressor_id is not None:
                     return decompress(
-                        memoryview(
-                            bytearray(self._buffer[start + header_size : self._end_index])
-                            + bytearray(overflow[:overflow_index])
-                        ),
+                        self._buffer[start + header_size : self._end_index].tobytes()
+                        + overflow[:overflow_index].tobytes(),
                         compressor_id,
                     ), op_code
                 else:
-                    return memoryview(
-                        bytearray(self._buffer[start + header_size : self._end_index])
-                        + bytearray(overflow[:overflow_index])
+                    return (
+                        self._buffer[start + header_size : self._end_index].tobytes()
+                        + overflow[:overflow_index].tobytes()
                     ), op_code
             else:
                 if is_compressed and compressor_id is not None:
                     return decompress(
-                        memoryview(self._buffer[start + header_size : end]),
+                        self._buffer[start + header_size : end],
                         compressor_id,
                     ), op_code
                 else:
-                    return memoryview(self._buffer[start + header_size : end]), op_code
+                    return self._buffer[start + header_size : end].tobytes(), op_code
         raise OSError("connection closed")
 
     def get_buffer(self, sizehint: int) -> memoryview:
@@ -736,8 +737,8 @@ class PyMongoProtocol(BufferedProtocol):
         self._drain_waiter = asyncio.get_running_loop().create_future()
         await self._drain_waiter
 
-    def data(self) -> memoryview:
-        return self._buffer
+    def data(self) -> bytes:
+        return self._buffer.tobytes()
 
     async def wait_closed(self) -> None:
         await asyncio.wait([self._closed])
