@@ -116,7 +116,7 @@ def run() -> None:
         TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG} -o log_cli=1".split())
 
     # Run local tests.
-    ret = pytest.main(TEST_ARGS + sys.argv[:1])
+    ret = pytest.main(TEST_ARGS + sys.argv[1:])
     if ret != 0:
         sys.exit(ret)
 
