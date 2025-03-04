@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import platform
 import shutil
@@ -106,8 +107,11 @@ def run() -> None:
         test_kms_remote(SUB_TEST_NAME)
         return
 
+    if os.environ.get("DEBUG_LOG"):
+        TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG} -o log_cli=1".split())
+
     # Run local tests.
-    pytest.main(TEST_ARGS)
+    pytest.main(TEST_ARGS + sys.argv[1:])
 
     # Handle perf test post actions.
     if TEST_PERF:
