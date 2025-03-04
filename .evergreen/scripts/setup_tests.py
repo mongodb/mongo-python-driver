@@ -26,7 +26,7 @@ from utils import (
 )
 
 # Passthrough environment variables.
-PASS_THROUGH_ENV = ["GREEN_FRAMEWORK", "NO_EXT", "MONGODB_API_VERSION"]
+PASS_THROUGH_ENV = ["GREEN_FRAMEWORK", "NO_EXT", "MONGODB_API_VERSION", "DEBUG_LOG"]
 
 # Map the test name to a test suite.
 TEST_SUITE_MAP = {
