@@ -1401,7 +1401,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_to_list_length(self):
         coll = self.db.test
         await coll.insert_many([{} for _ in range(5)])
-        self.addCleanup(coll.drop)
+        self.addAsyncCleanup(coll.drop)
         c = coll.find()
         docs = await c.to_list(3)
         self.assertEqual(len(docs), 3)
@@ -1812,6 +1812,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
 
     @async_client_context.require_version_min(5, 0, -1)
     @async_client_context.require_no_mongos
+    @async_client_context.require_sync
     async def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
@@ -1821,7 +1822,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
 
         listener.reset()
 
-        result = await c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1).to_list()
+        result = list(await c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1))
 
         self.assertEqual(len(result), 3)
 
