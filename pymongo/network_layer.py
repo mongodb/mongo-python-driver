@@ -584,9 +584,9 @@ class PyMongoProtocol(BufferedProtocol):
         If any data does not fit into the returned buffer, this method will be called again until
         either no data remains or an empty buffer is returned.
         """
-        # TODO: This is super hacky and is purely for debugging purposes
+        # Check for SSL EOF edge case, no data will be written to the buffer we return
         if sizehint == 0:
-            return memoryview(bytearray(256))
+            return memoryview(bytearray(16))
         if self._overflow is not None:
             return self._overflow[self._overflow_index :]
         return self._buffer[self._end_index :]
@@ -617,6 +617,8 @@ class PyMongoProtocol(BufferedProtocol):
                 self._end_index += nbytes
             # All data of the current message has been received
             if self._end_index + self._overflow_index - self._start_index >= self._body_size:
+                # Pause reading to avoid storing an arbitrary number of messages in memory before necessary
+                self.transport.pause_reading()
                 if self._pending_messages:
                     result = self._pending_messages.popleft()
                 else:
@@ -659,8 +661,6 @@ class PyMongoProtocol(BufferedProtocol):
                     nbytes_reprocess = self._end_index - self._start_index
                     self._end_index -= nbytes_reprocess
                     self.buffer_updated(nbytes_reprocess)
-                # Pause reading to avoid storing an arbitrary number of messages in memory before necessary
-                self.transport.pause_reading()
 
     def process_header(self) -> tuple[int, int]:
         """Unpack a MongoDB Wire Protocol header."""
