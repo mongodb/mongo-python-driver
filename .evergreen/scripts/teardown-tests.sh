@@ -2,10 +2,6 @@
 set -eu
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
-SCRIPT_DIR="$( cd -- "$SCRIPT_DIR" > /dev/null 2>&1 && pwd )"
-ROOT_DIR="$(dirname $SCRIPT_DIR)"
-
-pushd $ROOT_DIR > /dev/null
 
 # Try to source the env file.
 if [ -f $SCRIPT_DIR/env.sh ]; then
@@ -25,5 +21,3 @@ fi
 
 # Teardown the test runner.
 uv run $SCRIPT_DIR/teardown_tests.py
-
-popd > /dev/null

@@ -24,6 +24,11 @@ else
   exit 1
 fi
 
+if [ -n "${SKIP_TESTS:-}" ]; then
+  echo "Skipping tests!"
+  exit 0
+fi
+
 # Source the local secrets export file if available.
 if [ -f "./secrets-export.sh" ]; then
   . "./secrets-export.sh"
