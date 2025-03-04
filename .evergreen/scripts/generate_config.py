@@ -234,7 +234,7 @@ def generate_yaml(tasks=None, variants=None):
 
 def create_ocsp_variants() -> list[BuildVariant]:
     variants = []
-    batchtime = BATCHTIME_WEEK * 2
+    batchtime = BATCHTIME_WEEK
     expansions = dict(AUTH="noauth", SSL="ssl", TOPOLOGY="server")
     base_display = "OCSP"
 
@@ -674,7 +674,7 @@ def create_oidc_auth_variants():
                 tasks,
                 get_display_name("Auth OIDC", host),
                 host=host,
-                batchtime=BATCHTIME_WEEK * 2,
+                batchtime=BATCHTIME_WEEK,
             )
         )
     return variants
