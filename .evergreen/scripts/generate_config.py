@@ -26,7 +26,7 @@ from shrub.v3.shrub_service import ShrubService
 # Globals
 ##############
 
-ALL_VERSIONS = ["4.0", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
+ALL_VERSIONS = ["4.0", "4.2", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 PYPYS = ["pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
@@ -234,12 +234,12 @@ def generate_yaml(tasks=None, variants=None):
 
 def create_ocsp_variants() -> list[BuildVariant]:
     variants = []
-    batchtime = BATCHTIME_WEEK * 2
+    batchtime = BATCHTIME_WEEK
     expansions = dict(AUTH="noauth", SSL="ssl", TOPOLOGY="server")
     base_display = "OCSP"
 
     # OCSP tests on default host with all servers v4.4+ and all python versions.
-    versions = [v for v in ALL_VERSIONS if v != "4.0"]
+    versions = get_versions_from("4.4")
     for version, python in zip_cycle(versions, ALL_PYTHONS):
         host = DEFAULT_HOST
         variant = create_variant(
@@ -279,8 +279,9 @@ def create_server_variants() -> list[BuildVariant]:
     host = DEFAULT_HOST
     # Prefix the display name with an asterisk so it is sorted first.
     base_display_name = "* Test"
-    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
+    for python, c_ext in product([*MIN_MAX_PYTHON, PYPYS[-1]], C_EXTS):
         expansions = dict(COVERAGE="coverage")
+        handle_c_ext(c_ext, expansions)
         display_name = get_display_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
             [f".{t} .sync_async" for t in TOPOLOGIES],
@@ -343,11 +344,11 @@ def create_encryption_variants() -> list[BuildVariant]:
     batchtime = BATCHTIME_WEEK
 
     def get_encryption_expansions(encryption):
-        expansions = dict(test_encryption="true")
+        expansions = dict(TEST_NAME="encryption")
         if "crypt_shared" in encryption:
-            expansions["test_crypt_shared"] = "true"
+            expansions["TEST_CRYPT_SHARED"] = "true"
         if "PyOpenSSL" in encryption:
-            expansions["test_encryption_pyopenssl"] = "true"
+            expansions["SUB_TEST_NAME"] = "pyopenssl"
         return expansions
 
     host = DEFAULT_HOST
@@ -486,7 +487,7 @@ def create_enterprise_auth_variants():
 def create_pyopenssl_variants():
     base_name = "PyOpenSSL"
     batchtime = BATCHTIME_WEEK
-    expansions = dict(test_pyopenssl="true")
+    expansions = dict(TEST_NAME="pyopenssl")
     variants = []
 
     for python in ALL_PYTHONS:
@@ -587,7 +588,7 @@ def create_no_c_ext_variants():
     variants = []
     host = DEFAULT_HOST
     for python, topology in zip_cycle(CPYTHONS, TOPOLOGIES):
-        tasks = [f".{topology} .noauth .nossl .sync_async"]
+        tasks = [f".{topology} .noauth .nossl !.sync_async"]
         expansions = dict()
         handle_c_ext(C_EXTS[0], expansions)
         display_name = get_display_name("No C Ext", host, python=python)
@@ -644,7 +645,7 @@ def create_disable_test_commands_variants():
 def create_serverless_variants():
     host = DEFAULT_HOST
     batchtime = BATCHTIME_WEEK
-    expansions = dict(test_serverless="true", AUTH="auth", SSL="ssl")
+    expansions = dict(TEST_NAME="serverless", AUTH="auth", SSL="ssl")
     tasks = ["serverless_task_group"]
     base_name = "Serverless"
     return [
@@ -673,7 +674,7 @@ def create_oidc_auth_variants():
                 tasks,
                 get_display_name("Auth OIDC", host),
                 host=host,
-                batchtime=BATCHTIME_WEEK * 2,
+                batchtime=BATCHTIME_WEEK,
             )
         )
     return variants
@@ -810,17 +811,11 @@ def create_server_tasks():
             SSL=ssl,
         )
         bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
-        test_suites = ""
+        test_vars = dict(AUTH=auth, SSL=ssl, SYNC=sync)
         if sync == "sync":
-            test_suites = "default"
+            test_vars["TEST_NAME"] = "default_sync"
         elif sync == "async":
-            test_suites = "default_async"
-        test_vars = dict(
-            AUTH=auth,
-            SSL=ssl,
-            SYNC=sync,
-            TEST_SUITES=test_suites,
-        )
+            test_vars["TEST_NAME"] = "default_async"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
     return tasks
@@ -833,12 +828,29 @@ def create_load_balancer_tasks():
         tags = ["load-balancer", auth, ssl]
         bootstrap_vars = dict(TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, LOAD_BALANCER="true")
         bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
-        balancer_func = FunctionCall(func="run load-balancer")
-        test_vars = dict(AUTH=auth, SSL=ssl, test_loadbalancer="true")
+        test_vars = dict(AUTH=auth, SSL=ssl, TEST_NAME="load_balancer")
         test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(
-            EvgTask(name=name, tags=tags, commands=[bootstrap_func, balancer_func, test_func])
-        )
+        tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
+
+    return tasks
+
+
+def create_kms_tasks():
+    tasks = []
+    for kms_type in ["gcp", "azure"]:
+        for success in [True, False]:
+            name = f"test-{kms_type}kms"
+            sub_test_name = kms_type
+            if not success:
+                name += "-fail"
+                sub_test_name += "-fail"
+            commands = []
+            if not success:
+                commands.append(FunctionCall(func="bootstrap mongo-orchestration"))
+            test_vars = dict(TEST_NAME="kms", SUB_TEST_NAME=sub_test_name)
+            test_func = FunctionCall(func="run tests", vars=test_vars)
+            commands.append(test_func)
+            tasks.append(EvgTask(name=name, commands=commands))
     return tasks
 
 

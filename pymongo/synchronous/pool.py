@@ -102,7 +102,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.auth import _AuthContext
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient, _MongoClientErrorHandler
-    from pymongo.typings import ClusterTime, _Address, _CollationIn
+    from pymongo.typings import _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
 try:
@@ -310,6 +310,8 @@ class Connection:
         self.connect_rtt = 0.0
         self._client_id = pool._client_id
         self.creation_time = time.monotonic()
+        # For gossiping $clusterTime from the connection handshake to the client.
+        self._cluster_time = None
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
@@ -374,11 +376,10 @@ class Connection:
             return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
 
     def hello(self) -> Hello:
-        return self._hello(None, None, None)
+        return self._hello(None, None)
 
     def _hello(
         self,
-        cluster_time: Optional[ClusterTime],
         topology_version: Optional[Any],
         heartbeat_frequency: Optional[int],
     ) -> Hello[dict[str, Any]]:
@@ -400,9 +401,6 @@ class Connection:
             # If connect_timeout is None there is no timeout.
             if self.opts.connect_timeout:
                 self.set_conn_timeout(self.opts.connect_timeout + heartbeat_frequency)
-
-        if not performing_handshake and cluster_time is not None:
-            cmd["$clusterTime"] = cluster_time
 
         creds = self.opts._credentials
         if creds:
@@ -559,7 +557,7 @@ class Connection:
             )
         except (OperationFailure, NotPrimaryError):
             raise
-        # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
+        # Catch socket.error, KeyboardInterrupt, CancelledError, etc. and close ourselves.
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -576,6 +574,7 @@ class Connection:
 
         try:
             sendall(self.conn, message)
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -586,6 +585,7 @@ class Connection:
         """
         try:
             return receive_message(self, request_id, self.max_message_size)
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -702,8 +702,6 @@ class Connection:
         # shutdown.
         try:
             self.conn.close()
-        except asyncio.CancelledError:
-            raise
         except Exception:  # noqa: S110
             pass
 
@@ -1263,6 +1261,7 @@ class Pool:
 
         try:
             sock = _configured_socket(self.address, self.opts)
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             with self.lock:
                 self.active_contexts.discard(tmp_context)
@@ -1302,11 +1301,15 @@ class Pool:
                 handler.contribute_socket(conn, completed_handshake=False)
 
             conn.authenticate()
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
+
+        if handler:
+            handler.client._topology.receive_cluster_time(conn._cluster_time)
 
         return conn
 
@@ -1363,6 +1366,7 @@ class Pool:
             with self.lock:
                 self.active_contexts.add(conn.cancel_context)
             yield conn
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             # Exception in caller. Ensure the connection gets returned.
             # Note that when pinned is True, the session owns the
@@ -1509,6 +1513,7 @@ class Pool:
                         with self._max_connecting_cond:
                             self._pending -= 1
                             self._max_connecting_cond.notify()
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             if conn:
                 # We checked out a socket but authentication failed.

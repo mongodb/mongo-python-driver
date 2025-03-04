@@ -15,14 +15,18 @@
 """Test the topology module."""
 from __future__ import annotations
 
+import asyncio
 import os
 import socketserver
 import sys
 import threading
+from asyncio import StreamReader, StreamWriter
+from pathlib import Path
+from test.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, PyMongoTestCase, unittest
+from test import IntegrationTest, PyMongoTestCase, UnitTest, unittest
 from test.pymongo_mocks import DummyMonitor
 from test.unified_format import generate_test_classes
 from test.utils import (
@@ -30,7 +34,9 @@ from test.utils import (
     HeartbeatEventListener,
     HeartbeatEventsListListener,
     assertion_context,
+    barrier_wait,
     client_context,
+    create_barrier,
     get_pool,
     server_name_to_type,
     wait_until,
@@ -55,8 +61,16 @@ from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.uri_parser import parse_uri
 
+_IS_SYNC = True
+
 # Location of JSON test specifications.
-SDAM_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "discovery_and_monitoring")
+if _IS_SYNC:
+    SDAM_PATH = os.path.join(Path(__file__).resolve().parent, "discovery_and_monitoring")
+else:
+    SDAM_PATH = os.path.join(
+        Path(__file__).resolve().parent.parent,
+        "discovery_and_monitoring",
+    )
 
 
 def create_mock_topology(uri, monitor_class=DummyMonitor):
@@ -128,7 +142,7 @@ def get_type(topology, hostname):
     return description.server_type
 
 
-class TestAllScenarios(unittest.TestCase):
+class TestAllScenarios(UnitTest):
     pass
 
 
@@ -243,11 +257,11 @@ def create_tests():
 create_tests()
 
 
-class TestClusterTimeComparison(unittest.TestCase):
+class TestClusterTimeComparison(PyMongoTestCase):
     def test_cluster_time_comparison(self):
         t = create_mock_topology("mongodb://host")
 
-        def send_cluster_time(time, inc, should_update):
+        def send_cluster_time(time, inc):
             old = t.max_cluster_time()
             new = {"clusterTime": Timestamp(time, inc)}
             got_hello(
@@ -262,34 +276,33 @@ class TestClusterTimeComparison(unittest.TestCase):
             )
 
             actual = t.max_cluster_time()
-            if should_update:
-                self.assertEqual(actual, new)
-            else:
-                self.assertEqual(actual, old)
+            # We never update $clusterTime from monitoring connections.
+            self.assertEqual(actual, old)
 
-        send_cluster_time(0, 1, True)
-        send_cluster_time(2, 2, True)
-        send_cluster_time(2, 1, False)
-        send_cluster_time(1, 3, False)
-        send_cluster_time(2, 3, True)
+        send_cluster_time(0, 1)
+        send_cluster_time(2, 2)
+        send_cluster_time(2, 1)
+        send_cluster_time(1, 3)
+        send_cluster_time(2, 3)
 
 
 class TestIgnoreStaleErrors(IntegrationTest):
     def test_ignore_stale_connection_errors(self):
-        N_THREADS = 5
-        barrier = threading.Barrier(N_THREADS, timeout=30)
-        client = self.rs_or_single_client(minPoolSize=N_THREADS)
-        self.addCleanup(client.close)
+        if not _IS_SYNC and sys.version_info < (3, 11):
+            self.skipTest("Test requires asyncio.Barrier (added in Python 3.11)")
+        N_TASKS = 5
+        barrier = create_barrier(N_TASKS, timeout=30)
+        client = self.rs_or_single_client(minPoolSize=N_TASKS)
 
         # Wait for initial discovery.
         client.admin.command("ping")
         pool = get_pool(client)
         starting_generation = pool.gen.get_overall()
-        wait_until(lambda: len(pool.conns) == N_THREADS, "created conns")
+        wait_until(lambda: len(pool.conns) == N_TASKS, "created conns")
 
         def mock_command(*args, **kwargs):
-            # Synchronize all threads to ensure they use the same generation.
-            barrier.wait()
+            # Synchronize all tasks to ensure they use the same generation.
+            barrier_wait(barrier, timeout=30)
             raise AutoReconnect("mock Connection.command error")
 
         for conn in pool.conns:
@@ -301,12 +314,12 @@ class TestIgnoreStaleErrors(IntegrationTest):
             except AutoReconnect:
                 pass
 
-        threads = []
-        for i in range(N_THREADS):
-            threads.append(threading.Thread(target=insert_command, args=(i,)))
-        for t in threads:
+        tasks = []
+        for i in range(N_TASKS):
+            tasks.append(ConcurrentRunner(target=insert_command, args=(i,)))
+        for t in tasks:
             t.start()
-        for t in threads:
+        for t in tasks:
             t.join()
 
         # Expect a single pool reset for the network error
@@ -325,10 +338,9 @@ class TestPoolManagement(IntegrationTest):
     def test_pool_unpause(self):
         # This test implements the prose test "Connection Pool Management"
         listener = CMAPHeartbeatListener()
-        client = self.single_client(
+        _ = self.single_client(
             appName="SDAMPoolManagementTest", heartbeatFrequencyMS=500, event_listeners=[listener]
         )
-        self.addCleanup(client.close)
         # Assert that ConnectionPoolReadyEvent occurs after the first
         # ServerHeartbeatSucceededEvent.
         listener.wait_for_event(monitoring.PoolReadyEvent, 1)
@@ -360,7 +372,6 @@ class TestServerMonitoringMode(IntegrationTest):
 
     def test_rtt_connection_is_enabled_stream(self):
         client = self.rs_or_single_client(serverMonitoringMode="stream")
-        self.addCleanup(client.close)
         client.admin.command("ping")
 
         def predicate():
@@ -369,18 +380,26 @@ class TestServerMonitoringMode(IntegrationTest):
                 if not monitor._stream:
                     return False
                 if client_context.version >= (4, 4):
-                    if monitor._rtt_monitor._executor._thread is None:
-                        return False
+                    if _IS_SYNC:
+                        if monitor._rtt_monitor._executor._thread is None:
+                            return False
+                    else:
+                        if monitor._rtt_monitor._executor._task is None:
+                            return False
                 else:
-                    if monitor._rtt_monitor._executor._thread is not None:
-                        return False
+                    if _IS_SYNC:
+                        if monitor._rtt_monitor._executor._thread is not None:
+                            return False
+                    else:
+                        if monitor._rtt_monitor._executor._task is not None:
+                            return False
             return True
 
         wait_until(predicate, "find all RTT monitors")
 
     def test_rtt_connection_is_disabled_poll(self):
         client = self.rs_or_single_client(serverMonitoringMode="poll")
-        self.addCleanup(client.close)
+
         self.assert_rtt_connection_is_disabled(client)
 
     def test_rtt_connection_is_disabled_auto(self):
@@ -394,7 +413,6 @@ class TestServerMonitoringMode(IntegrationTest):
         for env in envs:
             with patch.dict("os.environ", env):
                 client = self.rs_or_single_client(serverMonitoringMode="auto")
-                self.addCleanup(client.close)
                 self.assert_rtt_connection_is_disabled(client)
 
     def assert_rtt_connection_is_disabled(self, client):
@@ -402,7 +420,10 @@ class TestServerMonitoringMode(IntegrationTest):
         for _, server in client._topology._servers.items():
             monitor = server._monitor
             self.assertFalse(monitor._stream)
-            self.assertIsNone(monitor._rtt_monitor._executor._thread)
+            if _IS_SYNC:
+                self.assertIsNone(monitor._rtt_monitor._executor._thread)
+            else:
+                self.assertIsNone(monitor._rtt_monitor._executor._task)
 
 
 class MockTCPHandler(socketserver.BaseRequestHandler):
@@ -425,16 +446,46 @@ class TestHeartbeatStartOrdering(PyMongoTestCase):
     def test_heartbeat_start_ordering(self):
         events = []
         listener = HeartbeatEventsListListener(events)
-        server = TCPServer(("localhost", 9999), MockTCPHandler)
-        server.events = events
-        server_thread = threading.Thread(target=server.handle_request_and_shutdown)
-        server_thread.start()
-        _c = self.simple_client(
-            "mongodb://localhost:9999", serverSelectionTimeoutMS=500, event_listeners=(listener,)
-        )
-        server_thread.join()
-        listener.wait_for_event(ServerHeartbeatStartedEvent, 1)
-        listener.wait_for_event(ServerHeartbeatFailedEvent, 1)
+
+        if _IS_SYNC:
+            server = TCPServer(("localhost", 9999), MockTCPHandler)
+            server.events = events
+            server_thread = ConcurrentRunner(target=server.handle_request_and_shutdown)
+            server_thread.start()
+            _c = self.simple_client(
+                "mongodb://localhost:9999",
+                serverSelectionTimeoutMS=500,
+                event_listeners=(listener,),
+            )
+            server_thread.join()
+            listener.wait_for_event(ServerHeartbeatStartedEvent, 1)
+            listener.wait_for_event(ServerHeartbeatFailedEvent, 1)
+
+        else:
+
+            def handle_client(reader: StreamReader, writer: StreamWriter):
+                events.append("client connected")
+                if (reader.read(1024)).strip():
+                    events.append("client hello received")
+                writer.close()
+                writer.wait_closed()
+
+            server = asyncio.start_server(handle_client, "localhost", 9999)
+            server.events = events
+            server.start_serving()
+            _c = self.simple_client(
+                "mongodb://localhost:9999",
+                serverSelectionTimeoutMS=500,
+                event_listeners=(listener,),
+            )
+            _c._connect()
+
+            listener.wait_for_event(ServerHeartbeatStartedEvent, 1)
+            listener.wait_for_event(ServerHeartbeatFailedEvent, 1)
+
+            server.close()
+            server.wait_closed()
+            _c.close()
 
         self.assertEqual(
             events,

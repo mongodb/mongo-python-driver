@@ -1,7 +1,26 @@
 Changelog
 =========
 
-Changes in Version 4.11.0 (YYYY/MM/DD)
+Changes in Version 4.11.2 (YYYY/MM/DD)
+--------------------------------------
+
+Version 4.11.2 is a bug fix release.
+
+- Fixed a bug where :meth:`~pymongo.database.Database.command` would fail when attempting to run the bulkWrite command.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.11.2 release notes in JIRA`_ for the list of resolved issues in this release.
+
+.. _PyMongo 4.11.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=42506
+
+Changes in Version 4.11.1 (2025/02/10)
+--------------------------------------
+
+- Fixed support for prebuilt ``ppc64le`` and ``s390x`` wheels.
+
+Changes in Version 4.11.0 (2025/01/28)
 --------------------------------------
 
 .. warning:: PyMongo 4.11 drops support for Python 3.8 and PyPy 3.9: Python 3.9+ or PyPy 3.10+ is now required.
@@ -180,7 +199,7 @@ PyMongo 4.9 brings a number of improvements including:
   unction-as-a-service (FaaS) like AWS Lambda, Google Cloud Functions, and Microsoft Azure Functions.
   On some FaaS systems, there is a ``fork()`` operation at function
   startup.  By delaying the connection to the first operation, we avoid a deadlock.  See
-  `Is PyMongo Fork-Safe`_ for more information.
+  :ref:`pymongo-fork-safe` for more information.
 
 
 Issues Resolved
@@ -189,7 +208,6 @@ Issues Resolved
 See the `PyMongo 4.9 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _Is PyMongo Fork-Safe : https://www.mongodb.com/docs/languages/python/pymongo-driver/current/faq/#is-pymongo-fork-safe-
 .. _PyMongo 4.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39940
 
 

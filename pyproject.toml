@@ -129,7 +129,7 @@ markers = [
     "data_lake: tests that rely on atlas data lake",
     "perf: benchmark tests",
     "index_management: index management tests",
-    "csfle: client-side field-level encryption tests",
+    "kms: client-side field-level encryption tests using kms",
     "encryption: encryption tests",
     "load_balancer: load balancer tests",
     "mockupdb: tests that rely on mockupdb",
@@ -234,7 +234,6 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
     "RET", "ARG", "F405", "B028", "PGH001", "B018", "F403", "RUF015", "E731", "B007",
     "UP031", "F401", "B023", "F811"]
 "tools/*.py" = ["T201"]
-"green_framework_test.py" = ["T201"]
 "hatch_build.py" = ["S"]
 "_setup.py" = ["SIM112"]
 

@@ -666,6 +666,11 @@ def joinall(threads):
         assert not t.is_alive(), "Thread %s hung" % t
 
 
+async def async_joinall(tasks):
+    """Join threads with a 5-minute timeout, assert joins succeeded"""
+    await asyncio.wait([t.task for t in tasks if t is not None], timeout=300)
+
+
 def wait_until(predicate, success_description, timeout=10):
     """Wait up to 10 seconds (by default) for predicate to be true.
 
@@ -827,7 +832,7 @@ async def async_get_pools(client):
     """Get all pools."""
     return [
         server.pool
-        async for server in await (await client._get_topology()).select_servers(
+        for server in await (await client._get_topology()).select_servers(
             any_server_selector, _Op.TEST
         )
     ]
@@ -1073,3 +1078,19 @@ def create_async_event():
 
 def create_event():
     return threading.Event()
+
+
+def async_create_barrier(N_TASKS, timeout: float | None = None):
+    return asyncio.Barrier(N_TASKS)
+
+
+def create_barrier(N_TASKS, timeout: float | None = None):
+    return threading.Barrier(N_TASKS, timeout=timeout)
+
+
+async def async_barrier_wait(barrier, timeout: float | None = None):
+    await asyncio.wait_for(barrier.wait(), timeout=timeout)
+
+
+def barrier_wait(barrier, timeout: float | None = None):
+    barrier.wait()

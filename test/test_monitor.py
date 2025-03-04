@@ -15,6 +15,7 @@
 """Test the monitor module."""
 from __future__ import annotations
 
+import asyncio
 import gc
 import subprocess
 import sys
@@ -23,13 +24,15 @@ from functools import partial
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, connected, unittest
+from test import IntegrationTest, client_context, connected, unittest
 from test.utils import (
     ServerAndTopologyEventListener,
     wait_until,
 )
 
 from pymongo.periodic_executor import _EXECUTORS
+
+_IS_SYNC = True
 
 
 def unregistered(ref):
@@ -55,8 +58,8 @@ class TestMonitor(IntegrationTest):
         return client
 
     def test_cleanup_executors_on_client_del(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
             client = self.create_client()
             executors = get_executors(client)
             self.assertEqual(len(executors), 4)
@@ -70,6 +73,19 @@ class TestMonitor(IntegrationTest):
             for ref, name in executor_refs:
                 wait_until(partial(unregistered, ref), f"unregister executor: {name}", timeout=5)
 
+            def resource_warning_caught():
+                gc.collect()
+                for warning in w:
+                    if (
+                        issubclass(warning.category, ResourceWarning)
+                        and "Call MongoClient.close() to safely shut down your client and free up resources."
+                        in str(warning.message)
+                    ):
+                        return True
+                return False
+
+            wait_until(resource_warning_caught, "catch resource warning")
+
     def test_cleanup_executors_on_client_close(self):
         client = self.create_client()
         executors = get_executors(client)
@@ -80,10 +96,15 @@ class TestMonitor(IntegrationTest):
         for executor in executors:
             wait_until(lambda: executor._stopped, f"closed executor: {executor._name}", timeout=5)
 
+    @client_context.require_sync
     def test_no_thread_start_runtime_err_on_shutdown(self):
         """Test we silence noisy runtime errors fired when the MongoClient spawns a new thread
         on process shutdown."""
-        command = [sys.executable, "-c", "from pymongo import MongoClient; c = MongoClient()"]
+        command = [
+            sys.executable,
+            "-c",
+            "from pymongo import MongoClient; c = MongoClient()",
+        ]
         completed_process: subprocess.CompletedProcess = subprocess.run(
             command, capture_output=True
         )

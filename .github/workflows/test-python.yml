@@ -22,13 +22,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-          cache: 'pip'
-          cache-dependency-path: 'pyproject.toml'
       - name: Install just
         uses: extractions/setup-just@v2
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.9"
       - name: Install Python dependencies
         run: |
           just install
@@ -54,49 +54,28 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-latest]
         python-version: ["3.9", "pypy-3.10", "3.13", "3.13t"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - if: ${{ matrix.python-version == '3.13t' }}
-        name: Setup free-threaded Python
-        uses: deadsnakes/action@v3.2.0
-        with:
-          python-version: 3.13
-          nogil: true
-      - if: ${{ matrix.python-version != '3.13t' }}
-        name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip'
-          cache-dependency-path: 'pyproject.toml'
-          allow-prereleases: true
       - name: Install just
         uses: extractions/setup-just@v2
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: |
-         if [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
-            # Just can't be installed on 3.13t, use pytest directly.
-            pip install .
-            pip install -r requirements/test.txt
-          else
-            just install
-          fi
+        run: just install
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.12.0
         with:
           mongodb-version: 6.0
       - name: Run tests
-        run: |
-          if [[ "${{ matrix.python-version }}" == "3.13t" ]]; then
-            pytest -v --durations=5 --maxfail=10
-          else
-            just test
-          fi
+        run: just test
 
   doctest:
     runs-on: ubuntu-latest
@@ -105,24 +84,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-          cache: 'pip'
-          cache-dependency-path: 'pyproject.toml'
       - name: Install just
         uses: extractions/setup-just@v2
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.9"
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.12.0
         with:
           mongodb-version: '8.0.0-rc4'
       - name: Install dependencies
-        run: |
-          just install
+        run: just install
       - name: Run tests
-        run: |
-          just docs-test
+        run:  just docs-test
 
   docs:
     name: Docs Checks
@@ -131,20 +107,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          cache: 'pip'
-          cache-dependency-path: 'pyproject.toml'
-          # Build docs on lowest supported Python for furo
-          python-version: '3.9'
+          enable-cache: true
+          python-version: "3.9"
       - name: Install just
         uses: extractions/setup-just@v2
       - name: Install dependencies
-        run: |
-          just install
+        run: just install
       - name: Build docs
-        run: |
-          just docs
+        run: just docs
 
   linkcheck:
     name: Link Check
@@ -153,20 +126,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          cache: 'pip'
-          cache-dependency-path: 'pyproject.toml'
-          # Build docs on lowest supported Python for furo
-          python-version: '3.9'
+          enable-cache: true
+          python-version: "3.9"
       - name: Install just
         uses: extractions/setup-just@v2
       - name: Install dependencies
-        run: |
-          just install
+        run: just install
       - name: Build docs
-        run: |
-          just docs-linkcheck
+        run: just docs-linkcheck
 
   typing:
     name: Typing Tests
@@ -178,11 +148,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
+          enable-cache: true
           python-version: "${{matrix.python}}"
-          cache: 'pip'
-          cache-dependency-path: 'pyproject.toml'
       - name: Install just
         uses: extractions/setup-just@v2
       - name: Install dependencies

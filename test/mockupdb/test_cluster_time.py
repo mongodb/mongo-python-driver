@@ -123,50 +123,11 @@ class TestClusterTime(PyMongoTestCase):
 
         client = self.simple_client(server.uri, heartbeatFrequencyMS=500)
 
-        request = server.receives("ismaster")
-        # No $clusterTime in first ismaster, only in subsequent ones
-        self.assertNotIn("$clusterTime", request)
-        request.ok(reply)
-
-        # Next exchange: client returns first clusterTime, we send the second.
-        request = server.receives("ismaster")
-        self.assertIn("$clusterTime", request)
-        self.assertEqual(request["$clusterTime"]["clusterTime"], cluster_time)
-        cluster_time = Timestamp(cluster_time.time, cluster_time.inc + 1)
-        reply["$clusterTime"] = {"clusterTime": cluster_time}
-        request.reply(reply)
-
-        # Third exchange: client returns second clusterTime.
-        request = server.receives("ismaster")
-        self.assertEqual(request["$clusterTime"]["clusterTime"], cluster_time)
-
-        # Return command error with a new clusterTime.
-        cluster_time = Timestamp(cluster_time.time, cluster_time.inc + 1)
-        error = {
-            "ok": 0,
-            "code": 211,
-            "errmsg": "Cache Reader No keys found for HMAC ...",
-            "$clusterTime": {"clusterTime": cluster_time},
-        }
-        request.reply(error)
-
-        # PyMongo 3.11+ closes the monitoring connection on command errors.
-
-        # Fourth exchange: the Monitor closes the connection and runs the
-        # handshake on a new connection.
-        request = server.receives("ismaster")
-        # No $clusterTime in first ismaster, only in subsequent ones
-        self.assertNotIn("$clusterTime", request)
-
-        # Reply without $clusterTime.
-        reply.pop("$clusterTime")
-        request.reply(reply)
-
-        # Fifth exchange: the Monitor attempt uses the clusterTime from
-        # the previous isMaster error.
-        request = server.receives("ismaster")
-        self.assertEqual(request["$clusterTime"]["clusterTime"], cluster_time)
-        request.reply(reply)
+        for _ in range(3):
+            request = server.receives("ismaster")
+            # No $clusterTime in heartbeats or handshakes.
+            self.assertNotIn("$clusterTime", request)
+            request.ok(reply)
         client.close()
 
     def test_collection_bulk_error(self):

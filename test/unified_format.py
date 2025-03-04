@@ -543,6 +543,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
+        if (
+            "Error returned from connection pool clear with interruptInUseConnections=true is retryable"
+            in spec["description"]
+            and not _IS_SYNC
+        ):
+            self.skipTest("PYTHON-5170 tests are flakey")
+        if "Driver extends timeout while streaming" in spec["description"] and not _IS_SYNC:
+            self.skipTest("PYTHON-5174 tests are flakey")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
@@ -999,12 +1007,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if not client_context.test_commands_enabled:
             self.skipTest("Test commands must be enabled")
 
-        cmd_on = SON([("configureFailPoint", "failCommand")])
-        cmd_on.update(command_args)
-        client.admin.command(cmd_on)
-        self.addCleanup(
-            client.admin.command, "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
-        )
+        self.configure_fail_point(client, command_args)
+        self.addCleanup(self.configure_fail_point, client, command_args, off=True)
 
     def _testOperation_failPoint(self, spec):
         self.__set_fail_point(
@@ -1374,7 +1378,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
 
         if "csot" in self.id().lower():
             # Retry CSOT tests up to 2 times to deal with flakey tests.
@@ -1382,7 +1385,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             for i in range(attempts):
                 try:
                     return self._run_scenario(spec, uri)
-                except AssertionError:
+                except (AssertionError, OperationFailure) as exc:
+                    if isinstance(exc, OperationFailure) and (
+                        _IS_SYNC or "failpoint" not in exc._message
+                    ):
+                        raise
                     if i < attempts - 1:
                         print(
                             f"Retrying after attempt {i+1} of {self.id()} failed with:\n"

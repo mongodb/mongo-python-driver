@@ -15,11 +15,11 @@
 """Test built in connection-pooling with threads."""
 from __future__ import annotations
 
+import asyncio
 import gc
 import random
 import socket
 import sys
-import threading
 import time
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
@@ -27,30 +27,29 @@ from bson.son import SON
 from pymongo import MongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
+from pymongo.lock import _create_lock
 
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
+from test.helpers import ConcurrentRunner
 from test.utils import delay, get_pool, joinall
 
 from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.pool import Pool, PoolOptions
 
-
-@client_context.require_connection
-def setUpModule():
-    pass
+_IS_SYNC = True
 
 
 N = 10
 DB = "pymongo-pooling-tests"
 
 
-def gc_collect_until_done(threads, timeout=60):
+def gc_collect_until_done(tasks, timeout=60):
     start = time.time()
-    running = list(threads)
+    running = list(tasks)
     while running:
-        assert (time.time() - start) < timeout, "Threads timed out"
+        assert (time.time() - start) < timeout, "Tasks timed out"
         for t in running:
             t.join(0.1)
             if not t.is_alive():
@@ -58,12 +57,12 @@ def gc_collect_until_done(threads, timeout=60):
         gc.collect()
 
 
-class MongoThread(threading.Thread):
-    """A thread that uses a MongoClient."""
+class MongoTask(ConcurrentRunner):
+    """A thread/Task that uses a MongoClient."""
 
     def __init__(self, client):
         super().__init__()
-        self.daemon = True  # Don't hang whole test if thread hangs.
+        self.daemon = True  # Don't hang whole test if task hangs.
         self.client = client
         self.db = self.client[DB]
         self.passed = False
@@ -76,21 +75,21 @@ class MongoThread(threading.Thread):
         raise NotImplementedError
 
 
-class InsertOneAndFind(MongoThread):
+class InsertOneAndFind(MongoTask):
     def run_mongo_thread(self):
         for _ in range(N):
             rand = random.randint(0, N)
-            _id = self.db.sf.insert_one({"x": rand}).inserted_id
-            assert rand == self.db.sf.find_one(_id)["x"]
+            _id = (self.db.sf.insert_one({"x": rand})).inserted_id
+            assert rand == (self.db.sf.find_one(_id))["x"]
 
 
-class Unique(MongoThread):
+class Unique(MongoTask):
     def run_mongo_thread(self):
         for _ in range(N):
             self.db.unique.insert_one({})  # no error
 
 
-class NonUnique(MongoThread):
+class NonUnique(MongoTask):
     def run_mongo_thread(self):
         for _ in range(N):
             try:
@@ -101,7 +100,7 @@ class NonUnique(MongoThread):
                 raise AssertionError("Should have raised DuplicateKeyError")
 
 
-class SocketGetter(MongoThread):
+class SocketGetter(MongoTask):
     """Utility for TestPooling.
 
     Checks out a socket and holds it forever. Used in
@@ -124,31 +123,35 @@ class SocketGetter(MongoThread):
 
         self.state = "connection"
 
-    def __del__(self):
+    def release_conn(self):
         if self.sock:
-            self.sock.close_conn(None)
+            self.sock.unpin()
+            self.sock = None
+            return True
+        return False
 
 
 def run_cases(client, cases):
-    threads = []
+    tasks = []
     n_runs = 5
 
     for case in cases:
         for _i in range(n_runs):
             t = case(client)
             t.start()
-            threads.append(t)
+            tasks.append(t)
 
-    for t in threads:
+    for t in tasks:
         t.join()
 
-    for t in threads:
+    for t in tasks:
         assert t.passed, "%s.run() threw an exception" % repr(t)
 
 
 class _TestPoolingBase(IntegrationTest):
     """Base class for all connection-pool tests."""
 
+    @client_context.require_connection
     def setUp(self):
         super().setUp()
         self.c = self.rs_or_single_client()
@@ -158,11 +161,9 @@ class _TestPoolingBase(IntegrationTest):
         db.unique.insert_one({"_id": "jesse"})
         db.test.insert_many([{} for _ in range(10)])
 
-    def tearDown(self):
-        self.c.close()
-        super().tearDown()
-
-    def create_pool(self, pair=(client_context.host, client_context.port), *args, **kwargs):
+    def create_pool(self, pair=None, *args, **kwargs):
+        if pair is None:
+            pair = (client_context.host, client_context.port)
         # Start the pool with the correct ssl options.
         pool_options = client_context.client._topology_settings.pool_options
         kwargs["ssl_context"] = pool_options._ssl_context
@@ -354,6 +355,10 @@ class TestPooling(_TestPoolingBase):
 
         self.assertEqual(t.state, "connection")
         self.assertEqual(t.sock, s1)
+        # Cleanup
+        t.release_conn()
+        t.join()
+        pool.close()
 
     def test_checkout_more_than_max_pool_size(self):
         pool = self.create_pool(max_pool_size=2)
@@ -365,21 +370,30 @@ class TestPooling(_TestPoolingBase):
                 sock.pin_cursor()
                 socks.append(sock)
 
-        threads = []
-        for _ in range(30):
+        tasks = []
+        for _ in range(10):
             t = SocketGetter(self.c, pool)
             t.start()
-            threads.append(t)
+            tasks.append(t)
         time.sleep(1)
-        for t in threads:
+        for t in tasks:
             self.assertEqual(t.state, "get_socket")
-
+        # Cleanup
         for socket_info in socks:
-            socket_info.close_conn(None)
+            socket_info.unpin()
+        while tasks:
+            to_remove = []
+            for t in tasks:
+                if t.release_conn():
+                    to_remove.append(t)
+                    t.join()
+            for t in to_remove:
+                tasks.remove(t)
+            time.sleep(0.05)
+        pool.close()
 
     def test_maxConnecting(self):
         client = self.rs_or_single_client()
-        self.addCleanup(client.close)
         self.client.test.test.insert_one({})
         self.addCleanup(self.client.test.test.delete_many, {})
         pool = get_pool(client)
@@ -389,11 +403,11 @@ class TestPooling(_TestPoolingBase):
         def find_one():
             docs.append(client.test.test.find_one({}))
 
-        threads = [threading.Thread(target=find_one) for _ in range(50)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join(10)
+        tasks = [ConcurrentRunner(target=find_one) for _ in range(50)]
+        for task in tasks:
+            task.start()
+        for task in tasks:
+            task.join(10)
 
         self.assertEqual(len(docs), 50)
         self.assertLessEqual(len(pool.conns), 50)
@@ -416,7 +430,6 @@ class TestPooling(_TestPoolingBase):
     @client_context.require_failCommand_appName
     def test_csot_timeout_message(self):
         client = self.rs_or_single_client(appName="connectionTimeoutApp")
-        self.addCleanup(client.close)
         # Mock an operation failing due to pymongo.timeout().
         mock_connection_timeout = {
             "configureFailPoint": "failCommand",
@@ -441,7 +454,6 @@ class TestPooling(_TestPoolingBase):
     @client_context.require_failCommand_appName
     def test_socket_timeout_message(self):
         client = self.rs_or_single_client(socketTimeoutMS=500, appName="connectionTimeoutApp")
-        self.addCleanup(client.close)
         # Mock an operation failing due to socketTimeoutMS.
         mock_connection_timeout = {
             "configureFailPoint": "failCommand",
@@ -485,7 +497,6 @@ class TestPooling(_TestPoolingBase):
             appName="connectionTimeoutApp",
             heartbeatFrequencyMS=1000000,
         )
-        self.addCleanup(client.close)
         client.admin.command("ping")
         pool = get_pool(client)
         pool.reset_without_pause()
@@ -503,20 +514,19 @@ class TestPoolMaxSize(_TestPoolingBase):
     def test_max_pool_size(self):
         max_pool_size = 4
         c = self.rs_or_single_client(maxPoolSize=max_pool_size)
-        self.addCleanup(c.close)
         collection = c[DB].test
 
         # Need one document.
         collection.drop()
         collection.insert_one({})
 
-        # nthreads had better be much larger than max_pool_size to ensure that
+        # ntasks had better be much larger than max_pool_size to ensure that
         # max_pool_size connections are actually required at some point in this
         # test's execution.
         cx_pool = get_pool(c)
-        nthreads = 10
-        threads = []
-        lock = threading.Lock()
+        ntasks = 10
+        tasks = []
+        lock = _create_lock()
         self.n_passed = 0
 
         def f():
@@ -527,19 +537,18 @@ class TestPoolMaxSize(_TestPoolingBase):
             with lock:
                 self.n_passed += 1
 
-        for _i in range(nthreads):
-            t = threading.Thread(target=f)
-            threads.append(t)
+        for _i in range(ntasks):
+            t = ConcurrentRunner(target=f)
+            tasks.append(t)
             t.start()
 
-        joinall(threads)
-        self.assertEqual(nthreads, self.n_passed)
+        joinall(tasks)
+        self.assertEqual(ntasks, self.n_passed)
         self.assertTrue(len(cx_pool.conns) > 1)
         self.assertEqual(0, cx_pool.requests)
 
     def test_max_pool_size_none(self):
         c = self.rs_or_single_client(maxPoolSize=None)
-        self.addCleanup(c.close)
         collection = c[DB].test
 
         # Need one document.
@@ -547,9 +556,9 @@ class TestPoolMaxSize(_TestPoolingBase):
         collection.insert_one({})
 
         cx_pool = get_pool(c)
-        nthreads = 10
-        threads = []
-        lock = threading.Lock()
+        ntasks = 10
+        tasks = []
+        lock = _create_lock()
         self.n_passed = 0
 
         def f():
@@ -559,19 +568,18 @@ class TestPoolMaxSize(_TestPoolingBase):
             with lock:
                 self.n_passed += 1
 
-        for _i in range(nthreads):
-            t = threading.Thread(target=f)
-            threads.append(t)
+        for _i in range(ntasks):
+            t = ConcurrentRunner(target=f)
+            tasks.append(t)
             t.start()
 
-        joinall(threads)
-        self.assertEqual(nthreads, self.n_passed)
+        joinall(tasks)
+        self.assertEqual(ntasks, self.n_passed)
         self.assertTrue(len(cx_pool.conns) > 1)
         self.assertEqual(cx_pool.max_pool_size, float("inf"))
 
     def test_max_pool_size_zero(self):
         c = self.rs_or_single_client(maxPoolSize=0)
-        self.addCleanup(c.close)
         pool = get_pool(c)
         self.assertEqual(pool.max_pool_size, float("inf"))
 
