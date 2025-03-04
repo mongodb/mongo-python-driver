@@ -202,6 +202,10 @@ async def command(
             )
 
             response_doc = unpacked_docs[0]
+            if not conn.ready:
+                cluster_time = response_doc.get("$clusterTime")
+                if cluster_time:
+                    conn._cluster_time = cluster_time
             if client:
                 await client._process_response(response_doc, session)
             if check:

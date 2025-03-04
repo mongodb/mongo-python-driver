@@ -2,32 +2,31 @@ from __future__ import annotations
 
 import argparse
 import base64
-import dataclasses
 import io
 import logging
 import os
 import platform
-import shlex
 import shutil
 import stat
-import subprocess
-import sys
 import tarfile
 from pathlib import Path
-from typing import Any
 from urllib import request
 
-HERE = Path(__file__).absolute().parent
-ROOT = HERE.parent.parent
-ENV_FILE = HERE / "test-env.sh"
-DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS", "").replace(os.sep, "/")
-PLATFORM = "windows" if os.name == "nt" else sys.platform.lower()
-
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
+from utils import (
+    DRIVERS_TOOLS,
+    ENV_FILE,
+    HERE,
+    LOGGER,
+    PLATFORM,
+    ROOT,
+    Distro,
+    read_env,
+    run_command,
+    write_env,
+)
 
 # Passthrough environment variables.
-PASS_THROUGH_ENV = ["GREEN_FRAMEWORK", "NO_EXT", "MONGODB_API_VERSION"]
+PASS_THROUGH_ENV = ["GREEN_FRAMEWORK", "NO_EXT", "MONGODB_API_VERSION", "DEBUG_LOG"]
 
 # Map the test name to a test suite.
 TEST_SUITE_MAP = {
@@ -41,7 +40,7 @@ TEST_SUITE_MAP = {
     "encryption": "encryption",
     "enterprise_auth": "auth",
     "index_management": "index_management",
-    "kms": "csfle",
+    "kms": "kms",
     "load_balancer": "load_balancer",
     "mockupdb": "mockupdb",
     "pyopenssl": "",
@@ -69,51 +68,23 @@ EXTRAS_MAP = {
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 
 
-@dataclasses.dataclass
-class Distro:
-    name: str
-    version_id: str
-    arch: str
-
-
-def write_env(name: str, value: Any = "1") -> None:
-    with ENV_FILE.open("a", newline="\n") as fid:
-        # Remove any existing quote chars.
-        value = str(value).replace('"', "")
-        fid.write(f'export {name}="{value}"\n')
-
-
 def is_set(var: str) -> bool:
     value = os.environ.get(var, "")
     return len(value.strip()) > 0
-
-
-def run_command(cmd: str) -> None:
-    LOGGER.info("Running command %s...", cmd)
-    subprocess.check_call(shlex.split(cmd))  # noqa: S603
-    LOGGER.info("Running command %s... done.", cmd)
-
-
-def read_env(path: Path | str) -> dict[str, Any]:
-    config = dict()
-    with Path(path).open() as fid:
-        for line in fid.readlines():
-            if "=" not in line:
-                continue
-            name, _, value = line.strip().partition("=")
-            if value.startswith(('"', "'")):
-                value = value[1:-1]
-            name = name.replace("export ", "")
-            config[name] = value
-    return config
 
 
 def get_options():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("test_name", choices=sorted(TEST_SUITE_MAP), nargs="?", default="default")
-    parser.add_argument("sub_test_name", nargs="?")
+    parser.add_argument(
+        "test_name",
+        choices=sorted(TEST_SUITE_MAP),
+        nargs="?",
+        default="default",
+        help="The name of the test suite to set up, typically the same name as a pytest marker.",
+    )
+    parser.add_argument("sub_test_name", nargs="?", help="The sub test name, for example 'azure'")
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Whether to log at the DEBUG level"
     )
@@ -228,6 +199,9 @@ def handle_test_env() -> None:
 
     write_env("AUTH", AUTH)
     write_env("SSL", SSL)
+    write_env("PIP_QUIET")  # Quiet by default.
+    write_env("PIP_PREFER_BINARY")  # Prefer binary dists by default.
+    write_env("UV_FROZEN")  # Do not modify lock files.
 
     # Skip CSOT tests on non-linux platforms.
     if PLATFORM != "linux":
@@ -235,6 +209,7 @@ def handle_test_env() -> None:
 
     # Set an environment variable for the test name and sub test name.
     write_env(f"TEST_{test_name.upper()}")
+    write_env("TEST_NAME", test_name)
     write_env("SUB_TEST_NAME", sub_test_name)
 
     # Handle pass through env vars.
@@ -385,15 +360,9 @@ def handle_test_env() -> None:
             write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:${{LD_LIBRARY_PATH:-}}")
 
     if test_name == "kms":
-        if sub_test_name.startswith("azure"):
-            write_env("TEST_FLE_AZURE_AUTO")
-        else:
-            write_env("TEST_FLE_GCP_AUTO")
+        from kms_tester import setup_kms
 
-        write_env("SUCCESS", "fail" not in sub_test_name)
-        MONGODB_URI = os.environ.get("MONGODB_URI", "")
-        if "@" in MONGODB_URI:
-            raise RuntimeError("MONGODB_URI unexpectedly contains user credentials in FLE test!")
+        setup_kms(sub_test_name)
 
     if test_name == "ocsp":
         write_env("CA_FILE", os.environ["CA_FILE"])

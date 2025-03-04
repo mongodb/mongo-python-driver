@@ -21,11 +21,11 @@ import atexit
 import logging
 import time
 import weakref
-from typing import TYPE_CHECKING, Any, Mapping, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
-from pymongo.errors import NetworkTimeout, NotPrimaryError, OperationFailure, _OperationCancelled
+from pymongo.errors import NetworkTimeout, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
 from pymongo.logger import _SDAM_LOGGER, _debug_log, _SDAMStatusMessage
@@ -257,13 +257,7 @@ class Monitor(MonitorBase):
         self._conn_id = None
         start = time.monotonic()
         try:
-            try:
-                return self._check_once()
-            except (OperationFailure, NotPrimaryError) as exc:
-                # Update max cluster time even when hello fails.
-                details = cast(Mapping[str, Any], exc.details)
-                self._topology.receive_cluster_time(details.get("$clusterTime"))
-                raise
+            return self._check_once()
         except ReferenceError:
             raise
         except Exception as error:
@@ -360,7 +354,6 @@ class Monitor(MonitorBase):
 
         Can raise ConnectionFailure or OperationFailure.
         """
-        cluster_time = self._topology.max_cluster_time()
         start = time.monotonic()
         if conn.more_to_come:
             # Read the next streaming hello (MongoDB 4.4+).
@@ -370,13 +363,12 @@ class Monitor(MonitorBase):
         ):
             # Initiate streaming hello (MongoDB 4.4+).
             response = conn._hello(
-                cluster_time,
                 self._server_description.topology_version,
                 self._settings.heartbeat_frequency,
             )
         else:
             # New connection handshake or polling hello (MongoDB <4.4).
-            response = conn._hello(cluster_time, None, None)
+            response = conn._hello(None, None)
         duration = _monotonic_duration(start)
         return response, duration
 

@@ -105,7 +105,7 @@ _FIELD_MAP = {
     "insert": "documents",
     "update": "updates",
     "delete": "deletes",
-    "bulkWrite": "bulkWrite",
+    "bulkWrite": "ops",
 }
 
 _UNICODE_REPLACE_CODEC_OPTIONS: CodecOptions[Mapping[str, Any]] = CodecOptions(

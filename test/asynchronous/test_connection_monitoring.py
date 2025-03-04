@@ -211,15 +211,10 @@ class AsyncTestCMAP(AsyncIntegrationTest):
         self.check_object(actual, expected)
         self.assertIn(message, str(actual))
 
-    async def _set_fail_point(self, client, command_args):
-        cmd = SON([("configureFailPoint", "failCommand")])
-        cmd.update(command_args)
-        await client.admin.command(cmd)
-
     async def set_fail_point(self, command_args):
         if not async_client_context.supports_failCommand_fail_point:
             self.skipTest("failCommand fail point must be supported")
-        await self._set_fail_point(self.client, command_args)
+        await self.configure_fail_point(self.client, command_args)
 
     async def run_scenario(self, scenario_def, test):
         """Run a CMAP spec test."""
