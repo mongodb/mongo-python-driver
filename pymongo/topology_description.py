@@ -33,7 +33,7 @@ from typing import (
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from pymongo import common
-from pymongo.errors import ConfigurationError
+from pymongo.errors import ConfigurationError, PyMongoError
 from pymongo.read_preferences import ReadPreference, _AggWritePref, _ServerMode
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection
@@ -563,7 +563,11 @@ def _update_rs_from_primary(
         if None not in new_election_tuple:
             if None not in max_election_tuple and new_election_tuple < max_election_tuple:
                 # Stale primary, set to type Unknown.
-                sds[server_description.address] = server_description.to_unknown()
+                sds[server_description.address] = server_description.to_unknown(
+                    PyMongoError(
+                        f"primary marked stale due to electionId/setVersion mismatch, {new_election_tuple} is stale compared to {max_election_tuple}"
+                    )
+                )
                 return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
             max_election_id = server_description.election_id
 
@@ -578,7 +582,11 @@ def _update_rs_from_primary(
         max_election_safe = tuple(MinKey() if i is None else i for i in max_election_tuple)
         if new_election_safe < max_election_safe:
             # Stale primary, set to type Unknown.
-            sds[server_description.address] = server_description.to_unknown()
+            sds[server_description.address] = server_description.to_unknown(
+                PyMongoError(
+                    f"primary marked stale due to electionId/setVersion mismatch, {new_election_tuple} is stale compared to {max_election_tuple}"
+                )
+            )
             return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
         else:
             max_election_id = server_description.election_id
@@ -591,7 +599,9 @@ def _update_rs_from_primary(
             and server.address != server_description.address
         ):
             # Reset old primary's type to Unknown.
-            sds[server.address] = server.to_unknown()
+            sds[server.address] = server.to_unknown(
+                PyMongoError("primary marked stale due to discovery of newer primary")
+            )
 
             # There can be only one prior primary.
             break

@@ -384,6 +384,7 @@ class EntityMapUtil:
             name = spec["id"]
             thread = SpecRunnerTask(name)
             await thread.start()
+            self.test.addAsyncCleanup(thread.join, 5)
             self[name] = thread
             return
 
