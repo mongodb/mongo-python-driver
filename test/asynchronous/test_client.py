@@ -1808,10 +1808,10 @@ class TestClient(AsyncIntegrationTest):
 
             await pool.reset_without_pause()
 
-            await async_wait_until(lambda: len(cm.records) > 0, "start creating connections")
-            log_output = "".join(cm.output)
-            self.assertIn("failed to connect", log_output)
-            self.assertIn("MongoClient background task encountered an error", log_output)
+            await async_wait_until(
+                lambda: "failed to connect" in "".join(cm.output), "start creating connections"
+            )
+            self.assertIn("MongoClient background task encountered an error", "".join(cm.output))
 
     @async_client_context.require_replica_set
     async def test_direct_connection(self):

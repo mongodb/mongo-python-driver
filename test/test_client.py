@@ -1765,10 +1765,10 @@ class TestClient(IntegrationTest):
 
             pool.reset_without_pause()
 
-            wait_until(lambda: len(cm.records) > 0, "start creating connections")
-            log_output = "".join(cm.output)
-            self.assertIn("failed to connect", log_output)
-            self.assertIn("MongoClient background task encountered an error", log_output)
+            wait_until(
+                lambda: "failed to connect" in "".join(cm.output), "start creating connections"
+            )
+            self.assertIn("MongoClient background task encountered an error", "".join(cm.output))
 
     @client_context.require_replica_set
     def test_direct_connection(self):
