@@ -22,29 +22,31 @@ import sys
 import threading
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
-from test.helpers import ConcurrentRunner
+from test.asynchronous.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, PyMongoTestCase, UnitTest, unittest
-from test.pymongo_mocks import DummyMonitor
-from test.unified_format import generate_test_classes
+from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, AsyncUnitTest, unittest
+from test.asynchronous.pymongo_mocks import DummyMonitor
+from test.asynchronous.unified_format import generate_test_classes
 from test.utils import (
     CMAPListener,
     HeartbeatEventListener,
     HeartbeatEventsListListener,
     assertion_context,
-    barrier_wait,
-    client_context,
-    create_barrier,
-    get_pool,
+    async_barrier_wait,
+    async_client_context,
+    async_create_barrier,
+    async_get_pool,
+    async_wait_until,
     server_name_to_type,
-    wait_until,
 )
 from unittest.mock import patch
 
 from bson import Timestamp, json_util
-from pymongo import MongoClient, common, monitoring
+from pymongo import AsyncMongoClient, common, monitoring
+from pymongo.asynchronous.settings import TopologySettings
+from pymongo.asynchronous.topology import Topology, _ErrorContext
 from pymongo.errors import (
     AutoReconnect,
     ConfigurationError,
@@ -56,12 +58,10 @@ from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers_shared import _check_command_response, _check_write_command_response
 from pymongo.monitoring import ServerHeartbeatFailedEvent, ServerHeartbeatStartedEvent
 from pymongo.server_description import SERVER_TYPE, ServerDescription
-from pymongo.synchronous.settings import TopologySettings
-from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.uri_parser import parse_uri
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 # Location of JSON test specifications.
 if _IS_SYNC:
@@ -73,7 +73,7 @@ else:
     )
 
 
-def create_mock_topology(uri, monitor_class=DummyMonitor):
+async def create_mock_topology(uri, monitor_class=DummyMonitor):
     parsed_uri = parse_uri(uri)
     replica_set_name = None
     direct_connection = None
@@ -94,16 +94,16 @@ def create_mock_topology(uri, monitor_class=DummyMonitor):
     )
 
     c = Topology(topology_settings)
-    c.open()
+    await c.open()
     return c
 
 
-def got_hello(topology, server_address, hello_response):
+async def got_hello(topology, server_address, hello_response):
     server_description = ServerDescription(server_address, Hello(hello_response), 0)
-    topology.on_change(server_description)
+    await topology.on_change(server_description)
 
 
-def got_app_error(topology, app_error):
+async def got_app_error(topology, app_error):
     server_address = common.partition_node(app_error["address"])
     server = topology.get_server_by_address(server_address)
     error_type = app_error["type"]
@@ -111,7 +111,7 @@ def got_app_error(topology, app_error):
     when = app_error["when"]
     max_wire_version = app_error["maxWireVersion"]
     # XXX: We could get better test coverage by mocking the errors on the
-    # Pool/Connection.
+    # Pool/AsyncConnection.
     try:
         if error_type == "command":
             _check_command_response(app_error["response"], max_wire_version)
@@ -131,7 +131,7 @@ def got_app_error(topology, app_error):
         else:
             raise AssertionError(f"Unknown when field {when}")
 
-        topology.handle_error(
+        await topology.handle_error(
             server_address,
             _ErrorContext(e, max_wire_version, generation, completed_handshake, None),
         )
@@ -142,7 +142,7 @@ def get_type(topology, hostname):
     return description.server_type
 
 
-class TestAllScenarios(UnitTest):
+class TestAllScenarios(AsyncUnitTest):
     pass
 
 
@@ -212,18 +212,18 @@ def check_outcome(self, topology, outcome):
 
 
 def create_test(scenario_def):
-    def run_scenario(self):
-        c = create_mock_topology(scenario_def["uri"])
+    async def run_scenario(self):
+        c = await create_mock_topology(scenario_def["uri"])
 
         for i, phase in enumerate(scenario_def["phases"]):
             # Including the phase description makes failures easier to debug.
             description = phase.get("description", str(i))
             with assertion_context(f"phase: {description}"):
                 for response in phase.get("responses", []):
-                    got_hello(c, common.partition_node(response[0]), response[1])
+                    await got_hello(c, common.partition_node(response[0]), response[1])
 
                 for app_error in phase.get("applicationErrors", []):
-                    got_app_error(c, app_error)
+                    await got_app_error(c, app_error)
 
                 check_outcome(self, c, phase["outcome"])
 
@@ -254,14 +254,14 @@ def create_tests():
 create_tests()
 
 
-class TestClusterTimeComparison(PyMongoTestCase):
-    def test_cluster_time_comparison(self):
-        t = create_mock_topology("mongodb://host")
+class TestClusterTimeComparison(AsyncPyMongoTestCase):
+    async def test_cluster_time_comparison(self):
+        t = await create_mock_topology("mongodb://host")
 
-        def send_cluster_time(time, inc):
+        async def send_cluster_time(time, inc):
             old = t.max_cluster_time()
             new = {"clusterTime": Timestamp(time, inc)}
-            got_hello(
+            await got_hello(
                 t,
                 ("host", 27017),
                 {
@@ -276,38 +276,38 @@ class TestClusterTimeComparison(PyMongoTestCase):
             # We never update $clusterTime from monitoring connections.
             self.assertEqual(actual, old)
 
-        send_cluster_time(0, 1)
-        send_cluster_time(2, 2)
-        send_cluster_time(2, 1)
-        send_cluster_time(1, 3)
-        send_cluster_time(2, 3)
+        await send_cluster_time(0, 1)
+        await send_cluster_time(2, 2)
+        await send_cluster_time(2, 1)
+        await send_cluster_time(1, 3)
+        await send_cluster_time(2, 3)
 
 
-class TestIgnoreStaleErrors(IntegrationTest):
-    def test_ignore_stale_connection_errors(self):
+class TestIgnoreStaleErrors(AsyncIntegrationTest):
+    async def test_ignore_stale_connection_errors(self):
         if not _IS_SYNC and sys.version_info < (3, 11):
             self.skipTest("Test requires asyncio.Barrier (added in Python 3.11)")
         N_TASKS = 5
-        barrier = create_barrier(N_TASKS, timeout=30)
-        client = self.rs_or_single_client(minPoolSize=N_TASKS)
+        barrier = async_create_barrier(N_TASKS, timeout=30)
+        client = await self.async_rs_or_single_client(minPoolSize=N_TASKS)
 
         # Wait for initial discovery.
-        client.admin.command("ping")
-        pool = get_pool(client)
+        await client.admin.command("ping")
+        pool = await async_get_pool(client)
         starting_generation = pool.gen.get_overall()
-        wait_until(lambda: len(pool.conns) == N_TASKS, "created conns")
+        await async_wait_until(lambda: len(pool.conns) == N_TASKS, "created conns")
 
-        def mock_command(*args, **kwargs):
+        async def mock_command(*args, **kwargs):
             # Synchronize all tasks to ensure they use the same generation.
-            barrier_wait(barrier, timeout=30)
-            raise AutoReconnect("mock Connection.command error")
+            await async_barrier_wait(barrier, timeout=30)
+            raise AutoReconnect("mock AsyncConnection.command error")
 
         for conn in pool.conns:
             conn.command = mock_command
 
-        def insert_command(i):
+        async def insert_command(i):
             try:
-                client.test.command("insert", "test", documents=[{"i": i}])
+                await client.test.command("insert", "test", documents=[{"i": i}])
             except AutoReconnect:
                 pass
 
@@ -315,32 +315,32 @@ class TestIgnoreStaleErrors(IntegrationTest):
         for i in range(N_TASKS):
             tasks.append(ConcurrentRunner(target=insert_command, args=(i,)))
         for t in tasks:
-            t.start()
+            await t.start()
         for t in tasks:
-            t.join()
+            await t.join()
 
         # Expect a single pool reset for the network error
         self.assertEqual(starting_generation + 1, pool.gen.get_overall())
 
         # Server should be selectable.
-        client.admin.command("ping")
+        await client.admin.command("ping")
 
 
 class CMAPHeartbeatListener(HeartbeatEventListener, CMAPListener):
     pass
 
 
-class TestPoolManagement(IntegrationTest):
-    @client_context.require_failCommand_appName
-    def test_pool_unpause(self):
-        # This test implements the prose test "Connection Pool Management"
+class TestPoolManagement(AsyncIntegrationTest):
+    @async_client_context.require_failCommand_appName
+    async def test_pool_unpause(self):
+        # This test implements the prose test "AsyncConnection Pool Management"
         listener = CMAPHeartbeatListener()
-        _ = self.single_client(
+        _ = await self.async_single_client(
             appName="SDAMPoolManagementTest", heartbeatFrequencyMS=500, event_listeners=[listener]
         )
-        # Assert that ConnectionPoolReadyEvent occurs after the first
+        # Assert that AsyncConnectionPoolReadyEvent occurs after the first
         # ServerHeartbeatSucceededEvent.
-        listener.wait_for_event(monitoring.PoolReadyEvent, 1)
+        await listener.async_wait_for_event(monitoring.PoolReadyEvent, 1)
         pool_ready = listener.events_by_type(monitoring.PoolReadyEvent)[0]
         hb_succeeded = listener.events_by_type(monitoring.ServerHeartbeatSucceededEvent)[0]
         self.assertGreater(listener.events.index(pool_ready), listener.events.index(hb_succeeded))
@@ -354,29 +354,29 @@ class TestPoolManagement(IntegrationTest):
                 "appName": "SDAMPoolManagementTest",
             },
         }
-        with self.fail_point(fail_hello):
-            listener.wait_for_event(monitoring.ServerHeartbeatFailedEvent, 1)
-            listener.wait_for_event(monitoring.PoolClearedEvent, 1)
-            listener.wait_for_event(monitoring.ServerHeartbeatSucceededEvent, 1)
-            listener.wait_for_event(monitoring.PoolReadyEvent, 1)
+        async with self.fail_point(fail_hello):
+            await listener.async_wait_for_event(monitoring.ServerHeartbeatFailedEvent, 1)
+            await listener.async_wait_for_event(monitoring.PoolClearedEvent, 1)
+            await listener.async_wait_for_event(monitoring.ServerHeartbeatSucceededEvent, 1)
+            await listener.async_wait_for_event(monitoring.PoolReadyEvent, 1)
 
 
-class TestServerMonitoringMode(IntegrationTest):
-    @client_context.require_no_serverless
-    @client_context.require_no_load_balancer
-    def setUp(self):
-        super().setUp()
+class TestServerMonitoringMode(AsyncIntegrationTest):
+    @async_client_context.require_no_serverless
+    @async_client_context.require_no_load_balancer
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
 
-    def test_rtt_connection_is_enabled_stream(self):
-        client = self.rs_or_single_client(serverMonitoringMode="stream")
-        client.admin.command("ping")
+    async def test_rtt_connection_is_enabled_stream(self):
+        client = await self.async_rs_or_single_client(serverMonitoringMode="stream")
+        await client.admin.command("ping")
 
         def predicate():
             for _, server in client._topology._servers.items():
                 monitor = server._monitor
                 if not monitor._stream:
                     return False
-                if client_context.version >= (4, 4):
+                if async_client_context.version >= (4, 4):
                     if _IS_SYNC:
                         if monitor._rtt_monitor._executor._thread is None:
                             return False
@@ -392,14 +392,14 @@ class TestServerMonitoringMode(IntegrationTest):
                             return False
             return True
 
-        wait_until(predicate, "find all RTT monitors")
+        await async_wait_until(predicate, "find all RTT monitors")
 
-    def test_rtt_connection_is_disabled_poll(self):
-        client = self.rs_or_single_client(serverMonitoringMode="poll")
+    async def test_rtt_connection_is_disabled_poll(self):
+        client = await self.async_rs_or_single_client(serverMonitoringMode="poll")
 
-        self.assert_rtt_connection_is_disabled(client)
+        await self.assert_rtt_connection_is_disabled(client)
 
-    def test_rtt_connection_is_disabled_auto(self):
+    async def test_rtt_connection_is_disabled_auto(self):
         envs = [
             {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9"},
             {"FUNCTIONS_WORKER_RUNTIME": "python"},
@@ -409,11 +409,11 @@ class TestServerMonitoringMode(IntegrationTest):
         ]
         for env in envs:
             with patch.dict("os.environ", env):
-                client = self.rs_or_single_client(serverMonitoringMode="auto")
-                self.assert_rtt_connection_is_disabled(client)
+                client = await self.async_rs_or_single_client(serverMonitoringMode="auto")
+                await self.assert_rtt_connection_is_disabled(client)
 
-    def assert_rtt_connection_is_disabled(self, client):
-        client.admin.command("ping")
+    async def assert_rtt_connection_is_disabled(self, client):
+        await client.admin.command("ping")
         for _, server in client._topology._servers.items():
             monitor = server._monitor
             self.assertFalse(monitor._stream)
@@ -439,8 +439,8 @@ class TCPServer(socketserver.TCPServer):
         self.server_close()
 
 
-class TestHeartbeatStartOrdering(PyMongoTestCase):
-    def test_heartbeat_start_ordering(self):
+class TestHeartbeatStartOrdering(AsyncPyMongoTestCase):
+    async def test_heartbeat_start_ordering(self):
         events = []
         listener = HeartbeatEventsListListener(events)
 
@@ -448,41 +448,41 @@ class TestHeartbeatStartOrdering(PyMongoTestCase):
             server = TCPServer(("localhost", 9999), MockTCPHandler)
             server.events = events
             server_thread = ConcurrentRunner(target=server.handle_request_and_shutdown)
-            server_thread.start()
-            _c = self.simple_client(
+            await server_thread.start()
+            _c = await self.simple_client(
                 "mongodb://localhost:9999",
                 serverSelectionTimeoutMS=500,
                 event_listeners=(listener,),
             )
-            server_thread.join()
+            await server_thread.join()
             listener.wait_for_event(ServerHeartbeatStartedEvent, 1)
             listener.wait_for_event(ServerHeartbeatFailedEvent, 1)
 
         else:
 
-            def handle_client(reader: StreamReader, writer: StreamWriter):
+            async def handle_client(reader: StreamReader, writer: StreamWriter):
                 events.append("client connected")
-                if (reader.read(1024)).strip():
+                if (await reader.read(1024)).strip():
                     events.append("client hello received")
                 writer.close()
-                writer.wait_closed()
+                await writer.wait_closed()
 
-            server = asyncio.start_server(handle_client, "localhost", 9999)
+            server = await asyncio.start_server(handle_client, "localhost", 9999)
             server.events = events
-            server.start_serving()
+            await server.start_serving()
             _c = self.simple_client(
                 "mongodb://localhost:9999",
                 serverSelectionTimeoutMS=500,
                 event_listeners=(listener,),
             )
-            _c._connect()
+            await _c.aconnect()
 
-            listener.wait_for_event(ServerHeartbeatStartedEvent, 1)
-            listener.wait_for_event(ServerHeartbeatFailedEvent, 1)
+            await listener.async_wait_for_event(ServerHeartbeatStartedEvent, 1)
+            await listener.async_wait_for_event(ServerHeartbeatFailedEvent, 1)
 
             server.close()
-            server.wait_closed()
-            _c.close()
+            await server.wait_closed()
+            await _c.close()
 
         self.assertEqual(
             events,

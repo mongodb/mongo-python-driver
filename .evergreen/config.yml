@@ -262,7 +262,7 @@ functions:
       params:
         include_expansions_in_env: [AUTH, SSL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
           AWS_SESSION_TOKEN, COVERAGE, PYTHON_BINARY, LIBMONGOCRYPT_URL, MONGODB_URI,
-          DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION]
+          DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION, DEBUG_LOG]
         binary: bash
         working_dir: "src"
         args: [.evergreen/just.sh, setup-tests, "${TEST_NAME}", "${SUB_TEST_NAME}"]
@@ -1430,10 +1430,10 @@ buildvariants:
     - debian11-small
   tasks:
     - name: test-gcpkms
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+      batchtime: 10080  # 7 days
     - name: test-gcpkms-fail
     - name: test-azurekms
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+      batchtime: 10080  # 7 days
     - name: test-azurekms-fail
 
 - name: rhel8-test-lambda
