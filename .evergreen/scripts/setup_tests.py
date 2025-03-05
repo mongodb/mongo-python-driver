@@ -369,12 +369,6 @@ def handle_test_env() -> None:
         write_env("OCSP_TLS_SHOULD_SUCCEED", os.environ["OCSP_TLS_SHOULD_SUCCEED"])
 
     if test_name == "auth_aws" and sub_test_name != "ecs-remote":
-        if sub_test_name in ["ec2", "web_identity"] and PLATFORM == "darwin":
-            write_env("SKIP_TESTS")
-            return
-        if sub_test_name == "ecs" and PLATFORM != "linux":
-            write_env("SKIP_TESTS")
-            return
         auth_aws_dir = f"{DRIVERS_TOOLS}/.evergreen/auth_aws"
         if "AWS_ROLE_SESSION_NAME" in os.environ:
             write_env("AWS_ROLE_SESSION_NAME")

@@ -738,6 +738,10 @@ def create_aws_auth_variants():
     for host_name, python in product(["ubuntu20", "win64", "macos"], MIN_MAX_PYTHON):
         expansions = dict()
         tasks = [".auth-aws"]
+        if host_name == "macos":
+            tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs"]
+        elif host_name == "ubuntu20":
+            tasks = [".auth-aws !.auth-aws-ecs"]
         host = HOSTS[host_name]
         variant = create_variant(
             tasks,
@@ -853,20 +857,26 @@ def create_aws_tasks():
         "ecs",
     ]
     for version in get_versions_from("4.4"):
-        name = f"test-auth-aws-{version}"
-        tags = ["auth-aws"]
+        base_name = f"test-auth-aws-{version}"
+        base_tags = ["auth-aws"]
         bootstrap_vars = dict(AUTH_AWS="1", VERSION=version)
         bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
         assume_func = FunctionCall(func="assume ec2 role")
-        test_funcs = []
         for test_type in aws_test_types:
+            tags = [*base_tags, f"auth-aws-{test_type}"]
+            name = f"{base_name}-{test_type}"
             test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type)
-            test_funcs.append(FunctionCall(func="run tests", vars=test_vars))
+            test_func = FunctionCall(func="run tests", vars=test_vars)
+            funcs = [bootstrap_func, assume_func, test_func]
+            tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
+
+        tags = [*base_tags, "auth-aws-web-identity"]
+        name = f"{base_name}-web-identity-session-name"
         test_vars = dict(
             TEST_NAME="auth_aws", SUB_TEST_NAME="web-identity", AWS_ROLE_SESSION_NAME="test"
         )
-        test_funcs.append(FunctionCall(func="run tests", vars=test_vars))
-        funcs = [bootstrap_func, assume_func, *test_funcs]
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        funcs = [bootstrap_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     return tasks

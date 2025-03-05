@@ -107,7 +107,7 @@ buildvariants:
   # Aws auth tests
   - name: auth-aws-ubuntu-20-python3.9
     tasks:
-      - name: .auth-aws
+      - name: .auth-aws !.auth-aws-ecs
     display_name: Auth AWS Ubuntu-20 Python3.9
     run_on:
       - ubuntu2004-small
@@ -115,7 +115,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: auth-aws-ubuntu-20-python3.13
     tasks:
-      - name: .auth-aws
+      - name: .auth-aws !.auth-aws-ecs
     display_name: Auth AWS Ubuntu-20 Python3.13
     run_on:
       - ubuntu2004-small
@@ -139,7 +139,7 @@ buildvariants:
       PYTHON_BINARY: C:/python/Python313/python.exe
   - name: auth-aws-macos-python3.9
     tasks:
-      - name: .auth-aws
+      - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs
     display_name: Auth AWS macOS Python3.9
     run_on:
       - macos-14
@@ -147,7 +147,7 @@ buildvariants:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
   - name: auth-aws-macos-python3.13
     tasks:
-      - name: .auth-aws
+      - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs
     display_name: Auth AWS macOS Python3.13
     run_on:
       - macos-14

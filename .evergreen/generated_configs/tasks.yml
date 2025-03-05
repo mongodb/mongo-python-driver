@@ -1,6 +1,6 @@
 tasks:
   # Aws tests
-  - name: test-auth-aws-4.4
+  - name: test-auth-aws-4.4-regular
     commands:
       - func: bootstrap mongo-orchestration
         vars:
@@ -11,37 +11,93 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-4.4-assume-role
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-4.4-ec2
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-4.4-env-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-4.4-session-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-4.4-web-identity
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-4.4-ecs
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-4.4-web-identity-session-name
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws]
-  - name: test-auth-aws-5.0
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-5.0-regular
     commands:
       - func: bootstrap mongo-orchestration
         vars:
@@ -52,37 +108,93 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-5.0-assume-role
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-5.0-ec2
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-5.0-env-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-5.0-session-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-5.0-web-identity
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-5.0-ecs
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-5.0-web-identity-session-name
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws]
-  - name: test-auth-aws-6.0
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-6.0-regular
     commands:
       - func: bootstrap mongo-orchestration
         vars:
@@ -93,37 +205,93 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-6.0-assume-role
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-6.0-ec2
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-6.0-env-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-6.0-session-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-6.0-web-identity
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-6.0-ecs
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-6.0-web-identity-session-name
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws]
-  - name: test-auth-aws-7.0
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-7.0-regular
     commands:
       - func: bootstrap mongo-orchestration
         vars:
@@ -134,37 +302,93 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-7.0-assume-role
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-7.0-ec2
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-7.0-env-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-7.0-session-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-7.0-web-identity
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-7.0-ecs
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-7.0-web-identity-session-name
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws]
-  - name: test-auth-aws-8.0
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-8.0-regular
     commands:
       - func: bootstrap mongo-orchestration
         vars:
@@ -175,37 +399,93 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-8.0-assume-role
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-8.0-ec2
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-8.0-env-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-8.0-session-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-8.0-web-identity
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-8.0-ecs
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-8.0-web-identity-session-name
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws]
-  - name: test-auth-aws-rapid
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-rapid-regular
     commands:
       - func: bootstrap mongo-orchestration
         vars:
@@ -216,37 +496,93 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-rapid-assume-role
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-rapid-ec2
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-rapid-env-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-rapid-session-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-rapid-web-identity
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-rapid-ecs
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-rapid-web-identity-session-name
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws]
-  - name: test-auth-aws-latest
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-latest-regular
     commands:
       - func: bootstrap mongo-orchestration
         vars:
@@ -257,36 +593,92 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-latest-assume-role
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-latest-ec2
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-latest-env-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-latest-session-creds
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-latest-web-identity
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-latest-ecs
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-latest-web-identity-session-name
+    commands:
+      - func: bootstrap mongo-orchestration
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws]
+    tags: [auth-aws, auth-aws-web-identity]
 
   # Kms tests
   - name: test-gcpkms
