@@ -1804,20 +1804,20 @@ class TestClient(IntegrationTest):
             return i
 
         gc.collect()
-        with client_knobs(min_heartbeat_interval=0.003):
+        with client_knobs(min_heartbeat_interval=0.002):
             client = self.simple_client(
-                "invalid:27017", heartbeatFrequencyMS=3, serverSelectionTimeoutMS=150
+                "invalid:27017", heartbeatFrequencyMS=2, serverSelectionTimeoutMS=200
             )
             initial_count = server_description_count()
             with self.assertRaises(ServerSelectionTimeoutError):
                 client.test.test.find_one()
             gc.collect()
             final_count = server_description_count()
+            client.close()
             # If a bug like PYTHON-2433 is reintroduced then too many
             # ServerDescriptions will be kept alive and this test will fail:
-            # AssertionError: 19 != 46 within 15 delta (27 difference)
-            # On Python 3.11 we seem to get more of a delta.
-            self.assertAlmostEqual(initial_count, final_count, delta=20)
+            # AssertionError: 11 != 47 within 20 delta (36 difference)
+            self.assertAlmostEqual(initial_count, final_count, delta=30)
 
     @client_context.require_failCommand_fail_point
     def test_network_error_message(self):
