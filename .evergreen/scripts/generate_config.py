@@ -739,8 +739,8 @@ def create_aws_auth_variants():
         expansions = dict()
         tasks = [".auth-aws"]
         if host_name == "macos":
-            tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs"]
-        elif host_name == "ubuntu20":
+            tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2"]
+        elif host_name == "win64":
             tasks = [".auth-aws !.auth-aws-ecs"]
         host = HOSTS[host_name]
         variant = create_variant(
