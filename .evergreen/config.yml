@@ -508,6 +508,7 @@ functions:
       params:
         working_dir: "src"
         binary: bash
+        include_expansions_in_env: [SUB_TEST_NAME]
         args:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-perf-tests.sh
@@ -1357,6 +1358,8 @@ tasks:
             VERSION: "v6.0-perf"
             TOPOLOGY: "server"
         - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "sync"
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
@@ -1369,6 +1372,8 @@ tasks:
             TOPOLOGY: "server"
             SSL: "ssl"
         - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "sync"
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
@@ -1380,8 +1385,51 @@ tasks:
             VERSION: "8.0"
             TOPOLOGY: "server"
         - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "sync"
         - func: "attach benchmark test results"
         - func: "send dashboard data"
+
+    - name: "perf-6.0-standalone-async"
+      tags: [ "perf" ]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "v6.0-perf"
+            TOPOLOGY: "server"
+        - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "async"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
+    - name: "perf-6.0-standalone-ssl-async"
+      tags: [ "perf" ]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "v6.0-perf"
+            TOPOLOGY: "server"
+            SSL: "ssl"
+        - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "async"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
+    - name: "perf-8.0-standalone-async"
+      tags: [ "perf" ]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "8.0"
+            TOPOLOGY: "server"
+        - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "async"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
 
     - name: "check-import-time"
       tags: ["pr"]
@@ -1463,8 +1511,12 @@ buildvariants:
      - name: "perf-6.0-standalone"
      - name: "perf-6.0-standalone-ssl"
      - name: "perf-8.0-standalone"
+     - name: "perf-6.0-standalone-async"
+     - name: "perf-6.0-standalone-ssl-async"
+     - name: "perf-8.0-standalone-async"
 
-      # Platform notes
+
+    # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
       # Debian 8.1 only supports MongoDB 3.4+
       # SUSE12 s390x is only supported by MongoDB 3.4+
