@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import struct
+from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Type, Union, overload
 from uuid import UUID
@@ -226,6 +227,7 @@ class BinaryVectorDtype(Enum):
     PACKED_BIT = b"\x10"
 
 
+@dataclass
 class BinaryVector:
     """Vector of numbers along with metadata for binary interoperability.
     .. versionadded:: 4.10
