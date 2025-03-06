@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import argparse
 import base64
 import io
-import logging
 import os
 import platform
 import shutil
@@ -19,7 +17,9 @@ from utils import (
     LOGGER,
     PLATFORM,
     ROOT,
+    TEST_SUITE_MAP,
     Distro,
+    get_test_options,
     read_env,
     run_command,
     write_env,
@@ -27,30 +27,6 @@ from utils import (
 
 # Passthrough environment variables.
 PASS_THROUGH_ENV = ["GREEN_FRAMEWORK", "NO_EXT", "MONGODB_API_VERSION", "DEBUG_LOG"]
-
-# Map the test name to a test suite.
-TEST_SUITE_MAP = {
-    "atlas": "atlas",
-    "auth_aws": "auth_aws",
-    "auth_oidc": "auth_oidc",
-    "data_lake": "data_lake",
-    "default": "",
-    "default_async": "default_async",
-    "default_sync": "default",
-    "encryption": "encryption",
-    "enterprise_auth": "auth",
-    "index_management": "index_management",
-    "kms": "kms",
-    "load_balancer": "load_balancer",
-    "mockupdb": "mockupdb",
-    "pyopenssl": "",
-    "ocsp": "ocsp",
-    "perf": "perf",
-    "serverless": "",
-}
-
-# Tests that require a sub test suite.
-SUB_TEST_REQUIRED = ["auth_aws", "kms"]
 
 # Map the test name to test extra.
 EXTRAS_MAP = {
@@ -71,35 +47,6 @@ GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 def is_set(var: str) -> bool:
     value = os.environ.get(var, "")
     return len(value.strip()) > 0
-
-
-def get_options():
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        "test_name",
-        choices=sorted(TEST_SUITE_MAP),
-        nargs="?",
-        default="default",
-        help="The name of the test suite to set up, typically the same name as a pytest marker.",
-    )
-    parser.add_argument("sub_test_name", nargs="?", help="The sub test name, for example 'azure'")
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Whether to log at the DEBUG level"
-    )
-    parser.add_argument(
-        "--quiet", "-q", action="store_true", help="Whether to log at the WARNING level"
-    )
-    parser.add_argument("--auth", action="store_true", help="Whether to add authentication")
-    parser.add_argument("--ssl", action="store_true", help="Whether to add TLS configuration")
-    # Get the options.
-    opts = parser.parse_args()
-    if opts.verbose:
-        LOGGER.setLevel(logging.DEBUG)
-    elif opts.quiet:
-        LOGGER.setLevel(logging.WARNING)
-    return opts
 
 
 def get_distro() -> Distro:
@@ -166,20 +113,11 @@ def setup_libmongocrypt():
 
 
 def handle_test_env() -> None:
-    opts = get_options()
+    opts = get_test_options()
     test_name = opts.test_name
     sub_test_name = opts.sub_test_name
-    if test_name in SUB_TEST_REQUIRED and not sub_test_name:
-        raise ValueError(f"Test '{test_name}' requires a sub_test_name")
-    AUTH = os.environ.get("AUTH", "noauth")
-    if opts.auth or "auth" in test_name:
-        AUTH = "auth"
-        # 'auth_aws ecs' shouldn't have extra auth set.
-        if test_name == "auth_aws" and sub_test_name == "ecs":
-            AUTH = "noauth"
-    SSL = os.environ.get("SSL", "nossl")
-    if opts.ssl:
-        SSL = "ssl"
+    AUTH = "auth" if opts.AUTH else "noauth"
+    SSL = "ssl" if opts.SSL else "nossl"
     TEST_ARGS = ""
 
     # Start compiling the args we'll pass to uv.

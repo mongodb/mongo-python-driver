@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import dataclasses
 import logging
 import os
@@ -24,6 +25,73 @@ class Distro:
     name: str
     version_id: str
     arch: str
+
+
+# Map the test name to a test suite.
+TEST_SUITE_MAP = {
+    "atlas": "atlas",
+    "auth_aws": "auth_aws",
+    "auth_oidc": "auth_oidc",
+    "data_lake": "data_lake",
+    "default": "",
+    "default_async": "default_async",
+    "default_sync": "default",
+    "encryption": "encryption",
+    "enterprise_auth": "auth",
+    "index_management": "index_management",
+    "kms": "kms",
+    "load_balancer": "load_balancer",
+    "mockupdb": "mockupdb",
+    "pyopenssl": "",
+    "ocsp": "ocsp",
+    "perf": "perf",
+    "serverless": "",
+}
+
+# Tests that require a sub test suite.
+SUB_TEST_REQUIRED = ["auth_aws", "kms"]
+
+
+def get_test_options():
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "test_name",
+        choices=sorted(TEST_SUITE_MAP),
+        nargs="?",
+        default="default",
+        help="The name of the test suite to set up, typically the same name as a pytest marker.",
+    )
+    parser.add_argument("sub_test_name", nargs="?", help="The sub test name, for example 'azure'")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Whether to log at the DEBUG level"
+    )
+    parser.add_argument(
+        "--quiet", "-q", action="store_true", help="Whether to log at the WARNING level"
+    )
+    parser.add_argument("--auth", action="store_true", help="Whether to add authentication")
+    parser.add_argument("--ssl", action="store_true", help="Whether to add TLS configuration")
+    # Get the options.
+    opts = parser.parse_args()
+    if opts.verbose:
+        LOGGER.setLevel(logging.DEBUG)
+    elif opts.quiet:
+        LOGGER.setLevel(logging.WARNING)
+
+    # Handle validation and environment variable overrides.
+    test_name = opts.test_name
+    sub_test_name = opts.sub_test_name
+    if test_name in SUB_TEST_REQUIRED and not sub_test_name:
+        raise ValueError(f"Test '{test_name}' requires a sub_test_name")
+    if "auth" in test_name or os.environ.get("AUTH") == "auth":
+        opts.auth = True
+        # 'auth_aws ecs' shouldn't have extra auth set.
+        if test_name == "auth_aws" and sub_test_name == "ecs":
+            opts.auth = False
+    if os.environ.get("SSL") == "ssl":
+        opts.ssl = True
+    return opts
 
 
 def read_env(path: Path | str) -> dict[str, Any]:
