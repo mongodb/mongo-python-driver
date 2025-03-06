@@ -849,6 +849,24 @@ class TestBSON(unittest.TestCase):
         )
         self.assertRepr(zero)
 
+    def test_binaryvector_equality(self):
+        """Tests of == __eq__"""
+        self.assertEqual(
+            BinaryVector([1.2, 1 - 1 / 3], BinaryVectorDtype.FLOAT32, 0),
+            BinaryVector([1.2, 1 - 1.0 / 3.0], BinaryVectorDtype.FLOAT32, 0),
+        )
+        self.assertNotEqual(
+            BinaryVector([1.2, 1 - 1 / 3], BinaryVectorDtype.FLOAT32, 0),
+            BinaryVector([1.2, 6.0 / 9.0], BinaryVectorDtype.FLOAT32, 0),
+        )
+        self.assertEqual(
+            BinaryVector([], BinaryVectorDtype.FLOAT32, 0),
+            BinaryVector([], BinaryVectorDtype.FLOAT32, 0),
+        )
+        self.assertNotEqual(
+            BinaryVector([1], BinaryVectorDtype.INT8), BinaryVector([2], BinaryVectorDtype.INT8)
+        )
+
     def test_unicode_regex(self):
         """Tests we do not get a segfault for C extension on unicode RegExs.
         This had been happening.
