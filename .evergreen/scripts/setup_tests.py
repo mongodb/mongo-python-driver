@@ -113,7 +113,7 @@ def setup_libmongocrypt():
 
 
 def handle_test_env() -> None:
-    opts = get_test_options()
+    opts, _ = get_test_options("Set up the test environment and services.")
     test_name = opts.test_name
     sub_test_name = opts.sub_test_name
     AUTH = "auth" if opts.auth else "noauth"

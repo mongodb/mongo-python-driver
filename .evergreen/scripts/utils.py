@@ -52,18 +52,31 @@ TEST_SUITE_MAP = {
 SUB_TEST_REQUIRED = ["auth_aws", "kms"]
 
 
-def get_test_options(require_sub_test_name=True):
+def get_test_options(
+    description, require_sub_test_name=True, allow_extra_opts=False
+) -> tuple[argparse.Namespace, list[str]]:
     parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+        description=description, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument(
-        "test_name",
-        choices=sorted(TEST_SUITE_MAP),
-        nargs="?",
-        default="default",
-        help="The name of the test suite to set up, typically the same name as a pytest marker.",
-    )
-    parser.add_argument("sub_test_name", nargs="?", help="The sub test name, for example 'azure'")
+    if require_sub_test_name:
+        parser.add_argument(
+            "test_name",
+            choices=sorted(TEST_SUITE_MAP),
+            nargs="?",
+            default="default",
+            help="The optional name of the test suite to set up, typically the same name as a pytest marker.",
+        )
+        parser.add_argument(
+            "sub_test_name", nargs="?", help="The optional sub test name, for example 'azure'."
+        )
+    else:
+        parser.add_argument(
+            "test_name",
+            choices=sorted(TEST_SUITE_MAP),
+            nargs="?",
+            default="default",
+            help="The optional name of the test suite to be run, which informs the server configuration.",
+        )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Whether to log at the DEBUG level"
     )
@@ -73,7 +86,10 @@ def get_test_options(require_sub_test_name=True):
     parser.add_argument("--auth", action="store_true", help="Whether to add authentication")
     parser.add_argument("--ssl", action="store_true", help="Whether to add TLS configuration")
     # Get the options.
-    opts = parser.parse_args()
+    if not allow_extra_opts:
+        opts, extra_opts = parser.parse_args(), []
+    else:
+        opts, extra_opts = parser.parse_known_args()
     if opts.verbose:
         LOGGER.setLevel(logging.DEBUG)
     elif opts.quiet:
@@ -81,7 +97,7 @@ def get_test_options(require_sub_test_name=True):
 
     # Handle validation and environment variable overrides.
     test_name = opts.test_name
-    sub_test_name = opts.sub_test_name
+    sub_test_name = opts.sub_test_name if require_sub_test_name else ""
     if require_sub_test_name and test_name in SUB_TEST_REQUIRED and not sub_test_name:
         raise ValueError(f"Test '{test_name}' requires a sub_test_name")
     if "auth" in test_name or os.environ.get("AUTH") == "auth":
@@ -91,7 +107,7 @@ def get_test_options(require_sub_test_name=True):
             opts.auth = False
     if os.environ.get("SSL") == "ssl":
         opts.ssl = True
-    return opts
+    return opts, extra_opts
 
 
 def read_env(path: Path | str) -> dict[str, Any]:
@@ -115,8 +131,10 @@ def write_env(name: str, value: Any = "1") -> None:
         fid.write(f'export {name}="{value}"\n')
 
 
-def run_command(cmd: str, **kwargs: Any) -> None:
-    LOGGER.info("Running command %s...", cmd)
+def run_command(cmd: str | list[str], **kwargs: Any) -> None:
+    if isinstance(cmd, list):
+        cmd = " ".join(cmd)
+    LOGGER.info("Running command '%s'...", cmd)
     kwargs.setdefault("check", True)
     subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
-    LOGGER.info("Running command %s... done.", cmd)
+    LOGGER.info("Running command '%s'... done.", cmd)

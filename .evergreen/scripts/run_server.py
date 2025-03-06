@@ -11,8 +11,20 @@ def set_env(name: str, value: Any = "1") -> None:
 
 
 def start_server():
-    opts = get_test_options(require_sub_test_name=False)
+    opts, extra_opts = get_test_options(
+        "Run a MongoDB server.  All given flags will be passed to run-orchestration.sh in DRIVERS_TOOLS.",
+        require_sub_test_name=False,
+        allow_extra_opts=True,
+    )
     test_name = opts.test_name
+
+    if opts.auth:
+        extra_opts.append("--auth")
+
+    if opts.verbose:
+        extra_opts.append("-v")
+    elif opts.quiet:
+        extra_opts.append("-q")
 
     if test_name == "auth_aws":
         set_env("AUTH_AWS")
@@ -24,12 +36,13 @@ def start_server():
         set_env("SKIP_CRYPT_SHARED")
 
     if opts.ssl:
+        extra_opts.append("--ssl")
         certs = ROOT / "test/certificates"
         set_env("TLS_CERT_KEY_FILE", certs / "client.pem")
         set_env("TLS_PEM_KEY_FILE", certs / "server.pem")
         set_env("TLS_CA_FILE", certs / "ca.pem")
 
-    cmd = f"bash {DRIVERS_TOOLS}/.evergreen/run-orchestration.sh"
+    cmd = ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh", *extra_opts]
     run_command(cmd, cwd=DRIVERS_TOOLS)
 
 

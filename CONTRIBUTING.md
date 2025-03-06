@@ -218,6 +218,7 @@ the pages will re-render and the browser will automatically refresh.
 ### Usage
 
 - Run `just run-server` with optional args to set up the server.
+  All given flags will be passed to `run-orchestration.sh` in `DRIVERS_TOOLS`.
 - Run `just setup-tests` with optional args to set up the test environment, secrets, etc.
 - Run `just run-tests` to run the tests in an appropriate Python environment.
 - When done, run `just teardown-tests` to clean up and `just stop-server` to stop the server.
