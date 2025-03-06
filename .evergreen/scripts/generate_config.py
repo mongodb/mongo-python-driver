@@ -795,20 +795,20 @@ def create_server_tasks():
     for topo, version, (auth, ssl), sync in product(TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, SYNCS):
         name = f"test-{version}-{topo}-{auth}-{ssl}-{sync}".lower()
         tags = [version, topo, auth, ssl, sync]
-        bootstrap_vars = dict(
+        server_vars = dict(
             VERSION=version,
             TOPOLOGY=topo if topo != "standalone" else "server",
             AUTH=auth,
             SSL=ssl,
         )
-        bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
+        server_func = FunctionCall(func="run-server", vars=server_vars)
         test_vars = dict(AUTH=auth, SSL=ssl, SYNC=sync)
         if sync == "sync":
             test_vars["TEST_NAME"] = "default_sync"
         elif sync == "async":
             test_vars["TEST_NAME"] = "default_async"
         test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
 
 
@@ -817,11 +817,13 @@ def create_load_balancer_tasks():
     for auth, ssl in AUTH_SSLS:
         name = f"test-load-balancer-{auth}-{ssl}".lower()
         tags = ["load-balancer", auth, ssl]
-        bootstrap_vars = dict(TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, LOAD_BALANCER="true")
-        bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
+        server_vars = dict(
+            TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, TEST_NAME="load_balancer"
+        )
+        server_func = FunctionCall(func="run-server", vars=server_vars)
         test_vars = dict(AUTH=auth, SSL=ssl, TEST_NAME="load_balancer")
         test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[bootstrap_func, test_func]))
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
 
     return tasks
 
@@ -837,7 +839,7 @@ def create_kms_tasks():
                 sub_test_name += "-fail"
             commands = []
             if not success:
-                commands.append(FunctionCall(func="bootstrap mongo-orchestration"))
+                commands.append(FunctionCall(func="run-server"))
             test_vars = dict(TEST_NAME="kms", SUB_TEST_NAME=sub_test_name)
             test_func = FunctionCall(func="run tests", vars=test_vars)
             commands.append(test_func)
@@ -859,15 +861,15 @@ def create_aws_tasks():
     for version in get_versions_from("4.4"):
         base_name = f"test-auth-aws-{version}"
         base_tags = ["auth-aws"]
-        bootstrap_vars = dict(AUTH_AWS="1", VERSION=version)
-        bootstrap_func = FunctionCall(func="bootstrap mongo-orchestration", vars=bootstrap_vars)
+        server_vars = dict(AUTH_AWS="1", VERSION=version)
+        server_func = FunctionCall(func="run-server", vars=server_vars)
         assume_func = FunctionCall(func="assume ec2 role")
         for test_type in aws_test_types:
             tags = [*base_tags, f"auth-aws-{test_type}"]
             name = f"{base_name}-{test_type}"
             test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type)
             test_func = FunctionCall(func="run tests", vars=test_vars)
-            funcs = [bootstrap_func, assume_func, test_func]
+            funcs = [server_func, assume_func, test_func]
             tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
         tags = [*base_tags, "auth-aws-web-identity"]
@@ -876,7 +878,7 @@ def create_aws_tasks():
             TEST_NAME="auth_aws", SUB_TEST_NAME="web-identity", AWS_ROLE_SESSION_NAME="test"
         )
         test_func = FunctionCall(func="run tests", vars=test_vars)
-        funcs = [bootstrap_func, assume_func, test_func]
+        funcs = [server_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     return tasks

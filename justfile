@@ -71,3 +71,11 @@ setup-tests *args="":
 [group('test')]
 teardown-tests:
     bash .evergreen/scripts/teardown-tests.sh
+
+[group('server')]
+run-server *args="":
+    bash .evergreen/scripts/run-server.sh {{args}}
+
+[group('server')]
+stop-server:
+    bash .evergreen/scripts/stop-server.sh
