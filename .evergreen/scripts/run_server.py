@@ -29,7 +29,7 @@ def start_server():
         set_env("TLS_PEM_KEY_FILE", certs / "server.pem")
         set_env("TLS_CA_FILE", certs / "ca.pem")
 
-    cmd = f"{DRIVERS_TOOLS.as_posix()}/.evergreen/run-orchestration.sh"
+    cmd = f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh"
     run_command(cmd, cwd=DRIVERS_TOOLS)
 
 
