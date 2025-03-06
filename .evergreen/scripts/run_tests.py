@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import platform
 import shutil
@@ -8,7 +9,7 @@ import sys
 from datetime import datetime
 
 import pytest
-from utils import LOGGER, ROOT
+from utils import DRIVERS_TOOLS, LOGGER, ROOT, run_command
 
 AUTH = os.environ.get("AUTH", "noauth")
 SSL = os.environ.get("SSL", "nossl")
@@ -106,8 +107,18 @@ def run() -> None:
         test_kms_remote(SUB_TEST_NAME)
         return
 
+    # Run remote ecs tests.
+    if TEST_NAME == "auth_aws" and SUB_TEST_NAME == "ecs":
+        run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh ecs")
+        return
+
+    if os.environ.get("DEBUG_LOG"):
+        TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG} -o log_cli=1".split())
+
     # Run local tests.
-    pytest.main(TEST_ARGS)
+    ret = pytest.main(TEST_ARGS + sys.argv[1:])
+    if ret != 0:
+        sys.exit(ret)
 
     # Handle perf test post actions.
     if TEST_PERF:

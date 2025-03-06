@@ -383,6 +383,7 @@ class EntityMapUtil:
             name = spec["id"]
             thread = SpecRunnerThread(name)
             thread.start()
+            self.test.addCleanup(thread.join, 5)
             self[name] = thread
             return
 

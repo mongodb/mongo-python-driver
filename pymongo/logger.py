@@ -96,6 +96,14 @@ _VERBOSE_CONNECTION_ERROR_REASONS = {
 }
 
 
+def _log_client_error() -> None:
+    # This is called from a daemon thread so check for None to account for interpreter shutdown.
+    logger = _CLIENT_LOGGER
+    if logger:
+        # logger.exception includes the full traceback.
+        logger.exception("MongoClient background task encountered an error:")
+
+
 def _debug_log(logger: logging.Logger, **fields: Any) -> None:
     logger.debug(LogMessage(**fields))
 

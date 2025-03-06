@@ -206,7 +206,7 @@ functions:
       params:
         binary: bash
         include_expansions_in_env: [VERSION, TOPOLOGY, AUTH, SSL, ORCHESTRATION_FILE, LOAD_BALANCER,
-          STORAGE_ENGINE, REQUIRE_API_VERSION, DRIVERS_TOOLS, TEST_CRYPT_SHARED]
+          STORAGE_ENGINE, REQUIRE_API_VERSION, DRIVERS_TOOLS, TEST_CRYPT_SHARED, AUTH_AWS]
         args:
           - src/.evergreen/scripts/bootstrap-mongo-orchestration.sh
     - command: expansions.update
@@ -262,7 +262,7 @@ functions:
       params:
         include_expansions_in_env: [AUTH, SSL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
           AWS_SESSION_TOKEN, COVERAGE, PYTHON_BINARY, LIBMONGOCRYPT_URL, MONGODB_URI,
-          DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION]
+          DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION, DEBUG_LOG]
         binary: bash
         working_dir: "src"
         args: [.evergreen/just.sh, setup-tests, "${TEST_NAME}", "${SUB_TEST_NAME}"]
@@ -295,100 +295,6 @@ functions:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-atlas-tests.sh
 
-  "get aws auth secrets":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-        binary: bash
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup-secrets.sh
-
-  "run aws auth test with regular aws credentials":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - regular
-
-  "run aws auth test with assume role credentials":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - assume-role
-
-  "run aws auth test with aws EC2 credentials":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - ec2
-
-  "run aws auth test with aws web identity credentials":
-    - # Test with and without AWS_ROLE_SESSION_NAME set.
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - web-identity
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: [ "DRIVERS_TOOLS", "skip_EC2_auth_test" ]
-        binary: bash
-        working_dir: "src"
-        env:
-          AWS_ROLE_SESSION_NAME: test
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - web-identity
-
-  "run aws auth test with aws credentials as environment variables":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - env-creds
-
-  "run aws auth test with aws credentials and session token as environment variables":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - session-creds
-
   "run oidc auth test with test credentials":
     - command: subprocess.exec
       type: test
@@ -411,16 +317,6 @@ functions:
         args:
           - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
-  "run aws ECS auth test":
-    - command: subprocess.exec
-      type: test
-      params:
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-aws-ecs-auth-test.sh
-
   "cleanup":
     - command: subprocess.exec
       params:
@@ -431,13 +327,6 @@ functions:
           - .evergreen/scripts/cleanup.sh
 
   "teardown system":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        working_dir: "src"
-        args:
-          # Ensure the instance profile is reassigned for aws tests.
-          - ${DRIVERS_TOOLS}/.evergreen/auth_aws/teardown.sh
     - command: subprocess.exec
       params:
         binary: bash
@@ -1159,132 +1048,6 @@ tasks:
             OCSP_ALGORITHM: "ecdsa"
             OCSP_TLS_SHOULD_SUCCEED: "false"
 
-    - name: "aws-auth-test-4.4"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "4.4"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-5.0"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "5.0"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-6.0"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "6.0"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-7.0"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "7.0"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-8.0"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "8.0"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-rapid"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "rapid"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-latest"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "latest"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
     - name: "oidc-auth-test"
       commands:
       - func: "run oidc auth test with test credentials"
@@ -1430,10 +1193,10 @@ buildvariants:
     - debian11-small
   tasks:
     - name: test-gcpkms
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+      batchtime: 10080  # 7 days
     - name: test-gcpkms-fail
     - name: test-azurekms
-      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+      batchtime: 10080  # 7 days
     - name: test-azurekms-fail
 
 - name: rhel8-test-lambda

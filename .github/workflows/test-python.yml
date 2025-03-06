@@ -53,8 +53,9 @@ jobs:
     # supercharge/mongodb-github-action requires containers so we don't test other platforms
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-latest]
         python-version: ["3.9", "pypy-3.10", "3.13", "3.13t"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:

@@ -227,6 +227,8 @@ the pages will re-render and the browser will automatically refresh.
 ## Enable Debug Logs
 - Use `-o log_cli_level="DEBUG" -o log_cli=1` with `just test` or `pytest`.
 - Add `log_cli_level = "DEBUG` and `log_cli = 1` to the `tool.pytest.ini_options` section in `pyproject.toml` for Evergreen patches or to enable debug logs by default on your machine.
+- You can also set `DEBUG_LOG=1` and run either `just setup-tests` or `just-test`.
+- For evergreen patch builds, you can use `evergreen patch --param DEBUG_LOG=1` to enable debug logs for the patch.
 
 ## Re-sync Spec Tests
 
