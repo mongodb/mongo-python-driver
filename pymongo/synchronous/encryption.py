@@ -442,6 +442,7 @@ class _Encrypter:
                 bypass_encryption=opts._bypass_auto_encryption,
                 encrypted_fields_map=encrypted_fields_map,
                 bypass_query_analysis=opts._bypass_query_analysis,
+                key_expiration_ms=opts._key_expiration_ms,
             ),
         )
         self._closed = False
@@ -561,6 +562,7 @@ class ClientEncryption(Generic[_DocumentType]):
         key_vault_client: MongoClient[_DocumentTypeArg],
         codec_options: CodecOptions[_DocumentTypeArg],
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        key_expiration_ms: Optional[int] = None,
     ) -> None:
         """Explicit client-side field level encryption.
 
@@ -627,7 +629,12 @@ class ClientEncryption(Generic[_DocumentType]):
             Or to supply a client certificate::
 
               kms_tls_options={'kmip': {'tlsCertificateKeyFile': 'client.pem'}}
+        :param key_expiration_ms: The cache expiration time for data encryption keys.
+            Defaults to ``None`` which defers to libmongocrypt's default which is currently 60000.
+            Set to 0 to disable key expiration.
 
+        .. versionchanged:: 4.12
+           Added the `key_expiration_ms` parameter.
         .. versionchanged:: 4.0
            Added the `kms_tls_options` parameter and the "kmip" KMS provider.
 
@@ -659,14 +666,19 @@ class ClientEncryption(Generic[_DocumentType]):
         key_vault_coll = key_vault_client[db][coll]
 
         opts = AutoEncryptionOpts(
-            kms_providers, key_vault_namespace, kms_tls_options=kms_tls_options
+            kms_providers,
+            key_vault_namespace,
+            kms_tls_options=kms_tls_options,
+            key_expiration_ms=key_expiration_ms,
         )
         self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
             None, key_vault_coll, None, opts
         )
         self._encryption = ExplicitEncrypter(
             self._io_callbacks,
-            _create_mongocrypt_options(kms_providers=kms_providers, schema_map=None),
+            _create_mongocrypt_options(
+                kms_providers=kms_providers, schema_map=None, key_expiration_ms=key_expiration_ms
+            ),
         )
         # Use the same key vault collection as the callback.
         assert self._io_callbacks.key_vault_coll is not None
@@ -693,6 +705,7 @@ class ClientEncryption(Generic[_DocumentType]):
         creation. :class:`~pymongo.errors.EncryptionError` will be
         raised if the collection already exists.
 
+        :param database: the database to create the collection
         :param name: the name of the collection to create
         :param encrypted_fields: Document that describes the encrypted fields for
             Queryable Encryption. The "keyId" may be set to ``None`` to auto-generate the data keys.  For example:
