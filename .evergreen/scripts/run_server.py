@@ -11,7 +11,7 @@ def set_env(name: str, value: Any = "1") -> None:
 
 
 def start_server():
-    opts = get_test_options()
+    opts = get_test_options(require_sub_test_name=False)
     test_name = opts.test_name
 
     if test_name == "auth_aws":

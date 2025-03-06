@@ -52,7 +52,7 @@ TEST_SUITE_MAP = {
 SUB_TEST_REQUIRED = ["auth_aws", "kms"]
 
 
-def get_test_options():
+def get_test_options(require_sub_test_name=True):
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -82,7 +82,7 @@ def get_test_options():
     # Handle validation and environment variable overrides.
     test_name = opts.test_name
     sub_test_name = opts.sub_test_name
-    if test_name in SUB_TEST_REQUIRED and not sub_test_name:
+    if require_sub_test_name and test_name in SUB_TEST_REQUIRED and not sub_test_name:
         raise ValueError(f"Test '{test_name}' requires a sub_test_name")
     if "auth" in test_name or os.environ.get("AUTH") == "auth":
         opts.auth = True
