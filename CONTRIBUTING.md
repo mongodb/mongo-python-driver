@@ -204,25 +204,31 @@ the pages will re-render and the browser will automatically refresh.
     `just test test/test_change_stream.py::TestUnifiedChangeStreamsErrors::test_change_stream_errors_on_ElectionInProgress`.
 -   Use the `-k` argument to select tests by pattern.
 
+
+## Running tests that require secrets, services, or other configuration
+
+- Clone `drivers-evergreen-tools`:
+    `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
+- Run `export DRIVERS_TOOLS=$PWD/drivers-evergreen-tools`.  This can be put into a `.bashrc` file
+  for convenience.
+- Run `just run-server` with optional args to set up the server.
+- Run `just setup-tests` with optional args to set up the test environment, secrets, etc.
+- Run `just run-tests` to run the tests in an appropriate Python environment.
+- When done, run `just teardown-tests` to clean up and `just stop-server` to stop the server.
+
 ## Running Load Balancer Tests Locally
 
+-   Set up `DRIVERS_TOOLS` (see above).
 -   Install `haproxy` (available as `brew install haproxy` on macOS).
--   Clone `drivers-evergreen-tools`:
-    `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
--   Start the servers using
-    `LOAD_BALANCER=true TOPOLOGY=sharded_cluster AUTH=noauth SSL=nossl MONGODB_VERSION=6.0 DRIVERS_TOOLS=$PWD/drivers-evergreen-tools MONGO_ORCHESTRATION_HOME=$PWD/drivers-evergreen-tools/.evergreen/orchestration $PWD/drivers-evergreen-tools/.evergreen/run-orchestration.sh`.
--   Set up the test using:
-    `MONGODB_URI='mongodb://localhost:27017,localhost:27018/' just setup-tests load-balancer`.
--   Run the tests from the `pymongo` checkout directory using:
-    `just run-tests`.
+-   Start the servers with `just run-server load-balancer`.
+-   Set up the test with `just setup-tests load-balancer`.
+-   Run the tests with `just run-tests`.
 
 ## Running Encryption Tests Locally
-- Clone `drivers-evergreen-tools`:
-  `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
-- Run `export DRIVERS_TOOLS=$PWD/drivers-evergreen-tools`
+- Set up `DRIVERS_TOOLS` (see above).
+- Run `just setup-tests` to set up the server.
 - Run `AWS_PROFILE=<profile> just setup-tests encryption` after setting up your AWS profile with `aws configure sso`.
 - Run the tests with `just run-tests`.
-- When done, run `just teardown-tests` to clean up.
 
 ## Enable Debug Logs
 - Use `-o log_cli_level="DEBUG" -o log_cli=1` with `just test` or `pytest`.

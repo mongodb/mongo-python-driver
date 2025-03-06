@@ -205,6 +205,7 @@ functions:
     - command: subprocess.exec
       params:
         binary: bash
+        working_dir: "src"
         include_expansions_in_env: [VERSION, TOPOLOGY, AUTH, SSL, ORCHESTRATION_FILE,
           STORAGE_ENGINE, REQUIRE_API_VERSION, DRIVERS_TOOLS, TEST_CRYPT_SHARED]
         args: [.evergreen/just.sh, run-server, "${TEST_NAME}", "${SUB_TEST_NAME}"]
