@@ -116,8 +116,8 @@ def handle_test_env() -> None:
     opts = get_test_options()
     test_name = opts.test_name
     sub_test_name = opts.sub_test_name
-    AUTH = "auth" if opts.AUTH else "noauth"
-    SSL = "ssl" if opts.SSL else "nossl"
+    AUTH = "auth" if opts.auth else "noauth"
+    SSL = "ssl" if opts.ssl else "nossl"
     TEST_ARGS = ""
 
     # Start compiling the args we'll pass to uv.

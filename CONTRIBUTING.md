@@ -207,28 +207,52 @@ the pages will re-render and the browser will automatically refresh.
 
 ## Running tests that require secrets, services, or other configuration
 
+### Prerequisites
+
 - Clone `drivers-evergreen-tools`:
     `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
 - Run `export DRIVERS_TOOLS=$PWD/drivers-evergreen-tools`.  This can be put into a `.bashrc` file
   for convenience.
+- Set up access to [Drivers test secrets](https://github.com/mongodb-labs/drivers-evergreen-tools/tree/master/.evergreen/secrets_handling#secrets-handling).
+
+### Usage
+
 - Run `just run-server` with optional args to set up the server.
 - Run `just setup-tests` with optional args to set up the test environment, secrets, etc.
 - Run `just run-tests` to run the tests in an appropriate Python environment.
 - When done, run `just teardown-tests` to clean up and `just stop-server` to stop the server.
 
-## Running Load Balancer Tests Locally
+## Encryption tests
 
--   Set up `DRIVERS_TOOLS` (see above).
--   Install `haproxy` (available as `brew install haproxy` on macOS).
--   Start the servers with `just run-server load-balancer`.
--   Set up the test with `just setup-tests load-balancer`.
--   Run the tests with `just run-tests`.
-
-## Running Encryption Tests Locally
-- Set up `DRIVERS_TOOLS` (see above).
-- Run `just setup-tests` to set up the server.
-- Run `AWS_PROFILE=<profile> just setup-tests encryption` after setting up your AWS profile with `aws configure sso`.
+- Run `just run-server` to start the server.
+- Run `just setup-tests encryption`.
 - Run the tests with `just run-tests`.
+
+### Load balancer tests
+
+- Install `haproxy` (available as `brew install haproxy` on macOS).
+- Start the server with `just run-server load_balancer`.
+- Set up the test with `just setup-tests load_balancer`.
+- Run the tests with `just run-tests`.
+
+## AWS tests
+
+- Run `just run-server auth_aws` to start the server.
+- Run `just setup-tests auth_aws <aws-test-type>` to set up the AWS test.
+- Run the tests with `just run-tests`.
+
+## KMS tests
+
+For KMS tests that are run locally, and expected to fail, in this case using `azure`:
+
+- Run `just run-server`.
+- Run `just setup-tests kms azure-fail`.
+- Run `just run-tests`.
+
+For KMS tests that run remotely and are expected to pass, in this case using `gcp`:
+
+- Run `just setup-tests kms gcp`.
+- Run `just run-tests`.
 
 ## Enable Debug Logs
 - Use `-o log_cli_level="DEBUG" -o log_cli=1` with `just test` or `pytest`.
