@@ -239,6 +239,19 @@ def handle_test_env() -> None:
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
 
+    if test_name == "ocsp":
+        for name in ["OCSP_SERVER_TYPE", "OCSP_ALGORITHM"]:
+            if name not in os.environ:
+                raise ValueError(f"Please set {name}")
+        server_type = os.environ["OCSP_SERVER_TYPE"]
+        should_succeed = "true" if "valid" in server_type else "false"
+        write_env("OCSP_TLS_SHOULD_SUCCEED", should_succeed)
+        ocsp_algo = os.environ["OCSP_ALGORITHM"]
+        write_env("CA_FILE", f"{{DRIVERS_TOOLS}}/.evergreen/ocsp/{ocsp_algo}/ca.pem")
+        env = os.environ.copy()
+        env["SERVER_TYPE"] = server_type
+        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh", env=env)
+
     if SSL != "nossl":
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")

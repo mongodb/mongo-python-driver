@@ -9,6 +9,7 @@
 # Note: Run this file with `pipx run`, or `uv run`.
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
 from inspect import getmembers, isfunction
@@ -881,6 +882,36 @@ def create_aws_tasks():
         funcs = [server_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
+    return tasks
+
+
+def _create_ocsp_task(file_name, server_type):
+    algo = file_name.split("-")[0]
+
+    vars = dict(TEST_NAME="ocsp", ORCHESTRATION_FILE=file_name)
+    server_func = FunctionCall(func="run server", vars=vars)
+
+    vars = dict(OCSP_ALGORITHM=algo, OCSP_SERVER_TYPE=server_type)
+    test_func = FunctionCall(func="run tests", vars=vars)
+
+    tags = ["ocsp", f"ocsp-{algo}"]
+    if "mustStaple" in file_name:
+        tags.append("ocsp-staple")
+
+    name = file_name.replace(".json", "")
+    task_name = f"test-ocsp-{name}"
+    commands = [server_func, test_func]
+    return EvgTask(name=task_name, tags=tags, commands=commands)
+
+
+def create_ocsp_tasks():
+    tasks = []
+    drivers_tools = os.environ["DRIVERS_TOOLS"]
+    config_path = Path(drivers_tools) / ".evergreen/orchestration/configs/servers"
+    for path in config_path.glob("*ocsp*"):
+        for server_type in ["valid", "revoked", "valid-delegate", "revoked-delegate"]:
+            task = _create_ocsp_task(path.name, server_type)
+            tasks.append(task)
     return tasks
 
 
