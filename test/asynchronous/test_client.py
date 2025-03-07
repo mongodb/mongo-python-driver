@@ -1893,12 +1893,15 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_srv_max_hosts_kwarg(self):
         client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/")
+        await client.aconnect()
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
         client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/", srvmaxhosts=1)
+        await client.aconnect()
         self.assertEqual(len(client.topology_description.server_descriptions()), 1)
         client = self.simple_client(
             "mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1", srvmaxhosts=2
         )
+        await client.aconnect()
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
 
     @unittest.skipIf(

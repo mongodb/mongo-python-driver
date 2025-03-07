@@ -1850,12 +1850,15 @@ class TestClient(IntegrationTest):
 
     def test_srv_max_hosts_kwarg(self):
         client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/")
+        client._connect()
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
         client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/", srvmaxhosts=1)
+        client._connect()
         self.assertEqual(len(client.topology_description.server_descriptions()), 1)
         client = self.simple_client(
             "mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1", srvmaxhosts=2
         )
+        client._connect()
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
 
     @unittest.skipIf(

@@ -427,7 +427,6 @@ def parse_uri(
     validate: bool = True,
     warn: bool = False,
     normalize: bool = True,
-    connect_timeout: Optional[float] = None,
     srv_service_name: Optional[str] = None,
     srv_max_hosts: Optional[int] = None,
 ) -> dict[str, Any]:
@@ -550,6 +549,122 @@ def parse_uri(
         fqdn, port = nodes[0]
         if port is not None:
             raise InvalidURI(f"{SRV_SCHEME} URIs must not include a port number")
+    elif not is_srv and options.get("srvServiceName") is not None:
+        raise ConfigurationError(
+            "The srvServiceName option is only allowed with 'mongodb+srv://' URIs"
+        )
+    elif not is_srv and srv_max_hosts:
+        raise ConfigurationError(
+            "The srvMaxHosts option is only allowed with 'mongodb+srv://' URIs"
+        )
+    else:
+        nodes = split_hosts(hosts, default_port=default_port)
+
+    _check_options(nodes, options)
+
+    return {
+        "nodelist": nodes,
+        "username": user,
+        "password": passwd,
+        "database": dbase,
+        "collection": collection,
+        "options": options,
+        "fqdn": fqdn,
+    }
+
+
+def parse_uri_lookups(
+    uri: str,
+    default_port: Optional[int] = DEFAULT_PORT,
+    validate: bool = True,
+    warn: bool = False,
+    normalize: bool = True,
+    connect_timeout: Optional[float] = None,
+    srv_service_name: Optional[str] = None,
+    srv_max_hosts: Optional[int] = None,
+) -> dict[str, Any]:
+    """Parse and validate a MongoDB URI.
+
+    Returns a dict of the form::
+
+        {
+            'nodelist': <list of (host, port) tuples>,
+            'username': <username> or None,
+            'password': <password> or None,
+            'database': <database name> or None,
+            'collection': <collection name> or None,
+            'options': <dict of MongoDB URI options>,
+            'fqdn': <fqdn of the MongoDB+SRV URI> or None
+        }
+
+    If the URI scheme is "mongodb+srv://" DNS SRV and TXT lookups will be done
+    to build nodelist and options.
+
+    :param uri: The MongoDB URI to parse.
+    :param default_port: The port number to use when one wasn't specified
+          for a host in the URI.
+    :param validate: If ``True`` (the default), validate and
+          normalize all options. Default: ``True``.
+    :param warn: When validating, if ``True`` then will warn
+          the user then ignore any invalid options or values. If ``False``,
+          validation will error when options are unsupported or values are
+          invalid. Default: ``False``.
+    :param normalize: If ``True``, convert names of URI options
+          to their internally-used names. Default: ``True``.
+    :param connect_timeout: The maximum time in milliseconds to
+          wait for a response from the DNS server.
+    :param srv_service_name: A custom SRV service name
+
+    .. versionchanged:: 4.6
+       The delimiting slash (``/``) between hosts and connection options is now optional.
+       For example, "mongodb://example.com?tls=true" is now a valid URI.
+
+    .. versionchanged:: 4.0
+       To better follow RFC 3986, unquoted percent signs ("%") are no longer
+       supported.
+
+    .. versionchanged:: 3.9
+        Added the ``normalize`` parameter.
+
+    .. versionchanged:: 3.6
+        Added support for mongodb+srv:// URIs.
+
+    .. versionchanged:: 3.5
+        Return the original value of the ``readPreference`` MongoDB URI option
+        instead of the validated read preference mode.
+
+    .. versionchanged:: 3.1
+        ``warn`` added so invalid options can be ignored.
+    """
+    if uri.startswith(SCHEME):
+        is_srv = False
+        scheme_free = uri[SCHEME_LEN:]
+    else:
+        is_srv = True
+        scheme_free = uri[SRV_SCHEME_LEN:]
+
+    options = _CaseInsensitiveDictionary()
+
+    host_plus_db_part, _, opts = scheme_free.partition("?")
+    if "/" in host_plus_db_part:
+        host_part, _, _ = host_plus_db_part.partition("/")
+    else:
+        host_part = host_plus_db_part
+
+    if opts:
+        options.update(split_options(opts, validate, warn, normalize))
+    if srv_service_name is None:
+        srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME)
+    if "@" in host_part:
+        _, _, hosts = host_part.rpartition("@")
+    else:
+        hosts = host_part
+
+    hosts = unquote_plus(hosts)
+    srv_max_hosts = srv_max_hosts or options.get("srvMaxHosts")
+    if is_srv:
+        nodes = split_hosts(hosts, default_port=None)
+        fqdn, port = nodes[0]
 
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.
@@ -572,14 +687,6 @@ def parse_uri(
             raise InvalidURI("You cannot specify replicaSet with srvMaxHosts")
         if "tls" not in options and "ssl" not in options:
             options["tls"] = True if validate else "true"
-    elif not is_srv and options.get("srvServiceName") is not None:
-        raise ConfigurationError(
-            "The srvServiceName option is only allowed with 'mongodb+srv://' URIs"
-        )
-    elif not is_srv and srv_max_hosts:
-        raise ConfigurationError(
-            "The srvMaxHosts option is only allowed with 'mongodb+srv://' URIs"
-        )
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 
@@ -587,12 +694,7 @@ def parse_uri(
 
     return {
         "nodelist": nodes,
-        "username": user,
-        "password": passwd,
-        "database": dbase,
-        "collection": collection,
         "options": options,
-        "fqdn": fqdn,
     }
 
 
