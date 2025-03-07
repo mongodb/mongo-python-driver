@@ -802,7 +802,7 @@ def create_server_tasks():
             AUTH=auth,
             SSL=ssl,
         )
-        server_func = FunctionCall(func="run-server", vars=server_vars)
+        server_func = FunctionCall(func="run server", vars=server_vars)
         test_vars = dict(AUTH=auth, SSL=ssl, SYNC=sync)
         if sync == "sync":
             test_vars["TEST_NAME"] = "default_sync"
@@ -821,7 +821,7 @@ def create_load_balancer_tasks():
         server_vars = dict(
             TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, TEST_NAME="load_balancer"
         )
-        server_func = FunctionCall(func="run-server", vars=server_vars)
+        server_func = FunctionCall(func="run server", vars=server_vars)
         test_vars = dict(AUTH=auth, SSL=ssl, TEST_NAME="load_balancer")
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
@@ -840,7 +840,7 @@ def create_kms_tasks():
                 sub_test_name += "-fail"
             commands = []
             if not success:
-                commands.append(FunctionCall(func="run-server"))
+                commands.append(FunctionCall(func="run server"))
             test_vars = dict(TEST_NAME="kms", SUB_TEST_NAME=sub_test_name)
             test_func = FunctionCall(func="run tests", vars=test_vars)
             commands.append(test_func)
@@ -863,7 +863,7 @@ def create_aws_tasks():
         base_name = f"test-auth-aws-{version}"
         base_tags = ["auth-aws"]
         server_vars = dict(AUTH_AWS="1", VERSION=version)
-        server_func = FunctionCall(func="run-server", vars=server_vars)
+        server_func = FunctionCall(func="run server", vars=server_vars)
         assume_func = FunctionCall(func="assume ec2 role")
         for test_type in aws_test_types:
             tags = [*base_tags, f"auth-aws-{test_type}"]

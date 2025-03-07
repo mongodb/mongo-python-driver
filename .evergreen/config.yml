@@ -201,7 +201,7 @@ functions:
       params:
         file: "src/xunit-results/TEST-*.xml"
 
-  "run-server":
+  "run server":
     - command: subprocess.exec
       params:
         binary: bash
