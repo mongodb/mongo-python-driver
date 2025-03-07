@@ -911,11 +911,17 @@ def create_ocsp_tasks():
     for path in config_path.glob("*ocsp*"):
         if "singleEndpoint" in path.name:
             continue
-        server_types = ["valid", "revoked", "no-responder"]
-        if "disableStapling" not in path.name:
-            server_types.extend(["valid-delegate", "revoked-delegate"])
-        for server_type in server_types:
+        # Handle the tests that start an OCSP server.
+        for server_type in ["valid", "revoked", "valid-delegate", "revoked-delegate"]:
             task = _create_ocsp_task(path.name, server_type)
+            tasks.append(task)
+        # Soft Fail Test: No OCSP Responder + server that does not staple.
+        if "basic-tls-ocsp-disableStapling.json" in path.name:
+            task = _create_ocsp_task(path.name, "no-responder")
+            tasks.append(task)
+        # Malicious Server Test 2: No OCSP Responder + server w/ Must- Staple cert that does not staple.
+        elif "basic-tls-ocsp-mustStaple-disableStapling.json" in path.name:
+            task = _create_ocsp_task(path.name, "no-responder")
             tasks.append(task)
 
     return tasks
