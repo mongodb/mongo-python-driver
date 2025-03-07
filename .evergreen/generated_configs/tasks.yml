@@ -769,22 +769,6 @@ tasks:
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
     tags: [ocsp, ocsp-ecdsa]
-  - name: test-ocsp-ecdsa-basic-tls-ocsp-disableStapling-valid-delegate
-    commands:
-      - func: run tests
-        vars:
-          OCSP_ALGORITHM: ecdsa
-          OCSP_SERVER_TYPE: valid-delegate
-          TEST_NAME: ocsp
-    tags: [ocsp, ocsp-ecdsa]
-  - name: test-ocsp-ecdsa-basic-tls-ocsp-disableStapling-revoked-delegate
-    commands:
-      - func: run tests
-        vars:
-          OCSP_ALGORITHM: ecdsa
-          OCSP_SERVER_TYPE: revoked-delegate
-          TEST_NAME: ocsp
-    tags: [ocsp, ocsp-ecdsa]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-disableStapling-no-responder
     commands:
       - func: run server
@@ -811,22 +795,6 @@ tasks:
         vars:
           OCSP_ALGORITHM: ecdsa
           OCSP_SERVER_TYPE: revoked
-          TEST_NAME: ocsp
-    tags: [ocsp, ocsp-ecdsa]
-  - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-disableStapling-valid-delegate
-    commands:
-      - func: run tests
-        vars:
-          OCSP_ALGORITHM: ecdsa
-          OCSP_SERVER_TYPE: valid-delegate
-          TEST_NAME: ocsp
-    tags: [ocsp, ocsp-ecdsa]
-  - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-disableStapling-revoked-delegate
-    commands:
-      - func: run tests
-        vars:
-          OCSP_ALGORITHM: ecdsa
-          OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
     tags: [ocsp, ocsp-ecdsa]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-disableStapling-no-responder
@@ -857,6 +825,18 @@ tasks:
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
     tags: [ocsp, ocsp-ecdsa, ocsp-staple]
+  - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-no-responder
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
+      - func: run tests
+        vars:
+          OCSP_ALGORITHM: ecdsa
+          OCSP_SERVER_TYPE: no-responder
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa, ocsp-staple]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-valid-delegate
     commands:
       - func: run tests
@@ -873,18 +853,6 @@ tasks:
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
     tags: [ocsp, ocsp-ecdsa, ocsp-staple]
-  - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-no-responder
-    commands:
-      - func: run server
-        vars:
-          TEST_NAME: ocsp
-          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
-      - func: run tests
-        vars:
-          OCSP_ALGORITHM: ecdsa
-          OCSP_SERVER_TYPE: no-responder
-          TEST_NAME: ocsp
-    tags: [ocsp, ocsp-ecdsa, ocsp-staple]
   - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-disableStapling-valid
     commands:
       - func: run tests
@@ -899,22 +867,6 @@ tasks:
         vars:
           OCSP_ALGORITHM: rsa
           OCSP_SERVER_TYPE: revoked
-          TEST_NAME: ocsp
-    tags: [ocsp, ocsp-rsa]
-  - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-disableStapling-valid-delegate
-    commands:
-      - func: run tests
-        vars:
-          OCSP_ALGORITHM: rsa
-          OCSP_SERVER_TYPE: valid-delegate
-          TEST_NAME: ocsp
-    tags: [ocsp, ocsp-rsa]
-  - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-disableStapling-revoked-delegate
-    commands:
-      - func: run tests
-        vars:
-          OCSP_ALGORITHM: rsa
-          OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
     tags: [ocsp, ocsp-rsa]
   - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-disableStapling-no-responder
@@ -945,22 +897,6 @@ tasks:
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
     tags: [ocsp, ocsp-rsa]
-  - name: test-ocsp-rsa-basic-tls-ocsp-disableStapling-valid-delegate
-    commands:
-      - func: run tests
-        vars:
-          OCSP_ALGORITHM: rsa
-          OCSP_SERVER_TYPE: valid-delegate
-          TEST_NAME: ocsp
-    tags: [ocsp, ocsp-rsa]
-  - name: test-ocsp-rsa-basic-tls-ocsp-disableStapling-revoked-delegate
-    commands:
-      - func: run tests
-        vars:
-          OCSP_ALGORITHM: rsa
-          OCSP_SERVER_TYPE: revoked-delegate
-          TEST_NAME: ocsp
-    tags: [ocsp, ocsp-rsa]
   - name: test-ocsp-rsa-basic-tls-ocsp-disableStapling-no-responder
     commands:
       - func: run server
@@ -989,6 +925,18 @@ tasks:
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
     tags: [ocsp, ocsp-rsa, ocsp-staple]
+  - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-no-responder
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
+      - func: run tests
+        vars:
+          OCSP_ALGORITHM: rsa
+          OCSP_SERVER_TYPE: no-responder
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa, ocsp-staple]
   - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-valid-delegate
     commands:
       - func: run tests
@@ -1003,18 +951,6 @@ tasks:
         vars:
           OCSP_ALGORITHM: rsa
           OCSP_SERVER_TYPE: revoked-delegate
-          TEST_NAME: ocsp
-    tags: [ocsp, ocsp-rsa, ocsp-staple]
-  - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-no-responder
-    commands:
-      - func: run server
-        vars:
-          TEST_NAME: ocsp
-          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
-      - func: run tests
-        vars:
-          OCSP_ALGORITHM: rsa
-          OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
     tags: [ocsp, ocsp-rsa, ocsp-staple]
 

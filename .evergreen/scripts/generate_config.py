@@ -914,13 +914,10 @@ def create_ocsp_tasks():
     for path in config_path.glob("*ocsp*"):
         if "singleEndpoint" in path.name:
             continue
-        for server_type in [
-            "valid",
-            "revoked",
-            "valid-delegate",
-            "revoked-delegate",
-            "no-responder",
-        ]:
+        server_types = ["valid", "revoked", "no-responder"]
+        if "disableStapling" not in path.name:
+            server_types.extend(["valid-delegate", "revoked-delegate"])
+        for server_type in server_types:
             task = _create_ocsp_task(path.name, server_type)
             tasks.append(task)
 
