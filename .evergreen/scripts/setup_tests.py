@@ -245,11 +245,17 @@ def handle_test_env() -> None:
         for name in ["OCSP_SERVER_TYPE", "ORCHESTRATION_FILE"]:
             if name not in os.environ:
                 raise ValueError(f"Please set {name}")
+
         server_type = os.environ["OCSP_SERVER_TYPE"]
-        should_succeed = "true" if "valid" in server_type else "false"
-        write_env("OCSP_TLS_SHOULD_SUCCEED", should_succeed)
         ocsp_algo = os.environ["ORCHESTRATION_FILE"].split("-")[0]
+        if server_type == "no-reponder":
+            should_succeed = "mustStaple" not in ocsp_algo
+        else:
+            should_succeed = "true" if "valid" in server_type else "false"
+
+        write_env("OCSP_TLS_SHOULD_SUCCEED", should_succeed)
         write_env("CA_FILE", f"{DRIVERS_TOOLS}/.evergreen/ocsp/{ocsp_algo}/ca.pem")
+
         env = os.environ.copy()
         env["SERVER_TYPE"] = server_type
         env["OCSP_ALGORITHM"] = ocsp_algo

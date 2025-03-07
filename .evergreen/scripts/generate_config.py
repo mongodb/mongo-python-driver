@@ -900,7 +900,10 @@ def _create_ocsp_task(file_name, server_type):
 
     name = file_name.replace(".json", "")
     task_name = f"test-ocsp-{name}-{server_type}"
-    commands = [server_func, test_func]
+    if server_type == "no-responder":
+        commands = [server_func, test_func]
+    else:
+        commands = [test_func]
     return EvgTask(name=task_name, tags=tags, commands=commands)
 
 
@@ -911,9 +914,16 @@ def create_ocsp_tasks():
     for path in config_path.glob("*ocsp*"):
         if "singleEndpoint" in path.name:
             continue
-        for server_type in ["valid", "revoked", "valid-delegate", "revoked-delegate"]:
+        for server_type in [
+            "valid",
+            "revoked",
+            "valid-delegate",
+            "revoked-delegate",
+            "no-responder",
+        ]:
             task = _create_ocsp_task(path.name, server_type)
             tasks.append(task)
+
     return tasks
 
 
