@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import os
+import time
 import unittest
 from asyncio import iscoroutinefunction
 from collections import abc
@@ -313,6 +314,10 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         """Run the assertIndexNotExists test operation."""
         coll = self.client[database][collection]
         self.assertNotIn(index, [doc["name"] async for doc in await coll.list_indexes()])
+
+    async def wait(self, spec):
+        """Run the "wait" test operation."""
+        await asyncio.sleep(spec["ms"] / 1000.0)
 
     def assertErrorLabelsContain(self, exc, expected_labels):
         labels = [l for l in expected_labels if exc.has_error_label(l)]
