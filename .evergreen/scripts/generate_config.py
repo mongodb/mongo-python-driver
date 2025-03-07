@@ -899,7 +899,7 @@ def _create_ocsp_task(file_name, server_type):
         tags.append("ocsp-staple")
 
     name = file_name.replace(".json", "")
-    task_name = f"test-ocsp-{name}"
+    task_name = f"test-ocsp-{name}-{server_type}"
     commands = [server_func, test_func]
     return EvgTask(name=task_name, tags=tags, commands=commands)
 
