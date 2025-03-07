@@ -891,7 +891,7 @@ def _create_ocsp_task(file_name, server_type):
     vars = dict(TEST_NAME="ocsp", ORCHESTRATION_FILE=file_name)
     server_func = FunctionCall(func="run server", vars=vars)
 
-    vars = dict(OCSP_ALGORITHM=algo, OCSP_SERVER_TYPE=server_type, TEST_NAME="ocsp")
+    vars = dict(ORCHESTRATION_FILE=file_name, OCSP_SERVER_TYPE=server_type, TEST_NAME="ocsp")
     test_func = FunctionCall(func="run tests", vars=vars)
 
     tags = ["ocsp", f"ocsp-{algo}"]
