@@ -315,9 +315,9 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         coll = self.client[database][collection]
         self.assertNotIn(index, [doc["name"] async for doc in await coll.list_indexes()])
 
-    async def wait(self, spec):
+    async def wait(self, ms):
         """Run the "wait" test operation."""
-        await asyncio.sleep(spec["ms"] / 1000.0)
+        await asyncio.sleep(ms / 1000.0)
 
     def assertErrorLabelsContain(self, exc, expected_labels):
         labels = [l for l in expected_labels if exc.has_error_label(l)]

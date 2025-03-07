@@ -315,9 +315,9 @@ class SpecRunner(IntegrationTest):
         coll = self.client[database][collection]
         self.assertNotIn(index, [doc["name"] for doc in coll.list_indexes()])
 
-    def wait(self, spec):
+    def wait(self, ms):
         """Run the "wait" test operation."""
-        time.sleep(spec["ms"] / 1000.0)
+        time.sleep(ms / 1000.0)
 
     def assertErrorLabelsContain(self, exc, expected_labels):
         labels = [l for l in expected_labels if exc.has_error_label(l)]
