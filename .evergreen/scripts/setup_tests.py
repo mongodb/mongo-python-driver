@@ -318,10 +318,6 @@ def handle_test_env() -> None:
 
         setup_kms(sub_test_name)
 
-    if test_name == "ocsp":
-        write_env("CA_FILE", os.environ["CA_FILE"])
-        write_env("OCSP_TLS_SHOULD_SUCCEED", os.environ["OCSP_TLS_SHOULD_SUCCEED"])
-
     if test_name == "auth_aws" and sub_test_name != "ecs-remote":
         auth_aws_dir = f"{DRIVERS_TOOLS}/.evergreen/auth_aws"
         if "AWS_ROLE_SESSION_NAME" in os.environ:

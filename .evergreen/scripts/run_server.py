@@ -33,7 +33,6 @@ def start_server():
         set_env("LOAD_BALANCER")
 
     elif test_name == "ocsp":
-        opts.ssl = True
         if "ORCHESTRATION_FILE" not in os.environ:
             found = False
             for opt in extra_opts:
@@ -47,11 +46,10 @@ def start_server():
 
     if opts.ssl:
         extra_opts.append("--ssl")
-        if test_name != "ocsp":
-            certs = ROOT / "test/certificates"
-            set_env("TLS_CERT_KEY_FILE", certs / "client.pem")
-            set_env("TLS_PEM_KEY_FILE", certs / "server.pem")
-            set_env("TLS_CA_FILE", certs / "ca.pem")
+        certs = ROOT / "test/certificates"
+        set_env("TLS_CERT_KEY_FILE", certs / "client.pem")
+        set_env("TLS_PEM_KEY_FILE", certs / "server.pem")
+        set_env("TLS_CA_FILE", certs / "ca.pem")
 
     cmd = ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh", *extra_opts]
     run_command(cmd, cwd=DRIVERS_TOOLS)
