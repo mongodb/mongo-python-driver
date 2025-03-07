@@ -909,6 +909,8 @@ def create_ocsp_tasks():
     drivers_tools = os.environ["DRIVERS_TOOLS"]
     config_path = Path(drivers_tools) / ".evergreen/orchestration/configs/servers"
     for path in config_path.glob("*ocsp*"):
+        if "singleEndpoint" in path.name:
+            continue
         for server_type in ["valid", "revoked", "valid-delegate", "revoked-delegate"]:
             task = _create_ocsp_task(path.name, server_type)
             tasks.append(task)
