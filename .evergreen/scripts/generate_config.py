@@ -900,10 +900,7 @@ def _create_ocsp_task(file_name, server_type):
 
     name = file_name.replace(".json", "")
     task_name = f"test-ocsp-{name}-{server_type}"
-    if server_type == "no-responder":
-        commands = [test_func]
-    else:
-        commands = [server_func, test_func]
+    commands = [server_func, test_func]
     return EvgTask(name=task_name, tags=tags, commands=commands)
 
 

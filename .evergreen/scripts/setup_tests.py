@@ -256,10 +256,11 @@ def handle_test_env() -> None:
         write_env("OCSP_TLS_SHOULD_SUCCEED", should_succeed)
         write_env("CA_FILE", f"{DRIVERS_TOOLS}/.evergreen/ocsp/{ocsp_algo}/ca.pem")
 
-        env = os.environ.copy()
-        env["SERVER_TYPE"] = server_type
-        env["OCSP_ALGORITHM"] = ocsp_algo
-        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh", env=env)
+        if server_type != "no-responder":
+            env = os.environ.copy()
+            env["SERVER_TYPE"] = server_type
+            env["OCSP_ALGORITHM"] = ocsp_algo
+            run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh", env=env)
 
     if SSL != "nossl":
         if not DRIVERS_TOOLS:
