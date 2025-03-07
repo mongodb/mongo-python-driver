@@ -378,6 +378,7 @@ class EntityMapUtil:
                 opts["key_vault_client"],
                 DEFAULT_CODEC_OPTIONS,
                 opts.get("kms_tls_options", kms_tls_options),
+                opts.get("key_expiration_ms"),
             )
             return
         elif entity_type == "thread":
