@@ -33,6 +33,7 @@ def start_server():
         set_env("LOAD_BALANCER")
 
     elif test_name == "ocsp":
+        opts.ssl = True
         if "ORCHESTRATION_FILE" not in os.environ:
             found = False
             for opt in extra_opts:

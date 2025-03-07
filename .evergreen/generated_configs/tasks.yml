@@ -755,6 +755,10 @@ tasks:
   # Ocsp tests
   - name: test-ocsp-ecdsa-basic-tls-ocsp-disableStapling-valid
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
@@ -763,6 +767,10 @@ tasks:
     tags: [ocsp, ocsp-ecdsa]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-disableStapling-revoked
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
@@ -771,10 +779,6 @@ tasks:
     tags: [ocsp, ocsp-ecdsa]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-disableStapling-no-responder
     commands:
-      - func: run server
-        vars:
-          TEST_NAME: ocsp
-          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
@@ -783,6 +787,10 @@ tasks:
     tags: [ocsp, ocsp-ecdsa]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-disableStapling-valid
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
@@ -791,6 +799,10 @@ tasks:
     tags: [ocsp, ocsp-ecdsa]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-disableStapling-revoked
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
@@ -799,10 +811,6 @@ tasks:
     tags: [ocsp, ocsp-ecdsa]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-disableStapling-no-responder
     commands:
-      - func: run server
-        vars:
-          TEST_NAME: ocsp
-          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
@@ -811,6 +819,10 @@ tasks:
     tags: [ocsp, ocsp-ecdsa]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-valid
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
@@ -819,6 +831,10 @@ tasks:
     tags: [ocsp, ocsp-ecdsa, ocsp-staple]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-revoked
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
@@ -827,10 +843,6 @@ tasks:
     tags: [ocsp, ocsp-ecdsa, ocsp-staple]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-no-responder
     commands:
-      - func: run server
-        vars:
-          TEST_NAME: ocsp
-          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
@@ -839,6 +851,10 @@ tasks:
     tags: [ocsp, ocsp-ecdsa, ocsp-staple]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-valid-delegate
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
@@ -847,6 +863,10 @@ tasks:
     tags: [ocsp, ocsp-ecdsa, ocsp-staple]
   - name: test-ocsp-ecdsa-basic-tls-ocsp-mustStaple-revoked-delegate
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
@@ -855,6 +875,10 @@ tasks:
     tags: [ocsp, ocsp-ecdsa, ocsp-staple]
   - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-disableStapling-valid
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
@@ -863,6 +887,10 @@ tasks:
     tags: [ocsp, ocsp-rsa]
   - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-disableStapling-revoked
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
@@ -871,10 +899,6 @@ tasks:
     tags: [ocsp, ocsp-rsa]
   - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-disableStapling-no-responder
     commands:
-      - func: run server
-        vars:
-          TEST_NAME: ocsp
-          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
@@ -883,6 +907,10 @@ tasks:
     tags: [ocsp, ocsp-rsa]
   - name: test-ocsp-rsa-basic-tls-ocsp-disableStapling-valid
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
@@ -891,6 +919,10 @@ tasks:
     tags: [ocsp, ocsp-rsa]
   - name: test-ocsp-rsa-basic-tls-ocsp-disableStapling-revoked
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
@@ -899,10 +931,6 @@ tasks:
     tags: [ocsp, ocsp-rsa]
   - name: test-ocsp-rsa-basic-tls-ocsp-disableStapling-no-responder
     commands:
-      - func: run server
-        vars:
-          TEST_NAME: ocsp
-          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
@@ -911,6 +939,10 @@ tasks:
     tags: [ocsp, ocsp-rsa]
   - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-valid
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
@@ -919,6 +951,10 @@ tasks:
     tags: [ocsp, ocsp-rsa, ocsp-staple]
   - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-revoked
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
@@ -927,10 +963,6 @@ tasks:
     tags: [ocsp, ocsp-rsa, ocsp-staple]
   - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-no-responder
     commands:
-      - func: run server
-        vars:
-          TEST_NAME: ocsp
-          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
@@ -939,6 +971,10 @@ tasks:
     tags: [ocsp, ocsp-rsa, ocsp-staple]
   - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-valid-delegate
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
@@ -947,6 +983,10 @@ tasks:
     tags: [ocsp, ocsp-rsa, ocsp-staple]
   - name: test-ocsp-rsa-basic-tls-ocsp-mustStaple-revoked-delegate
     commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
