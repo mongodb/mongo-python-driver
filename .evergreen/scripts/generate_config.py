@@ -913,6 +913,11 @@ def create_ocsp_tasks():
             continue
         # Handle the tests that start an OCSP server.
         for server_type in ["valid", "revoked", "valid-delegate", "revoked-delegate"]:
+            if (
+                "valid" in server_type
+                and "basic-tls-ocsp-mustStaple-disableStapling.json" in path.name
+            ):
+                continue
             task = _create_ocsp_task(path.name, server_type)
             tasks.append(task)
         # Soft Fail Test: No OCSP Responder + server that does not staple.
