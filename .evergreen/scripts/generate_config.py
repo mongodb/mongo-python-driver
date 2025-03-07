@@ -895,7 +895,7 @@ def _create_ocsp_task(file_name, server_type):
     test_func = FunctionCall(func="run tests", vars=vars)
 
     tags = ["ocsp", f"ocsp-{algo}"]
-    if "mustStaple" in file_name:
+    if "disableStapling" not in file_name:
         tags.append("ocsp-staple")
 
     name = file_name.replace(".json", "")
