@@ -913,6 +913,7 @@ def create_ocsp_tasks():
             continue
         # Handle the tests that start an OCSP server.
         for server_type in ["valid", "revoked", "valid-delegate", "revoked-delegate"]:
+            # Malicious server tests are never valid.
             if (
                 "valid" in server_type
                 and "basic-tls-ocsp-mustStaple-disableStapling.json" in path.name

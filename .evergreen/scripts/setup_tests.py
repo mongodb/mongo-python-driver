@@ -247,9 +247,10 @@ def handle_test_env() -> None:
                 raise ValueError(f"Please set {name}")
 
         server_type = os.environ["OCSP_SERVER_TYPE"]
-        ocsp_algo = os.environ["ORCHESTRATION_FILE"].split("-")[0]
-        if server_type == "no-reponder":
-            tls_should_succeed = False
+        orch_file = os.environ["ORCHESTRATION_FILE"]
+        ocsp_algo = orch_file.split("-")[0]
+        if server_type == "no-responder":
+            tls_should_succeed = "false" if "mustStaple-disableStapling" in orch_file else "true"
         else:
             tls_should_succeed = "true" if "valid" in server_type else "false"
 
