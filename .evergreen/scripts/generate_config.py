@@ -930,7 +930,7 @@ def create_ocsp_tasks():
             "malicious-no-responder-mustStaple-server-does-not-staple",
         ),
     ]
-    for algo in ["edcsa", "rsa"]:
+    for algo in ["ecdsa", "rsa"]:
         for variant, server_type, base_task_name in tests:
             task = _create_ocsp_task(algo, variant, server_type, base_task_name)
             tasks.append(task)

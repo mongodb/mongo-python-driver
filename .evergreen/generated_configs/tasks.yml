@@ -753,150 +753,150 @@ tasks:
     tags: [load-balancer, noauth, nossl]
 
   # Ocsp tests
-  - name: test-ocsp-edcsa-valid-cert-server-does-not-staple
+  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa]
-  - name: test-ocsp-edcsa-invalid-cert-server-does-not-staple
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa]
-  - name: test-ocsp-edcsa-delegate-valid-cert-server-does-not-staple
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa]
-  - name: test-ocsp-edcsa-delegate-invalid-cert-server-does-not-staple
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa]
-  - name: test-ocsp-edcsa-soft-fail
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-soft-fail
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa]
-  - name: test-ocsp-edcsa-valid-cert-server-staples
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-valid-cert-server-staples
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa, ocsp-staple]
-  - name: test-ocsp-edcsa-invalid-cert-server-staples
+    tags: [ocsp, ocsp-ecdsa, ocsp-staple]
+  - name: test-ocsp-ecdsa-invalid-cert-server-staples
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa, ocsp-staple]
-  - name: test-ocsp-edcsa-delegate-valid-cert-server-staples
+    tags: [ocsp, ocsp-ecdsa, ocsp-staple]
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa, ocsp-staple]
-  - name: test-ocsp-edcsa-delegate-invalid-cert-server-staples
+    tags: [ocsp, ocsp-ecdsa, ocsp-staple]
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa, ocsp-staple]
-  - name: test-ocsp-edcsa-malicious-invalid-cert-mustStaple-server-does-not-staple
+    tags: [ocsp, ocsp-ecdsa, ocsp-staple]
+  - name: test-ocsp-ecdsa-malicious-invalid-cert-mustStaple-server-does-not-staple
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa]
-  - name: test-ocsp-edcsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa]
-  - name: test-ocsp-edcsa-malicious-no-responder-mustStaple-server-does-not-staple
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-malicious-no-responder-mustStaple-server-does-not-staple
     commands:
       - func: run server
         vars:
           TEST_NAME: ocsp
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
       - func: run tests
         vars:
-          ORCHESTRATION_FILE: edcsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-    tags: [ocsp, ocsp-edcsa]
+    tags: [ocsp, ocsp-ecdsa]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple
     commands:
       - func: run server
