@@ -377,6 +377,7 @@ class EntityMapUtil:
                 opts["key_vault_client"],
                 DEFAULT_CODEC_OPTIONS,
                 opts.get("kms_tls_options", kms_tls_options),
+                opts.get("key_expiration_ms"),
             )
             return
         elif entity_type == "thread":
@@ -438,7 +439,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.21")
+    SCHEMA_VERSION = Version.from_string("1.22")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
