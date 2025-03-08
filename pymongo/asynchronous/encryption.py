@@ -548,11 +548,10 @@ class QueryType(str, enum.Enum):
 
 
 def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
-    opts = MongoCryptOptions(**kwargs)
-    # Opt into range V2 encryption.
-    if hasattr(opts, "enable_range_v2"):
-        opts.enable_range_v2 = True
-    return opts
+    # For compat with pymongocrypt <1.13, avoid setting the default key_expiration_ms.
+    if kwargs.get("key_expiration_ms") is None:
+        kwargs.pop("key_expiration_ms", None)
+    return MongoCryptOptions(**kwargs)
 
 
 class AsyncClientEncryption(Generic[_DocumentType]):
