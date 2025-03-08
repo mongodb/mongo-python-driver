@@ -9,7 +9,6 @@
 # Note: Run this file with `pipx run`, or `uv run`.
 from __future__ import annotations
 
-import os
 import sys
 from dataclasses import dataclass
 from inspect import getmembers, isfunction
@@ -885,8 +884,8 @@ def create_aws_tasks():
     return tasks
 
 
-def _create_ocsp_task(file_name, server_type):
-    algo = file_name.split("-")[0]
+def _create_ocsp_task(algo, variant, server_type, base_task_name):
+    file_name = f"{algo}-basic-tls-ocsp-{variant}.json"
 
     vars = dict(TEST_NAME="ocsp", ORCHESTRATION_FILE=file_name)
     server_func = FunctionCall(func="run server", vars=vars)
@@ -895,39 +894,45 @@ def _create_ocsp_task(file_name, server_type):
     test_func = FunctionCall(func="run tests", vars=vars)
 
     tags = ["ocsp", f"ocsp-{algo}"]
-    if "disableStapling" not in file_name:
+    if "disableStapling" not in variant:
         tags.append("ocsp-staple")
 
-    name = file_name.replace(".json", "")
-    task_name = f"test-ocsp-{name}-{server_type}"
+    task_name = f"test-ocsp-{algo}-{base_task_name}"
     commands = [server_func, test_func]
     return EvgTask(name=task_name, tags=tags, commands=commands)
 
 
 def create_ocsp_tasks():
     tasks = []
-    drivers_tools = os.environ["DRIVERS_TOOLS"]
-    config_path = Path(drivers_tools) / ".evergreen/orchestration/configs/servers"
-    for path in config_path.glob("*ocsp*"):
-        if "singleEndpoint" in path.name:
-            continue
-        # Handle the tests that start an OCSP server.
-        for server_type in ["valid", "revoked", "valid-delegate", "revoked-delegate"]:
-            # Malicious server tests are never valid.
-            if (
-                "valid" in server_type
-                and "basic-tls-ocsp-mustStaple-disableStapling.json" in path.name
-            ):
-                continue
-            task = _create_ocsp_task(path.name, server_type)
-            tasks.append(task)
-        # Soft Fail Test: No OCSP Responder + server that does not staple.
-        if "basic-tls-ocsp-disableStapling.json" in path.name:
-            task = _create_ocsp_task(path.name, "no-responder")
-            tasks.append(task)
-        # Malicious Server Test 2: No OCSP Responder + server w/ Must- Staple cert that does not staple.
-        elif "basic-tls-ocsp-mustStaple-disableStapling.json" in path.name:
-            task = _create_ocsp_task(path.name, "no-responder")
+    tests = [
+        ("disableStapling", "valid", "valid-cert-server-does-not-staple"),
+        ("disableStapling", "revoked", "invalid-cert-server-does-not-staple"),
+        ("disableStapling", "valid-delegate", "delegate-valid-cert-server-does-not-staple"),
+        ("disableStapling", "revoked-delegate", "delegate-invalid-cert-server-does-not-staple"),
+        ("disableStapling", "no-responder", "soft-fail"),
+        ("mustStaple", "valid", "valid-cert-server-staples"),
+        ("mustStaple", "revoked", "invalid-cert-server-staples"),
+        ("mustStaple", "valid-delegate", "delegate-valid-cert-server-staples"),
+        ("mustStaple", "revoked-delegate", "delegate-invalid-cert-server-staples"),
+        (
+            "mustStaple-disableStapling",
+            "revoked",
+            "malicious-invalid-cert-mustStaple-server-does-not-staple",
+        ),
+        (
+            "mustStaple-disableStapling",
+            "revoked-delegate",
+            "delegate-malicious-invalid-cert-mustStaple-server-does-not-staple",
+        ),
+        (
+            "mustStaple-disableStapling",
+            "no-responder",
+            "malicious-no-responder-mustStaple-server-does-not-staple",
+        ),
+    ]
+    for algo in ["edcsa", "rsa"]:
+        for variant, server_type, base_task_name in tests:
+            task = _create_ocsp_task(algo, variant, server_type, base_task_name)
             tasks.append(task)
 
     return tasks
