@@ -218,7 +218,7 @@ class TestPooling(_TestPoolingBase):
 
         async with cx_pool.checkout() as conn:
             # Use Connection's API to close the socket.
-            conn.close_conn(None)
+            await conn.close_conn(None)
 
         self.assertEqual(0, len(cx_pool.conns))
 
@@ -231,7 +231,7 @@ class TestPooling(_TestPoolingBase):
         async with cx_pool.checkout() as conn:
             # Simulate a closed socket without telling the Connection it's
             # closed.
-            conn.conn.close()
+            await conn.conn.close()
             self.assertTrue(conn.conn_closed())
 
         async with cx_pool.checkout() as new_connection:
@@ -305,7 +305,7 @@ class TestPooling(_TestPoolingBase):
         async with cx_pool.checkout() as conn:
             # Simulate a closed socket without telling the Connection it's
             # closed.
-            conn.conn.close()
+            await conn.conn.close()
 
         # Swap pool's address with a bad one.
         address, cx_pool.address = cx_pool.address, ("foo.com", 1234)
