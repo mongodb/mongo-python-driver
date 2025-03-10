@@ -384,6 +384,7 @@ class EntityMapUtil:
             name = spec["id"]
             thread = SpecRunnerTask(name)
             await thread.start()
+            self.test.addAsyncCleanup(thread.join, 5)
             self[name] = thread
             return
 
@@ -544,6 +545,14 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
+        if (
+            "Error returned from connection pool clear with interruptInUseConnections=true is retryable"
+            in spec["description"]
+            and not _IS_SYNC
+        ):
+            self.skipTest("PYTHON-5170 tests are flakey")
+        if "Driver extends timeout while streaming" in spec["description"] and not _IS_SYNC:
+            self.skipTest("PYTHON-5174 tests are flakey")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
@@ -1151,7 +1160,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         self.assertIsInstance(description, TopologyDescription)
         self.assertEqual(description.topology_type_name, spec["topologyType"])
 
-    def _testOperation_waitForPrimaryChange(self, spec: dict) -> None:
+    async def _testOperation_waitForPrimaryChange(self, spec: dict) -> None:
         """Run the waitForPrimaryChange test operation."""
         client = self.entity_map[spec["client"]]
         old_description: TopologyDescription = self.entity_map[spec["priorTopologyDescription"]]
@@ -1165,13 +1174,13 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
         old_primary = get_primary(old_description)
 
-        def primary_changed() -> bool:
-            primary = client.primary
+        async def primary_changed() -> bool:
+            primary = await client.primary
             if primary is None:
                 return False
             return primary != old_primary
 
-        wait_until(primary_changed, "change primary", timeout=timeout)
+        await async_wait_until(primary_changed, "change primary", timeout=timeout)
 
     async def _testOperation_runOnThread(self, spec):
         """Run the 'runOnThread' operation."""

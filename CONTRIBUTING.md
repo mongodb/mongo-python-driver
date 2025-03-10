@@ -204,29 +204,73 @@ the pages will re-render and the browser will automatically refresh.
     `just test test/test_change_stream.py::TestUnifiedChangeStreamsErrors::test_change_stream_errors_on_ElectionInProgress`.
 -   Use the `-k` argument to select tests by pattern.
 
-## Running Load Balancer Tests Locally
 
--   Install `haproxy` (available as `brew install haproxy` on macOS).
--   Clone `drivers-evergreen-tools`:
-    `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
--   Start the servers using
-    `LOAD_BALANCER=true TOPOLOGY=sharded_cluster AUTH=noauth SSL=nossl MONGODB_VERSION=6.0 DRIVERS_TOOLS=$PWD/drivers-evergreen-tools MONGO_ORCHESTRATION_HOME=$PWD/drivers-evergreen-tools/.evergreen/orchestration $PWD/drivers-evergreen-tools/.evergreen/run-orchestration.sh`.
--   Set up the test using:
-    `MONGODB_URI='mongodb://localhost:27017,localhost:27018/' just setup-tests load-balancer`.
--   Run the tests from the `pymongo` checkout directory using:
-    `just run-tests`.
+## Running tests that require secrets, services, or other configuration
 
-## Running Encryption Tests Locally
+### Prerequisites
+
 - Clone `drivers-evergreen-tools`:
-  `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
-- Run `export DRIVERS_TOOLS=$PWD/drivers-evergreen-tools`
-- Run `AWS_PROFILE=<profile> just setup-tests encryption` after setting up your AWS profile with `aws configure sso`.
+    `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
+- Run `export DRIVERS_TOOLS=$PWD/drivers-evergreen-tools`.  This can be put into a `.bashrc` file
+  for convenience.
+- Set up access to [Drivers test secrets](https://github.com/mongodb-labs/drivers-evergreen-tools/tree/master/.evergreen/secrets_handling#secrets-handling).
+
+### Usage
+
+- Run `just run-server` with optional args to set up the server.
+  All given flags will be passed to `run-orchestration.sh` in `$DRIVERS_TOOLS`.
+- Run `just setup-tests` with optional args to set up the test environment, secrets, etc.
+- Run `just run-tests` to run the tests in an appropriate Python environment.
+- When done, run `just teardown-tests` to clean up and `just stop-server` to stop the server.
+
+### Encryption tests
+
+- Run `just run-server` to start the server.
+- Run `just setup-tests encryption`.
 - Run the tests with `just run-tests`.
-- When done, run `just teardown-tests` to clean up.
+
+### Load balancer tests
+
+- Install `haproxy` (available as `brew install haproxy` on macOS).
+- Start the server with `just run-server load_balancer`.
+- Set up the test with `just setup-tests load_balancer`.
+- Run the tests with `just run-tests`.
+
+### AWS tests
+
+- Run `just run-server auth_aws` to start the server.
+- Run `just setup-tests auth_aws <aws-test-type>` to set up the AWS test.
+- Run the tests with `just run-tests`.
+
+### KMS tests
+
+For KMS tests that are run locally, and expected to fail, in this case using `azure`:
+
+- Run `just run-server`.
+- Run `just setup-tests kms azure-fail`.
+- Run `just run-tests`.
+
+For KMS tests that run remotely and are expected to pass, in this case using `gcp`:
+
+- Run `just setup-tests kms gcp`.
+- Run `just run-tests`.
+
+### OCSP tests
+
+  - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
+    This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
+    MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
+  - Run `just run-server ocsp`.
+  - Run `just setup-tests ocsp <sub test>` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
+  - Run `just run-tests`
+
+  If you are running one of the `no-responder` tests, omit the `run-server` step.
 
 ## Enable Debug Logs
 - Use `-o log_cli_level="DEBUG" -o log_cli=1` with `just test` or `pytest`.
 - Add `log_cli_level = "DEBUG` and `log_cli = 1` to the `tool.pytest.ini_options` section in `pyproject.toml` for Evergreen patches or to enable debug logs by default on your machine.
+- You can also set `DEBUG_LOG=1` and run either `just setup-tests` or `just-test`.
+- For evergreen patch builds, you can use `evergreen patch --param DEBUG_LOG=1` to enable debug logs for the patch.
 
 ## Re-sync Spec Tests
 

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import argparse
 import base64
 import io
-import logging
 import os
 import platform
 import shutil
@@ -19,38 +17,16 @@ from utils import (
     LOGGER,
     PLATFORM,
     ROOT,
+    TEST_SUITE_MAP,
     Distro,
+    get_test_options,
     read_env,
     run_command,
     write_env,
 )
 
 # Passthrough environment variables.
-PASS_THROUGH_ENV = ["GREEN_FRAMEWORK", "NO_EXT", "MONGODB_API_VERSION"]
-
-# Map the test name to a test suite.
-TEST_SUITE_MAP = {
-    "atlas": "atlas",
-    "auth_aws": "auth_aws",
-    "auth_oidc": "auth_oidc",
-    "data_lake": "data_lake",
-    "default": "",
-    "default_async": "default_async",
-    "default_sync": "default",
-    "encryption": "encryption",
-    "enterprise_auth": "auth",
-    "index_management": "index_management",
-    "kms": "kms",
-    "load_balancer": "load_balancer",
-    "mockupdb": "mockupdb",
-    "pyopenssl": "",
-    "ocsp": "ocsp",
-    "perf": "perf",
-    "serverless": "",
-}
-
-# Tests that require a sub test suite.
-SUB_TEST_REQUIRED = ["auth_aws", "kms"]
+PASS_THROUGH_ENV = ["GREEN_FRAMEWORK", "NO_EXT", "MONGODB_API_VERSION", "DEBUG_LOG"]
 
 # Map the test name to test extra.
 EXTRAS_MAP = {
@@ -71,35 +47,6 @@ GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 def is_set(var: str) -> bool:
     value = os.environ.get(var, "")
     return len(value.strip()) > 0
-
-
-def get_options():
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        "test_name",
-        choices=sorted(TEST_SUITE_MAP),
-        nargs="?",
-        default="default",
-        help="The name of the test suite to set up, typically the same name as a pytest marker.",
-    )
-    parser.add_argument("sub_test_name", nargs="?", help="The sub test name, for example 'azure'")
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Whether to log at the DEBUG level"
-    )
-    parser.add_argument(
-        "--quiet", "-q", action="store_true", help="Whether to log at the WARNING level"
-    )
-    parser.add_argument("--auth", action="store_true", help="Whether to add authentication")
-    parser.add_argument("--ssl", action="store_true", help="Whether to add TLS configuration")
-    # Get the options.
-    opts = parser.parse_args()
-    if opts.verbose:
-        LOGGER.setLevel(logging.DEBUG)
-    elif opts.quiet:
-        LOGGER.setLevel(logging.WARNING)
-    return opts
 
 
 def get_distro() -> Distro:
@@ -166,20 +113,11 @@ def setup_libmongocrypt():
 
 
 def handle_test_env() -> None:
-    opts = get_options()
+    opts, _ = get_test_options("Set up the test environment and services.")
     test_name = opts.test_name
     sub_test_name = opts.sub_test_name
-    if test_name in SUB_TEST_REQUIRED and not sub_test_name:
-        raise ValueError(f"Test '{test_name}' requires a sub_test_name")
-    AUTH = os.environ.get("AUTH", "noauth")
-    if opts.auth or "auth" in test_name:
-        AUTH = "auth"
-        # 'auth_aws ecs' shouldn't have extra auth set.
-        if test_name == "auth_aws" and sub_test_name == "ecs":
-            AUTH = "noauth"
-    SSL = os.environ.get("SSL", "nossl")
-    if opts.ssl:
-        SSL = "ssl"
+    AUTH = "auth" if opts.auth else "noauth"
+    SSL = "ssl" if opts.ssl else "nossl"
     TEST_ARGS = ""
 
     # Start compiling the args we'll pass to uv.
@@ -301,6 +239,30 @@ def handle_test_env() -> None:
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
 
+    if test_name == "ocsp":
+        if sub_test_name:
+            os.environ["OCSP_SERVER_TYPE"] = sub_test_name
+        for name in ["OCSP_SERVER_TYPE", "ORCHESTRATION_FILE"]:
+            if name not in os.environ:
+                raise ValueError(f"Please set {name}")
+
+        server_type = os.environ["OCSP_SERVER_TYPE"]
+        orch_file = os.environ["ORCHESTRATION_FILE"]
+        ocsp_algo = orch_file.split("-")[0]
+        if server_type == "no-responder":
+            tls_should_succeed = "false" if "mustStaple-disableStapling" in orch_file else "true"
+        else:
+            tls_should_succeed = "true" if "valid" in server_type else "false"
+
+        write_env("OCSP_TLS_SHOULD_SUCCEED", tls_should_succeed)
+        write_env("CA_FILE", f"{DRIVERS_TOOLS}/.evergreen/ocsp/{ocsp_algo}/ca.pem")
+
+        if server_type != "no-responder":
+            env = os.environ.copy()
+            env["SERVER_TYPE"] = server_type
+            env["OCSP_ALGORITHM"] = ocsp_algo
+            run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh", env=env)
+
     if SSL != "nossl":
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")
@@ -364,12 +326,18 @@ def handle_test_env() -> None:
 
         setup_kms(sub_test_name)
 
-    if test_name == "ocsp":
-        write_env("CA_FILE", os.environ["CA_FILE"])
-        write_env("OCSP_TLS_SHOULD_SUCCEED", os.environ["OCSP_TLS_SHOULD_SUCCEED"])
-
-    if test_name == "auth_aws":
-        write_env("MONGODB_URI", os.environ["MONGODB_URI"])
+    if test_name == "auth_aws" and sub_test_name != "ecs-remote":
+        auth_aws_dir = f"{DRIVERS_TOOLS}/.evergreen/auth_aws"
+        if "AWS_ROLE_SESSION_NAME" in os.environ:
+            write_env("AWS_ROLE_SESSION_NAME")
+        if sub_test_name != "ecs":
+            aws_setup = f"{auth_aws_dir}/aws_setup.sh"
+            run_command(f"bash {aws_setup} {sub_test_name}")
+            creds = read_env(f"{auth_aws_dir}/test-env.sh")
+            for name, value in creds.items():
+                write_env(name, value)
+        else:
+            run_command(f"bash {auth_aws_dir}/setup-secrets.sh")
 
     if test_name == "perf":
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively

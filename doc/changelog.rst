@@ -199,7 +199,7 @@ PyMongo 4.9 brings a number of improvements including:
   unction-as-a-service (FaaS) like AWS Lambda, Google Cloud Functions, and Microsoft Azure Functions.
   On some FaaS systems, there is a ``fork()`` operation at function
   startup.  By delaying the connection to the first operation, we avoid a deadlock.  See
-  `Is PyMongo Fork-Safe`_ for more information.
+  :ref:`pymongo-fork-safe` for more information.
 
 
 Issues Resolved
@@ -208,7 +208,6 @@ Issues Resolved
 See the `PyMongo 4.9 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _Is PyMongo Fork-Safe: https://www.mongodb.com/docs/languages/python/pymongo-driver/current/troubleshooting/#forking-a-process-causes-a-deadlock
 .. _PyMongo 4.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=39940
 
 

@@ -383,6 +383,7 @@ class EntityMapUtil:
             name = spec["id"]
             thread = SpecRunnerThread(name)
             thread.start()
+            self.test.addCleanup(thread.join, 5)
             self[name] = thread
             return
 
@@ -543,6 +544,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
+        if (
+            "Error returned from connection pool clear with interruptInUseConnections=true is retryable"
+            in spec["description"]
+            and not _IS_SYNC
+        ):
+            self.skipTest("PYTHON-5170 tests are flakey")
+        if "Driver extends timeout while streaming" in spec["description"] and not _IS_SYNC:
+            self.skipTest("PYTHON-5174 tests are flakey")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
