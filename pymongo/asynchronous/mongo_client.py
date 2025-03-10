@@ -896,17 +896,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             AsyncMongoClient._clients[self._topology._topology_id] = self
 
-        # self._for_resolve_uri = {
-        #     "username": username,
-        #     "password": password,
-        #     "srv_service_name": srv_service_name,
-        #     "srv_max_hosts": srv_max_hosts,
-        #     "fqdn": fqdn,
-        #     "pool_class": pool_class,
-        #     "monitor_class": monitor_class,
-        #     "condition_class": condition_class,
-        # }
-
     def _resolve_uri(self):
         keyword_opts = common._CaseInsensitiveDictionary(self._init_kwargs)
         for i in [
