@@ -264,6 +264,8 @@ For KMS tests that run remotely and are expected to pass, in this case using `gc
   - Run `just setup-tests ocsp valid` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
   - Run `just run-tests`
 
+  If you are running one of the `no-responder` tests, omit the `run-server` step.
+
 ## Enable Debug Logs
 - Use `-o log_cli_level="DEBUG" -o log_cli=1` with `just test` or `pytest`.
 - Add `log_cli_level = "DEBUG` and `log_cli = 1` to the `tool.pytest.ini_options` section in `pyproject.toml` for Evergreen patches or to enable debug logs by default on your machine.
