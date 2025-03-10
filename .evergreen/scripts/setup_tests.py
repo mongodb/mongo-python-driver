@@ -239,6 +239,30 @@ def handle_test_env() -> None:
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
 
+    if test_name == "ocsp":
+        if sub_test_name:
+            os.environ["OCSP_SERVER_TYPE"] = sub_test_name
+        for name in ["OCSP_SERVER_TYPE", "ORCHESTRATION_FILE"]:
+            if name not in os.environ:
+                raise ValueError(f"Please set {name}")
+
+        server_type = os.environ["OCSP_SERVER_TYPE"]
+        orch_file = os.environ["ORCHESTRATION_FILE"]
+        ocsp_algo = orch_file.split("-")[0]
+        if server_type == "no-responder":
+            tls_should_succeed = "false" if "mustStaple-disableStapling" in orch_file else "true"
+        else:
+            tls_should_succeed = "true" if "valid" in server_type else "false"
+
+        write_env("OCSP_TLS_SHOULD_SUCCEED", tls_should_succeed)
+        write_env("CA_FILE", f"{DRIVERS_TOOLS}/.evergreen/ocsp/{ocsp_algo}/ca.pem")
+
+        if server_type != "no-responder":
+            env = os.environ.copy()
+            env["SERVER_TYPE"] = server_type
+            env["OCSP_ALGORITHM"] = ocsp_algo
+            run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh", env=env)
+
     if SSL != "nossl":
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")
@@ -301,10 +325,6 @@ def handle_test_env() -> None:
         from kms_tester import setup_kms
 
         setup_kms(sub_test_name)
-
-    if test_name == "ocsp":
-        write_env("CA_FILE", os.environ["CA_FILE"])
-        write_env("OCSP_TLS_SHOULD_SUCCEED", os.environ["OCSP_TLS_SHOULD_SUCCEED"])
 
     if test_name == "auth_aws" and sub_test_name != "ecs-remote":
         auth_aws_dir = f"{DRIVERS_TOOLS}/.evergreen/auth_aws"
