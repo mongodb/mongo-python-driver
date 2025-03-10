@@ -778,7 +778,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # it must be a URI,
             # https://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
             if "/" in entity:
-                res = uri_parser.parse_uri(
+                res = uri_parser._validate_uri(
                     entity,
                     port,
                     validate=True,
@@ -933,7 +933,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     timeout = common.validate_timeout_or_none_or_zero(
                         keyword_opts.cased_key("connecttimeoutms"), timeout
                     )
-                res = uri_parser.parse_uri_lookups(
+                res = uri_parser._lookup_uri(
                     entity,
                     self._port,
                     validate=True,

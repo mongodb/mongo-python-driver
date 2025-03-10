@@ -427,6 +427,8 @@ def parse_uri(
     validate: bool = True,
     warn: bool = False,
     normalize: bool = True,
+    connect_timeout: Optional[float] = None,
+    srv_service_name: Optional[str] = None,
     srv_max_hosts: Optional[int] = None,
 ) -> dict[str, Any]:
     """Parse and validate a MongoDB URI.
@@ -482,6 +484,30 @@ def parse_uri(
     .. versionchanged:: 3.1
         ``warn`` added so invalid options can be ignored.
     """
+    result = _validate_uri(uri, default_port, validate, warn, normalize, srv_max_hosts)
+    result.update(
+        _lookup_uri(
+            uri,
+            default_port,
+            validate,
+            warn,
+            normalize,
+            connect_timeout,
+            srv_service_name,
+            srv_max_hosts,
+        )
+    )
+    return result
+
+
+def _validate_uri(
+    uri: str,
+    default_port: Optional[int] = DEFAULT_PORT,
+    validate: bool = True,
+    warn: bool = False,
+    normalize: bool = True,
+    srv_max_hosts: Optional[int] = None,
+):
     if uri.startswith(SCHEME):
         is_srv = False
         scheme_free = uri[SCHEME_LEN:]
@@ -570,7 +596,7 @@ def parse_uri(
     }
 
 
-def parse_uri_lookups(
+def _lookup_uri(
     uri: str,
     default_port: Optional[int] = DEFAULT_PORT,
     validate: bool = True,
