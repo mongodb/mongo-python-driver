@@ -782,7 +782,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     validate=True,
                     warn=True,
                     normalize=False,
-                    srv_service_name=srv_service_name,
                     srv_max_hosts=srv_max_hosts,
                 )
                 seeds.update(res["nodelist"])
@@ -834,8 +833,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         _check_options(seeds, opts)
 
         # Username and password passed as kwargs override user info in URI.
-        username = opts.get("username", username)
-        password = opts.get("password", password)
         self._options = options = ClientOptions(username, password, dbase, opts, _IS_SYNC)
 
         self._default_database_name = dbase
@@ -873,6 +870,15 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._closed = False
         self._init_background()
 
+        self._for_resolve_uri = {
+            "username": username,
+            "password": password,
+            "dbase": dbase,
+            "fqdn": fqdn,
+            "pool_class": pool_class,
+            "monitor_class": monitor_class,
+            "condition_class": condition_class,
+        }
         if _IS_SYNC and connect:
             self._get_topology()  # type: ignore[unused-coroutine]
 
@@ -888,16 +894,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             MongoClient._clients[self._topology._topology_id] = self
 
-        self._for_resolve_uri = {
-            "username": username,
-            "password": password,
-            "srv_service_name": srv_service_name,
-            "srv_max_hosts": srv_max_hosts,
-            "fqdn": fqdn,
-            "pool_class": pool_class,
-            "monitor_class": monitor_class,
-            "condition_class": condition_class,
-        }
+        # self._for_resolve_uri = {
+        #     "username": username,
+        #     "password": password,
+        #     "srv_service_name": srv_service_name,
+        #     "srv_max_hosts": srv_max_hosts,
+        #     "fqdn": fqdn,
+        #     "pool_class": pool_class,
+        #     "monitor_class": monitor_class,
+        #     "condition_class": condition_class,
+        # }
 
     def _resolve_uri(self):
         keyword_opts = common._CaseInsensitiveDictionary(self._init_kwargs)
@@ -984,7 +990,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             username = opts.get("username", self._for_resolve_uri["username"])
             password = opts.get("password", self._for_resolve_uri["password"])
             self._options = ClientOptions(
-                username, password, self._default_database_name, opts, _IS_SYNC
+                username, password, self._for_resolve_uri["dbase"], opts, _IS_SYNC
             )
 
             self._event_listeners = self._options.pool_options._event_listeners

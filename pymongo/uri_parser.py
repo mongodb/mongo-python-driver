@@ -427,7 +427,6 @@ def parse_uri(
     validate: bool = True,
     warn: bool = False,
     normalize: bool = True,
-    srv_service_name: Optional[str] = None,
     srv_max_hosts: Optional[int] = None,
 ) -> dict[str, Any]:
     """Parse and validate a MongoDB URI.
@@ -526,8 +525,6 @@ def parse_uri(
 
     if opts:
         options.update(split_options(opts, validate, warn, normalize))
-    if srv_service_name is None:
-        srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME)
     if "@" in host_part:
         userinfo, _, hosts = host_part.rpartition("@")
         user, passwd = parse_userinfo(userinfo)

@@ -33,7 +33,7 @@ from test.utils import async_wait_until
 
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
-from pymongo.uri_parser import parse_uri, split_hosts
+from pymongo.uri_parser import parse_uri, parse_uri_lookups, split_hosts
 
 _IS_SYNC = False
 
@@ -110,6 +110,7 @@ def create_test(test_case):
 
         if seeds or num_seeds:
             result = parse_uri(uri, validate=True)
+            result.update(parse_uri_lookups(uri, validate=True))
             if seeds is not None:
                 self.assertEqual(sorted(result["nodelist"]), sorted(seeds))
             if num_seeds is not None:
@@ -141,13 +142,16 @@ def create_test(test_case):
                     # Our test certs don't support the SRV hosts used in these
                     # tests.
                     copts["tlsAllowInvalidHostnames"] = True
-
+                print(uri)
+                print(copts)
                 client = self.simple_client(uri, **copts)
+                await client.aconnect()
                 if client._options.connect:
                     await client.aconnect()
                 if num_seeds is not None:
                     self.assertEqual(len(client._topology_settings.seeds), num_seeds)
                 if hosts is not None:
+                    print(client.nodes)
                     await async_wait_until(
                         lambda: hosts == client.nodes, "match test hosts to client nodes"
                     )
@@ -162,6 +166,7 @@ def create_test(test_case):
         else:
             try:
                 parse_uri(uri)
+                parse_uri_lookups(uri)
             except (ConfigurationError, ValueError):
                 pass
             else:
@@ -185,35 +190,24 @@ create_tests(TestDNSSharded)
 
 class TestParsingErrors(AsyncPyMongoTestCase):
     async def test_invalid_host(self):
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: mongodb is not",
-            self.simple_client,
-            "mongodb+srv://mongodb",
-        )
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: mongodb.com is not",
-            self.simple_client,
-            "mongodb+srv://mongodb.com",
-        )
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: an IP address is not",
-            self.simple_client,
-            "mongodb+srv://127.0.0.1",
-        )
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: an IP address is not",
-            self.simple_client,
-            "mongodb+srv://[::1]",
-        )
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb is not"):
+            client = self.simple_client("mongodb+srv://mongodb")
+            await client.aconnect()
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb.com is not"):
+            client = self.simple_client("mongodb+srv://mongodb.com")
+            await client.aconnect()
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: an IP address is not"):
+            client = self.simple_client("mongodb+srv://127.0.0.1")
+            await client.aconnect()
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: an IP address is not"):
+            client = self.simple_client("mongodb+srv://[::1]")
+            await client.aconnect()
 
 
 class IsolatedAsyncioTestCaseInsensitive(AsyncIntegrationTest):
     async def test_connect_case_insensitive(self):
         client = self.simple_client("mongodb+srv://TEST1.TEST.BUILD.10GEN.cc/")
+        await client.aconnect()
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
 
 
