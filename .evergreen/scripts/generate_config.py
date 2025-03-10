@@ -663,11 +663,11 @@ def create_serverless_variants():
 
 def create_oidc_auth_variants():
     variants = []
-    other_tasks = ["testazureoidc_task_group", "testgcpoidc_task_group", "testk8soidc_task_group"]
     for host_name in ["ubuntu22", "macos", "win64"]:
-        tasks = ["testoidc_task_group"]
         if host_name == "ubuntu22":
-            tasks += other_tasks
+            tasks = [".auth_oidc"]
+        else:
+            tasks = [".auth_oidc !.auth_oidc_remote"]
         host = HOSTS[host_name]
         variants.append(
             create_variant(
@@ -890,7 +890,10 @@ def create_oidc_tasks():
         vars = dict(TEST_NAME="auth_oidc", SUB_TEST_NAME=sub_test)
         test_func = FunctionCall(func="run tests", vars=vars)
         task_name = f"test-auth-oidc-{sub_test}"
-        tasks.append(EvgTask(name=task_name, tags=["oidc"], commands=[test_func]))
+        tags = ["auth_oidc"]
+        if sub_test != "test":
+            tags.append("auth_oidc_remote")
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     tasks.append([])
 
 
