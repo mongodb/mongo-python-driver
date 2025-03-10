@@ -248,7 +248,7 @@ class BinaryVector:
     def __repr__(self) -> str:
         return f"BinaryVector(dtype={self.dtype}, padding={self.padding}, data={self.data})"
 
-    def __eq__(self, other: BinaryVector) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, BinaryVector):
             return False
         return (
