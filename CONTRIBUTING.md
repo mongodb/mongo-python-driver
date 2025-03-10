@@ -261,7 +261,7 @@ For KMS tests that run remotely and are expected to pass, in this case using `gc
     This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
     MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
   - Run `just run-server ocsp`.
-  - Run `just setup-tests ocsp valid` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
+  - Run `just setup-tests ocsp <sub test>` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
   - Run `just run-tests`
 
   If you are running one of the `no-responder` tests, omit the `run-server` step.
