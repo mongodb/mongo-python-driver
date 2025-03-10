@@ -894,7 +894,7 @@ def create_oidc_tasks():
         if sub_test != "test":
             tags.append("auth_oidc_remote")
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
-    tasks.append([])
+    return tasks
 
 
 def _create_ocsp_task(algo, variant, server_type, base_task_name):
