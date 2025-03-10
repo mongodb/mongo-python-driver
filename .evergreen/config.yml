@@ -201,7 +201,7 @@ functions:
       params:
         file: "src/xunit-results/TEST-*.xml"
 
-  "run-server":
+  "run server":
     - command: subprocess.exec
       params:
         binary: bash
@@ -255,7 +255,8 @@ functions:
       params:
         include_expansions_in_env: [AUTH, SSL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
           AWS_SESSION_TOKEN, COVERAGE, PYTHON_BINARY, LIBMONGOCRYPT_URL, MONGODB_URI,
-          DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION, DEBUG_LOG]
+          DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION, DEBUG_LOG,
+          ORCHESTRATION_FILE, OCSP_SERVER_TYPE]
         binary: bash
         working_dir: "src"
         args: [.evergreen/just.sh, setup-tests, "${TEST_NAME}", "${SUB_TEST_NAME}"]
@@ -300,12 +301,6 @@ functions:
   "teardown system":
     - command: subprocess.exec
       params:
-        binary: bash
-        working_dir: "src"
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh
-    - command: subprocess.exec
-      params:
           binary: bash
           working_dir: "src"
           args: [.evergreen/just.sh, teardown-tests]
@@ -334,26 +329,6 @@ functions:
     - command: expansions.update
       params:
         file: atlas-expansion.yml
-
-  "run-ocsp-test":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED", "PYTHON_BINARY"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-ocsp-test.sh
-
-  "run-ocsp-server":
-    - command: subprocess.exec
-      params:
-        background: true
-        binary: bash
-        include_expansions_in_env: [SERVER_TYPE, OCSP_ALGORITHM]
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh
 
   "teardown atlas":
     - command: subprocess.exec
@@ -467,7 +442,7 @@ tasks:
     - name: "doctests"
       tags: ["doctests"]
       commands:
-        - func: "run-server"
+        - func: "run server"
         - func: "run doctests"
 
     - name: "test-serverless"
@@ -480,13 +455,13 @@ tasks:
     - name: "test-enterprise-auth"
       tags: ["enterprise-auth"]
       commands:
-        - func: "run-server"
+        - func: "run server"
         - func: "assume ec2 role"
         - func: "run enterprise auth tests"
 
     - name: "test-search-index-helpers"
       commands:
-        - func: "run-server"
+        - func: "run server"
           vars:
             VERSION: "6.0"
             TOPOLOGY: "replica_set"
@@ -498,7 +473,7 @@ tasks:
     - name: "mod-wsgi-standalone"
       tags: ["mod_wsgi"]
       commands:
-        - func: "run-server"
+        - func: "run server"
           vars:
             TOPOLOGY: "server"
         - func: "run mod_wsgi tests"
@@ -506,7 +481,7 @@ tasks:
     - name: "mod-wsgi-replica-set"
       tags: ["mod_wsgi"]
       commands:
-        - func: "run-server"
+        - func: "run server"
           vars:
             TOPOLOGY: "replica_set"
         - func: "run mod_wsgi tests"
@@ -514,7 +489,7 @@ tasks:
     - name: "mod-wsgi-embedded-mode-standalone"
       tags: ["mod_wsgi"]
       commands:
-        - func: "run-server"
+        - func: "run server"
         - func: "run mod_wsgi tests"
           vars:
             MOD_WSGI_EMBEDDED: "1"
@@ -522,7 +497,7 @@ tasks:
     - name: "mod-wsgi-embedded-mode-replica-set"
       tags: ["mod_wsgi"]
       commands:
-        - func: "run-server"
+        - func: "run server"
           vars:
             TOPOLOGY: "replica_set"
         - func: "run mod_wsgi tests"
@@ -537,7 +512,7 @@ tasks:
     - name: "free-threading"
       tags: ["free-threading"]
       commands:
-        - func: "run-server"
+        - func: "run server"
           vars:
             VERSION: "8.0"
             TOPOLOGY: "replica_set"
@@ -572,350 +547,6 @@ tasks:
             env:
               TEST_LAMBDA_DIRECTORY: ${PROJECT_DIRECTORY}/test/lambda
 
-    - name: test-ocsp-rsa-valid-cert-server-staples
-      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: "valid"
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-rsa-invalid-cert-server-staples
-      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: "revoked"
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-valid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: valid
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-rsa-invalid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: revoked
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-soft-fail
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-rsa-malicious-invalid-cert-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: revoked
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-malicious-no-responder-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-delegate-valid-cert-server-staples
-      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: valid-delegate
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-rsa-delegate-invalid-cert-server-staples
-      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: revoked-delegate
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: valid-delegate
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: revoked-delegate
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: revoked-delegate
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-valid-cert-server-staples
-      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: valid
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-ecdsa-invalid-cert-server-staples
-      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: revoked
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: valid
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: revoked
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-soft-fail
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-ecdsa-malicious-invalid-cert-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: revoked
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-malicious-no-responder-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples
-      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: valid-delegate
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples
-      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: revoked-delegate
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: valid-delegate
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: revoked-delegate
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: valid-delegate
-        - func: "run-server"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
 # }}}
     - name: "coverage-report"
       tags: ["coverage"]
@@ -942,7 +573,7 @@ tasks:
     - name: "perf-6.0-standalone"
       tags: ["perf"]
       commands:
-        - func: "run-server"
+        - func: "run server"
           vars:
             VERSION: "v6.0-perf"
         - func: "run perf tests"
@@ -952,7 +583,7 @@ tasks:
     - name: "perf-6.0-standalone-ssl"
       tags: ["perf"]
       commands:
-        - func: "run-server"
+        - func: "run server"
           vars:
             VERSION: "v6.0-perf"
             SSL: "ssl"
@@ -963,7 +594,7 @@ tasks:
     - name: "perf-8.0-standalone"
       tags: ["perf"]
       commands:
-        - func: "run-server"
+        - func: "run server"
           vars:
             VERSION: "8.0"
         - func: "run perf tests"
