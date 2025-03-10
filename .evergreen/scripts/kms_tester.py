@@ -2,9 +2,16 @@ from __future__ import annotations
 
 import os
 
-from utils import DRIVERS_TOOLS, LOGGER, ROOT, read_env, run_command, write_env
+from utils import (
+    DRIVERS_TOOLS,
+    LOGGER,
+    TMP_DRIVER_FILE,
+    create_archive,
+    read_env,
+    run_command,
+    write_env,
+)
 
-TMP_DRIVER_FILE = "/tmp/mongo-python-driver.tgz"  # noqa: S108
 DIRS = dict(
     gcp=f"{DRIVERS_TOOLS}/.evergreen/csfle/gcpkms",
     azure=f"{DRIVERS_TOOLS}/.evergreen/csfle/azurekms",
@@ -45,12 +52,6 @@ def _setup_gcp_vm(base_env: dict[str, str]) -> None:
     LOGGER.info("Setting up GCP VM...")
 
 
-def _create_archive() -> None:
-    run_command("git add .", cwd=ROOT)
-    run_command('git commit -m "add files"', check=False, cwd=ROOT)
-    run_command(f"git archive -o {TMP_DRIVER_FILE} HEAD", cwd=ROOT)
-
-
 def _load_kms_config(sub_test_target: str) -> dict[str, str]:
     target_dir = DIRS[sub_test_target]
     config = read_env(f"{target_dir}/secrets-export.sh")
@@ -87,7 +88,7 @@ def setup_kms(sub_test_name: str) -> None:
         run_command("./setup-secrets.sh", cwd=kms_dir)
 
     if success:
-        _create_archive()
+        create_archive()
         if sub_test_target == "azure":
             os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
 

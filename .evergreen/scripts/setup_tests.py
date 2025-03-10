@@ -239,8 +239,10 @@ def handle_test_env() -> None:
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
 
-    if test_name == "oidc":
-        pass
+    if test_name == "auth_oidc":
+        from oidc_helper import setup_oidc
+
+        setup_oidc(sub_test_name)
 
     if test_name == "ocsp":
         if sub_test_name:

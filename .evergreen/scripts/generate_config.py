@@ -886,6 +886,11 @@ def create_aws_tasks():
 
 def create_oidc_tasks():
     tasks = []
+    for sub_test in ["test", "azure", "gcp", "eks", "aks", "gke"]:
+        vars = dict(TEST_NAME="auth_oidc", SUB_TEST_NAME=sub_test)
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = f"test-auth-oidc-{sub_test}"
+        tasks.append(EvgTask(name=task_name, tags=["oidc"], commands=[test_func]))
     tasks.append([])
 
 

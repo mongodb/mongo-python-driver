@@ -113,7 +113,7 @@ def run() -> None:
         return
 
     # Run remote oidc tests.
-    if TEST_NAME == "auth_oidc" and SUB_TEST_NAME in [""]:
+    if TEST_NAME == "auth_oidc" and SUB_TEST_NAME not in ["test", "test-remote"]:
         from oidc_tester import test_oidc_remote
 
         test_oidc_remote(SUB_TEST_NAME)

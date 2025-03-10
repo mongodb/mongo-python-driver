@@ -13,6 +13,7 @@ from typing import Any
 HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
 DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS", "").replace(os.sep, "/")
+TMP_DRIVER_FILE = "/tmp/mongo-python-driver.tgz"  # noqa: S108
 
 LOGGER = logging.getLogger("test")
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
@@ -138,3 +139,9 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
     kwargs.setdefault("check", True)
     subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
     LOGGER.info("Running command '%s'... done.", cmd)
+
+
+def create_archive() -> None:
+    run_command("git add .", cwd=ROOT)
+    run_command('git commit -m "add files"', check=False, cwd=ROOT)
+    run_command(f"git archive -o {TMP_DRIVER_FILE} HEAD", cwd=ROOT)

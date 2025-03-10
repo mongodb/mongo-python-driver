@@ -33,9 +33,9 @@ def start_server():
         set_env("LOAD_BALANCER")
 
     elif test_name == "auth_oidc":
-        cmd = ["bash", f"{DRIVERS_TOOLS}/.evergreen/auth_oidc/start-local-server.sh"]
-        run_command(cmd, cwd=DRIVERS_TOOLS)
-        return
+        raise ValueError(
+            "OIDC auth does not use run-orchestration directly, do not use run-server!"
+        )
 
     elif test_name == "ocsp":
         opts.ssl = True

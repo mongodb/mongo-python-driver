@@ -1042,6 +1042,8 @@ tasks:
           TEST_NAME: ocsp
     tags: [ocsp, ocsp-rsa]
 
+  # Oidc tests
+
   # Server tests
   - name: test-4.0-standalone-auth-ssl-sync
     commands:
