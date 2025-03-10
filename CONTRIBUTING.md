@@ -257,7 +257,7 @@ For KMS tests that run remotely and are expected to pass, in this case using `gc
 
 ### OCSP tests
 
-  - Export the algorithm, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
+  - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
     This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
     MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
   - Run `just run-server ocsp`.
