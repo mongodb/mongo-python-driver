@@ -112,6 +112,13 @@ def run() -> None:
         run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh ecs")
         return
 
+    # Run remote oidc tests.
+    if TEST_NAME == "auth_oidc" and SUB_TEST_NAME in [""]:
+        from oidc_tester import test_oidc_remote
+
+        test_oidc_remote(SUB_TEST_NAME)
+        return
+
     if os.environ.get("DEBUG_LOG"):
         TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG} -o log_cli=1".split())
 

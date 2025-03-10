@@ -884,6 +884,12 @@ def create_aws_tasks():
     return tasks
 
 
+def create_oidc_tasks():
+    tasks = []
+    tasks.append([])
+    return tasks
+
+
 ##################
 # Generate Config
 ##################

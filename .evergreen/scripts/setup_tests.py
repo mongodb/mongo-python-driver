@@ -239,6 +239,9 @@ def handle_test_env() -> None:
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
 
+    if test_name == "oidc":
+        pass
+
     if SSL != "nossl":
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")

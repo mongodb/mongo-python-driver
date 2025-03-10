@@ -77,5 +77,13 @@ run-server *args="":
     bash .evergreen/scripts/run-server.sh {{args}}
 
 [group('server')]
+run-atlas-server *args="":
+    bash .evergreen/scripts/run-atlas-server.sh {{args}}
+
+[group('server')]
 stop-server:
     bash .evergreen/scripts/stop-server.sh
+
+[group('server')]
+stop-atlas-server *args="":
+    bash .evergreen/scripts/stop-atlas-server.sh {{args}}

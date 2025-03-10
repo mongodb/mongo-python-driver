@@ -32,6 +32,11 @@ def start_server():
     elif test_name == "load_balancer":
         set_env("LOAD_BALANCER")
 
+    elif test_name == "auth_oidc":
+        cmd = ["bash", f"{DRIVERS_TOOLS}/.evergreen/auth_oidc/start-local-server.sh"]
+        run_command(cmd, cwd=DRIVERS_TOOLS)
+        return
+
     if not os.environ.get("TEST_CRYPT_SHARED"):
         set_env("SKIP_CRYPT_SHARED")
 
