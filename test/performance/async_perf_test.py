@@ -274,7 +274,7 @@ class FindTest(TestDocument):
 class TestFindOneByID(FindTest, AsyncPyMongoTestCase):
     async def do_task(self):
         find_one = self.corpus.find_one
-        for _id in range(self.inserted_ids):
+        for _id in self.inserted_ids:
             await find_one({"_id": _id})
 
 
