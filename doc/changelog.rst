@@ -1,7 +1,23 @@
 Changelog
 =========
 
-Changes in Version 4.11.2 (YYYY/MM/DD)
+Changes in Version 4.12.0 (YYYY/MM/DD)
+--------------------------------------
+
+PyMongo 4.12 brings a number of changes including:
+
+- Support for configuring DEK cache lifetime via the ``key_expiration_ms`` argument to
+  :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.12 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.12 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=41916
+
+Changes in Version 4.11.2 (2025/03/05)
 --------------------------------------
 
 Version 4.11.2 is a bug fix release.

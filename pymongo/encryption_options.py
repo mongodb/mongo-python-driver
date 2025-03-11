@@ -57,6 +57,7 @@ class AutoEncryptionOpts:
         crypt_shared_lib_required: bool = False,
         bypass_query_analysis: bool = False,
         encrypted_fields_map: Optional[Mapping[str, Any]] = None,
+        key_expiration_ms: Optional[int] = None,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -191,9 +192,14 @@ class AutoEncryptionOpts:
                       ]
                   }
                 }
+        :param key_expiration_ms: The cache expiration time for data encryption keys.
+            Defaults to ``None`` which defers to libmongocrypt's default which is currently 60000.
+            Set to 0 to disable key expiration.
 
+        .. versionchanged:: 4.12
+           Added the `key_expiration_ms` parameter.
         .. versionchanged:: 4.2
-           Added `encrypted_fields_map` `crypt_shared_lib_path`, `crypt_shared_lib_required`,
+           Added the `encrypted_fields_map`, `crypt_shared_lib_path`, `crypt_shared_lib_required`,
            and `bypass_query_analysis` parameters.
 
         .. versionchanged:: 4.0
@@ -210,7 +216,6 @@ class AutoEncryptionOpts:
         if encrypted_fields_map:
             validate_is_mapping("encrypted_fields_map", encrypted_fields_map)
         self._encrypted_fields_map = encrypted_fields_map
-        self._bypass_query_analysis = bypass_query_analysis
         self._crypt_shared_lib_path = crypt_shared_lib_path
         self._crypt_shared_lib_required = crypt_shared_lib_required
         self._kms_providers = kms_providers
@@ -233,6 +238,7 @@ class AutoEncryptionOpts:
         # Maps KMS provider name to a SSLContext.
         self._kms_ssl_contexts = _parse_kms_tls_options(kms_tls_options)
         self._bypass_query_analysis = bypass_query_analysis
+        self._key_expiration_ms = key_expiration_ms
 
 
 class RangeOpts:
