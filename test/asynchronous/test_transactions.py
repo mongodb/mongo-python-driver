@@ -410,15 +410,10 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             for address in async_client_context.mongoses:
                 self.mongos_clients.append(await self.async_single_client("{}:{}".format(*address)))
 
-    async def _set_fail_point(self, client, command_args):
-        cmd = {"configureFailPoint": "failCommand"}
-        cmd.update(command_args)
-        await client.admin.command(cmd)
-
     async def set_fail_point(self, command_args):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
-            await self._set_fail_point(client, command_args)
+            await self.configure_fail_point(client, command_args)
 
     @async_client_context.require_transactions
     async def test_callback_raises_custom_error(self):

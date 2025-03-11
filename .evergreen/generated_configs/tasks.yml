@@ -1,52 +1,1051 @@
 tasks:
+  # Aws tests
+  - name: test-auth-aws-4.4-regular
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-4.4-assume-role
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-4.4-ec2
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-4.4-env-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-4.4-session-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-4.4-web-identity
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-4.4-ecs
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-4.4-web-identity-session-name
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-5.0-regular
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-5.0-assume-role
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-5.0-ec2
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-5.0-env-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-5.0-session-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-5.0-web-identity
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-5.0-ecs
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-5.0-web-identity-session-name
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "5.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-6.0-regular
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-6.0-assume-role
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-6.0-ec2
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-6.0-env-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-6.0-session-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-6.0-web-identity
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-6.0-ecs
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-6.0-web-identity-session-name
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "6.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-7.0-regular
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-7.0-assume-role
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-7.0-ec2
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-7.0-env-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-7.0-session-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-7.0-web-identity
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-7.0-ecs
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-7.0-web-identity-session-name
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "7.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-8.0-regular
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-8.0-assume-role
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-8.0-ec2
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-8.0-env-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-8.0-session-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-8.0-web-identity
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-8.0-ecs
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-8.0-web-identity-session-name
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "8.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-rapid-regular
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-rapid-assume-role
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-rapid-ec2
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-rapid-env-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-rapid-session-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-rapid-web-identity
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-rapid-ecs
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-rapid-web-identity-session-name
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: rapid
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-latest-regular
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-latest-assume-role
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: assume-role
+    tags: [auth-aws, auth-aws-assume-role]
+  - name: test-auth-aws-latest-ec2
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ec2
+    tags: [auth-aws, auth-aws-ec2]
+  - name: test-auth-aws-latest-env-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: env-creds
+    tags: [auth-aws, auth-aws-env-creds]
+  - name: test-auth-aws-latest-session-creds
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: session-creds
+    tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-latest-web-identity
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-latest-ecs
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-latest-web-identity-session-name
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: web-identity
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws, auth-aws-web-identity]
+
+  # Kms tests
+  - name: test-gcpkms
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: gcp
+  - name: test-gcpkms-fail
+    commands:
+      - func: run server
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: gcp-fail
+  - name: test-azurekms
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: azure
+  - name: test-azurekms-fail
+    commands:
+      - func: run server
+      - func: run tests
+        vars:
+          TEST_NAME: kms
+          SUB_TEST_NAME: azure-fail
+
   # Load balancer tests
   - name: test-load-balancer-auth-ssl
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           TOPOLOGY: sharded_cluster
           AUTH: auth
           SSL: ssl
-          LOAD_BALANCER: "true"
+          TEST_NAME: load_balancer
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
-          TEST_LOADBALANCER: "true"
+          TEST_NAME: load_balancer
     tags: [load-balancer, auth, ssl]
   - name: test-load-balancer-noauth-ssl
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: ssl
-          LOAD_BALANCER: "true"
+          TEST_NAME: load_balancer
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
-          TEST_LOADBALANCER: "true"
+          TEST_NAME: load_balancer
     tags: [load-balancer, noauth, ssl]
   - name: test-load-balancer-noauth-nossl
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           TOPOLOGY: sharded_cluster
           AUTH: noauth
           SSL: nossl
-          LOAD_BALANCER: "true"
+          TEST_NAME: load_balancer
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
-          TEST_LOADBALANCER: "true"
+          TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
+
+  # Ocsp tests
+  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
+          OCSP_SERVER_TYPE: valid
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
+          OCSP_SERVER_TYPE: revoked
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
+          OCSP_SERVER_TYPE: valid-delegate
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
+          OCSP_SERVER_TYPE: revoked-delegate
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-soft-fail
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
+          OCSP_SERVER_TYPE: no-responder
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-valid-cert-server-staples
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
+          OCSP_SERVER_TYPE: valid
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa, ocsp-staple]
+  - name: test-ocsp-ecdsa-invalid-cert-server-staples
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
+          OCSP_SERVER_TYPE: revoked
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa, ocsp-staple]
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
+          OCSP_SERVER_TYPE: valid-delegate
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa, ocsp-staple]
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
+          OCSP_SERVER_TYPE: revoked-delegate
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa, ocsp-staple]
+  - name: test-ocsp-ecdsa-malicious-invalid-cert-mustStaple-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          OCSP_SERVER_TYPE: revoked
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          OCSP_SERVER_TYPE: revoked-delegate
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-ecdsa-malicious-no-responder-mustStaple-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          OCSP_SERVER_TYPE: no-responder
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-ecdsa]
+  - name: test-ocsp-rsa-valid-cert-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
+          OCSP_SERVER_TYPE: valid
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa]
+  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
+          OCSP_SERVER_TYPE: revoked
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa]
+  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
+          OCSP_SERVER_TYPE: valid-delegate
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa]
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
+          OCSP_SERVER_TYPE: revoked-delegate
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa]
+  - name: test-ocsp-rsa-soft-fail
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
+          OCSP_SERVER_TYPE: no-responder
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa]
+  - name: test-ocsp-rsa-valid-cert-server-staples
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
+          OCSP_SERVER_TYPE: valid
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa, ocsp-staple]
+  - name: test-ocsp-rsa-invalid-cert-server-staples
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
+          OCSP_SERVER_TYPE: revoked
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa, ocsp-staple]
+  - name: test-ocsp-rsa-delegate-valid-cert-server-staples
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
+          OCSP_SERVER_TYPE: valid-delegate
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa, ocsp-staple]
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
+          OCSP_SERVER_TYPE: revoked-delegate
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa, ocsp-staple]
+  - name: test-ocsp-rsa-malicious-invalid-cert-mustStaple-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          OCSP_SERVER_TYPE: revoked
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa]
+  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          OCSP_SERVER_TYPE: revoked-delegate
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa]
+  - name: test-ocsp-rsa-malicious-no-responder-mustStaple-server-does-not-staple
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: ocsp
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
+      - func: run tests
+        vars:
+          ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
+          OCSP_SERVER_TYPE: no-responder
+          TEST_NAME: ocsp
+    tags: [ocsp, ocsp-rsa]
 
   # Server tests
   - name: test-4.0-standalone-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: server
@@ -57,7 +1056,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - standalone
@@ -66,7 +1065,7 @@ tasks:
       - sync
   - name: test-4.0-standalone-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: server
@@ -77,7 +1076,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - standalone
@@ -86,7 +1085,7 @@ tasks:
       - async
   - name: test-4.0-standalone-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: server
@@ -97,7 +1096,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - standalone
@@ -106,7 +1104,7 @@ tasks:
       - sync_async
   - name: test-4.0-standalone-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: server
@@ -117,7 +1115,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - standalone
@@ -126,7 +1124,7 @@ tasks:
       - sync
   - name: test-4.0-standalone-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: server
@@ -137,7 +1135,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - standalone
@@ -146,7 +1144,7 @@ tasks:
       - async
   - name: test-4.0-standalone-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: server
@@ -157,7 +1155,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - standalone
@@ -166,7 +1163,7 @@ tasks:
       - sync_async
   - name: test-4.0-standalone-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: server
@@ -177,7 +1174,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - standalone
@@ -186,7 +1183,7 @@ tasks:
       - sync
   - name: test-4.0-standalone-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: server
@@ -197,7 +1194,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - standalone
@@ -206,7 +1203,7 @@ tasks:
       - async
   - name: test-4.0-standalone-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: server
@@ -217,7 +1214,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - standalone
@@ -226,7 +1222,7 @@ tasks:
       - sync_async
   - name: test-4.2-standalone-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: server
@@ -237,7 +1233,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.2"
       - standalone
@@ -246,7 +1242,7 @@ tasks:
       - sync
   - name: test-4.2-standalone-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: server
@@ -257,7 +1253,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.2"
       - standalone
@@ -266,7 +1262,7 @@ tasks:
       - async
   - name: test-4.2-standalone-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: server
@@ -277,7 +1273,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.2"
       - standalone
@@ -286,7 +1281,7 @@ tasks:
       - sync_async
   - name: test-4.2-standalone-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: server
@@ -297,7 +1292,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.2"
       - standalone
@@ -306,7 +1301,7 @@ tasks:
       - sync
   - name: test-4.2-standalone-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: server
@@ -317,7 +1312,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.2"
       - standalone
@@ -326,7 +1321,7 @@ tasks:
       - async
   - name: test-4.2-standalone-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: server
@@ -337,7 +1332,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.2"
       - standalone
@@ -346,7 +1340,7 @@ tasks:
       - sync_async
   - name: test-4.2-standalone-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: server
@@ -357,7 +1351,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.2"
       - standalone
@@ -366,7 +1360,7 @@ tasks:
       - sync
   - name: test-4.2-standalone-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: server
@@ -377,7 +1371,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.2"
       - standalone
@@ -386,7 +1380,7 @@ tasks:
       - async
   - name: test-4.2-standalone-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: server
@@ -397,7 +1391,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.2"
       - standalone
@@ -406,7 +1399,7 @@ tasks:
       - sync_async
   - name: test-4.4-standalone-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: server
@@ -417,7 +1410,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - standalone
@@ -426,7 +1419,7 @@ tasks:
       - sync
   - name: test-4.4-standalone-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: server
@@ -437,7 +1430,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - standalone
@@ -446,7 +1439,7 @@ tasks:
       - async
   - name: test-4.4-standalone-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: server
@@ -457,7 +1450,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - standalone
@@ -466,7 +1458,7 @@ tasks:
       - sync_async
   - name: test-4.4-standalone-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: server
@@ -477,7 +1469,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - standalone
@@ -486,7 +1478,7 @@ tasks:
       - sync
   - name: test-4.4-standalone-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: server
@@ -497,7 +1489,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - standalone
@@ -506,7 +1498,7 @@ tasks:
       - async
   - name: test-4.4-standalone-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: server
@@ -517,7 +1509,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - standalone
@@ -526,7 +1517,7 @@ tasks:
       - sync_async
   - name: test-4.4-standalone-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: server
@@ -537,7 +1528,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - standalone
@@ -546,7 +1537,7 @@ tasks:
       - sync
   - name: test-4.4-standalone-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: server
@@ -557,7 +1548,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - standalone
@@ -566,7 +1557,7 @@ tasks:
       - async
   - name: test-4.4-standalone-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: server
@@ -577,7 +1568,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - standalone
@@ -586,7 +1576,7 @@ tasks:
       - sync_async
   - name: test-5.0-standalone-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: server
@@ -597,7 +1587,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - standalone
@@ -606,7 +1596,7 @@ tasks:
       - sync
   - name: test-5.0-standalone-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: server
@@ -617,7 +1607,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - standalone
@@ -626,7 +1616,7 @@ tasks:
       - async
   - name: test-5.0-standalone-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: server
@@ -637,7 +1627,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - standalone
@@ -646,7 +1635,7 @@ tasks:
       - sync_async
   - name: test-5.0-standalone-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: server
@@ -657,7 +1646,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - standalone
@@ -666,7 +1655,7 @@ tasks:
       - sync
   - name: test-5.0-standalone-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: server
@@ -677,7 +1666,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - standalone
@@ -686,7 +1675,7 @@ tasks:
       - async
   - name: test-5.0-standalone-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: server
@@ -697,7 +1686,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - standalone
@@ -706,7 +1694,7 @@ tasks:
       - sync_async
   - name: test-5.0-standalone-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: server
@@ -717,7 +1705,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - standalone
@@ -726,7 +1714,7 @@ tasks:
       - sync
   - name: test-5.0-standalone-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: server
@@ -737,7 +1725,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - standalone
@@ -746,7 +1734,7 @@ tasks:
       - async
   - name: test-5.0-standalone-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: server
@@ -757,7 +1745,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - standalone
@@ -766,7 +1753,7 @@ tasks:
       - sync_async
   - name: test-6.0-standalone-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: server
@@ -777,7 +1764,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - standalone
@@ -786,7 +1773,7 @@ tasks:
       - sync
   - name: test-6.0-standalone-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: server
@@ -797,7 +1784,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - standalone
@@ -806,7 +1793,7 @@ tasks:
       - async
   - name: test-6.0-standalone-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: server
@@ -817,7 +1804,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - standalone
@@ -826,7 +1812,7 @@ tasks:
       - sync_async
   - name: test-6.0-standalone-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: server
@@ -837,7 +1823,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - standalone
@@ -846,7 +1832,7 @@ tasks:
       - sync
   - name: test-6.0-standalone-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: server
@@ -857,7 +1843,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - standalone
@@ -866,7 +1852,7 @@ tasks:
       - async
   - name: test-6.0-standalone-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: server
@@ -877,7 +1863,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - standalone
@@ -886,7 +1871,7 @@ tasks:
       - sync_async
   - name: test-6.0-standalone-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: server
@@ -897,7 +1882,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - standalone
@@ -906,7 +1891,7 @@ tasks:
       - sync
   - name: test-6.0-standalone-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: server
@@ -917,7 +1902,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - standalone
@@ -926,7 +1911,7 @@ tasks:
       - async
   - name: test-6.0-standalone-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: server
@@ -937,7 +1922,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - standalone
@@ -946,7 +1930,7 @@ tasks:
       - sync_async
   - name: test-7.0-standalone-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: server
@@ -957,7 +1941,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - standalone
@@ -966,7 +1950,7 @@ tasks:
       - sync
   - name: test-7.0-standalone-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: server
@@ -977,7 +1961,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - standalone
@@ -986,7 +1970,7 @@ tasks:
       - async
   - name: test-7.0-standalone-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: server
@@ -997,7 +1981,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - standalone
@@ -1006,7 +1989,7 @@ tasks:
       - sync_async
   - name: test-7.0-standalone-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: server
@@ -1017,7 +2000,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - standalone
@@ -1026,7 +2009,7 @@ tasks:
       - sync
   - name: test-7.0-standalone-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: server
@@ -1037,7 +2020,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - standalone
@@ -1046,7 +2029,7 @@ tasks:
       - async
   - name: test-7.0-standalone-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: server
@@ -1057,7 +2040,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - standalone
@@ -1066,7 +2048,7 @@ tasks:
       - sync_async
   - name: test-7.0-standalone-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: server
@@ -1077,7 +2059,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - standalone
@@ -1086,7 +2068,7 @@ tasks:
       - sync
   - name: test-7.0-standalone-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: server
@@ -1097,7 +2079,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - standalone
@@ -1106,7 +2088,7 @@ tasks:
       - async
   - name: test-7.0-standalone-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: server
@@ -1117,7 +2099,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - standalone
@@ -1126,7 +2107,7 @@ tasks:
       - sync_async
   - name: test-8.0-standalone-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: server
@@ -1137,7 +2118,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - standalone
@@ -1146,7 +2127,7 @@ tasks:
       - sync
   - name: test-8.0-standalone-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: server
@@ -1157,7 +2138,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - standalone
@@ -1166,7 +2147,7 @@ tasks:
       - async
   - name: test-8.0-standalone-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: server
@@ -1177,7 +2158,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - standalone
@@ -1186,7 +2166,7 @@ tasks:
       - sync_async
   - name: test-8.0-standalone-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: server
@@ -1197,7 +2177,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - standalone
@@ -1206,7 +2186,7 @@ tasks:
       - sync
   - name: test-8.0-standalone-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: server
@@ -1217,7 +2197,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - standalone
@@ -1226,7 +2206,7 @@ tasks:
       - async
   - name: test-8.0-standalone-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: server
@@ -1237,7 +2217,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - standalone
@@ -1246,7 +2225,7 @@ tasks:
       - sync_async
   - name: test-8.0-standalone-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: server
@@ -1257,7 +2236,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - standalone
@@ -1266,7 +2245,7 @@ tasks:
       - sync
   - name: test-8.0-standalone-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: server
@@ -1277,7 +2256,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - standalone
@@ -1286,7 +2265,7 @@ tasks:
       - async
   - name: test-8.0-standalone-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: server
@@ -1297,7 +2276,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - standalone
@@ -1306,7 +2284,7 @@ tasks:
       - sync_async
   - name: test-rapid-standalone-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: server
@@ -1317,7 +2295,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - standalone
@@ -1326,7 +2304,7 @@ tasks:
       - sync
   - name: test-rapid-standalone-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: server
@@ -1337,7 +2315,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - standalone
@@ -1346,7 +2324,7 @@ tasks:
       - async
   - name: test-rapid-standalone-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: server
@@ -1357,7 +2335,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - standalone
@@ -1366,7 +2343,7 @@ tasks:
       - sync_async
   - name: test-rapid-standalone-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: server
@@ -1377,7 +2354,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - standalone
@@ -1386,7 +2363,7 @@ tasks:
       - sync
   - name: test-rapid-standalone-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: server
@@ -1397,7 +2374,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - standalone
@@ -1406,7 +2383,7 @@ tasks:
       - async
   - name: test-rapid-standalone-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: server
@@ -1417,7 +2394,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - standalone
@@ -1426,7 +2402,7 @@ tasks:
       - sync_async
   - name: test-rapid-standalone-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: server
@@ -1437,7 +2413,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - standalone
@@ -1446,7 +2422,7 @@ tasks:
       - sync
   - name: test-rapid-standalone-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: server
@@ -1457,7 +2433,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - standalone
@@ -1466,7 +2442,7 @@ tasks:
       - async
   - name: test-rapid-standalone-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: server
@@ -1477,7 +2453,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - standalone
@@ -1486,7 +2461,7 @@ tasks:
       - sync_async
   - name: test-latest-standalone-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: server
@@ -1497,7 +2472,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - standalone
@@ -1506,7 +2481,7 @@ tasks:
       - sync
   - name: test-latest-standalone-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: server
@@ -1517,7 +2492,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - standalone
@@ -1526,7 +2501,7 @@ tasks:
       - async
   - name: test-latest-standalone-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: server
@@ -1537,7 +2512,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - standalone
@@ -1546,7 +2520,7 @@ tasks:
       - sync_async
   - name: test-latest-standalone-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: server
@@ -1557,7 +2531,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - standalone
@@ -1566,7 +2540,7 @@ tasks:
       - sync
   - name: test-latest-standalone-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: server
@@ -1577,7 +2551,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - standalone
@@ -1586,7 +2560,7 @@ tasks:
       - async
   - name: test-latest-standalone-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: server
@@ -1597,7 +2571,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - standalone
@@ -1606,7 +2579,7 @@ tasks:
       - sync_async
   - name: test-latest-standalone-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: server
@@ -1617,7 +2590,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - standalone
@@ -1626,7 +2599,7 @@ tasks:
       - sync
   - name: test-latest-standalone-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: server
@@ -1637,7 +2610,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - standalone
@@ -1646,7 +2619,7 @@ tasks:
       - async
   - name: test-latest-standalone-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: server
@@ -1657,7 +2630,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - standalone
@@ -1666,7 +2638,7 @@ tasks:
       - sync_async
   - name: test-4.0-replica_set-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: replica_set
@@ -1677,7 +2649,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - replica_set
@@ -1686,7 +2658,7 @@ tasks:
       - sync
   - name: test-4.0-replica_set-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: replica_set
@@ -1697,7 +2669,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - replica_set
@@ -1706,7 +2678,7 @@ tasks:
       - async
   - name: test-4.0-replica_set-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: replica_set
@@ -1717,7 +2689,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - replica_set
@@ -1726,7 +2697,7 @@ tasks:
       - sync_async
   - name: test-4.0-replica_set-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: replica_set
@@ -1737,7 +2708,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - replica_set
@@ -1746,7 +2717,7 @@ tasks:
       - sync
   - name: test-4.0-replica_set-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: replica_set
@@ -1757,7 +2728,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - replica_set
@@ -1766,7 +2737,7 @@ tasks:
       - async
   - name: test-4.0-replica_set-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: replica_set
@@ -1777,7 +2748,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - replica_set
@@ -1786,7 +2756,7 @@ tasks:
       - sync_async
   - name: test-4.0-replica_set-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: replica_set
@@ -1797,7 +2767,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - replica_set
@@ -1806,7 +2776,7 @@ tasks:
       - sync
   - name: test-4.0-replica_set-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: replica_set
@@ -1817,7 +2787,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - replica_set
@@ -1826,7 +2796,7 @@ tasks:
       - async
   - name: test-4.0-replica_set-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: replica_set
@@ -1837,7 +2807,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - replica_set
@@ -1846,7 +2815,7 @@ tasks:
       - sync_async
   - name: test-4.2-replica_set-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: replica_set
@@ -1857,7 +2826,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.2"
       - replica_set
@@ -1866,7 +2835,7 @@ tasks:
       - sync
   - name: test-4.2-replica_set-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: replica_set
@@ -1877,7 +2846,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.2"
       - replica_set
@@ -1886,7 +2855,7 @@ tasks:
       - async
   - name: test-4.2-replica_set-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: replica_set
@@ -1897,7 +2866,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.2"
       - replica_set
@@ -1906,7 +2874,7 @@ tasks:
       - sync_async
   - name: test-4.2-replica_set-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: replica_set
@@ -1917,7 +2885,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.2"
       - replica_set
@@ -1926,7 +2894,7 @@ tasks:
       - sync
   - name: test-4.2-replica_set-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: replica_set
@@ -1937,7 +2905,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.2"
       - replica_set
@@ -1946,7 +2914,7 @@ tasks:
       - async
   - name: test-4.2-replica_set-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: replica_set
@@ -1957,7 +2925,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.2"
       - replica_set
@@ -1966,7 +2933,7 @@ tasks:
       - sync_async
   - name: test-4.2-replica_set-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: replica_set
@@ -1977,7 +2944,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.2"
       - replica_set
@@ -1986,7 +2953,7 @@ tasks:
       - sync
   - name: test-4.2-replica_set-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: replica_set
@@ -1997,7 +2964,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.2"
       - replica_set
@@ -2006,7 +2973,7 @@ tasks:
       - async
   - name: test-4.2-replica_set-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: replica_set
@@ -2017,7 +2984,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.2"
       - replica_set
@@ -2026,7 +2992,7 @@ tasks:
       - sync_async
   - name: test-4.4-replica_set-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: replica_set
@@ -2037,7 +3003,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - replica_set
@@ -2046,7 +3012,7 @@ tasks:
       - sync
   - name: test-4.4-replica_set-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: replica_set
@@ -2057,7 +3023,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - replica_set
@@ -2066,7 +3032,7 @@ tasks:
       - async
   - name: test-4.4-replica_set-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: replica_set
@@ -2077,7 +3043,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - replica_set
@@ -2086,7 +3051,7 @@ tasks:
       - sync_async
   - name: test-4.4-replica_set-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: replica_set
@@ -2097,7 +3062,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - replica_set
@@ -2106,7 +3071,7 @@ tasks:
       - sync
   - name: test-4.4-replica_set-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: replica_set
@@ -2117,7 +3082,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - replica_set
@@ -2126,7 +3091,7 @@ tasks:
       - async
   - name: test-4.4-replica_set-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: replica_set
@@ -2137,7 +3102,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - replica_set
@@ -2146,7 +3110,7 @@ tasks:
       - sync_async
   - name: test-4.4-replica_set-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: replica_set
@@ -2157,7 +3121,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - replica_set
@@ -2166,7 +3130,7 @@ tasks:
       - sync
   - name: test-4.4-replica_set-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: replica_set
@@ -2177,7 +3141,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - replica_set
@@ -2186,7 +3150,7 @@ tasks:
       - async
   - name: test-4.4-replica_set-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: replica_set
@@ -2197,7 +3161,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - replica_set
@@ -2206,7 +3169,7 @@ tasks:
       - sync_async
   - name: test-5.0-replica_set-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: replica_set
@@ -2217,7 +3180,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - replica_set
@@ -2226,7 +3189,7 @@ tasks:
       - sync
   - name: test-5.0-replica_set-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: replica_set
@@ -2237,7 +3200,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - replica_set
@@ -2246,7 +3209,7 @@ tasks:
       - async
   - name: test-5.0-replica_set-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: replica_set
@@ -2257,7 +3220,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - replica_set
@@ -2266,7 +3228,7 @@ tasks:
       - sync_async
   - name: test-5.0-replica_set-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: replica_set
@@ -2277,7 +3239,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - replica_set
@@ -2286,7 +3248,7 @@ tasks:
       - sync
   - name: test-5.0-replica_set-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: replica_set
@@ -2297,7 +3259,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - replica_set
@@ -2306,7 +3268,7 @@ tasks:
       - async
   - name: test-5.0-replica_set-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: replica_set
@@ -2317,7 +3279,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - replica_set
@@ -2326,7 +3287,7 @@ tasks:
       - sync_async
   - name: test-5.0-replica_set-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: replica_set
@@ -2337,7 +3298,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - replica_set
@@ -2346,7 +3307,7 @@ tasks:
       - sync
   - name: test-5.0-replica_set-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: replica_set
@@ -2357,7 +3318,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - replica_set
@@ -2366,7 +3327,7 @@ tasks:
       - async
   - name: test-5.0-replica_set-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: replica_set
@@ -2377,7 +3338,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - replica_set
@@ -2386,7 +3346,7 @@ tasks:
       - sync_async
   - name: test-6.0-replica_set-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: replica_set
@@ -2397,7 +3357,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - replica_set
@@ -2406,7 +3366,7 @@ tasks:
       - sync
   - name: test-6.0-replica_set-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: replica_set
@@ -2417,7 +3377,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - replica_set
@@ -2426,7 +3386,7 @@ tasks:
       - async
   - name: test-6.0-replica_set-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: replica_set
@@ -2437,7 +3397,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - replica_set
@@ -2446,7 +3405,7 @@ tasks:
       - sync_async
   - name: test-6.0-replica_set-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: replica_set
@@ -2457,7 +3416,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - replica_set
@@ -2466,7 +3425,7 @@ tasks:
       - sync
   - name: test-6.0-replica_set-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: replica_set
@@ -2477,7 +3436,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - replica_set
@@ -2486,7 +3445,7 @@ tasks:
       - async
   - name: test-6.0-replica_set-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: replica_set
@@ -2497,7 +3456,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - replica_set
@@ -2506,7 +3464,7 @@ tasks:
       - sync_async
   - name: test-6.0-replica_set-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: replica_set
@@ -2517,7 +3475,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - replica_set
@@ -2526,7 +3484,7 @@ tasks:
       - sync
   - name: test-6.0-replica_set-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: replica_set
@@ -2537,7 +3495,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - replica_set
@@ -2546,7 +3504,7 @@ tasks:
       - async
   - name: test-6.0-replica_set-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: replica_set
@@ -2557,7 +3515,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - replica_set
@@ -2566,7 +3523,7 @@ tasks:
       - sync_async
   - name: test-7.0-replica_set-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: replica_set
@@ -2577,7 +3534,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - replica_set
@@ -2586,7 +3543,7 @@ tasks:
       - sync
   - name: test-7.0-replica_set-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: replica_set
@@ -2597,7 +3554,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - replica_set
@@ -2606,7 +3563,7 @@ tasks:
       - async
   - name: test-7.0-replica_set-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: replica_set
@@ -2617,7 +3574,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - replica_set
@@ -2626,7 +3582,7 @@ tasks:
       - sync_async
   - name: test-7.0-replica_set-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: replica_set
@@ -2637,7 +3593,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - replica_set
@@ -2646,7 +3602,7 @@ tasks:
       - sync
   - name: test-7.0-replica_set-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: replica_set
@@ -2657,7 +3613,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - replica_set
@@ -2666,7 +3622,7 @@ tasks:
       - async
   - name: test-7.0-replica_set-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: replica_set
@@ -2677,7 +3633,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - replica_set
@@ -2686,7 +3641,7 @@ tasks:
       - sync_async
   - name: test-7.0-replica_set-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: replica_set
@@ -2697,7 +3652,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - replica_set
@@ -2706,7 +3661,7 @@ tasks:
       - sync
   - name: test-7.0-replica_set-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: replica_set
@@ -2717,7 +3672,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - replica_set
@@ -2726,7 +3681,7 @@ tasks:
       - async
   - name: test-7.0-replica_set-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: replica_set
@@ -2737,7 +3692,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - replica_set
@@ -2746,7 +3700,7 @@ tasks:
       - sync_async
   - name: test-8.0-replica_set-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: replica_set
@@ -2757,7 +3711,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - replica_set
@@ -2766,7 +3720,7 @@ tasks:
       - sync
   - name: test-8.0-replica_set-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: replica_set
@@ -2777,7 +3731,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - replica_set
@@ -2786,7 +3740,7 @@ tasks:
       - async
   - name: test-8.0-replica_set-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: replica_set
@@ -2797,7 +3751,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - replica_set
@@ -2806,7 +3759,7 @@ tasks:
       - sync_async
   - name: test-8.0-replica_set-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: replica_set
@@ -2817,7 +3770,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - replica_set
@@ -2826,7 +3779,7 @@ tasks:
       - sync
   - name: test-8.0-replica_set-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: replica_set
@@ -2837,7 +3790,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - replica_set
@@ -2846,7 +3799,7 @@ tasks:
       - async
   - name: test-8.0-replica_set-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: replica_set
@@ -2857,7 +3810,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - replica_set
@@ -2866,7 +3818,7 @@ tasks:
       - sync_async
   - name: test-8.0-replica_set-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: replica_set
@@ -2877,7 +3829,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - replica_set
@@ -2886,7 +3838,7 @@ tasks:
       - sync
   - name: test-8.0-replica_set-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: replica_set
@@ -2897,7 +3849,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - replica_set
@@ -2906,7 +3858,7 @@ tasks:
       - async
   - name: test-8.0-replica_set-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: replica_set
@@ -2917,7 +3869,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - replica_set
@@ -2926,7 +3877,7 @@ tasks:
       - sync_async
   - name: test-rapid-replica_set-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: replica_set
@@ -2937,7 +3888,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - replica_set
@@ -2946,7 +3897,7 @@ tasks:
       - sync
   - name: test-rapid-replica_set-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: replica_set
@@ -2957,7 +3908,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - replica_set
@@ -2966,7 +3917,7 @@ tasks:
       - async
   - name: test-rapid-replica_set-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: replica_set
@@ -2977,7 +3928,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - replica_set
@@ -2986,7 +3936,7 @@ tasks:
       - sync_async
   - name: test-rapid-replica_set-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: replica_set
@@ -2997,7 +3947,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - replica_set
@@ -3006,7 +3956,7 @@ tasks:
       - sync
   - name: test-rapid-replica_set-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: replica_set
@@ -3017,7 +3967,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - replica_set
@@ -3026,7 +3976,7 @@ tasks:
       - async
   - name: test-rapid-replica_set-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: replica_set
@@ -3037,7 +3987,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - replica_set
@@ -3046,7 +3995,7 @@ tasks:
       - sync_async
   - name: test-rapid-replica_set-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: replica_set
@@ -3057,7 +4006,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - replica_set
@@ -3066,7 +4015,7 @@ tasks:
       - sync
   - name: test-rapid-replica_set-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: replica_set
@@ -3077,7 +4026,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - replica_set
@@ -3086,7 +4035,7 @@ tasks:
       - async
   - name: test-rapid-replica_set-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: replica_set
@@ -3097,7 +4046,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - replica_set
@@ -3106,7 +4054,7 @@ tasks:
       - sync_async
   - name: test-latest-replica_set-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: replica_set
@@ -3117,7 +4065,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - replica_set
@@ -3126,7 +4074,7 @@ tasks:
       - sync
   - name: test-latest-replica_set-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: replica_set
@@ -3137,7 +4085,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - replica_set
@@ -3146,7 +4094,7 @@ tasks:
       - async
   - name: test-latest-replica_set-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: replica_set
@@ -3157,7 +4105,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - replica_set
@@ -3166,7 +4113,7 @@ tasks:
       - sync_async
   - name: test-latest-replica_set-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: replica_set
@@ -3177,7 +4124,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - replica_set
@@ -3186,7 +4133,7 @@ tasks:
       - sync
   - name: test-latest-replica_set-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: replica_set
@@ -3197,7 +4144,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - replica_set
@@ -3206,7 +4153,7 @@ tasks:
       - async
   - name: test-latest-replica_set-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: replica_set
@@ -3217,7 +4164,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - replica_set
@@ -3226,7 +4172,7 @@ tasks:
       - sync_async
   - name: test-latest-replica_set-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: replica_set
@@ -3237,7 +4183,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - replica_set
@@ -3246,7 +4192,7 @@ tasks:
       - sync
   - name: test-latest-replica_set-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: replica_set
@@ -3257,7 +4203,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - replica_set
@@ -3266,7 +4212,7 @@ tasks:
       - async
   - name: test-latest-replica_set-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: replica_set
@@ -3277,7 +4223,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - replica_set
@@ -3286,7 +4231,7 @@ tasks:
       - sync_async
   - name: test-4.0-sharded_cluster-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: sharded_cluster
@@ -3297,7 +4242,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - sharded_cluster
@@ -3306,7 +4251,7 @@ tasks:
       - sync
   - name: test-4.0-sharded_cluster-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: sharded_cluster
@@ -3317,7 +4262,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - sharded_cluster
@@ -3326,7 +4271,7 @@ tasks:
       - async
   - name: test-4.0-sharded_cluster-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: sharded_cluster
@@ -3337,7 +4282,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - sharded_cluster
@@ -3346,7 +4290,7 @@ tasks:
       - sync_async
   - name: test-4.0-sharded_cluster-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: sharded_cluster
@@ -3357,7 +4301,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - sharded_cluster
@@ -3366,7 +4310,7 @@ tasks:
       - sync
   - name: test-4.0-sharded_cluster-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: sharded_cluster
@@ -3377,7 +4321,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - sharded_cluster
@@ -3386,7 +4330,7 @@ tasks:
       - async
   - name: test-4.0-sharded_cluster-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: sharded_cluster
@@ -3397,7 +4341,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - sharded_cluster
@@ -3406,7 +4349,7 @@ tasks:
       - sync_async
   - name: test-4.0-sharded_cluster-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: sharded_cluster
@@ -3417,7 +4360,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.0"
       - sharded_cluster
@@ -3426,7 +4369,7 @@ tasks:
       - sync
   - name: test-4.0-sharded_cluster-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: sharded_cluster
@@ -3437,7 +4380,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.0"
       - sharded_cluster
@@ -3446,7 +4389,7 @@ tasks:
       - async
   - name: test-4.0-sharded_cluster-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.0"
           TOPOLOGY: sharded_cluster
@@ -3457,7 +4400,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.0"
       - sharded_cluster
@@ -3466,7 +4408,7 @@ tasks:
       - sync_async
   - name: test-4.2-sharded_cluster-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: sharded_cluster
@@ -3477,7 +4419,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.2"
       - sharded_cluster
@@ -3486,7 +4428,7 @@ tasks:
       - sync
   - name: test-4.2-sharded_cluster-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: sharded_cluster
@@ -3497,7 +4439,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.2"
       - sharded_cluster
@@ -3506,7 +4448,7 @@ tasks:
       - async
   - name: test-4.2-sharded_cluster-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: sharded_cluster
@@ -3517,7 +4459,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.2"
       - sharded_cluster
@@ -3526,7 +4467,7 @@ tasks:
       - sync_async
   - name: test-4.2-sharded_cluster-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: sharded_cluster
@@ -3537,7 +4478,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.2"
       - sharded_cluster
@@ -3546,7 +4487,7 @@ tasks:
       - sync
   - name: test-4.2-sharded_cluster-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: sharded_cluster
@@ -3557,7 +4498,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.2"
       - sharded_cluster
@@ -3566,7 +4507,7 @@ tasks:
       - async
   - name: test-4.2-sharded_cluster-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: sharded_cluster
@@ -3577,7 +4518,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.2"
       - sharded_cluster
@@ -3586,7 +4526,7 @@ tasks:
       - sync_async
   - name: test-4.2-sharded_cluster-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: sharded_cluster
@@ -3597,7 +4537,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.2"
       - sharded_cluster
@@ -3606,7 +4546,7 @@ tasks:
       - sync
   - name: test-4.2-sharded_cluster-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: sharded_cluster
@@ -3617,7 +4557,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.2"
       - sharded_cluster
@@ -3626,7 +4566,7 @@ tasks:
       - async
   - name: test-4.2-sharded_cluster-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.2"
           TOPOLOGY: sharded_cluster
@@ -3637,7 +4577,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.2"
       - sharded_cluster
@@ -3646,7 +4585,7 @@ tasks:
       - sync_async
   - name: test-4.4-sharded_cluster-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: sharded_cluster
@@ -3657,7 +4596,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - sharded_cluster
@@ -3666,7 +4605,7 @@ tasks:
       - sync
   - name: test-4.4-sharded_cluster-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: sharded_cluster
@@ -3677,7 +4616,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - sharded_cluster
@@ -3686,7 +4625,7 @@ tasks:
       - async
   - name: test-4.4-sharded_cluster-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: sharded_cluster
@@ -3697,7 +4636,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - sharded_cluster
@@ -3706,7 +4644,7 @@ tasks:
       - sync_async
   - name: test-4.4-sharded_cluster-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: sharded_cluster
@@ -3717,7 +4655,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - sharded_cluster
@@ -3726,7 +4664,7 @@ tasks:
       - sync
   - name: test-4.4-sharded_cluster-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: sharded_cluster
@@ -3737,7 +4675,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - sharded_cluster
@@ -3746,7 +4684,7 @@ tasks:
       - async
   - name: test-4.4-sharded_cluster-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: sharded_cluster
@@ -3757,7 +4695,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - sharded_cluster
@@ -3766,7 +4703,7 @@ tasks:
       - sync_async
   - name: test-4.4-sharded_cluster-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: sharded_cluster
@@ -3777,7 +4714,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "4.4"
       - sharded_cluster
@@ -3786,7 +4723,7 @@ tasks:
       - sync
   - name: test-4.4-sharded_cluster-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: sharded_cluster
@@ -3797,7 +4734,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "4.4"
       - sharded_cluster
@@ -3806,7 +4743,7 @@ tasks:
       - async
   - name: test-4.4-sharded_cluster-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "4.4"
           TOPOLOGY: sharded_cluster
@@ -3817,7 +4754,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "4.4"
       - sharded_cluster
@@ -3826,7 +4762,7 @@ tasks:
       - sync_async
   - name: test-5.0-sharded_cluster-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: sharded_cluster
@@ -3837,7 +4773,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - sharded_cluster
@@ -3846,7 +4782,7 @@ tasks:
       - sync
   - name: test-5.0-sharded_cluster-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: sharded_cluster
@@ -3857,7 +4793,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - sharded_cluster
@@ -3866,7 +4802,7 @@ tasks:
       - async
   - name: test-5.0-sharded_cluster-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: sharded_cluster
@@ -3877,7 +4813,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - sharded_cluster
@@ -3886,7 +4821,7 @@ tasks:
       - sync_async
   - name: test-5.0-sharded_cluster-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: sharded_cluster
@@ -3897,7 +4832,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - sharded_cluster
@@ -3906,7 +4841,7 @@ tasks:
       - sync
   - name: test-5.0-sharded_cluster-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: sharded_cluster
@@ -3917,7 +4852,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - sharded_cluster
@@ -3926,7 +4861,7 @@ tasks:
       - async
   - name: test-5.0-sharded_cluster-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: sharded_cluster
@@ -3937,7 +4872,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - sharded_cluster
@@ -3946,7 +4880,7 @@ tasks:
       - sync_async
   - name: test-5.0-sharded_cluster-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: sharded_cluster
@@ -3957,7 +4891,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "5.0"
       - sharded_cluster
@@ -3966,7 +4900,7 @@ tasks:
       - sync
   - name: test-5.0-sharded_cluster-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: sharded_cluster
@@ -3977,7 +4911,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "5.0"
       - sharded_cluster
@@ -3986,7 +4920,7 @@ tasks:
       - async
   - name: test-5.0-sharded_cluster-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "5.0"
           TOPOLOGY: sharded_cluster
@@ -3997,7 +4931,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "5.0"
       - sharded_cluster
@@ -4006,7 +4939,7 @@ tasks:
       - sync_async
   - name: test-6.0-sharded_cluster-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: sharded_cluster
@@ -4017,7 +4950,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - sharded_cluster
@@ -4026,7 +4959,7 @@ tasks:
       - sync
   - name: test-6.0-sharded_cluster-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: sharded_cluster
@@ -4037,7 +4970,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - sharded_cluster
@@ -4046,7 +4979,7 @@ tasks:
       - async
   - name: test-6.0-sharded_cluster-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: sharded_cluster
@@ -4057,7 +4990,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - sharded_cluster
@@ -4066,7 +4998,7 @@ tasks:
       - sync_async
   - name: test-6.0-sharded_cluster-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: sharded_cluster
@@ -4077,7 +5009,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - sharded_cluster
@@ -4086,7 +5018,7 @@ tasks:
       - sync
   - name: test-6.0-sharded_cluster-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: sharded_cluster
@@ -4097,7 +5029,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - sharded_cluster
@@ -4106,7 +5038,7 @@ tasks:
       - async
   - name: test-6.0-sharded_cluster-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: sharded_cluster
@@ -4117,7 +5049,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - sharded_cluster
@@ -4126,7 +5057,7 @@ tasks:
       - sync_async
   - name: test-6.0-sharded_cluster-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: sharded_cluster
@@ -4137,7 +5068,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "6.0"
       - sharded_cluster
@@ -4146,7 +5077,7 @@ tasks:
       - sync
   - name: test-6.0-sharded_cluster-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: sharded_cluster
@@ -4157,7 +5088,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "6.0"
       - sharded_cluster
@@ -4166,7 +5097,7 @@ tasks:
       - async
   - name: test-6.0-sharded_cluster-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "6.0"
           TOPOLOGY: sharded_cluster
@@ -4177,7 +5108,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "6.0"
       - sharded_cluster
@@ -4186,7 +5116,7 @@ tasks:
       - sync_async
   - name: test-7.0-sharded_cluster-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: sharded_cluster
@@ -4197,7 +5127,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - sharded_cluster
@@ -4206,7 +5136,7 @@ tasks:
       - sync
   - name: test-7.0-sharded_cluster-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: sharded_cluster
@@ -4217,7 +5147,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - sharded_cluster
@@ -4226,7 +5156,7 @@ tasks:
       - async
   - name: test-7.0-sharded_cluster-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: sharded_cluster
@@ -4237,7 +5167,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - sharded_cluster
@@ -4246,7 +5175,7 @@ tasks:
       - sync_async
   - name: test-7.0-sharded_cluster-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: sharded_cluster
@@ -4257,7 +5186,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - sharded_cluster
@@ -4266,7 +5195,7 @@ tasks:
       - sync
   - name: test-7.0-sharded_cluster-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: sharded_cluster
@@ -4277,7 +5206,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - sharded_cluster
@@ -4286,7 +5215,7 @@ tasks:
       - async
   - name: test-7.0-sharded_cluster-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: sharded_cluster
@@ -4297,7 +5226,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - sharded_cluster
@@ -4306,7 +5234,7 @@ tasks:
       - sync_async
   - name: test-7.0-sharded_cluster-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: sharded_cluster
@@ -4317,7 +5245,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "7.0"
       - sharded_cluster
@@ -4326,7 +5254,7 @@ tasks:
       - sync
   - name: test-7.0-sharded_cluster-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: sharded_cluster
@@ -4337,7 +5265,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "7.0"
       - sharded_cluster
@@ -4346,7 +5274,7 @@ tasks:
       - async
   - name: test-7.0-sharded_cluster-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "7.0"
           TOPOLOGY: sharded_cluster
@@ -4357,7 +5285,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "7.0"
       - sharded_cluster
@@ -4366,7 +5293,7 @@ tasks:
       - sync_async
   - name: test-8.0-sharded_cluster-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: sharded_cluster
@@ -4377,7 +5304,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - sharded_cluster
@@ -4386,7 +5313,7 @@ tasks:
       - sync
   - name: test-8.0-sharded_cluster-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: sharded_cluster
@@ -4397,7 +5324,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - sharded_cluster
@@ -4406,7 +5333,7 @@ tasks:
       - async
   - name: test-8.0-sharded_cluster-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: sharded_cluster
@@ -4417,7 +5344,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - sharded_cluster
@@ -4426,7 +5352,7 @@ tasks:
       - sync_async
   - name: test-8.0-sharded_cluster-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: sharded_cluster
@@ -4437,7 +5363,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - sharded_cluster
@@ -4446,7 +5372,7 @@ tasks:
       - sync
   - name: test-8.0-sharded_cluster-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: sharded_cluster
@@ -4457,7 +5383,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - sharded_cluster
@@ -4466,7 +5392,7 @@ tasks:
       - async
   - name: test-8.0-sharded_cluster-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: sharded_cluster
@@ -4477,7 +5403,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - sharded_cluster
@@ -4486,7 +5411,7 @@ tasks:
       - sync_async
   - name: test-8.0-sharded_cluster-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: sharded_cluster
@@ -4497,7 +5422,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - "8.0"
       - sharded_cluster
@@ -4506,7 +5431,7 @@ tasks:
       - sync
   - name: test-8.0-sharded_cluster-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: sharded_cluster
@@ -4517,7 +5442,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - "8.0"
       - sharded_cluster
@@ -4526,7 +5451,7 @@ tasks:
       - async
   - name: test-8.0-sharded_cluster-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: "8.0"
           TOPOLOGY: sharded_cluster
@@ -4537,7 +5462,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - "8.0"
       - sharded_cluster
@@ -4546,7 +5470,7 @@ tasks:
       - sync_async
   - name: test-rapid-sharded_cluster-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: sharded_cluster
@@ -4557,7 +5481,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - sharded_cluster
@@ -4566,7 +5490,7 @@ tasks:
       - sync
   - name: test-rapid-sharded_cluster-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: sharded_cluster
@@ -4577,7 +5501,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - sharded_cluster
@@ -4586,7 +5510,7 @@ tasks:
       - async
   - name: test-rapid-sharded_cluster-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: sharded_cluster
@@ -4597,7 +5521,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - sharded_cluster
@@ -4606,7 +5529,7 @@ tasks:
       - sync_async
   - name: test-rapid-sharded_cluster-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: sharded_cluster
@@ -4617,7 +5540,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - sharded_cluster
@@ -4626,7 +5549,7 @@ tasks:
       - sync
   - name: test-rapid-sharded_cluster-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: sharded_cluster
@@ -4637,7 +5560,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - sharded_cluster
@@ -4646,7 +5569,7 @@ tasks:
       - async
   - name: test-rapid-sharded_cluster-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: sharded_cluster
@@ -4657,7 +5580,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - sharded_cluster
@@ -4666,7 +5588,7 @@ tasks:
       - sync_async
   - name: test-rapid-sharded_cluster-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: sharded_cluster
@@ -4677,7 +5599,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - rapid
       - sharded_cluster
@@ -4686,7 +5608,7 @@ tasks:
       - sync
   - name: test-rapid-sharded_cluster-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: sharded_cluster
@@ -4697,7 +5619,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - rapid
       - sharded_cluster
@@ -4706,7 +5628,7 @@ tasks:
       - async
   - name: test-rapid-sharded_cluster-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: rapid
           TOPOLOGY: sharded_cluster
@@ -4717,7 +5639,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - rapid
       - sharded_cluster
@@ -4726,7 +5647,7 @@ tasks:
       - sync_async
   - name: test-latest-sharded_cluster-auth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: sharded_cluster
@@ -4737,7 +5658,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - sharded_cluster
@@ -4746,7 +5667,7 @@ tasks:
       - sync
   - name: test-latest-sharded_cluster-auth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: sharded_cluster
@@ -4757,7 +5678,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - sharded_cluster
@@ -4766,7 +5687,7 @@ tasks:
       - async
   - name: test-latest-sharded_cluster-auth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: sharded_cluster
@@ -4777,7 +5698,6 @@ tasks:
           AUTH: auth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - sharded_cluster
@@ -4786,7 +5706,7 @@ tasks:
       - sync_async
   - name: test-latest-sharded_cluster-noauth-ssl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: sharded_cluster
@@ -4797,7 +5717,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - sharded_cluster
@@ -4806,7 +5726,7 @@ tasks:
       - sync
   - name: test-latest-sharded_cluster-noauth-ssl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: sharded_cluster
@@ -4817,7 +5737,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - sharded_cluster
@@ -4826,7 +5746,7 @@ tasks:
       - async
   - name: test-latest-sharded_cluster-noauth-ssl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: sharded_cluster
@@ -4837,7 +5757,6 @@ tasks:
           AUTH: noauth
           SSL: ssl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - sharded_cluster
@@ -4846,7 +5765,7 @@ tasks:
       - sync_async
   - name: test-latest-sharded_cluster-noauth-nossl-sync
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: sharded_cluster
@@ -4857,7 +5776,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync
-          TEST_SUITES: default
+          TEST_NAME: default_sync
     tags:
       - latest
       - sharded_cluster
@@ -4866,7 +5785,7 @@ tasks:
       - sync
   - name: test-latest-sharded_cluster-noauth-nossl-async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: sharded_cluster
@@ -4877,7 +5796,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: async
-          TEST_SUITES: default_async
+          TEST_NAME: default_async
     tags:
       - latest
       - sharded_cluster
@@ -4886,7 +5805,7 @@ tasks:
       - async
   - name: test-latest-sharded_cluster-noauth-nossl-sync_async
     commands:
-      - func: bootstrap mongo-orchestration
+      - func: run server
         vars:
           VERSION: latest
           TOPOLOGY: sharded_cluster
@@ -4897,7 +5816,6 @@ tasks:
           AUTH: noauth
           SSL: nossl
           SYNC: sync_async
-          TEST_SUITES: ""
     tags:
       - latest
       - sharded_cluster

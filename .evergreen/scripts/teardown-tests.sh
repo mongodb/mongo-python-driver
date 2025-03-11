@@ -2,28 +2,22 @@
 set -eu
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
-ROOT_DIR="$(dirname "$(dirname $SCRIPT_DIR)")"
 
-# Remove temporary test files.
-pushd $ROOT_DIR > /dev/null
-rm -rf libmongocrypt/ libmongocrypt.tar.gz mongocryptd.pid > /dev/null
-popd > /dev/null
-
-if [ ! -f $SCRIPT_DIR/test-env.sh ]; then
-    exit 0
-fi
+# Try to source the env file.
 if [ -f $SCRIPT_DIR/env.sh ]; then
-    source $SCRIPT_DIR/env.sh
+  echo "Sourcing env inputs"
+  . $SCRIPT_DIR/env.sh
+else
+  echo "Not sourcing env inputs"
 fi
 
-source $SCRIPT_DIR/test-env.sh
-
-# Shut down csfle servers if applicable
-if [ -n "${TEST_ENCRYPTION:-}" ]; then
-    bash ${DRIVERS_TOOLS}/.evergreen/csfle/stop-servers.sh
+# Handle test inputs.
+if [ -f $SCRIPT_DIR/test-env.sh ]; then
+  echo "Sourcing test inputs"
+  . $SCRIPT_DIR/test-env.sh
+else
+  echo "Missing test inputs, please run 'just setup-tests'"
 fi
 
-# Shut down load balancer if applicable.
-if [ -n "${TEST_LOADBALANCER:-}" ]; then
-    bash "${DRIVERS_TOOLS}"/.evergreen/run-load-balancer.sh stop
-fi
+# Teardown the test runner.
+uv run $SCRIPT_DIR/teardown_tests.py

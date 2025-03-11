@@ -55,24 +55,11 @@ export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
 cat <<EOT > "$SCRIPT_DIR"/env.sh
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
 export CURRENT_VERSION="$CURRENT_VERSION"
-export SKIP_LEGACY_SHELL=1
 export DRIVERS_TOOLS="$DRIVERS_TOOLS"
 export MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
 export MONGODB_BINARIES="$MONGODB_BINARIES"
 export DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS_BINARIES"
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
-export SETDEFAULTENCODING="${SETDEFAULTENCODING:-}"
-export SKIP_CSOT_TESTS="${SKIP_CSOT_TESTS:-}"
-export MONGODB_STARTED="${MONGODB_STARTED:-}"
-export DISABLE_TEST_COMMANDS="${DISABLE_TEST_COMMANDS:-}"
-export GREEN_FRAMEWORK="${GREEN_FRAMEWORK:-}"
-export NO_EXT="${NO_EXT:-}"
-export COVERAGE="${COVERAGE:-}"
-export COMPRESSORS="${COMPRESSORS:-}"
-export MONGODB_API_VERSION="${MONGODB_API_VERSION:-}"
-export skip_crypt_shared="${skip_crypt_shared:-}"
-export STORAGE_ENGINE="${STORAGE_ENGINE:-}"
-export REQUIRE_API_VERSION="${REQUIRE_API_VERSION:-}"
 export skip_web_identity_auth_test="${skip_web_identity_auth_test:-}"
 export skip_ECS_auth_test="${skip_ECS_auth_test:-}"
 
@@ -89,20 +76,16 @@ EOT
 
 # Write the .env file for drivers-tools.
 rm -rf $DRIVERS_TOOLS
-git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+BRANCH=master
+ORG=mongodb-labs
+git clone --branch $BRANCH https://github.com/$ORG/drivers-evergreen-tools.git $DRIVERS_TOOLS
 
 cat <<EOT > ${DRIVERS_TOOLS}/.env
 SKIP_LEGACY_SHELL=1
 DRIVERS_TOOLS="$DRIVERS_TOOLS"
 MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
 MONGODB_BINARIES="$MONGODB_BINARIES"
-TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
 EOT
-
-# Skip CSOT tests on non-linux platforms.
-if [ "$(uname -s)" != "Linux" ]; then
-    echo "export SKIP_CSOT_TESTS=1" >> $SCRIPT_DIR/env.sh
-fi
 
 # Add these expansions to make it easier to call out tests scripts from the EVG yaml
 cat <<EOT > expansion.yml

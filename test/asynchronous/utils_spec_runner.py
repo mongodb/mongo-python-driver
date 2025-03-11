@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import os
+import time
 import unittest
 from asyncio import iscoroutinefunction
 from collections import abc
@@ -264,15 +265,10 @@ class AsyncSpecRunner(AsyncIntegrationTest):
     async def asyncTearDown(self) -> None:
         self.knobs.disable()
 
-    async def _set_fail_point(self, client, command_args):
-        cmd = SON([("configureFailPoint", "failCommand")])
-        cmd.update(command_args)
-        await client.admin.command(cmd)
-
     async def set_fail_point(self, command_args):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
-            await self._set_fail_point(client, command_args)
+            await self.configure_fail_point(client, command_args)
 
     async def targeted_fail_point(self, session, fail_point):
         """Run the targetedFailPoint test operation.
@@ -281,7 +277,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         """
         clients = {c.address: c for c in self.mongos_clients}
         client = clients[session._pinned_address]
-        await self._set_fail_point(client, fail_point)
+        await self.configure_fail_point(client, fail_point)
         self.addAsyncCleanup(self.set_fail_point, {"mode": "off"})
 
     def assert_session_pinned(self, session):
@@ -318,6 +314,10 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         """Run the assertIndexNotExists test operation."""
         coll = self.client[database][collection]
         self.assertNotIn(index, [doc["name"] async for doc in await coll.list_indexes()])
+
+    async def wait(self, ms):
+        """Run the "wait" test operation."""
+        await asyncio.sleep(ms / 1000.0)
 
     def assertErrorLabelsContain(self, exc, expected_labels):
         labels = [l for l in expected_labels if exc.has_error_label(l)]

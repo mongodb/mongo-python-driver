@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import struct
-from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Type, Union, overload
 from uuid import UUID
@@ -227,7 +226,6 @@ class BinaryVectorDtype(Enum):
     PACKED_BIT = b"\x10"
 
 
-@dataclass
 class BinaryVector:
     """Vector of numbers along with metadata for binary interoperability.
     .. versionadded:: 4.10
@@ -246,6 +244,16 @@ class BinaryVector:
         self.data = data
         self.dtype = dtype
         self.padding = padding
+
+    def __repr__(self) -> str:
+        return f"BinaryVector(dtype={self.dtype}, padding={self.padding}, data={self.data})"
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, BinaryVector):
+            return False
+        return (
+            self.dtype == other.dtype and self.padding == other.padding and self.data == other.data
+        )
 
 
 class Binary(bytes):
@@ -450,6 +458,10 @@ class Binary(bytes):
                 raise ValueError(f"padding does not apply to {dtype=}")
         elif dtype == BinaryVectorDtype.PACKED_BIT:  # pack ints in [0, 255] as unsigned uint8
             format_str = "B"
+            if 0 <= padding > 7:
+                raise ValueError(f"{padding=}. It must be in [0,1, ..7].")
+            if padding and not vector:
+                raise ValueError("Empty vector with non-zero padding.")
         elif dtype == BinaryVectorDtype.FLOAT32:  # pack floats as float32
             format_str = "f"
             if padding:

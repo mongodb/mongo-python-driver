@@ -29,5 +29,5 @@ else
     exit 1
 fi
 
-TEST_AUTH_OIDC=1 COVERAGE=1 AUTH="auth" bash ./.evergreen/just.sh setup-test
-bash ./.evergreen/just.sh test-eg "${@:1}"
+COVERAGE=1 bash ./.evergreen/just.sh setup-tests auth_oidc
+bash ./.evergreen/just.sh run-tests "${@:1}"

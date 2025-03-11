@@ -1,9 +1,11 @@
 #!/bin/bash
 
-set -eux
+set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
-pushd "$(dirname "$(dirname $HERE)")" > /dev/null
+HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
+ROOT=$(dirname "$(dirname $HERE)")
+pushd $ROOT > /dev/null
 
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
@@ -26,7 +28,7 @@ fi
 
 # Ensure there is a python venv.
 if [ ! -d $BIN_DIR ]; then
-  . .evergreen/utils.sh
+  . $ROOT/.evergreen/utils.sh
 
   if [ -z "${PYTHON_BINARY:-}" ]; then
       PYTHON_BINARY=$(find_python3)
@@ -41,11 +43,23 @@ if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
   export PATH="$PATH:$HOME/.local/bin"
 fi
 
+# Set up venv, making sure c extensions build unless disabled.
+if [ -z "${NO_EXT:-}" ]; then
+  export PYMONGO_C_EXT_MUST_BUILD=1
+fi
+# Set up visual studio env on Windows spawn hosts.
+if [ -f $HOME/.visualStudioEnv.sh ]; then
+  set +u
+  SSH_TTY=1 source $HOME/.visualStudioEnv.sh
+  set -u
+fi
 uv sync --frozen
-uv run --frozen --with pip pip install -e .
+
 echo "Setting up python environment... done."
 
 # Ensure there is a pre-commit hook if there is a git checkout.
 if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
     uv run --frozen pre-commit install
 fi
+
+popd > /dev/null

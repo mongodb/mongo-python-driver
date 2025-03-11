@@ -103,6 +103,7 @@ class TestAsyncCancellation(AsyncIntegrationTest):
     async def test_async_cancellation_closes_change_stream(self):
         self.addAsyncCleanup(self.client.db.test.delete_many, {})
         change_stream = await self.client.db.test.watch(batch_size=2)
+        event = asyncio.Event()
 
         # Make sure getMore commands block
         fail_command = {
@@ -114,11 +115,12 @@ class TestAsyncCancellation(AsyncIntegrationTest):
         async def task():
             async with self.fail_point(fail_command):
                 await self.client.db.test.insert_many([{"x": 1}, {"x": 2}])
+                event.set()
                 await change_stream.next()
 
         task = asyncio.create_task(task())
 
-        await asyncio.sleep(0.1)
+        await event.wait()
 
         task.cancel()
         with self.assertRaises(asyncio.CancelledError):

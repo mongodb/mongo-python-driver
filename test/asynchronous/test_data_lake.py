@@ -38,10 +38,6 @@ pytestmark = pytest.mark.data_lake
 
 class TestDataLakeMustConnect(AsyncUnitTest):
     async def test_connected_to_data_lake(self):
-        data_lake = os.environ.get("TEST_DATA_LAKE")
-        if not data_lake:
-            self.skipTest("TEST_DATA_LAKE is not set")
-
         self.assertTrue(
             async_client_context.is_data_lake and async_client_context.connected,
             "client context must be connected to data lake when DATA_LAKE is set. Failed attempts:\n{}".format(
