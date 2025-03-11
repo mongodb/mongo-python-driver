@@ -740,16 +740,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             **kwargs,
         }
 
+        if host is None:
+            host = self.HOST
+        if isinstance(host, str):
+            host = [host]
+        if port is None:
+            port = self.PORT
+        if not isinstance(port, int):
+            raise TypeError(f"port must be an instance of int, not {type(port)}")
         self._host = host
         self._port = port
-        if self._host is None:
-            self._host = self.HOST
-        if isinstance(self._host, str):
-            self._host = [self._host]
-        if self._port is None:
-            self._port = self.PORT
-        if not isinstance(self._port, int):
-            raise TypeError(f"port must be an instance of int, not {type(port)}")
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
@@ -760,7 +760,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Parse options passed as kwargs.
         keyword_opts = common._CaseInsensitiveDictionary(kwargs)
         keyword_opts["document_class"] = doc_class
-        self._resolve_uri_info = {"keyword_opts": keyword_opts}
+        self._resolve_uri_info: dict[str, Any] = {"keyword_opts": keyword_opts}
 
         seeds = set()
         username = None
@@ -822,6 +822,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         opts = self._normalize_and_validate_options(opts, seeds)
 
         # Username and password passed as kwargs override user info in URI.
+        username = opts.get("username", username)
+        password = opts.get("password", password)
         self._options = options = ClientOptions(username, password, dbase, opts, _IS_SYNC)
 
         self._default_database_name = dbase
@@ -885,15 +887,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             MongoClient._clients[self._topology._topology_id] = self
 
-    def _normalize_and_validate_options(self, opts, seeds):
-        # Handle security-option conflicts in combined options.
-        opts = _handle_security_options(opts)
-        # Normalize combined options.
-        opts = _normalize_options(opts)
-        _check_options(seeds, opts)
-        return opts
-
-    def _resolve_uri(self):
+    def _resolve_uri(self) -> None:
         keyword_opts = self._resolve_uri_info["keyword_opts"]
         seeds = set()
         opts = common._CaseInsensitiveDictionary()
@@ -951,7 +945,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
 
             srv_max_hosts = srv_max_hosts or opts.get("srvmaxhosts")
-            opts = self._normalize_and_validate_opts(opts, seeds)
+            opts = self._normalize_and_validate_options(opts, seeds)
 
             # Username and password passed as kwargs override user info in URI.
             username = opts.get("username", self._resolve_uri_info["username"])
@@ -989,7 +983,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
             self._topology = Topology(self._topology_settings)
 
-    def _normalize_and_validate_opts(self, opts, seeds):
+    def _normalize_and_validate_options(
+        self, opts: common._CaseInsensitiveDictionary, seeds: set[tuple[str, int | None]]
+    ) -> common._CaseInsensitiveDictionary:
         # Handle security-option conflicts in combined options.
         opts = _handle_security_options(opts)
         # Normalize combined options.
@@ -997,7 +993,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         _check_options(seeds, opts)
         return opts
 
-    def _validate_kwargs_and_update_opts(self, keyword_opts, opts):
+    def _validate_kwargs_and_update_opts(
+        self,
+        keyword_opts: common._CaseInsensitiveDictionary,
+        opts: common._CaseInsensitiveDictionary,
+    ) -> common._CaseInsensitiveDictionary:
         # Handle deprecated options in kwarg options.
         keyword_opts = _handle_option_deprecations(keyword_opts)
         # Validate kwarg options.

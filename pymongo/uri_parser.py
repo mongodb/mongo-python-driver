@@ -507,7 +507,7 @@ def _validate_uri(
     warn: bool = False,
     normalize: bool = True,
     srv_max_hosts: Optional[int] = None,
-):
+) -> dict[str, Any]:
     if uri.startswith(SCHEME):
         is_srv = False
         scheme_free = uri[SCHEME_LEN:]
