@@ -54,6 +54,12 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
     if sub_test_name == "test":
         write_env("OIDC_TOKEN_FILE", config["OIDC_TOKEN_FILE"])
         write_env("OIDC_TOKEN_DIR", config["OIDC_TOKEN_DIR"])
+        if "OIDC_DOMAIN" in config:
+            write_env("OIDC_DOMAIN", config["OIDC_DOMAIN"])
+    elif sub_test_name == "azure-remote":
+        write_env("AZUREOIDC_RESOURCE", config["AZUREOIDC_RESOURCE"])
+    elif sub_test_name == "gcp-remote":
+        write_env("GCPOIDC_AUDIENCE", config["GCPOIDC_AUDIENCE"])
     return config
 
 
