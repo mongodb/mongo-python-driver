@@ -113,7 +113,12 @@ def run() -> None:
         return
 
     # Run remote oidc tests.
-    if TEST_NAME == "auth_oidc" and SUB_TEST_NAME not in ["test", "test-remote"]:
+    print("HI HI", SUB_TEST_NAME)  # noqa: T201
+    if (
+        TEST_NAME == "auth_oidc"
+        and SUB_TEST_NAME != "test"
+        and not SUB_TEST_NAME.endswith("-remote")
+    ):
         from oidc_tester import test_oidc_remote
 
         test_oidc_remote(SUB_TEST_NAME)
