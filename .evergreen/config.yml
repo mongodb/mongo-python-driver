@@ -764,7 +764,7 @@ tasks:
     - name: "perf-6.0-standalone-async"
       tags: [ "perf" ]
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run server"
           vars:
             VERSION: "v6.0-perf"
             TOPOLOGY: "server"
@@ -777,7 +777,7 @@ tasks:
     - name: "perf-6.0-standalone-ssl-async"
       tags: [ "perf" ]
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run server"
           vars:
             VERSION: "v6.0-perf"
             TOPOLOGY: "server"
@@ -791,7 +791,7 @@ tasks:
     - name: "perf-8.0-standalone-async"
       tags: [ "perf" ]
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run server"
           vars:
             VERSION: "8.0"
             TOPOLOGY: "server"
