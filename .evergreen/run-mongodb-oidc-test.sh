@@ -5,7 +5,12 @@ set -eu
 
 echo "Running MONGODB-OIDC authentication tests on ${OIDC_ENV}..."
 
-bash ./.evergreen/just.sh setup-tests auth_oidc $K8S_VARIANT-remote
+if [ ${OIDC_ENV} == "k8s" ]; then
+    SUB_TEST_NAME=$K8S_VARIANT-remote
+else
+    SUB_TEST_NAME=$OIDC_ENV-remote
+fi
+bash ./.evergreen/just.sh setup-tests auth_oidc $SUB_TEST_NAME
 bash ./.evergreen/just.sh run-tests "${@:1}"
 
 echo "Running MONGODB-OIDC authentication tests on ${OIDC_ENV}... done."
