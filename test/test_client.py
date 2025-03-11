@@ -130,7 +130,7 @@ class ClientUnitTest(UnitTest):
     client: MongoClient
 
     def setUp(self) -> None:
-        self.client = self.rs_or_single_client(connect=False, serverSelectionTimeoutMS=100)
+        self.client = self.rs_or_single_client(connect=True, serverSelectionTimeoutMS=100)
 
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
@@ -254,7 +254,7 @@ class ClientUnitTest(UnitTest):
     def test_get_default_database(self):
         c = self.rs_or_single_client(
             "mongodb://%s:%d/foo" % (client_context.host, client_context.port),
-            connect=False,
+            connect=True,
         )
         self.assertEqual(Database(c, "foo"), c.get_default_database())
         # Test that default doesn't override the URI value.
@@ -270,7 +270,7 @@ class ClientUnitTest(UnitTest):
 
         c = self.rs_or_single_client(
             "mongodb://%s:%d/" % (client_context.host, client_context.port),
-            connect=False,
+            connect=True,
         )
         self.assertEqual(Database(c, "foo"), c.get_default_database("foo"))
 
@@ -288,13 +288,13 @@ class ClientUnitTest(UnitTest):
             client_context.host,
             client_context.port,
         )
-        c = self.rs_or_single_client(uri, connect=False)
+        c = self.rs_or_single_client(uri, connect=True)
         self.assertEqual(Database(c, "foo"), c.get_default_database())
 
     def test_get_database_default(self):
         c = self.rs_or_single_client(
             "mongodb://%s:%d/foo" % (client_context.host, client_context.port),
-            connect=False,
+            connect=True,
         )
         self.assertEqual(Database(c, "foo"), c.get_database())
 
@@ -312,7 +312,7 @@ class ClientUnitTest(UnitTest):
             client_context.host,
             client_context.port,
         )
-        c = self.rs_or_single_client(uri, connect=False)
+        c = self.rs_or_single_client(uri, connect=True)
         self.assertEqual(Database(c, "foo"), c.get_database())
 
     def test_primary_read_pref_with_tags(self):
@@ -792,16 +792,18 @@ class TestClient(IntegrationTest):
         self.assertIsInstance(c.is_primary, bool)
         c = self.rs_or_single_client(connect=False)
         self.assertIsInstance(c.is_mongos, bool)
-        c = self.rs_or_single_client(connect=False)
+        c = self.rs_or_single_client(connect=True)
         self.assertIsInstance(c.options.pool_options.max_pool_size, int)
         self.assertIsInstance(c.nodes, frozenset)
 
         c = self.rs_or_single_client(connect=False)
         self.assertEqual(c.codec_options, CodecOptions())
         c = self.rs_or_single_client(connect=False)
+        c._connect()
         self.assertFalse(c.primary)
         self.assertFalse(c.secondaries)
         c = self.rs_or_single_client(connect=False)
+        c._connect()
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
         if client_context.is_rs:
@@ -823,32 +825,36 @@ class TestClient(IntegrationTest):
 
     def test_equality(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
-        c = self.rs_or_single_client(seed, connect=False)
+        c = self.rs_or_single_client(seed, connect=True)
         self.assertEqual(client_context.client, c)
         # Explicitly test inequality
         self.assertFalse(client_context.client != c)
 
-        c = self.rs_or_single_client("invalid.com", connect=False)
+        c = self.rs_or_single_client("invalid.com", connect=True)
         self.assertNotEqual(client_context.client, c)
         self.assertTrue(client_context.client != c)
 
         c1 = self.simple_client("a", connect=False)
+        c1._connect()
         c2 = self.simple_client("b", connect=False)
+        c2._connect()
 
         # Seeds differ:
         self.assertNotEqual(c1, c2)
 
         c1 = self.simple_client(["a", "b", "c"], connect=False)
+        c1._connect()
         c2 = self.simple_client(["c", "a", "b"], connect=False)
+        c2._connect()
 
         # Same seeds but out of order still compares equal:
         self.assertEqual(c1, c2)
 
     def test_hashable(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
-        c = self.rs_or_single_client(seed, connect=False)
+        c = self.rs_or_single_client(seed, connect=True)
         self.assertIn(c, {client_context.client})
-        c = self.rs_or_single_client("invalid.com", connect=False)
+        c = self.rs_or_single_client("invalid.com", connect=True)
         self.assertNotIn(c, {client_context.client})
 
     def test_host_w_port(self):
@@ -872,7 +878,7 @@ class TestClient(IntegrationTest):
             connect=False,
             document_class=SON,
         )
-
+        client._connect()
         the_repr = repr(client)
         self.assertIn("MongoClient(host=", the_repr)
         self.assertIn("document_class=bson.son.SON, tz_aware=False, connect=False, ", the_repr)
@@ -880,8 +886,9 @@ class TestClient(IntegrationTest):
         self.assertIn("replicaset='replset'", the_repr)
         self.assertIn("w=1", the_repr)
         self.assertIn("wtimeoutms=100", the_repr)
-
+        client.close()
         with eval(the_repr) as client_two:
+            client_two._connect()
             self.assertEqual(client_two, client)
 
         client = self.simple_client(
@@ -893,6 +900,7 @@ class TestClient(IntegrationTest):
             wtimeoutms=100,
             connect=False,
         )
+        client._connect()
         the_repr = repr(client)
         self.assertIn("MongoClient(host=", the_repr)
         self.assertIn("document_class=dict, tz_aware=False, connect=False, ", the_repr)
@@ -903,6 +911,7 @@ class TestClient(IntegrationTest):
         self.assertIn("wtimeoutms=100", the_repr)
 
         with eval(the_repr) as client_two:
+            client_two._connect()
             self.assertEqual(client_two, client)
 
     def test_getters(self):
@@ -1026,9 +1035,7 @@ class TestClient(IntegrationTest):
         self.assertTrue(client._kill_cursors_executor._stopped)
 
     def test_uri_connect_option(self):
-        # Ensure that topology is not opened if connect=False.
         client = self.rs_client(connect=False)
-        self.assertFalse(client._topology._opened)
 
         # Ensure kill cursors thread has not been started.
         # _kill_cursors_executor is initialized upon client connection
@@ -1042,13 +1049,6 @@ class TestClient(IntegrationTest):
         else:
             kc_task = client._kill_cursors_executor._task
             self.assertTrue(kc_task and not kc_task.done())
-
-    def test_close_does_not_open_servers(self):
-        client = self.rs_client(connect=False)
-        topology = client._topology
-        self.assertEqual(topology._servers, {})
-        client.close()
-        self.assertEqual(topology._servers, {})
 
     def test_close_closes_sockets(self):
         client = self.rs_client()
@@ -1580,7 +1580,8 @@ class TestClient(IntegrationTest):
     def test_small_heartbeat_frequency_ms(self):
         uri = "mongodb://example/?heartbeatFrequencyMS=499"
         with self.assertRaises(ConfigurationError) as context:
-            MongoClient(uri)
+            client = MongoClient(uri)
+            client._connect()
 
         self.assertIn("heartbeatFrequencyMS", str(context.exception))
 
@@ -1853,19 +1854,25 @@ class TestClient(IntegrationTest):
             srvServiceName="customname",
             connect=False,
         )
+        client._connect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        client.close()
         client = MongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc"
             "/?srvServiceName=shouldbeoverriden",
             srvServiceName="customname",
             connect=False,
         )
+        client._connect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        client.close()
         client = MongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc/?srvServiceName=customname",
             connect=False,
         )
+        client._connect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        client.close()
 
     def test_srv_max_hosts_kwarg(self):
         client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/")

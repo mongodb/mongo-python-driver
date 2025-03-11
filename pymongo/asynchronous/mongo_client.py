@@ -128,6 +128,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.bulk import _AsyncBulk
     from pymongo.asynchronous.client_session import AsyncClientSession, _ServerSession
     from pymongo.asynchronous.cursor import _ConnectionManager
+    from pymongo.asynchronous.encryption import _Encrypter
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.asynchronous.server import Server
     from pymongo.read_concern import ReadConcern
@@ -840,26 +841,26 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             options.read_concern,
         )
 
-        self._topology_settings = TopologySettings(
-            seeds=seeds,
-            replica_set_name=options.replica_set_name,
-            pool_class=pool_class,
-            pool_options=options.pool_options,
-            monitor_class=monitor_class,
-            condition_class=condition_class,
-            local_threshold_ms=options.local_threshold_ms,
-            server_selection_timeout=options.server_selection_timeout,
-            server_selector=options.server_selector,
-            heartbeat_frequency=options.heartbeat_frequency,
-            fqdn=fqdn,
-            direct_connection=options.direct_connection,
-            load_balanced=options.load_balanced,
-            srv_service_name=srv_service_name,
-            srv_max_hosts=srv_max_hosts,
-            server_monitoring_mode=options.server_monitoring_mode,
-        )
-
-        self._topology = Topology(self._topology_settings)
+        # self._topology_settings = TopologySettings(
+        #     seeds=seeds,
+        #     replica_set_name=options.replica_set_name,
+        #     pool_class=pool_class,
+        #     pool_options=options.pool_options,
+        #     monitor_class=monitor_class,
+        #     condition_class=condition_class,
+        #     local_threshold_ms=options.local_threshold_ms,
+        #     server_selection_timeout=options.server_selection_timeout,
+        #     server_selector=options.server_selector,
+        #     heartbeat_frequency=options.heartbeat_frequency,
+        #     fqdn=fqdn,
+        #     direct_connection=options.direct_connection,
+        #     load_balanced=options.load_balanced,
+        #     srv_service_name=srv_service_name,
+        #     srv_max_hosts=srv_max_hosts,
+        #     server_monitoring_mode=options.server_monitoring_mode,
+        # )
+        #
+        # self._topology = Topology(self._topology_settings)
 
         self._opened = False
         self._closed = False
@@ -878,7 +879,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if _IS_SYNC and connect:
             self._get_topology()  # type: ignore[unused-coroutine]
 
-        self._encrypter = None
+        self._encrypter: Optional[_Encrypter] = None
         self._timeout = self._options.timeout
 
     def _resolve_uri(self) -> None:
@@ -1018,7 +1019,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         await self._get_topology()
 
     def _init_background(self, old_pid: Optional[int] = None) -> None:
-        self._topology = Topology(self._topology_settings)
         # Seed the topology with the old one's pid so we can detect clients
         # that are opened before a fork and used after.
         self._topology._pid = old_pid
@@ -1235,14 +1235,20 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
-            return self._topology == other._topology
+            if hasattr(self, "_topology"):
+                return self._topology == other._topology
+            else:
+                raise InvalidOperation("Cannot perform operation until client is connected")
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __hash__(self) -> int:
-        return hash(self._topology)
+        if hasattr(self, "_topology"):
+            return hash(self._topology)
+        else:
+            raise InvalidOperation("Cannot perform operation until client is connected")
 
     def _repr_helper(self) -> str:
         def option_repr(option: str, value: Any) -> str:
@@ -1278,7 +1284,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return ", ".join(options)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self._repr_helper()})"
+        if hasattr(self, "_topology"):
+            return f"{type(self).__name__}({self._repr_helper()})"
+        raise InvalidOperation("Cannot perform operation until client is connected")
 
     def __getattr__(self, name: str) -> database.AsyncDatabase[_DocumentType]:
         """Get a database by name.
@@ -1670,12 +1678,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            End all server sessions created by this client.
         """
-        session_ids = self._topology.pop_all_sessions()
-        if session_ids:
-            await self._end_sessions(session_ids)
-        # Stop the periodic task thread and then send pending killCursor
-        # requests before closing the topology.
         if self._opened:
+            session_ids = self._topology.pop_all_sessions()
+            if session_ids:
+                await self._end_sessions(session_ids)
+            # Stop the periodic task thread and then send pending killCursor
+            # requests before closing the topology.
             self._kill_cursors_executor.close()
             await self._process_kill_cursors()
             await self._topology.close()

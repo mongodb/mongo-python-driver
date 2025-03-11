@@ -132,7 +132,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     async def asyncSetUp(self) -> None:
         self.client = await self.async_rs_or_single_client(
-            connect=False, serverSelectionTimeoutMS=100
+            connect=True, serverSelectionTimeoutMS=100
         )
 
     @pytest.fixture(autouse=True)
@@ -258,7 +258,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/foo"
             % (await async_client_context.host, await async_client_context.port),
-            connect=False,
+            connect=True,
         )
         self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database())
         # Test that default doesn't override the URI value.
@@ -274,7 +274,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
         c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/" % (await async_client_context.host, await async_client_context.port),
-            connect=False,
+            connect=True,
         )
         self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database("foo"))
 
@@ -292,14 +292,14 @@ class AsyncClientUnitTest(AsyncUnitTest):
             await async_client_context.host,
             await async_client_context.port,
         )
-        c = await self.async_rs_or_single_client(uri, connect=False)
+        c = await self.async_rs_or_single_client(uri, connect=True)
         self.assertEqual(AsyncDatabase(c, "foo"), c.get_default_database())
 
     async def test_get_database_default(self):
         c = await self.async_rs_or_single_client(
             "mongodb://%s:%d/foo"
             % (await async_client_context.host, await async_client_context.port),
-            connect=False,
+            connect=True,
         )
         self.assertEqual(AsyncDatabase(c, "foo"), c.get_database())
 
@@ -317,7 +317,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
             await async_client_context.host,
             await async_client_context.port,
         )
-        c = await self.async_rs_or_single_client(uri, connect=False)
+        c = await self.async_rs_or_single_client(uri, connect=True)
         self.assertEqual(AsyncDatabase(c, "foo"), c.get_database())
 
     async def test_primary_read_pref_with_tags(self):
@@ -817,16 +817,18 @@ class TestClient(AsyncIntegrationTest):
         self.assertIsInstance(await c.is_primary, bool)
         c = await self.async_rs_or_single_client(connect=False)
         self.assertIsInstance(await c.is_mongos, bool)
-        c = await self.async_rs_or_single_client(connect=False)
+        c = await self.async_rs_or_single_client(connect=True)
         self.assertIsInstance(c.options.pool_options.max_pool_size, int)
         self.assertIsInstance(c.nodes, frozenset)
 
         c = await self.async_rs_or_single_client(connect=False)
         self.assertEqual(c.codec_options, CodecOptions())
         c = await self.async_rs_or_single_client(connect=False)
+        await c.aconnect()
         self.assertFalse(await c.primary)
         self.assertFalse(await c.secondaries)
         c = await self.async_rs_or_single_client(connect=False)
+        await c.aconnect()
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
         if async_client_context.is_rs:
@@ -848,32 +850,36 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_equality(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
-        c = await self.async_rs_or_single_client(seed, connect=False)
+        c = await self.async_rs_or_single_client(seed, connect=True)
         self.assertEqual(async_client_context.client, c)
         # Explicitly test inequality
         self.assertFalse(async_client_context.client != c)
 
-        c = await self.async_rs_or_single_client("invalid.com", connect=False)
+        c = await self.async_rs_or_single_client("invalid.com", connect=True)
         self.assertNotEqual(async_client_context.client, c)
         self.assertTrue(async_client_context.client != c)
 
         c1 = self.simple_client("a", connect=False)
+        await c1.aconnect()
         c2 = self.simple_client("b", connect=False)
+        await c2.aconnect()
 
         # Seeds differ:
         self.assertNotEqual(c1, c2)
 
         c1 = self.simple_client(["a", "b", "c"], connect=False)
+        await c1.aconnect()
         c2 = self.simple_client(["c", "a", "b"], connect=False)
+        await c2.aconnect()
 
         # Same seeds but out of order still compares equal:
         self.assertEqual(c1, c2)
 
     async def test_hashable(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
-        c = await self.async_rs_or_single_client(seed, connect=False)
+        c = await self.async_rs_or_single_client(seed, connect=True)
         self.assertIn(c, {async_client_context.client})
-        c = await self.async_rs_or_single_client("invalid.com", connect=False)
+        c = await self.async_rs_or_single_client("invalid.com", connect=True)
         self.assertNotIn(c, {async_client_context.client})
 
     async def test_host_w_port(self):
@@ -897,7 +903,7 @@ class TestClient(AsyncIntegrationTest):
             connect=False,
             document_class=SON,
         )
-
+        await client.aconnect()
         the_repr = repr(client)
         self.assertIn("AsyncMongoClient(host=", the_repr)
         self.assertIn("document_class=bson.son.SON, tz_aware=False, connect=False, ", the_repr)
@@ -905,8 +911,9 @@ class TestClient(AsyncIntegrationTest):
         self.assertIn("replicaset='replset'", the_repr)
         self.assertIn("w=1", the_repr)
         self.assertIn("wtimeoutms=100", the_repr)
-
+        await client.close()
         async with eval(the_repr) as client_two:
+            await client_two.aconnect()
             self.assertEqual(client_two, client)
 
         client = self.simple_client(
@@ -918,6 +925,7 @@ class TestClient(AsyncIntegrationTest):
             wtimeoutms=100,
             connect=False,
         )
+        await client.aconnect()
         the_repr = repr(client)
         self.assertIn("AsyncMongoClient(host=", the_repr)
         self.assertIn("document_class=dict, tz_aware=False, connect=False, ", the_repr)
@@ -928,6 +936,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertIn("wtimeoutms=100", the_repr)
 
         async with eval(the_repr) as client_two:
+            await client_two.aconnect()
             self.assertEqual(client_two, client)
 
     async def test_getters(self):
@@ -1053,9 +1062,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertTrue(client._kill_cursors_executor._stopped)
 
     async def test_uri_connect_option(self):
-        # Ensure that topology is not opened if connect=False.
         client = await self.async_rs_client(connect=False)
-        self.assertFalse(client._topology._opened)
 
         # Ensure kill cursors thread has not been started.
         # _kill_cursors_executor is initialized upon client connection
@@ -1069,13 +1076,6 @@ class TestClient(AsyncIntegrationTest):
         else:
             kc_task = client._kill_cursors_executor._task
             self.assertTrue(kc_task and not kc_task.done())
-
-    async def test_close_does_not_open_servers(self):
-        client = await self.async_rs_client(connect=False)
-        topology = client._topology
-        self.assertEqual(topology._servers, {})
-        await client.close()
-        self.assertEqual(topology._servers, {})
 
     async def test_close_closes_sockets(self):
         client = await self.async_rs_client()
@@ -1620,10 +1620,11 @@ class TestClient(AsyncIntegrationTest):
         finally:
             ServerHeartbeatStartedEvent.__init__ = old_init  # type: ignore
 
-    def test_small_heartbeat_frequency_ms(self):
+    async def test_small_heartbeat_frequency_ms(self):
         uri = "mongodb://example/?heartbeatFrequencyMS=499"
         with self.assertRaises(ConfigurationError) as context:
-            AsyncMongoClient(uri)
+            client = AsyncMongoClient(uri)
+            await client.aconnect()
 
         self.assertIn("heartbeatFrequencyMS", str(context.exception))
 
@@ -1896,19 +1897,25 @@ class TestClient(AsyncIntegrationTest):
             srvServiceName="customname",
             connect=False,
         )
+        await client.aconnect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        await client.close()
         client = AsyncMongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc"
             "/?srvServiceName=shouldbeoverriden",
             srvServiceName="customname",
             connect=False,
         )
+        await client.aconnect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        await client.close()
         client = AsyncMongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc/?srvServiceName=customname",
             connect=False,
         )
+        await client.aconnect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        await client.close()
 
     async def test_srv_max_hosts_kwarg(self):
         client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/")
