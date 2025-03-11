@@ -1277,7 +1277,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 )
 
             for idx, expected_event in enumerate(events):
-                print(expected_event, actual_events[idx])
                 self.match_evaluator.match_event(expected_event, actual_events[idx])
 
             if has_server_connection_id:
@@ -1332,8 +1331,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 ignore_logs = client.get("ignoreMessages", [])
                 if ignore_logs:
                     actual_logs = self.process_ignore_messages(ignore_logs, actual_logs)
-                print(f"{ignore_logs=}")
-                print(f"{actual_logs=}")
 
                 if client.get("ignoreExtraMessages", False):
                     actual_logs = actual_logs[: len(client["messages"])]
@@ -1344,8 +1341,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 )
                 for expected_msg, actual_msg in zip(client["messages"], actual_logs):
                     expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
-                    print(f"{expected_data=}")
-                    print(f"{actual_data=}")
                     if "failureIsRedacted" in expected_msg:
                         self.assertIn("failure", actual_data)
                         should_redact = expected_msg.pop("failureIsRedacted")

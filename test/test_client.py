@@ -878,7 +878,6 @@ class TestClient(IntegrationTest):
             connect=False,
             document_class=SON,
         )
-        client._connect()
         the_repr = repr(client)
         self.assertIn("MongoClient(host=", the_repr)
         self.assertIn("document_class=bson.son.SON, tz_aware=False, connect=False, ", the_repr)
@@ -900,7 +899,6 @@ class TestClient(IntegrationTest):
             wtimeoutms=100,
             connect=False,
         )
-        client._connect()
         the_repr = repr(client)
         self.assertIn("MongoClient(host=", the_repr)
         self.assertIn("document_class=dict, tz_aware=False, connect=False, ", the_repr)
@@ -1580,8 +1578,7 @@ class TestClient(IntegrationTest):
     def test_small_heartbeat_frequency_ms(self):
         uri = "mongodb://example/?heartbeatFrequencyMS=499"
         with self.assertRaises(ConfigurationError) as context:
-            client = MongoClient(uri)
-            client._connect()
+            MongoClient(uri)
 
         self.assertIn("heartbeatFrequencyMS", str(context.exception))
 

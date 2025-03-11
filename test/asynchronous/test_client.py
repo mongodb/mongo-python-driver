@@ -903,7 +903,6 @@ class TestClient(AsyncIntegrationTest):
             connect=False,
             document_class=SON,
         )
-        await client.aconnect()
         the_repr = repr(client)
         self.assertIn("AsyncMongoClient(host=", the_repr)
         self.assertIn("document_class=bson.son.SON, tz_aware=False, connect=False, ", the_repr)
@@ -925,7 +924,6 @@ class TestClient(AsyncIntegrationTest):
             wtimeoutms=100,
             connect=False,
         )
-        await client.aconnect()
         the_repr = repr(client)
         self.assertIn("AsyncMongoClient(host=", the_repr)
         self.assertIn("document_class=dict, tz_aware=False, connect=False, ", the_repr)
@@ -1623,8 +1621,7 @@ class TestClient(AsyncIntegrationTest):
     async def test_small_heartbeat_frequency_ms(self):
         uri = "mongodb://example/?heartbeatFrequencyMS=499"
         with self.assertRaises(ConfigurationError) as context:
-            client = AsyncMongoClient(uri)
-            await client.aconnect()
+            AsyncMongoClient(uri)
 
         self.assertIn("heartbeatFrequencyMS", str(context.exception))
 

@@ -141,6 +141,7 @@ def create_test(test_case):
                     # Our test certs don't support the SRV hosts used in these
                     # tests.
                     copts["tlsAllowInvalidHostnames"] = True
+
                 client = self.simple_client(uri, **copts)
                 if client._options.connect:
                     client._connect()
