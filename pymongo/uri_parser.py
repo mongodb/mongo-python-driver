@@ -486,7 +486,7 @@ def parse_uri(
     """
     result = _validate_uri(uri, default_port, validate, warn, normalize, srv_max_hosts)
     result.update(
-        _lookup_uri(
+        _parse_srv(
             uri,
             default_port,
             validate,
@@ -586,6 +586,7 @@ def _validate_uri(
     _check_options(nodes, options)
 
     return {
+        "is_srv": is_srv,
         "nodelist": nodes,
         "username": user,
         "password": passwd,
@@ -596,7 +597,7 @@ def _validate_uri(
     }
 
 
-def _lookup_uri(
+def _parse_srv(
     uri: str,
     default_port: Optional[int] = DEFAULT_PORT,
     validate: bool = True,

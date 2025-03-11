@@ -763,9 +763,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # Parse options passed as kwargs.
         keyword_opts = common._CaseInsensitiveDictionary(kwargs)
         keyword_opts["document_class"] = doc_class
-        self._resolve_uri_info: dict[str, Any] = {"keyword_opts": keyword_opts}
+        self._resolve_srv_info: dict[str, Any] = {"keyword_opts": keyword_opts}
 
         seeds = set()
+        is_srv = False
         username = None
         password = None
         dbase = None
@@ -789,6 +790,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     srv_max_hosts=srv_max_hosts,
                 )
                 seeds.update(res["nodelist"])
+                is_srv = res["is_srv"] or is_srv
                 username = res["username"] or username
                 password = res["password"] or password
                 dbase = res["database"] or dbase
@@ -840,33 +842,33 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             options.write_concern,
             options.read_concern,
         )
-
-        # self._topology_settings = TopologySettings(
-        #     seeds=seeds,
-        #     replica_set_name=options.replica_set_name,
-        #     pool_class=pool_class,
-        #     pool_options=options.pool_options,
-        #     monitor_class=monitor_class,
-        #     condition_class=condition_class,
-        #     local_threshold_ms=options.local_threshold_ms,
-        #     server_selection_timeout=options.server_selection_timeout,
-        #     server_selector=options.server_selector,
-        #     heartbeat_frequency=options.heartbeat_frequency,
-        #     fqdn=fqdn,
-        #     direct_connection=options.direct_connection,
-        #     load_balanced=options.load_balanced,
-        #     srv_service_name=srv_service_name,
-        #     srv_max_hosts=srv_max_hosts,
-        #     server_monitoring_mode=options.server_monitoring_mode,
-        # )
-        #
-        # self._topology = Topology(self._topology_settings)
+        if not is_srv:
+            self._topology_settings = TopologySettings(
+                seeds=seeds,
+                replica_set_name=options.replica_set_name,
+                pool_class=pool_class,
+                pool_options=options.pool_options,
+                monitor_class=monitor_class,
+                condition_class=condition_class,
+                local_threshold_ms=options.local_threshold_ms,
+                server_selection_timeout=options.server_selection_timeout,
+                server_selector=options.server_selector,
+                heartbeat_frequency=options.heartbeat_frequency,
+                fqdn=fqdn,
+                direct_connection=options.direct_connection,
+                load_balanced=options.load_balanced,
+                srv_service_name=srv_service_name,
+                srv_max_hosts=srv_max_hosts,
+                server_monitoring_mode=options.server_monitoring_mode,
+            )
+            self._topology = Topology(self._topology_settings)
 
         self._opened = False
         self._closed = False
 
-        self._resolve_uri_info.update(
+        self._resolve_srv_info.update(
             {
+                "is_srv": is_srv,
                 "username": username,
                 "password": password,
                 "dbase": dbase,
@@ -882,8 +884,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._encrypter: Optional[_Encrypter] = None
         self._timeout = self._options.timeout
 
-    def _resolve_uri(self) -> None:
-        keyword_opts = self._resolve_uri_info["keyword_opts"]
+    def _resolve_srv(self) -> None:
+        keyword_opts = self._resolve_srv_info["keyword_opts"]
         seeds = set()
         opts = common._CaseInsensitiveDictionary()
         srv_service_name = keyword_opts.get("srvservicename")
@@ -899,7 +901,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     timeout = common.validate_timeout_or_none_or_zero(
                         keyword_opts.cased_key("connecttimeoutms"), timeout
                     )
-                res = uri_parser._lookup_uri(
+                res = uri_parser._parse_srv(
                     entity,
                     self._port,
                     validate=True,
@@ -943,10 +945,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             opts = self._normalize_and_validate_options(opts, seeds)
 
             # Username and password passed as kwargs override user info in URI.
-            username = opts.get("username", self._resolve_uri_info["username"])
-            password = opts.get("password", self._resolve_uri_info["password"])
+            username = opts.get("username", self._resolve_srv_info["username"])
+            password = opts.get("password", self._resolve_srv_info["password"])
             self._options = ClientOptions(
-                username, password, self._resolve_uri_info["dbase"], opts, _IS_SYNC
+                username, password, self._resolve_srv_info["dbase"], opts, _IS_SYNC
             )
 
             self._event_listeners = self._options.pool_options._event_listeners
@@ -960,22 +962,21 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._topology_settings = TopologySettings(
                 seeds=seeds,
                 replica_set_name=self._options.replica_set_name,
-                pool_class=self._resolve_uri_info["pool_class"],
+                pool_class=self._resolve_srv_info["pool_class"],
                 pool_options=self._options.pool_options,
-                monitor_class=self._resolve_uri_info["monitor_class"],
-                condition_class=self._resolve_uri_info["condition_class"],
+                monitor_class=self._resolve_srv_info["monitor_class"],
+                condition_class=self._resolve_srv_info["condition_class"],
                 local_threshold_ms=self._options.local_threshold_ms,
                 server_selection_timeout=self._options.server_selection_timeout,
                 server_selector=self._options.server_selector,
                 heartbeat_frequency=self._options.heartbeat_frequency,
-                fqdn=self._resolve_uri_info["fqdn"],
+                fqdn=self._resolve_srv_info["fqdn"],
                 direct_connection=self._options.direct_connection,
                 load_balanced=self._options.load_balanced,
                 srv_service_name=srv_service_name,
                 srv_max_hosts=srv_max_hosts,
                 server_monitoring_mode=self._options.server_monitoring_mode,
             )
-
             self._topology = Topology(self._topology_settings)
 
             if self._options.auto_encryption_opts:
@@ -1709,7 +1710,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         launches the connection process in the background.
         """
         if not self._opened:
-            self._resolve_uri()
+            if self._resolve_srv_info["is_srv"]:
+                self._resolve_srv()
             self._init_background()
             await self._topology.open()
             async with self._lock:

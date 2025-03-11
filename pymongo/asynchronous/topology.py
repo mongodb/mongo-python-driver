@@ -567,7 +567,6 @@ class Topology:
         if td_old.topology_type not in SRV_POLLING_TOPOLOGIES:
             return
         self._description = _updated_topology_description_srv_polling(self._description, seedlist)
-
         await self._update_servers()
 
         if self._publish_tp:
@@ -983,7 +982,6 @@ class Topology:
             pause_enabled=False,
             server_api=options.server_api,
         )
-
         return self._settings.pool_class(
             address, monitor_pool_options, handshake=False, client_id=self._topology_id
         )
