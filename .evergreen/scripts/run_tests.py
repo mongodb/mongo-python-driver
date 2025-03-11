@@ -113,7 +113,6 @@ def run() -> None:
         return
 
     # Run remote oidc tests.
-    print("HI HI", SUB_TEST_NAME)  # noqa: T201
     if (
         TEST_NAME == "auth_oidc"
         and SUB_TEST_NAME != "test"
