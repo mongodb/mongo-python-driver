@@ -606,59 +606,6 @@ def _lookup_uri(
     srv_service_name: Optional[str] = None,
     srv_max_hosts: Optional[int] = None,
 ) -> dict[str, Any]:
-    """Parse and validate a MongoDB URI.
-
-    Returns a dict of the form::
-
-        {
-            'nodelist': <list of (host, port) tuples>,
-            'username': <username> or None,
-            'password': <password> or None,
-            'database': <database name> or None,
-            'collection': <collection name> or None,
-            'options': <dict of MongoDB URI options>,
-            'fqdn': <fqdn of the MongoDB+SRV URI> or None
-        }
-
-    If the URI scheme is "mongodb+srv://" DNS SRV and TXT lookups will be done
-    to build nodelist and options.
-
-    :param uri: The MongoDB URI to parse.
-    :param default_port: The port number to use when one wasn't specified
-          for a host in the URI.
-    :param validate: If ``True`` (the default), validate and
-          normalize all options. Default: ``True``.
-    :param warn: When validating, if ``True`` then will warn
-          the user then ignore any invalid options or values. If ``False``,
-          validation will error when options are unsupported or values are
-          invalid. Default: ``False``.
-    :param normalize: If ``True``, convert names of URI options
-          to their internally-used names. Default: ``True``.
-    :param connect_timeout: The maximum time in milliseconds to
-          wait for a response from the DNS server.
-    :param srv_service_name: A custom SRV service name
-
-    .. versionchanged:: 4.6
-       The delimiting slash (``/``) between hosts and connection options is now optional.
-       For example, "mongodb://example.com?tls=true" is now a valid URI.
-
-    .. versionchanged:: 4.0
-       To better follow RFC 3986, unquoted percent signs ("%") are no longer
-       supported.
-
-    .. versionchanged:: 3.9
-        Added the ``normalize`` parameter.
-
-    .. versionchanged:: 3.6
-        Added support for mongodb+srv:// URIs.
-
-    .. versionchanged:: 3.5
-        Return the original value of the ``readPreference`` MongoDB URI option
-        instead of the validated read preference mode.
-
-    .. versionchanged:: 3.1
-        ``warn`` added so invalid options can be ignored.
-    """
     if uri.startswith(SCHEME):
         is_srv = False
         scheme_free = uri[SCHEME_LEN:]
