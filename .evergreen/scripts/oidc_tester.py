@@ -27,7 +27,7 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
     env = os.environ.copy()
     if sub_test_name == "azure":
         env["AZUREOIDC_VMNAME_PREFIX"] = "PYTHON_DRIVER"
-    elif "-remote" not in sub_test_name:
+    if "-remote" not in sub_test_name:
         run_command(f"bash {target_dir}/setup.sh", env=env)
     if sub_test_name in K8S_NAMES:
         run_command(f"bash {target_dir}/setup-pod.sh {sub_test_name}")
