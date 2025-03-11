@@ -687,3 +687,19 @@ def create_async_event():
 
 def create_event():
     return threading.Event()
+
+
+def async_create_barrier(n_tasks: int):
+    return asyncio.Barrier(n_tasks)
+
+
+def create_barrier(n_tasks: int, timeout: float | None = None):
+    return threading.Barrier(n_tasks, timeout=timeout)
+
+
+async def async_barrier_wait(barrier, timeout: float | None = None):
+    await asyncio.wait_for(barrier.wait(), timeout=timeout)
+
+
+def barrier_wait(barrier, timeout: float | None = None):
+    barrier.wait(timeout=timeout)

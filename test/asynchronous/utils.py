@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import random
+import threading  # Used in the synchronized version of this file
 import time
 from asyncio import iscoroutinefunction
 

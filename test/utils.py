@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import random
+import threading  # Used in the synchronized version of this file
 import time
 from asyncio import iscoroutinefunction
 
@@ -206,21 +207,3 @@ class MockPool:
 
     def remove_stale_sockets(self, *args, **kwargs):
         pass
-def create_event():
-    return threading.Event()
-
-
-def async_create_barrier(N_TASKS, timeout: float | None = None):
-    return asyncio.Barrier(N_TASKS)
-
-
-def create_barrier(N_TASKS, timeout: float | None = None):
-    return threading.Barrier(N_TASKS, timeout=timeout)
-
-
-async def async_barrier_wait(barrier, timeout: float | None = None):
-    await asyncio.wait_for(barrier.wait(), timeout=timeout)
-
-
-def barrier_wait(barrier, timeout: float | None = None):
-    barrier.wait()
