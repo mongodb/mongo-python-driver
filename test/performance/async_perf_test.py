@@ -210,19 +210,24 @@ class TestRunCommand(PerformanceTest, AsyncPyMongoTestCase):
 
     async def do_task(self):
         command = self.client.perftest.command
-        await asyncio.gather(*[command("hello", True) for _ in range(NUM_DOCS)])
+        for _ in range(NUM_DOCS):
+            await command("hello", True)
 
 
 class TestRunCommand8Tasks(TestRunCommand):
     n_tasks = 8
 
+    async def do_task(self):
+        command = self.client.perftest.command
+        await asyncio.gather(*[command("hello", True) for _ in range(NUM_DOCS)])
+
 
 class TestRunCommand80Tasks(TestRunCommand):
     n_tasks = 80
 
-
-# class TestRunCommand800Tasks(TestRunCommand):
-#     n_tasks = 800
+    async def do_task(self):
+        command = self.client.perftest.command
+        await asyncio.gather(*[command("hello", True) for _ in range(NUM_DOCS)])
 
 
 class TestDocument(PerformanceTest):
@@ -269,19 +274,24 @@ class FindTest(TestDocument):
 class TestFindOneByID(FindTest, AsyncPyMongoTestCase):
     async def do_task(self):
         find_one = self.corpus.find_one
-        await asyncio.gather(*[find_one({"_id": _id}) for _id in self.inserted_ids])
+        for _id in range(self.inserted_ids):
+            await find_one({"_id": _id})
 
 
 class TestFindOneByID8Tasks(TestFindOneByID):
     n_tasks = 8
 
+    async def do_task(self):
+        find_one = self.corpus.find_one
+        await asyncio.gather(*[find_one({"_id": _id}) for _id in self.inserted_ids])
+
 
 class TestFindOneByID80Tasks(TestFindOneByID):
     n_tasks = 80
 
-
-# class TestFindOneByID800Tasks(TestFindOneByID):
-#     n_tasks = 800
+    async def do_task(self):
+        find_one = self.corpus.find_one
+        await asyncio.gather(*[find_one({"_id": _id}) for _id in self.inserted_ids])
 
 
 class SmallDocInsertTest(TestDocument):
@@ -336,10 +346,6 @@ class TestFindManyAndEmptyCursor8Tasks(TestFindManyAndEmptyCursor):
 
 class TestFindManyAndEmptyCursor80Tasks(TestFindManyAndEmptyCursor):
     n_tasks = 80
-
-
-# class TestFindManyAndEmptyCursor800Tasks(TestFindManyAndEmptyCursor):
-#     n_tasks = 800
 
 
 class TestSmallDocBulkInsert(SmallDocInsertTest, AsyncPyMongoTestCase):
