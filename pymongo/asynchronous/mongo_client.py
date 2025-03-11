@@ -762,6 +762,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # Parse options passed as kwargs.
         keyword_opts = common._CaseInsensitiveDictionary(kwargs)
         keyword_opts["document_class"] = doc_class
+        self._resolve_uri_info = {"keyword_opts": keyword_opts}
 
         seeds = set()
         username = None
@@ -814,25 +815,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         keyword_opts["tz_aware"] = tz_aware
         keyword_opts["connect"] = connect
 
-        # Handle deprecated options in kwarg options.
-        keyword_opts = _handle_option_deprecations(keyword_opts)
-        # Validate kwarg options.
-        keyword_opts = common._CaseInsensitiveDictionary(
-            dict(common.validate(keyword_opts.cased_key(k), v) for k, v in keyword_opts.items())
-        )
-
-        # Override connection string options with kwarg options.
-        opts.update(keyword_opts)
+        opts = self._validate_kwargs_and_update_opts(keyword_opts, opts)
 
         if srv_service_name is None:
             srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
 
         srv_max_hosts = srv_max_hosts or opts.get("srvmaxhosts")
-        # Handle security-option conflicts in combined options.
-        opts = _handle_security_options(opts)
-        # Normalize combined options.
-        opts = _normalize_options(opts)
-        _check_options(seeds, opts)
+        opts = self._normalize_and_validate_options(opts, seeds)
 
         # Username and password passed as kwargs override user info in URI.
         self._options = options = ClientOptions(username, password, dbase, opts, _IS_SYNC)
@@ -872,15 +861,17 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._closed = False
         self._init_background()
 
-        self._for_resolve_uri = {
-            "username": username,
-            "password": password,
-            "dbase": dbase,
-            "fqdn": fqdn,
-            "pool_class": pool_class,
-            "monitor_class": monitor_class,
-            "condition_class": condition_class,
-        }
+        self._resolve_uri_info.update(
+            {
+                "username": username,
+                "password": password,
+                "dbase": dbase,
+                "fqdn": fqdn,
+                "pool_class": pool_class,
+                "monitor_class": monitor_class,
+                "condition_class": condition_class,
+            }
+        )
         if _IS_SYNC and connect:
             self._get_topology()  # type: ignore[unused-coroutine]
 
@@ -896,17 +887,16 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             AsyncMongoClient._clients[self._topology._topology_id] = self
 
+    def _normalize_and_validate_options(self, opts, seeds):
+        # Handle security-option conflicts in combined options.
+        opts = _handle_security_options(opts)
+        # Normalize combined options.
+        opts = _normalize_options(opts)
+        _check_options(seeds, opts)
+        return opts
+
     def _resolve_uri(self):
-        keyword_opts = common._CaseInsensitiveDictionary(self._init_kwargs)
-        for i in [
-            "_pool_class",
-            "_monitor_class",
-            "_condition_class",
-            "host",
-            "port",
-            "type_registry",
-        ]:
-            keyword_opts.pop(i, None)
+        keyword_opts = self._resolve_uri_info["keyword_opts"]
         seeds = set()
         opts = common._CaseInsensitiveDictionary()
         srv_service_name = keyword_opts.get("srvservicename")
@@ -957,31 +947,19 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             keyword_opts["tz_aware"] = tz_aware
             keyword_opts["connect"] = connect
 
-            # Handle deprecated options in kwarg options.
-            keyword_opts = _handle_option_deprecations(keyword_opts)
-            # Validate kwarg options.
-            keyword_opts = common._CaseInsensitiveDictionary(
-                dict(common.validate(keyword_opts.cased_key(k), v) for k, v in keyword_opts.items())
-            )
-
-            # Override connection string options with kwarg options.
-            opts.update(keyword_opts)
+            opts = self._validate_kwargs_and_update_opts(keyword_opts, opts)
 
             if srv_service_name is None:
                 srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
 
             srv_max_hosts = srv_max_hosts or opts.get("srvmaxhosts")
-            # Handle security-option conflicts in combined options.
-            opts = _handle_security_options(opts)
-            # Normalize combined options.
-            opts = _normalize_options(opts)
-            _check_options(seeds, opts)
+            opts = self._normalize_and_validate_opts(opts, seeds)
 
             # Username and password passed as kwargs override user info in URI.
-            username = opts.get("username", self._for_resolve_uri["username"])
-            password = opts.get("password", self._for_resolve_uri["password"])
+            username = opts.get("username", self._resolve_uri_info["username"])
+            password = opts.get("password", self._resolve_uri_info["password"])
             self._options = ClientOptions(
-                username, password, self._for_resolve_uri["dbase"], opts, _IS_SYNC
+                username, password, self._resolve_uri_info["dbase"], opts, _IS_SYNC
             )
 
             self._event_listeners = self._options.pool_options._event_listeners
@@ -995,15 +973,15 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._topology_settings = TopologySettings(
                 seeds=seeds,
                 replica_set_name=self._options.replica_set_name,
-                pool_class=self._for_resolve_uri["pool_class"],
+                pool_class=self._resolve_uri_info["pool_class"],
                 pool_options=self._options.pool_options,
-                monitor_class=self._for_resolve_uri["monitor_class"],
-                condition_class=self._for_resolve_uri["condition_class"],
+                monitor_class=self._resolve_uri_info["monitor_class"],
+                condition_class=self._resolve_uri_info["condition_class"],
                 local_threshold_ms=self._options.local_threshold_ms,
                 server_selection_timeout=self._options.server_selection_timeout,
                 server_selector=self._options.server_selector,
                 heartbeat_frequency=self._options.heartbeat_frequency,
-                fqdn=self._for_resolve_uri["fqdn"],
+                fqdn=self._resolve_uri_info["fqdn"],
                 direct_connection=self._options.direct_connection,
                 load_balanced=self._options.load_balanced,
                 srv_service_name=srv_service_name,
@@ -1012,6 +990,25 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             )
 
             self._topology = Topology(self._topology_settings)
+
+    def _normalize_and_validate_opts(self, opts, seeds):
+        # Handle security-option conflicts in combined options.
+        opts = _handle_security_options(opts)
+        # Normalize combined options.
+        opts = _normalize_options(opts)
+        _check_options(seeds, opts)
+        return opts
+
+    def _validate_kwargs_and_update_opts(self, keyword_opts, opts):
+        # Handle deprecated options in kwarg options.
+        keyword_opts = _handle_option_deprecations(keyword_opts)
+        # Validate kwarg options.
+        keyword_opts = common._CaseInsensitiveDictionary(
+            dict(common.validate(keyword_opts.cased_key(k), v) for k, v in keyword_opts.items())
+        )
+        # Override connection string options with kwarg options.
+        opts.update(keyword_opts)
+        return opts
 
     async def aconnect(self) -> None:
         """Explicitly connect to MongoDB asynchronously instead of on the first operation."""
