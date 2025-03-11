@@ -57,7 +57,7 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
     return config
 
 
-def test_oidc_remote(sub_test_name: str) -> None:
+def test_oidc_send_to_remote(sub_test_name: str) -> None:
     env = os.environ.copy()
     target_dir = _get_target_dir(sub_test_name)
     create_archive()

@@ -109,7 +109,7 @@ def setup_kms(sub_test_name: str) -> None:
         write_env("KEY_VAULT_ENDPOINT", config["AZUREKMS_KEYVAULTENDPOINT"])
 
 
-def test_kms_remote(sub_test_name: str) -> None:
+def test_kms_send_to_remote(sub_test_name: str) -> None:
     env = _load_kms_config(sub_test_name)
     if sub_test_name == "azure":
         key_name = os.environ["KEY_NAME"]
