@@ -25,7 +25,7 @@ elif TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
     teardown_kms(SUB_TEST_NAME)
 
 # Tear down OIDC if applicable.
-elif TEST_NAME == "oidc":
+elif TEST_NAME == "auth_oidc":
     from oidc_tester import teardown_oidc
 
     teardown_oidc(SUB_TEST_NAME)
