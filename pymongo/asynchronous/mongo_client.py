@@ -859,9 +859,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             server_monitoring_mode=options.server_monitoring_mode,
         )
 
+        self._topology = Topology(self._topology_settings)
+
         self._opened = False
         self._closed = False
-        self._init_background()
 
         self._resolve_uri_info.update(
             {
@@ -878,16 +879,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._get_topology()  # type: ignore[unused-coroutine]
 
         self._encrypter = None
-        if self._options.auto_encryption_opts:
-            from pymongo.asynchronous.encryption import _Encrypter
-
-            self._encrypter = _Encrypter(self, self._options.auto_encryption_opts)
         self._timeout = self._options.timeout
-
-        if _HAS_REGISTER_AT_FORK:
-            # Add this client to the list of weakly referenced items.
-            # This will be used later if we fork.
-            AsyncMongoClient._clients[self._topology._topology_id] = self
 
     def _resolve_uri(self) -> None:
         keyword_opts = self._resolve_uri_info["keyword_opts"]
@@ -984,6 +976,17 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             )
 
             self._topology = Topology(self._topology_settings)
+
+            if self._options.auto_encryption_opts:
+                from pymongo.asynchronous.encryption import _Encrypter
+
+                self._encrypter = _Encrypter(self, self._options.auto_encryption_opts)
+            self._timeout = self._options.timeout
+
+            if _HAS_REGISTER_AT_FORK:
+                # Add this client to the list of weakly referenced items.
+                # This will be used later if we fork.
+                AsyncMongoClient._clients[self._topology._topology_id] = self
 
     def _normalize_and_validate_options(
         self, opts: common._CaseInsensitiveDictionary, seeds: set[tuple[str, int | None]]
@@ -1672,19 +1675,20 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             await self._end_sessions(session_ids)
         # Stop the periodic task thread and then send pending killCursor
         # requests before closing the topology.
-        self._kill_cursors_executor.close()
-        await self._process_kill_cursors()
-        await self._topology.close()
-        if self._encrypter:
-            # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
-            await self._encrypter.close()
-        self._closed = True
-        if not _IS_SYNC:
-            await asyncio.gather(
-                self._topology.cleanup_monitors(),  # type: ignore[func-returns-value]
-                self._kill_cursors_executor.join(),  # type: ignore[func-returns-value]
-                return_exceptions=True,
-            )
+        if self._opened:
+            self._kill_cursors_executor.close()
+            await self._process_kill_cursors()
+            await self._topology.close()
+            if self._encrypter:
+                # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
+                await self._encrypter.close()
+            self._closed = True
+            if not _IS_SYNC:
+                await asyncio.gather(
+                    self._topology.cleanup_monitors(),  # type: ignore[func-returns-value]
+                    self._kill_cursors_executor.join(),  # type: ignore[func-returns-value]
+                    return_exceptions=True,
+                )
 
     if not _IS_SYNC:
         # Add support for contextlib.aclosing.
@@ -1698,6 +1702,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         if not self._opened:
             self._resolve_uri()
+            self._init_background()
             await self._topology.open()
             async with self._lock:
                 self._kill_cursors_executor.open()
