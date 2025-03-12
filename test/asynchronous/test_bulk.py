@@ -24,7 +24,7 @@ from pymongo.asynchronous.mongo_client import AsyncMongoClient
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, remove_all_users, unittest
-from test.utils import async_wait_until
+from test.utils_shared import async_wait_until
 
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions

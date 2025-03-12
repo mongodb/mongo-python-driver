@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.unified_format import generate_test_classes
-from test.utils import OvertCommandListener
+from test.utils_shared import OvertCommandListener
 
 from pymongo import DESCENDING
 from pymongo.asynchronous.mongo_client import AsyncMongoClient

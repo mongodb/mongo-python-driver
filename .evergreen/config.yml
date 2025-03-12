@@ -201,17 +201,17 @@ functions:
       params:
         file: "src/xunit-results/TEST-*.xml"
 
-  "bootstrap mongo-orchestration":
+  "run server":
     - command: subprocess.exec
       params:
         binary: bash
-        include_expansions_in_env: [VERSION, TOPOLOGY, AUTH, SSL, ORCHESTRATION_FILE, LOAD_BALANCER,
-          STORAGE_ENGINE, REQUIRE_API_VERSION, DRIVERS_TOOLS, TEST_CRYPT_SHARED]
-        args:
-          - src/.evergreen/scripts/bootstrap-mongo-orchestration.sh
+        working_dir: "src"
+        include_expansions_in_env: [VERSION, TOPOLOGY, AUTH, SSL, ORCHESTRATION_FILE, PYTHON_BINARY,
+          STORAGE_ENGINE, REQUIRE_API_VERSION, DRIVERS_TOOLS, TEST_CRYPT_SHARED, AUTH_AWS, LOAD_BALANCER]
+        args: [.evergreen/just.sh, run-server, "${TEST_NAME}"]
     - command: expansions.update
       params:
-        file: mo-expansion.yml
+        file: ${DRIVERS_TOOLS}/mo-expansion.yml
 
   "bootstrap data lake":
     - command: subprocess.exec
@@ -226,13 +226,6 @@ functions:
         binary: bash
         args:
           - ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
-
-  "stop mongo-orchestration":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
   "run mod_wsgi tests":
     - command: subprocess.exec
@@ -262,7 +255,8 @@ functions:
       params:
         include_expansions_in_env: [AUTH, SSL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
           AWS_SESSION_TOKEN, COVERAGE, PYTHON_BINARY, LIBMONGOCRYPT_URL, MONGODB_URI,
-          DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION, DEBUG_LOG]
+          DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION, DEBUG_LOG,
+          ORCHESTRATION_FILE, OCSP_SERVER_TYPE]
         binary: bash
         working_dir: "src"
         args: [.evergreen/just.sh, setup-tests, "${TEST_NAME}", "${SUB_TEST_NAME}"]
@@ -295,100 +289,6 @@ functions:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-atlas-tests.sh
 
-  "get aws auth secrets":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-        binary: bash
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/auth_aws/setup-secrets.sh
-
-  "run aws auth test with regular aws credentials":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - regular
-
-  "run aws auth test with assume role credentials":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - assume-role
-
-  "run aws auth test with aws EC2 credentials":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - ec2
-
-  "run aws auth test with aws web identity credentials":
-    - # Test with and without AWS_ROLE_SESSION_NAME set.
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - web-identity
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: [ "DRIVERS_TOOLS", "skip_EC2_auth_test" ]
-        binary: bash
-        working_dir: "src"
-        env:
-          AWS_ROLE_SESSION_NAME: test
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - web-identity
-
-  "run aws auth test with aws credentials as environment variables":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - env-creds
-
-  "run aws auth test with aws credentials and session token as environment variables":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["DRIVERS_TOOLS", "skip_EC2_auth_test"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mongodb-aws-test.sh
-          - session-creds
-
   "run oidc auth test with test credentials":
     - command: subprocess.exec
       type: test
@@ -411,16 +311,6 @@ functions:
         args:
           - ${PROJECT_DIRECTORY}/.evergreen/run-mongodb-oidc-remote-test.sh
 
-  "run aws ECS auth test":
-    - command: subprocess.exec
-      type: test
-      params:
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-aws-ecs-auth-test.sh
-
   "cleanup":
     - command: subprocess.exec
       params:
@@ -431,19 +321,6 @@ functions:
           - .evergreen/scripts/cleanup.sh
 
   "teardown system":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        working_dir: "src"
-        args:
-          # Ensure the instance profile is reassigned for aws tests.
-          - ${DRIVERS_TOOLS}/.evergreen/auth_aws/teardown.sh
-    - command: subprocess.exec
-      params:
-        binary: bash
-        working_dir: "src"
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh
     - command: subprocess.exec
       params:
           binary: bash
@@ -474,26 +351,6 @@ functions:
     - command: expansions.update
       params:
         file: atlas-expansion.yml
-
-  "run-ocsp-test":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: ["OCSP_ALGORITHM", "OCSP_TLS_SHOULD_SUCCEED", "PYTHON_BINARY"]
-        binary: bash
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-ocsp-test.sh
-
-  "run-ocsp-server":
-    - command: subprocess.exec
-      params:
-        background: true
-        binary: bash
-        include_expansions_in_env: [SERVER_TYPE, OCSP_ALGORITHM]
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh
 
   "teardown atlas":
     - command: subprocess.exec
@@ -534,7 +391,6 @@ post:
   - func: "upload coverage"
   - func: "upload mo artifacts"
   - func: "upload test results"
-  - func: "stop mongo-orchestration"
   - func: "cleanup"
 
 task_groups:
@@ -698,10 +554,7 @@ tasks:
     - name: "doctests"
       tags: ["doctests"]
       commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "latest"
-            TOPOLOGY: "server"
+        - func: "run server"
         - func: "run doctests"
 
     - name: "test-serverless"
@@ -714,16 +567,13 @@ tasks:
     - name: "test-enterprise-auth"
       tags: ["enterprise-auth"]
       commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "latest"
-            TOPOLOGY: "server"
+        - func: "run server"
         - func: "assume ec2 role"
         - func: "run enterprise auth tests"
 
     - name: "test-search-index-helpers"
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run server"
           vars:
             VERSION: "6.0"
             TOPOLOGY: "replica_set"
@@ -735,28 +585,23 @@ tasks:
     - name: "mod-wsgi-standalone"
       tags: ["mod_wsgi"]
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run server"
           vars:
-            VERSION: "latest"
             TOPOLOGY: "server"
         - func: "run mod_wsgi tests"
 
     - name: "mod-wsgi-replica-set"
       tags: ["mod_wsgi"]
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run server"
           vars:
-            VERSION: "latest"
             TOPOLOGY: "replica_set"
         - func: "run mod_wsgi tests"
 
     - name: "mod-wsgi-embedded-mode-standalone"
       tags: ["mod_wsgi"]
       commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "latest"
-            TOPOLOGY: "server"
+        - func: "run server"
         - func: "run mod_wsgi tests"
           vars:
             MOD_WSGI_EMBEDDED: "1"
@@ -764,9 +609,8 @@ tasks:
     - name: "mod-wsgi-embedded-mode-replica-set"
       tags: ["mod_wsgi"]
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run server"
           vars:
-            VERSION: "latest"
             TOPOLOGY: "replica_set"
         - func: "run mod_wsgi tests"
           vars:
@@ -780,7 +624,7 @@ tasks:
     - name: "free-threading"
       tags: ["free-threading"]
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run server"
           vars:
             VERSION: "8.0"
             TOPOLOGY: "replica_set"
@@ -814,476 +658,6 @@ tasks:
               - .evergreen/run-deployed-lambda-aws-tests.sh
             env:
               TEST_LAMBDA_DIRECTORY: ${PROJECT_DIRECTORY}/test/lambda
-
-    - name: test-ocsp-rsa-valid-cert-server-staples
-      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: "valid"
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-rsa-invalid-cert-server-staples
-      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: "revoked"
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-valid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: valid
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-rsa-invalid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: revoked
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-soft-fail
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-rsa-malicious-invalid-cert-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: revoked
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-malicious-no-responder-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-delegate-valid-cert-server-staples
-      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: valid-delegate
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-rsa-delegate-invalid-cert-server-staples
-      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: revoked-delegate
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: valid-delegate
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: revoked-delegate
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-rsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-rsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            SERVER_TYPE: revoked-delegate
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "rsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-valid-cert-server-staples
-      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: valid
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-ecdsa-invalid-cert-server-staples
-      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: revoked
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: valid
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: revoked
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-soft-fail
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-ecdsa-malicious-invalid-cert-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: revoked
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-malicious-no-responder-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples
-      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: valid-delegate
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples
-      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: revoked-delegate
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: valid-delegate
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "true"
-
-    - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: revoked-delegate
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
-      tags: ["ocsp", "ocsp-ecdsa"]
-      commands:
-        - func: run-ocsp-server
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            SERVER_TYPE: valid-delegate
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-        - func: run-ocsp-test
-          vars:
-            OCSP_ALGORITHM: "ecdsa"
-            OCSP_TLS_SHOULD_SUCCEED: "false"
-
-    - name: "aws-auth-test-4.4"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "4.4"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-5.0"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "5.0"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-6.0"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "6.0"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-7.0"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "7.0"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-8.0"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "8.0"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-rapid"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "rapid"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
-
-    - name: "aws-auth-test-latest"
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-aws.json"
-            TOPOLOGY: "server"
-            VERSION: "latest"
-        - func: "assume ec2 role"
-        - func: "get aws auth secrets"
-        - func: "run aws auth test with regular aws credentials"
-        - func: "run aws auth test with assume role credentials"
-        - func: "run aws auth test with aws credentials as environment variables"
-        - func: "run aws auth test with aws credentials and session token as environment variables"
-        - func: "run aws auth test with aws EC2 credentials"
-        - func: "run aws auth test with aws web identity credentials"
-        - func: "run aws ECS auth test"
 
     - name: "oidc-auth-test"
       commands:
@@ -1352,10 +726,9 @@ tasks:
     - name: "perf-6.0-standalone"
       tags: ["perf"]
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run server"
           vars:
             VERSION: "v6.0-perf"
-            TOPOLOGY: "server"
         - func: "run perf tests"
         - func: "attach benchmark test results"
         - func: "send dashboard data"
@@ -1363,10 +736,9 @@ tasks:
     - name: "perf-6.0-standalone-ssl"
       tags: ["perf"]
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run server"
           vars:
             VERSION: "v6.0-perf"
-            TOPOLOGY: "server"
             SSL: "ssl"
         - func: "run perf tests"
         - func: "attach benchmark test results"
@@ -1375,10 +747,9 @@ tasks:
     - name: "perf-8.0-standalone"
       tags: ["perf"]
       commands:
-        - func: "bootstrap mongo-orchestration"
+        - func: "run server"
           vars:
             VERSION: "8.0"
-            TOPOLOGY: "server"
         - func: "run perf tests"
         - func: "attach benchmark test results"
         - func: "send dashboard data"

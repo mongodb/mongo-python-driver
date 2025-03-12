@@ -60,14 +60,16 @@ from test.asynchronous import (
     unittest,
 )
 from test.asynchronous.pymongo_mocks import AsyncMockClient
-from test.test_binary import BinaryData
-from test.utils import (
-    NTHREADS,
-    CMAPListener,
-    FunctionCallRecorder,
+from test.asynchronous.utils import (
     async_get_pool,
     async_wait_until,
     asyncAssertRaisesExactly,
+)
+from test.test_binary import BinaryData
+from test.utils_shared import (
+    NTHREADS,
+    CMAPListener,
+    FunctionCallRecorder,
     delay,
     gevent_monkey_patched,
     is_greenthread_patched,
@@ -1789,6 +1791,29 @@ class TestClient(AsyncIntegrationTest):
             # Each ping command should not take more than 2 seconds
             self.assertLess(total, 2)
 
+    async def test_background_connections_log_on_error(self):
+        with self.assertLogs("pymongo.client", level="ERROR") as cm:
+            client = await self.async_rs_or_single_client(minPoolSize=1)
+            # Create a single connection in the pool.
+            await client.admin.command("ping")
+
+            # Cause new connections to fail.
+            pool = await async_get_pool(client)
+
+            async def fail_connect(*args, **kwargs):
+                raise Exception("failed to connect")
+
+            pool.connect = fail_connect
+            # Un-patch Pool.connect to break the cyclic reference.
+            self.addCleanup(delattr, pool, "connect")
+
+            await pool.reset_without_pause()
+
+            await async_wait_until(
+                lambda: "failed to connect" in "".join(cm.output), "start creating connections"
+            )
+            self.assertIn("MongoClient background task encountered an error", "".join(cm.output))
+
     @async_client_context.require_replica_set
     async def test_direct_connection(self):
         # direct_connection=True should result in Single topology.
@@ -1823,20 +1848,20 @@ class TestClient(AsyncIntegrationTest):
             return i
 
         gc.collect()
-        with client_knobs(min_heartbeat_interval=0.003):
+        with client_knobs(min_heartbeat_interval=0.002):
             client = self.simple_client(
-                "invalid:27017", heartbeatFrequencyMS=3, serverSelectionTimeoutMS=150
+                "invalid:27017", heartbeatFrequencyMS=2, serverSelectionTimeoutMS=200
             )
             initial_count = server_description_count()
             with self.assertRaises(ServerSelectionTimeoutError):
                 await client.test.test.find_one()
             gc.collect()
             final_count = server_description_count()
+            await client.close()
             # If a bug like PYTHON-2433 is reintroduced then too many
             # ServerDescriptions will be kept alive and this test will fail:
-            # AssertionError: 19 != 46 within 15 delta (27 difference)
-            # On Python 3.11 we seem to get more of a delta.
-            self.assertAlmostEqual(initial_count, final_count, delta=20)
+            # AssertionError: 11 != 47 within 20 delta (36 difference)
+            self.assertAlmostEqual(initial_count, final_count, delta=30)
 
     @async_client_context.require_failCommand_fail_point
     async def test_network_error_message(self):

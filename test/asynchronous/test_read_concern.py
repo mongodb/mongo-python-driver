@@ -21,7 +21,7 @@ import unittest
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context
-from test.utils import OvertCommandListener
+from test.utils_shared import OvertCommandListener
 
 from bson.son import SON
 from pymongo.errors import OperationFailure

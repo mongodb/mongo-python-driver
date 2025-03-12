@@ -124,7 +124,7 @@ filterwarnings = [
     # https://github.com/eventlet/eventlet/issues/818
     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314
-    "module:datetime.datetime.utc:DeprecationWarning:dateutil",
+    "module:datetime.datetime.utc:DeprecationWarning",
 ]
 markers = [
     "auth_aws: tests that rely on pymongo-auth-aws",

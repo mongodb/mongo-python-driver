@@ -20,6 +20,7 @@ import copy
 import pprint
 import sys
 import threading
+from test.asynchronous.utils import async_set_fail_point
 
 sys.path[0:0] = [""]
 
@@ -30,12 +31,11 @@ from test.asynchronous import (
     unittest,
 )
 from test.asynchronous.helpers import client_knobs
-from test.utils import (
+from test.utils_shared import (
     CMAPListener,
     DeprecationFilter,
     EventListener,
     OvertCommandListener,
-    async_set_fail_point,
 )
 from test.version import Version
 

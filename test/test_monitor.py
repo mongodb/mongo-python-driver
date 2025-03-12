@@ -26,9 +26,9 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, connected, unittest
 from test.utils import (
-    ServerAndTopologyEventListener,
     wait_until,
 )
+from test.utils_shared import ServerAndTopologyEventListener
 
 from pymongo.periodic_executor import _EXECUTORS
 

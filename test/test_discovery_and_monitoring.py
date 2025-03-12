@@ -26,25 +26,32 @@ from test.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, PyMongoTestCase, UnitTest, unittest
+from test import (
+    IntegrationTest,
+    PyMongoTestCase,
+    UnitTest,
+    client_context,
+    unittest,
+)
 from test.pymongo_mocks import DummyMonitor
 from test.unified_format import generate_test_classes
 from test.utils import (
+    get_pool,
+)
+from test.utils_shared import (
     CMAPListener,
     HeartbeatEventListener,
     HeartbeatEventsListListener,
     assertion_context,
     barrier_wait,
-    client_context,
     create_barrier,
-    get_pool,
     server_name_to_type,
     wait_until,
 )
 from unittest.mock import patch
 
 from bson import Timestamp, json_util
-from pymongo import MongoClient, common, monitoring
+from pymongo import common, monitoring
 from pymongo.errors import (
     AutoReconnect,
     ConfigurationError,
@@ -180,6 +187,9 @@ def check_outcome(self, topology, outcome):
             server_type_name(expected_server_type),
             server_type_name(actual_server_description.server_type),
         )
+        expected_error = expected_server.get("error")
+        if expected_error:
+            self.assertIn(expected_error, str(actual_server_description.error))
 
         self.assertEqual(expected_server.get("setName"), actual_server_description.replica_set_name)
 
@@ -288,7 +298,7 @@ class TestIgnoreStaleErrors(IntegrationTest):
         if not _IS_SYNC and sys.version_info < (3, 11):
             self.skipTest("Test requires asyncio.Barrier (added in Python 3.11)")
         N_TASKS = 5
-        barrier = create_barrier(N_TASKS, timeout=30)
+        barrier = create_barrier(N_TASKS)
         client = self.rs_or_single_client(minPoolSize=N_TASKS)
 
         # Wait for initial discovery.
