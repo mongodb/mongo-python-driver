@@ -29,6 +29,25 @@ fi
 
 PATH_EXT="$MONGODB_BINARIES:$DRIVERS_TOOLS_BINARIES:$PYMONGO_BIN_DIR:\$PATH"
 
+# If the toolchain is available, symlink binaries to the bin dir.
+_bin_path=""
+if [ "Windows_NT" == "${OS:-}" ]; then
+  _bin_path="/cygdrive/c/Python/Current/Scripts"
+elif [ "$(uname -s)" != "Darwin" ]; then
+  _bin_path="/Library/Frameworks/Python.Framework/Versions/Current/bin"
+else
+  _bin_path="/opt/python/Current/bin"
+fi
+if [ -d "${_bin_path}" ]; then
+  _suffix=""
+  if [ "Windows_NT" == "${OS:-}" ]; then
+    _suffix=".exe"
+  fi
+  ln -s ${_bin_path}/just${_suffix} $PYMONGO_BIN_DIR/just
+  ln -s ${_bin_path}/uv${_suffix} $PYMONGO_BIN_DIR/uv
+  ln -s ${_bin_path}/uvx${_suffix} $PYMONGO_BIN_DIR/uvx
+fi
+
 # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
 if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
     DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
