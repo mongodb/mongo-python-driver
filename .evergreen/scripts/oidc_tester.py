@@ -25,6 +25,11 @@ def _get_target_dir(sub_test_name: str) -> str:
 def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
     target_dir = _get_target_dir(sub_test_name)
     env = os.environ.copy()
+    if sub_test_name == "eks" and "AWS_ACCESS_KEY_ID" in os.environ:
+        # Remove AWS creds that would interfere with kubectl access.
+        for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+            if key in os.environ:
+                del os.environ[key]
     if sub_test_name == "azure":
         env["AZUREOIDC_VMNAME_PREFIX"] = "PYTHON_DRIVER"
     if "-remote" not in sub_test_name:
