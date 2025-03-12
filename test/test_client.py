@@ -1047,6 +1047,13 @@ class TestClient(IntegrationTest):
             kc_task = client._kill_cursors_executor._task
             self.assertTrue(kc_task and not kc_task.done())
 
+    def test_close_does_not_open_servers(self):
+        client = self.rs_client(connect=False)
+        topology = client._topology
+        self.assertEqual(topology._servers, {})
+        client.close()
+        self.assertEqual(topology._servers, {})
+
     def test_close_closes_sockets(self):
         client = self.rs_client()
         client.test.test.find_one()
@@ -1848,7 +1855,7 @@ class TestClient(IntegrationTest):
         client = MongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc",
             srvServiceName="customname",
-            connect=False,
+            connect=True,
         )
         client._connect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")

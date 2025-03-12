@@ -1074,6 +1074,13 @@ class TestClient(AsyncIntegrationTest):
             kc_task = client._kill_cursors_executor._task
             self.assertTrue(kc_task and not kc_task.done())
 
+    async def test_close_does_not_open_servers(self):
+        client = await self.async_rs_client(connect=False)
+        topology = client._topology
+        self.assertEqual(topology._servers, {})
+        await client.close()
+        self.assertEqual(topology._servers, {})
+
     async def test_close_closes_sockets(self):
         client = await self.async_rs_client()
         await client.test.test.find_one()
@@ -1891,7 +1898,7 @@ class TestClient(AsyncIntegrationTest):
         client = AsyncMongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc",
             srvServiceName="customname",
-            connect=False,
+            connect=True,
         )
         await client.aconnect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
