@@ -1027,8 +1027,12 @@ class TestClient(IntegrationTest):
         client = self.rs_client(connect=False)
 
         # Ensure kill cursors thread has not been started.
-        # _kill_cursors_executor is initialized upon client connection
-        self.assertFalse(hasattr(client, "_kill_cursors_executor"))
+        if _IS_SYNC:
+            kc_thread = client._kill_cursors_executor._thread
+            self.assertFalse(kc_thread and kc_thread.is_alive())
+        else:
+            kc_task = client._kill_cursors_executor._task
+            self.assertFalse(kc_task and not kc_task.done())
         # Using the client should open topology and start the thread.
         client.admin.command("ping")
         self.assertTrue(client._topology._opened)
