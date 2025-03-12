@@ -42,6 +42,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Collection,
     ContextManager,
     FrozenSet,
     Generator,
@@ -928,7 +929,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
             self._init_based_on_options(seeds, srv_max_hosts, srv_service_name)
 
-    def _init_based_on_options(self, seeds, srv_max_hosts, srv_service_name):
+    def _init_based_on_options(
+        self, seeds: Collection[tuple[str, int]], srv_max_hosts: Any, srv_service_name: Any
+    ) -> None:
         self._event_listeners = self._options.pool_options._event_listeners
         super().__init__(
             self._options.codec_options,
