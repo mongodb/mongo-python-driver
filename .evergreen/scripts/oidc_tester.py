@@ -25,11 +25,6 @@ def _get_target_dir(sub_test_name: str) -> str:
 def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
     target_dir = _get_target_dir(sub_test_name)
     env = os.environ.copy()
-    if sub_test_name == "eks" and "AWS_ACCESS_KEY_ID" in os.environ:
-        # Remove AWS creds that would interfere with kubectl access.
-        for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
-            if key in os.environ:
-                del os.environ[key]
     if sub_test_name == "azure":
         env["AZUREOIDC_VMNAME_PREFIX"] = "PYTHON_DRIVER"
     if "-remote" not in sub_test_name:
@@ -81,6 +76,11 @@ def test_oidc_send_to_remote(sub_test_name: str) -> None:
     elif sub_test_name in K8S_NAMES:
         env["K8S_DRIVERS_TAR_FILE"] = TMP_DRIVER_FILE
         env["K8S_TEST_CMD"] = "OIDC_ENV=k8s ./.evergreen/run-mongodb-oidc-test.sh"
+    if sub_test_name == "eks" and "AWS_ACCESS_KEY_ID" in os.environ:
+        # Remove AWS creds that would interfere with kubectl access.
+        for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+            if key in os.environ:
+                del os.environ[key]
     run_command(f"bash {target_dir}/run-driver-test.sh", env=env)
 
 
