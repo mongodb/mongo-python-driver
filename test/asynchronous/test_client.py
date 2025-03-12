@@ -111,6 +111,7 @@ from pymongo.errors import (
     NetworkTimeout,
     OperationFailure,
     ServerSelectionTimeoutError,
+    WaitQueueTimeoutError,
     WriteConcernError,
 )
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
@@ -1311,8 +1312,16 @@ class TestClient(AsyncIntegrationTest):
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
 
     async def test_waitQueueTimeoutMS(self):
-        client = await self.async_rs_or_single_client(waitQueueTimeoutMS=2000)
-        self.assertEqual((await async_get_pool(client)).opts.wait_queue_timeout, 2)
+        listener = CMAPListener()
+        client = await self.async_rs_or_single_client(
+            waitQueueTimeoutMS=10, maxPoolSize=1, event_listeners=[listener]
+        )
+        pool = await async_get_pool(client)
+        self.assertEqual(pool.opts.wait_queue_timeout, 0.01)
+        async with pool.checkout():
+            with self.assertRaises(WaitQueueTimeoutError):
+                await client.test.command("ping")
+        self.assertFalse(listener.events_by_type(monitoring.PoolClearedEvent))
 
     async def test_socketKeepAlive(self):
         pool = await async_get_pool(self.client)
