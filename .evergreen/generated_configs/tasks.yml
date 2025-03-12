@@ -5822,3 +5822,13 @@ tasks:
       - noauth
       - nossl
       - sync_async
+
+  # Serverless tests
+  - name: test-serverless
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: serverless
+          AUTH: auth
+          SSL: ssl
+    tags: [serverless]

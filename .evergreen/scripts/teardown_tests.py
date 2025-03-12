@@ -26,7 +26,11 @@ elif TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
 
 # Tear down ocsp if applicable.
 elif TEST_NAME == "ocsp":
-    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/teardown.sh")
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh")
+
+# Tear down serverless if applicable.
+elif TEST_NAME == "serverless":
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/serverless/teardown.sh")
 
 # Tear down auth_aws if applicable.
 # We do not run web-identity hosts on macos, because the hosts lack permissions,
