@@ -1341,6 +1341,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 )
                 for expected_msg, actual_msg in zip(client["messages"], actual_logs):
                     expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
+
                     if "failureIsRedacted" in expected_msg:
                         self.assertIn("failure", actual_data)
                         should_redact = expected_msg.pop("failureIsRedacted")

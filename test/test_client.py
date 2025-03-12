@@ -130,7 +130,7 @@ class ClientUnitTest(UnitTest):
     client: MongoClient
 
     def setUp(self) -> None:
-        self.client = self.rs_or_single_client(connect=True, serverSelectionTimeoutMS=100)
+        self.client = self.rs_or_single_client(connect=False, serverSelectionTimeoutMS=100)
 
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
@@ -254,7 +254,7 @@ class ClientUnitTest(UnitTest):
     def test_get_default_database(self):
         c = self.rs_or_single_client(
             "mongodb://%s:%d/foo" % (client_context.host, client_context.port),
-            connect=True,
+            connect=False,
         )
         self.assertEqual(Database(c, "foo"), c.get_default_database())
         # Test that default doesn't override the URI value.
@@ -270,7 +270,7 @@ class ClientUnitTest(UnitTest):
 
         c = self.rs_or_single_client(
             "mongodb://%s:%d/" % (client_context.host, client_context.port),
-            connect=True,
+            connect=False,
         )
         self.assertEqual(Database(c, "foo"), c.get_default_database("foo"))
 
@@ -288,13 +288,13 @@ class ClientUnitTest(UnitTest):
             client_context.host,
             client_context.port,
         )
-        c = self.rs_or_single_client(uri, connect=True)
+        c = self.rs_or_single_client(uri, connect=False)
         self.assertEqual(Database(c, "foo"), c.get_default_database())
 
     def test_get_database_default(self):
         c = self.rs_or_single_client(
             "mongodb://%s:%d/foo" % (client_context.host, client_context.port),
-            connect=True,
+            connect=False,
         )
         self.assertEqual(Database(c, "foo"), c.get_database())
 
@@ -312,7 +312,7 @@ class ClientUnitTest(UnitTest):
             client_context.host,
             client_context.port,
         )
-        c = self.rs_or_single_client(uri, connect=True)
+        c = self.rs_or_single_client(uri, connect=False)
         self.assertEqual(Database(c, "foo"), c.get_database())
 
     def test_primary_read_pref_with_tags(self):
@@ -792,7 +792,7 @@ class TestClient(IntegrationTest):
         self.assertIsInstance(c.is_primary, bool)
         c = self.rs_or_single_client(connect=False)
         self.assertIsInstance(c.is_mongos, bool)
-        c = self.rs_or_single_client(connect=True)
+        c = self.rs_or_single_client(connect=False)
         self.assertIsInstance(c.options.pool_options.max_pool_size, int)
         self.assertIsInstance(c.nodes, frozenset)
 
@@ -825,12 +825,12 @@ class TestClient(IntegrationTest):
 
     def test_equality(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
-        c = self.rs_or_single_client(seed, connect=True)
+        c = self.rs_or_single_client(seed, connect=False)
         self.assertEqual(client_context.client, c)
         # Explicitly test inequality
         self.assertFalse(client_context.client != c)
 
-        c = self.rs_or_single_client("invalid.com", connect=True)
+        c = self.rs_or_single_client("invalid.com", connect=False)
         self.assertNotEqual(client_context.client, c)
         self.assertTrue(client_context.client != c)
 
@@ -852,9 +852,9 @@ class TestClient(IntegrationTest):
 
     def test_hashable(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
-        c = self.rs_or_single_client(seed, connect=True)
+        c = self.rs_or_single_client(seed, connect=False)
         self.assertIn(c, {client_context.client})
-        c = self.rs_or_single_client("invalid.com", connect=True)
+        c = self.rs_or_single_client("invalid.com", connect=False)
         self.assertNotIn(c, {client_context.client})
 
     def test_host_w_port(self):
