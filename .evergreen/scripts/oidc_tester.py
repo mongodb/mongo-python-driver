@@ -87,6 +87,8 @@ def test_oidc_send_to_remote(sub_test_name: str) -> None:
 
 def teardown_oidc(sub_test_name: str) -> None:
     target_dir = _get_target_dir(sub_test_name)
+    # For k8s, make sure an error while tearing down the pod doesn't prevent
+    # the Altas server teardown.
     error = None
     if sub_test_name in K8S_NAMES:
         try:
