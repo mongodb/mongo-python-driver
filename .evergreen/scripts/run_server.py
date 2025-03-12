@@ -18,6 +18,10 @@ def start_server():
     )
     test_name = opts.test_name
 
+    # drivers-evergreen-tools expects the version variable to be named MONGODB_VERSION.
+    if "VERSION" in os.environ:
+        os.environ["MONGODB_VERSION"] = os.environ["VERSION"]
+
     if opts.auth:
         extra_opts.append("--auth")
 
@@ -31,6 +35,11 @@ def start_server():
 
     elif test_name == "load_balancer":
         set_env("LOAD_BALANCER")
+
+    elif test_name == "auth_oidc":
+        raise ValueError(
+            "OIDC auth does not use run-orchestration directly, do not use run-server!"
+        )
 
     elif test_name == "ocsp":
         opts.ssl = True

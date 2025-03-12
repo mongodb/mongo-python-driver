@@ -63,7 +63,7 @@ from test.helpers import (
 )
 from test.test_bulk import BulkTestBase
 from test.unified_format import generate_test_classes
-from test.utils import (
+from test.utils_shared import (
     AllowListEventListener,
     OvertCommandListener,
     TopologyEventListener,
@@ -2964,9 +2964,10 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             )
 
     def test_03_invalid_keyid(self):
+        # checkAuthForCreateCollection can be removed when SERVER-102101 is fixed.
         with self.assertRaisesRegex(
             EncryptedCollectionError,
-            "create.encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
+            "(create|checkAuthForCreateCollection).encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
         ):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,

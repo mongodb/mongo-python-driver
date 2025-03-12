@@ -18,12 +18,13 @@ from __future__ import annotations
 import asyncio
 import functools
 import os
+import time
 import unittest
 from asyncio import iscoroutinefunction
 from collections import abc
 from test import IntegrationTest, client_context, client_knobs
 from test.helpers import ConcurrentRunner
-from test.utils import (
+from test.utils_shared import (
     CMAPListener,
     CompareType,
     EventListener,
@@ -313,6 +314,10 @@ class SpecRunner(IntegrationTest):
         """Run the assertIndexNotExists test operation."""
         coll = self.client[database][collection]
         self.assertNotIn(index, [doc["name"] for doc in coll.list_indexes()])
+
+    def wait(self, ms):
+        """Run the "wait" test operation."""
+        time.sleep(ms / 1000.0)
 
     def assertErrorLabelsContain(self, exc, expected_labels):
         labels = [l for l in expected_labels if exc.has_error_label(l)]

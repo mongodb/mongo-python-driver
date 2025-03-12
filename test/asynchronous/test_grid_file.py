@@ -33,7 +33,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 sys.path[0:0] = [""]
 
-from test.utils import OvertCommandListener
+from test.utils_shared import OvertCommandListener
 
 from bson.objectid import ObjectId
 from gridfs.asynchronous.grid_file import (

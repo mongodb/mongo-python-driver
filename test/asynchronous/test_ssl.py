@@ -32,7 +32,7 @@ from test.asynchronous import (
     remove_all_users,
     unittest,
 )
-from test.utils import (
+from test.utils_shared import (
     EventListener,
     OvertCommandListener,
     cat_files,

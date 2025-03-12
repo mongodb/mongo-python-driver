@@ -48,10 +48,10 @@ from test.unified_format_shared import (
     parse_collection_or_database_options,
     with_metaclass,
 )
-from test.utils import (
+from test.utils import get_pool
+from test.utils_shared import (
     camel_to_snake,
     camel_to_snake_args,
-    get_pool,
     parse_spec_options,
     prepare_spec_arguments,
     snake_to_camel,
@@ -377,6 +377,7 @@ class EntityMapUtil:
                 opts["key_vault_client"],
                 DEFAULT_CODEC_OPTIONS,
                 opts.get("kms_tls_options", kms_tls_options),
+                opts.get("key_expiration_ms"),
             )
             return
         elif entity_type == "thread":
@@ -438,7 +439,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.21")
+    SCHEMA_VERSION = Version.from_string("1.22")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any

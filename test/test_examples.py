@@ -26,7 +26,7 @@ from test.helpers import ConcurrentRunner
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import wait_until
+from test.utils_shared import wait_until
 
 import pymongo
 from pymongo.errors import ConnectionFailure, OperationFailure

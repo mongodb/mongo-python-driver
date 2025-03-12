@@ -809,6 +809,64 @@ class TestBSON(unittest.TestCase):
                 dtype=BinaryVectorDtype.PACKED_BIT,
             )  # type: ignore[call-overload]
 
+    def assertRepr(self, obj):
+        new_obj = eval(repr(obj))
+        self.assertEqual(type(new_obj), type(obj))
+        self.assertEqual(repr(new_obj), repr(obj))
+
+    def test_binaryvector_repr(self):
+        """Tests of repr(BinaryVector)"""
+
+        data = [1 / 127, -7 / 6]
+        one = BinaryVector(data, BinaryVectorDtype.FLOAT32)
+        self.assertEqual(
+            repr(one), f"BinaryVector(dtype=BinaryVectorDtype.FLOAT32, padding=0, data={data})"
+        )
+        self.assertRepr(one)
+
+        data = [127, 7]
+        two = BinaryVector(data, BinaryVectorDtype.INT8)
+        self.assertEqual(
+            repr(two), f"BinaryVector(dtype=BinaryVectorDtype.INT8, padding=0, data={data})"
+        )
+        self.assertRepr(two)
+
+        three = BinaryVector(data, BinaryVectorDtype.INT8, padding=0)
+        self.assertEqual(
+            repr(three), f"BinaryVector(dtype=BinaryVectorDtype.INT8, padding=0, data={data})"
+        )
+        self.assertRepr(three)
+
+        four = BinaryVector(data, BinaryVectorDtype.PACKED_BIT, padding=3)
+        self.assertEqual(
+            repr(four), f"BinaryVector(dtype=BinaryVectorDtype.PACKED_BIT, padding=3, data={data})"
+        )
+        self.assertRepr(four)
+
+        zero = BinaryVector([], BinaryVectorDtype.INT8)
+        self.assertEqual(
+            repr(zero), "BinaryVector(dtype=BinaryVectorDtype.INT8, padding=0, data=[])"
+        )
+        self.assertRepr(zero)
+
+    def test_binaryvector_equality(self):
+        """Tests of == __eq__"""
+        self.assertEqual(
+            BinaryVector([1.2, 1 - 1 / 3], BinaryVectorDtype.FLOAT32, 0),
+            BinaryVector([1.2, 1 - 1.0 / 3.0], BinaryVectorDtype.FLOAT32, 0),
+        )
+        self.assertNotEqual(
+            BinaryVector([1.2, 1 - 1 / 3], BinaryVectorDtype.FLOAT32, 0),
+            BinaryVector([1.2, 6.0 / 9.0], BinaryVectorDtype.FLOAT32, 0),
+        )
+        self.assertEqual(
+            BinaryVector([], BinaryVectorDtype.FLOAT32, 0),
+            BinaryVector([], BinaryVectorDtype.FLOAT32, 0),
+        )
+        self.assertNotEqual(
+            BinaryVector([1], BinaryVectorDtype.INT8), BinaryVector([2], BinaryVectorDtype.INT8)
+        )
+
     def test_unicode_regex(self):
         """Tests we do not get a segfault for C extension on unicode RegExs.
         This had been happening.

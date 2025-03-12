@@ -16,11 +16,12 @@
 from __future__ import annotations
 
 import sys
+from test.asynchronous.utils import AsyncMockPool
 
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, client_knobs, unittest
-from test.utils import AsyncMockPool, HeartbeatEventListener, async_wait_until
+from test.utils_shared import HeartbeatEventListener, async_wait_until
 
 from pymongo.asynchronous.monitor import Monitor
 from pymongo.errors import ConnectionFailure

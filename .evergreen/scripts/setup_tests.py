@@ -161,6 +161,13 @@ def handle_test_env() -> None:
     if group := GROUP_MAP.get(test_name, ""):
         UV_ARGS.append(f"--group {group}")
 
+    if test_name == "auth_oidc":
+        from oidc_tester import setup_oidc
+
+        config = setup_oidc(sub_test_name)
+        if not config:
+            AUTH = "noauth"
+
     if AUTH != "noauth":
         if test_name == "data_lake":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas_data_lake/secrets-export.sh")
@@ -174,9 +181,8 @@ def handle_test_env() -> None:
             write_env("SINGLE_MONGOS_LB_URI", config["SERVERLESS_URI"])
             write_env("MULTI_MONGOS_LB_URI", config["SERVERLESS_URI"])
         elif test_name == "auth_oidc":
-            DB_USER = os.environ["OIDC_ADMIN_USER"]
-            DB_PASSWORD = os.environ["OIDC_ADMIN_PWD"]
-            write_env("DB_IP", os.environ["MONGODB_URI"])
+            DB_USER = config["OIDC_ADMIN_USER"]
+            DB_PASSWORD = config["OIDC_ADMIN_PWD"]
         elif test_name == "index_management":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas/secrets-export.sh")
             DB_USER = config["DRIVERS_ATLAS_LAMBDA_USER"]

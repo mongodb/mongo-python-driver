@@ -26,6 +26,7 @@ fi
 
 # Source the local secrets export file if available.
 if [ -f "./secrets-export.sh" ]; then
+  echo "Sourcing local secrets file"
   . "./secrets-export.sh"
 fi
 

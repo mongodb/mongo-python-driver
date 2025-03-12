@@ -31,7 +31,7 @@ import pytest
 sys.path[0:0] = [""]
 
 from test.unified_format import generate_test_classes
-from test.utils import EventListener, OvertCommandListener
+from test.utils_shared import EventListener, OvertCommandListener
 
 from bson import SON
 from pymongo import MongoClient
@@ -70,6 +70,11 @@ class OIDCTestBase(PyMongoTestCase):
         cls.uri_single = os.environ["MONGODB_URI_SINGLE"]
         cls.uri_multiple = os.environ.get("MONGODB_URI_MULTI")
         cls.uri_admin = os.environ["MONGODB_URI"]
+        if ENVIRON == "test":
+            if not TOKEN_DIR:
+                raise ValueError("Please set OIDC_TOKEN_DIR")
+            if not TOKEN_FILE:
+                raise ValueError("Please set OIDC_TOKEN_FILE")
 
     def setUp(self):
         self.request_called = 0

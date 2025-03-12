@@ -23,34 +23,36 @@ import time
 from asyncio import iscoroutinefunction
 
 from bson.son import SON
-from pymongo import MongoClient
+from pymongo import AsyncMongoClient
 from pymongo.errors import ConfigurationError
 from pymongo.hello import HelloCompat
-from pymongo.lock import _create_lock
+from pymongo.lock import _async_create_lock
 from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.synchronous.pool import _CancellationContext, _PoolGeneration
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-def get_pool(client):
+async def async_get_pool(client):
     """Get the standalone, primary, or mongos pool."""
-    topology = client._get_topology()
-    server = topology._select_server(writable_server_selector, _Op.TEST)
+    topology = await client._get_topology()
+    server = await topology._select_server(writable_server_selector, _Op.TEST)
     return server.pool
 
 
-def get_pools(client):
+async def async_get_pools(client):
     """Get all pools."""
     return [
         server.pool
-        for server in (client._get_topology()).select_servers(any_server_selector, _Op.TEST)
+        for server in await (await client._get_topology()).select_servers(
+            any_server_selector, _Op.TEST
+        )
     ]
 
 
-def wait_until(predicate, success_description, timeout=10):
+async def async_wait_until(predicate, success_description, timeout=10):
     """Wait up to 10 seconds (by default) for predicate to be true.
 
     E.g.:
@@ -67,7 +69,7 @@ def wait_until(predicate, success_description, timeout=10):
     interval = min(float(timeout) / 100, 0.1)
     while True:
         if iscoroutinefunction(predicate):
-            retval = predicate()
+            retval = await predicate()
         else:
             retval = predicate()
         if retval:
@@ -76,15 +78,15 @@ def wait_until(predicate, success_description, timeout=10):
         if time.time() - start > timeout:
             raise AssertionError("Didn't ever %s" % success_description)
 
-        time.sleep(interval)
+        await asyncio.sleep(interval)
 
 
-def is_mongos(client):
-    res = client.admin.command(HelloCompat.LEGACY_CMD)
+async def async_is_mongos(client):
+    res = await client.admin.command(HelloCompat.LEGACY_CMD)
     return res.get("msg", "") == "isdbgrid"
 
 
-def ensure_all_connected(client: MongoClient) -> None:
+async def async_ensure_all_connected(client: AsyncMongoClient) -> None:
     """Ensure that the client's connection pool has socket connections to all
     members of a replica set. Raises ConfigurationError when called with a
     non-replica set client.
@@ -92,7 +94,7 @@ def ensure_all_connected(client: MongoClient) -> None:
     Depending on the use-case, the caller may need to clear any event listeners
     that are configured on the client.
     """
-    hello: dict = client.admin.command(HelloCompat.LEGACY_CMD)
+    hello: dict = await client.admin.command(HelloCompat.LEGACY_CMD)
     if "setName" not in hello:
         raise ConfigurationError("cluster is not a replica set")
 
@@ -100,10 +102,10 @@ def ensure_all_connected(client: MongoClient) -> None:
     connected_host_list = {hello["me"]}
 
     # Run hello until we have connected to each host at least once.
-    def discover():
+    async def discover():
         i = 0
         while i < 100 and connected_host_list != target_host_list:
-            hello: dict = client.admin.command(
+            hello: dict = await client.admin.command(
                 HelloCompat.LEGACY_CMD, read_preference=ReadPreference.SECONDARY
             )
             connected_host_list.update([hello["me"]])
@@ -112,47 +114,47 @@ def ensure_all_connected(client: MongoClient) -> None:
 
     try:
 
-        def predicate():
-            return target_host_list == discover()
+        async def predicate():
+            return target_host_list == await discover()
 
-        wait_until(predicate, "connected to all hosts")
+        await async_wait_until(predicate, "connected to all hosts")
     except AssertionError as exc:
         raise AssertionError(
             f"{exc}, {connected_host_list} != {target_host_list}, {client.topology_description}"
         )
 
 
-def assertRaisesExactly(cls, fn, *args, **kwargs):
+async def asyncAssertRaisesExactly(cls, fn, *args, **kwargs):
     """
     Unlike the standard assertRaises, this checks that a function raises a
     specific class of exception, and not a subclass. E.g., check that
     MongoClient() raises ConnectionFailure but not its subclass, AutoReconnect.
     """
     try:
-        fn(*args, **kwargs)
+        await fn(*args, **kwargs)
     except Exception as e:
         assert e.__class__ == cls, f"got {e.__class__.__name__}, expected {cls.__name__}"
     else:
         raise AssertionError("%s not raised" % cls)
 
 
-def set_fail_point(client, command_args):
+async def async_set_fail_point(client, command_args):
     cmd = SON([("configureFailPoint", "failCommand")])
     cmd.update(command_args)
-    client.admin.command(cmd)
+    await client.admin.command(cmd)
 
 
-def joinall(tasks):
+async def async_joinall(tasks):
     """Join threads with a 5-minute timeout, assert joins succeeded"""
     if _IS_SYNC:
         for t in tasks:
             t.join(300)
             assert not t.is_alive(), "Thread %s hung" % t
     else:
-        asyncio.wait([t.task for t in tasks if t is not None], timeout=300)
+        await asyncio.wait([t.task for t in tasks if t is not None], timeout=300)
 
 
-class MockConnection:
+class AsyncMockConnection:
     def __init__(self):
         self.cancel_context = _CancellationContext()
         self.more_to_come = False
@@ -161,17 +163,17 @@ class MockConnection:
     def close_conn(self, reason):
         pass
 
-    def __enter__(self):
+    def __aenter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __aexit__(self, exc_type, exc_val, exc_tb):
         pass
 
 
-class MockPool:
+class AsyncMockPool:
     def __init__(self, address, options, handshake=True, client_id=None):
         self.gen = _PoolGeneration()
-        self._lock = _create_lock()
+        self._lock = _async_create_lock()
         self.opts = options
         self.operation_count = 0
         self.conns = []
@@ -179,31 +181,31 @@ class MockPool:
     def stale_generation(self, gen, service_id):
         return self.gen.stale(gen, service_id)
 
-    @contextlib.contextmanager
-    def checkout(self, handler=None):
-        yield MockConnection()
+    @contextlib.asynccontextmanager
+    async def checkout(self, handler=None):
+        yield AsyncMockConnection()
 
-    def checkin(self, *args, **kwargs):
+    async def checkin(self, *args, **kwargs):
         pass
 
-    def _reset(self, service_id=None):
-        with self._lock:
+    async def _reset(self, service_id=None):
+        async with self._lock:
             self.gen.inc(service_id)
 
-    def ready(self):
+    async def ready(self):
         pass
 
-    def reset(self, service_id=None, interrupt_connections=False):
-        self._reset()
+    async def reset(self, service_id=None, interrupt_connections=False):
+        await self._reset()
 
-    def reset_without_pause(self):
-        self._reset()
+    async def reset_without_pause(self):
+        await self._reset()
 
-    def close(self):
-        self._reset()
+    async def close(self):
+        await self._reset()
 
-    def update_is_writable(self, is_writable):
+    async def update_is_writable(self, is_writable):
         pass
 
-    def remove_stale_sockets(self, *args, **kwargs):
+    async def remove_stale_sockets(self, *args, **kwargs):
         pass

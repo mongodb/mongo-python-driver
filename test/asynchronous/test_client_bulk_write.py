@@ -25,7 +25,7 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
-from test.utils import (
+from test.utils_shared import (
     OvertCommandListener,
 )
 from unittest.mock import patch
