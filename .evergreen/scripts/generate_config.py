@@ -801,7 +801,7 @@ def create_server_tasks():
             AUTH=auth,
             SSL=ssl,
         )
-        server_func = FunctionCall(func="run-server", vars=server_vars)
+        server_func = FunctionCall(func="run server", vars=server_vars)
         test_vars = dict(AUTH=auth, SSL=ssl, SYNC=sync)
         if sync == "sync":
             test_vars["TEST_NAME"] = "default_sync"
@@ -820,7 +820,7 @@ def create_load_balancer_tasks():
         server_vars = dict(
             TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, TEST_NAME="load_balancer"
         )
-        server_func = FunctionCall(func="run-server", vars=server_vars)
+        server_func = FunctionCall(func="run server", vars=server_vars)
         test_vars = dict(AUTH=auth, SSL=ssl, TEST_NAME="load_balancer")
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
@@ -839,7 +839,7 @@ def create_kms_tasks():
                 sub_test_name += "-fail"
             commands = []
             if not success:
-                commands.append(FunctionCall(func="run-server"))
+                commands.append(FunctionCall(func="run server"))
             test_vars = dict(TEST_NAME="kms", SUB_TEST_NAME=sub_test_name)
             test_func = FunctionCall(func="run tests", vars=test_vars)
             commands.append(test_func)
@@ -862,7 +862,7 @@ def create_aws_tasks():
         base_name = f"test-auth-aws-{version}"
         base_tags = ["auth-aws"]
         server_vars = dict(AUTH_AWS="1", VERSION=version)
-        server_func = FunctionCall(func="run-server", vars=server_vars)
+        server_func = FunctionCall(func="run server", vars=server_vars)
         assume_func = FunctionCall(func="assume ec2 role")
         for test_type in aws_test_types:
             tags = [*base_tags, f"auth-aws-{test_type}"]
@@ -880,6 +880,60 @@ def create_aws_tasks():
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [server_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
+
+    return tasks
+
+
+def _create_ocsp_task(algo, variant, server_type, base_task_name):
+    file_name = f"{algo}-basic-tls-ocsp-{variant}.json"
+
+    vars = dict(TEST_NAME="ocsp", ORCHESTRATION_FILE=file_name)
+    server_func = FunctionCall(func="run server", vars=vars)
+
+    vars = dict(ORCHESTRATION_FILE=file_name, OCSP_SERVER_TYPE=server_type, TEST_NAME="ocsp")
+    test_func = FunctionCall(func="run tests", vars=vars)
+
+    tags = ["ocsp", f"ocsp-{algo}"]
+    if "disableStapling" not in variant:
+        tags.append("ocsp-staple")
+
+    task_name = f"test-ocsp-{algo}-{base_task_name}"
+    commands = [server_func, test_func]
+    return EvgTask(name=task_name, tags=tags, commands=commands)
+
+
+def create_ocsp_tasks():
+    tasks = []
+    tests = [
+        ("disableStapling", "valid", "valid-cert-server-does-not-staple"),
+        ("disableStapling", "revoked", "invalid-cert-server-does-not-staple"),
+        ("disableStapling", "valid-delegate", "delegate-valid-cert-server-does-not-staple"),
+        ("disableStapling", "revoked-delegate", "delegate-invalid-cert-server-does-not-staple"),
+        ("disableStapling", "no-responder", "soft-fail"),
+        ("mustStaple", "valid", "valid-cert-server-staples"),
+        ("mustStaple", "revoked", "invalid-cert-server-staples"),
+        ("mustStaple", "valid-delegate", "delegate-valid-cert-server-staples"),
+        ("mustStaple", "revoked-delegate", "delegate-invalid-cert-server-staples"),
+        (
+            "mustStaple-disableStapling",
+            "revoked",
+            "malicious-invalid-cert-mustStaple-server-does-not-staple",
+        ),
+        (
+            "mustStaple-disableStapling",
+            "revoked-delegate",
+            "delegate-malicious-invalid-cert-mustStaple-server-does-not-staple",
+        ),
+        (
+            "mustStaple-disableStapling",
+            "no-responder",
+            "malicious-no-responder-mustStaple-server-does-not-staple",
+        ),
+    ]
+    for algo in ["ecdsa", "rsa"]:
+        for variant, server_type, base_task_name in tests:
+            task = _create_ocsp_task(algo, variant, server_type, base_task_name)
+            tasks.append(task)
 
     return tasks
 

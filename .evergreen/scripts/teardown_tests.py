@@ -24,6 +24,10 @@ elif TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
 
     teardown_kms(SUB_TEST_NAME)
 
+# Tear down ocsp if applicable.
+elif TEST_NAME == "ocsp":
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/teardown.sh")
+
 # Tear down auth_aws if applicable.
 # We do not run web-identity hosts on macos, because the hosts lack permissions,
 # so there is no reason to run the teardown, which would error with a 401.
