@@ -24,7 +24,7 @@ from gridfs.synchronous.grid_file import GridFS, GridFSBucket
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import (
+from test.utils_shared import (
     OvertCommandListener,
     wait_until,
 )

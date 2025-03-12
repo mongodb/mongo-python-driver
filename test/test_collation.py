@@ -18,7 +18,7 @@ from __future__ import annotations
 import functools
 import warnings
 from test import IntegrationTest, client_context, unittest
-from test.utils import EventListener, OvertCommandListener
+from test.utils_shared import EventListener, OvertCommandListener
 from typing import Any
 
 from pymongo.collation import (

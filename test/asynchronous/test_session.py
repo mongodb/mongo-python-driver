@@ -30,14 +30,13 @@ sys.path[0:0] = [""]
 
 from test.asynchronous import (
     AsyncIntegrationTest,
-    AsyncPyMongoTestCase,
     AsyncUnitTest,
     SkipTest,
     async_client_context,
     unittest,
 )
 from test.asynchronous.helpers import client_knobs
-from test.utils import (
+from test.utils_shared import (
     EventListener,
     HeartbeatEventListener,
     OvertCommandListener,

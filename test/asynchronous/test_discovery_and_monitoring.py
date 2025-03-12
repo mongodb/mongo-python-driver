@@ -26,25 +26,32 @@ from test.asynchronous.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, AsyncUnitTest, unittest
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    AsyncUnitTest,
+    async_client_context,
+    unittest,
+)
 from test.asynchronous.pymongo_mocks import DummyMonitor
 from test.asynchronous.unified_format import generate_test_classes
-from test.utils import (
+from test.asynchronous.utils import (
+    async_get_pool,
+)
+from test.utils_shared import (
     CMAPListener,
     HeartbeatEventListener,
     HeartbeatEventsListListener,
     assertion_context,
     async_barrier_wait,
-    async_client_context,
     async_create_barrier,
-    async_get_pool,
     async_wait_until,
     server_name_to_type,
 )
 from unittest.mock import patch
 
 from bson import Timestamp, json_util
-from pymongo import AsyncMongoClient, common, monitoring
+from pymongo import common, monitoring
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
 from pymongo.errors import (
@@ -291,7 +298,7 @@ class TestIgnoreStaleErrors(AsyncIntegrationTest):
         if not _IS_SYNC and sys.version_info < (3, 11):
             self.skipTest("Test requires asyncio.Barrier (added in Python 3.11)")
         N_TASKS = 5
-        barrier = async_create_barrier(N_TASKS, timeout=30)
+        barrier = async_create_barrier(N_TASKS)
         client = await self.async_rs_or_single_client(minPoolSize=N_TASKS)
 
         # Wait for initial discovery.

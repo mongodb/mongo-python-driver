@@ -21,13 +21,12 @@ import threading
 from pathlib import Path
 from test import IntegrationTest, client_context, unittest
 from test.helpers import ConcurrentRunner
-from test.utils import (
+from test.utils_selection_tests import create_topology
+from test.utils_shared import (
     CMAPListener,
     OvertCommandListener,
-    get_pool,
     wait_until,
 )
-from test.utils_selection_tests import create_topology
 from test.utils_spec_runner import SpecTestCreator
 
 from pymongo.common import clean_node

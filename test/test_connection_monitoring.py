@@ -20,17 +20,15 @@ import os
 import sys
 import time
 from pathlib import Path
+from test.utils import get_pool, get_pools
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_knobs, unittest
+from test import IntegrationTest, client_context, client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
-from test.utils import (
+from test.utils_shared import (
     CMAPListener,
     camel_to_snake,
-    client_context,
-    get_pool,
-    get_pools,
     wait_until,
 )
 from test.utils_spec_runner import SpecRunnerThread, SpecTestCreator

@@ -33,7 +33,7 @@ from test import (
     connected,
     unittest,
 )
-from test.utils import (
+from test.utils_shared import (
     OvertCommandListener,
     one,
     wait_until,

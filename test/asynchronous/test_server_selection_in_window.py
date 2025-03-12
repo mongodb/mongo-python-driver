@@ -23,10 +23,9 @@ from test.asynchronous import AsyncIntegrationTest, async_client_context, unitte
 from test.asynchronous.helpers import ConcurrentRunner
 from test.asynchronous.utils_selection_tests import create_topology
 from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator
-from test.utils import (
+from test.utils_shared import (
     CMAPListener,
     OvertCommandListener,
-    async_get_pool,
     async_wait_until,
 )
 
