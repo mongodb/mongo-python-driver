@@ -872,6 +872,7 @@ class TestClient(IntegrationTest):
             connect=False,
             document_class=SON,
         )
+
         the_repr = repr(client)
         self.assertIn("MongoClient(host=", the_repr)
         self.assertIn("document_class=bson.son.SON, tz_aware=False, connect=False, ", the_repr)
@@ -879,6 +880,7 @@ class TestClient(IntegrationTest):
         self.assertIn("replicaset='replset'", the_repr)
         self.assertIn("w=1", the_repr)
         self.assertIn("wtimeoutms=100", the_repr)
+
         with eval(the_repr) as client_two:
             self.assertEqual(client_two, client)
 
@@ -1024,7 +1026,9 @@ class TestClient(IntegrationTest):
         self.assertTrue(client._kill_cursors_executor._stopped)
 
     def test_uri_connect_option(self):
+        # Ensure that topology is not opened if connect=False.
         client = self.rs_client(connect=False)
+        self.assertFalse(client._topology._opened)
 
         # Ensure kill cursors thread has not been started.
         if _IS_SYNC:
