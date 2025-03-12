@@ -18,6 +18,10 @@ def start_server():
     )
     test_name = opts.test_name
 
+    # drivers-evergreen-tools expects the version variable to be named MONGODB_VERSION.
+    if "VERSION" in os.environ:
+        os.environ["MONGODB_VERSION"] = os.environ["VERSION"]
+
     if opts.auth:
         extra_opts.append("--auth")
 
