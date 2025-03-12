@@ -1855,7 +1855,7 @@ class TestClient(IntegrationTest):
         client = MongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc",
             srvServiceName="customname",
-            connect=True,
+            connect=False,
         )
         client._connect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")

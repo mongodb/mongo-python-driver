@@ -1898,7 +1898,7 @@ class TestClient(AsyncIntegrationTest):
         client = AsyncMongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc",
             srvServiceName="customname",
-            connect=True,
+            connect=False,
         )
         await client.aconnect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
