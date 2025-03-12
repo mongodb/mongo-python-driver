@@ -861,10 +861,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 srv_max_hosts=srv_max_hosts,
                 server_monitoring_mode=options.server_monitoring_mode,
             )
-            self._topology = Topology(self._topology_settings)
 
         self._opened = False
         self._closed = False
+        if not is_srv:
+            self._init_background(first=True)
 
         self._resolve_srv_info.update(
             {
@@ -977,18 +978,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 srv_max_hosts=srv_max_hosts,
                 server_monitoring_mode=self._options.server_monitoring_mode,
             )
-            self._topology = Topology(self._topology_settings)
 
             if self._options.auto_encryption_opts:
                 from pymongo.asynchronous.encryption import _Encrypter
 
                 self._encrypter = _Encrypter(self, self._options.auto_encryption_opts)
             self._timeout = self._options.timeout
-
-            if _HAS_REGISTER_AT_FORK:
-                # Add this client to the list of weakly referenced items.
-                # This will be used later if we fork.
-                AsyncMongoClient._clients[self._topology._topology_id] = self
 
     def _normalize_and_validate_options(
         self, opts: common._CaseInsensitiveDictionary, seeds: set[tuple[str, int | None]]
@@ -1019,7 +1014,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Explicitly connect to MongoDB asynchronously instead of on the first operation."""
         await self._get_topology()
 
-    def _init_background(self, old_pid: Optional[int] = None) -> None:
+    def _init_background(self, old_pid: Optional[int] = None, first=False) -> None:
+        self._topology = Topology(self._topology_settings)
+        if first and _HAS_REGISTER_AT_FORK:
+            # Add this client to the list of weakly referenced items.
+            # This will be used later if we fork.
+            AsyncMongoClient._clients[self._topology._topology_id] = self
         # Seed the topology with the old one's pid so we can detect clients
         # that are opened before a fork and used after.
         self._topology._pid = old_pid
@@ -1679,7 +1679,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            End all server sessions created by this client.
         """
-        if self._opened:
+        if hasattr(self, "_topology"):
             session_ids = self._topology.pop_all_sessions()
             if session_ids:
                 await self._end_sessions(session_ids)
@@ -1712,7 +1712,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if not self._opened:
             if self._resolve_srv_info["is_srv"]:
                 self._resolve_srv()
-            self._init_background()
+                self._init_background(first=True)
             await self._topology.open()
             async with self._lock:
                 self._kill_cursors_executor.open()
