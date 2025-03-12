@@ -799,11 +799,9 @@ class TestClient(IntegrationTest):
         c = self.rs_or_single_client(connect=False)
         self.assertEqual(c.codec_options, CodecOptions())
         c = self.rs_or_single_client(connect=False)
-        c._connect()
         self.assertFalse(c.primary)
         self.assertFalse(c.secondaries)
         c = self.rs_or_single_client(connect=False)
-        c._connect()
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
         if client_context.is_rs:
@@ -835,17 +833,13 @@ class TestClient(IntegrationTest):
         self.assertTrue(client_context.client != c)
 
         c1 = self.simple_client("a", connect=False)
-        c1._connect()
         c2 = self.simple_client("b", connect=False)
-        c2._connect()
 
         # Seeds differ:
         self.assertNotEqual(c1, c2)
 
         c1 = self.simple_client(["a", "b", "c"], connect=False)
-        c1._connect()
         c2 = self.simple_client(["c", "a", "b"], connect=False)
-        c2._connect()
 
         # Same seeds but out of order still compares equal:
         self.assertEqual(c1, c2)
@@ -885,9 +879,7 @@ class TestClient(IntegrationTest):
         self.assertIn("replicaset='replset'", the_repr)
         self.assertIn("w=1", the_repr)
         self.assertIn("wtimeoutms=100", the_repr)
-        client.close()
         with eval(the_repr) as client_two:
-            client_two._connect()
             self.assertEqual(client_two, client)
 
         client = self.simple_client(
@@ -909,7 +901,6 @@ class TestClient(IntegrationTest):
         self.assertIn("wtimeoutms=100", the_repr)
 
         with eval(the_repr) as client_two:
-            client_two._connect()
             self.assertEqual(client_two, client)
 
     def test_getters(self):

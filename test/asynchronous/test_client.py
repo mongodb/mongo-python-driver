@@ -824,11 +824,9 @@ class TestClient(AsyncIntegrationTest):
         c = await self.async_rs_or_single_client(connect=False)
         self.assertEqual(c.codec_options, CodecOptions())
         c = await self.async_rs_or_single_client(connect=False)
-        await c.aconnect()
         self.assertFalse(await c.primary)
         self.assertFalse(await c.secondaries)
         c = await self.async_rs_or_single_client(connect=False)
-        await c.aconnect()
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
         if async_client_context.is_rs:
@@ -860,17 +858,13 @@ class TestClient(AsyncIntegrationTest):
         self.assertTrue(async_client_context.client != c)
 
         c1 = self.simple_client("a", connect=False)
-        await c1.aconnect()
         c2 = self.simple_client("b", connect=False)
-        await c2.aconnect()
 
         # Seeds differ:
         self.assertNotEqual(c1, c2)
 
         c1 = self.simple_client(["a", "b", "c"], connect=False)
-        await c1.aconnect()
         c2 = self.simple_client(["c", "a", "b"], connect=False)
-        await c2.aconnect()
 
         # Same seeds but out of order still compares equal:
         self.assertEqual(c1, c2)
@@ -910,9 +904,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertIn("replicaset='replset'", the_repr)
         self.assertIn("w=1", the_repr)
         self.assertIn("wtimeoutms=100", the_repr)
-        await client.close()
         async with eval(the_repr) as client_two:
-            await client_two.aconnect()
             self.assertEqual(client_two, client)
 
         client = self.simple_client(
@@ -934,7 +926,6 @@ class TestClient(AsyncIntegrationTest):
         self.assertIn("wtimeoutms=100", the_repr)
 
         async with eval(the_repr) as client_two:
-            await client_two.aconnect()
             self.assertEqual(client_two, client)
 
     async def test_getters(self):
