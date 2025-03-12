@@ -236,11 +236,18 @@ the pages will re-render and the browser will automatically refresh.
 - Set up the test with `just setup-tests load_balancer`.
 - Run the tests with `just run-tests`.
 
-### AWS tests
+### AWS auth tests
 
 - Run `just run-server auth_aws` to start the server.
 - Run `just setup-tests auth_aws <aws-test-type>` to set up the AWS test.
 - Run the tests with `just run-tests`.
+
+### OIDC auth tests
+
+- Run `just setup-tests auth_oidc <oidc-test-type>` to set up the OIDC test.
+- Run the tests with `just run-tests`.
+
+The supported types are [`default`, `azure`, `gcp`, `eks`, `aks`, and `gke`].
 
 ### KMS tests
 

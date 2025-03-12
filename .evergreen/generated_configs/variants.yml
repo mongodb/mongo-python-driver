@@ -920,24 +920,21 @@ buildvariants:
   # Oidc auth tests
   - name: auth-oidc-ubuntu-22
     tasks:
-      - name: testoidc_task_group
-      - name: testazureoidc_task_group
-      - name: testgcpoidc_task_group
-      - name: testk8soidc_task_group
+      - name: .auth_oidc
     display_name: Auth OIDC Ubuntu-22
     run_on:
       - ubuntu2204-small
     batchtime: 10080
   - name: auth-oidc-macos
     tasks:
-      - name: testoidc_task_group
+      - name: .auth_oidc !.auth_oidc_remote
     display_name: Auth OIDC macOS
     run_on:
       - macos-14
     batchtime: 10080
   - name: auth-oidc-win64
     tasks:
-      - name: testoidc_task_group
+      - name: .auth_oidc !.auth_oidc_remote
     display_name: Auth OIDC Win64
     run_on:
       - windows-64-vsMulti-small
