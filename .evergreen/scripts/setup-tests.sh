@@ -19,8 +19,4 @@ if [ -f $SCRIPT_DIR/env.sh ]; then
   source $SCRIPT_DIR/env.sh
 fi
 
-set -x
-pwd
-ls
-exit 1
 uv run $SCRIPT_DIR/setup_tests.py "$@"

@@ -120,9 +120,6 @@ def handle_test_env() -> None:
     SSL = "ssl" if opts.ssl else "nossl"
     TEST_ARGS = ""
 
-    # Remove an existing local secrets file if it exists.
-    (ROOT / "secrets-export.sh").unlink(missing_ok=True)
-
     # Start compiling the args we'll pass to uv.
     # Run in an isolated environment so as not to pollute the base venv.
     UV_ARGS = ["--isolated --extra test"]
