@@ -29,6 +29,18 @@ fi
 
 PATH_EXT="$MONGODB_BINARIES:$DRIVERS_TOOLS_BINARIES:$PYMONGO_BIN_DIR:\$PATH"
 
+# Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
+if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
+    DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
+    PROJECT_DIRECTORY=$(cygpath -m $PROJECT_DIRECTORY)
+    CARGO_HOME=$(cygpath -m $CARGO_HOME)
+    UV_TOOL_DIR=$(cygpath -m "$UV_TOOL_DIR")
+    UV_CACHE_DIR=$(cygpath -m "$UV_CACHE_DIR")
+    DRIVERS_TOOLS_BINARIES=$(cygpath -m "$DRIVERS_TOOLS_BINARIES")
+    MONGODB_BINARIES=$(cygpath -m "$MONGODB_BINARIES")
+    PYMONGO_BIN_DIR=$(cygpath -m "$PYMONGO_BIN_DIR")
+fi
+
 # If the toolchain is available, symlink binaries to the bin dir.
 _bin_path=""
 if [ "Windows_NT" == "${OS:-}" ]; then
@@ -43,21 +55,9 @@ if [ -d "${_bin_path}" ]; then
   if [ "Windows_NT" == "${OS:-}" ]; then
     _suffix=".exe"
   fi
-  ln -s ${_bin_path}/just${_suffix} $PYMONGO_BIN_DIR/just
-  ln -s ${_bin_path}/uv${_suffix} $PYMONGO_BIN_DIR/uv
-  ln -s ${_bin_path}/uvx${_suffix} $PYMONGO_BIN_DIR/uvx
-fi
-
-# Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
-if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
-    DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
-    PROJECT_DIRECTORY=$(cygpath -m $PROJECT_DIRECTORY)
-    CARGO_HOME=$(cygpath -m $CARGO_HOME)
-    UV_TOOL_DIR=$(cygpath -m "$UV_TOOL_DIR")
-    UV_CACHE_DIR=$(cygpath -m "$UV_CACHE_DIR")
-    DRIVERS_TOOLS_BINARIES=$(cygpath -m "$DRIVERS_TOOLS_BINARIES")
-    MONGODB_BINARIES=$(cygpath -m "$MONGODB_BINARIES")
-    PYMONGO_BIN_DIR=$(cygpath -m "$PYMONGO_BIN_DIR")
+  ln -s ${_bin_path}/just${_suffix} $PYMONGO_BIN_DIR/just${_suffix}
+  ln -s ${_bin_path}/uv${_suffix} $PYMONGO_BIN_DIR/uv${_suffix}
+  ln -s ${_bin_path}/uvx${_suffix} $PYMONGO_BIN_DIR/uvx${_suffix}
 fi
 
 SCRIPT_DIR="$PROJECT_DIRECTORY/.evergreen/scripts"
