@@ -1042,6 +1042,50 @@ tasks:
           TEST_NAME: ocsp
     tags: [ocsp, ocsp-rsa]
 
+  # Oidc tests
+  - name: test-auth-oidc-default
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: auth_oidc
+          SUB_TEST_NAME: default
+    tags: [auth_oidc]
+  - name: test-auth-oidc-azure
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: auth_oidc
+          SUB_TEST_NAME: azure
+    tags: [auth_oidc, auth_oidc_remote]
+  - name: test-auth-oidc-gcp
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: auth_oidc
+          SUB_TEST_NAME: gcp
+    tags: [auth_oidc, auth_oidc_remote]
+  - name: test-auth-oidc-eks
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: auth_oidc
+          SUB_TEST_NAME: eks
+    tags: [auth_oidc, auth_oidc_remote]
+  - name: test-auth-oidc-aks
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: auth_oidc
+          SUB_TEST_NAME: aks
+    tags: [auth_oidc, auth_oidc_remote]
+  - name: test-auth-oidc-gke
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: auth_oidc
+          SUB_TEST_NAME: gke
+    tags: [auth_oidc, auth_oidc_remote]
+
   # Server tests
   - name: test-4.0-standalone-auth-ssl-sync
     commands:

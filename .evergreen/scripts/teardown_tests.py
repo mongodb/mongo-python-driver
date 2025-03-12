@@ -24,6 +24,12 @@ elif TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
 
     teardown_kms(SUB_TEST_NAME)
 
+# Tear down OIDC if applicable.
+elif TEST_NAME == "auth_oidc":
+    from oidc_tester import teardown_oidc
+
+    teardown_oidc(SUB_TEST_NAME)
+
 # Tear down ocsp if applicable.
 elif TEST_NAME == "ocsp":
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh")
