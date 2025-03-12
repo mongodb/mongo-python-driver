@@ -9,7 +9,7 @@ K8S_REMOTE_NAMES = [f"{n}-remote" for n in K8S_NAMES]
 
 
 def _get_target_dir(sub_test_name: str) -> str:
-    if sub_test_name == "test":
+    if sub_test_name == "default":
         target_dir = "auth_oidc"
     elif sub_test_name.startswith("azure"):
         target_dir = "auth_oidc/azure"
@@ -42,11 +42,9 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
         return None
 
     source_file = None
-    if sub_test_name == "test":
+    if sub_test_name == "default":
         source_file = f"{target_dir}/secrets-export.sh"
-    elif sub_test_name == "azure-remote":
-        source_file = "./env.sh"
-    elif sub_test_name == "gcp-remote":
+    elif sub_test_name in ["azure-remote", "gcp-remote"]:
         source_file = "./secrets-export.sh"
     if sub_test_name in K8S_REMOTE_NAMES:
         return os.environ.copy()
@@ -58,7 +56,7 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
     write_env("MONGODB_URI", config["MONGODB_URI"])
     write_env("DB_IP", config["MONGODB_URI"])
 
-    if sub_test_name == "test":
+    if sub_test_name == "default":
         write_env("OIDC_TOKEN_FILE", config["OIDC_TOKEN_FILE"])
         write_env("OIDC_TOKEN_DIR", config["OIDC_TOKEN_DIR"])
         if "OIDC_DOMAIN" in config:

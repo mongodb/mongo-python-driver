@@ -247,7 +247,7 @@ the pages will re-render and the browser will automatically refresh.
 - Run `just setup-tests auth_oidc <oidc-test-type>` to set up the OIDC test.
 - Run the tests with `just run-tests`.
 
-The supported types are [`test`, `azure`, `gcp`, `eks`, `aks`, and `gke`].
+The supported types are [`default`, `azure`, `gcp`, `eks`, `aks`, and `gke`].
 
 ### KMS tests
 
