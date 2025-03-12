@@ -843,6 +843,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             options.write_concern,
             options.read_concern,
         )
+        self._encrypter: Optional[_Encrypter] = None
         if not is_srv:
             self._topology_settings = TopologySettings(
                 seeds=seeds,
@@ -862,6 +863,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 srv_max_hosts=srv_max_hosts,
                 server_monitoring_mode=options.server_monitoring_mode,
             )
+            if self._options.auto_encryption_opts:
+                from pymongo.asynchronous.encryption import _Encrypter
+
+                self._encrypter = _Encrypter(self, self._options.auto_encryption_opts)
 
         self._opened = False
         self._closed = False
@@ -883,7 +888,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if _IS_SYNC and connect:
             self._get_topology()  # type: ignore[unused-coroutine]
 
-        self._encrypter: Optional[_Encrypter] = None
         self._timeout = self._options.timeout
 
     def _resolve_srv(self) -> None:
