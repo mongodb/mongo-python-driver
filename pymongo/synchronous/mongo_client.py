@@ -828,48 +828,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)
-        self._options = options = ClientOptions(username, password, dbase, opts, _IS_SYNC)
+        self._options = ClientOptions(username, password, dbase, opts, _IS_SYNC)
 
         self._default_database_name = dbase
         self._lock = _create_lock()
         self._kill_cursors_queue: list = []
 
-        self._event_listeners = options.pool_options._event_listeners
-        super().__init__(
-            options.codec_options,
-            options.read_preference,
-            options.write_concern,
-            options.read_concern,
-        )
         self._encrypter: Optional[_Encrypter] = None
-        if not is_srv:
-            self._topology_settings = TopologySettings(
-                seeds=seeds,
-                replica_set_name=options.replica_set_name,
-                pool_class=pool_class,
-                pool_options=options.pool_options,
-                monitor_class=monitor_class,
-                condition_class=condition_class,
-                local_threshold_ms=options.local_threshold_ms,
-                server_selection_timeout=options.server_selection_timeout,
-                server_selector=options.server_selector,
-                heartbeat_frequency=options.heartbeat_frequency,
-                fqdn=fqdn,
-                direct_connection=options.direct_connection,
-                load_balanced=options.load_balanced,
-                srv_service_name=srv_service_name,
-                srv_max_hosts=srv_max_hosts,
-                server_monitoring_mode=options.server_monitoring_mode,
-            )
-            if self._options.auto_encryption_opts:
-                from pymongo.synchronous.encryption import _Encrypter
-
-                self._encrypter = _Encrypter(self, self._options.auto_encryption_opts)
-
-        self._opened = False
-        self._closed = False
-        if not is_srv:
-            self._init_background(first=True)
 
         self._resolve_srv_info.update(
             {
@@ -883,10 +848,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 "condition_class": condition_class,
             }
         )
+        if not is_srv:
+            self._init_based_on_options(seeds, srv_max_hosts, srv_service_name)
+
+        self._opened = False
+        self._closed = False
+        if not is_srv:
+            self._init_background(first=True)
+
         if _IS_SYNC and connect:
             self._get_topology()  # type: ignore[unused-coroutine]
-
-        self._timeout = self._options.timeout
 
     def _resolve_srv(self) -> None:
         keyword_opts = self._resolve_srv_info["keyword_opts"]
@@ -955,38 +926,39 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 username, password, self._resolve_srv_info["dbase"], opts, _IS_SYNC
             )
 
-            self._event_listeners = self._options.pool_options._event_listeners
-            super().__init__(
-                self._options.codec_options,
-                self._options.read_preference,
-                self._options.write_concern,
-                self._options.read_concern,
-            )
+            self._init_based_on_options(seeds, srv_max_hosts, srv_service_name)
 
-            self._topology_settings = TopologySettings(
-                seeds=seeds,
-                replica_set_name=self._options.replica_set_name,
-                pool_class=self._resolve_srv_info["pool_class"],
-                pool_options=self._options.pool_options,
-                monitor_class=self._resolve_srv_info["monitor_class"],
-                condition_class=self._resolve_srv_info["condition_class"],
-                local_threshold_ms=self._options.local_threshold_ms,
-                server_selection_timeout=self._options.server_selection_timeout,
-                server_selector=self._options.server_selector,
-                heartbeat_frequency=self._options.heartbeat_frequency,
-                fqdn=self._resolve_srv_info["fqdn"],
-                direct_connection=self._options.direct_connection,
-                load_balanced=self._options.load_balanced,
-                srv_service_name=srv_service_name,
-                srv_max_hosts=srv_max_hosts,
-                server_monitoring_mode=self._options.server_monitoring_mode,
-            )
+    def _init_based_on_options(self, seeds, srv_max_hosts, srv_service_name):
+        self._event_listeners = self._options.pool_options._event_listeners
+        super().__init__(
+            self._options.codec_options,
+            self._options.read_preference,
+            self._options.write_concern,
+            self._options.read_concern,
+        )
+        self._topology_settings = TopologySettings(
+            seeds=seeds,
+            replica_set_name=self._options.replica_set_name,
+            pool_class=self._resolve_srv_info["pool_class"],
+            pool_options=self._options.pool_options,
+            monitor_class=self._resolve_srv_info["monitor_class"],
+            condition_class=self._resolve_srv_info["condition_class"],
+            local_threshold_ms=self._options.local_threshold_ms,
+            server_selection_timeout=self._options.server_selection_timeout,
+            server_selector=self._options.server_selector,
+            heartbeat_frequency=self._options.heartbeat_frequency,
+            fqdn=self._resolve_srv_info["fqdn"],
+            direct_connection=self._options.direct_connection,
+            load_balanced=self._options.load_balanced,
+            srv_service_name=srv_service_name,
+            srv_max_hosts=srv_max_hosts,
+            server_monitoring_mode=self._options.server_monitoring_mode,
+        )
+        if self._options.auto_encryption_opts:
+            from pymongo.synchronous.encryption import _Encrypter
 
-            if self._options.auto_encryption_opts:
-                from pymongo.synchronous.encryption import _Encrypter
-
-                self._encrypter = _Encrypter(self, self._options.auto_encryption_opts)
-            self._timeout = self._options.timeout
+            self._encrypter = _Encrypter(self, self._options.auto_encryption_opts)
+        self._timeout = self._options.timeout
 
     def _normalize_and_validate_options(
         self, opts: common._CaseInsensitiveDictionary, seeds: set[tuple[str, int | None]]
