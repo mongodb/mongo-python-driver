@@ -107,7 +107,7 @@ def run() -> None:
         test_kms_send_to_remote(SUB_TEST_NAME)
         return
 
-    # Senc ecs tests to run remotely.
+    # Send ecs tests to run remotely.
     if TEST_NAME == "auth_aws" and SUB_TEST_NAME == "ecs":
         run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh ecs")
         return
