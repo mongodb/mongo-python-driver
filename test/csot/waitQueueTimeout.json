@@ -1,0 +1,173 @@
+{
+  "description": "WaitQueueTimeoutError does not clear the pool",
+  "schemaVersion": "1.9",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4",
+      "topologies": [
+        "replicaset",
+        "sharded"
+      ]
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "failPointClient",
+        "useMultipleMongoses": false
+      }
+    },
+    {
+      "client": {
+        "id": "client",
+        "uriOptions": {
+          "maxPoolSize": 1
+        },
+        "useMultipleMongoses": false,
+        "observeEvents": [
+          "commandStartedEvent",
+          "poolClearedEvent"
+        ]
+      }
+    },
+    {
+      "database": {
+        "id": "database",
+        "client": "client",
+        "databaseName": "test"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "WaitQueueTimeoutError does not clear the pool",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "failPointClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 10
+              },
+              "data": {
+                "failCommands": [
+                  "ping"
+                ],
+                "blockConnection": true,
+                "blockTimeMS": 500
+              }
+            }
+          }
+        },
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "thread": {
+                  "id": "thread0"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "runOnThread",
+          "object": "testRunner",
+          "arguments": {
+            "thread": "thread0",
+            "operation": {
+              "name": "runCommand",
+              "object": "database",
+              "arguments": {
+                "command": {
+                  "ping": 1
+                },
+                "commandName": "ping"
+              }
+            }
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "commandStartedEvent": {
+                "commandName": "ping"
+              }
+            },
+            "count": 1
+          }
+        },
+        {
+          "name": "runCommand",
+          "object": "database",
+          "arguments": {
+            "timeoutMS": 200,
+            "command": {
+              "hello": 1
+            },
+            "commandName": "hello"
+          },
+          "expectError": {
+            "isTimeoutError": true
+          }
+        },
+        {
+          "name": "waitForThread",
+          "object": "testRunner",
+          "arguments": {
+            "thread": "thread0"
+          }
+        },
+        {
+          "name": "runCommand",
+          "object": "database",
+          "arguments": {
+            "command": {
+              "hello": 1
+            },
+            "commandName": "hello"
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client",
+          "eventType": "command",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "ping",
+                "databaseName": "test",
+                "command": {
+                  "ping": 1
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "commandName": "hello",
+                "databaseName": "test",
+                "command": {
+                  "hello": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "client": "client",
+          "eventType": "cmap",
+          "events": []
+        }
+      ]
+    }
+  ]
+}
