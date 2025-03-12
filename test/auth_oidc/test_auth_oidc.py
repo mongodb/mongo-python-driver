@@ -31,7 +31,7 @@ import pytest
 sys.path[0:0] = [""]
 
 from test.unified_format import generate_test_classes
-from test.utils import EventListener, OvertCommandListener
+from test.utils_shared import EventListener, OvertCommandListener
 
 from bson import SON
 from pymongo import MongoClient

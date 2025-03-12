@@ -23,7 +23,7 @@ import sys
 sys.path[0:0] = [""]
 
 from test import SkipTest, unittest
-from test.utils import oid_generated_on_process
+from test.utils_shared import oid_generated_on_process
 
 from bson.errors import InvalidId
 from bson.objectid import _MAX_COUNTER_VALUE, ObjectId

@@ -31,7 +31,7 @@ import pymongo
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import (
+from test.utils_shared import (
     AllowListEventListener,
     EventListener,
     OvertCommandListener,

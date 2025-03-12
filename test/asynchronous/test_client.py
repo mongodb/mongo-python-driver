@@ -60,14 +60,16 @@ from test.asynchronous import (
     unittest,
 )
 from test.asynchronous.pymongo_mocks import AsyncMockClient
-from test.test_binary import BinaryData
-from test.utils import (
-    NTHREADS,
-    CMAPListener,
-    FunctionCallRecorder,
+from test.asynchronous.utils import (
     async_get_pool,
     async_wait_until,
     asyncAssertRaisesExactly,
+)
+from test.test_binary import BinaryData
+from test.utils_shared import (
+    NTHREADS,
+    CMAPListener,
+    FunctionCallRecorder,
     delay,
     gevent_monkey_patched,
     is_greenthread_patched,

@@ -24,7 +24,7 @@ from asyncio import iscoroutinefunction
 from collections import abc
 from test.asynchronous import AsyncIntegrationTest, async_client_context, client_knobs
 from test.asynchronous.helpers import ConcurrentRunner
-from test.utils import (
+from test.utils_shared import (
     CMAPListener,
     CompareType,
     EventListener,

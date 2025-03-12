@@ -25,10 +25,10 @@ from functools import partial
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, connected, unittest
-from test.utils import (
-    ServerAndTopologyEventListener,
+from test.asynchronous.utils import (
     async_wait_until,
 )
+from test.utils_shared import ServerAndTopologyEventListener
 
 from pymongo.periodic_executor import _EXECUTORS
 
