@@ -136,5 +136,10 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
         cmd = " ".join(cmd)
     LOGGER.info("Running command '%s'...", cmd)
     kwargs.setdefault("check", True)
-    subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
+    try:
+        subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
+    except subprocess.CalledProcessError as e:
+        LOGGER.error(e.output)
+        LOGGER.error(str(e))
+        sys.exit(e.returncode)
     LOGGER.info("Running command '%s'... done.", cmd)
