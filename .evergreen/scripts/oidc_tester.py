@@ -34,6 +34,12 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
         run_command(f"bash {target_dir}/run-self-test.sh")
         return None
 
+    if sub_test_name == "eks" and "AWS_ACCESS_KEY_ID" in os.environ:
+        # Store AWS creds for kubectl access.
+        for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+            if key in os.environ:
+                write_env(key, os.environ[key])
+
     source_file = None
     if sub_test_name == "test":
         source_file = f"{target_dir}/secrets-export.sh"
@@ -60,11 +66,6 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
         write_env("AZUREOIDC_RESOURCE", config["AZUREOIDC_RESOURCE"])
     elif sub_test_name == "gcp-remote":
         write_env("GCPOIDC_AUDIENCE", config["GCPOIDC_AUDIENCE"])
-    elif sub_test_name == "eks" and "AWS_ACCESS_KEY_ID" in os.environ:
-        # Store AWS creds for kubectl access.
-        for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
-            if key in os.environ:
-                write_env(key, os.environ[key])
     return config
 
 
