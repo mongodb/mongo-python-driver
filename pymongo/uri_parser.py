@@ -586,7 +586,6 @@ def _validate_uri(
     _check_options(nodes, options)
 
     return {
-        "is_srv": is_srv,
         "nodelist": nodes,
         "username": user,
         "password": passwd,

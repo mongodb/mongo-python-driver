@@ -113,6 +113,7 @@ from pymongo.typings import (
     _Pipeline,
 )
 from pymongo.uri_parser import (
+    SRV_SCHEME,
     _check_options,
     _handle_option_deprecations,
     _handle_security_options,
@@ -787,8 +788,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     normalize=False,
                     srv_max_hosts=srv_max_hosts,
                 )
+                is_srv = entity.startswith(SRV_SCHEME)
                 seeds.update(res["nodelist"])
-                is_srv = res["is_srv"] or is_srv
                 username = res["username"] or username
                 password = res["password"] or password
                 dbase = res["database"] or dbase
