@@ -60,6 +60,11 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
         write_env("AZUREOIDC_RESOURCE", config["AZUREOIDC_RESOURCE"])
     elif sub_test_name == "gcp-remote":
         write_env("GCPOIDC_AUDIENCE", config["GCPOIDC_AUDIENCE"])
+    elif sub_test_name == "eks" and "AWS_ACCESS_KEY_ID" in os.environ:
+        # Store AWS creds for kubectl access.
+        for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+            if key in os.environ:
+                write_env(key, os.environ[key])
     return config
 
 
@@ -76,11 +81,6 @@ def test_oidc_send_to_remote(sub_test_name: str) -> None:
     elif sub_test_name in K8S_NAMES:
         env["K8S_DRIVERS_TAR_FILE"] = TMP_DRIVER_FILE
         env["K8S_TEST_CMD"] = "OIDC_ENV=k8s ./.evergreen/run-mongodb-oidc-test.sh"
-    if sub_test_name == "eks" and "AWS_ACCESS_KEY_ID" in os.environ:
-        # Remove AWS creds that would interfere with kubectl access.
-        for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
-            if key in os.environ:
-                del os.environ[key]
     run_command(f"bash {target_dir}/run-driver-test.sh", env=env)
 
 
