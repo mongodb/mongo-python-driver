@@ -1012,7 +1012,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Explicitly connect to MongoDB synchronously instead of on the first operation."""
         self._get_topology()
 
-    def _init_background(self, old_pid: Optional[int] = None, first=False) -> None:
+    def _init_background(self, old_pid: Optional[int] = None, first: bool = False) -> None:
         self._topology = Topology(self._topology_settings)
         if first and _HAS_REGISTER_AT_FORK:
             # Add this client to the list of weakly referenced items.
