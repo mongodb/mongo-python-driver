@@ -87,6 +87,12 @@ def test_oidc_send_to_remote(sub_test_name: str) -> None:
 
 def teardown_oidc(sub_test_name: str) -> None:
     target_dir = _get_target_dir(sub_test_name)
+    error = None
     if sub_test_name in K8S_NAMES:
-        run_command(f"bash {target_dir}/teardown-pod.sh")
+        try:
+            run_command(f"bash {target_dir}/teardown-pod.sh")
+        except Exception as e:
+            error = e
     run_command(f"bash {target_dir}/teardown.sh")
+    if error:
+        raise error
