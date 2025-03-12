@@ -2966,7 +2966,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
     def test_03_invalid_keyid(self):
         with self.assertRaisesRegex(
             EncryptedCollectionError,
-            "create.encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
+            ".*.encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
         ):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
