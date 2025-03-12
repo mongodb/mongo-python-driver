@@ -25,6 +25,13 @@ def _get_target_dir(sub_test_name: str) -> str:
 def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
     target_dir = _get_target_dir(sub_test_name)
     env = os.environ.copy()
+
+    if sub_test_name == "eks" and "AWS_ACCESS_KEY_ID" in os.environ:
+        # Store AWS creds for kubectl access.
+        for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+            if key in os.environ:
+                write_env(key, os.environ[key])
+
     if sub_test_name == "azure":
         env["AZUREOIDC_VMNAME_PREFIX"] = "PYTHON_DRIVER"
     if "-remote" not in sub_test_name:
@@ -33,12 +40,6 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
         run_command(f"bash {target_dir}/setup-pod.sh {sub_test_name}")
         run_command(f"bash {target_dir}/run-self-test.sh")
         return None
-
-    if sub_test_name == "eks" and "AWS_ACCESS_KEY_ID" in os.environ:
-        # Store AWS creds for kubectl access.
-        for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
-            if key in os.environ:
-                write_env(key, os.environ[key])
 
     source_file = None
     if sub_test_name == "test":
