@@ -115,7 +115,7 @@ def run() -> None:
     # Send OIDC tests to run remotely.
     if (
         TEST_NAME == "auth_oidc"
-        and SUB_TEST_NAME != "test"
+        and SUB_TEST_NAME != "default"
         and not SUB_TEST_NAME.endswith("-remote")
     ):
         from oidc_tester import test_oidc_send_to_remote
