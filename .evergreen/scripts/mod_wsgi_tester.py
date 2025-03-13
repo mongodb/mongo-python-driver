@@ -72,10 +72,10 @@ def test_mod_wsgi() -> None:
     uri2 = os.environ["TEST_URI2"]
     args = f"-n 25000 -t 100 parallel {uri1} {uri2}"
     try:
-        main(*parse_args(args))
+        main(*parse_args(args.split()))
 
         args = f"-n 25000 serial {uri1} {uri2}"
-        main(*parse_args(args))
+        main(*parse_args(args.split()))
     except Exception as e:
         LOGGER.error(Path("error_log").read_text())
         raise e
