@@ -100,7 +100,7 @@ def run() -> None:
     if TEST_PERF:
         start_time = datetime.now()
 
-    # Run mod_wsgi tests using the script.
+    # Run mod_wsgi tests using the helper.
     if TEST_NAME == "mod_wsgi":
         from mod_wsgi_tester import test_mod_wsgi
 
