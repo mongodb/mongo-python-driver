@@ -30,6 +30,7 @@ def setup_mod_wsgi(sub_test_name: str) -> None:
         env["MOD_WSGI_CONF"] = "mod_wsgi_test.conf"
     else:
         raise ValueError("mod_wsgi sub test must be either 'standalone' or 'embedded'")
+    write_env("MOD_WSGI_CONF", env["MOD_WSGI_CONF"])
     apache = which("apache2")
     if not apache and Path("/usr/lib/apache2/mpm-prefork/apache2").exists():
         apache = "/usr/lib/apache2/mpm-prefork/apache2"
@@ -42,9 +43,9 @@ def setup_mod_wsgi(sub_test_name: str) -> None:
         apache_config = "apache22amazon.conf"
     python_version = ".".join(str(val) for val in sys.version_info[:2])
     mod_wsgi_version = 4
-    env[
-        "MOD_WSGI_SO"
-    ] = f"/opt/python/mod_wsgi/python_version/{python_version}/mod_wsgi_version/{mod_wsgi_version}/mod_wsgi.so"
+    so_file = f"/opt/python/mod_wsgi/python_version/{python_version}/mod_wsgi_version/{mod_wsgi_version}/mod_wsgi.so"
+    write_env("MOD_WSGI_SO", so_file)
+    env["MOD_WSGI_SO"] = so_file
     env["PYTHONHOME"] = f"/opt/python/{python_version}"
     env["PROJECT_DIRECTORY"] = project_directory = str(ROOT)
     write_env("APACHE", apache)
@@ -84,6 +85,7 @@ def test_mod_wsgi() -> None:
 def teardown_mod_wsgi() -> None:
     apache = os.environ["APACHE"]
     apache_config = os.environ["APACHE_CONFIG"]
+
     run_command(f"{apache} -k stop -f {ROOT}/test/mod_wsgi_test/{apache_config}")
 
 
