@@ -27,8 +27,8 @@ from test import unittest
 
 from bson.binary import JAVA_LEGACY
 from pymongo import ReadPreference
-from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.errors import ConfigurationError, InvalidURI
+from pymongo.synchronous.uri_parser import parse_uri
 from pymongo.uri_parser_shared import (
     parse_userinfo,
     split_hosts,
