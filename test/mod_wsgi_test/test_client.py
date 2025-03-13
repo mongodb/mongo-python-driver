@@ -103,11 +103,11 @@ class URLGetterThread(threading.Thread):
     def run(self):
         for _i in range(self.nrequests_per_thread):
             try:
-                get(urls)
+                get(self.urls)
             except Exception as e:
                 print(e)
 
-                if not options.continue_:
+                if not self.options.continue_:
                     thread.interrupt_main()
                     thread.exit()
 
@@ -117,7 +117,7 @@ class URLGetterThread(threading.Thread):
                 URLGetterThread.counter += 1
                 counter = URLGetterThread.counter
 
-            should_print = options.verbose and not counter % 1000
+            should_print = self.options.verbose and not counter % 1000
 
             if should_print:
                 print(counter)
