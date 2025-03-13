@@ -1219,7 +1219,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             if hasattr(self, "_topology"):
                 return self._topology == other._topology
             else:
-                raise InvalidOperation("Cannot perform operation until client is connected")
+                raise InvalidOperation("Cannot compare client equality until both clients are connected")
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
