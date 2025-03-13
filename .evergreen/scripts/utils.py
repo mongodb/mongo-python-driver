@@ -30,7 +30,7 @@ class Distro:
 
 # Map the test name to a test suite.
 TEST_SUITE_MAP = {
-    "atlas": "atlas",
+    "atlas_connect": "atlas_connect",
     "auth_aws": "auth_aws",
     "auth_oidc": "auth_oidc",
     "data_lake": "data_lake",

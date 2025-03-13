@@ -267,28 +267,6 @@ functions:
         binary: bash
         args: [.evergreen/just.sh, run-tests]
 
-  "run enterprise auth tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        binary: bash
-        working_dir: "src"
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-enterprise-auth-tests.sh
-
-  "run atlas tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        binary: bash
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-atlas-tests.sh
-
   "cleanup":
     - command: subprocess.exec
       params:
@@ -343,6 +321,7 @@ functions:
       params:
         working_dir: "src"
         binary: bash
+        include_expansions_in_env: [SUB_TEST_NAME]
         args:
           - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/run-perf-tests.sh
@@ -422,13 +401,6 @@ tasks:
         - func: "run server"
         - func: "run doctests"
 
-    - name: "test-enterprise-auth"
-      tags: ["enterprise-auth"]
-      commands:
-        - func: "run server"
-        - func: "assume ec2 role"
-        - func: "run enterprise auth tests"
-
     - name: "test-search-index-helpers"
       commands:
         - func: "run server"
@@ -488,12 +460,6 @@ tasks:
             TOPOLOGY: "replica_set"
         - func: "run tests"
 
-    - name: "atlas-connect"
-      tags: ["atlas-connect"]
-      commands:
-        - func: "assume ec2 role"
-        - func: "run atlas tests"
-
     - name: atlas-data-lake-tests
       commands:
         - func: "bootstrap data lake"
@@ -547,6 +513,8 @@ tasks:
           vars:
             VERSION: "v6.0-perf"
         - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "sync"
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
@@ -558,6 +526,8 @@ tasks:
             VERSION: "v6.0-perf"
             SSL: "ssl"
         - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "sync"
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
@@ -568,8 +538,51 @@ tasks:
           vars:
             VERSION: "8.0"
         - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "sync"
         - func: "attach benchmark test results"
         - func: "send dashboard data"
+
+    - name: "perf-6.0-standalone-async"
+      tags: [ "perf" ]
+      commands:
+        - func: "run server"
+          vars:
+            VERSION: "v6.0-perf"
+            TOPOLOGY: "server"
+        - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "async"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
+    - name: "perf-6.0-standalone-ssl-async"
+      tags: [ "perf" ]
+      commands:
+        - func: "run server"
+          vars:
+            VERSION: "v6.0-perf"
+            TOPOLOGY: "server"
+            SSL: "ssl"
+        - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "async"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
+    - name: "perf-8.0-standalone-async"
+      tags: [ "perf" ]
+      commands:
+        - func: "run server"
+          vars:
+            VERSION: "8.0"
+            TOPOLOGY: "server"
+        - func: "run perf tests"
+          vars:
+            SUB_TEST_NAME: "async"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
 
     - name: "check-import-time"
       tags: ["pr"]
@@ -651,17 +664,6 @@ buildvariants:
      - name: "perf-6.0-standalone"
      - name: "perf-6.0-standalone-ssl"
      - name: "perf-8.0-standalone"
-
-      # Platform notes
-      # i386 builds of OpenSSL or Cyrus SASL are not available
-      # Debian 8.1 only supports MongoDB 3.4+
-      # SUSE12 s390x is only supported by MongoDB 3.4+
-      # No enterprise build for Archlinux, SSL not available
-      # RHEL 7.6 and RHEL 8.4 only supports 3.6+.
-      # RHEL 7 only supports 2.6+
-      # RHEL 7.1 ppc64le is only supported by MongoDB 3.2+
-      # RHEL 7.2 s390x is only supported by MongoDB 3.4+
-      # Solaris MongoDB SSL builds are not available
-      # Darwin MongoDB SSL builds are not available for 2.6
-      # SUSE12 x86_64 is only supported by MongoDB 3.2+
-      # vim: set et sw=2 ts=2 :
+     - name: "perf-6.0-standalone-async"
+     - name: "perf-6.0-standalone-ssl-async"
+     - name: "perf-8.0-standalone-async"

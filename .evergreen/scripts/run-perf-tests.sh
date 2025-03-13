@@ -1,4 +1,4 @@
 #!/bin/bash
 
 PROJECT_DIRECTORY=${PROJECT_DIRECTORY}
-bash "${PROJECT_DIRECTORY}"/.evergreen/run-perf-tests.sh
+SUB_TEST_NAME=${SUB_TEST_NAME} bash "${PROJECT_DIRECTORY}"/.evergreen/run-perf-tests.sh

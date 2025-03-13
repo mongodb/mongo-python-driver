@@ -464,7 +464,6 @@ def create_compression_variants():
 
 
 def create_enterprise_auth_variants():
-    expansions = dict(AUTH="auth")
     variants = []
 
     # All python versions across platforms.
@@ -475,10 +474,8 @@ def create_enterprise_auth_variants():
             host = HOSTS["win64"]
         else:
             host = DEFAULT_HOST
-        display_name = get_display_name("Auth Enterprise", host, python=python, **expansions)
-        variant = create_variant(
-            ["test-enterprise-auth"], display_name, host=host, python=python, expansions=expansions
-        )
+        display_name = get_display_name("Auth Enterprise", host, python=python)
+        variant = create_variant([".enterprise_auth"], display_name, host=host, python=python)
         variants.append(variant)
 
     return variants
@@ -721,7 +718,7 @@ def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [
         create_variant(
-            ["atlas-connect"],
+            [".atlas_connect"],
             get_display_name("Atlas connect", host, python=python),
             python=python,
             host=host,
@@ -911,6 +908,25 @@ def _create_ocsp_task(algo, variant, server_type, base_task_name):
     task_name = f"test-ocsp-{algo}-{base_task_name}"
     commands = [server_func, test_func]
     return EvgTask(name=task_name, tags=tags, commands=commands)
+
+
+def create_atlas_connect_tasks():
+    vars = dict(TEST_NAME="atlas_connect")
+    assume_func = FunctionCall(func="assume ec2 role")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    task_name = "test-atlas-connect"
+    tags = ["atlas_connect"]
+    return [EvgTask(name=task_name, tags=tags, commands=[assume_func, test_func])]
+
+
+def create_enterprise_auth_tasks():
+    vars = dict(TEST_NAME="enterprise_auth", AUTH="auth")
+    server_func = FunctionCall(func="run server", vars=vars)
+    assume_func = FunctionCall(func="assume ec2 role")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    task_name = "test-enterprise-auth"
+    tags = ["enterprise_auth"]
+    return [EvgTask(name=task_name, tags=tags, commands=[server_func, assume_func, test_func])]
 
 
 def create_ocsp_tasks():
