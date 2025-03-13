@@ -790,7 +790,7 @@ tasks:
     commands:
       - func: run server
         vars:
-          TOPOLOGY: replica-set
+          TOPOLOGY: replica_set
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
@@ -810,7 +810,7 @@ tasks:
     commands:
       - func: run server
         vars:
-          TOPOLOGY: replica-set
+          TOPOLOGY: replica_set
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi

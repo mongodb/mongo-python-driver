@@ -52,6 +52,8 @@ TEST_SUITE_MAP = {
 # Tests that require a sub test suite.
 SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms", "mod_wsgi"]
 
+EXTRA_TESTS = ["mod_wsgi"]
+
 
 def get_test_options(
     description, require_sub_test_name=True, allow_extra_opts=False
@@ -62,7 +64,7 @@ def get_test_options(
     if require_sub_test_name:
         parser.add_argument(
             "test_name",
-            choices=sorted(TEST_SUITE_MAP),
+            choices=sorted(TEST_SUITE_MAP + EXTRA_TESTS),
             nargs="?",
             default="default",
             help="The optional name of the test suite to set up, typically the same name as a pytest marker.",

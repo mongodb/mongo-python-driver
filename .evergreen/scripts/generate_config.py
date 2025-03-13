@@ -889,12 +889,12 @@ def create_oidc_tasks():
 
 def create_mod_wsgi_tasks():
     tasks = []
-    for test, topology in product(["standalone", "embedded-mode"], ["standalone", "replica-set"]):
+    for test, topology in product(["standalone", "embedded-mode"], ["standalone", "replica_set"]):
         if test == "standalone":
             task_name = "mod-wsgi-"
         else:
             task_name = "mod-wsgi-embedded-mode-"
-        task_name += topology
+        task_name += topology.replace("_", "-")
         server_vars = dict(TOPOLOGY=topology)
         server_func = FunctionCall(func="run server", vars=server_vars)
         vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test)
