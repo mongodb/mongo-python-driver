@@ -30,7 +30,7 @@ def setup_mod_wsgi(sub_test_name: str) -> None:
         env["MOD_WSGI_CONF"] = "mod_wsgi_test.conf"
     else:
         raise ValueError("mod_wsgi sub test must be either 'standalone' or 'embedded'")
-    apache = which("apache")
+    apache = which("apache2")
     if not apache and Path("/usr/lib/apache2/mpm-prefork/apache2").exists():
         apache = "/usr/lib/apache2/mpm-prefork/apache2"
     if apache:

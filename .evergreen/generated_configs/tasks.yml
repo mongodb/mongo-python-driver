@@ -804,7 +804,7 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
-          SUB_TEST_NAME: embedded-mode
+          SUB_TEST_NAME: embedded
     tags: [mod_wsgi]
   - name: mod-wsgi-embedded-mode-replica-set
     commands:
@@ -814,7 +814,7 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
-          SUB_TEST_NAME: embedded-mode
+          SUB_TEST_NAME: embedded
     tags: [mod_wsgi]
 
   # Ocsp tests

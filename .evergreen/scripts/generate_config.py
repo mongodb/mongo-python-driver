@@ -897,7 +897,7 @@ def create_mod_wsgi_tasks():
         task_name += topology.replace("_", "-")
         server_vars = dict(TOPOLOGY=topology)
         server_func = FunctionCall(func="run server", vars=server_vars)
-        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test)
+        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0])
         test_func = FunctionCall(func="run tests", vars=vars)
         tags = ["mod_wsgi"]
         commands = [server_func, test_func]
