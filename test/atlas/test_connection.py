@@ -28,7 +28,7 @@ sys.path[0:0] = [""]
 import pymongo
 from pymongo.ssl_support import HAS_SNI
 
-pytestmark = pytest.mark.atlas
+pytestmark = pytest.mark.atlas_connect
 
 
 URIS = {

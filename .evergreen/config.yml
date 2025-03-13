@@ -267,28 +267,6 @@ functions:
         binary: bash
         args: [.evergreen/just.sh, run-tests]
 
-  "run enterprise auth tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        binary: bash
-        working_dir: "src"
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-enterprise-auth-tests.sh
-
-  "run atlas tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        binary: bash
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-atlas-tests.sh
-
   "cleanup":
     - command: subprocess.exec
       params:
@@ -372,29 +350,6 @@ post:
   - func: "cleanup"
 
 task_groups:
-  - name: serverless_task_group
-    setup_group_can_fail_task: true
-    setup_group_timeout_secs: 1800 # 30 minutes
-    setup_group:
-      - func: "fetch source"
-      - func: "setup system"
-      - command: subprocess.exec
-        params:
-          binary: bash
-          env:
-            VAULT_NAME: ${VAULT_NAME}
-          args:
-            - ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
-    teardown_task:
-      - command: subprocess.exec
-        params:
-          binary: bash
-          args:
-            - ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
-      - func: "upload test results"
-    tasks:
-      - ".serverless"
-
   - name: test_aws_lambda_task_group
     setup_group:
       - func: fetch source
@@ -444,20 +399,6 @@ tasks:
       commands:
         - func: "run server"
         - func: "run doctests"
-
-    - name: "test-serverless"
-      tags: ["serverless"]
-      commands:
-        - func: "run tests"
-          vars:
-            TEST_NAME: serverless
-
-    - name: "test-enterprise-auth"
-      tags: ["enterprise-auth"]
-      commands:
-        - func: "run server"
-        - func: "assume ec2 role"
-        - func: "run enterprise auth tests"
 
     - name: "test-search-index-helpers"
       commands:
@@ -517,12 +458,6 @@ tasks:
             VERSION: "8.0"
             TOPOLOGY: "replica_set"
         - func: "run tests"
-
-    - name: "atlas-connect"
-      tags: ["atlas-connect"]
-      commands:
-        - func: "assume ec2 role"
-        - func: "run atlas tests"
 
     - name: atlas-data-lake-tests
       commands:

@@ -4,29 +4,27 @@ set -eu
 
 find_python3() {
     PYTHON=""
-    # Add a fallback system python3 if it is available and Python 3.9+.
-    if is_python_39 "$(command -v python3)"; then
-        PYTHON="$(command -v python3)"
-    fi
     # Find a suitable toolchain version, if available.
     if [ "$(uname -s)" = "Darwin" ]; then
-        # macos 11.00
-        if [ -d "/Library/Frameworks/Python.Framework/Versions/3.10" ]; then
-            PYTHON="/Library/Frameworks/Python.Framework/Versions/3.10/bin/python3"
-        # macos 10.14
-        elif [ -d "/Library/Frameworks/Python.Framework/Versions/3.9" ]; then
-            PYTHON="/Library/Frameworks/Python.Framework/Versions/3.9/bin/python3"
-        fi
+        PYTHON="/Library/Frameworks/Python.Framework/Versions/Current/bin/python3"
     elif [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
-        PYTHON="C:/python/Python39/python.exe"
+        PYTHON="C:/python/Current/python.exe"
     else
         # Prefer our own toolchain, fall back to mongodb toolchain if it has Python 3.9+.
-        if [ -f "/opt/python/3.9/bin/python3" ]; then
-            PYTHON="/opt/python/3.9/bin/python3"
+        if [ -f "/opt/python/Current/bin/python3" ]; then
+            PYTHON="/opt/python/Current/bin/python3"
+        elif is_python_39 "$(command -v /opt/mongodbtoolchain/v5/bin/python3)"; then
+            PYTHON="/opt/mongodbtoolchain/v5/bin/python3"
         elif is_python_39 "$(command -v /opt/mongodbtoolchain/v4/bin/python3)"; then
             PYTHON="/opt/mongodbtoolchain/v4/bin/python3"
         elif is_python_39 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
             PYTHON="/opt/mongodbtoolchain/v3/bin/python3"
+        fi
+    fi
+    # Add a fallback system python3 if it is available and Python 3.9+.
+    if [ -z "$PYTHON" ]; then
+        if is_python_39 "$(command -v python3)"; then
+            PYTHON="$(command -v python3)"
         fi
     fi
     if [ -z "$PYTHON" ]; then
