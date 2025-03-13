@@ -45,9 +45,9 @@ from unittest import SkipTest
 
 from bson.son import SON
 from pymongo import common, message
-from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.read_preferences import ReadPreference
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
+from pymongo.synchronous.uri_parser import parse_uri
 
 if HAVE_SSL:
     import ssl
