@@ -372,29 +372,6 @@ post:
   - func: "cleanup"
 
 task_groups:
-  - name: serverless_task_group
-    setup_group_can_fail_task: true
-    setup_group_timeout_secs: 1800 # 30 minutes
-    setup_group:
-      - func: "fetch source"
-      - func: "setup system"
-      - command: subprocess.exec
-        params:
-          binary: bash
-          env:
-            VAULT_NAME: ${VAULT_NAME}
-          args:
-            - ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
-    teardown_task:
-      - command: subprocess.exec
-        params:
-          binary: bash
-          args:
-            - ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
-      - func: "upload test results"
-    tasks:
-      - ".serverless"
-
   - name: test_aws_lambda_task_group
     setup_group:
       - func: fetch source
@@ -444,13 +421,6 @@ tasks:
       commands:
         - func: "run server"
         - func: "run doctests"
-
-    - name: "test-serverless"
-      tags: ["serverless"]
-      commands:
-        - func: "run tests"
-          vars:
-            TEST_NAME: serverless
 
     - name: "test-enterprise-auth"
       tags: ["enterprise-auth"]
