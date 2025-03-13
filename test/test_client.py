@@ -505,13 +505,13 @@ class ClientUnitTest(UnitTest):
 
     def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
         # Patch the resolver.
-        from pymongo.srv_resolver import _resolve
+        from pymongo.synchronous.srv_resolver import _resolve
 
         patched_resolver = FunctionCallRecorder(_resolve)
-        pymongo.srv_resolver._resolve = patched_resolver
+        pymongo.synchronous.srv_resolver._resolve = patched_resolver
 
         def reset_resolver():
-            pymongo.srv_resolver._resolve = _resolve
+            pymongo.synchronous.srv_resolver._resolve = _resolve
 
         self.addCleanup(reset_resolver)
 

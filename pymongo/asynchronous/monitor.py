@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
+from pymongo.asynchronous.srv_resolver import _SrvResolver
 from pymongo.errors import NetworkTimeout, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _async_create_lock
@@ -33,7 +34,6 @@ from pymongo.periodic_executor import _shutdown_executors
 from pymongo.pool_options import _is_faas
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
-from pymongo.srv_resolver import _SrvResolver
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.pool import AsyncConnection, Pool, _CancellationContext

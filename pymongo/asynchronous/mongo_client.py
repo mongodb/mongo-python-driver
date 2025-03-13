@@ -1216,10 +1216,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
-            if hasattr(self, "_topology"):
+            if hasattr(self, "_topology") and hasattr(other, "_topology"):
                 return self._topology == other._topology
             else:
-                raise InvalidOperation("Cannot compare client equality until both clients are connected")
+                raise InvalidOperation(
+                    "Cannot compare client equality until both clients are connected"
+                )
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
@@ -1245,13 +1247,16 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             return f"{option}={value!r}"
 
         # Host first...
-        options = [
-            "host=%r"
-            % [
-                "%s:%d" % (host, port) if port is not None else host
-                for host, port in self._topology_settings.seeds
+        if hasattr(self, "_topology"):
+            options = [
+                "host=%r"
+                % [
+                    "%s:%d" % (host, port) if port is not None else host
+                    for host, port in self._topology_settings.seeds
+                ]
             ]
-        ]
+        else:
+            options = []
         # ... then everything in self._constructor_args...
         options.extend(
             option_repr(key, self._options._options[key]) for key in self._constructor_args
@@ -1265,9 +1270,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return ", ".join(options)
 
     def __repr__(self) -> str:
-        if hasattr(self, "_topology"):
-            return f"{type(self).__name__}({self._repr_helper()})"
-        raise InvalidOperation("Cannot perform operation until client is connected")
+        return f"{type(self).__name__}({self._repr_helper()})"
 
     def __getattr__(self, name: str) -> database.AsyncDatabase[_DocumentType]:
         """Get a database by name.

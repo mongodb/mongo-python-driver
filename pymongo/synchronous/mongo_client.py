@@ -1214,10 +1214,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
-            if hasattr(self, "_topology"):
+            if hasattr(self, "_topology") and hasattr(other, "_topology"):
                 return self._topology == other._topology
             else:
-                raise InvalidOperation("Cannot perform operation until client is connected")
+                raise InvalidOperation(
+                    "Cannot compare client equality until both clients are connected"
+                )
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
@@ -1227,7 +1229,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if hasattr(self, "_topology"):
             return hash(self._topology)
         else:
-            raise InvalidOperation("Cannot perform operation until client is connected")
+            raise InvalidOperation("Cannot hash client until it is connected")
 
     def _repr_helper(self) -> str:
         def option_repr(option: str, value: Any) -> str:
@@ -1243,13 +1245,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             return f"{option}={value!r}"
 
         # Host first...
-        options = [
-            "host=%r"
-            % [
-                "%s:%d" % (host, port) if port is not None else host
-                for host, port in self._topology_settings.seeds
+        if hasattr(self, "_topology"):
+            options = [
+                "host=%r"
+                % [
+                    "%s:%d" % (host, port) if port is not None else host
+                    for host, port in self._topology_settings.seeds
+                ]
             ]
-        ]
+        else:
+            options = []
         # ... then everything in self._constructor_args...
         options.extend(
             option_repr(key, self._options._options[key]) for key in self._constructor_args
@@ -1263,9 +1268,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return ", ".join(options)
 
     def __repr__(self) -> str:
-        if hasattr(self, "_topology"):
-            return f"{type(self).__name__}({self._repr_helper()})"
-        raise InvalidOperation("Cannot perform operation until client is connected")
+        return f"{type(self).__name__}({self._repr_helper()})"
 
     def __getattr__(self, name: str) -> database.Database[_DocumentType]:
         """Get a database by name.
