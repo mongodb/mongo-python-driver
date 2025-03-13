@@ -221,7 +221,7 @@ class TestRunCommand80Tasks(TestRunCommand):
     n_tasks = 80
 
 
-class TestRunCommandManyTasks(TestRunCommand):
+class TestRunCommandUnlimitedTasks(TestRunCommand):
     async def do_task(self):
         command = self.client.perftest.command
         await asyncio.gather(*[command("hello", True) for _ in range(NUM_DOCS)])
@@ -283,7 +283,7 @@ class TestFindOneByID80Tasks(TestFindOneByID):
     n_tasks = 80
 
 
-class TestFindOneByIDManyTasks(TestFindOneByID):
+class TestFindOneByIDUnlimitedTasks(TestFindOneByID):
     async def do_task(self):
         find_one = self.corpus.find_one
         await asyncio.gather(*[find_one({"_id": _id}) for _id in self.inserted_ids])
@@ -310,6 +310,13 @@ class SmallDocMixedTest(TestDocument):
 class TestSmallDocInsertOne(SmallDocInsertTest, AsyncPyMongoTestCase):
     async def do_task(self):
         insert_one = self.corpus.insert_one
+        for doc in self.documents:
+            await insert_one(doc)
+
+
+class TestSmallDocInsertOneUnlimitedTasks(SmallDocInsertTest, AsyncPyMongoTestCase):
+    async def do_task(self):
+        insert_one = self.corpus.insert_one
         await asyncio.gather(*[insert_one(doc) for doc in self.documents])
 
 
@@ -324,6 +331,13 @@ class LargeDocInsertTest(TestDocument):
 
 
 class TestLargeDocInsertOne(LargeDocInsertTest, AsyncPyMongoTestCase):
+    async def do_task(self):
+        insert_one = self.corpus.insert_one
+        for doc in self.documents:
+            await insert_one(doc)
+
+
+class TestLargeDocInsertOneUnlimitedTasks(LargeDocInsertTest, AsyncPyMongoTestCase):
     async def do_task(self):
         insert_one = self.corpus.insert_one
         await asyncio.gather(*[insert_one(doc) for doc in self.documents])
@@ -341,10 +355,6 @@ class TestFindManyAndEmptyCursor8Tasks(TestFindManyAndEmptyCursor):
 
 class TestFindManyAndEmptyCursor80Tasks(TestFindManyAndEmptyCursor):
     n_tasks = 80
-
-
-class TestFindManyAndEmptyCursorManyTasks(TestFindManyAndEmptyCursor):
-    n_tasks = 1000
 
 
 class TestSmallDocBulkInsert(SmallDocInsertTest, AsyncPyMongoTestCase):
