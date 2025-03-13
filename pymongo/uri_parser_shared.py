@@ -20,7 +20,6 @@
 from __future__ import annotations
 
 import re
-import sys
 import warnings
 from typing import (
     TYPE_CHECKING,
@@ -34,7 +33,6 @@ from typing import (
 )
 from urllib.parse import unquote_plus
 
-from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.client_options import _parse_ssl_options
 from pymongo.common import (
     INTERNAL_URI_OPTION_NAME_MAP,
@@ -451,13 +449,3 @@ def _parse_kms_tls_options(kms_tls_options: Optional[Mapping[str, Any]]) -> dict
                 raise ConfigurationError(f"Insecure TLS options prohibited: {n}")
             contexts[provider] = ssl_context
     return contexts
-
-
-if __name__ == "__main__":
-    import pprint
-
-    try:
-        pprint.pprint(parse_uri(sys.argv[1]))  # noqa: T203
-    except InvalidURI as exc:
-        print(exc)  # noqa: T201
-    sys.exit(0)
