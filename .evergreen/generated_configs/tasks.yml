@@ -796,7 +796,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: standalone
     tags: [mod_wsgi]
-  - name: mod-wsgi-embedded-modestandalone
+  - name: mod-wsgi-embedded-mode-standalone
     commands:
       - func: run server
         vars:
@@ -806,7 +806,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded-mode
     tags: [mod_wsgi]
-  - name: mod-wsgi-embedded-modereplica-set
+  - name: mod-wsgi-embedded-mode-replica-set
     commands:
       - func: run server
         vars:

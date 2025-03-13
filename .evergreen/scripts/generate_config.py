@@ -614,12 +614,7 @@ def create_atlas_data_lake_variants():
 def create_mod_wsgi_variants():
     variants = []
     host = HOSTS["ubuntu22"]
-    tasks = [
-        "mod-wsgi-standalone",
-        "mod-wsgi-replica-set",
-        "mod-wsgi-embedded-mode-standalone",
-        "mod-wsgi-embedded-mode-replica-set",
-    ]
+    tasks = [".mod_wsgi"]
     expansions = dict(MOD_WSGI_VERSION="4")
     for python in MIN_MAX_PYTHON:
         display_name = get_display_name("mod_wsgi", host, python=python)
@@ -898,7 +893,7 @@ def create_mod_wsgi_tasks():
         if test == "standalone":
             task_name = "mod-wsgi-"
         else:
-            task_name = "mod-wsgi-embedded-mode"
+            task_name = "mod-wsgi-embedded-mode-"
         task_name += topology
         server_vars = dict(TOPOLOGY=topology)
         server_func = FunctionCall(func="run server", vars=server_vars)
