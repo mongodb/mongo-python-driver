@@ -48,7 +48,7 @@ def setup_mod_wsgi(sub_test_name: str) -> None:
     env["MOD_WSGI_SO"] = so_file
     env["PYTHONHOME"] = f"/opt/python/{python_version}"
     env["PROJECT_DIRECTORY"] = project_directory = str(ROOT)
-    write_env("APACHE", apache)
+    write_env("APACHE_BINARY", apache)
     write_env("APACHE_CONFIG", apache_config)
     uri1 = f"http://localhost:8080/interpreter1{project_directory}"
     write_env("TEST_URI1", uri1)
@@ -83,7 +83,7 @@ def test_mod_wsgi() -> None:
 
 
 def teardown_mod_wsgi() -> None:
-    apache = os.environ["APACHE"]
+    apache = os.environ["APACHE_BINARY"]
     apache_config = os.environ["APACHE_CONFIG"]
 
     run_command(f"{apache} -k stop -f {ROOT}/test/mod_wsgi_test/{apache_config}")
