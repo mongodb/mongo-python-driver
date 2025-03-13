@@ -61,7 +61,6 @@ from test.asynchronous import AsyncPyMongoTestCase, async_client_context, unitte
 from bson import encode
 from gridfs import AsyncGridFSBucket
 from pymongo import (
-    AsyncMongoClient,
     DeleteOne,
     InsertOne,
     ReplaceOne,
@@ -217,14 +216,12 @@ class TestRunCommand(PerformanceTest, AsyncPyMongoTestCase):
 class TestRunCommand8Tasks(TestRunCommand):
     n_tasks = 8
 
-    async def do_task(self):
-        command = self.client.perftest.command
-        await asyncio.gather(*[command("hello", True) for _ in range(NUM_DOCS)])
-
 
 class TestRunCommand80Tasks(TestRunCommand):
     n_tasks = 80
 
+
+class TestRunCommandManyTasks(TestRunCommand):
     async def do_task(self):
         command = self.client.perftest.command
         await asyncio.gather(*[command("hello", True) for _ in range(NUM_DOCS)])
@@ -281,14 +278,12 @@ class TestFindOneByID(FindTest, AsyncPyMongoTestCase):
 class TestFindOneByID8Tasks(TestFindOneByID):
     n_tasks = 8
 
-    async def do_task(self):
-        find_one = self.corpus.find_one
-        await asyncio.gather(*[find_one({"_id": _id}) for _id in self.inserted_ids])
-
 
 class TestFindOneByID80Tasks(TestFindOneByID):
     n_tasks = 80
 
+
+class TestFindOneByIDManyTasks(TestFindOneByID):
     async def do_task(self):
         find_one = self.corpus.find_one
         await asyncio.gather(*[find_one({"_id": _id}) for _id in self.inserted_ids])
@@ -346,6 +341,10 @@ class TestFindManyAndEmptyCursor8Tasks(TestFindManyAndEmptyCursor):
 
 class TestFindManyAndEmptyCursor80Tasks(TestFindManyAndEmptyCursor):
     n_tasks = 80
+
+
+class TestFindManyAndEmptyCursorManyTasks(TestFindManyAndEmptyCursor):
+    n_tasks = 1000
 
 
 class TestSmallDocBulkInsert(SmallDocInsertTest, AsyncPyMongoTestCase):
