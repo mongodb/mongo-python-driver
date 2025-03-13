@@ -1,4 +1,13 @@
 tasks:
+  # Atlas connect tests
+  - name: test-atlas-connect
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: atlas_connect
+    tags: [atlas_connect]
+
   # Aws tests
   - name: test-auth-aws-4.4-regular
     commands:
@@ -679,6 +688,20 @@ tasks:
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, auth-aws-web-identity]
+
+  # Enterprise auth tests
+  - name: test-enterprise-ath
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: enterprise_auth
+          AUTH: auth
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: enterprise_auth
+          AUTH: auth
+    tags: [enterprise_auth]
 
   # Kms tests
   - name: test-gcpkms
