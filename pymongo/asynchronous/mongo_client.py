@@ -1229,7 +1229,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if hasattr(self, "_topology"):
             return hash(self._topology)
         else:
-            raise InvalidOperation("Cannot perform operation until client is connected")
+            raise InvalidOperation("Cannot hash client until it is connected")
 
     def _repr_helper(self) -> str:
         def option_repr(option: str, value: Any) -> str:
