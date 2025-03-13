@@ -59,10 +59,11 @@ from typing import (
     cast,
 )
 
+import pymongo.asynchronous.uri_parser
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, common, helpers_shared, periodic_executor, uri_parser
-from pymongo.asynchronous import client_session, database
+from pymongo import _csot, common, helpers_shared, periodic_executor, uri_parser_shared
+from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
 from pymongo.asynchronous.client_session import _EmptyServerSession
@@ -114,7 +115,7 @@ from pymongo.typings import (
     _DocumentTypeArg,
     _Pipeline,
 )
-from pymongo.uri_parser import (
+from pymongo.uri_parser_shared import (
     SRV_SCHEME,
     _check_options,
     _handle_option_deprecations,
@@ -783,7 +784,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # it must be a URI,
             # https://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
             if "/" in entity:
-                res = uri_parser._validate_uri(
+                res = pymongo.asynchronous.uri_parser._validate_uri(
                     entity,
                     port,
                     validate=True,
@@ -799,7 +800,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 opts = res["options"]
                 fqdn = res["fqdn"]
             else:
-                seeds.update(uri_parser.split_hosts(entity, self._port))
+                seeds.update(uri_parser_shared.split_hosts(entity, self._port))
         if not seeds:
             raise ConfigurationError("need to specify at least one host")
 
@@ -862,7 +863,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if _IS_SYNC and connect:
             self._get_topology()  # type: ignore[unused-coroutine]
 
-    def _resolve_srv(self) -> None:
+    async def _resolve_srv(self) -> None:
         keyword_opts = self._resolve_srv_info["keyword_opts"]
         seeds = set()
         opts = common._CaseInsensitiveDictionary()
@@ -879,7 +880,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     timeout = common.validate_timeout_or_none_or_zero(
                         keyword_opts.cased_key("connecttimeoutms"), timeout
                     )
-                res = uri_parser._parse_srv(
+                res = await uri_parser._parse_srv(
                     entity,
                     self._port,
                     validate=True,
@@ -892,7 +893,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 seeds.update(res["nodelist"])
                 opts = res["options"]
             else:
-                seeds.update(uri_parser.split_hosts(entity, self._port))
+                seeds.update(uri_parser_shared.split_hosts(entity, self._port))
 
             if not seeds:
                 raise ConfigurationError("need to specify at least one host")
@@ -1694,7 +1695,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         if not self._opened:
             if self._resolve_srv_info["is_srv"]:
-                self._resolve_srv()
+                await self._resolve_srv()
                 self._init_background(first=True)
             await self._topology.open()
             async with self._lock:

@@ -58,7 +58,7 @@ def _resolve(*args: Any, **kwargs: Any) -> resolver.Answer:
     else:
         from dns.asyncresolver import Resolver
 
-        return Resolver.resolve(*args, **kwargs)
+        return Resolver.resolve(*args, **kwargs)  # type:ignore[return-value]
 
 
 _INVALID_HOST_MSG = (

@@ -33,7 +33,8 @@ from test.utils_shared import wait_until
 
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
-from pymongo.uri_parser import parse_uri, split_hosts
+from pymongo.synchronous.uri_parser import parse_uri
+from pymongo.uri_parser_shared import split_hosts
 
 _IS_SYNC = True
 

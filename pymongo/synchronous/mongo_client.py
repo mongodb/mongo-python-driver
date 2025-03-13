@@ -58,9 +58,10 @@ from typing import (
     cast,
 )
 
+import pymongo.synchronous.uri_parser
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, common, helpers_shared, periodic_executor, uri_parser
+from pymongo import _csot, common, helpers_shared, periodic_executor, uri_parser_shared
 from pymongo.client_options import ClientOptions
 from pymongo.errors import (
     AutoReconnect,
@@ -97,7 +98,7 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import ClientBulkWriteResult
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous import client_session, database
+from pymongo.synchronous import client_session, database, uri_parser
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _EmptyServerSession
@@ -113,7 +114,7 @@ from pymongo.typings import (
     _DocumentTypeArg,
     _Pipeline,
 )
-from pymongo.uri_parser import (
+from pymongo.uri_parser_shared import (
     SRV_SCHEME,
     _check_options,
     _handle_option_deprecations,
@@ -781,7 +782,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # it must be a URI,
             # https://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
             if "/" in entity:
-                res = uri_parser._validate_uri(
+                res = pymongo.synchronous.uri_parser._validate_uri(
                     entity,
                     port,
                     validate=True,
@@ -797,7 +798,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 opts = res["options"]
                 fqdn = res["fqdn"]
             else:
-                seeds.update(uri_parser.split_hosts(entity, self._port))
+                seeds.update(uri_parser_shared.split_hosts(entity, self._port))
         if not seeds:
             raise ConfigurationError("need to specify at least one host")
 
@@ -890,7 +891,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 seeds.update(res["nodelist"])
                 opts = res["options"]
             else:
-                seeds.update(uri_parser.split_hosts(entity, self._port))
+                seeds.update(uri_parser_shared.split_hosts(entity, self._port))
 
             if not seeds:
                 raise ConfigurationError("need to specify at least one host")

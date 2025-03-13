@@ -32,7 +32,7 @@ except ImportError:
 from bson import int64
 from pymongo.common import validate_is_mapping
 from pymongo.errors import ConfigurationError
-from pymongo.uri_parser import _parse_kms_tls_options
+from pymongo.uri_parser_shared import _parse_kms_tls_options
 
 if TYPE_CHECKING:
     from pymongo.typings import _AgnosticMongoClient, _DocumentTypeArg

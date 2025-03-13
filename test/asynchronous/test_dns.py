@@ -31,9 +31,10 @@ from test.asynchronous import (
 )
 from test.utils_shared import async_wait_until
 
+from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
-from pymongo.uri_parser import parse_uri, split_hosts
+from pymongo.uri_parser_shared import split_hosts
 
 _IS_SYNC = False
 

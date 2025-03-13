@@ -31,8 +31,8 @@ except ImportError:
     pass
 
 from pymongo import MongoClient
+from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.errors import OperationFailure
-from pymongo.uri_parser import parse_uri
 
 pytestmark = pytest.mark.auth_aws
 

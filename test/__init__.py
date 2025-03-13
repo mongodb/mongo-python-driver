@@ -32,7 +32,7 @@ import unittest
 import warnings
 from asyncio import iscoroutinefunction
 
-from pymongo.uri_parser import parse_uri
+from pymongo.synchronous.uri_parser import parse_uri
 
 try:
     import ipaddress

@@ -69,6 +69,7 @@ class TestDefaultExports(unittest.TestCase):
 
     def test_pymongo_imports(self):
         import pymongo
+        from pymongo.asynchronous.uri_parser import parse_uri
         from pymongo.auth import MECHANISMS
         from pymongo.auth_oidc import (
             OIDCCallback,
@@ -198,10 +199,9 @@ class TestDefaultExports(unittest.TestCase):
         from pymongo.server_api import ServerApi, ServerApiVersion
         from pymongo.server_description import ServerDescription
         from pymongo.topology_description import TopologyDescription
-        from pymongo.uri_parser import (
+        from pymongo.uri_parser_shared import (
             parse_host,
             parse_ipv6_literal_host,
-            parse_uri,
             parse_userinfo,
             split_hosts,
             split_options,
