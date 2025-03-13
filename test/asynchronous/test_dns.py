@@ -110,7 +110,7 @@ def create_test(test_case):
             hosts = frozenset(split_hosts(",".join(hosts)))
 
         if seeds or num_seeds:
-            result = parse_uri(uri, validate=True)
+            result = await parse_uri(uri, validate=True)
             if seeds is not None:
                 self.assertEqual(sorted(result["nodelist"]), sorted(seeds))
             if num_seeds is not None:
