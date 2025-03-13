@@ -690,7 +690,7 @@ tasks:
     tags: [auth-aws, auth-aws-web-identity]
 
   # Enterprise auth tests
-  - name: test-enterprise-ath
+  - name: test-enterprise-auth
     commands:
       - func: run server
         vars:

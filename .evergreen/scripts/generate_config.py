@@ -924,7 +924,7 @@ def create_enterprise_auth_tasks():
     server_func = FunctionCall(func="run server", vars=vars)
     assume_func = FunctionCall(func="assume ec2 role")
     test_func = FunctionCall(func="run tests", vars=vars)
-    task_name = "test-enterprise-ath"
+    task_name = "test-enterprise-auth"
     tags = ["enterprise_auth"]
     return [EvgTask(name=task_name, tags=tags, commands=[server_func, assume_func, test_func])]
 
