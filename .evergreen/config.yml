@@ -267,28 +267,6 @@ functions:
         binary: bash
         args: [.evergreen/just.sh, run-tests]
 
-  "run enterprise auth tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        binary: bash
-        working_dir: "src"
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-enterprise-auth-tests.sh
-
-  "run atlas tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        binary: bash
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-atlas-tests.sh
-
   "cleanup":
     - command: subprocess.exec
       params:
@@ -452,13 +430,6 @@ tasks:
           vars:
             TEST_NAME: serverless
 
-    - name: "test-enterprise-auth"
-      tags: ["enterprise-auth"]
-      commands:
-        - func: "run server"
-        - func: "assume ec2 role"
-        - func: "run enterprise auth tests"
-
     - name: "test-search-index-helpers"
       commands:
         - func: "run server"
@@ -517,12 +488,6 @@ tasks:
             VERSION: "8.0"
             TOPOLOGY: "replica_set"
         - func: "run tests"
-
-    - name: "atlas-connect"
-      tags: ["atlas-connect"]
-      commands:
-        - func: "assume ec2 role"
-        - func: "run atlas tests"
 
     - name: atlas-data-lake-tests
       commands:

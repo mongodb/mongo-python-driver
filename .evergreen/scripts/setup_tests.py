@@ -112,6 +112,10 @@ def setup_libmongocrypt():
         run_command("chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll")
 
 
+def get_secrets(name: str) -> None:
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/secrets_handling/setup-secrets.sh {name}")
+
+
 def handle_test_env() -> None:
     opts, _ = get_test_options("Set up the test environment and services.")
     test_name = opts.test_name
@@ -344,6 +348,12 @@ def handle_test_env() -> None:
                 write_env(name, value)
         else:
             run_command(f"bash {auth_aws_dir}/setup-secrets.sh")
+
+    if test_name == "atlas_connect":
+        get_secrets("drivers/atlas_connect")
+
+    if test_name == "enterprise_auth":
+        get_secrets("drivers/enterprise_auth")
 
     if test_name == "perf":
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
