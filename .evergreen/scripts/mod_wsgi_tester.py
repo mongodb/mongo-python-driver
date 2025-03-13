@@ -53,7 +53,7 @@ def setup_mod_wsgi(sub_test_name: str) -> None:
     write_env("TEST_URI1", uri1)
     uri2 = f"http://localhost:8080/interpreter2{project_directory}"
     write_env("TEST_URI2", uri2)
-    run_command(f"{apache} -k start -f {ROOT}/test/mod_wsgi_test/{apache_config}")
+    run_command(f"{apache} -k start -f {ROOT}/test/mod_wsgi_test/{apache_config}", env=env)
 
     # Wait for the endpoints to be available.
     try:
