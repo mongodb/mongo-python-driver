@@ -2982,9 +2982,10 @@ class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
             )
 
     async def test_03_invalid_keyid(self):
+        # checkAuthForCreateCollection can be removed when SERVER-102101 is fixed.
         with self.assertRaisesRegex(
             EncryptedCollectionError,
-            "create.encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
+            "(create|checkAuthForCreateCollection).encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
         ):
             await self.client_encryption.create_encrypted_collection(
                 database=self.db,
