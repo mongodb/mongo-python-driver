@@ -61,9 +61,9 @@ class SrvPollingKnobs:
         if self.min_srv_rescan_interval is not None:
             common.MIN_SRV_RESCAN_INTERVAL = self.min_srv_rescan_interval
 
-        def mock_get_hosts_and_min_ttl(resolver, *args):
+        async def mock_get_hosts_and_min_ttl(resolver, *args):
             assert self.old_dns_resolver_response is not None
-            nodes, ttl = self.old_dns_resolver_response(resolver)
+            nodes, ttl = await self.old_dns_resolver_response(resolver)
             if self.nodelist_callback is not None:
                 nodes = self.nodelist_callback()
             if self.ttl_time is not None:
