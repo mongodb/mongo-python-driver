@@ -64,7 +64,7 @@ def get_test_options(
     if require_sub_test_name:
         parser.add_argument(
             "test_name",
-            choices=sorted(TEST_SUITE_MAP + EXTRA_TESTS),
+            choices=sorted(list(TEST_SUITE_MAP) + EXTRA_TESTS),
             nargs="?",
             default="default",
             help="The optional name of the test suite to set up, typically the same name as a pytest marker.",
