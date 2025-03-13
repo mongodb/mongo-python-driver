@@ -262,6 +262,14 @@ For KMS tests that run remotely and are expected to pass, in this case using `gc
 - Run `just setup-tests kms gcp`.
 - Run `just run-tests`.
 
+#### Enterprise Auth tests
+
+Note: these tests can only be run from an Evergreen host.
+
+- Run `just run-server enterprise_auth`.
+- Run `just setup-tests enterprise_auth`.
+- Run `just test`
+
 ### OCSP tests
 
   - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.

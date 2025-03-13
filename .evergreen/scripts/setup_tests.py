@@ -207,6 +207,7 @@ def handle_test_env() -> None:
         write_env("PYMONGO_DISABLE_TEST_COMMANDS", "1")
 
     if test_name == "enterprise_auth":
+        get_secrets("drivers/enterprise_auth")
         config = read_env(f"{ROOT}/secrets-export.sh")
         if PLATFORM == "windows":
             LOGGER.info("Setting GSSAPI_PASS")
@@ -352,9 +353,8 @@ def handle_test_env() -> None:
 
     if test_name == "atlas_connect":
         get_secrets("drivers/atlas_connect")
-
-    if test_name == "enterprise_auth":
-        get_secrets("drivers/enterprise_auth")
+        # We do not want the default client_context to be initialized.
+        write_env("DISABLE_CONTEXT")
 
     if test_name == "perf":
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
