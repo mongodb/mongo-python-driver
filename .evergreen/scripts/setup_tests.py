@@ -359,7 +359,10 @@ def handle_test_env() -> None:
     if test_name == "perf":
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
         # affects the benchmark results.
-        TEST_ARGS = f"test/performance/perf_test.py {TEST_ARGS}"
+        if sub_test_name == "sync":
+            TEST_ARGS = f"test/performance/perf_test.py {TEST_ARGS}"
+        else:
+            TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
 
     # Add coverage if requested.
     # Only cover CPython. PyPy reports suspiciously low coverage.
