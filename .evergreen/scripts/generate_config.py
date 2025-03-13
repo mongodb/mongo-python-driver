@@ -642,8 +642,7 @@ def create_disable_test_commands_variants():
 def create_serverless_variants():
     host = DEFAULT_HOST
     batchtime = BATCHTIME_WEEK
-    expansions = dict(TEST_NAME="serverless", AUTH="auth", SSL="ssl")
-    tasks = ["serverless_task_group"]
+    tasks = [".serverless"]
     base_name = "Serverless"
     return [
         create_variant(
@@ -651,7 +650,6 @@ def create_serverless_variants():
             get_display_name(base_name, host, python=python),
             host=host,
             python=python,
-            expansions=expansions,
             batchtime=batchtime,
         )
         for python in MIN_MAX_PYTHON
@@ -965,6 +963,14 @@ def create_ocsp_tasks():
             tasks.append(task)
 
     return tasks
+
+
+def create_serverless_tasks():
+    vars = dict(TEST_NAME="serverless", AUTH="auth", SSL="ssl")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    tags = ["serverless"]
+    task_name = "test-serverless"
+    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
 
 
 ##################

@@ -178,6 +178,7 @@ def handle_test_env() -> None:
             DB_USER = config["ADL_USERNAME"]
             DB_PASSWORD = config["ADL_PASSWORD"]
         elif test_name == "serverless":
+            run_command(f"bash {DRIVERS_TOOLS}/.evergreen/serverless/setup.sh")
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh")
             DB_USER = config["SERVERLESS_ATLAS_USER"]
             DB_PASSWORD = config["SERVERLESS_ATLAS_PASSWORD"]
