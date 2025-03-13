@@ -162,7 +162,7 @@ def create_test(test_case):
                 # and re-run these assertions.
         else:
             try:
-                parse_uri(uri)
+                await parse_uri(uri)
             except (ConfigurationError, ValueError):
                 pass
             else:
