@@ -270,7 +270,7 @@ Note: these tests can only be run from an Evergreen host.
 - Run `just setup-tests enterprise_auth`.
 - Run `just run-tests`.
 
-#### Atlas Connect tests
+### Atlas Connect tests
 
 - Run `just setup-tests atlas_connect`.
 - Run `just run-tests`.
