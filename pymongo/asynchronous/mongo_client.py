@@ -1257,7 +1257,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 ]
             ]
         else:
-            options = []
+            options = ["host={self._host}", "port={self._port}"]
         # ... then everything in self._constructor_args...
         options.extend(
             option_repr(key, self._options._options[key]) for key in self._constructor_args

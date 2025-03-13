@@ -81,7 +81,7 @@ else:
 
 
 async def create_mock_topology(uri, monitor_class=DummyMonitor):
-    parsed_uri = parse_uri(uri)
+    parsed_uri = await parse_uri(uri)
     replica_set_name = None
     direct_connection = None
     load_balanced = None
