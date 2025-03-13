@@ -30,7 +30,7 @@ class Distro:
 
 # Map the test name to a test suite.
 TEST_SUITE_MAP = {
-    "atlas": "atlas",
+    "atlas_connect": "atlas_connect",
     "auth_aws": "auth_aws",
     "auth_oidc": "auth_oidc",
     "data_lake": "data_lake",
@@ -137,7 +137,12 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
         cmd = " ".join(cmd)
     LOGGER.info("Running command '%s'...", cmd)
     kwargs.setdefault("check", True)
-    subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
+    try:
+        subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
+    except subprocess.CalledProcessError as e:
+        LOGGER.error(e.output)
+        LOGGER.error(str(e))
+        sys.exit(e.returncode)
     LOGGER.info("Running command '%s'... done.", cmd)
 
 

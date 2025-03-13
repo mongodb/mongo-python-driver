@@ -92,3 +92,24 @@ cat <<EOT > expansion.yml
 DRIVERS_TOOLS: "$DRIVERS_TOOLS"
 PROJECT_DIRECTORY: "$PROJECT_DIRECTORY"
 EOT
+
+# If the toolchain is available, symlink binaries to the bin dir.  This has to be done
+# after drivers-tools is cloned, since we might be using its binary dir.
+_bin_path=""
+if [ "Windows_NT" == "${OS:-}" ]; then
+  _bin_path="/cygdrive/c/Python/Current/Scripts"
+elif [ "$(uname -s)" != "Darwin" ]; then
+  _bin_path="/Library/Frameworks/Python.Framework/Versions/Current/bin"
+else
+  _bin_path="/opt/python/Current/bin"
+fi
+if [ -d "${_bin_path}" ]; then
+  _suffix=""
+  if [ "Windows_NT" == "${OS:-}" ]; then
+    _suffix=".exe"
+  fi
+  mkdir -p $PYMONGO_BIN_DIR
+  ln -s ${_bin_path}/just${_suffix} $PYMONGO_BIN_DIR/just${_suffix}
+  ln -s ${_bin_path}/uv${_suffix} $PYMONGO_BIN_DIR/uv${_suffix}
+  ln -s ${_bin_path}/uvx${_suffix} $PYMONGO_BIN_DIR/uvx${_suffix}
+fi
