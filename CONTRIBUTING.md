@@ -275,6 +275,17 @@ Note: these tests can only be run from an Evergreen host.
 - Run `just setup-tests atlas_connect`.
 - Run `just run-tests`.
 
+### mod_wsgi tests
+
+Note: these tests can only be run from an Evergreen Linux host that has the Python toolchain.
+
+- Run `just run-server`.
+- Run `just setup-tests mod_wsgi <mode>`.
+- Run `just run-tests`.
+
+The `mode` can be `standalone` or `embedded`.  For the `replica_set` version of the tests, use
+`TOPOLOGY=replica_set just run-server`.
+
 ### OCSP tests
 
   - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.

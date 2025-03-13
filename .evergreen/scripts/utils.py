@@ -50,7 +50,7 @@ TEST_SUITE_MAP = {
 }
 
 # Tests that require a sub test suite.
-SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms"]
+SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms", "mod_wsgi"]
 
 
 def get_test_options(

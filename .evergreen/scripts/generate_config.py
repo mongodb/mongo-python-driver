@@ -892,6 +892,24 @@ def create_oidc_tasks():
     return tasks
 
 
+def create_mod_wsgi_tasks():
+    tasks = []
+    for test, topology in product(["standalone", "embedded-mode"], ["standalone", "replica-set"]):
+        if test == "standalone":
+            task_name = "mod-wsgi-"
+        else:
+            task_name = "mod-wsgi-embedded-mode"
+        task_name += topology
+        server_vars = dict(TOPOLOGY=topology)
+        server_func = FunctionCall(func="run server", vars=server_vars)
+        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test)
+        test_func = FunctionCall(func="run tests", vars=vars)
+        tags = ["mod_wsgi"]
+        commands = [server_func, test_func]
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
+    return tasks
+
+
 def _create_ocsp_task(algo, variant, server_type, base_task_name):
     file_name = f"{algo}-basic-tls-ocsp-{variant}.json"
 

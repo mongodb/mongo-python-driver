@@ -24,7 +24,7 @@ from optparse import OptionParser
 from urllib.request import urlopen
 
 
-def parse_args():
+def parse_args(args=None):
     parser = OptionParser(
         """usage: %prog [options] mode url [<url2>...]
 
@@ -70,7 +70,7 @@ def parse_args():
     )
 
     try:
-        options, args = parser.parse_args()
+        options, args = parser.parse_args(args or sys.argv[1:])
         mode, urls = args[0], args[1:]
     except (ValueError, IndexError):
         parser.print_usage()
