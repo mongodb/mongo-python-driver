@@ -607,7 +607,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
             with self.assertRaisesRegex(ConfigurationError, expected):
                 AsyncMongoClient(**{typo: "standard"})  # type: ignore[arg-type]
 
-    @patch("pymongo.srv_resolver._SrvResolver.get_hosts")
+    @patch("pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts")
     def test_detected_environment_logging(self, mock_get_hosts):
         normal_hosts = [
             "normal.host.com",
@@ -629,7 +629,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
             logs = [record.getMessage() for record in cm.records if record.name == "pymongo.client"]
             self.assertEqual(len(logs), 7)
 
-    @patch("pymongo.srv_resolver._SrvResolver.get_hosts")
+    @patch("pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts")
     async def test_detected_environment_warning(self, mock_get_hosts):
         with self._caplog.at_level(logging.WARN):
             normal_hosts = [

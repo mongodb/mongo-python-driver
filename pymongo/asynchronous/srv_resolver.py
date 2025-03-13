@@ -56,9 +56,9 @@ async def _resolve(*args: Any, **kwargs: Any) -> resolver.Answer:
         # dnspython 1.X
         return resolver.query(*args, **kwargs)
     else:
-        from dns.asyncresolver import Resolver
+        from dns import asyncresolver
 
-        return await Resolver.resolve(*args, **kwargs)  # type:ignore[return-value]
+        return await asyncresolver.resolve(*args, **kwargs)  # type:ignore[return-value]
 
 
 _INVALID_HOST_MSG = (
