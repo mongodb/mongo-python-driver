@@ -182,6 +182,9 @@ def handle_test_env() -> None:
     if test_name == "index_management":
         AUTH = "auth"
 
+    if test_name == "aws_lambda":
+        UV_ARGS.append("--with pip")
+
     if AUTH != "noauth":
         if test_name == "data_lake":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas_data_lake/secrets-export.sh")

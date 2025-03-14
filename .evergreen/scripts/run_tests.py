@@ -6,13 +6,12 @@ import os
 import platform
 import shutil
 import sys
-import tarfile
-import tempfile
 from datetime import datetime
+from pathlib import Path
 from shutil import which
 
 import pytest
-from utils import DRIVERS_TOOLS, LOGGER, ROOT, create_archive, run_command
+from utils import DRIVERS_TOOLS, LOGGER, ROOT, run_command
 
 AUTH = os.environ.get("AUTH", "noauth")
 SSL = os.environ.get("SSL", "nossl")
@@ -89,19 +88,33 @@ def handle_aws_lambda() -> None:
     env = os.environ.copy()
     target_dir = ROOT / "test/lambda"
     env["TEST_LAMBDA_DIRECTORY"] = str(target_dir)
-    archive = create_archive()
-    with tempfile.TemporaryDirectory() as td:
-        # Unpack the archive
-        fid = tarfile.open(archive)
-        fid.extractall(td)
-        fid.close()
-        # Build the c extensions.
-        docker = which("docker") or which("podman")
-        if not docker:
-            raise ValueError("Could not find docker!")
-        image = "quay.io/pypa/manylinux2014_x86_64:latest"
-        run_command(f'{docker} run --rm -v "{td}:/src" {image} /src/test/lambda/build_internal.sh')
-        shutil.copytree(td, ROOT / "test/lambda/mongodb")
+    env.setdefault("AWS_REGION", "us-east-1")
+    dirs = ["pymongo", "gridfs", "bson"]
+    # Store the original .so files.
+    before_sos = []
+    for dname in dirs:
+        before_sos.extend(f"{f.parent.name}/{f.name}" for f in (ROOT / dname).glob("*.so"))
+    # Build the c extensions.
+    docker = which("docker") or which("podman")
+    if not docker:
+        raise ValueError("Could not find docker!")
+    image = "quay.io/pypa/manylinux2014_x86_64:latest"
+    run_command(
+        f'{docker} run --rm -v "{ROOT}:/src" --platform linux/amd64 {image} /src/test/lambda/build_internal.sh'
+    )
+    for dname in dirs:
+        target = ROOT / "test/lambda/mongodb" / dname
+        shutil.rmtree(target, ignore_errors=True)
+        shutil.copytree(ROOT / dname, target)
+    # Remove the original so files from the lambda directory.
+    for so_path in before_sos:
+        (ROOT / "test/lambda/mongodb" / so_path).unlink()
+    # Remove the new so files from the ROOT directory.
+    for dname in dirs:
+        so_paths = [f"{f.parent.name}/{f.name}" for f in (ROOT / dname).glob("*.so")]
+        for so_path in list(so_paths):
+            if so_path not in before_sos:
+                Path(so_path).unlink()
 
     script_name = "run-deployed-lambda-aws-tests.sh"
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/aws_lambda/{script_name}", env=env)
