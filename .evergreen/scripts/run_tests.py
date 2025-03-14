@@ -100,6 +100,13 @@ def run() -> None:
     if TEST_PERF:
         start_time = datetime.now()
 
+    # Run mod_wsgi tests using the helper.
+    if TEST_NAME == "mod_wsgi":
+        from mod_wsgi_tester import test_mod_wsgi
+
+        test_mod_wsgi()
+        return
+
     # Send kms tests to run remotely.
     if TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
         from kms_tester import test_kms_send_to_remote

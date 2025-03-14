@@ -227,17 +227,6 @@ functions:
         args:
           - ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
 
-  "run mod_wsgi tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: [MOD_WSGI_VERSION, MOD_WSGI_EMBEDDED, "PYTHON_BINARY"]
-        working_dir: "src"
-        binary: bash
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mod-wsgi-tests.sh
-
   "run doctests":
      - command: subprocess.exec
        type: test
@@ -411,40 +400,6 @@ tasks:
           vars:
             TEST_NAME: index_management
             AUTH: "auth"
-
-    - name: "mod-wsgi-standalone"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-          vars:
-            TOPOLOGY: "server"
-        - func: "run mod_wsgi tests"
-
-    - name: "mod-wsgi-replica-set"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-          vars:
-            TOPOLOGY: "replica_set"
-        - func: "run mod_wsgi tests"
-
-    - name: "mod-wsgi-embedded-mode-standalone"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-        - func: "run mod_wsgi tests"
-          vars:
-            MOD_WSGI_EMBEDDED: "1"
-
-    - name: "mod-wsgi-embedded-mode-replica-set"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-          vars:
-            TOPOLOGY: "replica_set"
-        - func: "run mod_wsgi tests"
-          vars:
-            MOD_WSGI_EMBEDDED: "1"
 
     - name: "no-server"
       tags: ["no-server"]
