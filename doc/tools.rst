@@ -27,7 +27,7 @@ layers, the time spent working directly with the driver will have
 increased your understanding of how MongoDB actually works.
 
 MongoEngine
-  `MongoEngine <https://mongoengine.org/>`_ is another ORM-like
+  `MongoEngine <http://mongoengine.org/>`_ is another ORM-like
   layer on top of PyMongo. It allows you to define schemas for
   documents and query collections using syntax inspired by the Django
   ORM. The code is available on `GitHub
