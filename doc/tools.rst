@@ -27,11 +27,11 @@ layers, the time spent working directly with the driver will have
 increased your understanding of how MongoDB actually works.
 
 MongoEngine
-  `MongoEngine <http://mongoengine.org/>`_ is another ORM-like
+  `MongoEngine <https://mongoengine.org/>`_ is another ORM-like
   layer on top of PyMongo. It allows you to define schemas for
   documents and query collections using syntax inspired by the Django
   ORM. The code is available on `GitHub
-  <http://github.com/mongoengine/mongoengine>`_; for more information, see
+  <https://github.com/mongoengine/mongoengine>`_; for more information, see
   the `tutorial <https://docs.mongoengine.org/tutorial.html>`_.
 
 MincePy
@@ -47,9 +47,9 @@ Ming
   `Ming <https://ming.readthedocs.io/en/latest/>`_ is a
   library that allows you to enforce schemas on a MongoDB database in
   your Python application. It was developed by `SourceForge
-  <http://sourceforge.net/>`_ in the course of their migration to
+  <https://sourceforge.net/>`_ in the course of their migration to
   MongoDB. See the `introductory blog post
-  <http://blog.pythonisito.com/2009/12/ming-01-released-python-library-for.html>`_
+  <https://blog.pythonisito.com/2009/12/ming-01-released-python-library-for.html>`_
   for more details.
 
 MotorEngine
@@ -57,7 +57,7 @@ MotorEngine
   MongoEngine to Motor, for asynchronous access with Tornado.
   It implements the same modeling APIs to be data-portable, meaning that a
   model defined in MongoEngine can be read in MotorEngine. The source is
-  `available on GitHub <http://github.com/heynemann/motorengine>`_.
+  `available on GitHub <https://github.com/heynemann/motorengine>`_.
 
 uMongo
   `uMongo <https://umongo.readthedocs.io/>`_ is a Python MongoDB ODM.
@@ -89,12 +89,12 @@ PyMODM
    <https://pymodm.readthedocs.io/en/stable/>`_.
 
 MongoKit
-  The `MongoKit <http://github.com/namlook/mongokit>`_ framework
+  The `MongoKit <https://github.com/namlook/mongokit>`_ framework
   is an ORM-like layer on top of PyMongo. There is also a MongoKit
-  `google group <http://groups.google.com/group/mongokit>`_.
+  `google group <https://groups.google.com/group/mongokit>`_.
 
 Minimongo
-  `minimongo <http://pypi.python.org/pypi/minimongo>`_ is a lightweight,
+  `minimongo <https://pypi.python.org/pypi/minimongo>`_ is a lightweight,
   pythonic interface to MongoDB.  It retains pymongo's query and update API,
   and provides a number of additional features, including a simple
   document-oriented interface, connection pooling, index management, and
@@ -102,15 +102,15 @@ Minimongo
   <https://github.com/MiniMongo/minimongo>`_.
 
 Manga
-  `Manga <http://pypi.python.org/pypi/manga>`_ aims to be a simpler ORM-like
+  `Manga <https://pypi.python.org/pypi/manga>`_ aims to be a simpler ORM-like
   layer on top of PyMongo. The syntax for defining schema is inspired by the
   Django ORM, but Pymongo's query language is maintained. The source `is on
-  GitHub <http://github.com/wladston/manga>`_.
+  GitHub <https://github.com/wladston/manga>`_.
 
 Humongolus
    `Humongolus <https://github.com/entone/Humongolus>`_ is a lightweight ORM
    framework for Python and MongoDB. The name comes from the combination of
-   MongoDB and `Homunculus <http://en.wikipedia.org/wiki/Homunculus>`_ (the
+   MongoDB and `Homunculus <https://en.wikipedia.org/wiki/Homunculus>`_ (the
    concept of a miniature though fully formed human body). Humongolus allows
    you to create models/schemas with robust validation. It attempts to be as
    pythonic as possible and exposes the pymongo cursor objects whenever
@@ -133,30 +133,30 @@ various Python frameworks and libraries.
   database backend for Django that completely integrates with its ORM.
   For more information `see the tutorial
   <https://django-mongodb-engine.readthedocs.io/en/latest/tutorial.html>`_.
-* `mango <http://github.com/vpulim/mango>`_ provides MongoDB backends for
+* `mango <https://github.com/vpulim/mango>`_ provides MongoDB backends for
   Django sessions and authentication (bypassing :mod:`django.db` entirely).
 * `Django MongoEngine
   <https://github.com/MongoEngine/django-mongoengine>`_ is a MongoDB backend for
   Django, an `example:
   <https://github.com/MongoEngine/django-mongoengine/tree/master/example/tumblelog>`_.
   For more information see `<https://django-mongoengine.readthedocs.io/en/latest/>`_
-* `mongodb_beaker <http://pypi.python.org/pypi/mongodb_beaker>`_ is a
+* `mongodb_beaker <https://pypi.python.org/pypi/mongodb_beaker>`_ is a
   project to enable using MongoDB as a backend for `beakers <https://beaker.readthedocs.io/en/latest/>`_ caching / session system.
-  `The source is on GitHub <http://github.com/bwmcadams/mongodb_beaker>`_.
+  `The source is on GitHub <https://github.com/bwmcadams/mongodb_beaker>`_.
 * `Log4Mongo <https://github.com/log4mongo/log4mongo-python>`_ is a flexible
   Python logging handler that can store logs in MongoDB using normal and capped
   collections.
-* `MongoLog <http://github.com/puentesarrin/mongodb-log/>`_ is a Python logging
+* `MongoLog <https://github.com/puentesarrin/mongodb-log/>`_ is a Python logging
   handler that stores logs in MongoDB using a capped collection.
-* `rod.recipe.mongodb <http://pypi.python.org/pypi/rod.recipe.mongodb/>`_ is a
+* `rod.recipe.mongodb <https://pypi.python.org/pypi/rod.recipe.mongodb/>`_ is a
   ZC Buildout recipe for downloading and installing MongoDB.
-* `mongobox <http://github.com/theorm/mongobox>`_ is a tool to run a sandboxed
+* `mongobox <https://github.com/theorm/mongobox>`_ is a tool to run a sandboxed
   MongoDB instance from within a python app.
-* `Flask-MongoAlchemy <http://github.com/cobrateam/flask-mongoalchemy/>`_ Add
+* `Flask-MongoAlchemy <https://github.com/cobrateam/flask-mongoalchemy/>`_ Add
   Flask support for MongoDB using MongoAlchemy.
-* `Flask-MongoKit <http://github.com/jarus/flask-mongokit/>`_ Flask extension
+* `Flask-MongoKit <https://github.com/jarus/flask-mongokit/>`_ Flask extension
   to better integrate MongoKit into Flask.
-* `Flask-PyMongo <http://github.com/dcrosta/flask-pymongo/>`_ Flask-PyMongo
+* `Flask-PyMongo <https://github.com/dcrosta/flask-pymongo/>`_ Flask-PyMongo
   bridges Flask and PyMongo.
 
 Alternative Drivers
