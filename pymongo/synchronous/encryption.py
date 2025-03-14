@@ -86,7 +86,7 @@ from pymongo.synchronous.pool import (
     _raise_connection_failure,
 )
 from pymongo.typings import _DocumentType, _DocumentTypeArg
-from pymongo.uri_parser import parse_host
+from pymongo.uri_parser_shared import parse_host
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:

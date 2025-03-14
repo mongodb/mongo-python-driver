@@ -505,13 +505,13 @@ class ClientUnitTest(UnitTest):
 
     def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
         # Patch the resolver.
-        from pymongo.srv_resolver import _resolve
+        from pymongo.synchronous.srv_resolver import _resolve
 
         patched_resolver = FunctionCallRecorder(_resolve)
-        pymongo.srv_resolver._resolve = patched_resolver
+        pymongo.synchronous.srv_resolver._resolve = patched_resolver
 
         def reset_resolver():
-            pymongo.srv_resolver._resolve = _resolve
+            pymongo.synchronous.srv_resolver._resolve = _resolve
 
         self.addCleanup(reset_resolver)
 
@@ -1868,28 +1868,37 @@ class TestClient(IntegrationTest):
             srvServiceName="customname",
             connect=False,
         )
+        client._connect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        client.close()
         client = MongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc"
             "/?srvServiceName=shouldbeoverriden",
             srvServiceName="customname",
             connect=False,
         )
+        client._connect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        client.close()
         client = MongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc/?srvServiceName=customname",
             connect=False,
         )
+        client._connect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        client.close()
 
     def test_srv_max_hosts_kwarg(self):
         client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/")
+        client._connect()
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
         client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/", srvmaxhosts=1)
+        client._connect()
         self.assertEqual(len(client.topology_description.server_descriptions()), 1)
         client = self.simple_client(
             "mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1", srvmaxhosts=2
         )
+        client._connect()
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
 
     @unittest.skipIf(

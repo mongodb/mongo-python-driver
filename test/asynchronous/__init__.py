@@ -32,7 +32,7 @@ import unittest
 import warnings
 from asyncio import iscoroutinefunction
 
-from pymongo.uri_parser import parse_uri
+from pymongo.asynchronous.uri_parser import parse_uri
 
 try:
     import ipaddress
@@ -1027,7 +1027,7 @@ class AsyncPyMongoTestCase(unittest.TestCase):
         auth_mech = kwargs.get("authMechanism", "")
         if async_client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
             # Only add the default username or password if one is not provided.
-            res = parse_uri(uri)
+            res = await parse_uri(uri)
             if (
                 not res["username"]
                 and not res["password"]
@@ -1058,7 +1058,7 @@ class AsyncPyMongoTestCase(unittest.TestCase):
         auth_mech = kwargs.get("authMechanism", "")
         if async_client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
             # Only add the default username or password if one is not provided.
-            res = parse_uri(uri)
+            res = await parse_uri(uri)
             if (
                 not res["username"]
                 and not res["password"]

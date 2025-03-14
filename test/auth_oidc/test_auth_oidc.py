@@ -49,7 +49,7 @@ from pymongo.synchronous.auth_oidc import (
     OIDCCallbackResult,
     _get_authenticator,
 )
-from pymongo.uri_parser import parse_uri
+from pymongo.synchronous.uri_parser import parse_uri
 
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"

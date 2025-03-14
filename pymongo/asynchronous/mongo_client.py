@@ -44,6 +44,7 @@ from typing import (
     AsyncContextManager,
     AsyncGenerator,
     Callable,
+    Collection,
     Coroutine,
     FrozenSet,
     Generic,
@@ -58,10 +59,11 @@ from typing import (
     cast,
 )
 
+import pymongo.uri_parser_shared
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, common, helpers_shared, periodic_executor, uri_parser
-from pymongo.asynchronous import client_session, database
+from pymongo import _csot, common, helpers_shared, periodic_executor
+from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
 from pymongo.asynchronous.client_session import _EmptyServerSession
@@ -113,11 +115,13 @@ from pymongo.typings import (
     _DocumentTypeArg,
     _Pipeline,
 )
-from pymongo.uri_parser import (
+from pymongo.uri_parser_shared import (
+    SRV_SCHEME,
     _check_options,
     _handle_option_deprecations,
     _handle_security_options,
     _normalize_options,
+    split_hosts,
 )
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
@@ -128,6 +132,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.bulk import _AsyncBulk
     from pymongo.asynchronous.client_session import AsyncClientSession, _ServerSession
     from pymongo.asynchronous.cursor import _ConnectionManager
+    from pymongo.asynchronous.encryption import _Encrypter
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.asynchronous.server import Server
     from pymongo.read_concern import ReadConcern
@@ -750,6 +755,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             port = self.PORT
         if not isinstance(port, int):
             raise TypeError(f"port must be an instance of int, not {type(port)}")
+        self._host = host
+        self._port = port
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
@@ -760,8 +767,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # Parse options passed as kwargs.
         keyword_opts = common._CaseInsensitiveDictionary(kwargs)
         keyword_opts["document_class"] = doc_class
+        self._resolve_srv_info: dict[str, Any] = {"keyword_opts": keyword_opts}
 
         seeds = set()
+        is_srv = False
         username = None
         password = None
         dbase = None
@@ -769,29 +778,22 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         fqdn = None
         srv_service_name = keyword_opts.get("srvservicename")
         srv_max_hosts = keyword_opts.get("srvmaxhosts")
-        if len([h for h in host if "/" in h]) > 1:
+        if len([h for h in self._host if "/" in h]) > 1:
             raise ConfigurationError("host must not contain multiple MongoDB URIs")
-        for entity in host:
+        for entity in self._host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
             # it must be a URI,
             # https://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
             if "/" in entity:
-                # Determine connection timeout from kwargs.
-                timeout = keyword_opts.get("connecttimeoutms")
-                if timeout is not None:
-                    timeout = common.validate_timeout_or_none_or_zero(
-                        keyword_opts.cased_key("connecttimeoutms"), timeout
-                    )
-                res = uri_parser.parse_uri(
+                res = pymongo.uri_parser_shared._validate_uri(
                     entity,
                     port,
                     validate=True,
                     warn=True,
                     normalize=False,
-                    connect_timeout=timeout,
-                    srv_service_name=srv_service_name,
                     srv_max_hosts=srv_max_hosts,
                 )
+                is_srv = entity.startswith(SRV_SCHEME)
                 seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password
@@ -799,7 +801,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 opts = res["options"]
                 fqdn = res["fqdn"]
             else:
-                seeds.update(uri_parser.split_hosts(entity, port))
+                seeds.update(split_hosts(entity, self._port))
         if not seeds:
             raise ConfigurationError("need to specify at least one host")
 
@@ -820,87 +822,186 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         keyword_opts["tz_aware"] = tz_aware
         keyword_opts["connect"] = connect
 
-        # Handle deprecated options in kwarg options.
-        keyword_opts = _handle_option_deprecations(keyword_opts)
-        # Validate kwarg options.
-        keyword_opts = common._CaseInsensitiveDictionary(
-            dict(common.validate(keyword_opts.cased_key(k), v) for k, v in keyword_opts.items())
-        )
-
-        # Override connection string options with kwarg options.
-        opts.update(keyword_opts)
+        opts = self._validate_kwargs_and_update_opts(keyword_opts, opts)
 
         if srv_service_name is None:
             srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
 
         srv_max_hosts = srv_max_hosts or opts.get("srvmaxhosts")
-        # Handle security-option conflicts in combined options.
-        opts = _handle_security_options(opts)
-        # Normalize combined options.
-        opts = _normalize_options(opts)
-        _check_options(seeds, opts)
+        opts = self._normalize_and_validate_options(opts, seeds)
 
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)
-        self._options = options = ClientOptions(username, password, dbase, opts, _IS_SYNC)
+        self._options = ClientOptions(username, password, dbase, opts, _IS_SYNC)
 
         self._default_database_name = dbase
         self._lock = _async_create_lock()
         self._kill_cursors_queue: list = []
 
-        self._event_listeners = options.pool_options._event_listeners
-        super().__init__(
-            options.codec_options,
-            options.read_preference,
-            options.write_concern,
-            options.read_concern,
-        )
+        self._encrypter: Optional[_Encrypter] = None
 
-        self._topology_settings = TopologySettings(
-            seeds=seeds,
-            replica_set_name=options.replica_set_name,
-            pool_class=pool_class,
-            pool_options=options.pool_options,
-            monitor_class=monitor_class,
-            condition_class=condition_class,
-            local_threshold_ms=options.local_threshold_ms,
-            server_selection_timeout=options.server_selection_timeout,
-            server_selector=options.server_selector,
-            heartbeat_frequency=options.heartbeat_frequency,
-            fqdn=fqdn,
-            direct_connection=options.direct_connection,
-            load_balanced=options.load_balanced,
-            srv_service_name=srv_service_name,
-            srv_max_hosts=srv_max_hosts,
-            server_monitoring_mode=options.server_monitoring_mode,
+        self._resolve_srv_info.update(
+            {
+                "is_srv": is_srv,
+                "username": username,
+                "password": password,
+                "dbase": dbase,
+                "fqdn": fqdn,
+                "pool_class": pool_class,
+                "monitor_class": monitor_class,
+                "condition_class": condition_class,
+            }
         )
+        if not is_srv:
+            self._init_based_on_options(seeds, srv_max_hosts, srv_service_name)
 
         self._opened = False
         self._closed = False
-        self._init_background()
+        if not is_srv:
+            self._init_background(first=True)
 
         if _IS_SYNC and connect:
             self._get_topology()  # type: ignore[unused-coroutine]
 
-        self._encrypter = None
+    async def _resolve_srv(self) -> None:
+        keyword_opts = self._resolve_srv_info["keyword_opts"]
+        seeds = set()
+        opts = common._CaseInsensitiveDictionary()
+        srv_service_name = keyword_opts.get("srvservicename")
+        srv_max_hosts = keyword_opts.get("srvmaxhosts")
+        for entity in self._host:
+            # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
+            # it must be a URI,
+            # https://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
+            if "/" in entity:
+                # Determine connection timeout from kwargs.
+                timeout = keyword_opts.get("connecttimeoutms")
+                if timeout is not None:
+                    timeout = common.validate_timeout_or_none_or_zero(
+                        keyword_opts.cased_key("connecttimeoutms"), timeout
+                    )
+                res = await uri_parser._parse_srv(
+                    entity,
+                    self._port,
+                    validate=True,
+                    warn=True,
+                    normalize=False,
+                    connect_timeout=timeout,
+                    srv_service_name=srv_service_name,
+                    srv_max_hosts=srv_max_hosts,
+                )
+                seeds.update(res["nodelist"])
+                opts = res["options"]
+            else:
+                seeds.update(split_hosts(entity, self._port))
+
+            if not seeds:
+                raise ConfigurationError("need to specify at least one host")
+
+            for hostname in [node[0] for node in seeds]:
+                if _detect_external_db(hostname):
+                    break
+
+            # Add options with named keyword arguments to the parsed kwarg options.
+            tz_aware = keyword_opts["tz_aware"]
+            connect = keyword_opts["connect"]
+            if tz_aware is None:
+                tz_aware = opts.get("tz_aware", False)
+            if connect is None:
+                # Default to connect=True unless on a FaaS system, which might use fork.
+                from pymongo.pool_options import _is_faas
+
+                connect = opts.get("connect", not _is_faas())
+            keyword_opts["tz_aware"] = tz_aware
+            keyword_opts["connect"] = connect
+
+            opts = self._validate_kwargs_and_update_opts(keyword_opts, opts)
+
+            if srv_service_name is None:
+                srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
+
+            srv_max_hosts = srv_max_hosts or opts.get("srvmaxhosts")
+            opts = self._normalize_and_validate_options(opts, seeds)
+
+            # Username and password passed as kwargs override user info in URI.
+            username = opts.get("username", self._resolve_srv_info["username"])
+            password = opts.get("password", self._resolve_srv_info["password"])
+            self._options = ClientOptions(
+                username, password, self._resolve_srv_info["dbase"], opts, _IS_SYNC
+            )
+
+            self._init_based_on_options(seeds, srv_max_hosts, srv_service_name)
+
+    def _init_based_on_options(
+        self, seeds: Collection[tuple[str, int]], srv_max_hosts: Any, srv_service_name: Any
+    ) -> None:
+        self._event_listeners = self._options.pool_options._event_listeners
+        super().__init__(
+            self._options.codec_options,
+            self._options.read_preference,
+            self._options.write_concern,
+            self._options.read_concern,
+        )
+        self._topology_settings = TopologySettings(
+            seeds=seeds,
+            replica_set_name=self._options.replica_set_name,
+            pool_class=self._resolve_srv_info["pool_class"],
+            pool_options=self._options.pool_options,
+            monitor_class=self._resolve_srv_info["monitor_class"],
+            condition_class=self._resolve_srv_info["condition_class"],
+            local_threshold_ms=self._options.local_threshold_ms,
+            server_selection_timeout=self._options.server_selection_timeout,
+            server_selector=self._options.server_selector,
+            heartbeat_frequency=self._options.heartbeat_frequency,
+            fqdn=self._resolve_srv_info["fqdn"],
+            direct_connection=self._options.direct_connection,
+            load_balanced=self._options.load_balanced,
+            srv_service_name=srv_service_name,
+            srv_max_hosts=srv_max_hosts,
+            server_monitoring_mode=self._options.server_monitoring_mode,
+        )
         if self._options.auto_encryption_opts:
             from pymongo.asynchronous.encryption import _Encrypter
 
             self._encrypter = _Encrypter(self, self._options.auto_encryption_opts)
         self._timeout = self._options.timeout
 
-        if _HAS_REGISTER_AT_FORK:
-            # Add this client to the list of weakly referenced items.
-            # This will be used later if we fork.
-            AsyncMongoClient._clients[self._topology._topology_id] = self
+    def _normalize_and_validate_options(
+        self, opts: common._CaseInsensitiveDictionary, seeds: set[tuple[str, int | None]]
+    ) -> common._CaseInsensitiveDictionary:
+        # Handle security-option conflicts in combined options.
+        opts = _handle_security_options(opts)
+        # Normalize combined options.
+        opts = _normalize_options(opts)
+        _check_options(seeds, opts)
+        return opts
+
+    def _validate_kwargs_and_update_opts(
+        self,
+        keyword_opts: common._CaseInsensitiveDictionary,
+        opts: common._CaseInsensitiveDictionary,
+    ) -> common._CaseInsensitiveDictionary:
+        # Handle deprecated options in kwarg options.
+        keyword_opts = _handle_option_deprecations(keyword_opts)
+        # Validate kwarg options.
+        keyword_opts = common._CaseInsensitiveDictionary(
+            dict(common.validate(keyword_opts.cased_key(k), v) for k, v in keyword_opts.items())
+        )
+        # Override connection string options with kwarg options.
+        opts.update(keyword_opts)
+        return opts
 
     async def aconnect(self) -> None:
         """Explicitly connect to MongoDB asynchronously instead of on the first operation."""
         await self._get_topology()
 
-    def _init_background(self, old_pid: Optional[int] = None) -> None:
+    def _init_background(self, old_pid: Optional[int] = None, first: bool = False) -> None:
         self._topology = Topology(self._topology_settings)
+        if first and _HAS_REGISTER_AT_FORK:
+            # Add this client to the list of weakly referenced items.
+            # This will be used later if we fork.
+            AsyncMongoClient._clients[self._topology._topology_id] = self
         # Seed the topology with the old one's pid so we can detect clients
         # that are opened before a fork and used after.
         self._topology._pid = old_pid
@@ -1117,14 +1218,22 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
-            return self._topology == other._topology
+            if hasattr(self, "_topology") and hasattr(other, "_topology"):
+                return self._topology == other._topology
+            else:
+                raise InvalidOperation(
+                    "Cannot compare client equality until both clients are connected"
+                )
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __hash__(self) -> int:
-        return hash(self._topology)
+        if hasattr(self, "_topology"):
+            return hash(self._topology)
+        else:
+            raise InvalidOperation("Cannot hash client until it is connected")
 
     def _repr_helper(self) -> str:
         def option_repr(option: str, value: Any) -> str:
@@ -1140,13 +1249,16 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             return f"{option}={value!r}"
 
         # Host first...
-        options = [
-            "host=%r"
-            % [
-                "%s:%d" % (host, port) if port is not None else host
-                for host, port in self._topology_settings.seeds
+        if hasattr(self, "_topology"):
+            options = [
+                "host=%r"
+                % [
+                    "%s:%d" % (host, port) if port is not None else host
+                    for host, port in self._topology_settings.seeds
+                ]
             ]
-        ]
+        else:
+            options = ["host={self._host}", "port={self._port}"]
         # ... then everything in self._constructor_args...
         options.extend(
             option_repr(key, self._options._options[key]) for key in self._constructor_args
@@ -1552,24 +1664,25 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            End all server sessions created by this client.
         """
-        session_ids = self._topology.pop_all_sessions()
-        if session_ids:
-            await self._end_sessions(session_ids)
-        # Stop the periodic task thread and then send pending killCursor
-        # requests before closing the topology.
-        self._kill_cursors_executor.close()
-        await self._process_kill_cursors()
-        await self._topology.close()
-        if self._encrypter:
-            # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
-            await self._encrypter.close()
-        self._closed = True
-        if not _IS_SYNC:
-            await asyncio.gather(
-                self._topology.cleanup_monitors(),  # type: ignore[func-returns-value]
-                self._kill_cursors_executor.join(),  # type: ignore[func-returns-value]
-                return_exceptions=True,
-            )
+        if hasattr(self, "_topology"):
+            session_ids = self._topology.pop_all_sessions()
+            if session_ids:
+                await self._end_sessions(session_ids)
+            # Stop the periodic task thread and then send pending killCursor
+            # requests before closing the topology.
+            self._kill_cursors_executor.close()
+            await self._process_kill_cursors()
+            await self._topology.close()
+            if self._encrypter:
+                # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
+                await self._encrypter.close()
+            self._closed = True
+            if not _IS_SYNC:
+                await asyncio.gather(
+                    self._topology.cleanup_monitors(),  # type: ignore[func-returns-value]
+                    self._kill_cursors_executor.join(),  # type: ignore[func-returns-value]
+                    return_exceptions=True,
+                )
 
     if not _IS_SYNC:
         # Add support for contextlib.aclosing.
@@ -1582,6 +1695,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         launches the connection process in the background.
         """
         if not self._opened:
+            if self._resolve_srv_info["is_srv"]:
+                await self._resolve_srv()
+                self._init_background(first=True)
             await self._topology.open()
             async with self._lock:
                 self._kill_cursors_executor.open()
