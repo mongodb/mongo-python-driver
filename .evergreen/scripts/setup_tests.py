@@ -112,6 +112,10 @@ def setup_libmongocrypt():
         run_command("chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll")
 
 
+def get_secrets(name: str) -> None:
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/secrets_handling/setup-secrets.sh {name}")
+
+
 def handle_test_env() -> None:
     opts, _ = get_test_options("Set up the test environment and services.")
     test_name = opts.test_name
@@ -161,12 +165,20 @@ def handle_test_env() -> None:
     if group := GROUP_MAP.get(test_name, ""):
         UV_ARGS.append(f"--group {group}")
 
+    if test_name == "auth_oidc":
+        from oidc_tester import setup_oidc
+
+        config = setup_oidc(sub_test_name)
+        if not config:
+            AUTH = "noauth"
+
     if AUTH != "noauth":
         if test_name == "data_lake":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas_data_lake/secrets-export.sh")
             DB_USER = config["ADL_USERNAME"]
             DB_PASSWORD = config["ADL_PASSWORD"]
         elif test_name == "serverless":
+            run_command(f"bash {DRIVERS_TOOLS}/.evergreen/serverless/setup.sh")
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh")
             DB_USER = config["SERVERLESS_ATLAS_USER"]
             DB_PASSWORD = config["SERVERLESS_ATLAS_PASSWORD"]
@@ -174,9 +186,8 @@ def handle_test_env() -> None:
             write_env("SINGLE_MONGOS_LB_URI", config["SERVERLESS_URI"])
             write_env("MULTI_MONGOS_LB_URI", config["SERVERLESS_URI"])
         elif test_name == "auth_oidc":
-            DB_USER = os.environ["OIDC_ADMIN_USER"]
-            DB_PASSWORD = os.environ["OIDC_ADMIN_PWD"]
-            write_env("DB_IP", os.environ["MONGODB_URI"])
+            DB_USER = config["OIDC_ADMIN_USER"]
+            DB_PASSWORD = config["OIDC_ADMIN_PWD"]
         elif test_name == "index_management":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas/secrets-export.sh")
             DB_USER = config["DRIVERS_ATLAS_LAMBDA_USER"]
@@ -196,6 +207,7 @@ def handle_test_env() -> None:
         write_env("PYMONGO_DISABLE_TEST_COMMANDS", "1")
 
     if test_name == "enterprise_auth":
+        get_secrets("drivers/enterprise_auth")
         config = read_env(f"{ROOT}/secrets-export.sh")
         if PLATFORM == "windows":
             LOGGER.info("Setting GSSAPI_PASS")
@@ -238,6 +250,11 @@ def handle_test_env() -> None:
             raise RuntimeError("Missing DRIVERS_TOOLS")
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
+
+    if test_name == "mod_wsgi":
+        from mod_wsgi_tester import setup_mod_wsgi
+
+        setup_mod_wsgi(sub_test_name)
 
     if test_name == "ocsp":
         if sub_test_name:
@@ -339,10 +356,18 @@ def handle_test_env() -> None:
         else:
             run_command(f"bash {auth_aws_dir}/setup-secrets.sh")
 
+    if test_name == "atlas_connect":
+        get_secrets("drivers/atlas_connect")
+        # We do not want the default client_context to be initialized.
+        write_env("DISABLE_CONTEXT")
+
     if test_name == "perf":
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
         # affects the benchmark results.
-        TEST_ARGS = f"test/performance/perf_test.py {TEST_ARGS}"
+        if sub_test_name == "sync":
+            TEST_ARGS = f"test/performance/perf_test.py {TEST_ARGS}"
+        else:
+            TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
 
     # Add coverage if requested.
     # Only cover CPython. PyPy reports suspiciously low coverage.
@@ -361,7 +386,7 @@ def handle_test_env() -> None:
         # Use --capture=tee-sys so pytest prints test output inline:
         # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
         TEST_ARGS = f"-v --capture=tee-sys --durations=5 {TEST_ARGS}"
-        TEST_SUITE = TEST_SUITE_MAP[test_name]
+        TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
 

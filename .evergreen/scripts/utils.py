@@ -13,6 +13,7 @@ from typing import Any
 HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
 DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS", "").replace(os.sep, "/")
+TMP_DRIVER_FILE = "/tmp/mongo-python-driver.tgz"  # noqa: S108
 
 LOGGER = logging.getLogger("test")
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
@@ -29,7 +30,7 @@ class Distro:
 
 # Map the test name to a test suite.
 TEST_SUITE_MAP = {
-    "atlas": "atlas",
+    "atlas_connect": "atlas_connect",
     "auth_aws": "auth_aws",
     "auth_oidc": "auth_oidc",
     "data_lake": "data_lake",
@@ -49,7 +50,9 @@ TEST_SUITE_MAP = {
 }
 
 # Tests that require a sub test suite.
-SUB_TEST_REQUIRED = ["auth_aws", "kms"]
+SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms", "mod_wsgi"]
+
+EXTRA_TESTS = ["mod_wsgi"]
 
 
 def get_test_options(
@@ -61,7 +64,7 @@ def get_test_options(
     if require_sub_test_name:
         parser.add_argument(
             "test_name",
-            choices=sorted(TEST_SUITE_MAP),
+            choices=sorted(list(TEST_SUITE_MAP) + EXTRA_TESTS),
             nargs="?",
             default="default",
             help="The optional name of the test suite to set up, typically the same name as a pytest marker.",
@@ -136,5 +139,21 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
         cmd = " ".join(cmd)
     LOGGER.info("Running command '%s'...", cmd)
     kwargs.setdefault("check", True)
-    subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
+    # Prevent overriding the python used by other tools.
+    env = kwargs.pop("env", os.environ).copy()
+    if "UV_PYTHON" in env:
+        del env["UV_PYTHON"]
+    kwargs["env"] = env
+    try:
+        subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
+    except subprocess.CalledProcessError as e:
+        LOGGER.error(e.output)
+        LOGGER.error(str(e))
+        sys.exit(e.returncode)
     LOGGER.info("Running command '%s'... done.", cmd)
+
+
+def create_archive() -> None:
+    run_command("git add .", cwd=ROOT)
+    run_command('git commit -m "add files"', check=False, cwd=ROOT)
+    run_command(f"git archive -o {TMP_DRIVER_FILE} HEAD", cwd=ROOT)

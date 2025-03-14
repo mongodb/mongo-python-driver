@@ -464,7 +464,6 @@ def create_compression_variants():
 
 
 def create_enterprise_auth_variants():
-    expansions = dict(AUTH="auth")
     variants = []
 
     # All python versions across platforms.
@@ -475,10 +474,8 @@ def create_enterprise_auth_variants():
             host = HOSTS["win64"]
         else:
             host = DEFAULT_HOST
-        display_name = get_display_name("Auth Enterprise", host, python=python, **expansions)
-        variant = create_variant(
-            ["test-enterprise-auth"], display_name, host=host, python=python, expansions=expansions
-        )
+        display_name = get_display_name("Auth Enterprise", host, python=python)
+        variant = create_variant([".enterprise_auth"], display_name, host=host, python=python)
         variants.append(variant)
 
     return variants
@@ -617,12 +614,7 @@ def create_atlas_data_lake_variants():
 def create_mod_wsgi_variants():
     variants = []
     host = HOSTS["ubuntu22"]
-    tasks = [
-        "mod-wsgi-standalone",
-        "mod-wsgi-replica-set",
-        "mod-wsgi-embedded-mode-standalone",
-        "mod-wsgi-embedded-mode-replica-set",
-    ]
+    tasks = [".mod_wsgi"]
     expansions = dict(MOD_WSGI_VERSION="4")
     for python in MIN_MAX_PYTHON:
         display_name = get_display_name("mod_wsgi", host, python=python)
@@ -645,8 +637,7 @@ def create_disable_test_commands_variants():
 def create_serverless_variants():
     host = DEFAULT_HOST
     batchtime = BATCHTIME_WEEK
-    expansions = dict(TEST_NAME="serverless", AUTH="auth", SSL="ssl")
-    tasks = ["serverless_task_group"]
+    tasks = [".serverless"]
     base_name = "Serverless"
     return [
         create_variant(
@@ -654,7 +645,6 @@ def create_serverless_variants():
             get_display_name(base_name, host, python=python),
             host=host,
             python=python,
-            expansions=expansions,
             batchtime=batchtime,
         )
         for python in MIN_MAX_PYTHON
@@ -663,11 +653,11 @@ def create_serverless_variants():
 
 def create_oidc_auth_variants():
     variants = []
-    other_tasks = ["testazureoidc_task_group", "testgcpoidc_task_group", "testk8soidc_task_group"]
     for host_name in ["ubuntu22", "macos", "win64"]:
-        tasks = ["testoidc_task_group"]
         if host_name == "ubuntu22":
-            tasks += other_tasks
+            tasks = [".auth_oidc"]
+        else:
+            tasks = [".auth_oidc !.auth_oidc_remote"]
         host = HOSTS[host_name]
         variants.append(
             create_variant(
@@ -723,7 +713,7 @@ def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [
         create_variant(
-            ["atlas-connect"],
+            [".atlas_connect"],
             get_display_name("Atlas connect", host, python=python),
             python=python,
             host=host,
@@ -884,6 +874,37 @@ def create_aws_tasks():
     return tasks
 
 
+def create_oidc_tasks():
+    tasks = []
+    for sub_test in ["default", "azure", "gcp", "eks", "aks", "gke"]:
+        vars = dict(TEST_NAME="auth_oidc", SUB_TEST_NAME=sub_test)
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = f"test-auth-oidc-{sub_test}"
+        tags = ["auth_oidc"]
+        if sub_test != "default":
+            tags.append("auth_oidc_remote")
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
+    return tasks
+
+
+def create_mod_wsgi_tasks():
+    tasks = []
+    for test, topology in product(["standalone", "embedded-mode"], ["standalone", "replica_set"]):
+        if test == "standalone":
+            task_name = "mod-wsgi-"
+        else:
+            task_name = "mod-wsgi-embedded-mode-"
+        task_name += topology.replace("_", "-")
+        server_vars = dict(TOPOLOGY=topology)
+        server_func = FunctionCall(func="run server", vars=server_vars)
+        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0])
+        test_func = FunctionCall(func="run tests", vars=vars)
+        tags = ["mod_wsgi"]
+        commands = [server_func, test_func]
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
+    return tasks
+
+
 def _create_ocsp_task(algo, variant, server_type, base_task_name):
     file_name = f"{algo}-basic-tls-ocsp-{variant}.json"
 
@@ -900,6 +921,25 @@ def _create_ocsp_task(algo, variant, server_type, base_task_name):
     task_name = f"test-ocsp-{algo}-{base_task_name}"
     commands = [server_func, test_func]
     return EvgTask(name=task_name, tags=tags, commands=commands)
+
+
+def create_atlas_connect_tasks():
+    vars = dict(TEST_NAME="atlas_connect")
+    assume_func = FunctionCall(func="assume ec2 role")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    task_name = "test-atlas-connect"
+    tags = ["atlas_connect"]
+    return [EvgTask(name=task_name, tags=tags, commands=[assume_func, test_func])]
+
+
+def create_enterprise_auth_tasks():
+    vars = dict(TEST_NAME="enterprise_auth", AUTH="auth")
+    server_func = FunctionCall(func="run server", vars=vars)
+    assume_func = FunctionCall(func="assume ec2 role")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    task_name = "test-enterprise-auth"
+    tags = ["enterprise_auth"]
+    return [EvgTask(name=task_name, tags=tags, commands=[server_func, assume_func, test_func])]
 
 
 def create_ocsp_tasks():
@@ -936,6 +976,14 @@ def create_ocsp_tasks():
             tasks.append(task)
 
     return tasks
+
+
+def create_serverless_tasks():
+    vars = dict(TEST_NAME="serverless", AUTH="auth", SSL="ssl")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    tags = ["serverless"]
+    task_name = "test-serverless"
+    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
 
 
 ##################

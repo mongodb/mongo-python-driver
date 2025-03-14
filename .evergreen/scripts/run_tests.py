@@ -100,16 +100,34 @@ def run() -> None:
     if TEST_PERF:
         start_time = datetime.now()
 
-    # Run remote kms tests.
-    if TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
-        from kms_tester import test_kms_remote
+    # Run mod_wsgi tests using the helper.
+    if TEST_NAME == "mod_wsgi":
+        from mod_wsgi_tester import test_mod_wsgi
 
-        test_kms_remote(SUB_TEST_NAME)
+        test_mod_wsgi()
         return
 
-    # Run remote ecs tests.
+    # Send kms tests to run remotely.
+    if TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
+        from kms_tester import test_kms_send_to_remote
+
+        test_kms_send_to_remote(SUB_TEST_NAME)
+        return
+
+    # Send ecs tests to run remotely.
     if TEST_NAME == "auth_aws" and SUB_TEST_NAME == "ecs":
         run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh ecs")
+        return
+
+    # Send OIDC tests to run remotely.
+    if (
+        TEST_NAME == "auth_oidc"
+        and SUB_TEST_NAME != "default"
+        and not SUB_TEST_NAME.endswith("-remote")
+    ):
+        from oidc_tester import test_oidc_send_to_remote
+
+        test_oidc_send_to_remote(SUB_TEST_NAME)
         return
 
     if os.environ.get("DEBUG_LOG"):

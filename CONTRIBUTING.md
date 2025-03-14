@@ -236,11 +236,18 @@ the pages will re-render and the browser will automatically refresh.
 - Set up the test with `just setup-tests load_balancer`.
 - Run the tests with `just run-tests`.
 
-### AWS tests
+### AWS auth tests
 
 - Run `just run-server auth_aws` to start the server.
 - Run `just setup-tests auth_aws <aws-test-type>` to set up the AWS test.
 - Run the tests with `just run-tests`.
+
+### OIDC auth tests
+
+- Run `just setup-tests auth_oidc <oidc-test-type>` to set up the OIDC test.
+- Run the tests with `just run-tests`.
+
+The supported types are [`default`, `azure`, `gcp`, `eks`, `aks`, and `gke`].
 
 ### KMS tests
 
@@ -254,6 +261,30 @@ For KMS tests that run remotely and are expected to pass, in this case using `gc
 
 - Run `just setup-tests kms gcp`.
 - Run `just run-tests`.
+
+### Enterprise Auth tests
+
+Note: these tests can only be run from an Evergreen host.
+
+- Run `just run-server enterprise_auth`.
+- Run `just setup-tests enterprise_auth`.
+- Run `just run-tests`.
+
+### Atlas Connect tests
+
+- Run `just setup-tests atlas_connect`.
+- Run `just run-tests`.
+
+### mod_wsgi tests
+
+Note: these tests can only be run from an Evergreen Linux host that has the Python toolchain.
+
+- Run `just run-server`.
+- Run `just setup-tests mod_wsgi <mode>`.
+- Run `just run-tests`.
+
+The `mode` can be `standalone` or `embedded`.  For the `replica_set` version of the tests, use
+`TOPOLOGY=replica_set just run-server`.
 
 ### OCSP tests
 

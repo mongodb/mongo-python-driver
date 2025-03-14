@@ -24,14 +24,30 @@ elif TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
 
     teardown_kms(SUB_TEST_NAME)
 
+# Tear down OIDC if applicable.
+elif TEST_NAME == "auth_oidc":
+    from oidc_tester import teardown_oidc
+
+    teardown_oidc(SUB_TEST_NAME)
+
 # Tear down ocsp if applicable.
 elif TEST_NAME == "ocsp":
-    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/teardown.sh")
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh")
+
+# Tear down serverless if applicable.
+elif TEST_NAME == "serverless":
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/serverless/teardown.sh")
 
 # Tear down auth_aws if applicable.
 # We do not run web-identity hosts on macos, because the hosts lack permissions,
 # so there is no reason to run the teardown, which would error with a 401.
 elif TEST_NAME == "auth_aws" and sys.platform != "darwin":
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/auth_aws/teardown.sh")
+
+# Tear down mog_wsgi if applicable.
+elif TEST_NAME == "mod_wsgi":
+    from mod_wsgi_tester import teardown_mod_wsgi
+
+    teardown_mod_wsgi()
 
 LOGGER.info(f"Tearing down tests of type '{TEST_NAME}'... done.")

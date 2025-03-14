@@ -49,7 +49,7 @@ buildvariants:
   # Atlas connect tests
   - name: atlas-connect-rhel8-python3.9
     tasks:
-      - name: atlas-connect
+      - name: .atlas_connect
     display_name: Atlas connect RHEL8 Python3.9
     run_on:
       - rhel87-small
@@ -57,7 +57,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: atlas-connect-rhel8-python3.13
     tasks:
-      - name: atlas-connect
+      - name: .atlas_connect
     display_name: Atlas connect RHEL8 Python3.13
     run_on:
       - rhel87-small
@@ -510,59 +510,53 @@ buildvariants:
     tags: [encryption_tag]
 
   # Enterprise auth tests
-  - name: auth-enterprise-macos-python3.9-auth
+  - name: auth-enterprise-macos-python3.9
     tasks:
-      - name: test-enterprise-auth
-    display_name: Auth Enterprise macOS Python3.9 Auth
+      - name: .enterprise_auth
+    display_name: Auth Enterprise macOS Python3.9
     run_on:
       - macos-14
     expansions:
-      AUTH: auth
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-  - name: auth-enterprise-rhel8-python3.10-auth
+  - name: auth-enterprise-rhel8-python3.10
     tasks:
-      - name: test-enterprise-auth
-    display_name: Auth Enterprise RHEL8 Python3.10 Auth
+      - name: .enterprise_auth
+    display_name: Auth Enterprise RHEL8 Python3.10
     run_on:
       - rhel87-small
     expansions:
-      AUTH: auth
       PYTHON_BINARY: /opt/python/3.10/bin/python3
-  - name: auth-enterprise-rhel8-python3.11-auth
+  - name: auth-enterprise-rhel8-python3.11
     tasks:
-      - name: test-enterprise-auth
-    display_name: Auth Enterprise RHEL8 Python3.11 Auth
+      - name: .enterprise_auth
+    display_name: Auth Enterprise RHEL8 Python3.11
     run_on:
       - rhel87-small
     expansions:
-      AUTH: auth
       PYTHON_BINARY: /opt/python/3.11/bin/python3
-  - name: auth-enterprise-rhel8-python3.12-auth
+  - name: auth-enterprise-rhel8-python3.12
     tasks:
-      - name: test-enterprise-auth
-    display_name: Auth Enterprise RHEL8 Python3.12 Auth
+      - name: .enterprise_auth
+    display_name: Auth Enterprise RHEL8 Python3.12
     run_on:
       - rhel87-small
     expansions:
-      AUTH: auth
       PYTHON_BINARY: /opt/python/3.12/bin/python3
-  - name: auth-enterprise-win64-python3.13-auth
+  - name: auth-enterprise-win64-python3.13
     tasks:
-      - name: test-enterprise-auth
-    display_name: Auth Enterprise Win64 Python3.13 Auth
+      - name: .enterprise_auth
+    display_name: Auth Enterprise Win64 Python3.13
     run_on:
       - windows-64-vsMulti-small
     expansions:
-      AUTH: auth
       PYTHON_BINARY: C:/python/Python313/python.exe
-  - name: auth-enterprise-rhel8-pypy3.10-auth
+  - name: auth-enterprise-rhel8-pypy3.10
     tasks:
-      - name: test-enterprise-auth
-    display_name: Auth Enterprise RHEL8 PyPy3.10 Auth
+      - name: .enterprise_auth
+    display_name: Auth Enterprise RHEL8 PyPy3.10
     run_on:
       - rhel87-small
     expansions:
-      AUTH: auth
       PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
   # Free threaded tests
@@ -702,10 +696,7 @@ buildvariants:
   # Mod wsgi tests
   - name: mod_wsgi-ubuntu-22-python3.9
     tasks:
-      - name: mod-wsgi-standalone
-      - name: mod-wsgi-replica-set
-      - name: mod-wsgi-embedded-mode-standalone
-      - name: mod-wsgi-embedded-mode-replica-set
+      - name: .mod_wsgi
     display_name: mod_wsgi Ubuntu-22 Python3.9
     run_on:
       - ubuntu2204-small
@@ -714,10 +705,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: mod_wsgi-ubuntu-22-python3.13
     tasks:
-      - name: mod-wsgi-standalone
-      - name: mod-wsgi-replica-set
-      - name: mod-wsgi-embedded-mode-standalone
-      - name: mod-wsgi-embedded-mode-replica-set
+      - name: .mod_wsgi
     display_name: mod_wsgi Ubuntu-22 Python3.13
     run_on:
       - ubuntu2204-small
@@ -920,24 +908,21 @@ buildvariants:
   # Oidc auth tests
   - name: auth-oidc-ubuntu-22
     tasks:
-      - name: testoidc_task_group
-      - name: testazureoidc_task_group
-      - name: testgcpoidc_task_group
-      - name: testk8soidc_task_group
+      - name: .auth_oidc
     display_name: Auth OIDC Ubuntu-22
     run_on:
       - ubuntu2204-small
     batchtime: 10080
   - name: auth-oidc-macos
     tasks:
-      - name: testoidc_task_group
+      - name: .auth_oidc !.auth_oidc_remote
     display_name: Auth OIDC macOS
     run_on:
       - macos-14
     batchtime: 10080
   - name: auth-oidc-win64
     tasks:
-      - name: testoidc_task_group
+      - name: .auth_oidc !.auth_oidc_remote
     display_name: Auth OIDC Win64
     run_on:
       - windows-64-vsMulti-small
@@ -1238,27 +1223,21 @@ buildvariants:
   # Serverless tests
   - name: serverless-rhel8-python3.9
     tasks:
-      - name: serverless_task_group
+      - name: .serverless
     display_name: Serverless RHEL8 Python3.9
     run_on:
       - rhel87-small
     batchtime: 10080
     expansions:
-      TEST_NAME: serverless
-      AUTH: auth
-      SSL: ssl
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: serverless-rhel8-python3.13
     tasks:
-      - name: serverless_task_group
+      - name: .serverless
     display_name: Serverless RHEL8 Python3.13
     run_on:
       - rhel87-small
     batchtime: 10080
     expansions:
-      TEST_NAME: serverless
-      AUTH: auth
-      SSL: ssl
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Stable api tests

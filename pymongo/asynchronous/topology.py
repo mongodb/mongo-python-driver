@@ -41,6 +41,7 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
     ServerSelectionTimeoutError,
+    WaitQueueTimeoutError,
     WriteError,
 )
 from pymongo.hello import Hello
@@ -892,6 +893,8 @@ class Topology:
                 # Clear the pool.
                 await server.reset(service_id)
         elif isinstance(error, ConnectionFailure):
+            if isinstance(error, WaitQueueTimeoutError):
+                return
             # "Client MUST replace the server's description with type Unknown
             # ... MUST NOT request an immediate check of the server."
             if not self._settings.load_balanced:

@@ -131,7 +131,7 @@ markers = [
     "auth_oidc: tests that rely on oidc auth",
     "auth: tests that rely on authentication",
     "ocsp: tests that rely on ocsp",
-    "atlas: tests that rely on atlas",
+    "atlas_connect: tests that rely on an atlas connection",
     "data_lake: tests that rely on atlas data lake",
     "perf: benchmark tests",
     "index_management: index management tests",
