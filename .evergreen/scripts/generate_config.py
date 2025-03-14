@@ -930,24 +930,22 @@ def _create_ocsp_task(algo, variant, server_type, base_task_name):
 
 def create_aws_lambda_tasks():
     assume_func = FunctionCall(func="assume ec2 role")
-    atlas_func = FunctionCall(func="setup atlas")
     vars = dict(TEST_NAME="aws_lambda")
     test_func = FunctionCall(func="run tests", vars=vars)
     task_name = "test-aws-lambda-deployed"
     tags = ["aws_lambda"]
-    commands = [assume_func, atlas_func, test_func]
+    commands = [assume_func, test_func]
     return [EvgTask(name=task_name, tags=tags, commands=commands)]
 
 
 def create_search_index_tasks():
     assume_func = FunctionCall(func="assume ec2 role")
-    atlas_func = FunctionCall(func="setup atlas")
     server_func = FunctionCall(func="run server", vars=dict(TEST_NAME="index_management"))
     vars = dict(TEST_NAME="index_management")
     test_func = FunctionCall(func="run tests", vars=vars)
     task_name = "test-search-index-helpers"
     tags = ["index_management"]
-    commands = [assume_func, atlas_func, server_func, test_func]
+    commands = [assume_func, server_func, test_func]
     return [EvgTask(name=task_name, tags=tags, commands=commands)]
 
 

@@ -12,7 +12,6 @@ tasks:
   - name: test-aws-lambda-deployed
     commands:
       - func: assume ec2 role
-      - func: setup atlas
       - func: run tests
         vars:
           TEST_NAME: aws_lambda
@@ -1167,7 +1166,6 @@ tasks:
   - name: test-search-index-helpers
     commands:
       - func: assume ec2 role
-      - func: setup atlas
       - func: run server
         vars:
           TEST_NAME: index_management
