@@ -48,4 +48,10 @@ if TEST_NAME in ["aws_lambda", "index_management"]:
 elif TEST_NAME == "auth_aws" and sys.platform != "darwin":
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/auth_aws/teardown.sh")
 
+# Tear down mog_wsgi if applicable.
+elif TEST_NAME == "mod_wsgi":
+    from mod_wsgi_tester import teardown_mod_wsgi
+
+    teardown_mod_wsgi()
+
 LOGGER.info(f"Tearing down tests of type '{TEST_NAME}'... done.")
