@@ -1174,7 +1174,7 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: index_management
-    tags: [index_managment]
+    tags: [index_management]
 
   # Server tests
   - name: test-4.0-standalone-auth-ssl-sync
