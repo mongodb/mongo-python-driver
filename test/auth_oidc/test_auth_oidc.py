@@ -37,7 +37,7 @@ from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._gcp_helpers import _get_gcp_response
-from pymongo.asynchronous.uri_parser import parse_uri
+from pymongo.synchronous.uri_parser import parse_uri
 from pymongo.auth_oidc_shared import _get_k8s_token
 from pymongo.auth_shared import _build_credentials_tuple
 from pymongo.cursor_shared import CursorType
