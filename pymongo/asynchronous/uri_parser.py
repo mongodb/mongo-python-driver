@@ -4,19 +4,17 @@ import sys
 from typing import Any, Optional
 from urllib.parse import unquote_plus
 
-from pymongo.asynchronous.srv_resolver import _have_dnspython, _SrvResolver
+from pymongo.asynchronous.srv_resolver import _SrvResolver
 from pymongo.common import SRV_SERVICE_NAME, _CaseInsensitiveDictionary
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.uri_parser_shared import (
     _ALLOWED_TXT_OPTS,
-    _BAD_DB_CHARS,
     DEFAULT_PORT,
     SCHEME,
     SCHEME_LEN,
-    SRV_SCHEME,
     SRV_SCHEME_LEN,
     _check_options,
-    parse_userinfo,
+    _validate_uri,
     split_hosts,
     split_options,
 )
@@ -103,102 +101,6 @@ async def parse_uri(
     return result
 
 
-def _validate_uri(
-    uri: str,
-    default_port: Optional[int] = DEFAULT_PORT,
-    validate: bool = True,
-    warn: bool = False,
-    normalize: bool = True,
-    srv_max_hosts: Optional[int] = None,
-) -> dict[str, Any]:
-    if uri.startswith(SCHEME):
-        is_srv = False
-        scheme_free = uri[SCHEME_LEN:]
-    elif uri.startswith(SRV_SCHEME):
-        if not _have_dnspython():
-            python_path = sys.executable or "python"
-            raise ConfigurationError(
-                'The "dnspython" module must be '
-                "installed to use mongodb+srv:// URIs. "
-                "To fix this error install pymongo again:\n "
-                "%s -m pip install pymongo>=4.3" % (python_path)
-            )
-        is_srv = True
-        scheme_free = uri[SRV_SCHEME_LEN:]
-    else:
-        raise InvalidURI(f"Invalid URI scheme: URI must begin with '{SCHEME}' or '{SRV_SCHEME}'")
-
-    if not scheme_free:
-        raise InvalidURI("Must provide at least one hostname or IP")
-
-    user = None
-    passwd = None
-    dbase = None
-    collection = None
-    options = _CaseInsensitiveDictionary()
-
-    host_plus_db_part, _, opts = scheme_free.partition("?")
-    if "/" in host_plus_db_part:
-        host_part, _, dbase = host_plus_db_part.partition("/")
-    else:
-        host_part = host_plus_db_part
-
-    if dbase:
-        dbase = unquote_plus(dbase)
-        if "." in dbase:
-            dbase, collection = dbase.split(".", 1)
-        if _BAD_DB_CHARS.search(dbase):
-            raise InvalidURI('Bad database name "%s"' % dbase)
-    else:
-        dbase = None
-
-    if opts:
-        options.update(split_options(opts, validate, warn, normalize))
-    if "@" in host_part:
-        userinfo, _, hosts = host_part.rpartition("@")
-        user, passwd = parse_userinfo(userinfo)
-    else:
-        hosts = host_part
-
-    if "/" in hosts:
-        raise InvalidURI("Any '/' in a unix domain socket must be percent-encoded: %s" % host_part)
-
-    hosts = unquote_plus(hosts)
-    fqdn = None
-    srv_max_hosts = srv_max_hosts or options.get("srvMaxHosts")
-    if is_srv:
-        if options.get("directConnection"):
-            raise ConfigurationError(f"Cannot specify directConnection=true with {SRV_SCHEME} URIs")
-        nodes = split_hosts(hosts, default_port=None)
-        if len(nodes) != 1:
-            raise InvalidURI(f"{SRV_SCHEME} URIs must include one, and only one, hostname")
-        fqdn, port = nodes[0]
-        if port is not None:
-            raise InvalidURI(f"{SRV_SCHEME} URIs must not include a port number")
-    elif not is_srv and options.get("srvServiceName") is not None:
-        raise ConfigurationError(
-            "The srvServiceName option is only allowed with 'mongodb+srv://' URIs"
-        )
-    elif not is_srv and srv_max_hosts:
-        raise ConfigurationError(
-            "The srvMaxHosts option is only allowed with 'mongodb+srv://' URIs"
-        )
-    else:
-        nodes = split_hosts(hosts, default_port=default_port)
-
-    _check_options(nodes, options)
-
-    return {
-        "nodelist": nodes,
-        "username": user,
-        "password": passwd,
-        "database": dbase,
-        "collection": collection,
-        "options": options,
-        "fqdn": fqdn,
-    }
-
-
 async def _parse_srv(
     uri: str,
     default_port: Optional[int] = DEFAULT_PORT,
@@ -277,10 +179,6 @@ if __name__ == "__main__":
     try:
         if _IS_SYNC:
             pprint.pprint(parse_uri(sys.argv[1]))  # noqa: T203
-        else:
-            import asyncio
-
-            pprint.pprint(asyncio.run(parse_uri(sys.argv[1])))  # type:ignore[arg-type]  # noqa: T203
     except InvalidURI as exc:
         print(exc)  # noqa: T201
     sys.exit(0)

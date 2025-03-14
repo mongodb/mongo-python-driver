@@ -58,10 +58,10 @@ from typing import (
     cast,
 )
 
-import pymongo.synchronous.uri_parser
+import pymongo.uri_parser_shared
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, common, helpers_shared, periodic_executor, uri_parser_shared
+from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo.client_options import ClientOptions
 from pymongo.errors import (
     AutoReconnect,
@@ -120,6 +120,7 @@ from pymongo.uri_parser_shared import (
     _handle_option_deprecations,
     _handle_security_options,
     _normalize_options,
+    split_hosts,
 )
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
@@ -782,7 +783,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # it must be a URI,
             # https://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
             if "/" in entity:
-                res = pymongo.synchronous.uri_parser._validate_uri(
+                res = pymongo.uri_parser_shared._validate_uri(
                     entity,
                     port,
                     validate=True,
@@ -798,7 +799,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 opts = res["options"]
                 fqdn = res["fqdn"]
             else:
-                seeds.update(uri_parser_shared.split_hosts(entity, self._port))
+                seeds.update(split_hosts(entity, self._port))
         if not seeds:
             raise ConfigurationError("need to specify at least one host")
 
@@ -891,7 +892,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 seeds.update(res["nodelist"])
                 opts = res["options"]
             else:
-                seeds.update(uri_parser_shared.split_hosts(entity, self._port))
+                seeds.update(split_hosts(entity, self._port))
 
             if not seeds:
                 raise ConfigurationError("need to specify at least one host")

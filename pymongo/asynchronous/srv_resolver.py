@@ -58,7 +58,10 @@ async def _resolve(*args: Any, **kwargs: Any) -> resolver.Answer:
     else:
         from dns import asyncresolver
 
-        return await asyncresolver.resolve(*args, **kwargs)  # type:ignore[return-value]
+        if hasattr(asyncresolver, "resolve"):
+            # dnspython >= 2
+            return await asyncresolver.resolve(*args, **kwargs)  # type:ignore[return-value]
+        raise ConfigurationError("Upgrade to dnspython version >= 2.0")
 
 
 _INVALID_HOST_MSG = (
