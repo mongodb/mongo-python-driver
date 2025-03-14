@@ -48,9 +48,7 @@ Ming
   library that allows you to enforce schemas on a MongoDB database in
   your Python application. It was developed by `SourceForge
   <https://sourceforge.net/>`_ in the course of their migration to
-  MongoDB. See the `introductory blog post
-  <https://blog.pythonisito.com/2009/12/ming-01-released-python-library-for.html>`_
-  for more details.
+  MongoDB.
 
 MotorEngine
   `MotorEngine <https://motorengine.readthedocs.io/>`_ is a port of
