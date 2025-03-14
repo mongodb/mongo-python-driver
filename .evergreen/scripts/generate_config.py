@@ -959,7 +959,7 @@ def create_atlas_connect_tasks():
 
 
 def create_enterprise_auth_tasks():
-    vars = dict(TEST_NAME="enterprise_auth", AUTH="auth", FOO="${THIS THING}")
+    vars = dict(TEST_NAME="enterprise_auth", AUTH="auth")
     server_func = FunctionCall(func="run server", vars=vars)
     assume_func = FunctionCall(func="assume ec2 role")
     test_func = FunctionCall(func="run tests", vars=vars)

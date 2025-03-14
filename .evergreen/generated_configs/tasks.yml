@@ -705,13 +705,11 @@ tasks:
         vars:
           TEST_NAME: enterprise_auth
           AUTH: auth
-          FOO: ${THIS THING}
       - func: assume ec2 role
       - func: run tests
         vars:
           TEST_NAME: enterprise_auth
           AUTH: auth
-          FOO: ${THIS THING}
     tags: [enterprise_auth]
 
   # Kms tests
