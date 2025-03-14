@@ -2,6 +2,8 @@
 set -o errexit  # Exit the script with error if any of the commands fail
 set -o xtrace
 
+# TODO: create a git archive, build the files, and then move to the location
+# This will be done in python
 rm -rf mongodb/pymongo
 rm -rf mongodb/gridfs
 rm -rf mongodb/bson

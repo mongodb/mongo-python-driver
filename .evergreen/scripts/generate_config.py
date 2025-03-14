@@ -680,7 +680,7 @@ def create_search_index_variants():
     python = CPYTHONS[0]
     return [
         create_variant(
-            ["test_atlas_task_group_search_indexes"],
+            [".index_management"],
             get_display_name("Search Index Helpers", host, python=python),
             python=python,
             host=host,
@@ -778,6 +778,11 @@ def create_alternative_hosts_variants():
             )
         )
     return variants
+
+
+def create_aws_lambda_variants():
+    host = HOSTS["rhel8"]
+    return [create_variant([".aws_lambda"], display_name="FaaS Lambda", host=host)]
 
 
 ##############
@@ -910,6 +915,29 @@ def _create_ocsp_task(algo, variant, server_type, base_task_name):
     return EvgTask(name=task_name, tags=tags, commands=commands)
 
 
+def create_aws_lambda_tasks():
+    assume_func = FunctionCall(func="assume ec2 role")
+    atlas_func = FunctionCall(func="setup atlas")
+    vars = dict(TEST_NAME="aws_lambda")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    task_name = "test-aws-lambda-deployed"
+    tags = ["aws_lambda"]
+    commands = [assume_func, atlas_func, test_func]
+    return [EvgTask(name=task_name, tags=tags, commands=commands)]
+
+
+def create_search_index_tasks():
+    assume_func = FunctionCall(func="assume ec2 role")
+    atlas_func = FunctionCall(func="setup atlas")
+    server_func = FunctionCall(func="run server", vars=dict(TEST_NAME="index_management"))
+    vars = dict(TEST_NAME="index_management")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    task_name = "test-search-index-helpers"
+    tags = ["index_managment"]
+    commands = [assume_func, atlas_func, server_func, test_func]
+    return [EvgTask(name=task_name, tags=tags, commands=commands)]
+
+
 def create_atlas_connect_tasks():
     vars = dict(TEST_NAME="atlas_connect")
     assume_func = FunctionCall(func="assume ec2 role")
@@ -920,7 +948,7 @@ def create_atlas_connect_tasks():
 
 
 def create_enterprise_auth_tasks():
-    vars = dict(TEST_NAME="enterprise_auth", AUTH="auth")
+    vars = dict(TEST_NAME="enterprise_auth", AUTH="auth", FOO="${THIS THING}")
     server_func = FunctionCall(func="run server", vars=vars)
     assume_func = FunctionCall(func="assume ec2 role")
     test_func = FunctionCall(func="run tests", vars=vars)

@@ -172,6 +172,16 @@ def handle_test_env() -> None:
         if not config:
             AUTH = "noauth"
 
+    if test_name in ["aws_lambda", "index_management"]:
+        env = os.environ.copy()
+        env["MONGODB_VERSION"] = "7.0"
+        env["LAMBDA_STACK_NAME"] = "dbx-python-lambda"
+        write_env("LAMBDA_STACK_NAME", env["LAMBDA_STACK_NAME"])
+    #    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh", env=env, cwd=DRIVERS_TOOLS)
+
+    if test_name == "index_management":
+        AUTH = "auth"
+
     if AUTH != "noauth":
         if test_name == "data_lake":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas_data_lake/secrets-export.sh")
@@ -381,7 +391,7 @@ def handle_test_env() -> None:
         # Use --capture=tee-sys so pytest prints test output inline:
         # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
         TEST_ARGS = f"-v --capture=tee-sys --durations=5 {TEST_ARGS}"
-        TEST_SUITE = TEST_SUITE_MAP[test_name]
+        TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
 

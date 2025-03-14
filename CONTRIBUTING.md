@@ -275,6 +275,17 @@ Note: these tests can only be run from an Evergreen host.
 - Run `just setup-tests atlas_connect`.
 - Run `just run-tests`.
 
+### Search Index tests
+
+- Run `just run-server index_management`.
+- Run `just setup-tests index_management`.
+- Run `just run-tests`.
+
+### AWS Lambda tests
+
+- Run `just setup-tests aws_lambda`.
+- Run `just run-tests`.
+
 ### OCSP tests
 
   - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.

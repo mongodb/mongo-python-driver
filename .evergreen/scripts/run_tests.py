@@ -6,10 +6,13 @@ import os
 import platform
 import shutil
 import sys
+import tarfile
+import tempfile
 from datetime import datetime
+from shutil import which
 
 import pytest
-from utils import DRIVERS_TOOLS, LOGGER, ROOT, run_command
+from utils import DRIVERS_TOOLS, LOGGER, ROOT, create_archive, run_command
 
 AUTH = os.environ.get("AUTH", "noauth")
 SSL = os.environ.get("SSL", "nossl")
@@ -82,6 +85,28 @@ def handle_pymongocrypt() -> None:
     LOGGER.info(f"libmongocrypt version: {pymongocrypt.libmongocrypt_version()})")
 
 
+def handle_aws_lambda() -> None:
+    env = os.environ.copy()
+    target_dir = ROOT / "test/lambda"
+    env["TEST_LAMBDA_DIRECTORY"] = str(target_dir)
+    archive = create_archive()
+    with tempfile.TemporaryDirectory() as td:
+        # Unpack the archive
+        fid = tarfile.open(archive)
+        fid.extractall(td)
+        fid.close()
+        # Build the c extensions.
+        docker = which("docker") or which("podman")
+        if not docker:
+            raise ValueError("Could not find docker!")
+        image = "quay.io/pypa/manylinux2014_x86_64:latest"
+        run_command(f'{docker} run --rm -v "{td}:/src" {image} /src/test/lambda/build_internal.sh')
+        shutil.copytree(td, ROOT / "test/lambda/mongodb")
+
+    script_name = "run-deployed-lambda-aws-tests.sh"
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/aws_lambda/{script_name}", env=env)
+
+
 def run() -> None:
     # Handle green framework first so they can patch modules.
     if GREEN_FRAMEWORK:
@@ -121,6 +146,11 @@ def run() -> None:
         from oidc_tester import test_oidc_send_to_remote
 
         test_oidc_send_to_remote(SUB_TEST_NAME)
+        return
+
+    # Run deployed aws lambda tests.
+    if TEST_NAME == "aws_lambda":
+        handle_aws_lambda()
         return
 
     if os.environ.get("DEBUG_LOG"):

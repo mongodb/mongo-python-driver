@@ -62,7 +62,7 @@ def get_test_options(
     if require_sub_test_name:
         parser.add_argument(
             "test_name",
-            choices=sorted(TEST_SUITE_MAP),
+            choices=sorted(TEST_SUITE_MAP) + ["aws_lambda", "index_management"],  # noqa: RUF005
             nargs="?",
             default="default",
             help="The optional name of the test suite to set up, typically the same name as a pytest marker.",
@@ -146,7 +146,8 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
     LOGGER.info("Running command '%s'... done.", cmd)
 
 
-def create_archive() -> None:
+def create_archive() -> str:
     run_command("git add .", cwd=ROOT)
     run_command('git commit -m "add files"', check=False, cwd=ROOT)
     run_command(f"git archive -o {TMP_DRIVER_FILE} HEAD", cwd=ROOT)
+    return TMP_DRIVER_FILE
