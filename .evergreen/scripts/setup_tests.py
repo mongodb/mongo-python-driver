@@ -177,7 +177,11 @@ def handle_test_env() -> None:
         env["MONGODB_VERSION"] = "7.0"
         env["LAMBDA_STACK_NAME"] = "dbx-python-lambda"
         write_env("LAMBDA_STACK_NAME", env["LAMBDA_STACK_NAME"])
-    #    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh", env=env, cwd=DRIVERS_TOOLS)
+        run_command(
+            f"bash {DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh",
+            env=env,
+            cwd=DRIVERS_TOOLS,
+        )
 
     if test_name == "index_management":
         AUTH = "auth"

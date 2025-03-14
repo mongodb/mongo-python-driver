@@ -248,6 +248,7 @@ the pages will re-render and the browser will automatically refresh.
 - Run the tests with `just run-tests`.
 
 The supported types are [`default`, `azure`, `gcp`, `eks`, `aks`, and `gke`].
+For the `eks` test, you will need to set up access to the `drivers-test-secrets-role`, see the [Wiki](https://wiki.corp.mongodb.com/spaces/DRIVERS/pages/239737385/Using+AWS+Secrets+Manager+to+Store+Testing+Secrets).
 
 ### KMS tests
 
@@ -282,6 +283,8 @@ Note: these tests can only be run from an Evergreen host.
 - Run `just run-tests`.
 
 ### AWS Lambda tests
+
+You will need to set up access to the `drivers-test-secrets-role`, see the [Wiki](https://wiki.corp.mongodb.com/spaces/DRIVERS/pages/239737385/Using+AWS+Secrets+Manager+to+Store+Testing+Secrets).
 
 - Run `just setup-tests aws_lambda`.
 - Run `just run-tests`.
