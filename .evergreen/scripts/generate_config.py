@@ -614,12 +614,7 @@ def create_atlas_data_lake_variants():
 def create_mod_wsgi_variants():
     variants = []
     host = HOSTS["ubuntu22"]
-    tasks = [
-        "mod-wsgi-standalone",
-        "mod-wsgi-replica-set",
-        "mod-wsgi-embedded-mode-standalone",
-        "mod-wsgi-embedded-mode-replica-set",
-    ]
+    tasks = [".mod_wsgi"]
     expansions = dict(MOD_WSGI_VERSION="4")
     for python in MIN_MAX_PYTHON:
         display_name = get_display_name("mod_wsgi", host, python=python)
@@ -889,6 +884,24 @@ def create_oidc_tasks():
         if sub_test != "default":
             tags.append("auth_oidc_remote")
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
+    return tasks
+
+
+def create_mod_wsgi_tasks():
+    tasks = []
+    for test, topology in product(["standalone", "embedded-mode"], ["standalone", "replica_set"]):
+        if test == "standalone":
+            task_name = "mod-wsgi-"
+        else:
+            task_name = "mod-wsgi-embedded-mode-"
+        task_name += topology.replace("_", "-")
+        server_vars = dict(TOPOLOGY=topology)
+        server_func = FunctionCall(func="run server", vars=server_vars)
+        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0])
+        test_func = FunctionCall(func="run tests", vars=vars)
+        tags = ["mod_wsgi"]
+        commands = [server_func, test_func]
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
     return tasks
 
 

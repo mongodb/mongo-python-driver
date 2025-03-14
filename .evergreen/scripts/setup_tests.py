@@ -251,6 +251,11 @@ def handle_test_env() -> None:
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
 
+    if test_name == "mod_wsgi":
+        from mod_wsgi_tester import setup_mod_wsgi
+
+        setup_mod_wsgi(sub_test_name)
+
     if test_name == "ocsp":
         if sub_test_name:
             os.environ["OCSP_SERVER_TYPE"] = sub_test_name
@@ -381,7 +386,7 @@ def handle_test_env() -> None:
         # Use --capture=tee-sys so pytest prints test output inline:
         # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
         TEST_ARGS = f"-v --capture=tee-sys --durations=5 {TEST_ARGS}"
-        TEST_SUITE = TEST_SUITE_MAP[test_name]
+        TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
 

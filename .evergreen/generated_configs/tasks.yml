@@ -775,6 +775,48 @@ tasks:
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
 
+  # Mod wsgi tests
+  - name: mod-wsgi-standalone
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: standalone
+    tags: [mod_wsgi]
+  - name: mod-wsgi-replica-set
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: standalone
+    tags: [mod_wsgi]
+  - name: mod-wsgi-embedded-mode-standalone
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: embedded
+    tags: [mod_wsgi]
+  - name: mod-wsgi-embedded-mode-replica-set
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: embedded
+    tags: [mod_wsgi]
+
   # Ocsp tests
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple
     commands:
