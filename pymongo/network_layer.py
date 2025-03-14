@@ -503,14 +503,20 @@ class PyMongoProtocol(BufferedProtocol):
         The transport argument is the transport representing the write side of the connection.
         """
         self.transport = transport  # type: ignore[assignment]
+        self.transport.set_write_buffer_limits(MAX_MESSAGE_SIZE, MAX_MESSAGE_SIZE)  # type: ignore
 
     async def write(self, message: bytes) -> None:
         """Write a message to this connection's transport."""
         if self.transport.is_closing():
             raise OSError("Connection is closed")
+        try:
+            self.transport.resume_reading()
+        # Known bug in SSL Protocols, fixed in Python 3.11: https://github.com/python/cpython/issues/89322
+        except AttributeError:
+            raise OSError("connection is already closed") from None
         self.transport.write(message)
-        await self._drain_helper()
-        self.transport.resume_reading()
+        # await self._drain_helper()
+        # self.transport.resume_reading()
 
     async def read(self, request_id: Optional[int], max_message_size: int) -> tuple[bytes, int]:
         """Read a single MongoDB Wire Protocol message from this connection."""
@@ -698,9 +704,9 @@ class PyMongoProtocol(BufferedProtocol):
     def resume_writing(self) -> None:
         assert self._paused
         self._paused = False
-
-        if self._drain_waiter and not self._drain_waiter.done():
-            self._drain_waiter.set_result(None)
+        #
+        # if self._drain_waiter and not self._drain_waiter.done():
+        #     self._drain_waiter.set_result(None)
 
     def connection_lost(self, exc: Exception | None) -> None:
         self._connection_lost = True
@@ -719,15 +725,15 @@ class PyMongoProtocol(BufferedProtocol):
             else:
                 self._closed.set_exception(exc)
 
-        # Wake up the writer(s) if currently paused.
-        if not self._paused:
-            return
-
-        if self._drain_waiter and not self._drain_waiter.done():
-            if exc is None:
-                self._drain_waiter.set_result(None)
-            else:
-                self._drain_waiter.set_exception(exc)
+        # # Wake up the writer(s) if currently paused.
+        # if not self._paused:
+        #     return
+        #
+        # if self._drain_waiter and not self._drain_waiter.done():
+        #     if exc is None:
+        #         self._drain_waiter.set_result(None)
+        #     else:
+        #         self._drain_waiter.set_exception(exc)
 
     async def _drain_helper(self) -> None:
         if self._connection_lost:
