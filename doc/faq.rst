@@ -445,7 +445,7 @@ in Flask_ (other web frameworks are similar)::
   if __name__ == "__main__":
       app.run()
 
-.. _Flask: https://flask.pocoo.org/
+.. _Flask: http://flask.pocoo.org/
 
 .. seealso:: :ref:`querying-by-objectid`
 
