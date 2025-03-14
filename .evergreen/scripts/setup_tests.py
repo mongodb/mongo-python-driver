@@ -188,6 +188,11 @@ def handle_test_env() -> None:
 
     if test_name == "aws_lambda":
         UV_ARGS.append("--with pip")
+        # Store AWS creds if they were given.
+        if "AWS_ACCESS_KEY_ID" in os.environ:
+            for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+                if key in os.environ:
+                    write_env(key, os.environ[key])
 
     if AUTH != "noauth":
         if test_name == "data_lake":
