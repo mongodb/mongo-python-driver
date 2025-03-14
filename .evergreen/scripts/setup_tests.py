@@ -362,6 +362,14 @@ def handle_test_env() -> None:
         write_env("DISABLE_CONTEXT")
 
     if test_name == "perf":
+        run_command("git clone --depth 1 https://github.com/mongodb/specifications.git")
+        data_dir = ROOT / "specifications/source/benchmarking/data"
+        run_command("tar xf extended_bson.tgz", cwd=data_dir)
+        run_command("tar xf parallel.tgz", cwd=data_dir)
+        run_command("tar xf single_and_multi_document.tgz", cwd=data_dir)
+        write_env("TEST_PATH", str(data_dir))
+        write_env("OUTPUT_FILE", str(ROOT / "results.json"))
+
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
         # affects the benchmark results.
         if sub_test_name == "sync":
