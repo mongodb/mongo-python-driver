@@ -137,6 +137,11 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
         cmd = " ".join(cmd)
     LOGGER.info("Running command '%s'...", cmd)
     kwargs.setdefault("check", True)
+    # Prevent overriding the python used by other tools.
+    env = kwargs.pop("env", os.environ).copy()
+    if "UV_PYTHON" in env:
+        del env["UV_PYTHON"]
+    kwargs["env"] = env
     try:
         subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
     except subprocess.CalledProcessError as e:
