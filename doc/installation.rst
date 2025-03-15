@@ -3,7 +3,7 @@ Installing / Upgrading
 .. highlight:: bash
 
 **PyMongo** is in the `Python Package Index
-<http://pypi.python.org/pypi/pymongo/>`_.
+<https://pypi.python.org/pypi/pymongo/>`_.
 
 .. warning:: **Do not install the "bson" package from pypi.** PyMongo comes
    with its own bson package; doing "pip install bson"
@@ -12,7 +12,7 @@ Installing / Upgrading
 Installing with pip
 -------------------
 
-We recommend using `pip <http://pypi.python.org/pypi/pip>`_
+We recommend using `pip <https://pypi.python.org/pypi/pip>`_
 to install pymongo on all platforms::
 
   $ python3 -m pip install pymongo
@@ -136,7 +136,7 @@ is a workaround::
   # For some Python builds from python.org
   $ env ARCHFLAGS='-arch i386 -arch x86_64' python -m pip install pymongo
 
-See `http://bugs.python.org/issue11623 <http://bugs.python.org/issue11623>`_
+See `https://bugs.python.org/issue11623 <https://bugs.python.org/issue11623>`_
 for a more detailed explanation.
 
 **Lion (10.7) and newer** - PyMongo's C extensions can be built against

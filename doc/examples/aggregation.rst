@@ -87,4 +87,4 @@ you can add computed fields, create new virtual sub-objects, and extract
 sub-fields into the top-level of results.
 
 .. seealso:: The full documentation for MongoDB's `aggregation framework
-    <http://mongodb.com/docs/manual/applications/aggregation>`_
+    <https://mongodb.com/docs/manual/applications/aggregation>`_
