@@ -373,6 +373,8 @@ def handle_test_env() -> None:
             run_command("tar xf single_and_multi_document.tgz", cwd=data_dir)
         write_env("TEST_PATH", str(data_dir))
         write_env("OUTPUT_FILE", str(ROOT / "results.json"))
+        # Overwrite the UV_PYTHON from the env.sh file.
+        write_env("UV_PYTHON", "")
 
         UV_ARGS.append(f"--python={PERF_PYTHON_VERSION}")
 
