@@ -43,6 +43,9 @@ EXTRAS_MAP = {
 # Map the test name to test group.
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 
+# The python version used for perf tests.
+PERF_PYTHON_VERSION = "3.9.13"
+
 
 def is_set(var: str) -> bool:
     value = os.environ.get(var, "")
@@ -370,6 +373,8 @@ def handle_test_env() -> None:
             run_command("tar xf single_and_multi_document.tgz", cwd=data_dir)
         write_env("TEST_PATH", str(data_dir))
         write_env("OUTPUT_FILE", str(ROOT / "results.json"))
+
+        UV_ARGS.append(f"--python={PERF_PYTHON_VERSION}")
 
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
         # affects the benchmark results.

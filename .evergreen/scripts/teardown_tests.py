@@ -57,4 +57,8 @@ elif TEST_NAME == "mod_wsgi":
 
     teardown_mod_wsgi()
 
+# Tear down coverage if applicable.
+if os.environ.get("COVERAGE"):
+    shutil.rmtree(".pytest_cache", ignore_errors=True)
+
 LOGGER.info(f"Tearing down tests of type '{TEST_NAME}'... done.")
