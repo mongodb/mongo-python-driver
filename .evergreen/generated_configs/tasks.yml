@@ -8,6 +8,15 @@ tasks:
           TEST_NAME: atlas_connect
     tags: [atlas_connect]
 
+  # Aws lambda tests
+  - name: test-aws-lambda-deployed
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: aws_lambda
+    tags: [aws_lambda]
+
   # Aws tests
   - name: test-auth-aws-4.4-regular
     commands:
@@ -1150,6 +1159,18 @@ tasks:
           TEST_NAME: auth_oidc
           SUB_TEST_NAME: gke
     tags: [auth_oidc, auth_oidc_remote]
+
+  # Search index tests
+  - name: test-search-index-helpers
+    commands:
+      - func: assume ec2 role
+      - func: run server
+        vars:
+          TEST_NAME: index_management
+      - func: run tests
+        vars:
+          TEST_NAME: index_management
+    tags: [index_management]
 
   # Server tests
   - name: test-4.0-standalone-auth-ssl-sync
