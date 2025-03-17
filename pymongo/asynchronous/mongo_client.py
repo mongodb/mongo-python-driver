@@ -847,7 +847,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 "username": username,
                 "password": password,
                 "dbase": dbase,
+                "seeds": seeds,
                 "fqdn": fqdn,
+                "srv_service_name": srv_service_name,
                 "pool_class": pool_class,
                 "monitor_class": monitor_class,
                 "condition_class": condition_class,
@@ -855,6 +857,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         )
         if not is_srv:
             self._init_based_on_options(seeds, srv_max_hosts, srv_service_name)
+
+        super().__init__(
+            self._options.codec_options,
+            self._options.read_preference,
+            self._options.write_concern,
+            self._options.read_concern,
+        )
 
         self._opened = False
         self._closed = False
@@ -937,12 +946,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self, seeds: Collection[tuple[str, int]], srv_max_hosts: Any, srv_service_name: Any
     ) -> None:
         self._event_listeners = self._options.pool_options._event_listeners
-        super().__init__(
-            self._options.codec_options,
-            self._options.read_preference,
-            self._options.write_concern,
-            self._options.read_concern,
-        )
         self._topology_settings = TopologySettings(
             seeds=seeds,
             replica_set_name=self._options.replica_set_name,
@@ -1216,14 +1219,20 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return self._options
 
+    def eq_props(self):
+        return (
+            tuple(sorted(self._resolve_srv_info["seeds"])),
+            self._options.replica_set_name,
+            self._resolve_srv_info["fqdn"],
+            self._resolve_srv_info["srv_service_name"],
+        )
+
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
             if hasattr(self, "_topology") and hasattr(other, "_topology"):
                 return self._topology == other._topology
             else:
-                raise InvalidOperation(
-                    "Cannot compare client equality until both clients are connected"
-                )
+                return self.eq_props() == other.eq_props()
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
@@ -1233,7 +1242,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if hasattr(self, "_topology"):
             return hash(self._topology)
         else:
-            raise InvalidOperation("Cannot hash client until it is connected")
+            raise hash(self.eq_props())
 
     def _repr_helper(self) -> str:
         def option_repr(option: str, value: Any) -> str:
