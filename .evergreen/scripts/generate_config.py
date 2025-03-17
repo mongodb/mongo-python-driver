@@ -952,7 +952,7 @@ def create_enterprise_auth_tasks():
 
 def create_perf_tasks():
     tasks = []
-    for version, ssl, sync in product(["6.0", "8.0"], ["ssl", "nossl"], ["sync", "async"]):
+    for version, ssl, sync in product(["8.0"], ["ssl", "nossl"], ["sync", "async"]):
         vars = dict(VERSION=f"v{version}-perf", SSL=ssl)
         server_func = FunctionCall(func="run server", vars=vars)
         vars = dict(TEST_NAME="perf", SUB_TEST_NAME=sync)
