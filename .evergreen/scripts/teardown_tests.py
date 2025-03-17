@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sys
+from pathlib import Path
 
-from utils import DRIVERS_TOOLS, LOGGER, run_command
+from utils import DRIVERS_TOOLS, LOGGER, ROOT, run_command
 
 TEST_NAME = os.environ.get("TEST_NAME", "unconfigured")
 SUB_TEST_NAME = os.environ.get("SUB_TEST_NAME")
@@ -48,10 +50,19 @@ if TEST_NAME in ["aws_lambda", "index_management"]:
 elif TEST_NAME == "auth_aws" and sys.platform != "darwin":
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/auth_aws/teardown.sh")
 
+# Tear down perf if applicable.
+elif TEST_NAME == "perf":
+    shutil.rmtree(ROOT / "specifications", ignore_errors=True)
+    Path(os.environ["OUTPUT_FILE"]).unlink(missing_ok=True)
+
 # Tear down mog_wsgi if applicable.
 elif TEST_NAME == "mod_wsgi":
     from mod_wsgi_tester import teardown_mod_wsgi
 
     teardown_mod_wsgi()
+
+# Tear down coverage if applicable.
+if os.environ.get("COVERAGE"):
+    shutil.rmtree(".pytest_cache", ignore_errors=True)
 
 LOGGER.info(f"Tearing down tests of type '{TEST_NAME}'... done.")

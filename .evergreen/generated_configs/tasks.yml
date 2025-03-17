@@ -1160,6 +1160,60 @@ tasks:
           SUB_TEST_NAME: gke
     tags: [auth_oidc, auth_oidc_remote]
 
+  # Perf tests
+  - name: perf-8.0-standalone-ssl
+    commands:
+      - func: run server
+        vars:
+          VERSION: v8.0-perf
+          SSL: ssl
+      - func: run tests
+        vars:
+          TEST_NAME: perf
+          SUB_TEST_NAME: sync
+      - func: attach benchmark test results
+      - func: send dashboard data
+    tags: [perf]
+  - name: perf-8.0-standalone-ssl-async
+    commands:
+      - func: run server
+        vars:
+          VERSION: v8.0-perf
+          SSL: ssl
+      - func: run tests
+        vars:
+          TEST_NAME: perf
+          SUB_TEST_NAME: async
+      - func: attach benchmark test results
+      - func: send dashboard data
+    tags: [perf]
+  - name: perf-8.0-standalone
+    commands:
+      - func: run server
+        vars:
+          VERSION: v8.0-perf
+          SSL: nossl
+      - func: run tests
+        vars:
+          TEST_NAME: perf
+          SUB_TEST_NAME: sync
+      - func: attach benchmark test results
+      - func: send dashboard data
+    tags: [perf]
+  - name: perf-8.0-standalone-async
+    commands:
+      - func: run server
+        vars:
+          VERSION: v8.0-perf
+          SSL: nossl
+      - func: run tests
+        vars:
+          TEST_NAME: perf
+          SUB_TEST_NAME: async
+      - func: attach benchmark test results
+      - func: send dashboard data
+    tags: [perf]
+
   # Search index tests
   - name: test-search-index-helpers
     commands:

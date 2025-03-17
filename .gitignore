@@ -28,6 +28,8 @@ expansion.yml
 *expansions.yml
 .evergreen/scripts/env.sh
 .evergreen/scripts/test-env.sh
+specifications/
+results.json
 
 # Lambda temp files
 test/lambda/.aws-sam

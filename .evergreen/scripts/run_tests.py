@@ -185,10 +185,6 @@ def run() -> None:
     if TEST_PERF:
         handle_perf(start_time)
 
-    # Handle coverage post actions.
-    if os.environ.get("COVERAGE"):
-        shutil.rmtree(".pytest_cache", ignore_errors=True)
-
 
 if __name__ == "__main__":
     run()

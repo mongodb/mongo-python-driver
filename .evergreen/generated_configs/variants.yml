@@ -936,6 +936,15 @@ buildvariants:
       - windows-64-vsMulti-small
     batchtime: 10080
 
+  # Perf tests
+  - name: performance-benchmarks
+    tasks:
+      - name: .perf
+    display_name: Performance Benchmarks
+    run_on:
+      - rhel90-dbx-perf-large
+    batchtime: 10080
+
   # Pyopenssl tests
   - name: pyopenssl-macos-python3.9
     tasks:

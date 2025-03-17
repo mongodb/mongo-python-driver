@@ -4,7 +4,7 @@
 # may not use this file except in compliance with the License.  You
 # may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -192,7 +192,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         execute.
 
         The `host` parameter can be a full `mongodb URI
-        <http://dochub.mongodb.org/core/connections>`_, in addition to
+        <https://dochub.mongodb.org/core/connections>`_, in addition to
         a simple hostname. It can also be a list of hostnames but no more
         than one URI. Any port specified in the host string(s) will override
         the `port` parameter. For username and

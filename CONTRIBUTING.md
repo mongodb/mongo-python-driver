@@ -311,6 +311,12 @@ The `mode` can be `standalone` or `embedded`.  For the `replica_set` version of 
 
   If you are running one of the `no-responder` tests, omit the `run-server` step.
 
+### Perf Tests
+
+- Start the appropriate server, e.g. `just run-server --version=v8.0-perf --ssl`.
+- Set up the tests with `sync` or `async`: `just setup-tests perf sync`.
+- Run the tests: `just run-tests`.
+
 ## Enable Debug Logs
 - Use `-o log_cli_level="DEBUG" -o log_cli=1` with `just test` or `pytest`.
 - Add `log_cli_level = "DEBUG` and `log_cli = 1` to the `tool.pytest.ini_options` section in `pyproject.toml` for Evergreen patches or to enable debug logs by default on your machine.

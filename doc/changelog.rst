@@ -3067,7 +3067,7 @@ fixes. Highlights include:
   :class:`~gridfs.grid_file.GridOutCursor`.
 - Greatly improved :doc:`support for mod_wsgi </examples/mod_wsgi>` when using
   PyMongo's C extensions. Read `Jesse's blog post
-  <http://emptysqua.re/blog/python-c-extensions-and-mod-wsgi/>`_ for details.
+  <https://emptysqua.re/blog/python-c-extensions-and-mod-wsgi/>`_ for details.
 - Improved C extension support for ARM little endian.
 
 Breaking changes
@@ -3322,7 +3322,7 @@ Important New Features:
 - Support for mongos failover.
 - A new :meth:`~pymongo.collection.Collection.aggregate` method to support
   MongoDB's new `aggregation framework
-  <http://mongodb.com/docs/manual/applications/aggregation/>`_.
+  <https://mongodb.com/docs/manual/applications/aggregation/>`_.
 - Support for legacy Java and C# byte order when encoding and decoding UUIDs.
 - Support for connecting directly to an arbiter.
 
@@ -3686,7 +3686,7 @@ Changes in Version 1.9 (2010/09/28)
 
 Version 1.9 adds a new package to the PyMongo distribution,
 :mod:`bson`. :mod:`bson` contains all of the `BSON
-<http://bsonspec.org>`_ encoding and decoding logic, and the BSON
+<https://bsonspec.org>`_ encoding and decoding logic, and the BSON
 types that were formerly in the :mod:`pymongo` package. The following
 modules have been renamed:
 
@@ -3819,7 +3819,7 @@ Changes in Version 1.7 (2010/06/17)
 Version 1.7 is a recommended upgrade for all PyMongo users. The full
 release notes are below, and some more in depth discussion of the
 highlights is `here
-<http://dirolf.com/2010/06/17/pymongo-1.7-released.html>`_.
+<https://dirolf.com/2010/06/17/pymongo-1.7-released.html>`_.
 
 - no longer attempt to build the C extension on big-endian systems.
 - added :class:`~bson.min_key.MinKey` and
@@ -3870,7 +3870,7 @@ The biggest change in version 1.6 is a complete re-implementation of
 :mod:`gridfs` with a lot of improvements over the old
 implementation. There are many details and examples of using the new
 API in `this blog post
-<http://dirolf.com/2010/03/29/new-gridfs-implementation-for-pymongo.html>`_. The
+<https://dirolf.com/2010/03/29/new-gridfs-implementation-for-pymongo.html>`_. The
 old API has been removed in this version, so existing code will need
 to be modified before upgrading to 1.6.
 
