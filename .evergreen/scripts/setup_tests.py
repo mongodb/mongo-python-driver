@@ -43,6 +43,9 @@ EXTRAS_MAP = {
 # Map the test name to test group.
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 
+# The python version used for perf tests.
+PERF_PYTHON_VERSION = "3.9.13"
+
 
 def is_set(var: str) -> bool:
     value = os.environ.get(var, "")
@@ -362,6 +365,19 @@ def handle_test_env() -> None:
         write_env("DISABLE_CONTEXT")
 
     if test_name == "perf":
+        data_dir = ROOT / "specifications/source/benchmarking/data"
+        if not data_dir.exists():
+            run_command("git clone --depth 1 https://github.com/mongodb/specifications.git")
+            run_command("tar xf extended_bson.tgz", cwd=data_dir)
+            run_command("tar xf parallel.tgz", cwd=data_dir)
+            run_command("tar xf single_and_multi_document.tgz", cwd=data_dir)
+        write_env("TEST_PATH", str(data_dir))
+        write_env("OUTPUT_FILE", str(ROOT / "results.json"))
+        # Overwrite the UV_PYTHON from the env.sh file.
+        write_env("UV_PYTHON", "")
+
+        UV_ARGS.append(f"--python={PERF_PYTHON_VERSION}")
+
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
         # affects the benchmark results.
         if sub_test_name == "sync":
