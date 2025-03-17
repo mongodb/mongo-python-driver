@@ -755,6 +755,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             raise TypeError(f"port must be an instance of int, not {type(port)}")
         self._host = host
         self._port = port
+        self._topology = None
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
@@ -1227,20 +1228,20 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
-            if hasattr(self, "_topology") and hasattr(other, "_topology"):
-                return self._topology == other._topology
-            else:
+            if self._topology is None:
                 return self.eq_props() == other.eq_props()
+            else:
+                return self._topology == other._topology
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __hash__(self) -> int:
-        if hasattr(self, "_topology"):
-            return hash(self._topology)
-        else:
+        if self._topology is None:
             raise hash(self.eq_props())
+        else:
+            return hash(self._topology)
 
     def _repr_helper(self) -> str:
         def option_repr(option: str, value: Any) -> str:
@@ -1256,7 +1257,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             return f"{option}={value!r}"
 
         # Host first...
-        if hasattr(self, "_topology"):
+        if self._topology is None:
+            options = ["host={self._host}", "port={self._port}"]
+        else:
             options = [
                 "host=%r"
                 % [
@@ -1264,8 +1267,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     for host, port in self._topology_settings.seeds
                 ]
             ]
-        else:
-            options = ["host={self._host}", "port={self._port}"]
         # ... then everything in self._constructor_args...
         options.extend(
             option_repr(key, self._options._options[key]) for key in self._constructor_args
@@ -1667,7 +1668,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            End all server sessions created by this client.
         """
-        if hasattr(self, "_topology"):
+        if self._topology is not None:
             session_ids = self._topology.pop_all_sessions()
             if session_ids:
                 self._end_sessions(session_ids)

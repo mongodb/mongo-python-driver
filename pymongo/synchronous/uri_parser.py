@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from typing import Any, Optional
 from urllib.parse import unquote_plus
 
@@ -171,14 +170,3 @@ def _parse_srv(
         "nodelist": nodes,
         "options": options,
     }
-
-
-if __name__ == "__main__":
-    import pprint
-
-    try:
-        if _IS_SYNC:
-            pprint.pprint(parse_uri(sys.argv[1]))  # noqa: T203
-    except InvalidURI as exc:
-        print(exc)  # noqa: T201
-    sys.exit(0)

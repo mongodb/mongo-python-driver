@@ -1,4 +1,4 @@
-# Copyright 2025-present MongoDB, Inc.
+# Copyright 2011-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Re-import of synchronous Uri Parser API for compatibility."""
+"""Re-import of synchronous URI Parser API for compatibility."""
 from __future__ import annotations
 
+import sys
+
+from pymongo.errors import InvalidURI
 from pymongo.synchronous.uri_parser import *  # noqa: F403
 from pymongo.synchronous.uri_parser import __doc__ as original_doc
 from pymongo.uri_parser_shared import *  # noqa: F403
@@ -29,3 +32,12 @@ __all__ = [  # noqa: F405
     "split_hosts",
     "parse_uri",
 ]
+
+if __name__ == "__main__":
+    import pprint
+
+    try:
+        pprint.pprint(parse_uri(sys.argv[1]))  # noqa: F405, T203
+    except InvalidURI as exc:
+        print(exc)  # noqa: T201
+    sys.exit(0)
