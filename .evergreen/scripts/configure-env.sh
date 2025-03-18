@@ -76,8 +76,8 @@ EOT
 
 # Write the .env file for drivers-tools.
 rm -rf $DRIVERS_TOOLS
-BRANCH=PYTHON-5046
-ORG=sleepyStick
+BRANCH=master
+ORG=mongodb-labs
 git clone --branch $BRANCH https://github.com/$ORG/drivers-evergreen-tools.git $DRIVERS_TOOLS
 
 cat <<EOT > ${DRIVERS_TOOLS}/.env
