@@ -12,8 +12,10 @@ tasks:
   - name: test-atlas-data-lake
     commands:
       - func: run tests
-        vars:
-          TEST_NAME: data_lake
+    tags: [atlas_data_lake]
+  - name: test-atlas-data-lake
+    commands:
+      - func: run tests
     tags: [atlas_data_lake]
 
   # Aws tests

@@ -600,14 +600,10 @@ def create_no_c_ext_variants():
 def create_atlas_data_lake_variants():
     variants = []
     host = HOSTS["ubuntu22"]
-    for python, c_ext in product(MIN_MAX_PYTHON, C_EXTS):
+    for python in MIN_MAX_PYTHON:
         tasks = [".atlas_data_lake"]
-        expansions = dict(AUTH="auth")
-        handle_c_ext(c_ext, expansions)
-        display_name = get_display_name("Atlas Data Lake", host, python=python, **expansions)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, expansions=expansions
-        )
+        display_name = get_display_name("Atlas Data Lake", host, python=python)
+        variant = create_variant(tasks, display_name, host=host, python=python)
         variants.append(variant)
     return variants
 
@@ -971,11 +967,15 @@ def create_perf_tasks():
 
 
 def create_atlas_data_lake_tasks():
-    vars = dict(TEST_NAME="data_lake")
-    test_func = FunctionCall(func="run tests", vars=vars)
-    task_name = "test-atlas-data-lake"
     tags = ["atlas_data_lake"]
-    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
+    tasks = []
+    for c_ext in C_EXTS:
+        vars = dict(TEST_NAME="data_lake")
+        vars = handle_c_ext(c_ext, vars)
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = "test-atlas-data-lake"
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
+    return tasks
 
 
 def create_ocsp_tasks():
