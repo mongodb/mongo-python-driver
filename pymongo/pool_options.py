@@ -312,6 +312,7 @@ class PoolOptions:
         "__server_api",
         "__load_balanced",
         "__credentials",
+        "__proxy",
     )
 
     def __init__(
@@ -334,6 +335,7 @@ class PoolOptions:
         load_balanced: Optional[bool] = None,
         credentials: Optional[MongoCredential] = None,
         is_sync: Optional[bool] = True,
+        proxy: Optional[dict] = None,
     ):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -353,7 +355,7 @@ class PoolOptions:
         self.__load_balanced = load_balanced
         self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
-
+        self.__proxy = copy.deepcopy(proxy)
         if appname:
             self.__metadata["application"] = {"name": appname}
 
@@ -522,3 +524,8 @@ class PoolOptions:
     def load_balanced(self) -> Optional[bool]:
         """True if this Pool is configured in load balanced mode."""
         return self.__load_balanced
+
+    @property
+    def proxy(self) -> Optional[dict]:
+        """Proxy settings, if configured"""
+        return self.__proxy
