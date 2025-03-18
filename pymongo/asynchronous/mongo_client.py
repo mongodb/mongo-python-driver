@@ -757,7 +757,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             raise TypeError(f"port must be an instance of int, not {type(port)}")
         self._host = host
         self._port = port
-        self._topology = None
+        self._topology: Optional[Topology] = None
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
@@ -1036,6 +1036,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _after_fork(self) -> None:
         """Resets topology in a child after successfully forking."""
+        assert self._topology is not None
         self._init_background(self._topology._pid)
         # Reset the session pool to avoid duplicate sessions in the child process.
         self._topology._session_pool.reset()
@@ -1195,6 +1196,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.0
         """
+        assert self._topology is not None
         return self._topology.description
 
     @property
@@ -1208,6 +1210,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           to any servers, or a network partition causes it to lose connection
           to all servers.
         """
+        assert self._topology is not None
         description = self._topology.description
         return frozenset(s.address for s in description.known_servers)
 
@@ -1221,7 +1224,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return self._options
 
-    def eq_props(self):
+    def eq_props(self) -> tuple[tuple[_Address, ...], Optional[str], Optional[str], str]:
         return (
             tuple(sorted(self._resolve_srv_info["seeds"])),
             self._options.replica_set_name,
@@ -1242,7 +1245,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __hash__(self) -> int:
         if self._topology is None:
-            raise hash(self.eq_props())
+            return hash(self.eq_props())
         else:
             return hash(self._topology)
 
@@ -1387,6 +1390,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     def _send_cluster_time(
         self, command: MutableMapping[str, Any], session: Optional[AsyncClientSession]
     ) -> None:
+        assert self._topology is not None
         topology_time = self._topology.max_cluster_time()
         session_time = session.cluster_time if session else None
         if topology_time and session_time:
@@ -1572,6 +1576,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.0
         """
+        assert self._topology is not None
         topology_type = self._topology._description.topology_type
         if (
             topology_type == TOPOLOGY_TYPE.Sharded
@@ -1594,6 +1599,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
            AsyncMongoClient gained this property in version 3.0.
         """
+        assert self._topology is not None
         return await self._topology.get_primary()  # type: ignore[return-value]
 
     @property
@@ -1607,6 +1613,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
            AsyncMongoClient gained this property in version 3.0.
         """
+        assert self._topology is not None
         return await self._topology.get_secondaries()
 
     @property
@@ -1617,6 +1624,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         connected to a replica set, there are no arbiters, or this client was
         created without the `replicaSet` option.
         """
+        assert self._topology is not None
         return await self._topology.get_arbiters()
 
     @property
@@ -1709,10 +1717,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             if self._resolve_srv_info["is_srv"]:
                 await self._resolve_srv()
                 self._init_background()
+            assert self._topology is not None
             await self._topology.open()
             async with self._lock:
                 self._kill_cursors_executor.open()
             self._opened = True
+        assert self._topology is not None
         return self._topology
 
     @contextlib.asynccontextmanager
@@ -1815,6 +1825,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # Thread safe: if the type is single it cannot change.
         # NOTE: We already opened the Topology when selecting a server so there's no need
         # to call _get_topology() again.
+        assert self._topology is not None
         single = self._topology.description.topology_type == TOPOLOGY_TYPE.Single
         async with self._checkout(server, session) as conn:
             if single:
@@ -2154,6 +2165,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Process any pending kill cursors requests."""
         address_to_cursor_ids = defaultdict(list)
         pinned_cursors = []
+        assert self._topology is not None
 
         # Other threads or the GC may append to the queue concurrently.
         while True:
@@ -2195,6 +2207,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Process any pending kill cursors requests and
         maintain connection pool parameters.
         """
+        assert self._topology is not None
         try:
             await self._process_kill_cursors()
             await self._topology.update_pool()
@@ -2210,6 +2223,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Internal: return a _ServerSession to the pool."""
         if isinstance(server_session, _EmptyServerSession):
             return None
+        assert self._topology is not None
         return self._topology.return_server_session(server_session)
 
     @contextlib.asynccontextmanager
@@ -2247,6 +2261,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     async def _process_response(
         self, reply: Mapping[str, Any], session: Optional[AsyncClientSession]
     ) -> None:
+        assert self._topology is not None
         await self._topology.receive_cluster_time(reply.get("$clusterTime"))
         if session is not None:
             session._process_response(reply)
@@ -2638,6 +2653,7 @@ class _MongoClientErrorHandler:
             self.completed_handshake,
             self.service_id,
         )
+        assert self._client._topology is not None
         await self.client._topology.handle_error(self.server_address, err_ctx)
 
     async def __aenter__(self) -> _MongoClientErrorHandler:
