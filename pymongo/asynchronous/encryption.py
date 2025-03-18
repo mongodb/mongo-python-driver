@@ -242,7 +242,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 )
                 raise exc from final_err
 
-    async def collection_info(self, database: str, filter: bytes) -> Optional[bytes]:
+    async def collection_info(self, database: str, filter: bytes) -> Optional[list[bytes]]:
         """Get the collection info for a namespace.
 
         The returned collection info is passed to libmongocrypt which reads
@@ -256,8 +256,11 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         async with await self.client_ref()[database].list_collections(
             filter=RawBSONDocument(filter)
         ) as cursor:
+            lst = []
             async for doc in cursor:
-                return _dict_to_bson(doc, False, _DATA_KEY_OPTS)
+                lst.append(_dict_to_bson(doc, False, _DATA_KEY_OPTS))
+            if len(lst) > 0:
+                return lst
             return None
 
     def spawn(self) -> None:
@@ -551,7 +554,7 @@ def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
     # For compat with pymongocrypt <1.13, avoid setting the default key_expiration_ms.
     if kwargs.get("key_expiration_ms") is None:
         kwargs.pop("key_expiration_ms", None)
-    return MongoCryptOptions(**kwargs)
+    return MongoCryptOptions(**kwargs, enable_multiple_collinfo=True)
 
 
 class AsyncClientEncryption(Generic[_DocumentType]):

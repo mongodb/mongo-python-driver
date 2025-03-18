@@ -73,7 +73,7 @@ from test.utils_shared import (
 )
 from test.utils_spec_runner import SpecRunner
 
-from bson import DatetimeMS, Decimal128, encode, json_util
+from bson import BSON, DatetimeMS, Decimal128, encode, json_util
 from bson.binary import UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
@@ -91,6 +91,7 @@ from pymongo.errors import (
     EncryptionError,
     InvalidOperation,
     OperationFailure,
+    PyMongoError,
     ServerSelectionTimeoutError,
     WriteError,
 )
@@ -2401,6 +2402,331 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         payload = self.client_encryption.encrypt(val, Algorithm.UNINDEXED, self.key1_id)
         decrypted = self.client_encryption.decrypt(payload)
         self.assertEqual(decrypted, val)
+
+
+# https://github.com/mongodb/specifications/blob/527e22d5090ec48bf1e144c45fc831de0f1935f6/source/client-side-encryption/tests/README.md#25-test-lookup
+class TestLookupProse(EncryptionIntegrationTest):
+    def setUp(self):
+        super().setUp()
+        self.encrypted_client = self.rs_or_single_client(
+            auto_encryption_opts=AutoEncryptionOpts(
+                key_vault_namespace="db.keyvault",
+                kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            )
+        )
+        self.encrypted_client.db.drop_collection("keyvault")
+
+        keyvault = json_data("etc", "data", "lookup", "key-doc.json")
+        create_key_vault(self.encrypted_client.keyvault, keyvault)
+
+        self.encrypted_client.db.drop("csfle")
+        self.encrypted_client.db.create_collection(
+            "csfle",
+            validator={"$jsonSchema": json_data("etc", "data", "lookup", "schema-csfle.json")},
+        )
+
+        self.encrypted_client.db.drop("csfle2")
+        self.encrypted_client.db.create_collection(
+            "csfle2",
+            validator={"$jsonSchema": json_data("etc", "data", "lookup", "schema-csfle2.json")},
+        )
+
+        self.encrypted_client.db.drop("qe")
+        self.encrypted_client.db.create_collection(
+            "qe", validator={"$jsonSchema": json_data("etc", "data", "lookup", "schema-qe.json")}
+        )
+
+        self.encrypted_client.db.drop("qe2")
+        self.encrypted_client.db.create_collection(
+            "qe2", validator={"$jsonSchema": json_data("etc", "data", "lookup", "schema-qe2.json")}
+        )
+
+        self.encrypted_client.db.drop("no_schema")
+        self.encrypted_client.db.create_collection("no-schema")
+
+        self.encrypted_client.db.drop("no_schema2")
+        self.encrypted_client.db.create_collection("no_schema2")
+
+        self.unencrypted_client = self.rs_or_single_client()
+
+        self.encrypted_client.db.csfle.insert_one({"csfle": "csfle"})
+        doc = self.unencrypted_client.db.csfle.find_one()
+        self.assertTrue(isinstance(doc, BSON))
+        self.encrypted_client.db.csfle2.insert_one({"csfle2": "csfle2"})
+        doc = self.unencrypted_client.db.csfle2.find_one()
+        self.assertTrue(isinstance(doc, BSON))
+        self.encrypted_client.db.qe.insert_one({"qe": "qe"})
+        doc = self.unencrypted_client.db.qe.find_one()
+        self.assertTrue(isinstance(doc, BSON))
+        self.encrypted_client.db.qe2.insert_one({"qe2": "qe2"})
+        doc = self.unencrypted_client.db.qe2.find_one()
+        self.assertTrue(isinstance(doc, BSON))
+        self.encrypted_client.db.no_schema.insert_one({"no_schema": "no_schema"})
+        self.encrypted_client.db.no_schema2.insert_one({"no_schema2": "no_schema2"})
+
+    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
+    @client_context.require_version_min(8, 1, -1)
+    def test_1(self):
+        self.encrypted_client = self.rs_or_single_client(
+            auto_encryption_opts=AutoEncryptionOpts(
+                key_vault_namespace="db.keyvault",
+                kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            )
+        )
+        doc = next(
+            self.encrypted_client.db.csfle.aggregate(
+                [
+                    {"$match": {"csfle": "csfle"}},
+                    {
+                        "$lookup": {
+                            "from": "no_schema",
+                            "as": "matched",
+                            "pipeline": [
+                                {"$match": {"no_schema": "no_schema"}},
+                                {"$project": {"_id": 0}},
+                            ],
+                        }
+                    },
+                    {"$project": {"_id": 0}},
+                ]
+            )
+        )
+        self.assertEqual(doc, {"csfle": "csfle", "matched": [{"no_schema": "no_schema"}]})
+
+    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
+    @client_context.require_version_min(8, 1, -1)
+    def test_2(self):
+        self.encrypted_client = self.rs_or_single_client(
+            auto_encryption_opts=AutoEncryptionOpts(
+                key_vault_namespace="db.keyvault",
+                kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            )
+        )
+        doc = next(
+            self.encrypted_client.db.qe.aggregate(
+                [
+                    {"$match": {"qe": "qe"}},
+                    {
+                        "$lookup": {
+                            "from": "no_schema",
+                            "as": "matched",
+                            "pipeline": [
+                                {"$match": {"no_schema": "no_schema"}},
+                                {"$project": {"_id": 0, "__safeContent__": 0}},
+                            ],
+                        }
+                    },
+                    {"$project": {"_id": 0, "__safeContent__": 0}},
+                ]
+            )
+        )
+        self.assertEqual(doc, {"qe": "qe", "matched": [{"no_schema": "no_schema"}]})
+
+    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
+    @client_context.require_version_min(8, 1, -1)
+    def test_3(self):
+        self.encrypted_client = self.rs_or_single_client(
+            auto_encryption_opts=AutoEncryptionOpts(
+                key_vault_namespace="db.keyvault",
+                kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            )
+        )
+        doc = next(
+            self.encrypted_client.db.no_schema.aggregate(
+                [
+                    {"$match": {"no_schema": "no_schema"}},
+                    {
+                        "$lookup": {
+                            "from": "csfle",
+                            "as": "matched",
+                            "pipeline": [{"$match": {"csfle": "csfle"}}, {"$project": {"_id": 0}}],
+                        }
+                    },
+                    {"$project": {"_id": 0}},
+                ]
+            )
+        )
+        self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"csfle": "csfle"}]})
+
+    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
+    @client_context.require_version_min(8, 1, -1)
+    def test_4(self):
+        self.encrypted_client = self.rs_or_single_client(
+            auto_encryption_opts=AutoEncryptionOpts(
+                key_vault_namespace="db.keyvault",
+                kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            )
+        )
+        doc = next(
+            self.encrypted_client.db.no_schema.aggregate(
+                [
+                    {"$match": {"no_schema": "no_schema"}},
+                    {
+                        "$lookup": {
+                            "from": "qe",
+                            "as": "matched",
+                            "pipeline": [
+                                {"$match": {"qe": "qe"}},
+                                {"$project": {"_id": 0, "__safeContent__": 0}},
+                            ],
+                        }
+                    },
+                    {"$project": {"_id": 0}},
+                ]
+            )
+        )
+        self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"qe": "qe"}]})
+
+    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
+    @client_context.require_version_min(8, 1, -1)
+    def test_5(self):
+        self.encrypted_client = self.rs_or_single_client(
+            auto_encryption_opts=AutoEncryptionOpts(
+                key_vault_namespace="db.keyvault",
+                kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            )
+        )
+        doc = next(
+            self.encrypted_client.db.csfle.aggregate(
+                [
+                    {"$match": {"csfle": "csfle"}},
+                    {
+                        "$lookup": {
+                            "from": "csfle2",
+                            "as": "matched",
+                            "pipeline": [
+                                {"$match": {"csfle2": "csfle2"}},
+                                {"$project": {"_id": 0}},
+                            ],
+                        }
+                    },
+                    {"$project": {"_id": 0}},
+                ]
+            )
+        )
+        self.assertEqual(doc, {"csfle": "csfle", "matched": [{"csfle2": "csfle2"}]})
+
+    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
+    @client_context.require_version_min(8, 1, -1)
+    def test_6(self):
+        self.encrypted_client = self.rs_or_single_client(
+            auto_encryption_opts=AutoEncryptionOpts(
+                key_vault_namespace="db.keyvault",
+                kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            )
+        )
+        doc = next(
+            self.encrypted_client.db.qe.aggregate(
+                [
+                    {"$match": {"qe": "qe"}},
+                    {
+                        "$lookup": {
+                            "from": "qe2",
+                            "as": "matched",
+                            "pipeline": [
+                                {"$match": {"qe2": "qe2"}},
+                                {"$project": {"_id": 0, "__safeContent__": 0}},
+                            ],
+                        }
+                    },
+                    {"$project": {"_id": 0, "__safeContent__": 0}},
+                ]
+            )
+        )
+        self.assertEqual(doc, {"qe": "qe", "matched": [{"qe2": "qe2"}]})
+
+    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
+    @client_context.require_version_min(8, 1, -1)
+    def test_7(self):
+        self.encrypted_client = self.rs_or_single_client(
+            auto_encryption_opts=AutoEncryptionOpts(
+                key_vault_namespace="db.keyvault",
+                kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            )
+        )
+        doc = next(
+            self.encrypted_client.db.no_schema.aggregate(
+                [
+                    {"$match": {"no_schema": "no_schema"}},
+                    {
+                        "$lookup": {
+                            "from": "no_schema2",
+                            "as": "matched",
+                            "pipeline": [
+                                {"$match": {"no_schema2": "no_schema2"}},
+                                {"$project": {"_id": 0}},
+                            ],
+                        }
+                    },
+                    {"$project": {"_id": 0}},
+                ]
+            )
+        )
+        self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"no_schema2": "no_schema2"}]})
+
+    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
+    @client_context.require_version_min(8, 1, -1)
+    def test_8(self):
+        self.encrypted_client = self.rs_or_single_client(
+            auto_encryption_opts=AutoEncryptionOpts(
+                key_vault_namespace="db.keyvault",
+                kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            )
+        )
+        # not sure if this is the right error!
+        with self.assertRaises(PyMongoError) as exc:
+            _ = next(
+                self.encrypted_client.db.no_schema.aggregate(
+                    [
+                        {"$match": {"no_schema": "no_schema"}},
+                        {
+                            "$lookup": {
+                                "from": "no_schema2",
+                                "as": "matched",
+                                "pipeline": [
+                                    {"$match": {"no_schema2": "no_schema2"}},
+                                    {"$project": {"_id": 0}},
+                                ],
+                            }
+                        },
+                        {"$project": {"_id": 0}},
+                    ]
+                )
+            )
+            # check that the exc contains the substring not supported
+            self.assertTrue("not supported" in exc.msg)
+
+    # Test requires mongocryptd/crypt_shared <8.1.
+    @client_context.require_version_max(8, 1, -1)
+    def test_9(self):
+        self.encrypted_client = self.rs_or_single_client(
+            auto_encryption_opts=AutoEncryptionOpts(
+                key_vault_namespace="db.keyvault",
+                kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            )
+        )
+        # not sure if this is the right error!
+        with self.assertRaises(PyMongoError) as exc:
+            _ = next(
+                self.encrypted_client.db.csfle.aggregate(
+                    [
+                        {"$match": {"csfle": "csfle"}},
+                        {
+                            "$lookup": {
+                                "from": "no_schema",
+                                "as": "matched",
+                                "pipeline": [
+                                    {"$match": {"no_schema": "no_schema"}},
+                                    {"$project": {"_id": 0}},
+                                ],
+                            }
+                        },
+                        {"$project": {"_id": 0}},
+                    ]
+                )
+            )
+            # check that the exc contains the substring Upgrade
+            self.assertTrue("Upgrade" in exc.msg)
 
 
 # https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.md#rewrap
