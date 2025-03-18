@@ -856,8 +856,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 "condition_class": condition_class,
             }
         )
-        if not is_srv:
-            self._init_based_on_options(seeds, srv_max_hosts, srv_service_name)
 
         super().__init__(
             self._options.codec_options,
@@ -865,6 +863,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.write_concern,
             self._options.read_concern,
         )
+
+        if not is_srv:
+            self._init_based_on_options(seeds, srv_max_hosts, srv_service_name)
 
         self._opened = False
         self._closed = False
