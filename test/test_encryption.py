@@ -2406,6 +2406,9 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
 # https://github.com/mongodb/specifications/blob/527e22d5090ec48bf1e144c45fc831de0f1935f6/source/client-side-encryption/tests/README.md#25-test-lookup
 class TestLookupProse(EncryptionIntegrationTest):
+    # check libmongocrypt version?
+    @client_context.require_no_standalone
+    @client_context.require_version_min(7, 0, -1)
     def setUp(self):
         super().setUp()
         self.encrypted_client = self.rs_or_single_client(
@@ -2416,51 +2419,52 @@ class TestLookupProse(EncryptionIntegrationTest):
         )
         self.encrypted_client.db.drop_collection("keyvault")
 
-        keyvault = json_data("etc", "data", "lookup", "key-doc.json")
-        create_key_vault(self.encrypted_client.keyvault, keyvault)
+        key_doc = json_data("etc", "data", "lookup", "key-doc.json")
+        key_vault = create_key_vault(self.encrypted_client.db.keyvault, key_doc)
+        self.addCleanup(key_vault.drop)
 
-        self.encrypted_client.db.drop("csfle")
+        self.encrypted_client.db.drop_collection("csfle")
         self.encrypted_client.db.create_collection(
             "csfle",
             validator={"$jsonSchema": json_data("etc", "data", "lookup", "schema-csfle.json")},
         )
 
-        self.encrypted_client.db.drop("csfle2")
+        self.encrypted_client.db.drop_collection("csfle2")
         self.encrypted_client.db.create_collection(
             "csfle2",
             validator={"$jsonSchema": json_data("etc", "data", "lookup", "schema-csfle2.json")},
         )
 
-        self.encrypted_client.db.drop("qe")
+        self.encrypted_client.db.drop_collection("qe")
         self.encrypted_client.db.create_collection(
-            "qe", validator={"$jsonSchema": json_data("etc", "data", "lookup", "schema-qe.json")}
+            "qe", encryptedFields=json_data("etc", "data", "lookup", "schema-qe.json")
         )
 
-        self.encrypted_client.db.drop("qe2")
+        self.encrypted_client.db.drop_collection("qe2")
         self.encrypted_client.db.create_collection(
-            "qe2", validator={"$jsonSchema": json_data("etc", "data", "lookup", "schema-qe2.json")}
+            "qe2", encryptedFields=json_data("etc", "data", "lookup", "schema-qe2.json")
         )
 
-        self.encrypted_client.db.drop("no_schema")
-        self.encrypted_client.db.create_collection("no-schema")
+        self.encrypted_client.db.drop_collection("no_schema")
+        self.encrypted_client.db.create_collection("no_schema")
 
-        self.encrypted_client.db.drop("no_schema2")
+        self.encrypted_client.db.drop_collection("no_schema2")
         self.encrypted_client.db.create_collection("no_schema2")
 
         self.unencrypted_client = self.rs_or_single_client()
 
         self.encrypted_client.db.csfle.insert_one({"csfle": "csfle"})
         doc = self.unencrypted_client.db.csfle.find_one()
-        self.assertTrue(isinstance(doc, BSON))
+        self.assertTrue(isinstance(doc["csfle"], Binary))
         self.encrypted_client.db.csfle2.insert_one({"csfle2": "csfle2"})
         doc = self.unencrypted_client.db.csfle2.find_one()
-        self.assertTrue(isinstance(doc, BSON))
+        self.assertTrue(isinstance(doc["csfle2"], Binary))
         self.encrypted_client.db.qe.insert_one({"qe": "qe"})
         doc = self.unencrypted_client.db.qe.find_one()
-        self.assertTrue(isinstance(doc, BSON))
+        self.assertTrue(isinstance(doc["qe"], Binary))
         self.encrypted_client.db.qe2.insert_one({"qe2": "qe2"})
         doc = self.unencrypted_client.db.qe2.find_one()
-        self.assertTrue(isinstance(doc, BSON))
+        self.assertTrue(isinstance(doc["qe2"], Binary))
         self.encrypted_client.db.no_schema.insert_one({"no_schema": "no_schema"})
         self.encrypted_client.db.no_schema2.insert_one({"no_schema2": "no_schema2"})
 

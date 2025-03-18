@@ -1133,7 +1133,7 @@ wheels = [
 [[package]]
 name = "pymongocrypt"
 version = "1.13.0.dev0"
-source = { git = "https://github.com/sleepyStick/libmongocrypt?subdirectory=bindings%2Fpython&rev=PYTHON-5162#039e85e16156727176b2193730ecb0038c9f48c1" }
+source = { git = "https://github.com/sleepyStick/libmongocrypt?subdirectory=bindings%2Fpython&rev=PYTHON-5162#5be264a1d523d0d410f69327efa3c284503fc1ca" }
 dependencies = [
     { name = "cffi" },
     { name = "cryptography" },
