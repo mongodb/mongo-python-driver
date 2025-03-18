@@ -375,7 +375,7 @@ Indexing
 Adding indexes can help accelerate certain queries and can also add additional
 functionality to querying and storing documents. In this example, we'll
 demonstrate how to create a `unique index
-<http://mongodb.com/docs/manual/core/index-unique/>`_ on a key that rejects
+<https://mongodb.com/docs/manual/core/index-unique/>`_ on a key that rejects
 documents whose value for that key already exists in the index.
 
 First, we'll need to create the index:

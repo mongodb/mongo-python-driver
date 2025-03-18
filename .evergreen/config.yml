@@ -304,17 +304,6 @@ functions:
         args:
           - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
 
-  "run perf tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        working_dir: "src"
-        binary: bash
-        include_expansions_in_env: [SUB_TEST_NAME]
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-perf-tests.sh
-
   "attach benchmark test results":
     - command: attach.results
       params:
@@ -461,84 +450,6 @@ tasks:
       commands:
         - func: "download and merge coverage"
 
-    - name: "perf-6.0-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "sync"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-6.0-standalone-ssl"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-            SSL: "ssl"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "sync"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-8.0-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "8.0"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "sync"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-6.0-standalone-async"
-      tags: [ "perf" ]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-            TOPOLOGY: "server"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "async"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-6.0-standalone-ssl-async"
-      tags: [ "perf" ]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-            TOPOLOGY: "server"
-            SSL: "ssl"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "async"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-8.0-standalone-async"
-      tags: [ "perf" ]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "8.0"
-            TOPOLOGY: "server"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "async"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-
     - name: "check-import-time"
       tags: ["pr"]
       commands:
@@ -610,15 +521,3 @@ buildvariants:
     - rhel8.7-small
   tasks:
     - name: "backport-pr"
-
-- name: "perf-tests"
-  display_name: "Performance Benchmarks"
-  batchtime: 10080  # 7 days
-  run_on: rhel90-dbx-perf-large
-  tasks:
-     - name: "perf-6.0-standalone"
-     - name: "perf-6.0-standalone-ssl"
-     - name: "perf-8.0-standalone"
-     - name: "perf-6.0-standalone-async"
-     - name: "perf-6.0-standalone-ssl-async"
-     - name: "perf-8.0-standalone-async"

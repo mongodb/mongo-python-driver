@@ -14,7 +14,7 @@ objects (e.g. files) in MongoDB.
 .. seealso:: The API docs for :mod:`gridfs`.
 
 .. seealso:: `This blog post
-   <http://dirolf.com/2010/03/29/new-gridfs-implementation-for-pymongo.html>`_
+   <https://dirolf.com/2010/03/29/new-gridfs-implementation-for-pymongo.html>`_
    for some motivation behind this API.
 
 Setup

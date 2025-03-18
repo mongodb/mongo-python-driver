@@ -2,7 +2,7 @@ High Availability and PyMongo
 =============================
 
 PyMongo makes it easy to write highly available applications whether
-you use a `single replica set <http://dochub.mongodb.org/core/rs>`_
+you use a `single replica set <https://dochub.mongodb.org/core/rs>`_
 or a `large sharded cluster
 <https://www.mongodb.com/docs/manual/sharding/>`_.
 
@@ -10,17 +10,17 @@ Connecting to a Replica Set
 ---------------------------
 
 PyMongo makes working with `replica sets
-<http://dochub.mongodb.org/core/rs>`_ easy. Here we'll launch a new
+<https://dochub.mongodb.org/core/rs>`_ easy. Here we'll launch a new
 replica set and show how to handle both initialization and normal
 connections with PyMongo.
 
-.. seealso:: The MongoDB documentation on `replication <http://dochub.mongodb.org/core/rs>`_.
+.. seealso:: The MongoDB documentation on `replication <https://dochub.mongodb.org/core/rs>`_.
 
 Starting a Replica Set
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The main `replica set documentation
-<http://dochub.mongodb.org/core/rs>`_ contains extensive information
+<https://dochub.mongodb.org/core/rs>`_ contains extensive information
 about setting up a new replica set or migrating an existing MongoDB
 setup, be sure to check that out. Here, we'll just do the bare minimum
 to get a three node replica set setup locally.
