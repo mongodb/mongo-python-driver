@@ -775,6 +775,48 @@ tasks:
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
 
+  # Mod wsgi tests
+  - name: mod-wsgi-standalone
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: standalone
+    tags: [mod_wsgi]
+  - name: mod-wsgi-replica-set
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: standalone
+    tags: [mod_wsgi]
+  - name: mod-wsgi-embedded-mode-standalone
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: embedded
+    tags: [mod_wsgi]
+  - name: mod-wsgi-embedded-mode-replica-set
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: embedded
+    tags: [mod_wsgi]
+
   # Ocsp tests
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple
     commands:
@@ -1108,6 +1150,60 @@ tasks:
           TEST_NAME: auth_oidc
           SUB_TEST_NAME: gke
     tags: [auth_oidc, auth_oidc_remote]
+
+  # Perf tests
+  - name: perf-8.0-standalone-ssl
+    commands:
+      - func: run server
+        vars:
+          VERSION: v8.0-perf
+          SSL: ssl
+      - func: run tests
+        vars:
+          TEST_NAME: perf
+          SUB_TEST_NAME: sync
+      - func: attach benchmark test results
+      - func: send dashboard data
+    tags: [perf]
+  - name: perf-8.0-standalone-ssl-async
+    commands:
+      - func: run server
+        vars:
+          VERSION: v8.0-perf
+          SSL: ssl
+      - func: run tests
+        vars:
+          TEST_NAME: perf
+          SUB_TEST_NAME: async
+      - func: attach benchmark test results
+      - func: send dashboard data
+    tags: [perf]
+  - name: perf-8.0-standalone
+    commands:
+      - func: run server
+        vars:
+          VERSION: v8.0-perf
+          SSL: nossl
+      - func: run tests
+        vars:
+          TEST_NAME: perf
+          SUB_TEST_NAME: sync
+      - func: attach benchmark test results
+      - func: send dashboard data
+    tags: [perf]
+  - name: perf-8.0-standalone-async
+    commands:
+      - func: run server
+        vars:
+          VERSION: v8.0-perf
+          SSL: nossl
+      - func: run tests
+        vars:
+          TEST_NAME: perf
+          SUB_TEST_NAME: async
+      - func: attach benchmark test results
+      - func: send dashboard data
+    tags: [perf]
 
   # Server tests
   - name: test-4.0-standalone-auth-ssl-sync

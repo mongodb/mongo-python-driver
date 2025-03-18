@@ -53,9 +53,9 @@ a non `async-signal-safe`_ function. For examples of deadlocks or crashes
 that could occur see `PYTHON-3406`_.
 
 For a long but interesting read about the problems of Python locks in
-multithreaded contexts with ``fork()``, see http://bugs.python.org/issue6721.
+multithreaded contexts with ``fork()``, see https://bugs.python.org/issue6721.
 
-.. _not fork-safe: http://bugs.python.org/issue6721
+.. _not fork-safe: https://bugs.python.org/issue6721
 .. _OpenSSL: https://github.com/openssl/openssl/issues/19066
 .. _fork(): https://man7.org/linux/man-pages/man2/fork.2.html
 .. _signal-safety(7): https://man7.org/linux/man-pages/man7/signal-safety.7.html
@@ -174,10 +174,10 @@ Does PyMongo support asynchronous frameworks like Gevent, asyncio, Tornado, or T
 PyMongo fully supports :doc:`Gevent <examples/gevent>`.
 
 To use MongoDB with `asyncio <https://docs.python.org/3/library/asyncio.html>`_
-or `Tornado <http://www.tornadoweb.org/>`_, see the
+or `Tornado <https://www.tornadoweb.org/>`_, see the
 `Motor <https://github.com/mongodb/motor>`_ project.
 
-For `Twisted <http://twistedmatrix.com/>`_, see `TxMongo
+For `Twisted <https://twistedmatrix.com/>`_, see `TxMongo
 <https://github.com/twisted/txmongo>`_. Its stated mission is to keep feature
 parity with PyMongo.
 
@@ -381,7 +381,7 @@ Can you add attribute style access for documents?
 -------------------------------------------------
 This request has come up a number of times but we've decided not to
 implement anything like this. The relevant `jira case
-<http://jira.mongodb.org/browse/PYTHON-35>`_ has some information
+<https://jira.mongodb.org/browse/PYTHON-35>`_ has some information
 about the decision, but here is a brief summary:
 
 1. This will pollute the attribute namespace for documents, so could
@@ -451,7 +451,7 @@ in Flask_ (other web frameworks are similar)::
 
 How can I use PyMongo from Django?
 ----------------------------------
-`Django <http://www.djangoproject.com/>`_ is a popular Python web
+`Django <https://www.djangoproject.com/>`_ is a popular Python web
 framework. Django includes an ORM, :mod:`django.db`. Currently,
 there's no official MongoDB backend for Django.
 
@@ -468,7 +468,7 @@ using just MongoDB, but most of what Django provides can still be
 used.
 
 One project which should make working with MongoDB and Django easier
-is `mango <http://github.com/vpulim/mango>`_. Mango is a set of
+is `mango <https://github.com/vpulim/mango>`_. Mango is a set of
 MongoDB backends for Django sessions and authentication (bypassing
 :mod:`django.db` entirely).
 

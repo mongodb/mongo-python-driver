@@ -227,17 +227,6 @@ functions:
         args:
           - ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
 
-  "run mod_wsgi tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        include_expansions_in_env: [MOD_WSGI_VERSION, MOD_WSGI_EMBEDDED, "PYTHON_BINARY"]
-        working_dir: "src"
-        binary: bash
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mod-wsgi-tests.sh
-
   "run doctests":
      - command: subprocess.exec
        type: test
@@ -314,16 +303,6 @@ functions:
         binary: bash
         args:
           - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
-
-  "run perf tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        working_dir: "src"
-        binary: bash
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-perf-tests.sh
 
   "attach benchmark test results":
     - command: attach.results
@@ -411,40 +390,6 @@ tasks:
             TEST_NAME: index_management
             AUTH: "auth"
 
-    - name: "mod-wsgi-standalone"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-          vars:
-            TOPOLOGY: "server"
-        - func: "run mod_wsgi tests"
-
-    - name: "mod-wsgi-replica-set"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-          vars:
-            TOPOLOGY: "replica_set"
-        - func: "run mod_wsgi tests"
-
-    - name: "mod-wsgi-embedded-mode-standalone"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-        - func: "run mod_wsgi tests"
-          vars:
-            MOD_WSGI_EMBEDDED: "1"
-
-    - name: "mod-wsgi-embedded-mode-replica-set"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-          vars:
-            TOPOLOGY: "replica_set"
-        - func: "run mod_wsgi tests"
-          vars:
-            MOD_WSGI_EMBEDDED: "1"
-
     - name: "no-server"
       tags: ["no-server"]
       commands:
@@ -504,37 +449,6 @@ tasks:
           patch_optional: true
       commands:
         - func: "download and merge coverage"
-
-    - name: "perf-6.0-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-        - func: "run perf tests"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-6.0-standalone-ssl"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-            SSL: "ssl"
-        - func: "run perf tests"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-8.0-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "8.0"
-        - func: "run perf tests"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
 
     - name: "check-import-time"
       tags: ["pr"]
@@ -607,26 +521,3 @@ buildvariants:
     - rhel8.7-small
   tasks:
     - name: "backport-pr"
-
-- name: "perf-tests"
-  display_name: "Performance Benchmarks"
-  batchtime: 10080  # 7 days
-  run_on: rhel90-dbx-perf-large
-  tasks:
-     - name: "perf-6.0-standalone"
-     - name: "perf-6.0-standalone-ssl"
-     - name: "perf-8.0-standalone"
-
-      # Platform notes
-      # i386 builds of OpenSSL or Cyrus SASL are not available
-      # Debian 8.1 only supports MongoDB 3.4+
-      # SUSE12 s390x is only supported by MongoDB 3.4+
-      # No enterprise build for Archlinux, SSL not available
-      # RHEL 7.6 and RHEL 8.4 only supports 3.6+.
-      # RHEL 7 only supports 2.6+
-      # RHEL 7.1 ppc64le is only supported by MongoDB 3.2+
-      # RHEL 7.2 s390x is only supported by MongoDB 3.4+
-      # Solaris MongoDB SSL builds are not available
-      # Darwin MongoDB SSL builds are not available for 2.6
-      # SUSE12 x86_64 is only supported by MongoDB 3.2+
-      # vim: set et sw=2 ts=2 :

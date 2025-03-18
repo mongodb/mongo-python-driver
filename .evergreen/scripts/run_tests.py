@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import platform
-import shutil
 import sys
 from datetime import datetime
 
@@ -100,6 +99,13 @@ def run() -> None:
     if TEST_PERF:
         start_time = datetime.now()
 
+    # Run mod_wsgi tests using the helper.
+    if TEST_NAME == "mod_wsgi":
+        from mod_wsgi_tester import test_mod_wsgi
+
+        test_mod_wsgi()
+        return
+
     # Send kms tests to run remotely.
     if TEST_NAME == "kms" and SUB_TEST_NAME in ["azure", "gcp"]:
         from kms_tester import test_kms_send_to_remote
@@ -134,10 +140,6 @@ def run() -> None:
     # Handle perf test post actions.
     if TEST_PERF:
         handle_perf(start_time)
-
-    # Handle coverage post actions.
-    if os.environ.get("COVERAGE"):
-        shutil.rmtree(".pytest_cache", ignore_errors=True)
 
 
 if __name__ == "__main__":

@@ -69,6 +69,7 @@ HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64", dict
 HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20", dict())
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22", dict())
 HOSTS["rhel7"] = Host("rhel7", "rhel79-small", "RHEL7", dict())
+HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
 DEFAULT_HOST = HOSTS["rhel8"]
 
 # Other hosts
@@ -614,12 +615,7 @@ def create_atlas_data_lake_variants():
 def create_mod_wsgi_variants():
     variants = []
     host = HOSTS["ubuntu22"]
-    tasks = [
-        "mod-wsgi-standalone",
-        "mod-wsgi-replica-set",
-        "mod-wsgi-embedded-mode-standalone",
-        "mod-wsgi-embedded-mode-replica-set",
-    ]
+    tasks = [".mod_wsgi"]
     expansions = dict(MOD_WSGI_VERSION="4")
     for python in MIN_MAX_PYTHON:
         display_name = get_display_name("mod_wsgi", host, python=python)
@@ -724,6 +720,13 @@ def create_atlas_connect_variants():
             host=host,
         )
         for python in MIN_MAX_PYTHON
+    ]
+
+
+def create_perf_variants():
+    host = HOSTS["perf"]
+    return [
+        create_variant([".perf"], "Performance Benchmarks", host=host, batchtime=BATCHTIME_WEEK)
     ]
 
 
@@ -892,6 +895,24 @@ def create_oidc_tasks():
     return tasks
 
 
+def create_mod_wsgi_tasks():
+    tasks = []
+    for test, topology in product(["standalone", "embedded-mode"], ["standalone", "replica_set"]):
+        if test == "standalone":
+            task_name = "mod-wsgi-"
+        else:
+            task_name = "mod-wsgi-embedded-mode-"
+        task_name += topology.replace("_", "-")
+        server_vars = dict(TOPOLOGY=topology)
+        server_func = FunctionCall(func="run server", vars=server_vars)
+        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0])
+        test_func = FunctionCall(func="run tests", vars=vars)
+        tags = ["mod_wsgi"]
+        commands = [server_func, test_func]
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
+    return tasks
+
+
 def _create_ocsp_task(algo, variant, server_type, base_task_name):
     file_name = f"{algo}-basic-tls-ocsp-{variant}.json"
 
@@ -927,6 +948,26 @@ def create_enterprise_auth_tasks():
     task_name = "test-enterprise-auth"
     tags = ["enterprise_auth"]
     return [EvgTask(name=task_name, tags=tags, commands=[server_func, assume_func, test_func])]
+
+
+def create_perf_tasks():
+    tasks = []
+    for version, ssl, sync in product(["8.0"], ["ssl", "nossl"], ["sync", "async"]):
+        vars = dict(VERSION=f"v{version}-perf", SSL=ssl)
+        server_func = FunctionCall(func="run server", vars=vars)
+        vars = dict(TEST_NAME="perf", SUB_TEST_NAME=sync)
+        test_func = FunctionCall(func="run tests", vars=vars)
+        attach_func = FunctionCall(func="attach benchmark test results")
+        send_func = FunctionCall(func="send dashboard data")
+        task_name = f"perf-{version}-standalone"
+        if ssl == "ssl":
+            task_name += "-ssl"
+        if sync == "async":
+            task_name += "-async"
+        tags = ["perf"]
+        commands = [server_func, test_func, attach_func, send_func]
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
+    return tasks
 
 
 def create_ocsp_tasks():

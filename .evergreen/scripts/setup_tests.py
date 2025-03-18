@@ -43,6 +43,9 @@ EXTRAS_MAP = {
 # Map the test name to test group.
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 
+# The python version used for perf tests.
+PERF_PYTHON_VERSION = "3.9.13"
+
 
 def is_set(var: str) -> bool:
     value = os.environ.get(var, "")
@@ -251,6 +254,11 @@ def handle_test_env() -> None:
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
 
+    if test_name == "mod_wsgi":
+        from mod_wsgi_tester import setup_mod_wsgi
+
+        setup_mod_wsgi(sub_test_name)
+
     if test_name == "ocsp":
         if sub_test_name:
             os.environ["OCSP_SERVER_TYPE"] = sub_test_name
@@ -357,9 +365,25 @@ def handle_test_env() -> None:
         write_env("DISABLE_CONTEXT")
 
     if test_name == "perf":
+        data_dir = ROOT / "specifications/source/benchmarking/data"
+        if not data_dir.exists():
+            run_command("git clone --depth 1 https://github.com/mongodb/specifications.git")
+            run_command("tar xf extended_bson.tgz", cwd=data_dir)
+            run_command("tar xf parallel.tgz", cwd=data_dir)
+            run_command("tar xf single_and_multi_document.tgz", cwd=data_dir)
+        write_env("TEST_PATH", str(data_dir))
+        write_env("OUTPUT_FILE", str(ROOT / "results.json"))
+        # Overwrite the UV_PYTHON from the env.sh file.
+        write_env("UV_PYTHON", "")
+
+        UV_ARGS.append(f"--python={PERF_PYTHON_VERSION}")
+
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
         # affects the benchmark results.
-        TEST_ARGS = f"test/performance/perf_test.py {TEST_ARGS}"
+        if sub_test_name == "sync":
+            TEST_ARGS = f"test/performance/perf_test.py {TEST_ARGS}"
+        else:
+            TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
 
     # Add coverage if requested.
     # Only cover CPython. PyPy reports suspiciously low coverage.
@@ -378,7 +402,7 @@ def handle_test_env() -> None:
         # Use --capture=tee-sys so pytest prints test output inline:
         # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
         TEST_ARGS = f"-v --capture=tee-sys --durations=5 {TEST_ARGS}"
-        TEST_SUITE = TEST_SUITE_MAP[test_name]
+        TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
 

@@ -191,7 +191,7 @@ Two extra ``authMechanismProperties`` are supported on Windows platforms:
     >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_REALM:otherrealm"
 
 
-.. _kerberos: http://pypi.python.org/pypi/kerberos
+.. _kerberos: https://pypi.python.org/pypi/kerberos
 .. _pykerberos: https://pypi.python.org/pypi/pykerberos
 .. _winkerberos: https://pypi.python.org/pypi/winkerberos/
 

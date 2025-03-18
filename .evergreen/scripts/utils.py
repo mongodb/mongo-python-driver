@@ -50,7 +50,9 @@ TEST_SUITE_MAP = {
 }
 
 # Tests that require a sub test suite.
-SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms"]
+SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms", "mod_wsgi", "perf"]
+
+EXTRA_TESTS = ["mod_wsgi"]
 
 
 def get_test_options(
@@ -62,7 +64,7 @@ def get_test_options(
     if require_sub_test_name:
         parser.add_argument(
             "test_name",
-            choices=sorted(TEST_SUITE_MAP),
+            choices=sorted(list(TEST_SUITE_MAP) + EXTRA_TESTS),
             nargs="?",
             default="default",
             help="The optional name of the test suite to set up, typically the same name as a pytest marker.",
@@ -137,6 +139,11 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
         cmd = " ".join(cmd)
     LOGGER.info("Running command '%s'...", cmd)
     kwargs.setdefault("check", True)
+    # Prevent overriding the python used by other tools.
+    env = kwargs.pop("env", os.environ).copy()
+    if "UV_PYTHON" in env:
+        del env["UV_PYTHON"]
+    kwargs["env"] = env
     try:
         subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
     except subprocess.CalledProcessError as e:
