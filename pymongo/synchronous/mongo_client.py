@@ -867,7 +867,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._opened = False
         self._closed = False
         if not is_srv:
-            self._init_background(first=True)
+            self._init_background()
 
         if _IS_SYNC and connect:
             self._get_topology()  # type: ignore[unused-coroutine]
@@ -998,9 +998,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Explicitly connect to MongoDB synchronously instead of on the first operation."""
         self._get_topology()
 
-    def _init_background(self, old_pid: Optional[int] = None, first: bool = False) -> None:
+    def _init_background(self, old_pid: Optional[int] = None) -> None:
         self._topology = Topology(self._topology_settings)
-        if first and _HAS_REGISTER_AT_FORK:
+        if _HAS_REGISTER_AT_FORK:
             # Add this client to the list of weakly referenced items.
             # This will be used later if we fork.
             MongoClient._clients[self._topology._topology_id] = self
@@ -1701,7 +1701,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if not self._opened:
             if self._resolve_srv_info["is_srv"]:
                 self._resolve_srv()
-                self._init_background(first=True)
+                self._init_background()
             self._topology.open()
             with self._lock:
                 self._kill_cursors_executor.open()
