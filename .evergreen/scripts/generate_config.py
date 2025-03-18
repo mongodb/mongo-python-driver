@@ -973,7 +973,7 @@ def create_atlas_data_lake_tasks():
         vars = dict(TEST_NAME="data_lake")
         vars = handle_c_ext(c_ext, vars)
         test_func = FunctionCall(func="run tests", vars=vars)
-        task_name = "test-atlas-data-lake"
+        task_name = f"test-atlas-data-lake-{c_ext}"
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
 

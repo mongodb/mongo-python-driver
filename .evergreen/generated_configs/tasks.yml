@@ -9,11 +9,11 @@ tasks:
     tags: [atlas_connect]
 
   # Atlas data lake tests
-  - name: test-atlas-data-lake
+  - name: test-atlas-data-lake-with_ext
     commands:
       - func: run tests
     tags: [atlas_data_lake]
-  - name: test-atlas-data-lake
+  - name: test-atlas-data-lake-without_ext
     commands:
       - func: run tests
     tags: [atlas_data_lake]
