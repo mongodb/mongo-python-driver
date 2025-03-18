@@ -12,10 +12,15 @@ tasks:
   - name: test-atlas-data-lake-with_ext
     commands:
       - func: run tests
+        vars:
+          TEST_NAME: data_lake
+          NO_EXT: "1"
     tags: [atlas_data_lake]
   - name: test-atlas-data-lake-without_ext
     commands:
       - func: run tests
+        vars:
+          TEST_NAME: data_lake
     tags: [atlas_data_lake]
 
   # Aws tests

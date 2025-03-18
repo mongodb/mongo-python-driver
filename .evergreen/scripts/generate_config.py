@@ -213,7 +213,7 @@ def zip_cycle(*iterables, empty_default=None):
         yield tuple(next(i, empty_default) for i in cycles)
 
 
-def handle_c_ext(c_ext, expansions):
+def handle_c_ext(c_ext, expansions) -> None:
     """Handle c extension option."""
     if c_ext == C_EXTS[0]:
         expansions["NO_EXT"] = "1"
@@ -971,7 +971,7 @@ def create_atlas_data_lake_tasks():
     tasks = []
     for c_ext in C_EXTS:
         vars = dict(TEST_NAME="data_lake")
-        vars = handle_c_ext(c_ext, vars)
+        handle_c_ext(c_ext, vars)
         test_func = FunctionCall(func="run tests", vars=vars)
         task_name = f"test-atlas-data-lake-{c_ext}"
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
