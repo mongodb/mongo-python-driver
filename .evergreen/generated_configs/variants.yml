@@ -67,7 +67,7 @@ buildvariants:
   # Atlas data lake tests
   - name: atlas-data-lake-ubuntu-22-python3.9-auth-no-c
     tasks:
-      - name: atlas-data-lake-tests
+      - name: .atlas_data_lake
     display_name: Atlas Data Lake Ubuntu-22 Python3.9 Auth No C
     run_on:
       - ubuntu2204-small
@@ -77,7 +77,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: atlas-data-lake-ubuntu-22-python3.9-auth
     tasks:
-      - name: atlas-data-lake-tests
+      - name: .atlas_data_lake
     display_name: Atlas Data Lake Ubuntu-22 Python3.9 Auth
     run_on:
       - ubuntu2204-small
@@ -86,7 +86,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: atlas-data-lake-ubuntu-22-python3.13-auth-no-c
     tasks:
-      - name: atlas-data-lake-tests
+      - name: .atlas_data_lake
     display_name: Atlas Data Lake Ubuntu-22 Python3.13 Auth No C
     run_on:
       - ubuntu2204-small
@@ -96,7 +96,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
   - name: atlas-data-lake-ubuntu-22-python3.13-auth
     tasks:
-      - name: atlas-data-lake-tests
+      - name: .atlas_data_lake
     display_name: Atlas Data Lake Ubuntu-22 Python3.13 Auth
     run_on:
       - ubuntu2204-small
