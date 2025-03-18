@@ -2639,7 +2639,7 @@ class _MongoClientErrorHandler:
             self.completed_handshake,
             self.service_id,
         )
-        assert self._client._topology is not None
+        assert self.client._topology is not None
         self.client._topology.handle_error(self.server_address, err_ctx)
 
     def __enter__(self) -> _MongoClientErrorHandler:
