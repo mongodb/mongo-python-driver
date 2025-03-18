@@ -2694,7 +2694,7 @@ class TestLookupProse(EncryptionIntegrationTest):
                 )
             )
             # check that the exc contains the substring not supported
-            self.assertTrue("not supported" in exc.msg)
+            self.assertTrue("not supported" in str(exc))
 
     # Test requires mongocryptd/crypt_shared <8.1.
     @client_context.require_version_max(8, 1, -1)
@@ -2726,7 +2726,7 @@ class TestLookupProse(EncryptionIntegrationTest):
                 )
             )
             # check that the exc contains the substring Upgrade
-            self.assertTrue("Upgrade" in exc.msg)
+            self.assertTrue("Upgrade" in str(exc))
 
 
 # https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.md#rewrap
