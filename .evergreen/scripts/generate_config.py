@@ -1027,10 +1027,11 @@ def create_mockupdb_tasks():
 
 
 def create_doctest_tasks():
+    server_func = FunctionCall(func="run server")
     test_func = FunctionCall(func="run just script", vars=dict(JUSTFILE_TARGET="docs-test"))
     task_name = "test-doctests"
     tags = ["doctests"]
-    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
+    return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
 
 
 def create_no_server_tasks():
