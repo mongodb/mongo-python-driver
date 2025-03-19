@@ -8,7 +8,7 @@ PyMongo 4.12 brings a number of changes including:
 
 - Support for configuring DEK cache lifetime via the ``key_expiration_ms`` argument to
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
-- Support for $lookup in CSFLE and QE.pr
+- Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
 
 Issues Resolved
 ...............
