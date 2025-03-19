@@ -31,8 +31,7 @@ if [ -f "./secrets-export.sh" ]; then
 fi
 
 # List the packages.
-uv sync ${UV_ARGS} --reinstall
-uv run pip list
+uv run ${UV_ARGS} pip list
 exit 1
 
 # Start the test runner.
