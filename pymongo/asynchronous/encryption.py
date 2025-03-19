@@ -251,17 +251,12 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         :param database: The database on which to run listCollections.
         :param filter: The filter to pass to listCollections.
 
-        :return: The first document from the listCollections command response as BSON.
+        :return: The all documents from the listCollections command response as BSON.
         """
         async with await self.client_ref()[database].list_collections(
             filter=RawBSONDocument(filter)
         ) as cursor:
-            lst = []
-            async for doc in cursor:
-                lst.append(_dict_to_bson(doc, False, _DATA_KEY_OPTS))
-            if len(lst) > 0:
-                return lst
-            return None
+            return [_dict_to_bson(doc, False, _DATA_KEY_OPTS) async for doc in cursor]
 
     def spawn(self) -> None:
         """Spawn mongocryptd.

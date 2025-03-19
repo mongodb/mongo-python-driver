@@ -997,6 +997,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/07/e9/ae44ea7d7605df9e5
 
 [[package]]
 name = "pymongo"
+version = "4.12.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "dnspython" },

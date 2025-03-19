@@ -2426,73 +2426,62 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
     @async_client_context.require_version_min(7, 0, -1)
     async def asyncSetUp(self):
         await super().asyncSetUp()
-        self.encrypted_client = await self.async_rs_or_single_client(
+        encrypted_client = await self.async_rs_or_single_client(
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        await self.encrypted_client.db.drop_collection("keyvault")
+        await encrypted_client.drop_database("db")
 
         key_doc = json_data("etc", "data", "lookup", "key-doc.json")
-        key_vault = await create_key_vault(self.encrypted_client.db.keyvault, key_doc)
+        key_vault = await create_key_vault(encrypted_client.db.keyvault, key_doc)
         self.addCleanup(key_vault.drop)
 
-        await self.encrypted_client.db.drop_collection("csfle")
-        await self.encrypted_client.db.create_collection(
+        await encrypted_client.db.create_collection(
             "csfle",
             validator={"$jsonSchema": json_data("etc", "data", "lookup", "schema-csfle.json")},
         )
-
-        await self.encrypted_client.db.drop_collection("csfle2")
-        await self.encrypted_client.db.create_collection(
+        await encrypted_client.db.create_collection(
             "csfle2",
             validator={"$jsonSchema": json_data("etc", "data", "lookup", "schema-csfle2.json")},
         )
-
-        await self.encrypted_client.db.drop_collection("qe")
-        await self.encrypted_client.db.create_collection(
+        await encrypted_client.db.create_collection(
             "qe", encryptedFields=json_data("etc", "data", "lookup", "schema-qe.json")
         )
-
-        await self.encrypted_client.db.drop_collection("qe2")
-        await self.encrypted_client.db.create_collection(
+        await encrypted_client.db.create_collection(
             "qe2", encryptedFields=json_data("etc", "data", "lookup", "schema-qe2.json")
         )
+        await encrypted_client.db.create_collection("no_schema")
+        await encrypted_client.db.create_collection("no_schema2")
 
-        await self.encrypted_client.db.drop_collection("no_schema")
-        await self.encrypted_client.db.create_collection("no_schema")
+        unencrypted_client = await self.async_rs_or_single_client()
 
-        await self.encrypted_client.db.drop_collection("no_schema2")
-        await self.encrypted_client.db.create_collection("no_schema2")
-
-        self.unencrypted_client = await self.async_rs_or_single_client()
-
-        await self.encrypted_client.db.csfle.insert_one({"csfle": "csfle"})
-        doc = await self.unencrypted_client.db.csfle.find_one()
+        await encrypted_client.db.csfle.insert_one({"csfle": "csfle"})
+        doc = await unencrypted_client.db.csfle.find_one()
         self.assertTrue(isinstance(doc["csfle"], Binary))
-        await self.encrypted_client.db.csfle2.insert_one({"csfle2": "csfle2"})
-        doc = await self.unencrypted_client.db.csfle2.find_one()
+        await encrypted_client.db.csfle2.insert_one({"csfle2": "csfle2"})
+        doc = await unencrypted_client.db.csfle2.find_one()
         self.assertTrue(isinstance(doc["csfle2"], Binary))
-        await self.encrypted_client.db.qe.insert_one({"qe": "qe"})
-        doc = await self.unencrypted_client.db.qe.find_one()
+        await encrypted_client.db.qe.insert_one({"qe": "qe"})
+        doc = await unencrypted_client.db.qe.find_one()
         self.assertTrue(isinstance(doc["qe"], Binary))
-        await self.encrypted_client.db.qe2.insert_one({"qe2": "qe2"})
-        doc = await self.unencrypted_client.db.qe2.find_one()
+        await encrypted_client.db.qe2.insert_one({"qe2": "qe2"})
+        doc = await unencrypted_client.db.qe2.find_one()
         self.assertTrue(isinstance(doc["qe2"], Binary))
-        await self.encrypted_client.db.no_schema.insert_one({"no_schema": "no_schema"})
-        await self.encrypted_client.db.no_schema2.insert_one({"no_schema2": "no_schema2"})
+        await encrypted_client.db.no_schema.insert_one({"no_schema": "no_schema"})
+        await encrypted_client.db.no_schema2.insert_one({"no_schema2": "no_schema2"})
 
     @async_client_context.require_version_min(8, 1, -1)
-    async def test_1(self):
-        self.encrypted_client = await self.async_rs_or_single_client(
+    async def test_1_csfle_joins_no_schema(self):
+        encrypted_client = await self.async_rs_or_single_client(
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
         doc = await anext(
-            await self.encrypted_client.db.csfle.aggregate(
+            await encrypted_client.db.csfle.aggregate(
                 [
                     {"$match": {"csfle": "csfle"}},
                     {
@@ -2512,15 +2501,15 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         self.assertEqual(doc, {"csfle": "csfle", "matched": [{"no_schema": "no_schema"}]})
 
     @async_client_context.require_version_min(8, 1, -1)
-    async def test_2(self):
-        self.encrypted_client = await self.async_rs_or_single_client(
+    async def test_2_qe_joins_no_schema(self):
+        encrypted_client = await self.async_rs_or_single_client(
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
         doc = await anext(
-            await self.encrypted_client.db.qe.aggregate(
+            await encrypted_client.db.qe.aggregate(
                 [
                     {"$match": {"qe": "qe"}},
                     {
@@ -2540,15 +2529,15 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         self.assertEqual(doc, {"qe": "qe", "matched": [{"no_schema": "no_schema"}]})
 
     @async_client_context.require_version_min(8, 1, -1)
-    async def test_3(self):
-        self.encrypted_client = await self.async_rs_or_single_client(
+    async def test_3_no_schema_joins_csfle(self):
+        encrypted_client = await self.async_rs_or_single_client(
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
         doc = await anext(
-            await self.encrypted_client.db.no_schema.aggregate(
+            await encrypted_client.db.no_schema.aggregate(
                 [
                     {"$match": {"no_schema": "no_schema"}},
                     {
@@ -2565,15 +2554,15 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"csfle": "csfle"}]})
 
     @async_client_context.require_version_min(8, 1, -1)
-    async def test_4(self):
-        self.encrypted_client = await self.async_rs_or_single_client(
+    async def test_4_no_schema_joins_qe(self):
+        encrypted_client = await self.async_rs_or_single_client(
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
         doc = await anext(
-            await self.encrypted_client.db.no_schema.aggregate(
+            await encrypted_client.db.no_schema.aggregate(
                 [
                     {"$match": {"no_schema": "no_schema"}},
                     {
@@ -2593,15 +2582,15 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"qe": "qe"}]})
 
     @async_client_context.require_version_min(8, 1, -1)
-    async def test_5(self):
-        self.encrypted_client = await self.async_rs_or_single_client(
+    async def test_5_csfle_joins_csfle2(self):
+        encrypted_client = await self.async_rs_or_single_client(
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
         doc = await anext(
-            await self.encrypted_client.db.csfle.aggregate(
+            await encrypted_client.db.csfle.aggregate(
                 [
                     {"$match": {"csfle": "csfle"}},
                     {
@@ -2621,15 +2610,15 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         self.assertEqual(doc, {"csfle": "csfle", "matched": [{"csfle2": "csfle2"}]})
 
     @async_client_context.require_version_min(8, 1, -1)
-    async def test_6(self):
-        self.encrypted_client = await self.async_rs_or_single_client(
+    async def test_6_qe_joins_qe2(self):
+        encrypted_client = await self.async_rs_or_single_client(
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
         doc = await anext(
-            await self.encrypted_client.db.qe.aggregate(
+            await encrypted_client.db.qe.aggregate(
                 [
                     {"$match": {"qe": "qe"}},
                     {
@@ -2649,15 +2638,15 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         self.assertEqual(doc, {"qe": "qe", "matched": [{"qe2": "qe2"}]})
 
     @async_client_context.require_version_min(8, 1, -1)
-    async def test_7(self):
-        self.encrypted_client = await self.async_rs_or_single_client(
+    async def test_7_no_schema_joins_no_schema2(self):
+        encrypted_client = await self.async_rs_or_single_client(
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
         doc = await anext(
-            await self.encrypted_client.db.no_schema.aggregate(
+            await encrypted_client.db.no_schema.aggregate(
                 [
                     {"$match": {"no_schema": "no_schema"}},
                     {
@@ -2677,8 +2666,8 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"no_schema2": "no_schema2"}]})
 
     @async_client_context.require_version_min(8, 1, -1)
-    async def test_8(self):
-        self.encrypted_client = await self.async_rs_or_single_client(
+    async def test_8_csfle_joins_qe(self):
+        encrypted_client = await self.async_rs_or_single_client(
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
@@ -2686,7 +2675,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         )
         with self.assertRaises(PyMongoError) as exc:
             _ = await anext(
-                await self.encrypted_client.db.csfle.aggregate(
+                await encrypted_client.db.csfle.aggregate(
                     [
                         {"$match": {"csfle": "qe"}},
                         {
@@ -2703,8 +2692,8 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
             self.assertTrue("not supported" in str(exc))
 
     @async_client_context.require_version_max(8, 1, -1)
-    async def test_9(self):
-        self.encrypted_client = await self.async_rs_or_single_client(
+    async def test_9_error(self):
+        encrypted_client = await self.async_rs_or_single_client(
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
@@ -2712,7 +2701,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         )
         with self.assertRaises(PyMongoError) as exc:
             _ = await anext(
-                await self.encrypted_client.db.csfle.aggregate(
+                await encrypted_client.db.csfle.aggregate(
                     [
                         {"$match": {"csfle": "csfle"}},
                         {
