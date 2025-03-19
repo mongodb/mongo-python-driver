@@ -2493,7 +2493,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        doc = anext(
+        doc = await anext(
             await self.encrypted_client.db.csfle.aggregate(
                 [
                     {"$match": {"csfle": "csfle"}},
@@ -2522,7 +2522,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        doc = anext(
+        doc = await anext(
             await self.encrypted_client.db.qe.aggregate(
                 [
                     {"$match": {"qe": "qe"}},
@@ -2551,7 +2551,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        doc = anext(
+        doc = await anext(
             await self.encrypted_client.db.no_schema.aggregate(
                 [
                     {"$match": {"no_schema": "no_schema"}},
@@ -2577,7 +2577,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        doc = anext(
+        doc = await anext(
             await self.encrypted_client.db.no_schema.aggregate(
                 [
                     {"$match": {"no_schema": "no_schema"}},
@@ -2606,7 +2606,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        doc = anext(
+        doc = await anext(
             await self.encrypted_client.db.csfle.aggregate(
                 [
                     {"$match": {"csfle": "csfle"}},
@@ -2635,7 +2635,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        doc = anext(
+        doc = await anext(
             await self.encrypted_client.db.qe.aggregate(
                 [
                     {"$match": {"qe": "qe"}},
@@ -2664,7 +2664,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        doc = anext(
+        doc = await anext(
             await self.encrypted_client.db.no_schema.aggregate(
                 [
                     {"$match": {"no_schema": "no_schema"}},
@@ -2695,7 +2695,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         )
         # not sure if this is the right error!
         with self.assertRaises(PyMongoError) as exc:
-            _ = anext(
+            _ = await anext(
                 await self.encrypted_client.db.no_schema.aggregate(
                     [
                         {"$match": {"no_schema": "no_schema"}},
@@ -2727,7 +2727,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         )
         # not sure if this is the right error!
         with self.assertRaises(PyMongoError) as exc:
-            _ = anext(
+            _ = await anext(
                 await self.encrypted_client.db.csfle.aggregate(
                     [
                         {"$match": {"csfle": "csfle"}},
