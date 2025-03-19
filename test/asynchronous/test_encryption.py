@@ -2696,24 +2696,20 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         # not sure if this is the right error!
         with self.assertRaises(PyMongoError) as exc:
             _ = await anext(
-                await self.encrypted_client.db.no_schema.aggregate(
+                await self.encrypted_client.db.csfle.aggregate(
                     [
-                        {"$match": {"no_schema": "no_schema"}},
+                        {"$match": {"csfle": "qe"}},
                         {
                             "$lookup": {
-                                "from": "no_schema2",
+                                "from": "qe",
                                 "as": "matched",
-                                "pipeline": [
-                                    {"$match": {"no_schema2": "no_schema2"}},
-                                    {"$project": {"_id": 0}},
-                                ],
+                                "pipeline": [{"$match": {"qe": "qe"}}, {"$project": {"_id": 0}}],
                             }
                         },
                         {"$project": {"_id": 0}},
                     ]
                 )
             )
-            # check that the exc contains the substring not supported
             self.assertTrue("not supported" in str(exc))
 
     # Test requires mongocryptd/crypt_shared <8.1.
@@ -2745,7 +2741,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                     ]
                 )
             )
-            # check that the exc contains the substring Upgrade
             self.assertTrue("Upgrade" in str(exc))
 
 
