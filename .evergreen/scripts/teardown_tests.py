@@ -40,6 +40,10 @@ elif TEST_NAME == "ocsp":
 elif TEST_NAME == "serverless":
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/serverless/teardown.sh")
 
+# Tear down atlas cluster if applicable.
+if TEST_NAME in ["aws_lambda", "search_index"]:
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh")
+
 # Tear down auth_aws if applicable.
 # We do not run web-identity hosts on macos, because the hosts lack permissions,
 # so there is no reason to run the teardown, which would error with a 401.

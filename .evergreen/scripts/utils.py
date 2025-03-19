@@ -39,7 +39,7 @@ TEST_SUITE_MAP = {
     "default_sync": "default",
     "encryption": "encryption",
     "enterprise_auth": "auth",
-    "index_management": "index_management",
+    "search_index": "search_index",
     "kms": "kms",
     "load_balancer": "load_balancer",
     "mockupdb": "mockupdb",
@@ -52,7 +52,7 @@ TEST_SUITE_MAP = {
 # Tests that require a sub test suite.
 SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms", "mod_wsgi", "perf"]
 
-EXTRA_TESTS = ["mod_wsgi"]
+EXTRA_TESTS = ["mod_wsgi", "aws_lambda", "search_index"]
 
 
 def get_test_options(
@@ -153,7 +153,8 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
     LOGGER.info("Running command '%s'... done.", cmd)
 
 
-def create_archive() -> None:
+def create_archive() -> str:
     run_command("git add .", cwd=ROOT)
     run_command('git commit -m "add files"', check=False, cwd=ROOT)
     run_command(f"git archive -o {TMP_DRIVER_FILE} HEAD", cwd=ROOT)
+    return TMP_DRIVER_FILE
