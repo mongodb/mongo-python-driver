@@ -43,9 +43,9 @@ def start_server():
             if not found:
                 raise ValueError("Please provide an orchestration file")
 
-    elif test_name == "index_management":
+    elif test_name == "search_index":
         os.environ["TOPOLOGY"] = "replica_set"
-        os.environ["MONGODB_VERSION"] = "6.0"
+        os.environ["MONGODB_VERSION"] = "7.0"
 
     if not os.environ.get("TEST_CRYPT_SHARED"):
         set_env("SKIP_CRYPT_SHARED")

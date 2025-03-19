@@ -672,7 +672,7 @@ def create_search_index_variants():
     python = CPYTHONS[0]
     return [
         create_variant(
-            [".index_management"],
+            [".search_index"],
             get_display_name("Search Index Helpers", host, python=python),
             python=python,
             host=host,
@@ -944,11 +944,11 @@ def create_aws_lambda_tasks():
 
 def create_search_index_tasks():
     assume_func = FunctionCall(func="assume ec2 role")
-    server_func = FunctionCall(func="run server", vars=dict(TEST_NAME="index_management"))
-    vars = dict(TEST_NAME="index_management")
+    server_func = FunctionCall(func="run server", vars=dict(TEST_NAME="search_index"))
+    vars = dict(TEST_NAME="search_index")
     test_func = FunctionCall(func="run tests", vars=vars)
     task_name = "test-search-index-helpers"
-    tags = ["index_management"]
+    tags = ["search-index"]
     commands = [assume_func, server_func, test_func]
     return [EvgTask(name=task_name, tags=tags, commands=commands)]
 

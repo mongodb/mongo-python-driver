@@ -175,7 +175,7 @@ def handle_test_env() -> None:
         if not config:
             AUTH = "noauth"
 
-    if test_name in ["aws_lambda", "index_management"]:
+    if test_name in ["aws_lambda", "search_index"]:
         env = os.environ.copy()
         env["MONGODB_VERSION"] = "7.0"
         env["LAMBDA_STACK_NAME"] = "dbx-python-lambda"
@@ -186,7 +186,7 @@ def handle_test_env() -> None:
             cwd=DRIVERS_TOOLS,
         )
 
-    if test_name == "index_management":
+    if test_name == "search_index":
         AUTH = "auth"
 
     if test_name == "aws_lambda":
@@ -219,7 +219,7 @@ def handle_test_env() -> None:
         elif test_name == "auth_oidc":
             DB_USER = config["OIDC_ADMIN_USER"]
             DB_PASSWORD = config["OIDC_ADMIN_PWD"]
-        elif test_name == "index_management":
+        elif test_name == "search_index":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas/secrets-export.sh")
             DB_USER = config["DRIVERS_ATLAS_LAMBDA_USER"]
             DB_PASSWORD = config["DRIVERS_ATLAS_LAMBDA_PASSWORD"]

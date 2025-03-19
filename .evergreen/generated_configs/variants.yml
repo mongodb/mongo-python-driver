@@ -994,7 +994,7 @@ buildvariants:
   # Search index tests
   - name: search-index-helpers-rhel8-python3.9
     tasks:
-      - name: .index_management
+      - name: .search_index
     display_name: Search Index Helpers RHEL8 Python3.9
     run_on:
       - rhel87-small

@@ -39,7 +39,7 @@ TEST_SUITE_MAP = {
     "default_sync": "default",
     "encryption": "encryption",
     "enterprise_auth": "auth",
-    "index_management": "index_management",
+    "search_index": "search_index",
     "kms": "kms",
     "load_balancer": "load_balancer",
     "mockupdb": "mockupdb",
