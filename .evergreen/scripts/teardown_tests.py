@@ -41,7 +41,7 @@ elif TEST_NAME == "serverless":
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/serverless/teardown.sh")
 
 # Tear down atlas cluster if applicable.
-if TEST_NAME in ["aws_lambda", "index_management"]:
+if TEST_NAME in ["aws_lambda", "search_index"]:
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh")
 
 # Tear down auth_aws if applicable.
