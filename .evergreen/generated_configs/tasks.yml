@@ -707,6 +707,7 @@ tasks:
   # Doctest tests
   - name: test-doctests
     commands:
+      - func: run server
       - func: run just script
         vars:
           JUSTFILE_TARGET: docs-test
