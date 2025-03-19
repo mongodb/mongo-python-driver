@@ -31,9 +31,11 @@ if [ -f "./secrets-export.sh" ]; then
 fi
 
 # List the packages.
-uv pip ${UV_ARGS} list
+uv sync ${UV_ARGS} --with pip --reinstall
+uv run pip list
 exit 1
+
 # Start the test runner.
-uv run ${UV_ARGS} .evergreen/scripts/run_tests.py "$@"
+uv run .evergreen/scripts/run_tests.py "$@"
 
 popd
