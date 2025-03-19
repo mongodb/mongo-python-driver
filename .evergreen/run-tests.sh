@@ -31,7 +31,7 @@ if [ -f "./secrets-export.sh" ]; then
 fi
 
 # List the packages.
-uv sync ${UV_ARGS} --with pip --reinstall
+uv sync ${UV_ARGS} --reinstall
 uv run pip list
 exit 1
 
