@@ -2406,7 +2406,6 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
 # https://github.com/mongodb/specifications/blob/527e22d5090ec48bf1e144c45fc831de0f1935f6/source/client-side-encryption/tests/README.md#25-test-lookup
 class TestLookupProse(EncryptionIntegrationTest):
-    # check libmongocrypt version?
     @client_context.require_no_standalone
     @client_context.require_version_min(7, 0, -1)
     def setUp(self):
@@ -2468,7 +2467,6 @@ class TestLookupProse(EncryptionIntegrationTest):
         self.encrypted_client.db.no_schema.insert_one({"no_schema": "no_schema"})
         self.encrypted_client.db.no_schema2.insert_one({"no_schema2": "no_schema2"})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @client_context.require_version_min(8, 1, -1)
     def test_1(self):
         self.encrypted_client = self.rs_or_single_client(
@@ -2497,7 +2495,6 @@ class TestLookupProse(EncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"csfle": "csfle", "matched": [{"no_schema": "no_schema"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @client_context.require_version_min(8, 1, -1)
     def test_2(self):
         self.encrypted_client = self.rs_or_single_client(
@@ -2526,7 +2523,6 @@ class TestLookupProse(EncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"qe": "qe", "matched": [{"no_schema": "no_schema"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @client_context.require_version_min(8, 1, -1)
     def test_3(self):
         self.encrypted_client = self.rs_or_single_client(
@@ -2552,7 +2548,6 @@ class TestLookupProse(EncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"csfle": "csfle"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @client_context.require_version_min(8, 1, -1)
     def test_4(self):
         self.encrypted_client = self.rs_or_single_client(
@@ -2581,7 +2576,6 @@ class TestLookupProse(EncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"qe": "qe"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @client_context.require_version_min(8, 1, -1)
     def test_5(self):
         self.encrypted_client = self.rs_or_single_client(
@@ -2610,7 +2604,6 @@ class TestLookupProse(EncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"csfle": "csfle", "matched": [{"csfle2": "csfle2"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @client_context.require_version_min(8, 1, -1)
     def test_6(self):
         self.encrypted_client = self.rs_or_single_client(
@@ -2639,7 +2632,6 @@ class TestLookupProse(EncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"qe": "qe", "matched": [{"qe2": "qe2"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @client_context.require_version_min(8, 1, -1)
     def test_7(self):
         self.encrypted_client = self.rs_or_single_client(
@@ -2668,7 +2660,6 @@ class TestLookupProse(EncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"no_schema2": "no_schema2"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @client_context.require_version_min(8, 1, -1)
     def test_8(self):
         self.encrypted_client = self.rs_or_single_client(
@@ -2677,7 +2668,6 @@ class TestLookupProse(EncryptionIntegrationTest):
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        # not sure if this is the right error!
         with self.assertRaises(PyMongoError) as exc:
             _ = next(
                 self.encrypted_client.db.csfle.aggregate(
@@ -2696,7 +2686,6 @@ class TestLookupProse(EncryptionIntegrationTest):
             )
             self.assertTrue("not supported" in str(exc))
 
-    # Test requires mongocryptd/crypt_shared <8.1.
     @client_context.require_version_max(8, 1, -1)
     def test_9(self):
         self.encrypted_client = self.rs_or_single_client(
@@ -2705,7 +2694,6 @@ class TestLookupProse(EncryptionIntegrationTest):
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        # not sure if this is the right error!
         with self.assertRaises(PyMongoError) as exc:
             _ = next(
                 self.encrypted_client.db.csfle.aggregate(

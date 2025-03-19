@@ -2422,7 +2422,6 @@ class TestExplicitQueryableEncryption(AsyncEncryptionIntegrationTest):
 
 # https://github.com/mongodb/specifications/blob/527e22d5090ec48bf1e144c45fc831de0f1935f6/source/client-side-encryption/tests/README.md#25-test-lookup
 class TestLookupProse(AsyncEncryptionIntegrationTest):
-    # check libmongocrypt version?
     @async_client_context.require_no_standalone
     @async_client_context.require_version_min(7, 0, -1)
     async def asyncSetUp(self):
@@ -2484,7 +2483,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         await self.encrypted_client.db.no_schema.insert_one({"no_schema": "no_schema"})
         await self.encrypted_client.db.no_schema2.insert_one({"no_schema2": "no_schema2"})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @async_client_context.require_version_min(8, 1, -1)
     async def test_1(self):
         self.encrypted_client = await self.async_rs_or_single_client(
@@ -2513,7 +2511,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"csfle": "csfle", "matched": [{"no_schema": "no_schema"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @async_client_context.require_version_min(8, 1, -1)
     async def test_2(self):
         self.encrypted_client = await self.async_rs_or_single_client(
@@ -2542,7 +2539,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"qe": "qe", "matched": [{"no_schema": "no_schema"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @async_client_context.require_version_min(8, 1, -1)
     async def test_3(self):
         self.encrypted_client = await self.async_rs_or_single_client(
@@ -2568,7 +2564,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"csfle": "csfle"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @async_client_context.require_version_min(8, 1, -1)
     async def test_4(self):
         self.encrypted_client = await self.async_rs_or_single_client(
@@ -2597,7 +2592,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"qe": "qe"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @async_client_context.require_version_min(8, 1, -1)
     async def test_5(self):
         self.encrypted_client = await self.async_rs_or_single_client(
@@ -2626,7 +2620,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"csfle": "csfle", "matched": [{"csfle2": "csfle2"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @async_client_context.require_version_min(8, 1, -1)
     async def test_6(self):
         self.encrypted_client = await self.async_rs_or_single_client(
@@ -2655,7 +2648,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"qe": "qe", "matched": [{"qe2": "qe2"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @async_client_context.require_version_min(8, 1, -1)
     async def test_7(self):
         self.encrypted_client = await self.async_rs_or_single_client(
@@ -2684,7 +2676,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
         )
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"no_schema2": "no_schema2"}]})
 
-    # Test requires server 8.1+ and mongocryptd/crypt_shared 8.1+.
     @async_client_context.require_version_min(8, 1, -1)
     async def test_8(self):
         self.encrypted_client = await self.async_rs_or_single_client(
@@ -2693,7 +2684,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        # not sure if this is the right error!
         with self.assertRaises(PyMongoError) as exc:
             _ = await anext(
                 await self.encrypted_client.db.csfle.aggregate(
@@ -2712,7 +2702,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
             )
             self.assertTrue("not supported" in str(exc))
 
-    # Test requires mongocryptd/crypt_shared <8.1.
     @async_client_context.require_version_max(8, 1, -1)
     async def test_9(self):
         self.encrypted_client = await self.async_rs_or_single_client(
@@ -2721,7 +2710,6 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             )
         )
-        # not sure if this is the right error!
         with self.assertRaises(PyMongoError) as exc:
             _ = await anext(
                 await self.encrypted_client.db.csfle.aggregate(
