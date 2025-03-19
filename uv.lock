@@ -997,7 +997,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/07/e9/ae44ea7d7605df9e5
 
 [[package]]
 name = "pymongo"
-version = "4.12.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "dnspython" },
@@ -1109,7 +1108,7 @@ eventlet = [{ name = "eventlet" }]
 gevent = [{ name = "gevent" }]
 mockupdb = [{ name = "mockupdb", git = "https://github.com/mongodb-labs/mongo-mockup-db?rev=master" }]
 perf = [{ name = "simplejson" }]
-pymongocrypt-source = [{ name = "pymongocrypt", git = "https://github.com/sleepyStick/libmongocrypt?subdirectory=bindings%2Fpython&rev=PYTHON-5162" }]
+pymongocrypt-source = [{ name = "pymongocrypt", git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master" }]
 typing = [
     { name = "mypy", specifier = "==1.14.1" },
     { name = "pip" },
@@ -1133,7 +1132,7 @@ wheels = [
 [[package]]
 name = "pymongocrypt"
 version = "1.13.0.dev0"
-source = { git = "https://github.com/sleepyStick/libmongocrypt?subdirectory=bindings%2Fpython&rev=PYTHON-5162#5be264a1d523d0d410f69327efa3c284503fc1ca" }
+source = { git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master#1cad4ad1c4cd6c11c6a4710da2127dab6a374471" }
 dependencies = [
     { name = "cffi" },
     { name = "cryptography" },
