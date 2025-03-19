@@ -49,7 +49,6 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 dev = [
     "pre-commit>=4.0"
 ]
-pip = ["pip"]
 gevent = ["gevent"]
 eventlet = ["eventlet"]
 coverage = [
@@ -66,8 +65,7 @@ perf = ["simplejson"]
 typing = [
     "mypy==1.14.1",
     "pyright==1.1.392.post0",
-    "typing_extensions",
-    "pip"
+    "typing_extensions"
 ]
 
 # Used to call hatch_build.py

@@ -128,7 +128,7 @@ def handle_test_env() -> None:
     TEST_ARGS = ""
 
     # Start compiling the args we'll pass to uv.
-    UV_ARGS = ["--extra test --group pip"]
+    UV_ARGS = ["--extra test --no-group dev"]
 
     test_title = test_name
     if sub_test_name:

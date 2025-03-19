@@ -1036,6 +1036,7 @@ snappy = [
     { name = "python-snappy" },
 ]
 test = [
+    { name = "pip" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
 ]
@@ -1068,7 +1069,6 @@ pymongocrypt-source = [
 ]
 typing = [
     { name = "mypy" },
-    { name = "pip" },
     { name = "pyright" },
     { name = "typing-extensions" },
 ]
@@ -1080,6 +1080,7 @@ requires-dist = [
     { name = "cryptography", marker = "extra == 'ocsp'", specifier = ">=2.5" },
     { name = "dnspython", specifier = ">=1.16.0,<3.0.0" },
     { name = "furo", marker = "extra == 'docs'", specifier = "==2024.8.6" },
+    { name = "pip", marker = "extra == 'test'" },
     { name = "pykerberos", marker = "os_name != 'nt' and extra == 'gssapi'" },
     { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.1.0,<2.0.0" },
     { name = "pymongo-auth-aws", marker = "extra == 'encryption'", specifier = ">=1.1.0,<2.0.0" },
@@ -1112,7 +1113,6 @@ perf = [{ name = "simplejson" }]
 pymongocrypt-source = [{ name = "pymongocrypt", git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master" }]
 typing = [
     { name = "mypy", specifier = "==1.14.1" },
-    { name = "pip" },
     { name = "pyright", specifier = "==1.1.392.post0" },
     { name = "typing-extensions" },
 ]

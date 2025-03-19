@@ -31,8 +31,11 @@ if [ -f "./secrets-export.sh" ]; then
 fi
 
 # List the packages.
-uv run ${UV_ARGS} pip list
-exit 1
+uv sync ${UV_ARGS}
+uv pip list
+
+# Ensure we go back to base environment after the test.
+trap "uv sync" EXIT HUP
 
 # Start the test runner.
 uv run .evergreen/scripts/run_tests.py "$@"
