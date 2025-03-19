@@ -4,8 +4,11 @@ import json
 import logging
 import os
 import platform
+import shutil
 import sys
 from datetime import datetime
+from pathlib import Path
+from shutil import which
 
 import pytest
 from utils import DRIVERS_TOOLS, LOGGER, ROOT, run_command
@@ -81,6 +84,42 @@ def handle_pymongocrypt() -> None:
     LOGGER.info(f"libmongocrypt version: {pymongocrypt.libmongocrypt_version()})")
 
 
+def handle_aws_lambda() -> None:
+    env = os.environ.copy()
+    target_dir = ROOT / "test/lambda"
+    env["TEST_LAMBDA_DIRECTORY"] = str(target_dir)
+    env.setdefault("AWS_REGION", "us-east-1")
+    dirs = ["pymongo", "gridfs", "bson"]
+    # Store the original .so files.
+    before_sos = []
+    for dname in dirs:
+        before_sos.extend(f"{f.parent.name}/{f.name}" for f in (ROOT / dname).glob("*.so"))
+    # Build the c extensions.
+    docker = which("docker") or which("podman")
+    if not docker:
+        raise ValueError("Could not find docker!")
+    image = "quay.io/pypa/manylinux2014_x86_64:latest"
+    run_command(
+        f'{docker} run --rm -v "{ROOT}:/src" --platform linux/amd64 {image} /src/test/lambda/build_internal.sh'
+    )
+    for dname in dirs:
+        target = ROOT / "test/lambda/mongodb" / dname
+        shutil.rmtree(target, ignore_errors=True)
+        shutil.copytree(ROOT / dname, target)
+    # Remove the original so files from the lambda directory.
+    for so_path in before_sos:
+        (ROOT / "test/lambda/mongodb" / so_path).unlink()
+    # Remove the new so files from the ROOT directory.
+    for dname in dirs:
+        so_paths = [f"{f.parent.name}/{f.name}" for f in (ROOT / dname).glob("*.so")]
+        for so_path in list(so_paths):
+            if so_path not in before_sos:
+                Path(so_path).unlink()
+
+    script_name = "run-deployed-lambda-aws-tests.sh"
+    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/aws_lambda/{script_name}", env=env)
+
+
 def run() -> None:
     # Handle green framework first so they can patch modules.
     if GREEN_FRAMEWORK:
@@ -127,6 +166,11 @@ def run() -> None:
         from oidc_tester import test_oidc_send_to_remote
 
         test_oidc_send_to_remote(SUB_TEST_NAME)
+        return
+
+    # Run deployed aws lambda tests.
+    if TEST_NAME == "aws_lambda":
+        handle_aws_lambda()
         return
 
     if os.environ.get("DEBUG_LOG"):

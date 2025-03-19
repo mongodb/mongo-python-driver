@@ -175,6 +175,28 @@ def handle_test_env() -> None:
         if not config:
             AUTH = "noauth"
 
+    if test_name in ["aws_lambda", "search_index"]:
+        env = os.environ.copy()
+        env["MONGODB_VERSION"] = "7.0"
+        env["LAMBDA_STACK_NAME"] = "dbx-python-lambda"
+        write_env("LAMBDA_STACK_NAME", env["LAMBDA_STACK_NAME"])
+        run_command(
+            f"bash {DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh",
+            env=env,
+            cwd=DRIVERS_TOOLS,
+        )
+
+    if test_name == "search_index":
+        AUTH = "auth"
+
+    if test_name == "aws_lambda":
+        UV_ARGS.append("--with pip")
+        # Store AWS creds if they were given.
+        if "AWS_ACCESS_KEY_ID" in os.environ:
+            for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+                if key in os.environ:
+                    write_env(key, os.environ[key])
+
     if test_name == "data_lake":
         # Stop any running mongo-orchestration which might be using the port.
         run_command(f"bash {DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh")
@@ -197,7 +219,7 @@ def handle_test_env() -> None:
         elif test_name == "auth_oidc":
             DB_USER = config["OIDC_ADMIN_USER"]
             DB_PASSWORD = config["OIDC_ADMIN_PWD"]
-        elif test_name == "index_management":
+        elif test_name == "search_index":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas/secrets-export.sh")
             DB_USER = config["DRIVERS_ATLAS_LAMBDA_USER"]
             DB_PASSWORD = config["DRIVERS_ATLAS_LAMBDA_PASSWORD"]

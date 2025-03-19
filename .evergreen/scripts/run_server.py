@@ -22,14 +22,6 @@ def start_server():
     if "VERSION" in os.environ:
         os.environ["MONGODB_VERSION"] = os.environ["VERSION"]
 
-    if opts.auth:
-        extra_opts.append("--auth")
-
-    if opts.verbose:
-        extra_opts.append("-v")
-    elif opts.quiet:
-        extra_opts.append("-q")
-
     if test_name == "auth_aws":
         set_env("AUTH_AWS")
 
@@ -51,6 +43,10 @@ def start_server():
             if not found:
                 raise ValueError("Please provide an orchestration file")
 
+    elif test_name == "search_index":
+        os.environ["TOPOLOGY"] = "replica_set"
+        os.environ["MONGODB_VERSION"] = "7.0"
+
     if not os.environ.get("TEST_CRYPT_SHARED"):
         set_env("SKIP_CRYPT_SHARED")
 
@@ -61,6 +57,14 @@ def start_server():
             set_env("TLS_CERT_KEY_FILE", certs / "client.pem")
             set_env("TLS_PEM_KEY_FILE", certs / "server.pem")
             set_env("TLS_CA_FILE", certs / "ca.pem")
+
+    if opts.auth:
+        extra_opts.append("--auth")
+
+    if opts.verbose:
+        extra_opts.append("-v")
+    elif opts.quiet:
+        extra_opts.append("-q")
 
     cmd = ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh", *extra_opts]
     run_command(cmd, cwd=DRIVERS_TOOLS)

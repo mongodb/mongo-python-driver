@@ -132,6 +132,14 @@ buildvariants:
     expansions:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 
+  # Aws lambda tests
+  - name: faas-lambda
+    tasks:
+      - name: .aws_lambda
+    display_name: FaaS Lambda
+    run_on:
+      - rhel87-small
+
   # Compression tests
   - name: compression-snappy-rhel8-python3.9-no-c
     tasks:
@@ -986,7 +994,7 @@ buildvariants:
   # Search index tests
   - name: search-index-helpers-rhel8-python3.9
     tasks:
-      - name: test_atlas_task_group_search_indexes
+      - name: .search_index
     display_name: Search Index Helpers RHEL8 Python3.9
     run_on:
       - rhel87-small

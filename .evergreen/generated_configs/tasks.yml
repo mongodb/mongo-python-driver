@@ -23,6 +23,15 @@ tasks:
           TEST_NAME: data_lake
     tags: [atlas_data_lake]
 
+  # Aws lambda tests
+  - name: test-aws-lambda-deployed
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: aws_lambda
+    tags: [aws_lambda]
+
   # Aws tests
   - name: test-auth-aws-4.4-regular
     commands:
@@ -1219,6 +1228,18 @@ tasks:
       - func: attach benchmark test results
       - func: send dashboard data
     tags: [perf]
+
+  # Search index tests
+  - name: test-search-index-helpers
+    commands:
+      - func: assume ec2 role
+      - func: run server
+        vars:
+          TEST_NAME: search_index
+      - func: run tests
+        vars:
+          TEST_NAME: search_index
+    tags: [search_index]
 
   # Server tests
   - name: test-4.0-standalone-auth-ssl-sync
