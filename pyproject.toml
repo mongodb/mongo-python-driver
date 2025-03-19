@@ -65,7 +65,8 @@ perf = ["simplejson"]
 typing = [
     "mypy==1.14.1",
     "pyright==1.1.392.post0",
-    "typing_extensions"
+    "typing_extensions",
+    "pip"
 ]
 
 # Used to call hatch_build.py
