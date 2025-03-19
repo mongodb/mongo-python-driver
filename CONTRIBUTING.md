@@ -282,6 +282,27 @@ Note: these tests can only be run from an Evergreen host.
 - Run `just setup-tests search_index`.
 - Run `just run-tests`.
 
+### MockupDB tests
+
+- Run `just setup-tests mockupdb`.
+- Run `just run-tests`.
+
+### Doc tests
+
+The doc tests require a running server.
+
+- Run `just run-server`.
+- Run `just docs-test`.
+
+### Free-threaded Python Tests
+
+In the evergreen builds, the tests are configured to use the free-threaded python from the toolchain.
+Locally you can run:
+
+- Run `just run-server`.
+- Run `just setup-tests`.
+- Run `UV_PYTHON=3.13t just run-tests`.
+
 ### AWS Lambda tests
 
 You will need to set up access to the `drivers-test-secrets-role`, see the [Wiki](https://wiki.corp.mongodb.com/spaces/DRIVERS/pages/239737385/Using+AWS+Secrets+Manager+to+Store+Testing+Secrets).
