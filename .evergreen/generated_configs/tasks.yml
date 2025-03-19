@@ -710,7 +710,7 @@ tasks:
       - func: run just script
         vars:
           JUSTFILE_TARGET: docs-test
-    tags: [docktests]
+    tags: [doctests]
 
   # Enterprise auth tests
   - name: test-enterprise-auth
