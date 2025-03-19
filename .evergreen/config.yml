@@ -42,7 +42,7 @@ functions:
     # Make an evergreen expansion file with dynamic values
     - command: subprocess.exec
       params:
-        include_expansions_in_env: ["is_patch", "project", "version_id", "skip_web_identity_auth_test", "skip_ECS_auth_test"]
+        include_expansions_in_env: ["is_patch", "project", "version_id"]
         binary: bash
         working_dir: "src"
         args:
@@ -213,16 +213,14 @@ functions:
       params:
         file: ${DRIVERS_TOOLS}/mo-expansion.yml
 
-  "run doctests":
-     - command: subprocess.exec
-       type: test
-       params:
-         include_expansions_in_env: [ "PYTHON_BINARY" ]
-         working_dir: "src"
-         binary: bash
-         args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-doctests.sh
+  "run just script":
+    - command: subprocess.exec
+      type: test
+      params:
+       include_expansions_in_env: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN]
+       binary: bash
+       working_dir: "src"
+       args: [.evergreen/just.sh, "${JUSTFILE_TARGET}"]
 
   "run tests":
     - command: subprocess.exec
@@ -248,7 +246,6 @@ functions:
         binary: bash
         working_dir: "src"
         args:
-          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/cleanup.sh
 
   "teardown system":
@@ -352,19 +349,6 @@ tasks:
               - src/.evergreen/scripts/run-getdata.sh
 # Standard test tasks {{{
 
-    - name: "mockupdb"
-      tags: ["mockupdb"]
-      commands:
-        - func: "run tests"
-          vars:
-            TEST_NAME: mockupdb
-
-    - name: "doctests"
-      tags: ["doctests"]
-      commands:
-        - func: "run server"
-        - func: "run doctests"
-
     - name: "test-search-index-helpers"
       commands:
         - func: "run server"
@@ -375,20 +359,6 @@ tasks:
           vars:
             TEST_NAME: index_management
             AUTH: "auth"
-
-    - name: "no-server"
-      tags: ["no-server"]
-      commands:
-        - func: "run tests"
-
-    - name: "free-threading"
-      tags: ["free-threading"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "8.0"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
 
     - name: "test-aws-lambda-deployed"
       commands:
@@ -456,12 +426,6 @@ tasks:
             - ${github_commit}
 
 buildvariants:
-- name: "no-server"
-  display_name: "No server"
-  run_on:
-    - rhel84-small
-  tasks:
-    - name: "no-server"
 
 - name: "Coverage Report"
   display_name: "Coverage Report"

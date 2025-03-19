@@ -685,7 +685,7 @@ def create_mockupdb_variants():
     python = CPYTHONS[0]
     return [
         create_variant(
-            ["mockupdb"],
+            [".mockupdb"],
             get_display_name("MockupDB", host, python=python),
             python=python,
             host=host,
@@ -698,7 +698,7 @@ def create_doctests_variants():
     python = CPYTHONS[0]
     return [
         create_variant(
-            ["doctests"],
+            [".doctests"],
             get_display_name("Doctests", host, python=python),
             python=python,
             host=host,
@@ -746,6 +746,11 @@ def create_aws_auth_variants():
         )
         variants.append(variant)
     return variants
+
+
+def create_no_server_variants():
+    host = HOSTS["rhel8"]
+    return [create_variant([".no-server"], "No server", host=host)]
 
 
 def create_alternative_hosts_variants():
@@ -1012,6 +1017,36 @@ def create_ocsp_tasks():
             tasks.append(task)
 
     return tasks
+
+
+def create_mockupdb_tasks():
+    test_func = FunctionCall(func="run tests", vars=dict(TEST_NAME="mockupdb"))
+    task_name = "test-mockupdb"
+    tags = ["mockupdb"]
+    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
+
+
+def create_doctest_tasks():
+    test_func = FunctionCall(func="run just script", vars=dict(JUSTFILE_TARGET="docs-test"))
+    task_name = "test-doctests"
+    tags = ["docktests"]
+    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
+
+
+def create_no_server_tasks():
+    test_func = FunctionCall(func="run tests")
+    task_name = "test-no-server"
+    tags = ["no-server"]
+    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
+
+
+def create_free_threading_tasks():
+    vars = dict(VERSION="8.0", TOPOLOGY="replica_set")
+    server_func = FunctionCall(func="run server", vars=vars)
+    test_func = FunctionCall(func="run tests")
+    task_name = "test-free-threading"
+    tags = ["free-threading"]
+    return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
 
 
 def create_serverless_tasks():

@@ -234,7 +234,7 @@ buildvariants:
   # Doctests tests
   - name: doctests-rhel8-python3.9
     tasks:
-      - name: doctests
+      - name: .doctests
     display_name: Doctests RHEL8 Python3.9
     run_on:
       - rhel87-small
@@ -664,7 +664,7 @@ buildvariants:
   # Mockupdb tests
   - name: mockupdb-rhel8-python3.9
     tasks:
-      - name: mockupdb
+      - name: .mockupdb
     display_name: MockupDB RHEL8 Python3.9
     run_on:
       - rhel87-small
@@ -737,6 +737,14 @@ buildvariants:
     expansions:
       NO_EXT: "1"
       PYTHON_BINARY: /opt/python/3.13/bin/python3
+
+  # No server tests
+  - name: no-server
+    tasks:
+      - name: .no-server
+    display_name: No server
+    run_on:
+      - rhel87-small
 
   # Ocsp tests
   - name: ocsp-rhel8-v4.4-python3.9
