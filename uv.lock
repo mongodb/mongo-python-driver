@@ -1069,6 +1069,7 @@ pymongocrypt-source = [
 ]
 typing = [
     { name = "mypy" },
+    { name = "pip" },
     { name = "pyright" },
     { name = "typing-extensions" },
 ]
@@ -1113,6 +1114,7 @@ perf = [{ name = "simplejson" }]
 pymongocrypt-source = [{ name = "pymongocrypt", git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master" }]
 typing = [
     { name = "mypy", specifier = "==1.14.1" },
+    { name = "pip" },
     { name = "pyright", specifier = "==1.1.392.post0" },
     { name = "typing-extensions" },
 ]
