@@ -1239,7 +1239,7 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: search_index
-    tags: [search-index]
+    tags: [search_index]
 
   # Server tests
   - name: test-4.0-standalone-auth-ssl-sync

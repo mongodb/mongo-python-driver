@@ -948,7 +948,7 @@ def create_search_index_tasks():
     vars = dict(TEST_NAME="search_index")
     test_func = FunctionCall(func="run tests", vars=vars)
     task_name = "test-search-index-helpers"
-    tags = ["search-index"]
+    tags = ["search_index"]
     commands = [assume_func, server_func, test_func]
     return [EvgTask(name=task_name, tags=tags, commands=commands)]
 
