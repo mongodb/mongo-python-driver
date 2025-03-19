@@ -197,6 +197,12 @@ def handle_test_env() -> None:
                 if key in os.environ:
                     write_env(key, os.environ[key])
 
+    if test_name == "data_lake":
+        # Stop any running mongo-orchestration which might be using the port.
+        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh")
+        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/atlas_data_lake/setup.sh")
+        AUTH = "auth"
+
     if AUTH != "noauth":
         if test_name == "data_lake":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas_data_lake/secrets-export.sh")

@@ -300,16 +300,23 @@ Note: these tests can only be run from an Evergreen Linux host that has the Pyth
 The `mode` can be `standalone` or `embedded`.  For the `replica_set` version of the tests, use
 `TOPOLOGY=replica_set just run-server`.
 
+### Atlas Data Lake tests.
+
+You must have `docker` or `podman` installed locally.
+
+- Run `just setup-tests data_lake`.
+- Run `just run-tests`.
+
 ### OCSP tests
 
-  - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
-    This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
-    MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
-  - Run `just run-server ocsp`.
-  - Run `just setup-tests ocsp <sub test>` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
-  - Run `just run-tests`
+- Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
+This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
+MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
+- Run `just run-server ocsp`.
+- Run `just setup-tests ocsp <sub test>` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
+- Run `just run-tests`
 
-  If you are running one of the `no-responder` tests, omit the `run-server` step.
+If you are running one of the `no-responder` tests, omit the `run-server` step.
 
 ### Perf Tests
 
