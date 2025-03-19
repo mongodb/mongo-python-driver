@@ -278,8 +278,8 @@ Note: these tests can only be run from an Evergreen host.
 
 ### Search Index tests
 
-- Run `just run-server index_management`.
-- Run `just setup-tests index_management`.
+- Run `just run-server search_index`.
+- Run `just setup-tests search_index`.
 - Run `just run-tests`.
 
 ### AWS Lambda tests
