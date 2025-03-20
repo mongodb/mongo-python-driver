@@ -2486,7 +2486,6 @@ class TestLookupProse(EncryptionIntegrationTest):
             )
         )
         self.assertEqual(doc, {"csfle": "csfle", "matched": [{"no_schema": "no_schema"}]})
-        encrypted_client.close()
 
     @client_context.require_version_min(8, 1, -1)
     def test_2_qe_joins_no_schema(self):
@@ -2515,7 +2514,6 @@ class TestLookupProse(EncryptionIntegrationTest):
             )
         )
         self.assertEqual(doc, {"qe": "qe", "matched": [{"no_schema": "no_schema"}]})
-        encrypted_client.close()
 
     @client_context.require_version_min(8, 1, -1)
     def test_3_no_schema_joins_csfle(self):
@@ -2541,7 +2539,6 @@ class TestLookupProse(EncryptionIntegrationTest):
             )
         )
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"csfle": "csfle"}]})
-        encrypted_client.close()
 
     @client_context.require_version_min(8, 1, -1)
     def test_4_no_schema_joins_qe(self):
@@ -2570,7 +2567,6 @@ class TestLookupProse(EncryptionIntegrationTest):
             )
         )
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"qe": "qe"}]})
-        encrypted_client.close()
 
     @client_context.require_version_min(8, 1, -1)
     def test_5_csfle_joins_csfle2(self):
@@ -2599,7 +2595,6 @@ class TestLookupProse(EncryptionIntegrationTest):
             )
         )
         self.assertEqual(doc, {"csfle": "csfle", "matched": [{"csfle2": "csfle2"}]})
-        encrypted_client.close()
 
     @client_context.require_version_min(8, 1, -1)
     def test_6_qe_joins_qe2(self):
@@ -2628,7 +2623,6 @@ class TestLookupProse(EncryptionIntegrationTest):
             )
         )
         self.assertEqual(doc, {"qe": "qe", "matched": [{"qe2": "qe2"}]})
-        encrypted_client.close()
 
     @client_context.require_version_min(8, 1, -1)
     def test_7_no_schema_joins_no_schema2(self):
@@ -2657,7 +2651,6 @@ class TestLookupProse(EncryptionIntegrationTest):
             )
         )
         self.assertEqual(doc, {"no_schema": "no_schema", "matched": [{"no_schema2": "no_schema2"}]})
-        encrypted_client.close()
 
     @client_context.require_version_min(8, 1, -1)
     def test_8_csfle_joins_qe(self):
@@ -2684,7 +2677,6 @@ class TestLookupProse(EncryptionIntegrationTest):
                 )
             )
             self.assertTrue("not supported" in str(exc))
-        encrypted_client.close()
 
     @client_context.require_version_max(8, 1, -1)
     def test_9_error(self):
@@ -2714,7 +2706,6 @@ class TestLookupProse(EncryptionIntegrationTest):
                 )
             )
             self.assertTrue("Upgrade" in str(exc))
-        encrypted_client.close()
 
 
 # https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.md#rewrap
