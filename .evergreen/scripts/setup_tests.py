@@ -128,8 +128,7 @@ def handle_test_env() -> None:
     TEST_ARGS = ""
 
     # Start compiling the args we'll pass to uv.
-    # Run in an isolated environment so as not to pollute the base venv.
-    UV_ARGS = ["--isolated --extra test"]
+    UV_ARGS = ["--extra test --no-group dev"]
 
     test_title = test_name
     if sub_test_name:

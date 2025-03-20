@@ -1036,6 +1036,7 @@ snappy = [
     { name = "python-snappy" },
 ]
 test = [
+    { name = "pip" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
 ]
@@ -1080,6 +1081,7 @@ requires-dist = [
     { name = "cryptography", marker = "extra == 'ocsp'", specifier = ">=2.5" },
     { name = "dnspython", specifier = ">=1.16.0,<3.0.0" },
     { name = "furo", marker = "extra == 'docs'", specifier = "==2024.8.6" },
+    { name = "pip", marker = "extra == 'test'" },
     { name = "pykerberos", marker = "os_name != 'nt' and extra == 'gssapi'" },
     { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.1.0,<2.0.0" },
     { name = "pymongo-auth-aws", marker = "extra == 'encryption'", specifier = ">=1.1.0,<2.0.0" },
