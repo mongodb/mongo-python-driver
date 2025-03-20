@@ -505,7 +505,7 @@ class PyMongoProtocol(BufferedProtocol):
         The transport argument is the transport representing the write side of the connection.
         """
         self.transport = transport  # type: ignore[assignment]
-        self.transport.set_write_buffer_limits(MAX_MESSAGE_SIZE, MAX_MESSAGE_SIZE)  # type: ignore
+        self.transport.set_write_buffer_limits(MAX_MESSAGE_SIZE, MAX_MESSAGE_SIZE)
 
     async def write(self, message: bytes) -> None:
         """Write a message to this connection's transport."""
@@ -563,7 +563,7 @@ class PyMongoProtocol(BufferedProtocol):
             return self._header[self._header_index :]
         if self._expecting_compression:
             return self._compression_header[self._compression_index :]
-        return self._message[self._message_index :]
+        return self._message[self._message_index :]  # type: ignore[index]
 
     def buffer_updated(self, nbytes: int) -> None:
         """Called when the buffer was updated with the received data"""
@@ -641,8 +641,8 @@ class PyMongoProtocol(BufferedProtocol):
         self._expecting_header = False
         return length - 16, op_code
 
-    def process_compression_header(self) -> tuple[int, int]:
-        """Unpack a MongoDB Wire Protocol header."""
+    def process_compression_header(self) -> int:
+        """Unpack a MongoDB Wire Protocol compression header."""
         op_code, _, self._compressor_id = _UNPACK_COMPRESSION_HEADER(self._compression_header)
         self._expecting_compression = False
         return op_code
