@@ -250,7 +250,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         :param database: The database on which to run listCollections.
         :param filter: The filter to pass to listCollections.
 
-        :return: The all documents from the listCollections command response as BSON.
+        :return: All documents from the listCollections command response as BSON.
         """
         with self.client_ref()[database].list_collections(filter=RawBSONDocument(filter)) as cursor:
             return [_dict_to_bson(doc, False, _DATA_KEY_OPTS) for doc in cursor]

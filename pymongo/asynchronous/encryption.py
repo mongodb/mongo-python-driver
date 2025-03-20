@@ -251,7 +251,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         :param database: The database on which to run listCollections.
         :param filter: The filter to pass to listCollections.
 
-        :return: The all documents from the listCollections command response as BSON.
+        :return: All documents from the listCollections command response as BSON.
         """
         async with await self.client_ref()[database].list_collections(
             filter=RawBSONDocument(filter)
