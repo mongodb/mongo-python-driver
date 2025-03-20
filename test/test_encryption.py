@@ -2420,7 +2420,7 @@ class TestLookupProse(EncryptionIntegrationTest):
 
         key_doc = json_data("etc", "data", "lookup", "key-doc.json")
         create_key_vault(encrypted_client.db.keyvault, key_doc)
-        self.addCleanup(client_context.client.drop_database("db"))
+        self.addCleanup(client_context.client.drop_database, "db")
 
         encrypted_client.db.create_collection(
             "csfle",

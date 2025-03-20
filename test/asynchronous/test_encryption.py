@@ -2436,7 +2436,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
 
         key_doc = json_data("etc", "data", "lookup", "key-doc.json")
         await create_key_vault(encrypted_client.db.keyvault, key_doc)
-        self.addAsyncCleanup(async_client_context.client.drop_database("db"))
+        self.addAsyncCleanup(async_client_context.client.drop_database, "db")
 
         await encrypted_client.db.create_collection(
             "csfle",
