@@ -1232,20 +1232,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
-            if self._topology is None:
-                return self.eq_props() == other.eq_props()
-            else:
-                return self._topology == other._topology
+            return self.eq_props() == other.eq_props()
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __hash__(self) -> int:
-        if self._topology is None:
-            return hash(self.eq_props())
-        else:
-            return hash(self._topology)
+        return hash(self.eq_props())
 
     def _repr_helper(self) -> str:
         def option_repr(option: str, value: Any) -> str:
@@ -1262,7 +1256,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         # Host first...
         if self._topology is None:
-            options = ["host={self._host}", "port={self._port}"]
+            options = self._resolve_srv_info["seeds"]
         else:
             options = [
                 "host=%r"
