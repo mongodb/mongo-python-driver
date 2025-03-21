@@ -9,6 +9,8 @@ PyMongo 4.12 brings a number of changes including:
 - Support for configuring DEK cache lifetime via the ``key_expiration_ms`` argument to
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
 - Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
+- AsyncMongoClient no longer performs dns resolution for "mongodb+srv://" connection string in the constructor.
+  To avoid blocking the asyncio loop, the resolution is now deferred until the client is first connected.
 
 Issues Resolved
 ...............

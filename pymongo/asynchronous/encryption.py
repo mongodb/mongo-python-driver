@@ -87,7 +87,7 @@ from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
 from pymongo.typings import _DocumentType, _DocumentTypeArg
-from pymongo.uri_parser import parse_host
+from pymongo.uri_parser_shared import parse_host
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:

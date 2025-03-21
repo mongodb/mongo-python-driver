@@ -127,6 +127,7 @@ replacements = {
     "async_create_barrier": "create_barrier",
     "async_barrier_wait": "barrier_wait",
     "async_joinall": "joinall",
+    "pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts": "pymongo.synchronous.srv_resolver._SrvResolver.get_hosts",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

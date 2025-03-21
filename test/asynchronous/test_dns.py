@@ -31,9 +31,10 @@ from test.asynchronous import (
 )
 from test.utils_shared import async_wait_until
 
+from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
-from pymongo.uri_parser import parse_uri, split_hosts
+from pymongo.uri_parser_shared import split_hosts
 
 _IS_SYNC = False
 
@@ -109,7 +110,7 @@ def create_test(test_case):
             hosts = frozenset(split_hosts(",".join(hosts)))
 
         if seeds or num_seeds:
-            result = parse_uri(uri, validate=True)
+            result = await parse_uri(uri, validate=True)
             if seeds is not None:
                 self.assertEqual(sorted(result["nodelist"]), sorted(seeds))
             if num_seeds is not None:
@@ -161,7 +162,7 @@ def create_test(test_case):
                 # and re-run these assertions.
         else:
             try:
-                parse_uri(uri)
+                await parse_uri(uri)
             except (ConfigurationError, ValueError):
                 pass
             else:
@@ -185,35 +186,24 @@ create_tests(TestDNSSharded)
 
 class TestParsingErrors(AsyncPyMongoTestCase):
     async def test_invalid_host(self):
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: mongodb is not",
-            self.simple_client,
-            "mongodb+srv://mongodb",
-        )
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: mongodb.com is not",
-            self.simple_client,
-            "mongodb+srv://mongodb.com",
-        )
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: an IP address is not",
-            self.simple_client,
-            "mongodb+srv://127.0.0.1",
-        )
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: an IP address is not",
-            self.simple_client,
-            "mongodb+srv://[::1]",
-        )
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb is not"):
+            client = self.simple_client("mongodb+srv://mongodb")
+            await client.aconnect()
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb.com is not"):
+            client = self.simple_client("mongodb+srv://mongodb.com")
+            await client.aconnect()
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: an IP address is not"):
+            client = self.simple_client("mongodb+srv://127.0.0.1")
+            await client.aconnect()
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: an IP address is not"):
+            client = self.simple_client("mongodb+srv://[::1]")
+            await client.aconnect()
 
 
 class IsolatedAsyncioTestCaseInsensitive(AsyncIntegrationTest):
     async def test_connect_case_insensitive(self):
         client = self.simple_client("mongodb+srv://TEST1.TEST.BUILD.10GEN.cc/")
+        await client.aconnect()
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
 
 
