@@ -1315,7 +1315,6 @@ class Pool:
             raise
 
         if handler:
-            assert handler.client._topology is not None
             await handler.client._topology.receive_cluster_time(conn._cluster_time)
 
         return conn
