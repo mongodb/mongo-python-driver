@@ -934,7 +934,7 @@ class TestClient(AsyncIntegrationTest):
             self.assertEqual(client_two, client)
 
     async def test_repr_srv_host(self):
-        client = AsyncMongoClient("mongodb+srv://test1.test.build.10gen.cc/")
+        client = AsyncMongoClient("mongodb+srv://test1.test.build.10gen.cc/", connect=False)
         # before srv resolution
         self.assertIn("host='mongodb+srv://test1.test.build.10gen.cc'", repr(client))
         await client.aconnect()

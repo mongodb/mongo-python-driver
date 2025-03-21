@@ -909,7 +909,7 @@ class TestClient(IntegrationTest):
             self.assertEqual(client_two, client)
 
     def test_repr_srv_host(self):
-        client = MongoClient("mongodb+srv://test1.test.build.10gen.cc/")
+        client = MongoClient("mongodb+srv://test1.test.build.10gen.cc/", connect=False)
         # before srv resolution
         self.assertIn("host='mongodb+srv://test1.test.build.10gen.cc'", repr(client))
         client._connect()
