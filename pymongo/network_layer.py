@@ -553,10 +553,6 @@ class PyMongoProtocol(BufferedProtocol):
         If any data does not fit into the returned buffer, this method will be called again until
         either no data remains or an empty buffer is returned.
         """
-        # Check for SSL EOF edge case, no data will be written to the buffer we return
-        # TODO: is this needed?
-        if sizehint == 0:
-            return memoryview(bytearray(16))
         # TODO: optimize this by caching pointers to the buffers.
         # return self._buffer[self._index:]
         if self._expecting_header:
