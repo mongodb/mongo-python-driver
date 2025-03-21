@@ -60,8 +60,6 @@ export MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
 export MONGODB_BINARIES="$MONGODB_BINARIES"
 export DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS_BINARIES"
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
-export skip_web_identity_auth_test="${skip_web_identity_auth_test:-}"
-export skip_ECS_auth_test="${skip_ECS_auth_test:-}"
 
 export CARGO_HOME="$CARGO_HOME"
 export UV_TOOL_DIR="$UV_TOOL_DIR"

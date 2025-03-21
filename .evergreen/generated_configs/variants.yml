@@ -65,43 +65,21 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Atlas data lake tests
-  - name: atlas-data-lake-ubuntu-22-python3.9-auth-no-c
+  - name: atlas-data-lake-ubuntu-22-python3.9
     tasks:
-      - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake Ubuntu-22 Python3.9 Auth No C
+      - name: .atlas_data_lake
+    display_name: Atlas Data Lake Ubuntu-22 Python3.9
     run_on:
       - ubuntu2204-small
     expansions:
-      AUTH: auth
-      NO_EXT: "1"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: atlas-data-lake-ubuntu-22-python3.9-auth
+  - name: atlas-data-lake-ubuntu-22-python3.13
     tasks:
-      - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake Ubuntu-22 Python3.9 Auth
+      - name: .atlas_data_lake
+    display_name: Atlas Data Lake Ubuntu-22 Python3.13
     run_on:
       - ubuntu2204-small
     expansions:
-      AUTH: auth
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: atlas-data-lake-ubuntu-22-python3.13-auth-no-c
-    tasks:
-      - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake Ubuntu-22 Python3.13 Auth No C
-    run_on:
-      - ubuntu2204-small
-    expansions:
-      AUTH: auth
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
-  - name: atlas-data-lake-ubuntu-22-python3.13-auth
-    tasks:
-      - name: atlas-data-lake-tests
-    display_name: Atlas Data Lake Ubuntu-22 Python3.13 Auth
-    run_on:
-      - ubuntu2204-small
-    expansions:
-      AUTH: auth
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Aws auth tests
@@ -153,6 +131,14 @@ buildvariants:
       - macos-14
     expansions:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
+
+  # Aws lambda tests
+  - name: faas-lambda
+    tasks:
+      - name: .aws_lambda
+    display_name: FaaS Lambda
+    run_on:
+      - rhel87-small
 
   # Compression tests
   - name: compression-snappy-rhel8-python3.9-no-c
@@ -256,7 +242,7 @@ buildvariants:
   # Doctests tests
   - name: doctests-rhel8-python3.9
     tasks:
-      - name: doctests
+      - name: .doctests
     display_name: Doctests RHEL8 Python3.9
     run_on:
       - rhel87-small
@@ -686,7 +672,7 @@ buildvariants:
   # Mockupdb tests
   - name: mockupdb-rhel8-python3.9
     tasks:
-      - name: mockupdb
+      - name: .mockupdb
     display_name: MockupDB RHEL8 Python3.9
     run_on:
       - rhel87-small
@@ -759,6 +745,14 @@ buildvariants:
     expansions:
       NO_EXT: "1"
       PYTHON_BINARY: /opt/python/3.13/bin/python3
+
+  # No server tests
+  - name: no-server
+    tasks:
+      - name: .no-server
+    display_name: No server
+    run_on:
+      - rhel87-small
 
   # Ocsp tests
   - name: ocsp-rhel8-v4.4-python3.9
@@ -1008,7 +1002,7 @@ buildvariants:
   # Search index tests
   - name: search-index-helpers-rhel8-python3.9
     tasks:
-      - name: test_atlas_task_group_search_indexes
+      - name: .search_index
     display_name: Search Index Helpers RHEL8 Python3.9
     run_on:
       - rhel87-small

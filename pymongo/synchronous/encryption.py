@@ -241,7 +241,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                 )
                 raise exc from final_err
 
-    def collection_info(self, database: str, filter: bytes) -> Optional[bytes]:
+    def collection_info(self, database: str, filter: bytes) -> Optional[list[bytes]]:
         """Get the collection info for a namespace.
 
         The returned collection info is passed to libmongocrypt which reads
@@ -250,12 +250,10 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         :param database: The database on which to run listCollections.
         :param filter: The filter to pass to listCollections.
 
-        :return: The first document from the listCollections command response as BSON.
+        :return: All documents from the listCollections command response as BSON.
         """
         with self.client_ref()[database].list_collections(filter=RawBSONDocument(filter)) as cursor:
-            for doc in cursor:
-                return _dict_to_bson(doc, False, _DATA_KEY_OPTS)
-            return None
+            return [_dict_to_bson(doc, False, _DATA_KEY_OPTS) for doc in cursor]
 
     def spawn(self) -> None:
         """Spawn mongocryptd.
@@ -548,7 +546,7 @@ def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
     # For compat with pymongocrypt <1.13, avoid setting the default key_expiration_ms.
     if kwargs.get("key_expiration_ms") is None:
         kwargs.pop("key_expiration_ms", None)
-    return MongoCryptOptions(**kwargs)
+    return MongoCryptOptions(**kwargs, enable_multiple_collinfo=True)
 
 
 class ClientEncryption(Generic[_DocumentType]):

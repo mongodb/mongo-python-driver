@@ -248,6 +248,7 @@ the pages will re-render and the browser will automatically refresh.
 - Run the tests with `just run-tests`.
 
 The supported types are [`default`, `azure`, `gcp`, `eks`, `aks`, and `gke`].
+For the `eks` test, you will need to set up access to the `drivers-test-secrets-role`, see the [Wiki](https://wiki.corp.mongodb.com/spaces/DRIVERS/pages/239737385/Using+AWS+Secrets+Manager+to+Store+Testing+Secrets).
 
 ### KMS tests
 
@@ -275,6 +276,40 @@ Note: these tests can only be run from an Evergreen host.
 - Run `just setup-tests atlas_connect`.
 - Run `just run-tests`.
 
+### Search Index tests
+
+- Run `just run-server search_index`.
+- Run `just setup-tests search_index`.
+- Run `just run-tests`.
+
+### MockupDB tests
+
+- Run `just setup-tests mockupdb`.
+- Run `just run-tests`.
+
+### Doc tests
+
+The doc tests require a running server.
+
+- Run `just run-server`.
+- Run `just docs-test`.
+
+### Free-threaded Python Tests
+
+In the evergreen builds, the tests are configured to use the free-threaded python from the toolchain.
+Locally you can run:
+
+- Run `just run-server`.
+- Run `just setup-tests`.
+- Run `UV_PYTHON=3.13t just run-tests`.
+
+### AWS Lambda tests
+
+You will need to set up access to the `drivers-test-secrets-role`, see the [Wiki](https://wiki.corp.mongodb.com/spaces/DRIVERS/pages/239737385/Using+AWS+Secrets+Manager+to+Store+Testing+Secrets).
+
+- Run `just setup-tests aws_lambda`.
+- Run `just run-tests`.
+
 ### mod_wsgi tests
 
 Note: these tests can only be run from an Evergreen Linux host that has the Python toolchain.
@@ -286,16 +321,23 @@ Note: these tests can only be run from an Evergreen Linux host that has the Pyth
 The `mode` can be `standalone` or `embedded`.  For the `replica_set` version of the tests, use
 `TOPOLOGY=replica_set just run-server`.
 
+### Atlas Data Lake tests.
+
+You must have `docker` or `podman` installed locally.
+
+- Run `just setup-tests data_lake`.
+- Run `just run-tests`.
+
 ### OCSP tests
 
-  - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
-    This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
-    MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
-  - Run `just run-server ocsp`.
-  - Run `just setup-tests ocsp <sub test>` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
-  - Run `just run-tests`
+- Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
+This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
+MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
+- Run `just run-server ocsp`.
+- Run `just setup-tests ocsp <sub test>` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
+- Run `just run-tests`
 
-  If you are running one of the `no-responder` tests, omit the `run-server` step.
+If you are running one of the `no-responder` tests, omit the `run-server` step.
 
 ### Perf Tests
 

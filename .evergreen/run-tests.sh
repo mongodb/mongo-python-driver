@@ -34,7 +34,10 @@ fi
 uv sync ${UV_ARGS} --reinstall
 uv pip list
 
+# Ensure we go back to base environment after the test.
+trap "uv sync" EXIT HUP
+
 # Start the test runner.
-uv run .evergreen/scripts/run_tests.py "$@"
+uv run ${UV_ARGS} .evergreen/scripts/run_tests.py "$@"
 
 popd

@@ -8,6 +8,30 @@ tasks:
           TEST_NAME: atlas_connect
     tags: [atlas_connect]
 
+  # Atlas data lake tests
+  - name: test-atlas-data-lake-with_ext
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: data_lake
+          NO_EXT: "1"
+    tags: [atlas_data_lake]
+  - name: test-atlas-data-lake-without_ext
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: data_lake
+    tags: [atlas_data_lake]
+
+  # Aws lambda tests
+  - name: test-aws-lambda-deployed
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: aws_lambda
+    tags: [aws_lambda]
+
   # Aws tests
   - name: test-auth-aws-4.4-regular
     commands:
@@ -689,6 +713,15 @@ tasks:
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, auth-aws-web-identity]
 
+  # Doctest tests
+  - name: test-doctests
+    commands:
+      - func: run server
+      - func: run just script
+        vars:
+          JUSTFILE_TARGET: docs-test
+    tags: [doctests]
+
   # Enterprise auth tests
   - name: test-enterprise-auth
     commands:
@@ -702,6 +735,16 @@ tasks:
           TEST_NAME: enterprise_auth
           AUTH: auth
     tags: [enterprise_auth]
+
+  # Free threading tests
+  - name: test-free-threading
+    commands:
+      - func: run server
+        vars:
+          VERSION: "8.0"
+          TOPOLOGY: replica_set
+      - func: run tests
+    tags: [free-threading]
 
   # Kms tests
   - name: test-gcpkms
@@ -775,6 +818,14 @@ tasks:
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
 
+  # Mockupdb tests
+  - name: test-mockupdb
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: mockupdb
+    tags: [mockupdb]
+
   # Mod wsgi tests
   - name: mod-wsgi-standalone
     commands:
@@ -816,6 +867,12 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded
     tags: [mod_wsgi]
+
+  # No server tests
+  - name: test-no-server
+    commands:
+      - func: run tests
+    tags: [no-server]
 
   # Ocsp tests
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple
@@ -1204,6 +1261,18 @@ tasks:
       - func: attach benchmark test results
       - func: send dashboard data
     tags: [perf]
+
+  # Search index tests
+  - name: test-search-index-helpers
+    commands:
+      - func: assume ec2 role
+      - func: run server
+        vars:
+          TEST_NAME: search_index
+      - func: run tests
+        vars:
+          TEST_NAME: search_index
+    tags: [search_index]
 
   # Server tests
   - name: test-4.0-standalone-auth-ssl-sync
