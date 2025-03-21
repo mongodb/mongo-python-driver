@@ -1255,7 +1255,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         # Host first...
         if self._topology is None:
-            options = self._resolve_srv_info["seeds"]
+            options = [f"host='mongodb+srv://{self._resolve_srv_info['fqdn']}'"]
         else:
             options = [
                 "host=%r"

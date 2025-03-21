@@ -933,6 +933,15 @@ class TestClient(AsyncIntegrationTest):
         async with eval(the_repr) as client_two:
             self.assertEqual(client_two, client)
 
+    async def test_repr_srv_host(self):
+        client = AsyncMongoClient("mongodb+srv://test1.test.build.10gen.cc/")
+        # before srv resolution
+        self.assertIn("host='mongodb+srv://test1.test.build.10gen.cc'", repr(client))
+        await client.aconnect()
+        # after srv resolution
+        self.assertIn("host=['localhost.test.build.10gen.cc:", repr(client))
+        await client.close()
+
     async def test_getters(self):
         await async_wait_until(
             lambda: async_client_context.nodes == self.client.nodes, "find all nodes"

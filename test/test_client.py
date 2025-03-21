@@ -908,6 +908,15 @@ class TestClient(IntegrationTest):
         with eval(the_repr) as client_two:
             self.assertEqual(client_two, client)
 
+    def test_repr_srv_host(self):
+        client = MongoClient("mongodb+srv://test1.test.build.10gen.cc/")
+        # before srv resolution
+        self.assertIn("host='mongodb+srv://test1.test.build.10gen.cc'", repr(client))
+        client._connect()
+        # after srv resolution
+        self.assertIn("host=['localhost.test.build.10gen.cc:", repr(client))
+        client.close()
+
     def test_getters(self):
         wait_until(lambda: client_context.nodes == self.client.nodes, "find all nodes")
 
