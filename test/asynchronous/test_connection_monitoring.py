@@ -273,7 +273,7 @@ class AsyncTestCMAP(AsyncIntegrationTest):
             for t in self.targets.values():
                 await t.join(5)
             for conn in self.labels.values():
-                conn.close_conn(None)
+                await conn.close_conn(None)
 
         self.addAsyncCleanup(cleanup)
 
