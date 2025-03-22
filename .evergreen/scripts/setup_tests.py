@@ -115,8 +115,16 @@ def setup_libmongocrypt():
         run_command("chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll")
 
 
+def load_config_from_file(path: str | Path):
+    config = read_env(path)
+    for key, value in config.items():
+        write_env(key, value)
+
+
 def get_secrets(name: str) -> None:
-    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/secrets_handling/setup-secrets.sh {name}")
+    secrets_dir = Path("{DRIVERS_TOOLS}/.evergreen/secrets_handling")
+    run_command(f"bash ${secrets_dir}/setup-secrets.sh {name}", cwd=secrets_dir)
+    load_config_from_file(secrets_dir / "secrets-export.sh")
 
 
 def handle_test_env() -> None:
@@ -158,7 +166,8 @@ def handle_test_env() -> None:
 
     # Handle pass through env vars.
     for var in PASS_THROUGH_ENV:
-        if is_set(var):
+        opt_name = var.lower().replace("_", "-")
+        if is_set(var) or getattr(opts, opt_name):
             write_env(var, os.environ[var])
 
     if extra := EXTRAS_MAP.get(test_name, ""):
@@ -233,12 +242,11 @@ def handle_test_env() -> None:
     if is_set("MONGODB_URI"):
         write_env("PYMONGO_MUST_CONNECT", "true")
 
-    if is_set("DISABLE_TEST_COMMANDS"):
+    if is_set("DISABLE_TEST_COMMANDS") or opts.disable_test_commands:
         write_env("PYMONGO_DISABLE_TEST_COMMANDS", "1")
 
     if test_name == "enterprise_auth":
         get_secrets("drivers/enterprise_auth")
-        config = read_env(f"{ROOT}/secrets-export.sh")
         if PLATFORM == "windows":
             LOGGER.info("Setting GSSAPI_PASS")
             write_env("GSSAPI_PASS", config["SASL_PASS"])
@@ -316,7 +324,7 @@ def handle_test_env() -> None:
         write_env("CLIENT_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/client.pem")
         write_env("CA_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/ca.pem")
 
-    compressors = os.environ.get("COMPRESSORS")
+    compressors = os.environ.get("COMPRESSORS") or opts.compressor
     if compressors == "snappy":
         UV_ARGS.append("--extra snappy")
     elif compressors == "zstd":
@@ -349,13 +357,15 @@ def handle_test_env() -> None:
     if test_name == "encryption":
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")
-        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/setup-secrets.sh")
-        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/start-servers.sh")
+        csfle_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/csfle")
+        run_command(f"bash {csfle_dir}/setup-secrets.sh", cwd=csfle_dir)
+        load_config_from_file(csfle_dir / "secrets-export.sh")
+        run_command(f"bash {csfle_dir}/start-servers.sh")
 
         if sub_test_name == "pyopenssl":
             UV_ARGS.append("--extra ocsp")
 
-    if is_set("TEST_CRYPT_SHARED"):
+    if is_set("TEST_CRYPT_SHARED") or opts.crypt_shared:
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
         CRYPT_SHARED_DIR = Path(config["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
@@ -414,15 +424,15 @@ def handle_test_env() -> None:
 
     # Add coverage if requested.
     # Only cover CPython. PyPy reports suspiciously low coverage.
-    if is_set("COVERAGE") and platform.python_implementation() == "CPython":
+    if (is_set("COVERAGE") or opts.cov) and platform.python_implementation() == "CPython":
         # Keep in sync with combine-coverage.sh.
         # coverage >=5 is needed for relative_files=true.
         UV_ARGS.append("--group coverage")
         TEST_ARGS = f"{TEST_ARGS} --cov"
         write_env("COVERAGE")
 
-    if is_set("GREEN_FRAMEWORK"):
-        framework = os.environ["GREEN_FRAMEWORK"]
+    if is_set("GREEN_FRAMEWORK") or opts.green_framework:
+        framework = opts.green_framework or os.environ["GREEN_FRAMEWORK"]
         UV_ARGS.append(f"--group {framework}")
 
     else:
