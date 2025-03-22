@@ -115,16 +115,17 @@ def setup_libmongocrypt():
         run_command("chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll")
 
 
-def load_config_from_file(path: str | Path):
+def load_config_from_file(path: str | Path) -> dict[str, str]:
     config = read_env(path)
     for key, value in config.items():
         write_env(key, value)
+    return config
 
 
-def get_secrets(name: str) -> None:
+def get_secrets(name: str) -> dict[str, str]:
     secrets_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/secrets_handling")
     run_command(f"bash {secrets_dir}/setup-secrets.sh {name}", cwd=secrets_dir)
-    load_config_from_file(secrets_dir / "secrets-export.sh")
+    return load_config_from_file(secrets_dir / "secrets-export.sh")
 
 
 def handle_test_env() -> None:
@@ -245,7 +246,7 @@ def handle_test_env() -> None:
         write_env("PYMONGO_DISABLE_TEST_COMMANDS", "1")
 
     if test_name == "enterprise_auth":
-        get_secrets("drivers/enterprise_auth")
+        config = get_secrets("drivers/enterprise_auth")
         if PLATFORM == "windows":
             LOGGER.info("Setting GSSAPI_PASS")
             write_env("GSSAPI_PASS", config["SASL_PASS"])

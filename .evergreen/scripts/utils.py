@@ -144,7 +144,7 @@ def get_test_options(
     return opts, extra_opts
 
 
-def read_env(path: Path | str) -> dict[str, Any]:
+def read_env(path: Path | str) -> dict[str, str]:
     config = dict()
     with Path(path).open() as fid:
         for line in fid.readlines():
