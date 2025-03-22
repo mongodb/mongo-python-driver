@@ -672,7 +672,7 @@ def create_search_index_variants():
     python = CPYTHONS[0]
     return [
         create_variant(
-            ["test_atlas_task_group_search_indexes"],
+            [".search_index"],
             get_display_name("Search Index Helpers", host, python=python),
             python=python,
             host=host,
@@ -685,7 +685,7 @@ def create_mockupdb_variants():
     python = CPYTHONS[0]
     return [
         create_variant(
-            ["mockupdb"],
+            [".mockupdb"],
             get_display_name("MockupDB", host, python=python),
             python=python,
             host=host,
@@ -698,7 +698,7 @@ def create_doctests_variants():
     python = CPYTHONS[0]
     return [
         create_variant(
-            ["doctests"],
+            [".doctests"],
             get_display_name("Doctests", host, python=python),
             python=python,
             host=host,
@@ -748,6 +748,11 @@ def create_aws_auth_variants():
     return variants
 
 
+def create_no_server_variants():
+    host = HOSTS["rhel8"]
+    return [create_variant([".no-server"], "No server", host=host)]
+
+
 def create_alternative_hosts_variants():
     batchtime = BATCHTIME_WEEK
     variants = []
@@ -777,6 +782,11 @@ def create_alternative_hosts_variants():
             )
         )
     return variants
+
+
+def create_aws_lambda_variants():
+    host = HOSTS["rhel8"]
+    return [create_variant([".aws_lambda"], display_name="FaaS Lambda", host=host)]
 
 
 ##############
@@ -927,6 +937,27 @@ def _create_ocsp_task(algo, variant, server_type, base_task_name):
     return EvgTask(name=task_name, tags=tags, commands=commands)
 
 
+def create_aws_lambda_tasks():
+    assume_func = FunctionCall(func="assume ec2 role")
+    vars = dict(TEST_NAME="aws_lambda")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    task_name = "test-aws-lambda-deployed"
+    tags = ["aws_lambda"]
+    commands = [assume_func, test_func]
+    return [EvgTask(name=task_name, tags=tags, commands=commands)]
+
+
+def create_search_index_tasks():
+    assume_func = FunctionCall(func="assume ec2 role")
+    server_func = FunctionCall(func="run server", vars=dict(TEST_NAME="search_index"))
+    vars = dict(TEST_NAME="search_index")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    task_name = "test-search-index-helpers"
+    tags = ["search_index"]
+    commands = [assume_func, server_func, test_func]
+    return [EvgTask(name=task_name, tags=tags, commands=commands)]
+
+
 def create_atlas_connect_tasks():
     vars = dict(TEST_NAME="atlas_connect")
     assume_func = FunctionCall(func="assume ec2 role")
@@ -1012,6 +1043,37 @@ def create_ocsp_tasks():
             tasks.append(task)
 
     return tasks
+
+
+def create_mockupdb_tasks():
+    test_func = FunctionCall(func="run tests", vars=dict(TEST_NAME="mockupdb"))
+    task_name = "test-mockupdb"
+    tags = ["mockupdb"]
+    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
+
+
+def create_doctest_tasks():
+    server_func = FunctionCall(func="run server")
+    test_func = FunctionCall(func="run just script", vars=dict(JUSTFILE_TARGET="docs-test"))
+    task_name = "test-doctests"
+    tags = ["doctests"]
+    return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
+
+
+def create_no_server_tasks():
+    test_func = FunctionCall(func="run tests")
+    task_name = "test-no-server"
+    tags = ["no-server"]
+    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
+
+
+def create_free_threading_tasks():
+    vars = dict(VERSION="8.0", TOPOLOGY="replica_set")
+    server_func = FunctionCall(func="run server", vars=vars)
+    test_func = FunctionCall(func="run tests")
+    task_name = "test-free-threading"
+    tags = ["free-threading"]
+    return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
 
 
 def create_serverless_tasks():
