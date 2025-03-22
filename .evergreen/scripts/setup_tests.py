@@ -122,7 +122,7 @@ def load_config_from_file(path: str | Path):
 
 
 def get_secrets(name: str) -> None:
-    secrets_dir = Path("{DRIVERS_TOOLS}/.evergreen/secrets_handling")
+    secrets_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/secrets_handling")
     run_command(f"bash ${secrets_dir}/setup-secrets.sh {name}", cwd=secrets_dir)
     load_config_from_file(secrets_dir / "secrets-export.sh")
 
