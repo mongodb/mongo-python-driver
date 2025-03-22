@@ -723,7 +723,7 @@ tasks:
     tags: [doctests]
 
   # Enterprise auth tests
-  - name: test-enterprise-auth-{python}
+  - name: test-enterprise-auth-3.9
     commands:
       - func: run server
         vars:
@@ -737,7 +737,7 @@ tasks:
           AUTH: auth
           PYTHON_VERSION: "3.9"
     tags: [enterprise_auth]
-  - name: test-enterprise-auth-{python}
+  - name: test-enterprise-auth-3.13
     commands:
       - func: run server
         vars:
@@ -751,7 +751,7 @@ tasks:
           AUTH: auth
           PYTHON_VERSION: "3.13"
     tags: [enterprise_auth]
-  - name: test-enterprise-auth-{python}
+  - name: test-enterprise-auth-pypy3.10
     commands:
       - func: run server
         vars:

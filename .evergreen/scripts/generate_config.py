@@ -962,7 +962,7 @@ def create_enterprise_auth_tasks():
         server_func = FunctionCall(func="run server", vars=vars)
         assume_func = FunctionCall(func="assume ec2 role")
         test_func = FunctionCall(func="run tests", vars=vars)
-        task_name = "test-enterprise-auth-{python}"
+        task_name = f"test-enterprise-auth-{python}"
         tags = ["enterprise_auth"]
         if python in PYPYS:
             tags += ["pypy"]
