@@ -812,7 +812,7 @@ def create_server_tasks():
 def create_load_balancer_tasks():
     tasks = []
     for (auth, ssl), version in product(AUTH_SSLS, get_versions_from("6.0")):
-        name = f"test-load-balancer-{auth}-{ssl}-{version}".lower()
+        name = get_task_name(f"test-load-balancer-{auth}-{ssl}", version=version)
         tags = ["load-balancer", auth, ssl]
         server_vars = dict(
             TOPOLOGY="sharded_cluster",

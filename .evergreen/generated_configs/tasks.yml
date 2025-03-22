@@ -805,7 +805,7 @@ tasks:
           SUB_TEST_NAME: azure-fail
 
   # Load balancer tests
-  - name: test-load-balancer-auth-ssl-6.0
+  - name: test-load-balancer-auth-ssl-v6.0
     commands:
       - func: run server
         vars:
@@ -820,7 +820,7 @@ tasks:
           SSL: ssl
           TEST_NAME: load_balancer
     tags: [load-balancer, auth, ssl]
-  - name: test-load-balancer-auth-ssl-7.0
+  - name: test-load-balancer-auth-ssl-v7.0
     commands:
       - func: run server
         vars:
@@ -835,7 +835,7 @@ tasks:
           SSL: ssl
           TEST_NAME: load_balancer
     tags: [load-balancer, auth, ssl]
-  - name: test-load-balancer-auth-ssl-8.0
+  - name: test-load-balancer-auth-ssl-v8.0
     commands:
       - func: run server
         vars:
@@ -880,7 +880,7 @@ tasks:
           SSL: ssl
           TEST_NAME: load_balancer
     tags: [load-balancer, auth, ssl]
-  - name: test-load-balancer-noauth-ssl-6.0
+  - name: test-load-balancer-noauth-ssl-v6.0
     commands:
       - func: run server
         vars:
@@ -895,7 +895,7 @@ tasks:
           SSL: ssl
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, ssl]
-  - name: test-load-balancer-noauth-ssl-7.0
+  - name: test-load-balancer-noauth-ssl-v7.0
     commands:
       - func: run server
         vars:
@@ -910,7 +910,7 @@ tasks:
           SSL: ssl
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, ssl]
-  - name: test-load-balancer-noauth-ssl-8.0
+  - name: test-load-balancer-noauth-ssl-v8.0
     commands:
       - func: run server
         vars:
@@ -955,7 +955,7 @@ tasks:
           SSL: ssl
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, ssl]
-  - name: test-load-balancer-noauth-nossl-6.0
+  - name: test-load-balancer-noauth-nossl-v6.0
     commands:
       - func: run server
         vars:
@@ -970,7 +970,7 @@ tasks:
           SSL: nossl
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
-  - name: test-load-balancer-noauth-nossl-7.0
+  - name: test-load-balancer-noauth-nossl-v7.0
     commands:
       - func: run server
         vars:
@@ -985,7 +985,7 @@ tasks:
           SSL: nossl
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
-  - name: test-load-balancer-noauth-nossl-8.0
+  - name: test-load-balancer-noauth-nossl-v8.0
     commands:
       - func: run server
         vars:
