@@ -113,3 +113,19 @@ is_python_39() {
         return 1
     fi
 }
+
+
+# Function that gets a python binary given a python version string.
+# Versions can be of the form 3.xx or pypy3.xx.
+get_python_binary() {
+    version=$1
+    if [ "$(uname -s)" = "Darwin" ]; then
+        PYTHON="/Library/Frameworks/Python.Framework/Versions/$version/bin/python3"
+    elif [ "Windows_NT" = "${OS:-}" ]; then
+        version=$(echo $version | cut -d. -f1,2 | sed 's/\.//g')
+        PYTHON="C:/python/Python$version/python3.exe"
+    else
+        PYTHON="/opt/python/$version/bin/python"
+    fi
+    echo "$PYTHON"
+}

@@ -405,23 +405,11 @@ def create_encryption_variants() -> list[BuildVariant]:
 
 def create_load_balancer_variants():
     # Load balancer tests - run all supported server versions using the lowest supported python.
-    host = DEFAULT_HOST
-    batchtime = BATCHTIME_WEEK
-    versions = get_versions_from("6.0")
-    variants = []
-    for version in versions:
-        python = CPYTHONS[0]
-        display_name = get_display_name("Load Balancer", host, python=python, version=version)
-        variant = create_variant(
-            [".load-balancer"],
-            display_name,
-            python=python,
-            host=host,
-            version=version,
-            batchtime=batchtime,
+    return [
+        create_variant(
+            [".load-balancer"], "Load Balancer", host=DEFAULT_HOST, batchtime=BATCHTIME_WEEK
         )
-        variants.append(variant)
-    return variants
+    ]
 
 
 def create_compression_variants():
@@ -466,17 +454,13 @@ def create_compression_variants():
 
 def create_enterprise_auth_variants():
     variants = []
-
-    # All python versions across platforms.
-    for python in ALL_PYTHONS:
-        if python == CPYTHONS[0]:
-            host = HOSTS["macos"]
-        elif python == CPYTHONS[-1]:
-            host = HOSTS["win64"]
+    for host in [HOSTS["macos"], HOSTS["win64"], DEFAULT_HOST]:
+        display_name = get_display_name("Auth Enterprise", host)
+        if host == DEFAULT_HOST:
+            tags = [".enterprise_auth"]
         else:
-            host = DEFAULT_HOST
-        display_name = get_display_name("Auth Enterprise", host, python=python)
-        variant = create_variant([".enterprise_auth"], display_name, host=host, python=python)
+            tags = [".enterprise_auth !.pypy"]
+        variant = create_variant(tags, display_name, host=host)
         variants.append(variant)
 
     return variants
@@ -818,11 +802,15 @@ def create_server_tasks():
 
 def create_load_balancer_tasks():
     tasks = []
-    for auth, ssl in AUTH_SSLS:
-        name = f"test-load-balancer-{auth}-{ssl}".lower()
+    for (auth, ssl), version in product(AUTH_SSLS, get_versions_from("6.0")):
+        name = f"test-load-balancer-{auth}-{ssl}-{version}".lower()
         tags = ["load-balancer", auth, ssl]
         server_vars = dict(
-            TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, TEST_NAME="load_balancer"
+            TOPOLOGY="sharded_cluster",
+            AUTH=auth,
+            SSL=ssl,
+            TEST_NAME="load_balancer",
+            VERSION=version,
         )
         server_func = FunctionCall(func="run server", vars=server_vars)
         test_vars = dict(AUTH=auth, SSL=ssl, TEST_NAME="load_balancer")
@@ -968,13 +956,20 @@ def create_atlas_connect_tasks():
 
 
 def create_enterprise_auth_tasks():
-    vars = dict(TEST_NAME="enterprise_auth", AUTH="auth")
-    server_func = FunctionCall(func="run server", vars=vars)
-    assume_func = FunctionCall(func="assume ec2 role")
-    test_func = FunctionCall(func="run tests", vars=vars)
-    task_name = "test-enterprise-auth"
-    tags = ["enterprise_auth"]
-    return [EvgTask(name=task_name, tags=tags, commands=[server_func, assume_func, test_func])]
+    tasks = []
+    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
+        vars = dict(TEST_NAME="enterprise_auth", AUTH="auth", PYTHON_VERSION=python)
+        server_func = FunctionCall(func="run server", vars=vars)
+        assume_func = FunctionCall(func="assume ec2 role")
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = "test-enterprise-auth-{python}"
+        tags = ["enterprise_auth"]
+        if python in PYPYS:
+            tags += ["pypy"]
+        tasks.append(
+            EvgTask(name=task_name, tags=tags, commands=[server_func, assume_func, test_func])
+        )
+    return tasks
 
 
 def create_perf_tasks():
