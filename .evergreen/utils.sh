@@ -123,7 +123,7 @@ get_python_binary() {
         PYTHON="/Library/Frameworks/Python.Framework/Versions/$version/bin/python3"
     elif [ "Windows_NT" = "${OS:-}" ]; then
         version=$(echo $version | cut -d. -f1,2 | sed 's/\.//g')
-        PYTHON="C:/python/Python$version/python3.exe"
+        PYTHON="C:/python/Python$version/python.exe"
     else
         PYTHON="/opt/python/$version/bin/python3"
     fi
