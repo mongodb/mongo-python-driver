@@ -31,7 +31,7 @@ if [ ! -d $BIN_DIR ]; then
   . $ROOT/.evergreen/utils.sh
 
   if [ -z "${PYTHON_BINARY:-}" ]; then
-      if [ -n "${PYTHON_VERSION}" ]; then
+      if [ -n "${PYTHON_VERSION:-}" ]; then
         PYTHON_BINARY=$(get_python_binary $PYTHON_VERSION)
       else
         PYTHON_BINARY=$(find_python3)
