@@ -125,7 +125,7 @@ get_python_binary() {
         version=$(echo $version | cut -d. -f1,2 | sed 's/\.//g')
         PYTHON="C:/python/Python$version/python3.exe"
     else
-        PYTHON="/opt/python/$version/bin/python"
+        PYTHON="/opt/python/$version/bin/python3"
     fi
     echo "$PYTHON"
 }
