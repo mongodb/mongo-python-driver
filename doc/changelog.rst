@@ -9,6 +9,12 @@ PyMongo 4.12 brings a number of changes including:
 - Support for configuring DEK cache lifetime via the ``key_expiration_ms`` argument to
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
 - Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
+- Deprecated the ``hedge`` parameter for
+  :class:`~pymongo.read_preferences.PrimaryPreferred`,
+  :class:`~pymongo.read_preferences.Secondary`,
+  :class:`~pymongo.read_preferences.SecondaryPreferred`,
+  :class:`~pymongo.read_preferences.Nearest`. Support for ``hedge`` will be removed in PyMongo 5.0.
+
 
 Issues Resolved
 ...............

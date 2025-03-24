@@ -105,7 +105,7 @@ def _validate_hedge(hedge: Optional[_Hedge]) -> Optional[_Hedge]:
         raise TypeError(f"hedge must be a dictionary, not {hedge!r}")
 
     warnings.warn(
-        "Hedged reads are deprecated starting in server version 8.0.",
+        "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -150,7 +150,7 @@ class _ServerMode:
             doc["maxStalenessSeconds"] = self.__max_staleness
         if self.__hedge not in (None, {}):
             warnings.warn(
-                "Hedged reads are deprecated starting in server version 8.0.",
+                "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -216,7 +216,7 @@ class _ServerMode:
         """
         if self.__hedge is not None:
             warnings.warn(
-                "Hedged reads are deprecated starting in server version 8.0.",
+                "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )

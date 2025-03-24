@@ -119,7 +119,6 @@ filterwarnings = [
     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314
     "module:datetime.datetime.utc:DeprecationWarning",
-    "module:Hedged reads are deprecated:DeprecationWarning",
 ]
 markers = [
     "auth_aws: tests that rely on pymongo-auth-aws",
