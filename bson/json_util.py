@@ -507,29 +507,6 @@ def loads(s: Union[str, bytes, bytearray], *args: Any, **kwargs: Any) -> Any:
     return json.loads(s, *args, **kwargs)
 
 
-def load(fp: Any, *args: Any, **kwargs: Any) -> Any:
-    """Helper function that wraps :func:`json.load`.
-
-    Automatically passes the object_hook for BSON type conversion.
-
-    Raises ``TypeError``, ``ValueError``, ``KeyError``, or
-    :exc:`~bson.errors.InvalidId` on invalid MongoDB Extended JSON.
-
-    :param json_options: A :class:`JSONOptions` instance used to modify the
-        decoding of MongoDB Extended JSON types. Defaults to
-        :const:`DEFAULT_JSON_OPTIONS`.
-
-    .. versionadded:: 4.12
-    """
-    json_options = kwargs.pop("json_options", DEFAULT_JSON_OPTIONS)
-    # Execution time optimization if json_options.document_class is dict
-    if json_options.document_class is dict:
-        kwargs["object_hook"] = lambda obj: object_hook(obj, json_options)
-    else:
-        kwargs["object_pairs_hook"] = lambda pairs: object_pairs_hook(pairs, json_options)
-    return json.load(fp, *args, **kwargs)
-
-
 def _json_convert(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
     """Recursive helper method that converts BSON types so they can be
     converted into json.
