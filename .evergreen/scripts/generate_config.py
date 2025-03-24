@@ -70,9 +70,9 @@ HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20", dict())
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22", dict())
 HOSTS["rhel7"] = Host("rhel7", "rhel79-small", "RHEL7", dict())
 HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
-HOSTS["amazon2"] = Host("amazon2", "amazon2-arm64-latest-large-m8g", "Amazon2", dict())
+HOSTS["amazon2023"] = Host("amazon2023", "amazon2023-arm64-latest-large-m8g", "Amazon2023", dict())
 DEFAULT_HOST = HOSTS["rhel8"]
-DEFAULT_HOST = HOSTS["amazon2"]
+DEFAULT_HOST = HOSTS["amazon2023"]
 
 # Other hosts
 OTHER_HOSTS = ["RHEL9-FIPS", "RHEL8-zseries", "RHEL8-POWER8", "RHEL8-arm64"]
@@ -143,7 +143,7 @@ def create_variant(
 def get_python_binary(python: str, host: Host) -> str:
     """Get the appropriate python binary given a python version and host."""
     name = host.name
-    if name == "amazon2":
+    if name == "amazon2023":
         return "/opt/mongodbtoolchain/v4/bin/python3"
     if name in ["win64", "win32"]:
         if name == "win32":
