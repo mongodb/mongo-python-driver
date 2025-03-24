@@ -70,14 +70,19 @@ HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20", dict())
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22", dict())
 HOSTS["rhel7"] = Host("rhel7", "rhel79-small", "RHEL7", dict())
 HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
-HOSTS["amazon2023"] = Host("amazon2023", "amazon2023-arm64-latest-large-m8g", "Amazon2023", dict())
 DEFAULT_HOST = HOSTS["rhel8"]
-DEFAULT_HOST = HOSTS["amazon2023"]
 
 # Other hosts
-OTHER_HOSTS = ["RHEL9-FIPS", "RHEL8-zseries", "RHEL8-POWER8", "RHEL8-arm64"]
+OTHER_HOSTS = ["RHEL9-FIPS", "RHEL8-zseries", "RHEL8-POWER8", "RHEL8-arm64", "Amazon2023"]
 for name, run_on in zip(
-    OTHER_HOSTS, ["rhel92-fips", "rhel8-zseries-small", "rhel8-power-small", "rhel82-arm64-small"]
+    OTHER_HOSTS,
+    [
+        "rhel92-fips",
+        "rhel8-zseries-small",
+        "rhel8-power-small",
+        "rhel82-arm64-small",
+        "amazon2023-arm64-latest-large-m8g",
+    ],
 ):
     HOSTS[name] = Host(name, run_on, name, dict())
 
@@ -143,8 +148,6 @@ def create_variant(
 def get_python_binary(python: str, host: Host) -> str:
     """Get the appropriate python binary given a python version and host."""
     name = host.name
-    if name == "amazon2023":
-        return "/opt/mongodbtoolchain/v4/bin/python3"
     if name in ["win64", "win32"]:
         if name == "win32":
             base = "C:/python/32"
@@ -776,9 +779,12 @@ def create_alternative_hosts_variants():
     handle_c_ext(C_EXTS[0], expansions)
     for host_name in OTHER_HOSTS:
         host = HOSTS[host_name]
+        tags = [".6.0 .standalone !.sync_async"]
+        if host_name == "amazon2023":
+            tags = [".latest !.sync_async"]
         variants.append(
             create_variant(
-                [".6.0 .standalone !.sync_async"],
+                tags,
                 display_name=get_display_name("Other hosts", host),
                 batchtime=batchtime,
                 host=host,

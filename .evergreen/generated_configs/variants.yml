@@ -45,24 +45,33 @@ buildvariants:
     batchtime: 10080
     expansions:
       NO_EXT: "1"
+  - name: other-hosts-amazon2023
+    tasks:
+      - name: .6.0 .standalone !.sync_async
+    display_name: Other hosts Amazon2023
+    run_on:
+      - amazon2023-arm64-latest-large-m8g
+    batchtime: 10080
+    expansions:
+      NO_EXT: "1"
 
   # Atlas connect tests
-  - name: atlas-connect-amazon2023-python3.9
+  - name: atlas-connect-rhel8-python3.9
     tasks:
       - name: .atlas_connect
-    display_name: Atlas connect Amazon2023 Python3.9
+    display_name: Atlas connect RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: atlas-connect-amazon2023-python3.13
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: atlas-connect-rhel8-python3.13
     tasks:
       - name: .atlas_connect
-    display_name: Atlas connect Amazon2023 Python3.13
+    display_name: Atlas connect RHEL8 Python3.13
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Atlas data lake tests
   - name: atlas-data-lake-ubuntu-22-python3.9
@@ -141,267 +150,267 @@ buildvariants:
       - rhel87-small
 
   # Compression tests
-  - name: compression-snappy-amazon2023-python3.9-no-c
+  - name: compression-snappy-rhel8-python3.9-no-c
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Compression snappy Amazon2023 Python3.9 No C
+    display_name: Compression snappy RHEL8 Python3.9 No C
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COMPRESSORS: snappy
       NO_EXT: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: compression-snappy-amazon2023-python3.10
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: compression-snappy-rhel8-python3.10
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Compression snappy Amazon2023 Python3.10
+    display_name: Compression snappy RHEL8 Python3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COMPRESSORS: snappy
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: compression-zlib-amazon2023-python3.11-no-c
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: compression-zlib-rhel8-python3.11-no-c
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Compression zlib Amazon2023 Python3.11 No C
+    display_name: Compression zlib RHEL8 Python3.11 No C
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COMPRESSORS: zlib
       NO_EXT: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: compression-zlib-amazon2023-python3.12
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: compression-zlib-rhel8-python3.12
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Compression zlib Amazon2023 Python3.12
+    display_name: Compression zlib RHEL8 Python3.12
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COMPRESSORS: zlib
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: compression-zstd-amazon2023-python3.13-no-c
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: compression-zstd-rhel8-python3.13-no-c
     tasks:
       - name: .standalone .noauth .nossl .sync_async !.4.0
-    display_name: Compression zstd Amazon2023 Python3.13 No C
+    display_name: Compression zstd RHEL8 Python3.13 No C
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COMPRESSORS: zstd
       NO_EXT: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: compression-zstd-amazon2023-python3.9
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+  - name: compression-zstd-rhel8-python3.9
     tasks:
       - name: .standalone .noauth .nossl .sync_async !.4.0
-    display_name: Compression zstd Amazon2023 Python3.9
+    display_name: Compression zstd RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COMPRESSORS: zstd
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: compression-snappy-amazon2023-pypy3.10
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: compression-snappy-rhel8-pypy3.10
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Compression snappy Amazon2023 PyPy3.10
+    display_name: Compression snappy RHEL8 PyPy3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COMPRESSORS: snappy
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: compression-zlib-amazon2023-pypy3.10
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  - name: compression-zlib-rhel8-pypy3.10
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Compression zlib Amazon2023 PyPy3.10
+    display_name: Compression zlib RHEL8 PyPy3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COMPRESSORS: zlib
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: compression-zstd-amazon2023-pypy3.10
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  - name: compression-zstd-rhel8-pypy3.10
     tasks:
       - name: .standalone .noauth .nossl .sync_async !.4.0
-    display_name: Compression zstd Amazon2023 PyPy3.10
+    display_name: Compression zstd RHEL8 PyPy3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COMPRESSORS: zstd
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
   # Disable test commands tests
-  - name: disable-test-commands-amazon2023-python3.9
+  - name: disable-test-commands-rhel8-python3.9
     tasks:
       - name: .latest .sync_async
-    display_name: Disable test commands Amazon2023 Python3.9
+    display_name: Disable test commands RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       AUTH: auth
       SSL: ssl
       DISABLE_TEST_COMMANDS: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Doctests tests
-  - name: doctests-amazon2023-python3.9
+  - name: doctests-rhel8-python3.9
     tasks:
       - name: .doctests
-    display_name: Doctests Amazon2023 Python3.9
+    display_name: Doctests RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Encryption tests
-  - name: encryption-amazon2023-python3.9
+  - name: encryption-rhel8-python3.9
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Encryption Amazon2023 Python3.9
+    display_name: Encryption RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       TEST_NAME: encryption
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [encryption_tag]
-  - name: encryption-amazon2023-python3.13
+  - name: encryption-rhel8-python3.13
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Encryption Amazon2023 Python3.13
+    display_name: Encryption RHEL8 Python3.13
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       TEST_NAME: encryption
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [encryption_tag]
-  - name: encryption-amazon2023-pypy3.10
+  - name: encryption-rhel8-pypy3.10
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Encryption Amazon2023 PyPy3.10
+    display_name: Encryption RHEL8 PyPy3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       TEST_NAME: encryption
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
     tags: [encryption_tag]
-  - name: encryption-crypt_shared-amazon2023-python3.9
+  - name: encryption-crypt_shared-rhel8-python3.9
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Encryption crypt_shared Amazon2023 Python3.9
+    display_name: Encryption crypt_shared RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
-    batchtime: 10080
-    expansions:
-      TEST_NAME: encryption
-      TEST_CRYPT_SHARED: "true"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-    tags: [encryption_tag]
-  - name: encryption-crypt_shared-amazon2023-python3.13
-    tasks:
-      - name: .sharded_cluster .auth .ssl .sync_async
-      - name: .replica_set .noauth .ssl .sync_async
-      - name: .standalone .noauth .nossl .sync_async
-    display_name: Encryption crypt_shared Amazon2023 Python3.13
-    run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       TEST_NAME: encryption
       TEST_CRYPT_SHARED: "true"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [encryption_tag]
-  - name: encryption-crypt_shared-amazon2023-pypy3.10
+  - name: encryption-crypt_shared-rhel8-python3.13
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Encryption crypt_shared Amazon2023 PyPy3.10
+    display_name: Encryption crypt_shared RHEL8 Python3.13
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       TEST_NAME: encryption
       TEST_CRYPT_SHARED: "true"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [encryption_tag]
-  - name: encryption-pyopenssl-amazon2023-python3.9
+  - name: encryption-crypt_shared-rhel8-pypy3.10
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Encryption PyOpenSSL Amazon2023 Python3.9
+    display_name: Encryption crypt_shared RHEL8 PyPy3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
-    expansions:
-      TEST_NAME: encryption
-      SUB_TEST_NAME: pyopenssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-    tags: [encryption_tag]
-  - name: encryption-pyopenssl-amazon2023-python3.13
-    tasks:
-      - name: .sharded_cluster .auth .ssl .sync_async
-      - name: .replica_set .noauth .ssl .sync_async
-      - name: .standalone .noauth .nossl .sync_async
-    display_name: Encryption PyOpenSSL Amazon2023 Python3.13
-    run_on:
-      - amazon2023-arm64-latest-large-m8g
-    batchtime: 10080
-    expansions:
-      TEST_NAME: encryption
-      SUB_TEST_NAME: pyopenssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-    tags: [encryption_tag]
-  - name: encryption-pyopenssl-amazon2023-pypy3.10
-    tasks:
-      - name: .sharded_cluster .auth .ssl .sync_async
-      - name: .replica_set .noauth .ssl .sync_async
-      - name: .standalone .noauth .nossl .sync_async
-    display_name: Encryption PyOpenSSL Amazon2023 PyPy3.10
-    run_on:
-      - amazon2023-arm64-latest-large-m8g
-    batchtime: 10080
-    expansions:
-      TEST_NAME: encryption
-      SUB_TEST_NAME: pyopenssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-    tags: [encryption_tag]
-  - name: encryption-amazon2023-python3.10
-    tasks:
-      - name: .sharded_cluster .auth .ssl .sync_async
-    display_name: Encryption Amazon2023 Python3.10
-    run_on:
-      - amazon2023-arm64-latest-large-m8g
-    expansions:
-      TEST_NAME: encryption
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: encryption-crypt_shared-amazon2023-python3.11
-    tasks:
-      - name: .replica_set .noauth .ssl .sync_async
-    display_name: Encryption crypt_shared Amazon2023 Python3.11
-    run_on:
-      - amazon2023-arm64-latest-large-m8g
     expansions:
       TEST_NAME: encryption
       TEST_CRYPT_SHARED: "true"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: encryption-pyopenssl-amazon2023-python3.12
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-pyopenssl-rhel8-python3.9
     tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Encryption PyOpenSSL Amazon2023 Python3.12
+    display_name: Encryption PyOpenSSL RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
+    batchtime: 10080
     expansions:
       TEST_NAME: encryption
       SUB_TEST_NAME: pyopenssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-pyopenssl-rhel8-python3.13
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption PyOpenSSL RHEL8 Python3.13
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      TEST_NAME: encryption
+      SUB_TEST_NAME: pyopenssl
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-pyopenssl-rhel8-pypy3.10
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+      - name: .replica_set .noauth .ssl .sync_async
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption PyOpenSSL RHEL8 PyPy3.10
+    run_on:
+      - rhel87-small
+    batchtime: 10080
+    expansions:
+      TEST_NAME: encryption
+      SUB_TEST_NAME: pyopenssl
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+    tags: [encryption_tag]
+  - name: encryption-rhel8-python3.10
+    tasks:
+      - name: .sharded_cluster .auth .ssl .sync_async
+    display_name: Encryption RHEL8 Python3.10
+    run_on:
+      - rhel87-small
+    expansions:
+      TEST_NAME: encryption
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: encryption-crypt_shared-rhel8-python3.11
+    tasks:
+      - name: .replica_set .noauth .ssl .sync_async
+    display_name: Encryption crypt_shared RHEL8 Python3.11
+    run_on:
+      - rhel87-small
+    expansions:
+      TEST_NAME: encryption
+      TEST_CRYPT_SHARED: "true"
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: encryption-pyopenssl-rhel8-python3.12
+    tasks:
+      - name: .standalone .noauth .nossl .sync_async
+    display_name: Encryption PyOpenSSL RHEL8 Python3.12
+    run_on:
+      - rhel87-small
+    expansions:
+      TEST_NAME: encryption
+      SUB_TEST_NAME: pyopenssl
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: encryption-macos-python3.9
     tasks:
       - name: .latest .replica_set .sync_async
@@ -504,30 +513,30 @@ buildvariants:
       - macos-14
     expansions:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-  - name: auth-enterprise-amazon2023-python3.10
+  - name: auth-enterprise-rhel8-python3.10
     tasks:
       - name: .enterprise_auth
-    display_name: Auth Enterprise Amazon2023 Python3.10
+    display_name: Auth Enterprise RHEL8 Python3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: auth-enterprise-amazon2023-python3.11
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: auth-enterprise-rhel8-python3.11
     tasks:
       - name: .enterprise_auth
-    display_name: Auth Enterprise Amazon2023 Python3.11
+    display_name: Auth Enterprise RHEL8 Python3.11
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: auth-enterprise-amazon2023-python3.12
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: auth-enterprise-rhel8-python3.12
     tasks:
       - name: .enterprise_auth
-    display_name: Auth Enterprise Amazon2023 Python3.12
+    display_name: Auth Enterprise RHEL8 Python3.12
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: auth-enterprise-win64-python3.13
     tasks:
       - name: .enterprise_auth
@@ -536,14 +545,14 @@ buildvariants:
       - windows-64-vsMulti-small
     expansions:
       PYTHON_BINARY: C:/python/Python313/python.exe
-  - name: auth-enterprise-amazon2023-pypy3.10
+  - name: auth-enterprise-rhel8-pypy3.10
     tasks:
       - name: .enterprise_auth
-    display_name: Auth Enterprise Amazon2023 PyPy3.10
+    display_name: Auth Enterprise RHEL8 PyPy3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
   # Free threaded tests
   - name: free-threaded-rhel8-python3.13t
@@ -572,112 +581,112 @@ buildvariants:
       PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
 
   # Green framework tests
-  - name: green-eventlet-amazon2023-python3.9
+  - name: green-eventlet-rhel8-python3.9
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Eventlet Amazon2023 Python3.9
+    display_name: Green Eventlet RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       GREEN_FRAMEWORK: eventlet
       AUTH: auth
       SSL: ssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: green-gevent-amazon2023-python3.9
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: green-gevent-rhel8-python3.9
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Gevent Amazon2023 Python3.9
+    display_name: Green Gevent RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       GREEN_FRAMEWORK: gevent
       AUTH: auth
       SSL: ssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: green-eventlet-amazon2023-python3.13
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: green-eventlet-rhel8-python3.13
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Eventlet Amazon2023 Python3.13
+    display_name: Green Eventlet RHEL8 Python3.13
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       GREEN_FRAMEWORK: eventlet
       AUTH: auth
       SSL: ssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: green-gevent-amazon2023-python3.13
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+  - name: green-gevent-rhel8-python3.13
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Gevent Amazon2023 Python3.13
+    display_name: Green Gevent RHEL8 Python3.13
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       GREEN_FRAMEWORK: gevent
       AUTH: auth
       SSL: ssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Load balancer tests
-  - name: load-balancer-amazon2023-v6.0-python3.9
+  - name: load-balancer-rhel8-v6.0-python3.9
     tasks:
       - name: .load-balancer
-    display_name: Load Balancer Amazon2023 v6.0 Python3.9
+    display_name: Load Balancer RHEL8 v6.0 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       VERSION: "6.0"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: load-balancer-amazon2023-v7.0-python3.9
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: load-balancer-rhel8-v7.0-python3.9
     tasks:
       - name: .load-balancer
-    display_name: Load Balancer Amazon2023 v7.0 Python3.9
+    display_name: Load Balancer RHEL8 v7.0 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       VERSION: "7.0"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: load-balancer-amazon2023-v8.0-python3.9
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: load-balancer-rhel8-v8.0-python3.9
     tasks:
       - name: .load-balancer
-    display_name: Load Balancer Amazon2023 v8.0 Python3.9
+    display_name: Load Balancer RHEL8 v8.0 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       VERSION: "8.0"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: load-balancer-amazon2023-rapid-python3.9
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: load-balancer-rhel8-rapid-python3.9
     tasks:
       - name: .load-balancer
-    display_name: Load Balancer Amazon2023 rapid Python3.9
+    display_name: Load Balancer RHEL8 rapid Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       VERSION: rapid
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: load-balancer-amazon2023-latest-python3.9
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: load-balancer-rhel8-latest-python3.9
     tasks:
       - name: .load-balancer
-    display_name: Load Balancer Amazon2023 latest Python3.9
+    display_name: Load Balancer RHEL8 latest Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       VERSION: latest
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Mockupdb tests
-  - name: mockupdb-amazon2023-python3.9
+  - name: mockupdb-rhel8-python3.9
     tasks:
       - name: .mockupdb
-    display_name: MockupDB Amazon2023 Python3.9
+    display_name: MockupDB RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Mod wsgi tests
   - name: mod_wsgi-ubuntu-22-python3.9
@@ -700,51 +709,51 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # No c ext tests
-  - name: no-c-ext-amazon2023-python3.9
+  - name: no-c-ext-rhel8-python3.9
     tasks:
       - name: .standalone .noauth .nossl !.sync_async
-    display_name: No C Ext Amazon2023 Python3.9
+    display_name: No C Ext RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       NO_EXT: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: no-c-ext-amazon2023-python3.10
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: no-c-ext-rhel8-python3.10
     tasks:
       - name: .replica_set .noauth .nossl !.sync_async
-    display_name: No C Ext Amazon2023 Python3.10
+    display_name: No C Ext RHEL8 Python3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       NO_EXT: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: no-c-ext-amazon2023-python3.11
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: no-c-ext-rhel8-python3.11
     tasks:
       - name: .sharded_cluster .noauth .nossl !.sync_async
-    display_name: No C Ext Amazon2023 Python3.11
+    display_name: No C Ext RHEL8 Python3.11
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       NO_EXT: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: no-c-ext-amazon2023-python3.12
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: no-c-ext-rhel8-python3.12
     tasks:
       - name: .standalone .noauth .nossl !.sync_async
-    display_name: No C Ext Amazon2023 Python3.12
+    display_name: No C Ext RHEL8 Python3.12
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       NO_EXT: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: no-c-ext-amazon2023-python3.13
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: no-c-ext-rhel8-python3.13
     tasks:
       - name: .replica_set .noauth .nossl !.sync_async
-    display_name: No C Ext Amazon2023 Python3.13
+    display_name: No C Ext RHEL8 Python3.13
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       NO_EXT: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # No server tests
   - name: no-server
@@ -755,97 +764,97 @@ buildvariants:
       - rhel87-small
 
   # Ocsp tests
-  - name: ocsp-amazon2023-v4.4-python3.9
+  - name: ocsp-rhel8-v4.4-python3.9
     tasks:
       - name: .ocsp
-    display_name: OCSP Amazon2023 v4.4 Python3.9
+    display_name: OCSP RHEL8 v4.4 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       AUTH: noauth
       SSL: ssl
       TOPOLOGY: server
       VERSION: "4.4"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: ocsp-amazon2023-v5.0-python3.10
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: ocsp-rhel8-v5.0-python3.10
     tasks:
       - name: .ocsp
-    display_name: OCSP Amazon2023 v5.0 Python3.10
+    display_name: OCSP RHEL8 v5.0 Python3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       AUTH: noauth
       SSL: ssl
       TOPOLOGY: server
       VERSION: "5.0"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: ocsp-amazon2023-v6.0-python3.11
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: ocsp-rhel8-v6.0-python3.11
     tasks:
       - name: .ocsp
-    display_name: OCSP Amazon2023 v6.0 Python3.11
+    display_name: OCSP RHEL8 v6.0 Python3.11
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       AUTH: noauth
       SSL: ssl
       TOPOLOGY: server
       VERSION: "6.0"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: ocsp-amazon2023-v7.0-python3.12
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: ocsp-rhel8-v7.0-python3.12
     tasks:
       - name: .ocsp
-    display_name: OCSP Amazon2023 v7.0 Python3.12
+    display_name: OCSP RHEL8 v7.0 Python3.12
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       AUTH: noauth
       SSL: ssl
       TOPOLOGY: server
       VERSION: "7.0"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: ocsp-amazon2023-v8.0-python3.13
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
+  - name: ocsp-rhel8-v8.0-python3.13
     tasks:
       - name: .ocsp
-    display_name: OCSP Amazon2023 v8.0 Python3.13
+    display_name: OCSP RHEL8 v8.0 Python3.13
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       AUTH: noauth
       SSL: ssl
       TOPOLOGY: server
       VERSION: "8.0"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: ocsp-amazon2023-rapid-pypy3.10
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
+  - name: ocsp-rhel8-rapid-pypy3.10
     tasks:
       - name: .ocsp
-    display_name: OCSP Amazon2023 rapid PyPy3.10
+    display_name: OCSP RHEL8 rapid PyPy3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       AUTH: noauth
       SSL: ssl
       TOPOLOGY: server
       VERSION: rapid
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: ocsp-amazon2023-latest-python3.9
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+  - name: ocsp-rhel8-latest-python3.9
     tasks:
       - name: .ocsp
-    display_name: OCSP Amazon2023 latest Python3.9
+    display_name: OCSP RHEL8 latest Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       AUTH: noauth
       SSL: ssl
       TOPOLOGY: server
       VERSION: latest
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: ocsp-win64-v4.4-python3.9
     tasks:
       - name: .ocsp-rsa !.ocsp-staple
@@ -943,39 +952,39 @@ buildvariants:
     expansions:
       TEST_NAME: pyopenssl
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-  - name: pyopenssl-amazon2023-python3.10
+  - name: pyopenssl-rhel8-python3.10
     tasks:
       - name: .replica_set .auth .ssl .sync_async
       - name: .7.0 .auth .ssl .sync_async
-    display_name: PyOpenSSL Amazon2023 Python3.10
+    display_name: PyOpenSSL RHEL8 Python3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       TEST_NAME: pyopenssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: pyopenssl-amazon2023-python3.11
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: pyopenssl-rhel8-python3.11
     tasks:
       - name: .replica_set .auth .ssl .sync_async
       - name: .7.0 .auth .ssl .sync_async
-    display_name: PyOpenSSL Amazon2023 Python3.11
+    display_name: PyOpenSSL RHEL8 Python3.11
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       TEST_NAME: pyopenssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: pyopenssl-amazon2023-python3.12
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: pyopenssl-rhel8-python3.12
     tasks:
       - name: .replica_set .auth .ssl .sync_async
       - name: .7.0 .auth .ssl .sync_async
-    display_name: PyOpenSSL Amazon2023 Python3.12
+    display_name: PyOpenSSL RHEL8 Python3.12
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       TEST_NAME: pyopenssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: pyopenssl-win64-python3.13
     tasks:
       - name: .replica_set .auth .ssl .sync_async
@@ -987,137 +996,137 @@ buildvariants:
     expansions:
       TEST_NAME: pyopenssl
       PYTHON_BINARY: C:/python/Python313/python.exe
-  - name: pyopenssl-amazon2023-pypy3.10
+  - name: pyopenssl-rhel8-pypy3.10
     tasks:
       - name: .replica_set .auth .ssl .sync_async
       - name: .7.0 .auth .ssl .sync_async
-    display_name: PyOpenSSL Amazon2023 PyPy3.10
+    display_name: PyOpenSSL RHEL8 PyPy3.10
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
       TEST_NAME: pyopenssl
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
   # Search index tests
-  - name: search-index-helpers-amazon2023-python3.9
+  - name: search-index-helpers-rhel8-python3.9
     tasks:
       - name: .search_index
-    display_name: Search Index Helpers Amazon2023 Python3.9
+    display_name: Search Index Helpers RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Server tests
-  - name: test-amazon2023-python3.9-cov-no-c
+  - name: test-rhel8-python3.9-cov-no-c
     tasks:
       - name: .standalone .sync_async
       - name: .replica_set .sync_async
       - name: .sharded_cluster .sync_async
-    display_name: "* Test Amazon2023 Python3.9 cov No C"
+    display_name: "* Test RHEL8 Python3.9 cov No C"
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COVERAGE: coverage
       NO_EXT: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [coverage_tag]
-  - name: test-amazon2023-python3.9-cov
+  - name: test-rhel8-python3.9-cov
     tasks:
       - name: .standalone .sync_async
       - name: .replica_set .sync_async
       - name: .sharded_cluster .sync_async
-    display_name: "* Test Amazon2023 Python3.9 cov"
+    display_name: "* Test RHEL8 Python3.9 cov"
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COVERAGE: coverage
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [coverage_tag]
-  - name: test-amazon2023-python3.13-cov-no-c
+  - name: test-rhel8-python3.13-cov-no-c
     tasks:
       - name: .standalone .sync_async
       - name: .replica_set .sync_async
       - name: .sharded_cluster .sync_async
-    display_name: "* Test Amazon2023 Python3.13 cov No C"
+    display_name: "* Test RHEL8 Python3.13 cov No C"
     run_on:
-      - amazon2023-arm64-latest-large-m8g
-    expansions:
-      COVERAGE: coverage
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-    tags: [coverage_tag]
-  - name: test-amazon2023-python3.13-cov
-    tasks:
-      - name: .standalone .sync_async
-      - name: .replica_set .sync_async
-      - name: .sharded_cluster .sync_async
-    display_name: "* Test Amazon2023 Python3.13 cov"
-    run_on:
-      - amazon2023-arm64-latest-large-m8g
-    expansions:
-      COVERAGE: coverage
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-    tags: [coverage_tag]
-  - name: test-amazon2023-pypy3.10-cov-no-c
-    tasks:
-      - name: .standalone .sync_async
-      - name: .replica_set .sync_async
-      - name: .sharded_cluster .sync_async
-    display_name: "* Test Amazon2023 PyPy3.10 cov No C"
-    run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COVERAGE: coverage
       NO_EXT: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [coverage_tag]
-  - name: test-amazon2023-pypy3.10-cov
+  - name: test-rhel8-python3.13-cov
     tasks:
       - name: .standalone .sync_async
       - name: .replica_set .sync_async
       - name: .sharded_cluster .sync_async
-    display_name: "* Test Amazon2023 PyPy3.10 cov"
+    display_name: "* Test RHEL8 Python3.13 cov"
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COVERAGE: coverage
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [coverage_tag]
-  - name: test-amazon2023-python3.10
+  - name: test-rhel8-pypy3.10-cov-no-c
+    tasks:
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
+    display_name: "* Test RHEL8 PyPy3.10 cov No C"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      NO_EXT: "1"
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+    tags: [coverage_tag]
+  - name: test-rhel8-pypy3.10-cov
+    tasks:
+      - name: .standalone .sync_async
+      - name: .replica_set .sync_async
+      - name: .sharded_cluster .sync_async
+    display_name: "* Test RHEL8 PyPy3.10 cov"
+    run_on:
+      - rhel87-small
+    expansions:
+      COVERAGE: coverage
+      PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+    tags: [coverage_tag]
+  - name: test-rhel8-python3.10
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: "* Test Amazon2023 Python3.10"
+    display_name: "* Test RHEL8 Python3.10"
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COVERAGE: coverage
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: test-amazon2023-python3.11
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
+  - name: test-rhel8-python3.11
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: "* Test Amazon2023 Python3.11"
+    display_name: "* Test RHEL8 Python3.11"
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COVERAGE: coverage
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: test-amazon2023-python3.12
+      PYTHON_BINARY: /opt/python/3.11/bin/python3
+  - name: test-rhel8-python3.12
     tasks:
       - name: .sharded_cluster .auth .ssl .sync_async
       - name: .replica_set .noauth .ssl .sync_async
       - name: .standalone .noauth .nossl .sync_async
-    display_name: "* Test Amazon2023 Python3.12"
+    display_name: "* Test RHEL8 Python3.12"
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       COVERAGE: coverage
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: test-macos-python3.9
     tasks:
       - name: .sharded_cluster .auth .ssl !.sync_async
@@ -1224,27 +1233,27 @@ buildvariants:
       PYTHON_BINARY: C:/python/32/Python313/python.exe
 
   # Serverless tests
-  - name: serverless-amazon2023-python3.9
+  - name: serverless-rhel8-python3.9
     tasks:
       - name: .serverless
-    display_name: Serverless Amazon2023 Python3.9
+    display_name: Serverless RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: serverless-amazon2023-python3.13
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: serverless-rhel8-python3.13
     tasks:
       - name: .serverless
-    display_name: Serverless Amazon2023 Python3.13
+    display_name: Serverless RHEL8 Python3.13
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     batchtime: 10080
     expansions:
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Stable api tests
-  - name: stable-api-require-v1-amazon2023-python3.9-auth
+  - name: stable-api-require-v1-rhel8-python3.9-auth
     tasks:
       - name: .standalone .5.0 .noauth .nossl .sync_async
       - name: .standalone .6.0 .noauth .nossl .sync_async
@@ -1252,16 +1261,16 @@ buildvariants:
       - name: .standalone .8.0 .noauth .nossl .sync_async
       - name: .standalone .rapid .noauth .nossl .sync_async
       - name: .standalone .latest .noauth .nossl .sync_async
-    display_name: Stable API require v1 Amazon2023 Python3.9 Auth
+    display_name: Stable API require v1 RHEL8 Python3.9 Auth
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       AUTH: auth
       REQUIRE_API_VERSION: "1"
       MONGODB_API_VERSION: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [versionedApi_tag]
-  - name: stable-api-accept-v2-amazon2023-python3.9-auth
+  - name: stable-api-accept-v2-rhel8-python3.9-auth
     tasks:
       - name: .standalone .5.0 .noauth .nossl .sync_async
       - name: .standalone .6.0 .noauth .nossl .sync_async
@@ -1269,15 +1278,15 @@ buildvariants:
       - name: .standalone .8.0 .noauth .nossl .sync_async
       - name: .standalone .rapid .noauth .nossl .sync_async
       - name: .standalone .latest .noauth .nossl .sync_async
-    display_name: Stable API accept v2 Amazon2023 Python3.9 Auth
+    display_name: Stable API accept v2 RHEL8 Python3.9 Auth
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       AUTH: auth
       ORCHESTRATION_FILE: versioned-api-testing.json
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [versionedApi_tag]
-  - name: stable-api-require-v1-amazon2023-python3.13-auth
+  - name: stable-api-require-v1-rhel8-python3.13-auth
     tasks:
       - name: .standalone .5.0 .noauth .nossl .sync_async
       - name: .standalone .6.0 .noauth .nossl .sync_async
@@ -1285,16 +1294,16 @@ buildvariants:
       - name: .standalone .8.0 .noauth .nossl .sync_async
       - name: .standalone .rapid .noauth .nossl .sync_async
       - name: .standalone .latest .noauth .nossl .sync_async
-    display_name: Stable API require v1 Amazon2023 Python3.13 Auth
+    display_name: Stable API require v1 RHEL8 Python3.13 Auth
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       AUTH: auth
       REQUIRE_API_VERSION: "1"
       MONGODB_API_VERSION: "1"
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [versionedApi_tag]
-  - name: stable-api-accept-v2-amazon2023-python3.13-auth
+  - name: stable-api-accept-v2-rhel8-python3.13-auth
     tasks:
       - name: .standalone .5.0 .noauth .nossl .sync_async
       - name: .standalone .6.0 .noauth .nossl .sync_async
@@ -1302,17 +1311,17 @@ buildvariants:
       - name: .standalone .8.0 .noauth .nossl .sync_async
       - name: .standalone .rapid .noauth .nossl .sync_async
       - name: .standalone .latest .noauth .nossl .sync_async
-    display_name: Stable API accept v2 Amazon2023 Python3.13 Auth
+    display_name: Stable API accept v2 RHEL8 Python3.13 Auth
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       AUTH: auth
       ORCHESTRATION_FILE: versioned-api-testing.json
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [versionedApi_tag]
 
   # Storage engine tests
-  - name: storage-inmemory-amazon2023-python3.9
+  - name: storage-inmemory-rhel8-python3.9
     tasks:
       - name: .standalone .noauth .nossl .4.0 .sync_async
       - name: .standalone .noauth .nossl .4.2 .sync_async
@@ -1323,19 +1332,19 @@ buildvariants:
       - name: .standalone .noauth .nossl .8.0 .sync_async
       - name: .standalone .noauth .nossl .rapid .sync_async
       - name: .standalone .noauth .nossl .latest .sync_async
-    display_name: Storage InMemory Amazon2023 Python3.9
+    display_name: Storage InMemory RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       STORAGE_ENGINE: inmemory
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
-  - name: storage-mmapv1-amazon2023-python3.9
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
+  - name: storage-mmapv1-rhel8-python3.9
     tasks:
       - name: .standalone .4.0 .noauth .nossl .sync_async
       - name: .replica_set .4.0 .noauth .nossl .sync_async
-    display_name: Storage MMAPv1 Amazon2023 Python3.9
+    display_name: Storage MMAPv1 RHEL8 Python3.9
     run_on:
-      - amazon2023-arm64-latest-large-m8g
+      - rhel87-small
     expansions:
       STORAGE_ENGINE: mmapv1
-      PYTHON_BINARY: /opt/mongodbtoolchain/v4/bin/python3
+      PYTHON_BINARY: /opt/python/3.9/bin/python3
