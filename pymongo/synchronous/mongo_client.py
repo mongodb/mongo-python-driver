@@ -58,7 +58,6 @@ from typing import (
     cast,
 )
 
-import pymongo.uri_parser_shared
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, common, helpers_shared, periodic_executor
@@ -120,6 +119,7 @@ from pymongo.uri_parser_shared import (
     _handle_option_deprecations,
     _handle_security_options,
     _normalize_options,
+    _validate_uri,
     split_hosts,
 )
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
@@ -784,7 +784,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # it must be a URI,
             # https://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
             if "/" in entity:
-                res = pymongo.uri_parser_shared._validate_uri(
+                res = _validate_uri(
                     entity,
                     port,
                     validate=True,
