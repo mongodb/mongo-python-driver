@@ -47,7 +47,9 @@ buildvariants:
       NO_EXT: "1"
   - name: other-hosts-amazon2023
     tasks:
-      - name: .latest !.sync_async
+      - name: .latest !.sync_async .sharded_cluster .auth .ssl
+      - name: .latest !.sync_async .replica_set .noauth .ssl
+      - name: .latest !.sync_async .standalone .noauth .nossl
     display_name: Other hosts Amazon2023
     run_on:
       - amazon2023-arm64-latest-large-m8g

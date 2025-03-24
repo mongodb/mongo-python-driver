@@ -781,7 +781,7 @@ def create_alternative_hosts_variants():
         host = HOSTS[host_name]
         tags = [".6.0 .standalone !.sync_async"]
         if host_name == "Amazon2023":
-            tags = [".latest !.sync_async .{t}" for t in SUB_TASKS]
+            tags = [f".latest !.sync_async {t}" for t in SUB_TASKS]
         variants.append(
             create_variant(
                 tags,
