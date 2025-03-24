@@ -66,7 +66,7 @@ import pymongo
 from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
-from gridfs import AsyncGridFSBucket, GridOut
+from gridfs import AsyncGridFSBucket, GridOut, NoFile
 from pymongo import ASCENDING, AsyncMongoClient, CursorType, _csot
 from pymongo.asynchronous.change_stream import AsyncChangeStream
 from pymongo.asynchronous.client_session import AsyncClientSession, TransactionOptions, _TxnState
@@ -629,6 +629,9 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             if isinstance(error, ConnectionFailure):
                 self.assertNotIsInstance(error, NotPrimaryError)
             elif isinstance(error, (InvalidOperation, ConfigurationError, EncryptionError)):
+                pass
+            # gridfs NoFile errors are considered client errors.
+            elif isinstance(error, NoFile):
                 pass
             else:
                 self.assertNotIsInstance(error, PyMongoError)
