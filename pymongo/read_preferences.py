@@ -149,11 +149,6 @@ class _ServerMode:
         if self.__max_staleness != -1:
             doc["maxStalenessSeconds"] = self.__max_staleness
         if self.__hedge not in (None, {}):
-            warnings.warn(
-                "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             doc["hedge"] = self.__hedge
         return doc
 
@@ -194,7 +189,9 @@ class _ServerMode:
 
     @property
     def hedge(self) -> Optional[_Hedge]:
-        """The read preference ``hedge`` parameter.
+        """**DEPRECATED** - The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.
+
+        The read preference ``hedge`` parameter.
 
         A dictionary that configures how the server will perform hedged reads.
         It consists of the following keys:
@@ -329,7 +326,7 @@ class PrimaryPreferred(_ServerMode):
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
-    :param hedge: The :attr:`~hedge` to use if the primary is not available.
+    :param hedge: **DEPRECATED** - The :attr:`~hedge` for this read preference.
 
     .. versionchanged:: 3.11
        Added ``hedge`` parameter.
@@ -371,7 +368,7 @@ class Secondary(_ServerMode):
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
-    :param hedge: The :attr:`~hedge` for this read preference.
+    :param hedge: **DEPRECATED** - The :attr:`~hedge` for this read preference.
 
     .. versionchanged:: 3.11
        Added ``hedge`` parameter.
@@ -414,7 +411,7 @@ class SecondaryPreferred(_ServerMode):
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
-    :param hedge: The :attr:`~hedge` for this read preference.
+    :param hedge: **DEPRECATED** - The :attr:`~hedge` for this read preference.
 
     .. versionchanged:: 3.11
        Added ``hedge`` parameter.
@@ -458,7 +455,7 @@ class Nearest(_ServerMode):
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
-    :param hedge: The :attr:`~hedge` for this read preference.
+    :param hedge: **DEPRECATED** - The :attr:`~hedge` for this read preference.
 
     .. versionchanged:: 3.11
        Added ``hedge`` parameter.
