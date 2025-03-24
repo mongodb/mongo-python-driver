@@ -19,6 +19,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections import abc
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
@@ -103,6 +104,11 @@ def _validate_hedge(hedge: Optional[_Hedge]) -> Optional[_Hedge]:
     if not isinstance(hedge, dict):
         raise TypeError(f"hedge must be a dictionary, not {hedge!r}")
 
+    warnings.warn(
+        "Hedged reads are deprecated starting in server version 8.0.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return hedge
 
 
@@ -143,6 +149,11 @@ class _ServerMode:
         if self.__max_staleness != -1:
             doc["maxStalenessSeconds"] = self.__max_staleness
         if self.__hedge not in (None, {}):
+            warnings.warn(
+                "Hedged reads are deprecated starting in server version 8.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             doc["hedge"] = self.__hedge
         return doc
 
@@ -203,6 +214,12 @@ class _ServerMode:
 
         .. versionadded:: 3.11
         """
+        if self.__hedge is not None:
+            warnings.warn(
+                "Hedged reads are deprecated starting in server version 8.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         return self.__hedge
 
     @property
