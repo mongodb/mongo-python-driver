@@ -457,10 +457,10 @@ def _max_time_expired_error(exc: PyMongoError) -> bool:
 
 
 # From the transactions spec, all the retryable writes errors plus
-# WriteConcernFailed.
+# WriteConcernTimedOut.
 _UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(
     [
-        64,  # WriteConcernFailed
+        64,  # WriteConcernTimedOut
         50,  # MaxTimeMSExpired
     ]
 )
