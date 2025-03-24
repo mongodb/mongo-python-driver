@@ -21,19 +21,10 @@ import struct
 from pathlib import Path
 from test import unittest
 
-from bson import decode, encode
+from bson import decode, encode, json_util
 from bson.binary import Binary, BinaryVectorDtype
 
 _TEST_PATH = Path(__file__).parent / "bson_binary_vector"
-
-
-def convert_extended_json(vector) -> float:
-    if isinstance(vector, dict) and "$numberDouble" in vector:
-        if vector["$numberDouble"] == "Infinity":
-            return float("inf")
-        elif vector["$numberDouble"] == "-Infinity":
-            return float("-inf")
-    return float(vector)
 
 
 class TestBSONBinaryVector(unittest.TestCase):
@@ -71,9 +62,6 @@ def create_test(case_spec):
                 cB_exp = binascii.unhexlify(canonical_bson_exp.encode("utf8"))
                 decoded_doc = decode(cB_exp)
                 binary_obs = decoded_doc[test_key]
-                # Handle special extended JSON cases like 'Infinity'
-                if dtype_exp in [BinaryVectorDtype.FLOAT32]:
-                    vector_exp = [convert_extended_json(x) for x in vector_exp]
 
                 # Test round-tripping canonical bson.
                 self.assertEqual(encode(decoded_doc), cB_exp, description)
@@ -113,7 +101,7 @@ def create_test(case_spec):
 def create_tests():
     for filename in _TEST_PATH.glob("*.json"):
         with codecs.open(str(filename), encoding="utf-8") as test_file:
-            test_method = create_test(json.load(test_file))
+            test_method = create_test(json_util.load(test_file))
         setattr(TestBSONBinaryVector, "test_" + filename.stem, test_method)
 
 
