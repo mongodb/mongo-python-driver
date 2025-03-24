@@ -780,7 +780,7 @@ def create_alternative_hosts_variants():
     for host_name in OTHER_HOSTS:
         host = HOSTS[host_name]
         tags = [".6.0 .standalone !.sync_async"]
-        if host_name == "amazon2023":
+        if host_name == "Amazon2023":
             tags = [".latest !.sync_async"]
         variants.append(
             create_variant(
