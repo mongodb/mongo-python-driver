@@ -27,6 +27,15 @@ from bson.binary import Binary, BinaryVectorDtype
 _TEST_PATH = Path(__file__).parent / "bson_binary_vector"
 
 
+def convert_extended_json(vector) -> float:
+    if isinstance(vector, dict) and "$numberDouble" in vector:
+        if vector["$numberDouble"] == "Infinity":
+            return float("inf")
+        elif vector["$numberDouble"] == "-Infinity":
+            return float("-inf")
+    return float(vector)
+
+
 class TestBSONBinaryVector(unittest.TestCase):
     """Runs Binary Vector subtype tests.
 
@@ -62,9 +71,9 @@ def create_test(case_spec):
                 cB_exp = binascii.unhexlify(canonical_bson_exp.encode("utf8"))
                 decoded_doc = decode(cB_exp)
                 binary_obs = decoded_doc[test_key]
-                # Handle special float cases like '-inf'
+                # Handle special extended JSON cases like 'Infinity'
                 if dtype_exp in [BinaryVectorDtype.FLOAT32]:
-                    vector_exp = [float(x) for x in vector_exp]
+                    vector_exp = [convert_extended_json(x) for x in vector_exp]
 
                 # Test round-tripping canonical bson.
                 self.assertEqual(encode(decoded_doc), cB_exp, description)
