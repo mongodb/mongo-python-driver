@@ -701,7 +701,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         requests: Sequence[_WriteOp[_DocumentType]],
         ordered: bool = True,
-        bypass_document_validation: bool = False,
+        bypass_document_validation: Optional[bool] = None,
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
         let: Optional[Mapping] = None,
@@ -800,8 +800,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         ordered: bool,
         write_concern: WriteConcern,
         op_id: Optional[int],
-        bypass_doc_val: bool,
         session: Optional[AsyncClientSession],
+        bypass_doc_val: Optional[bool] = None,
         comment: Optional[Any] = None,
     ) -> Any:
         """Internal helper for inserting a single document."""
@@ -814,8 +814,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         async def _insert_command(
             session: Optional[AsyncClientSession], conn: AsyncConnection, retryable_write: bool
         ) -> None:
-            if bypass_doc_val:
-                command["bypassDocumentValidation"] = True
+            if bypass_doc_val is not None:
+                command["bypassDocumentValidation"] = bypass_doc_val
 
             result = await conn.command(
                 self._database.name,
@@ -840,7 +840,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def insert_one(
         self,
         document: Union[_DocumentType, RawBSONDocument],
-        bypass_document_validation: bool = False,
+        bypass_document_validation: Optional[bool] = None,
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
     ) -> InsertOneResult:
@@ -906,7 +906,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         documents: Iterable[Union[_DocumentType, RawBSONDocument]],
         ordered: bool = True,
-        bypass_document_validation: bool = False,
+        bypass_document_validation: Optional[bool] = None,
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
     ) -> InsertManyResult:
@@ -986,7 +986,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         op_id: Optional[int] = None,
         ordered: bool = True,
-        bypass_doc_val: Optional[bool] = False,
+        bypass_doc_val: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -1041,8 +1041,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
         # Update command.
-        if bypass_doc_val:
-            command["bypassDocumentValidation"] = True
+        if bypass_doc_val is not None:
+            command["bypassDocumentValidation"] = bypass_doc_val
 
         # The command result has to be published for APM unmodified
         # so we make a shallow copy here before adding updatedExisting.
@@ -1082,7 +1082,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         op_id: Optional[int] = None,
         ordered: bool = True,
-        bypass_doc_val: Optional[bool] = False,
+        bypass_doc_val: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -1128,7 +1128,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         filter: Mapping[str, Any],
         replacement: Mapping[str, Any],
         upsert: bool = False,
-        bypass_document_validation: bool = False,
+        bypass_document_validation: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[AsyncClientSession] = None,
@@ -1237,7 +1237,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         filter: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
         upsert: bool = False,
-        bypass_document_validation: bool = False,
+        bypass_document_validation: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -2948,11 +2948,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             returning aggregate results using a cursor.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`.
+          - `bypassDocumentValidation` (bool): If ``True``, allows the
+            write to opt-out of document level validation.
 
 
         :return: A :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor` over the result
           set.
-
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
            Added ``let`` parameter.
@@ -3356,7 +3357,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
         return await self._find_and_modify(
-            filter, projection, sort, let=let, hint=hint, session=session, **kwargs
+            filter,
+            projection,
+            sort,
+            let=let,
+            hint=hint,
+            session=session,
+            **kwargs,
         )
 
     async def find_one_and_replace(
