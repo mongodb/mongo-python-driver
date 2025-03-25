@@ -413,6 +413,15 @@ class TestGridfs(IntegrationTest):
             self.fs.open_download_stream_by_name("first_name")
         self.assertEqual(b"testing", (self.fs.open_download_stream_by_name("second_name")).read())
 
+    def test_rename_by_name(self):
+        _id = self.fs.upload_from_stream("first_name", b"testing")
+        self.assertEqual(b"testing", (self.fs.open_download_stream_by_name("first_name")).read())
+
+        self.fs.rename_by_name("first_name", "second_name")
+        with self.assertRaises(NoFile):
+            self.fs.open_download_stream_by_name("first_name")
+        self.assertEqual(b"testing", (self.fs.open_download_stream_by_name("second_name")).read())
+
     @patch("gridfs.synchronous.grid_file._UPLOAD_BUFFER_SIZE", 5)
     def test_abort(self):
         gin = self.fs.open_upload_stream("test_filename", chunk_size_bytes=5)

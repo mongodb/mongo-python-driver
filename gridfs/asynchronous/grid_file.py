@@ -1033,12 +1033,11 @@ class AsyncGridFSBucket:
           await fs.upload_from_stream("test_file", "data I want to store!")
           await fs.rename_by_name("test_file", "new_test_name")
 
-        Raises :exc:`~gridfs.errors.NoFile` if no file with file_id exists.
+        Raises :exc:`~gridfs.errors.NoFile` if no file with the given filename exists.
 
         :param filename: The filename of the file to be renamed.
         :param new_filename: The new name of the file.
-        :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`
+        :param session: a :class:`~pymongo.client_session.AsyncClientSession`
 
         .. versionadded:: 4.12
         """
@@ -1048,7 +1047,7 @@ class AsyncGridFSBucket:
         )
         if not result.matched_count:
             raise NoFile(
-                f"no files could be renamed {new_filename} because none matched filename {filename}"
+                f"no files could be renamed {new_filename!r} because none matched filename {filename!r}"
             )
 
 
