@@ -414,11 +414,23 @@ def create_encryption_variants() -> list[BuildVariant]:
 
 def create_load_balancer_variants():
     # Load balancer tests - run all supported server versions using the lowest supported python.
-    return [
-        create_variant(
-            [".load-balancer"], "Load Balancer", host=DEFAULT_HOST, batchtime=BATCHTIME_WEEK
+    host = DEFAULT_HOST
+    batchtime = BATCHTIME_WEEK
+    versions = get_versions_from("6.0")
+    variants = []
+    for version in versions:
+        python = CPYTHONS[0]
+        display_name = get_variant_name("Load Balancer", host, python=python, version=version)
+        variant = create_variant(
+            [".load-balancer"],
+            display_name,
+            python=python,
+            host=host,
+            version=version,
+            batchtime=batchtime,
         )
-    ]
+        variants.append(variant)
+    return variants
 
 
 def create_compression_variants():
@@ -811,15 +823,11 @@ def create_server_tasks():
 
 def create_load_balancer_tasks():
     tasks = []
-    for (auth, ssl), version in product(AUTH_SSLS, get_versions_from("6.0")):
-        name = get_task_name(f"test-load-balancer-{auth}-{ssl}", version=version)
+    for auth, ssl in AUTH_SSLS:
+        name = f"test-load-balancer-{auth}-{ssl}".lower()
         tags = ["load-balancer", auth, ssl]
         server_vars = dict(
-            TOPOLOGY="sharded_cluster",
-            AUTH=auth,
-            SSL=ssl,
-            TEST_NAME="load_balancer",
-            VERSION=version,
+            TOPOLOGY="sharded_cluster", AUTH=auth, SSL=ssl, TEST_NAME="load_balancer"
         )
         server_func = FunctionCall(func="run server", vars=server_vars)
         test_vars = dict(AUTH=auth, SSL=ssl, TEST_NAME="load_balancer")
