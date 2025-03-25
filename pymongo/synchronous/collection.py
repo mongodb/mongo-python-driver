@@ -3162,7 +3162,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if hint is not None:
             if not isinstance(hint, str):
                 hint = helpers_shared._index_document(hint)
-            cmd["hint"] = hint
+            cmd["hint"] = hint  # type: ignore[assignment]
 
         def _cmd(
             session: Optional[ClientSession],
