@@ -217,9 +217,11 @@ the pages will re-render and the browser will automatically refresh.
 
 ### Usage
 
-- Run `just run-server` with optional args to set up the server.
-  All given flags will be passed to `run-orchestration.sh` in `$DRIVERS_TOOLS`.
+- Run `just run-server` with optional args to set up the server.  All given options will be passed to
+  `run-orchestration.sh` in `$DRIVERS_TOOLS`.  See `$DRIVERS_TOOLS/evergreen/run-orchestration.sh -h`
+  for a full list of options.
 - Run `just setup-tests` with optional args to set up the test environment, secrets, etc.
+  See `just setup-tests -h` for a full list of available options.
 - Run `just run-tests` to run the tests in an appropriate Python environment.
 - When done, run `just teardown-tests` to clean up and `just stop-server` to stop the server.
 
@@ -346,10 +348,27 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 - Run the tests: `just run-tests`.
 
 ## Enable Debug Logs
+
 - Use `-o log_cli_level="DEBUG" -o log_cli=1` with `just test` or `pytest`.
 - Add `log_cli_level = "DEBUG` and `log_cli = 1` to the `tool.pytest.ini_options` section in `pyproject.toml` for Evergreen patches or to enable debug logs by default on your machine.
 - You can also set `DEBUG_LOG=1` and run either `just setup-tests` or `just-test`.
+- Finally, you can use `just setup-tests --debug-log`.
 - For evergreen patch builds, you can use `evergreen patch --param DEBUG_LOG=1` to enable debug logs for the patch.
+
+## Adding a new test suite
+
+- If adding new tests files that should only be run for that test suite, add a pytest marker to the file and add
+  to the list of pytest markers in `pyproject.toml`.  Then add the test suite to the `TEST_SUITE_MAP` in `.evergreen/scripts/utils.py`.  If for some reason it is not a pytest-runnable test, add it to the list of `EXTRA_TESTS` instead.
+- If the test uses Atlas or otherwise doesn't use `run-orchestration.sh`, add it to the `NO_RUN_ORCHESTRATION` list in
+  `.evergreen/scripts/utils.py`.
+- If there is something special required to run the local server or there is an extra flag that should always be set
+  like `AUTH`, add that logic to `.evergreen/scripts/run_server.py`.
+- The bulk of the logic will typically be in `.evergreen/scripts/setup_tests.py`.  This is where you should fetch secrets and make them available using `write_env`, start services, and write other env vars needed using `write_env`.
+- If there are any special test considerations, including not running `pytest` at all, handle it in `.evergreen/scripts/run_tests.py`.
+- If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
+- Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
+- Regenerate the test variants and tasks using the instructions in `.evergreen/scripts/generate_config.py`.
+- Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
 ## Re-sync Spec Tests
 
