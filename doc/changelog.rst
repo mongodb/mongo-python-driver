@@ -11,6 +11,9 @@ PyMongo 4.12 brings a number of changes including:
 - Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
 - AsyncMongoClient no longer performs DNS resolution for "mongodb+srv://" connection strings on creation.
   To avoid blocking the asyncio loop, the resolution is now deferred until the client is first connected.
+- Added index hinting support to the
+  :meth:`~pymongo.asynchronous.collection.AsyncCollection.distinct` and
+  :meth:`~pymongo.collection.Collection.distinct` commands.
 
 Issues Resolved
 ...............
