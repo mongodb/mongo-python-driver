@@ -1257,12 +1257,12 @@ buildvariants:
   # Stable api tests
   - name: stable-api-require-v1-rhel8-python3.9-auth
     tasks:
-      - name: .standalone .5.0 .noauth .nossl .sync_async
-      - name: .standalone .6.0 .noauth .nossl .sync_async
-      - name: .standalone .7.0 .noauth .nossl .sync_async
-      - name: .standalone .8.0 .noauth .nossl .sync_async
-      - name: .standalone .rapid .noauth .nossl .sync_async
-      - name: .standalone .latest .noauth .nossl .sync_async
+      - name: "!.replica_set .5.0 .noauth .nossl .sync_async"
+      - name: "!.replica_set .6.0 .noauth .nossl .sync_async"
+      - name: "!.replica_set .7.0 .noauth .nossl .sync_async"
+      - name: "!.replica_set .8.0 .noauth .nossl .sync_async"
+      - name: "!.replica_set .rapid .noauth .nossl .sync_async"
+      - name: "!.replica_set .latest .noauth .nossl .sync_async"
     display_name: Stable API require v1 RHEL8 Python3.9 Auth
     run_on:
       - rhel87-small
@@ -1290,12 +1290,12 @@ buildvariants:
     tags: [versionedApi_tag]
   - name: stable-api-require-v1-rhel8-python3.13-auth
     tasks:
-      - name: .standalone .5.0 .noauth .nossl .sync_async
-      - name: .standalone .6.0 .noauth .nossl .sync_async
-      - name: .standalone .7.0 .noauth .nossl .sync_async
-      - name: .standalone .8.0 .noauth .nossl .sync_async
-      - name: .standalone .rapid .noauth .nossl .sync_async
-      - name: .standalone .latest .noauth .nossl .sync_async
+      - name: "!.replica_set .5.0 .noauth .nossl .sync_async"
+      - name: "!.replica_set .6.0 .noauth .nossl .sync_async"
+      - name: "!.replica_set .7.0 .noauth .nossl .sync_async"
+      - name: "!.replica_set .8.0 .noauth .nossl .sync_async"
+      - name: "!.replica_set .rapid .noauth .nossl .sync_async"
+      - name: "!.replica_set .latest .noauth .nossl .sync_async"
     display_name: Stable API require v1 RHEL8 Python3.13 Auth
     run_on:
       - rhel87-small
