@@ -11,6 +11,9 @@ PyMongo 4.12 brings a number of changes including:
 - Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
 - Added :meth:`gridfs.asynchronous.grid_file.AsyncGridFSBucket.rename_by_name` and :meth:`gridfs.grid_file.GridFSBucket.rename_by_name`
   for more performant renaming of file revisions.
+- Added index hinting support to the
+  :meth:`~pymongo.asynchronous.collection.AsyncCollection.distinct` and
+  :meth:`~pymongo.collection.Collection.distinct` commands.
 
 Issues Resolved
 ...............
