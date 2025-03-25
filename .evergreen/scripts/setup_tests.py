@@ -198,7 +198,7 @@ def handle_test_env() -> None:
         AUTH = "auth"
 
     if test_name == "aws_lambda":
-        UV_ARGS.append("--with pip")
+        UV_ARGS.append("--group pip")
         # Store AWS creds if they were given.
         if "AWS_ACCESS_KEY_ID" in os.environ:
             for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:

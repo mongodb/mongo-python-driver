@@ -49,6 +49,7 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 dev = [
     "pre-commit>=4.0"
 ]
+pip = ["pip"]
 gevent = ["gevent"]
 eventlet = ["eventlet"]
 coverage = [
