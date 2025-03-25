@@ -546,7 +546,7 @@ def create_storage_engine_variants():
 def create_stable_api_variants():
     host = DEFAULT_HOST
     tags = ["versionedApi_tag"]
-    tasks = [f".standalone .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")]
+    tasks = [f"!.replica_set .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")]
     variants = []
     types = ["require v1", "accept v2"]
 
