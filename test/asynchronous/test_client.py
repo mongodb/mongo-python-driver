@@ -512,13 +512,13 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
     async def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
         # Patch the resolver.
-        from pymongo.srv_resolver import _resolve
+        from pymongo.asynchronous.srv_resolver import _resolve
 
         patched_resolver = FunctionCallRecorder(_resolve)
-        pymongo.srv_resolver._resolve = patched_resolver
+        pymongo.asynchronous.srv_resolver._resolve = patched_resolver
 
         def reset_resolver():
-            pymongo.srv_resolver._resolve = _resolve
+            pymongo.asynchronous.srv_resolver._resolve = _resolve
 
         self.addCleanup(reset_resolver)
 
@@ -607,7 +607,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
             with self.assertRaisesRegex(ConfigurationError, expected):
                 AsyncMongoClient(**{typo: "standard"})  # type: ignore[arg-type]
 
-    @patch("pymongo.srv_resolver._SrvResolver.get_hosts")
+    @patch("pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts")
     def test_detected_environment_logging(self, mock_get_hosts):
         normal_hosts = [
             "normal.host.com",
@@ -629,7 +629,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
             logs = [record.getMessage() for record in cm.records if record.name == "pymongo.client"]
             self.assertEqual(len(logs), 7)
 
-    @patch("pymongo.srv_resolver._SrvResolver.get_hosts")
+    @patch("pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts")
     async def test_detected_environment_warning(self, mock_get_hosts):
         with self._caplog.at_level(logging.WARN):
             normal_hosts = [
@@ -932,6 +932,15 @@ class TestClient(AsyncIntegrationTest):
 
         async with eval(the_repr) as client_two:
             self.assertEqual(client_two, client)
+
+    async def test_repr_srv_host(self):
+        client = AsyncMongoClient("mongodb+srv://test1.test.build.10gen.cc/", connect=False)
+        # before srv resolution
+        self.assertIn("host='mongodb+srv://test1.test.build.10gen.cc'", repr(client))
+        await client.aconnect()
+        # after srv resolution
+        self.assertIn("host=['localhost.test.build.10gen.cc:", repr(client))
+        await client.close()
 
     async def test_getters(self):
         await async_wait_until(
@@ -1911,28 +1920,37 @@ class TestClient(AsyncIntegrationTest):
             srvServiceName="customname",
             connect=False,
         )
+        await client.aconnect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        await client.close()
         client = AsyncMongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc"
             "/?srvServiceName=shouldbeoverriden",
             srvServiceName="customname",
             connect=False,
         )
+        await client.aconnect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        await client.close()
         client = AsyncMongoClient(
             "mongodb+srv://user:password@test22.test.build.10gen.cc/?srvServiceName=customname",
             connect=False,
         )
+        await client.aconnect()
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        await client.close()
 
     async def test_srv_max_hosts_kwarg(self):
         client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/")
+        await client.aconnect()
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
         client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/", srvmaxhosts=1)
+        await client.aconnect()
         self.assertEqual(len(client.topology_description.server_descriptions()), 1)
         client = self.simple_client(
             "mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1", srvmaxhosts=2
         )
+        await client.aconnect()
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
 
     @unittest.skipIf(
