@@ -628,10 +628,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             # Connection errors are considered client errors.
             if isinstance(error, ConnectionFailure):
                 self.assertNotIsInstance(error, NotPrimaryError)
-            elif isinstance(error, (InvalidOperation, ConfigurationError, EncryptionError)):
-                pass
-            # gridfs NoFile errors are considered client errors.
-            elif isinstance(error, NoFile):
+            elif isinstance(error, (InvalidOperation, ConfigurationError, EncryptionError, NoFile)):
                 pass
             else:
                 self.assertNotIsInstance(error, PyMongoError)

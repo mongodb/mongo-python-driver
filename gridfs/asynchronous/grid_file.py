@@ -848,13 +848,12 @@ class AsyncGridFSBucket:
           await fs.upload_from_stream("test_file", "data I want to store!")
           await fs.delete_by_name("test_file")
 
-        Raises :exc:`~gridfs.errors.NoFile` if no file with filename exists.
+        Raises :exc:`~gridfs.errors.NoFile` if no file with the given filename exists.
 
         :param filename: The name of the file to be deleted.
-        :param session: a
-            :class:`~pymongo.client_session.AsyncClientSession`
+        :param session: a :class:`~pymongo.client_session.AsyncClientSession`
 
-        .. versionadded:: 4.13
+        .. versionadded:: 4.12
         """
         _disallow_transactions(session)
         files = self._files.find({"filename": filename}, {"_id": 1}, session=session)
@@ -862,7 +861,7 @@ class AsyncGridFSBucket:
         res = await self._files.delete_many({"_id": {"$in": file_ids}}, session=session)
         await self._chunks.delete_many({"files_id": {"$in": file_ids}}, session=session)
         if not res.deleted_count:
-            raise NoFile("no file could be deleted because none matched %s" % filename)
+            raise NoFile(f"no file could be deleted because none matched filename {filename!r}")
 
     def find(self, *args: Any, **kwargs: Any) -> AsyncGridOutCursor:
         """Find and return the files collection documents that match ``filter``
