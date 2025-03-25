@@ -73,9 +73,16 @@ HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
 DEFAULT_HOST = HOSTS["rhel8"]
 
 # Other hosts
-OTHER_HOSTS = ["RHEL9-FIPS", "RHEL8-zseries", "RHEL8-POWER8", "RHEL8-arm64"]
+OTHER_HOSTS = ["RHEL9-FIPS", "RHEL8-zseries", "RHEL8-POWER8", "RHEL8-arm64", "Amazon2023"]
 for name, run_on in zip(
-    OTHER_HOSTS, ["rhel92-fips", "rhel8-zseries-small", "rhel8-power-small", "rhel82-arm64-small"]
+    OTHER_HOSTS,
+    [
+        "rhel92-fips",
+        "rhel8-zseries-small",
+        "rhel8-power-small",
+        "rhel82-arm64-small",
+        "amazon2023-arm64-latest-large-m8g",
+    ],
 ):
     HOSTS[name] = Host(name, run_on, name, dict())
 
@@ -772,9 +779,12 @@ def create_alternative_hosts_variants():
     handle_c_ext(C_EXTS[0], expansions)
     for host_name in OTHER_HOSTS:
         host = HOSTS[host_name]
+        tags = [".6.0 .standalone !.sync_async"]
+        if host_name == "Amazon2023":
+            tags = [f".latest !.sync_async {t}" for t in SUB_TASKS]
         variants.append(
             create_variant(
-                [".6.0 .standalone !.sync_async"],
+                tags,
                 display_name=get_display_name("Other hosts", host),
                 batchtime=batchtime,
                 host=host,
