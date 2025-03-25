@@ -3104,6 +3104,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         filter: Optional[Mapping[str, Any]] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
+        hint: Optional[_IndexKeyHint] = None,
         **kwargs: Any,
     ) -> list:
         """Get a list of distinct values for `key` among all documents
@@ -3131,7 +3132,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
+        :param hint: An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to :meth:`~pymongo.collection.Collection.create_index`
+            (e.g. ``[('field', ASCENDING)]``).
         :param kwargs: See list of options above.
+
+        .. versionchanged:: 4.12
+           Added ``hint`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -3151,6 +3159,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
+        if hint is not None:
+            if not isinstance(hint, str):
+                hint = helpers_shared._index_document(hint)
+            cmd["hint"] = hint
 
         def _cmd(
             session: Optional[ClientSession],
