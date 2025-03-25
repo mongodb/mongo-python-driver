@@ -363,6 +363,7 @@ BSON_TYPE_ALIAS_MAP = {
     "decimal": (Decimal128,),
     "maxKey": (MaxKey,),
     "minKey": (MinKey,),
+    "number": (float, int, Int64, Decimal128),
 }
 
 
