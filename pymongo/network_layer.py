@@ -511,12 +511,8 @@ class PyMongoProtocol(BufferedProtocol):
         """Write a message to this connection's transport."""
         if self.transport.is_closing():
             raise OSError("Connection is closed")
-        try:
-            self.transport.resume_reading()
-        # Known bug in SSL Protocols, fixed in Python 3.11: https://github.com/python/cpython/issues/89322
-        except AttributeError:
-            raise OSError("connection is already closed") from None
         self.transport.write(message)
+        self.transport.resume_reading()
 
     async def read(self, request_id: Optional[int], max_message_size: int) -> tuple[bytes, int]:
         """Read a single MongoDB Wire Protocol message from this connection."""
@@ -553,6 +549,13 @@ class PyMongoProtocol(BufferedProtocol):
         If any data does not fit into the returned buffer, this method will be called again until
         either no data remains or an empty buffer is returned.
         """
+        # Due to a bug, Python <=3.11 will call get_buffer() even after we raise
+        # ProtocolError in buffer_updated() and call connection_lost(). We allocate
+        # a temp buffer to drain the waiting data.
+        if self._connection_lost:
+            if not self._message:
+                self._message = memoryview(bytearray(2**14))
+            return self._message
         # TODO: optimize this by caching pointers to the buffers.
         # return self._buffer[self._index:]
         if self._expecting_header:
@@ -567,9 +570,12 @@ class PyMongoProtocol(BufferedProtocol):
         if nbytes == 0:
             self.connection_lost(OSError("connection closed"))
             return
+        if self._connection_lost:
+            return
         if self._expecting_header:
             self._header_index += nbytes
             if self._header_index >= 16:
+                self._expecting_header = False
                 try:
                     self._message_size, self._op_code = self.process_header()
                 except ProtocolError as exc:
@@ -580,11 +586,13 @@ class PyMongoProtocol(BufferedProtocol):
         if self._expecting_compression:
             self._compression_index += nbytes
             if self._compression_index >= 9:
-                self._op_code = self.process_compression_header()
+                self._expecting_compression = False
+                self._op_code, self._compressor_id = self.process_compression_header()
             return
 
         self._message_index += nbytes
         if self._message_index >= self._message_size:
+            self._expecting_header = True
             # Pause reading to avoid storing an arbitrary number of messages in memory.
             self.transport.pause_reading()
             if self._pending_messages:
@@ -599,7 +607,6 @@ class PyMongoProtocol(BufferedProtocol):
             result.set_result((self._op_code, self._compressor_id, self._message))
             self._done_messages.append(result)
             # Reset internal state to expect a new message
-            self._expecting_header = True
             self._header_index = 0
             self._compression_index = 0
             self._message_index = 0
@@ -611,6 +618,13 @@ class PyMongoProtocol(BufferedProtocol):
     def process_header(self) -> tuple[int, int]:
         """Unpack a MongoDB Wire Protocol header."""
         length, _, response_to, op_code = _UNPACK_HEADER(self._header)
+        if op_code == 2012:  # OP_COMPRESSED
+            if length <= 25:
+                raise ProtocolError(
+                    f"Message length ({length!r}) not longer than standard OP_COMPRESSED message header size (25)"
+                )
+            self._expecting_compression = True
+            length -= 9
         # No request_id for exhaust cursor "getMore".
         if self._request_id is not None:
             if self._request_id != response_to:
@@ -626,25 +640,17 @@ class PyMongoProtocol(BufferedProtocol):
                 f"Message length ({length!r}) is larger than server max "
                 f"message size ({self._max_message_size!r})"
             )
-        if op_code == 2012:  # OP_COMPRESSED
-            if length <= 25:
-                raise ProtocolError(
-                    f"Message length ({length!r}) not longer than standard OP_COMPRESSED message header size (25)"
-                )
-            self._expecting_compression = True
-            length -= 9
 
-        self._expecting_header = False
         return length - 16, op_code
 
-    def process_compression_header(self) -> int:
+    def process_compression_header(self) -> tuple[int, int]:
         """Unpack a MongoDB Wire Protocol compression header."""
-        op_code, _, self._compressor_id = _UNPACK_COMPRESSION_HEADER(self._compression_header)
-        self._expecting_compression = False
-        return op_code
+        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(self._compression_header)
+        return op_code, compressor_id
 
     def connection_lost(self, exc: Exception | None) -> None:
         self._connection_lost = True
+        super().connection_lost(exc)
         pending = list(self._pending_messages)
         for msg in pending:
             if not msg.done():
