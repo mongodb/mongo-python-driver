@@ -568,7 +568,7 @@ class PyMongoProtocol(BufferedProtocol):
         """Called when the buffer was updated with the received data"""
         # Wrote 0 bytes into a non-empty buffer, signal connection closed
         if nbytes == 0:
-            self.connection_lost(OSError("connection closed"))
+            self.close(OSError("connection closed"))
             return
         if self._connection_lost:
             return
@@ -579,7 +579,7 @@ class PyMongoProtocol(BufferedProtocol):
                 try:
                     self._message_size, self._op_code = self.process_header()
                 except ProtocolError as exc:
-                    self.connection_lost(exc)
+                    self.close(exc)
                     return
                 self._message = memoryview(bytearray(self._message_size))
             return
@@ -601,7 +601,7 @@ class PyMongoProtocol(BufferedProtocol):
                 result = asyncio.get_running_loop().create_future()
             # Future has been cancelled, close this connection
             if result.done():
-                self.connection_lost(None)
+                self.close(None)
                 return
             # Necessary values to construct message from buffers
             result.set_result((self._op_code, self._compressor_id, self._message))
@@ -648,9 +648,7 @@ class PyMongoProtocol(BufferedProtocol):
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(self._compression_header)
         return op_code, compressor_id
 
-    def connection_lost(self, exc: Exception | None) -> None:
-        self._connection_lost = True
-        super().connection_lost(exc)
+    def _resolve_pending_messages(self, exc: Exception | None) -> None:
         pending = list(self._pending_messages)
         for msg in pending:
             if not msg.done():
@@ -660,6 +658,13 @@ class PyMongoProtocol(BufferedProtocol):
                     msg.set_exception(exc)
             self._done_messages.append(msg)
 
+    def close(self, exc: Exception | None) -> None:
+        self._connection_lost = True
+        self._resolve_pending_messages(exc)
+        self.transport.close()
+
+    def connection_lost(self, exc: Exception | None) -> None:
+        self._resolve_pending_messages(exc)
         if not self._closed.done():
             self._closed.set_result(None)
 
