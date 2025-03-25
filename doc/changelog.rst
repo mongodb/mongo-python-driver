@@ -14,6 +14,11 @@ PyMongo 4.12 brings a number of changes including:
 - Added index hinting support to the
   :meth:`~pymongo.asynchronous.collection.AsyncCollection.distinct` and
   :meth:`~pymongo.collection.Collection.distinct` commands.
+- Deprecated the ``hedge`` parameter for
+  :class:`~pymongo.read_preferences.PrimaryPreferred`,
+  :class:`~pymongo.read_preferences.Secondary`,
+  :class:`~pymongo.read_preferences.SecondaryPreferred`,
+  :class:`~pymongo.read_preferences.Nearest`. Support for ``hedge`` will be removed in PyMongo 5.0.
 
 Issues Resolved
 ...............
