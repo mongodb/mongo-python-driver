@@ -107,7 +107,7 @@ def _validate_hedge(hedge: Optional[_Hedge]) -> Optional[_Hedge]:
     warnings.warn(
         "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.",
         DeprecationWarning,
-        stacklevel=2,
+        stacklevel=4,
     )
     return hedge
 
