@@ -466,7 +466,7 @@ class NetworkingInterface(NetworkingInterfaceBase):
 
 
 class PyMongoProtocol(BufferedProtocol):
-    def __init__(self, timeout: Optional[float] = None, buffer_size: int = 2**10):
+    def __init__(self, timeout: Optional[float] = None):
         self.transport: Transport = None  # type: ignore[assignment]
         # Each message is reader in 2-3 parts: header, compression header, and message body
         # The message buffer is allocated after the header is read.
@@ -655,13 +655,10 @@ class PyMongoProtocol(BufferedProtocol):
             self._done_messages.append(msg)
 
         if not self._closed.done():
-            if exc is None:
-                self._closed.set_result(None)
-            else:
-                self._closed.set_exception(exc)
+            self._closed.set_result(None)
 
     async def wait_closed(self) -> None:
-        await asyncio.wait([self._closed])
+        await self._closed
 
 
 async def async_sendall(conn: PyMongoProtocol, buf: bytes) -> None:

@@ -337,7 +337,7 @@ async def _configured_protocol_interface(
     if ssl_context is None:
         return AsyncNetworkingInterface(
             await asyncio.get_running_loop().create_connection(
-                lambda: PyMongoProtocol(timeout=timeout, buffer_size=2**16), sock=sock
+                lambda: PyMongoProtocol(timeout=timeout), sock=sock
             )
         )
 
@@ -346,7 +346,7 @@ async def _configured_protocol_interface(
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
         transport, protocol = await asyncio.get_running_loop().create_connection(  # type: ignore[call-overload]
-            lambda: PyMongoProtocol(timeout=timeout, buffer_size=2**14),
+            lambda: PyMongoProtocol(timeout=timeout),
             sock=sock,
             server_hostname=host,
             ssl=ssl_context,
