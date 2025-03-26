@@ -5,8 +5,7 @@
     {
       "topologies": [
         "single",
-        "sharded",
-        "sharded-replicaset"
+        "sharded"
       ],
       "serverless": "forbid"
     }
