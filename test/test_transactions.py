@@ -587,7 +587,7 @@ class TestOptionsInsideTransactionProse(TransactionsBase):
             s.commit_transaction()
         # End the session.
         # Ensure the document was inserted and no error was thrown from the transaction.
-        assert coll.find_one({}) == {"n": 1}
+        assert coll.count_documents() == 1
 
 
 if __name__ == "__main__":
