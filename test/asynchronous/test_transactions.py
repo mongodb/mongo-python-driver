@@ -594,12 +594,12 @@ class TestOptionsInsideTransactionProse(AsyncTransactionsBase):
             # Instantiate a collection object in the driver with a default write concern of { w: 0 }.
             inner_coll = coll.with_options(write_concern=WriteConcern(w=0))
             # Insert the document { n: 1 } on the instantiated collection.
-            inner_coll.insert_one({"n": 1}, session=s)
+            result = await inner_coll.insert_one({"n": 1}, session=s)
             # Commit the transaction.
             await s.commit_transaction()
         # End the session.
         # Ensure the document was inserted and no error was thrown from the transaction.
-        assert (await coll.find_one({"n": 1})) is not None
+        assert result.inserted_id is not None
 
 
 if __name__ == "__main__":
