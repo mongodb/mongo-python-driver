@@ -586,7 +586,7 @@ class TestOptionsInsideTransactionProse(AsyncTransactionsBase):
         # Create a MongoClient running against a configured sharded/replica set/load balanced cluster.
         client = async_client_context.client
         coll = client[self.db.name].test
-        coll.delete_many({})
+        await coll.delete_many({})
         # Start a new session on the client.
         async with client.start_session() as s:
             # Start a transaction on the session.
