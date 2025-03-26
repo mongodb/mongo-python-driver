@@ -127,5 +127,9 @@ get_python_binary() {
     else
         PYTHON="/opt/python/$version/bin/python3"
     fi
+    if [ ! -v "$PYTHON" ]; then
+        echo "Could not find suitable python binary for '$version'"  >&2
+        exit 1
+    fi
     echo "$PYTHON"
 }
