@@ -578,5 +578,29 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             self.assertFalse(s.in_transaction)
 
 
+class TestOptionsInsideTransactionProse(AsyncTransactionsBase):
+    @async_client_context.require_transactions
+    @async_client_context.require_no_standalone
+    async def test_case_1(self):
+        # Write concern not inherited from collection object inside transaction
+        # Create a MongoClient running against a configured sharded/replica set/load balanced cluster.
+        client = async_client_context.client
+        coll = client[self.db.name].test
+        coll.delete_many({})
+        # Start a new session on the client.
+        async with client.start_session() as s:
+            # Start a transaction on the session.
+            await s.start_transaction()
+            # Instantiate a collection object in the driver with a default write concern of { w: 0 }.
+            inner_coll = coll.with_options(write_concern=WriteConcern(w=0))
+            # Insert the document { n: 1 } on the instantiated collection.
+            inner_coll.insert_one({"n": 1})
+            # Commit the transaction.
+            await s.commit_transaction()
+        # End the session.
+        # Ensure the document was inserted and no error was thrown from the transaction.
+        assert coll.find_one({}) == {"n": 1}
+
+
 if __name__ == "__main__":
     unittest.main()
