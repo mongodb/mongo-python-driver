@@ -4,7 +4,7 @@
 # may not use this file except in compliance with the License.  You
 # may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,7 +33,7 @@ from pymongo.periodic_executor import _shutdown_executors
 from pymongo.pool_options import _is_faas
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
-from pymongo.srv_resolver import _SrvResolver
+from pymongo.synchronous.srv_resolver import _SrvResolver
 
 if TYPE_CHECKING:
     from pymongo.synchronous.pool import (  # type: ignore[attr-defined]

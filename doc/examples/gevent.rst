@@ -1,7 +1,7 @@
 Gevent
 ======
 
-PyMongo supports `Gevent <http://www.gevent.org/>`_. Simply call Gevent's
+PyMongo supports `Gevent <https://www.gevent.org/>`_. Simply call Gevent's
 ``monkey.patch_all()`` before loading any other modules:
 
 .. code-block:: pycon

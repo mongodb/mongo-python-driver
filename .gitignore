@@ -18,6 +18,7 @@ mongocryptd.pid
 .idea/
 .vscode/
 .nova/
+.temp/
 venv/
 secrets-export.sh
 libmongocrypt.tar.gz
@@ -27,13 +28,15 @@ expansion.yml
 *expansions.yml
 .evergreen/scripts/env.sh
 .evergreen/scripts/test-env.sh
+specifications/
+results.json
 
 # Lambda temp files
 test/lambda/.aws-sam
-test/lambda/env.json
 test/lambda/mongodb/pymongo/*
 test/lambda/mongodb/gridfs/*
 test/lambda/mongodb/bson/*
+test/lambda/*.json
 
 # test results and logs
 xunit-results/

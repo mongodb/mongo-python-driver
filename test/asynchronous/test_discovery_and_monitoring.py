@@ -54,6 +54,7 @@ from bson import Timestamp, json_util
 from pymongo import common, monitoring
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
+from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.errors import (
     AutoReconnect,
     ConfigurationError,
@@ -66,7 +67,6 @@ from pymongo.helpers_shared import _check_command_response, _check_write_command
 from pymongo.monitoring import ServerHeartbeatFailedEvent, ServerHeartbeatStartedEvent
 from pymongo.server_description import SERVER_TYPE, ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE
-from pymongo.uri_parser import parse_uri
 
 _IS_SYNC = False
 
@@ -81,7 +81,7 @@ else:
 
 
 async def create_mock_topology(uri, monitor_class=DummyMonitor):
-    parsed_uri = parse_uri(uri)
+    parsed_uri = await parse_uri(uri)
     replica_set_name = None
     direct_connection = None
     load_balanced = None

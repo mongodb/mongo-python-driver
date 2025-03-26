@@ -568,7 +568,11 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
                 self.skipTest("CSOT not implemented for cursors")
-            if "tailable" in class_name:
+            if (
+                "tailable" in class_name
+                or "tailable" in description
+                and "non-tailable" not in description
+            ):
                 self.skipTest("CSOT not implemented for tailable cursors")
             if "sessions" in class_name:
                 self.skipTest("CSOT not implemented for sessions")

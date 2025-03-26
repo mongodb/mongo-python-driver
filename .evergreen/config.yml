@@ -42,7 +42,7 @@ functions:
     # Make an evergreen expansion file with dynamic values
     - command: subprocess.exec
       params:
-        include_expansions_in_env: ["is_patch", "project", "version_id", "skip_web_identity_auth_test", "skip_ECS_auth_test"]
+        include_expansions_in_env: ["is_patch", "project", "version_id"]
         binary: bash
         working_dir: "src"
         args:
@@ -213,30 +213,14 @@ functions:
       params:
         file: ${DRIVERS_TOOLS}/mo-expansion.yml
 
-  "bootstrap data lake":
+  "run just script":
     - command: subprocess.exec
-      type: setup
+      type: test
       params:
-        binary: bash
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
-    - command: subprocess.exec
-      type: setup
-      params:
-        binary: bash
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
-
-  "run doctests":
-     - command: subprocess.exec
-       type: test
-       params:
-         include_expansions_in_env: [ "PYTHON_BINARY" ]
-         working_dir: "src"
-         binary: bash
-         args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-doctests.sh
+       include_expansions_in_env: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN]
+       binary: bash
+       working_dir: "src"
+       args: [.evergreen/just.sh, "${JUSTFILE_TARGET}"]
 
   "run tests":
     - command: subprocess.exec
@@ -262,7 +246,6 @@ functions:
         binary: bash
         working_dir: "src"
         args:
-          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/cleanup.sh
 
   "teardown system":
@@ -282,38 +265,7 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${aws_test_secrets_role}
-
-  "setup atlas":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        include_expansions_in_env: ["task_id", "execution"]
-        env:
-          MONGODB_VERSION: "7.0"
-          LAMBDA_STACK_NAME: dbx-python-lambda
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
-    - command: expansions.update
-      params:
-        file: atlas-expansion.yml
-
-  "teardown atlas":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
-
-  "run perf tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        working_dir: "src"
-        binary: bash
-        include_expansions_in_env: [SUB_TEST_NAME]
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-perf-tests.sh
+        duration_seconds: 3600
 
   "attach benchmark test results":
     - command: attach.results
@@ -339,31 +291,6 @@ post:
   - func: "upload test results"
   - func: "cleanup"
 
-task_groups:
-  - name: test_aws_lambda_task_group
-    setup_group:
-      - func: fetch source
-      - func: setup system
-      - func: setup atlas
-    teardown_task:
-      - func: teardown atlas
-    setup_group_can_fail_task: true
-    setup_group_timeout_secs: 1800
-    tasks:
-      - test-aws-lambda-deployed
-
-  - name: test_atlas_task_group_search_indexes
-    setup_group:
-      - func: fetch source
-      - func: setup system
-      - func: setup atlas
-    teardown_task:
-      - func: teardown atlas
-    setup_group_can_fail_task: true
-    setup_group_timeout_secs: 1800
-    tasks:
-      - test-search-index-helpers
-
 tasks:
     # Wildcard task. Do you need to find out what tools are available and where?
     # Throw it here, and execute this task on all buildvariants
@@ -375,70 +302,7 @@ tasks:
           params:
             args:
               - src/.evergreen/scripts/run-getdata.sh
-# Standard test tasks {{{
 
-    - name: "mockupdb"
-      tags: ["mockupdb"]
-      commands:
-        - func: "run tests"
-          vars:
-            TEST_NAME: mockupdb
-
-    - name: "doctests"
-      tags: ["doctests"]
-      commands:
-        - func: "run server"
-        - func: "run doctests"
-
-    - name: "test-search-index-helpers"
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "6.0"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-          vars:
-            TEST_NAME: index_management
-            AUTH: "auth"
-
-    - name: "no-server"
-      tags: ["no-server"]
-      commands:
-        - func: "run tests"
-
-    - name: "free-threading"
-      tags: ["free-threading"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "8.0"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: atlas-data-lake-tests
-      commands:
-        - func: "bootstrap data lake"
-        - func: "run tests"
-          vars:
-            TEST_NAME: "data_lake"
-
-    - name: "test-aws-lambda-deployed"
-      commands:
-        - command: ec2.assume_role
-          params:
-            role_arn: ${LAMBDA_AWS_ROLE_ARN}
-            duration_seconds: 3600
-        - command: subprocess.exec
-          params:
-            working_dir: src
-            binary: bash
-            add_expansions_to_env: true
-            args:
-              - .evergreen/run-deployed-lambda-aws-tests.sh
-            env:
-              TEST_LAMBDA_DIRECTORY: ${PROJECT_DIRECTORY}/test/lambda
-
-# }}}
     - name: "coverage-report"
       tags: ["coverage"]
       depends_on:
@@ -460,84 +324,6 @@ tasks:
           patch_optional: true
       commands:
         - func: "download and merge coverage"
-
-    - name: "perf-6.0-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "sync"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-6.0-standalone-ssl"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-            SSL: "ssl"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "sync"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-8.0-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "8.0"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "sync"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-6.0-standalone-async"
-      tags: [ "perf" ]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-            TOPOLOGY: "server"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "async"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-6.0-standalone-ssl-async"
-      tags: [ "perf" ]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-            TOPOLOGY: "server"
-            SSL: "ssl"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "async"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-8.0-standalone-async"
-      tags: [ "perf" ]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "8.0"
-            TOPOLOGY: "server"
-        - func: "run perf tests"
-          vars:
-            SUB_TEST_NAME: "async"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
 
     - name: "check-import-time"
       tags: ["pr"]
@@ -566,12 +352,6 @@ tasks:
             - ${github_commit}
 
 buildvariants:
-- name: "no-server"
-  display_name: "No server"
-  run_on:
-    - rhel84-small
-  tasks:
-    - name: "no-server"
 
 - name: "Coverage Report"
   display_name: "Coverage Report"
@@ -592,12 +372,6 @@ buildvariants:
       batchtime: 10080  # 7 days
     - name: test-azurekms-fail
 
-- name: rhel8-test-lambda
-  display_name: FaaS Lambda
-  run_on: rhel87-small
-  tasks:
-    - name: test_aws_lambda_task_group
-
 - name: rhel8-import-time
   display_name: Import Time
   run_on: rhel87-small
@@ -610,15 +384,3 @@ buildvariants:
     - rhel8.7-small
   tasks:
     - name: "backport-pr"
-
-- name: "perf-tests"
-  display_name: "Performance Benchmarks"
-  batchtime: 10080  # 7 days
-  run_on: rhel90-dbx-perf-large
-  tasks:
-     - name: "perf-6.0-standalone"
-     - name: "perf-6.0-standalone-ssl"
-     - name: "perf-8.0-standalone"
-     - name: "perf-6.0-standalone-async"
-     - name: "perf-6.0-standalone-ssl-async"
-     - name: "perf-8.0-standalone-async"

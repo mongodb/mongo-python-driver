@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -457,10 +457,10 @@ def _max_time_expired_error(exc: PyMongoError) -> bool:
 
 
 # From the transactions spec, all the retryable writes errors plus
-# WriteConcernFailed.
+# WriteConcernTimeout.
 _UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(
     [
-        64,  # WriteConcernFailed
+        64,  # WriteConcernTimeout
         50,  # MaxTimeMSExpired
     ]
 )

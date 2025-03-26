@@ -38,7 +38,7 @@ from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
 
-pytestmark = pytest.mark.index_management
+pytestmark = pytest.mark.search_index
 
 # Location of JSON test specifications.
 if _IS_SYNC:

@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,7 +32,7 @@ except ImportError:
 from bson import int64
 from pymongo.common import validate_is_mapping
 from pymongo.errors import ConfigurationError
-from pymongo.uri_parser import _parse_kms_tls_options
+from pymongo.uri_parser_shared import _parse_kms_tls_options
 
 if TYPE_CHECKING:
     from pymongo.typings import _AgnosticMongoClient, _DocumentTypeArg

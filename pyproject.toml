@@ -49,6 +49,7 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 dev = [
     "pre-commit>=4.0"
 ]
+pip = ["pip"]
 gevent = ["gevent"]
 eventlet = ["eventlet"]
 coverage = [
@@ -134,7 +135,7 @@ markers = [
     "atlas_connect: tests that rely on an atlas connection",
     "data_lake: tests that rely on atlas data lake",
     "perf: benchmark tests",
-    "index_management: index management tests",
+    "search_index: search index helper tests",
     "kms: client-side field-level encryption tests using kms",
     "encryption: encryption tests",
     "load_balancer: load balancer tests",

@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -3111,6 +3111,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         filter: Optional[Mapping[str, Any]] = None,
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
+        hint: Optional[_IndexKeyHint] = None,
         **kwargs: Any,
     ) -> list:
         """Get a list of distinct values for `key` among all documents
@@ -3138,7 +3139,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
+        :param hint: An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index`
+            (e.g. ``[('field', ASCENDING)]``).
         :param kwargs: See list of options above.
+
+        .. versionchanged:: 4.12
+           Added ``hint`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -3158,6 +3166,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
+        if hint is not None:
+            if not isinstance(hint, str):
+                hint = helpers_shared._index_document(hint)
+            cmd["hint"] = hint  # type: ignore[assignment]
 
         async def _cmd(
             session: Optional[AsyncClientSession],

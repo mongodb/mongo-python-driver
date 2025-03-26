@@ -4,7 +4,7 @@
 # may not use this file except in compliance with the License.  You
 # may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -704,7 +704,7 @@ class PoolState:
 
 
 # Do *not* explicitly inherit from object or Jython won't call __del__
-# http://bugs.jython.org/issue1057
+# https://bugs.jython.org/issue1057
 class Pool:
     def __init__(
         self,

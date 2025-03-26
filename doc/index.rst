@@ -9,7 +9,7 @@ PyMongo |release| Documentation
 Overview
 --------
 **PyMongo** is a Python distribution containing tools for working with
-`MongoDB <http://www.mongodb.org>`_, and is the recommended way to
+`MongoDB <https://www.mongodb.org>`_, and is the recommended way to
 work with MongoDB from Python. This documentation attempts to explain
 everything you need to know to use **PyMongo**.
 
@@ -81,7 +81,7 @@ Issues
 ------
 All issues should be reported (and can be tracked / voted for /
 commented on) at the main `MongoDB JIRA bug tracker
-<http://jira.mongodb.org/browse/PYTHON>`_, in the "Python Driver"
+<https://jira.mongodb.org/browse/PYTHON>`_, in the "Python Driver"
 project.
 
 Feature Requests / Feedback
@@ -94,7 +94,7 @@ Contributing
 **PyMongo** has a large :doc:`community <contributors>` and
 contributions are always encouraged. Contributions can be as simple as
 minor tweaks to this documentation. To contribute, fork the project on
-`GitHub <http://github.com/mongodb/mongo-python-driver/>`_ and send a
+`GitHub <https://github.com/mongodb/mongo-python-driver/>`_ and send a
 pull request.
 
 Changes

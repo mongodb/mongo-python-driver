@@ -4,7 +4,7 @@
 # may not use this file except in compliance with the License.  You
 # may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
+from pymongo.asynchronous.srv_resolver import _SrvResolver
 from pymongo.errors import NetworkTimeout, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _async_create_lock
@@ -33,7 +34,6 @@ from pymongo.periodic_executor import _shutdown_executors
 from pymongo.pool_options import _is_faas
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
-from pymongo.srv_resolver import _SrvResolver
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.pool import (  # type: ignore[attr-defined]
@@ -399,7 +399,7 @@ class SrvMonitor(MonitorBase):
         # Don't poll right after creation, wait 60 seconds first
         if time.monotonic() < self._startup_time + common.MIN_SRV_RESCAN_INTERVAL:
             return
-        seedlist = self._get_seedlist()
+        seedlist = await self._get_seedlist()
         if seedlist:
             self._seedlist = seedlist
             try:
@@ -408,7 +408,7 @@ class SrvMonitor(MonitorBase):
                 # Topology was garbage-collected.
                 await self.close()
 
-    def _get_seedlist(self) -> Optional[list[tuple[str, Any]]]:
+    async def _get_seedlist(self) -> Optional[list[tuple[str, Any]]]:
         """Poll SRV records for a seedlist.
 
         Returns a list of ServerDescriptions.
@@ -419,7 +419,7 @@ class SrvMonitor(MonitorBase):
                 self._settings.pool_options.connect_timeout,
                 self._settings.srv_service_name,
             )
-            seedlist, ttl = resolver.get_hosts_and_min_ttl()
+            seedlist, ttl = await resolver.get_hosts_and_min_ttl()
             if len(seedlist) == 0:
                 # As per the spec: this should be treated as a failure.
                 raise Exception

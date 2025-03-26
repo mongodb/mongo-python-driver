@@ -88,7 +88,7 @@ linkcheck_ignore = [
     "https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.md#requesting-an-immediate-check",
     "https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source",
     r"https://wiki.centos.org/[\w/]*",
-    r"http://sourceforge.net/",
+    r"https://sourceforge.net/",
 ]
 
 # -- Options for extensions ----------------------------------------------------

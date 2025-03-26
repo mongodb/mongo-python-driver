@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -55,7 +55,7 @@ DESCENDING = -1
 GEO2D = "2d"
 """Index specifier for a 2-dimensional `geospatial index`_.
 
-.. _geospatial index: http://mongodb.com/docs/manual/core/2d/
+.. _geospatial index: https://mongodb.com/docs/manual/core/2d/
 """
 
 GEOSPHERE = "2dsphere"
@@ -63,7 +63,7 @@ GEOSPHERE = "2dsphere"
 
 .. versionadded:: 2.5
 
-.. _spherical geospatial index: http://mongodb.com/docs/manual/core/2dsphere/
+.. _spherical geospatial index: https://mongodb.com/docs/manual/core/2dsphere/
 """
 
 HASHED = "hashed"
@@ -71,7 +71,7 @@ HASHED = "hashed"
 
 .. versionadded:: 2.5
 
-.. _hashed index: http://mongodb.com/docs/manual/core/index-hashed/
+.. _hashed index: https://mongodb.com/docs/manual/core/index-hashed/
 """
 
 TEXT = "text"
@@ -83,7 +83,7 @@ TEXT = "text"
 
 .. versionadded:: 2.7.1
 
-.. _text index: http://mongodb.com/docs/manual/core/index-text/
+.. _text index: https://mongodb.com/docs/manual/core/index-text/
 """
 
 from pymongo import _csot

@@ -39,7 +39,7 @@ TEST_SUITE_MAP = {
     "default_sync": "default",
     "encryption": "encryption",
     "enterprise_auth": "auth",
-    "index_management": "index_management",
+    "search_index": "search_index",
     "kms": "kms",
     "load_balancer": "load_balancer",
     "mockupdb": "mockupdb",
@@ -50,9 +50,12 @@ TEST_SUITE_MAP = {
 }
 
 # Tests that require a sub test suite.
-SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms", "mod_wsgi"]
+SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms", "mod_wsgi", "perf"]
 
-EXTRA_TESTS = ["mod_wsgi"]
+EXTRA_TESTS = ["mod_wsgi", "aws_lambda"]
+
+# Tests that do not use run-orchestration.
+NO_RUN_ORCHESTRATION = ["auth_oidc", "atlas_connect", "data_lake", "mockupdb", "serverless"]
 
 
 def get_test_options(
@@ -75,19 +78,47 @@ def get_test_options(
     else:
         parser.add_argument(
             "test_name",
-            choices=sorted(TEST_SUITE_MAP),
+            choices=set(TEST_SUITE_MAP) - set(NO_RUN_ORCHESTRATION),
             nargs="?",
             default="default",
             help="The optional name of the test suite to be run, which informs the server configuration.",
         )
     parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Whether to log at the DEBUG level"
+        "--verbose", "-v", action="store_true", help="Whether to log at the DEBUG level."
     )
     parser.add_argument(
-        "--quiet", "-q", action="store_true", help="Whether to log at the WARNING level"
+        "--quiet", "-q", action="store_true", help="Whether to log at the WARNING level."
     )
-    parser.add_argument("--auth", action="store_true", help="Whether to add authentication")
-    parser.add_argument("--ssl", action="store_true", help="Whether to add TLS configuration")
+    parser.add_argument("--auth", action="store_true", help="Whether to add authentication.")
+    parser.add_argument("--ssl", action="store_true", help="Whether to add TLS configuration.")
+
+    # Add the test modifiers.
+    if require_sub_test_name:
+        parser.add_argument(
+            "--debug-log", action="store_true", help="Enable pymongo standard logging."
+        )
+        parser.add_argument("--cov", action="store_true", help="Add test coverage.")
+        parser.add_argument(
+            "--green-framework",
+            nargs=1,
+            choices=["eventlet", "gevent"],
+            help="Optional green framework to test against.",
+        )
+        parser.add_argument(
+            "--compressor",
+            nargs=1,
+            choices=["zlib", "zstd", "snappy"],
+            help="Optional compression algorithm.",
+        )
+        parser.add_argument("--crypt-shared", action="store_true", help="Test with crypt_shared.")
+        parser.add_argument("--no-ext", action="store_true", help="Run without c extensions.")
+        parser.add_argument(
+            "--mongodb-api-version", choices=["1"], help="MongoDB stable API version to use."
+        )
+        parser.add_argument(
+            "--disable-test-commands", action="store_true", help="Disable test commands."
+        )
+
     # Get the options.
     if not allow_extra_opts:
         opts, extra_opts = parser.parse_args(), []
@@ -113,7 +144,7 @@ def get_test_options(
     return opts, extra_opts
 
 
-def read_env(path: Path | str) -> dict[str, Any]:
+def read_env(path: Path | str) -> dict[str, str]:
     config = dict()
     with Path(path).open() as fid:
         for line in fid.readlines():
@@ -153,7 +184,8 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
     LOGGER.info("Running command '%s'... done.", cmd)
 
 
-def create_archive() -> None:
+def create_archive() -> str:
     run_command("git add .", cwd=ROOT)
     run_command('git commit -m "add files"', check=False, cwd=ROOT)
     run_command(f"git archive -o {TMP_DRIVER_FILE} HEAD", cwd=ROOT)
+    return TMP_DRIVER_FILE

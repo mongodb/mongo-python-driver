@@ -69,12 +69,20 @@ HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64", dict
 HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20", dict())
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22", dict())
 HOSTS["rhel7"] = Host("rhel7", "rhel79-small", "RHEL7", dict())
+HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
 DEFAULT_HOST = HOSTS["rhel8"]
 
 # Other hosts
-OTHER_HOSTS = ["RHEL9-FIPS", "RHEL8-zseries", "RHEL8-POWER8", "RHEL8-arm64"]
+OTHER_HOSTS = ["RHEL9-FIPS", "RHEL8-zseries", "RHEL8-POWER8", "RHEL8-arm64", "Amazon2023"]
 for name, run_on in zip(
-    OTHER_HOSTS, ["rhel92-fips", "rhel8-zseries-small", "rhel8-power-small", "rhel82-arm64-small"]
+    OTHER_HOSTS,
+    [
+        "rhel92-fips",
+        "rhel8-zseries-small",
+        "rhel8-power-small",
+        "rhel82-arm64-small",
+        "amazon2023-arm64-latest-large-m8g",
+    ],
 ):
     HOSTS[name] = Host(name, run_on, name, dict())
 
@@ -212,7 +220,7 @@ def zip_cycle(*iterables, empty_default=None):
         yield tuple(next(i, empty_default) for i in cycles)
 
 
-def handle_c_ext(c_ext, expansions):
+def handle_c_ext(c_ext, expansions) -> None:
     """Handle c extension option."""
     if c_ext == C_EXTS[0]:
         expansions["NO_EXT"] = "1"
@@ -538,7 +546,6 @@ def create_storage_engine_variants():
 def create_stable_api_variants():
     host = DEFAULT_HOST
     tags = ["versionedApi_tag"]
-    tasks = [f".standalone .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")]
     variants = []
     types = ["require v1", "accept v2"]
 
@@ -552,11 +559,17 @@ def create_stable_api_variants():
             expansions["REQUIRE_API_VERSION"] = "1"
             # MONGODB_API_VERSION is the apiVersion to use in the test suite.
             expansions["MONGODB_API_VERSION"] = "1"
+            tasks = [
+                f"!.replica_set .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")
+            ]
         else:
             # Test against a cluster with acceptApiVersion2 but without
             # requireApiVersion, and don't automatically add apiVersion to
             # clients created in the test suite.
             expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
+            tasks = [
+                f".standalone .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")
+            ]
         base_display_name = f"Stable API {test_type}"
         display_name = get_display_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
@@ -599,14 +612,10 @@ def create_no_c_ext_variants():
 def create_atlas_data_lake_variants():
     variants = []
     host = HOSTS["ubuntu22"]
-    for python, c_ext in product(MIN_MAX_PYTHON, C_EXTS):
-        tasks = ["atlas-data-lake-tests"]
-        expansions = dict(AUTH="auth")
-        handle_c_ext(c_ext, expansions)
-        display_name = get_display_name("Atlas Data Lake", host, python=python, **expansions)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, expansions=expansions
-        )
+    for python in MIN_MAX_PYTHON:
+        tasks = [".atlas_data_lake"]
+        display_name = get_display_name("Atlas Data Lake", host, python=python)
+        variant = create_variant(tasks, display_name, host=host, python=python)
         variants.append(variant)
     return variants
 
@@ -675,7 +684,7 @@ def create_search_index_variants():
     python = CPYTHONS[0]
     return [
         create_variant(
-            ["test_atlas_task_group_search_indexes"],
+            [".search_index"],
             get_display_name("Search Index Helpers", host, python=python),
             python=python,
             host=host,
@@ -688,7 +697,7 @@ def create_mockupdb_variants():
     python = CPYTHONS[0]
     return [
         create_variant(
-            ["mockupdb"],
+            [".mockupdb"],
             get_display_name("MockupDB", host, python=python),
             python=python,
             host=host,
@@ -701,7 +710,7 @@ def create_doctests_variants():
     python = CPYTHONS[0]
     return [
         create_variant(
-            ["doctests"],
+            [".doctests"],
             get_display_name("Doctests", host, python=python),
             python=python,
             host=host,
@@ -719,6 +728,13 @@ def create_atlas_connect_variants():
             host=host,
         )
         for python in MIN_MAX_PYTHON
+    ]
+
+
+def create_perf_variants():
+    host = HOSTS["perf"]
+    return [
+        create_variant([".perf"], "Performance Benchmarks", host=host, batchtime=BATCHTIME_WEEK)
     ]
 
 
@@ -744,6 +760,11 @@ def create_aws_auth_variants():
     return variants
 
 
+def create_no_server_variants():
+    host = HOSTS["rhel8"]
+    return [create_variant([".no-server"], "No server", host=host)]
+
+
 def create_alternative_hosts_variants():
     batchtime = BATCHTIME_WEEK
     variants = []
@@ -763,9 +784,12 @@ def create_alternative_hosts_variants():
     handle_c_ext(C_EXTS[0], expansions)
     for host_name in OTHER_HOSTS:
         host = HOSTS[host_name]
+        tags = [".6.0 .standalone !.sync_async"]
+        if host_name == "Amazon2023":
+            tags = [f".latest !.sync_async {t}" for t in SUB_TASKS]
         variants.append(
             create_variant(
-                [".6.0 .standalone !.sync_async"],
+                tags,
                 display_name=get_display_name("Other hosts", host),
                 batchtime=batchtime,
                 host=host,
@@ -773,6 +797,11 @@ def create_alternative_hosts_variants():
             )
         )
     return variants
+
+
+def create_aws_lambda_variants():
+    host = HOSTS["rhel8"]
+    return [create_variant([".aws_lambda"], display_name="FaaS Lambda", host=host)]
 
 
 ##############
@@ -923,6 +952,27 @@ def _create_ocsp_task(algo, variant, server_type, base_task_name):
     return EvgTask(name=task_name, tags=tags, commands=commands)
 
 
+def create_aws_lambda_tasks():
+    assume_func = FunctionCall(func="assume ec2 role")
+    vars = dict(TEST_NAME="aws_lambda")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    task_name = "test-aws-lambda-deployed"
+    tags = ["aws_lambda"]
+    commands = [assume_func, test_func]
+    return [EvgTask(name=task_name, tags=tags, commands=commands)]
+
+
+def create_search_index_tasks():
+    assume_func = FunctionCall(func="assume ec2 role")
+    server_func = FunctionCall(func="run server", vars=dict(TEST_NAME="search_index"))
+    vars = dict(TEST_NAME="search_index")
+    test_func = FunctionCall(func="run tests", vars=vars)
+    task_name = "test-search-index-helpers"
+    tags = ["search_index"]
+    commands = [assume_func, server_func, test_func]
+    return [EvgTask(name=task_name, tags=tags, commands=commands)]
+
+
 def create_atlas_connect_tasks():
     vars = dict(TEST_NAME="atlas_connect")
     assume_func = FunctionCall(func="assume ec2 role")
@@ -940,6 +990,38 @@ def create_enterprise_auth_tasks():
     task_name = "test-enterprise-auth"
     tags = ["enterprise_auth"]
     return [EvgTask(name=task_name, tags=tags, commands=[server_func, assume_func, test_func])]
+
+
+def create_perf_tasks():
+    tasks = []
+    for version, ssl, sync in product(["8.0"], ["ssl", "nossl"], ["sync", "async"]):
+        vars = dict(VERSION=f"v{version}-perf", SSL=ssl)
+        server_func = FunctionCall(func="run server", vars=vars)
+        vars = dict(TEST_NAME="perf", SUB_TEST_NAME=sync)
+        test_func = FunctionCall(func="run tests", vars=vars)
+        attach_func = FunctionCall(func="attach benchmark test results")
+        send_func = FunctionCall(func="send dashboard data")
+        task_name = f"perf-{version}-standalone"
+        if ssl == "ssl":
+            task_name += "-ssl"
+        if sync == "async":
+            task_name += "-async"
+        tags = ["perf"]
+        commands = [server_func, test_func, attach_func, send_func]
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
+    return tasks
+
+
+def create_atlas_data_lake_tasks():
+    tags = ["atlas_data_lake"]
+    tasks = []
+    for c_ext in C_EXTS:
+        vars = dict(TEST_NAME="data_lake")
+        handle_c_ext(c_ext, vars)
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = f"test-atlas-data-lake-{c_ext}"
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
+    return tasks
 
 
 def create_ocsp_tasks():
@@ -976,6 +1058,37 @@ def create_ocsp_tasks():
             tasks.append(task)
 
     return tasks
+
+
+def create_mockupdb_tasks():
+    test_func = FunctionCall(func="run tests", vars=dict(TEST_NAME="mockupdb"))
+    task_name = "test-mockupdb"
+    tags = ["mockupdb"]
+    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
+
+
+def create_doctest_tasks():
+    server_func = FunctionCall(func="run server")
+    test_func = FunctionCall(func="run just script", vars=dict(JUSTFILE_TARGET="docs-test"))
+    task_name = "test-doctests"
+    tags = ["doctests"]
+    return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
+
+
+def create_no_server_tasks():
+    test_func = FunctionCall(func="run tests")
+    task_name = "test-no-server"
+    tags = ["no-server"]
+    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
+
+
+def create_free_threading_tasks():
+    vars = dict(VERSION="8.0", TOPOLOGY="replica_set")
+    server_func = FunctionCall(func="run server", vars=vars)
+    test_func = FunctionCall(func="run tests")
+    task_name = "test-free-threading"
+    tags = ["free-threading"]
+    return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
 
 
 def create_serverless_tasks():
