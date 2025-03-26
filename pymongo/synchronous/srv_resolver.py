@@ -25,6 +25,8 @@ from pymongo.errors import ConfigurationError
 if TYPE_CHECKING:
     from dns import resolver
 
+_IS_SYNC = True
+
 
 def _have_dnspython() -> bool:
     try:
@@ -45,13 +47,23 @@ def maybe_decode(text: Union[str, bytes]) -> str:
 
 # PYTHON-2667 Lazily call dns.resolver methods for compatibility with eventlet.
 def _resolve(*args: Any, **kwargs: Any) -> resolver.Answer:
-    from dns import resolver
+    if _IS_SYNC:
+        from dns import resolver
 
-    if hasattr(resolver, "resolve"):
-        # dnspython >= 2
-        return resolver.resolve(*args, **kwargs)
-    # dnspython 1.X
-    return resolver.query(*args, **kwargs)
+        if hasattr(resolver, "resolve"):
+            # dnspython >= 2
+            return resolver.resolve(*args, **kwargs)
+        # dnspython 1.X
+        return resolver.query(*args, **kwargs)
+    else:
+        from dns import asyncresolver
+
+        if hasattr(asyncresolver, "resolve"):
+            # dnspython >= 2
+            return asyncresolver.resolve(*args, **kwargs)  # type:ignore[return-value]
+        raise ConfigurationError(
+            "Upgrade to dnspython version >= 2.0 to use MongoClient with mongodb+srv:// connections."
+        )
 
 
 _INVALID_HOST_MSG = (

@@ -9,6 +9,16 @@ PyMongo 4.12 brings a number of changes including:
 - Support for configuring DEK cache lifetime via the ``key_expiration_ms`` argument to
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
 - Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
+- AsyncMongoClient no longer performs DNS resolution for "mongodb+srv://" connection strings on creation.
+  To avoid blocking the asyncio loop, the resolution is now deferred until the client is first connected.
+- Added index hinting support to the
+  :meth:`~pymongo.asynchronous.collection.AsyncCollection.distinct` and
+  :meth:`~pymongo.collection.Collection.distinct` commands.
+- Deprecated the ``hedge`` parameter for
+  :class:`~pymongo.read_preferences.PrimaryPreferred`,
+  :class:`~pymongo.read_preferences.Secondary`,
+  :class:`~pymongo.read_preferences.SecondaryPreferred`,
+  :class:`~pymongo.read_preferences.Nearest`. Support for ``hedge`` will be removed in PyMongo 5.0.
 
 Issues Resolved
 ...............

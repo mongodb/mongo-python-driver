@@ -28,11 +28,6 @@ def start_server():
     elif test_name == "load_balancer":
         set_env("LOAD_BALANCER")
 
-    elif test_name == "auth_oidc":
-        raise ValueError(
-            "OIDC auth does not use run-orchestration directly, do not use run-server!"
-        )
-
     elif test_name == "ocsp":
         opts.ssl = True
         if "ORCHESTRATION_FILE" not in os.environ:
