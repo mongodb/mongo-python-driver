@@ -527,8 +527,8 @@ class PyMongoProtocol(BufferedProtocol):
         if self._done_messages:
             message = await self._done_messages.popleft()
         else:
-            if self.transport and self.transport.is_closing():
-                raise OSError("connection is already closed")
+            # if self.transport and self.transport.is_closing():
+            #     raise OSError("connection is already closed")
             read_waiter = asyncio.get_running_loop().create_future()
             self._pending_messages.append(read_waiter)
             try:
