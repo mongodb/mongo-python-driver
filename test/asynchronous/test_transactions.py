@@ -599,7 +599,7 @@ class TestOptionsInsideTransactionProse(AsyncTransactionsBase):
             await s.commit_transaction()
         # End the session.
         # Ensure the document was inserted and no error was thrown from the transaction.
-        assert (await coll.count_documents({})) == 1
+        assert (await coll.find_one({"n": 1})) is not None
 
 
 if __name__ == "__main__":
