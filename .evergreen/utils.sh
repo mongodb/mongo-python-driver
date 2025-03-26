@@ -129,7 +129,7 @@ get_python_binary() {
     fi
     if [ ! -v "$PYTHON" ]; then
         echo "Could not find suitable python binary for '$version'"  >&2
-        exit 1
+        return 1
     fi
     echo "$PYTHON"
 }
