@@ -24,6 +24,7 @@ from urllib.parse import quote_plus
 sys.path[0:0] = [""]
 
 from test import unittest
+from unittest.mock import patch
 
 from bson.binary import JAVA_LEGACY
 from pymongo import ReadPreference
@@ -552,6 +553,11 @@ class TestURI(unittest.TestCase):
             parse_uri("mongodb://localhost: 27017")
         with self.assertRaisesRegex(ValueError, r"Port contains whitespace character: '\\n'"):
             parse_uri("mongodb://localhost:27\n017")
+
+    def test_allow_srv_hosts_with_fewer_than_three_dot_separated_parts(self):
+        with patch("dns.resolver.resolve"):
+            parse_uri("mongodb+srv://localhost/")
+            parse_uri("mongodb+srv://mongo.local/")
 
 
 if __name__ == "__main__":
