@@ -512,10 +512,11 @@ class PyMongoProtocol(BufferedProtocol):
         if self.transport.is_closing():
             raise OSError("Connection is closed")
         self.transport.write(message)
-        self.transport.resume_reading()
+        # self.transport.resume_reading()
 
     async def read(self, request_id: Optional[int], max_message_size: int) -> tuple[bytes, int]:
         """Read a single MongoDB Wire Protocol message from this connection."""
+        self._request_id = request_id
         if self.transport:
             try:
                 self.transport.resume_reading()
@@ -523,12 +524,11 @@ class PyMongoProtocol(BufferedProtocol):
             except AttributeError:
                 raise OSError("connection is already closed") from None
         self._max_message_size = max_message_size
-        self._request_id = request_id
         if self._done_messages:
             message = await self._done_messages.popleft()
         else:
-            # if self.transport and self.transport.is_closing():
-            #     raise OSError("connection is already closed")
+            if self.transport and self.transport.is_closing():
+                raise OSError("connection is already closed")
             read_waiter = asyncio.get_running_loop().create_future()
             self._pending_messages.append(read_waiter)
             try:
