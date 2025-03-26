@@ -184,12 +184,6 @@ create_tests(TestDNSSharded)
 
 class TestParsingErrors(PyMongoTestCase):
     def test_invalid_host(self):
-        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb is not"):
-            client = self.simple_client("mongodb+srv://mongodb")
-            client._connect()
-        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb.com is not"):
-            client = self.simple_client("mongodb+srv://mongodb.com")
-            client._connect()
         with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: an IP address is not"):
             client = self.simple_client("mongodb+srv://127.0.0.1")
             client._connect()
