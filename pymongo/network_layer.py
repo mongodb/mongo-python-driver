@@ -419,7 +419,7 @@ class AsyncNetworkingInterface(NetworkingInterfaceBase):
         self.conn[1].settimeout(timeout)
 
     async def close(self) -> None:
-        self.conn[0].abort()
+        self.conn[1].close()
         await self.conn[1].wait_closed()
 
     def is_closing(self) -> bool:
@@ -656,7 +656,7 @@ class PyMongoProtocol(BufferedProtocol):
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(self._compression_header)
         return op_code, compressor_id
 
-    def _resolve_pending_messages(self, exc: Exception | None) -> None:
+    def _resolve_pending_messages(self, exc: Optional[Exception] = None) -> None:
         pending = list(self._pending_messages)
         for msg in pending:
             if not msg.done():
@@ -666,12 +666,12 @@ class PyMongoProtocol(BufferedProtocol):
                     msg.set_exception(exc)
             self._done_messages.append(msg)
 
-    def close(self, exc: Exception | None) -> None:
-        self._connection_lost = True
+    def close(self, exc: Optional[Exception] = None) -> None:
+        self.transport.abort()
         self._resolve_pending_messages(exc)
-        self.transport.close()
+        self._connection_lost = True
 
-    def connection_lost(self, exc: Exception | None) -> None:
+    def connection_lost(self, exc: Optional[Exception] = None) -> None:
         self._resolve_pending_messages(exc)
         if not self._closed.done():
             self._closed.set_result(None)
