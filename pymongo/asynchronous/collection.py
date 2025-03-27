@@ -2948,12 +2948,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             returning aggregate results using a cursor.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`.
-          - `bypassDocumentValidation` (bool): If ``True``, allows the
-            write to opt-out of document level validation.
+          - `bypassDocumentValidation` (bool): If ``True``, allows the write to opt-out of document level validation.
 
 
         :return: A :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor` over the result
           set.
+
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
            Added ``let`` parameter.
