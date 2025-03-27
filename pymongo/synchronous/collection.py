@@ -799,8 +799,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         ordered: bool,
         write_concern: WriteConcern,
         op_id: Optional[int],
+        bypass_doc_val: Optional[bool],
         session: Optional[ClientSession],
-        bypass_doc_val: Optional[bool] = None,
         comment: Optional[Any] = None,
     ) -> Any:
         """Internal helper for inserting a single document."""
@@ -3350,13 +3350,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
         return self._find_and_modify(
-            filter,
-            projection,
-            sort,
-            let=let,
-            hint=hint,
-            session=session,
-            **kwargs,
+            filter, projection, sort, let=let, hint=hint, session=session, **kwargs
         )
 
     def find_one_and_replace(

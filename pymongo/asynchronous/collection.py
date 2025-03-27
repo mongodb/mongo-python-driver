@@ -800,8 +800,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         ordered: bool,
         write_concern: WriteConcern,
         op_id: Optional[int],
+        bypass_doc_val: Optional[bool],
         session: Optional[AsyncClientSession],
-        bypass_doc_val: Optional[bool] = None,
         comment: Optional[Any] = None,
     ) -> Any:
         """Internal helper for inserting a single document."""
@@ -3357,13 +3357,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
         return await self._find_and_modify(
-            filter,
-            projection,
-            sort,
-            let=let,
-            hint=hint,
-            session=session,
-            **kwargs,
+            filter, projection, sort, let=let, hint=hint, session=session, **kwargs
         )
 
     async def find_one_and_replace(

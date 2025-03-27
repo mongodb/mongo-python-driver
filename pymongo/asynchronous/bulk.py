@@ -87,7 +87,7 @@ class _AsyncBulk:
         self,
         collection: AsyncCollection[_DocumentType],
         ordered: bool,
-        bypass_document_validation: Optional[bool] = None,
+        bypass_document_validation: Optional[bool],
         comment: Optional[str] = None,
         let: Optional[Any] = None,
     ) -> None:
