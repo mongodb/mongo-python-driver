@@ -599,56 +599,13 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Load balancer tests
-  - name: load-balancer-rhel8-v6.0-python3.9
+  - name: load-balancer
     tasks:
       - name: .load-balancer
-    display_name: Load Balancer RHEL8 v6.0 Python3.9
+    display_name: Load Balancer
     run_on:
       - rhel87-small
     batchtime: 10080
-    expansions:
-      VERSION: "6.0"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: load-balancer-rhel8-v7.0-python3.9
-    tasks:
-      - name: .load-balancer
-    display_name: Load Balancer RHEL8 v7.0 Python3.9
-    run_on:
-      - rhel87-small
-    batchtime: 10080
-    expansions:
-      VERSION: "7.0"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: load-balancer-rhel8-v8.0-python3.9
-    tasks:
-      - name: .load-balancer
-    display_name: Load Balancer RHEL8 v8.0 Python3.9
-    run_on:
-      - rhel87-small
-    batchtime: 10080
-    expansions:
-      VERSION: "8.0"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: load-balancer-rhel8-rapid-python3.9
-    tasks:
-      - name: .load-balancer
-    display_name: Load Balancer RHEL8 rapid Python3.9
-    run_on:
-      - rhel87-small
-    batchtime: 10080
-    expansions:
-      VERSION: rapid
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: load-balancer-rhel8-latest-python3.9
-    tasks:
-      - name: .load-balancer
-    display_name: Load Balancer RHEL8 latest Python3.9
-    run_on:
-      - rhel87-small
-    batchtime: 10080
-    expansions:
-      VERSION: latest
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Mockupdb tests
   - name: mockupdb-rhel8-python3.9

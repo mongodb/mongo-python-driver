@@ -805,7 +805,7 @@ tasks:
           SUB_TEST_NAME: azure-fail
 
   # Load balancer tests
-  - name: test-load-balancer-auth-ssl
+  - name: test-load-balancer-auth-ssl-v6.0
     commands:
       - func: run server
         vars:
@@ -813,13 +813,74 @@ tasks:
           AUTH: auth
           SSL: ssl
           TEST_NAME: load_balancer
+          VERSION: "6.0"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TEST_NAME: load_balancer
     tags: [load-balancer, auth, ssl]
-  - name: test-load-balancer-noauth-ssl
+  - name: test-load-balancer-auth-ssl-v7.0
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
+          SSL: ssl
+          TEST_NAME: load_balancer
+          VERSION: "7.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, auth, ssl]
+  - name: test-load-balancer-auth-ssl-v8.0
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
+          SSL: ssl
+          TEST_NAME: load_balancer
+          VERSION: "8.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, auth, ssl]
+  - name: test-load-balancer-auth-ssl-rapid
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
+          SSL: ssl
+          TEST_NAME: load_balancer
+          VERSION: rapid
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, auth, ssl]
+  - name: test-load-balancer-auth-ssl-latest
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
+          SSL: ssl
+          TEST_NAME: load_balancer
+          VERSION: latest
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, auth, ssl]
+  - name: test-load-balancer-noauth-ssl-v6.0
     commands:
       - func: run server
         vars:
@@ -827,13 +888,74 @@ tasks:
           AUTH: noauth
           SSL: ssl
           TEST_NAME: load_balancer
+          VERSION: "6.0"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, ssl]
-  - name: test-load-balancer-noauth-nossl
+  - name: test-load-balancer-noauth-ssl-v7.0
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: ssl
+          TEST_NAME: load_balancer
+          VERSION: "7.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, noauth, ssl]
+  - name: test-load-balancer-noauth-ssl-v8.0
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: ssl
+          TEST_NAME: load_balancer
+          VERSION: "8.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, noauth, ssl]
+  - name: test-load-balancer-noauth-ssl-rapid
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: ssl
+          TEST_NAME: load_balancer
+          VERSION: rapid
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, noauth, ssl]
+  - name: test-load-balancer-noauth-ssl-latest
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: ssl
+          TEST_NAME: load_balancer
+          VERSION: latest
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, noauth, ssl]
+  - name: test-load-balancer-noauth-nossl-v6.0
     commands:
       - func: run server
         vars:
@@ -841,6 +963,67 @@ tasks:
           AUTH: noauth
           SSL: nossl
           TEST_NAME: load_balancer
+          VERSION: "6.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, noauth, nossl]
+  - name: test-load-balancer-noauth-nossl-v7.0
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: nossl
+          TEST_NAME: load_balancer
+          VERSION: "7.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, noauth, nossl]
+  - name: test-load-balancer-noauth-nossl-v8.0
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: nossl
+          TEST_NAME: load_balancer
+          VERSION: "8.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, noauth, nossl]
+  - name: test-load-balancer-noauth-nossl-rapid
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: nossl
+          TEST_NAME: load_balancer
+          VERSION: rapid
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TEST_NAME: load_balancer
+    tags: [load-balancer, noauth, nossl]
+  - name: test-load-balancer-noauth-nossl-latest
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: sharded_cluster
+          AUTH: noauth
+          SSL: nossl
+          TEST_NAME: load_balancer
+          VERSION: latest
       - func: run tests
         vars:
           AUTH: noauth
