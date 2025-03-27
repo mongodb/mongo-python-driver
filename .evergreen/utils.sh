@@ -127,9 +127,10 @@ get_python_binary() {
     else
         PYTHON="/opt/python/$version/bin/python3"
     fi
-    if [ ! -v "$PYTHON" ]; then
+    if is_python_39 "$(command -v $PYTHON)"; then
+        echo "$PYTHON"
+    else
         echo "Could not find suitable python binary for '$version'"  >&2
         return 1
     fi
-    echo "$PYTHON"
 }
