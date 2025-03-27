@@ -541,6 +541,7 @@ class TestSession(IntegrationTest):
             (bucket.download_to_stream_by_name, ["f", sio], {}),
             (find, [], {}),
             (bucket.rename, [1, "f2"], {}),
+            (bucket.rename_by_name, ["f2", "f3"], {}),
             # Delete both files so _test_ops can run these operations twice.
             (bucket.delete, [1], {}),
             (bucket.delete, [2], {}),
