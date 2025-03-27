@@ -116,3 +116,8 @@ repos:
       (?x)(
           .evergreen/retry-with-backoff.sh
         )
+  - id: generate-config
+    name: generate-config
+    entry: .evergreen/scripts/generate-config.sh
+    language: python
+    additional_dependencies: ["shrub.py>=3.2.0", "pyyaml>=6.0.2"]

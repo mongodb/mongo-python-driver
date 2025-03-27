@@ -1,12 +1,4 @@
-# /// script
-# requires-python = ">=3.9"
-# dependencies = [
-#   "shrub.py>=3.2.0",
-#   "pyyaml>=6.0.2"
-# ]
-# ///
-
-# Note: Run this file with `pipx run`, or `uv run`.
+# Note: See CONTRIBUTING.md for how to update/run this file.
 from __future__ import annotations
 
 import sys
