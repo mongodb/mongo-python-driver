@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Utility functions used by pymongo evergreen scripts.
 set -eu
 
 find_python3() {
