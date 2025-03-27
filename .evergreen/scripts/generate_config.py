@@ -1,12 +1,4 @@
-# /// script
-# requires-python = ">=3.9"
-# dependencies = [
-#   "shrub.py>=3.2.0",
-#   "pyyaml>=6.0.2"
-# ]
-# ///
-
-# Note: Run this file with `pipx run`, or `uv run`.
+# Note: See CONTRIBUTING.md for how to update/run this file.
 from __future__ import annotations
 
 import sys
@@ -1113,7 +1105,7 @@ def write_variants_to_file():
     with target.open("w") as fid:
         fid.write("buildvariants:\n")
 
-    for name, func in getmembers(mod, isfunction):
+    for name, func in sorted(getmembers(mod, isfunction)):
         if not name.endswith("_variants"):
             continue
         if not name.startswith("create_"):
@@ -1143,7 +1135,7 @@ def write_tasks_to_file():
     with target.open("w") as fid:
         fid.write("tasks:\n")
 
-    for name, func in getmembers(mod, isfunction):
+    for name, func in sorted(getmembers(mod, isfunction)):
         if not name.endswith("_tasks"):
             continue
         if not name.startswith("create_"):
