@@ -36,7 +36,7 @@ from typing import (
 )
 from urllib.parse import unquote_plus
 
-from bson import SON
+from bson.som import SON
 from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
