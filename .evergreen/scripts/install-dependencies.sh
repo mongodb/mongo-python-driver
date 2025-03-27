@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Install the dependencies needed for an evergreen run.
 set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})

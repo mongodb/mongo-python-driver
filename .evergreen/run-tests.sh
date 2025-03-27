@@ -1,4 +1,5 @@
 #!/bin/bash
+# Run a test suite that was configured with setup-tests.sh.
 set -eu
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})

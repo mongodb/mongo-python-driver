@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Keep the synchronous folders in sync with there async counterparts.
 set -eu
 
 python ./tools/synchro.py "$@"

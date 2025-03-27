@@ -1,6 +1,5 @@
 #!/bin/bash
-
-set +x          # Disable debug trace
+# Script run on a remote host to test MONGODB-OIDC.
 set -eu
 
 echo "Running MONGODB-OIDC authentication tests on ${OIDC_ENV}..."

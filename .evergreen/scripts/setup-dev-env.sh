@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Set up a development environment on an evergreen host.
 set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
