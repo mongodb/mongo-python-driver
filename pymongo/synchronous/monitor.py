@@ -33,7 +33,7 @@ from pymongo.periodic_executor import _shutdown_executors
 from pymongo.pool_options import _is_faas
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
-from pymongo.srv_resolver import _SrvResolver
+from pymongo.synchronous.srv_resolver import _SrvResolver
 
 if TYPE_CHECKING:
     from pymongo.synchronous.pool import Connection, Pool, _CancellationContext

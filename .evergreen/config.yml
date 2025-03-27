@@ -206,7 +206,7 @@ functions:
       params:
         binary: bash
         working_dir: "src"
-        include_expansions_in_env: [VERSION, TOPOLOGY, AUTH, SSL, ORCHESTRATION_FILE, PYTHON_BINARY,
+        include_expansions_in_env: [VERSION, TOPOLOGY, AUTH, SSL, ORCHESTRATION_FILE, PYTHON_BINARY, PYTHON_VERSION,
           STORAGE_ENGINE, REQUIRE_API_VERSION, DRIVERS_TOOLS, TEST_CRYPT_SHARED, AUTH_AWS, LOAD_BALANCER]
         args: [.evergreen/just.sh, run-server, "${TEST_NAME}"]
     - command: expansions.update
@@ -227,7 +227,7 @@ functions:
       type: test
       params:
         include_expansions_in_env: [AUTH, SSL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
-          AWS_SESSION_TOKEN, COVERAGE, PYTHON_BINARY, LIBMONGOCRYPT_URL, MONGODB_URI,
+          AWS_SESSION_TOKEN, COVERAGE, PYTHON_BINARY, LIBMONGOCRYPT_URL, MONGODB_URI, PYTHON_VERSION,
           DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION, DEBUG_LOG,
           ORCHESTRATION_FILE, OCSP_SERVER_TYPE]
         binary: bash

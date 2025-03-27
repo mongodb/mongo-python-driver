@@ -11,6 +11,16 @@ PyMongo 4.12 brings a number of changes including:
 - Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
 - Added :meth:`gridfs.asynchronous.grid_file.AsyncGridFSBucket.delete_by_name` and :meth:`gridfs.grid_file.GridFSBucket.delete_by_name`
   for more performant deletion of a file with multiple revisions.
+- AsyncMongoClient no longer performs DNS resolution for "mongodb+srv://" connection strings on creation.
+  To avoid blocking the asyncio loop, the resolution is now deferred until the client is first connected.
+- Added index hinting support to the
+  :meth:`~pymongo.asynchronous.collection.AsyncCollection.distinct` and
+  :meth:`~pymongo.collection.Collection.distinct` commands.
+- Deprecated the ``hedge`` parameter for
+  :class:`~pymongo.read_preferences.PrimaryPreferred`,
+  :class:`~pymongo.read_preferences.Secondary`,
+  :class:`~pymongo.read_preferences.SecondaryPreferred`,
+  :class:`~pymongo.read_preferences.Nearest`. Support for ``hedge`` will be removed in PyMongo 5.0.
 
 Issues Resolved
 ...............

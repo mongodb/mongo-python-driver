@@ -32,7 +32,7 @@ import unittest
 import warnings
 from asyncio import iscoroutinefunction
 
-from pymongo.uri_parser import parse_uri
+from pymongo.asynchronous.uri_parser import parse_uri
 
 try:
     import ipaddress
@@ -680,7 +680,6 @@ class AsyncClientContext:
             "single",
             "replicaset",
             "sharded",
-            "sharded-replicaset",
             "load-balanced",
         }
         if unknown:
@@ -694,16 +693,6 @@ class AsyncClientContext:
         if "replicaset" in topologies and self.is_rs:
             return True
         if "sharded" in topologies and self.is_mongos:
-            return True
-        if "sharded-replicaset" in topologies and self.is_mongos:
-            shards = await async_client_context.client.config.shards.find().to_list()
-            for shard in shards:
-                # For a 3-member RS-backed sharded cluster, shard['host']
-                # will be 'replicaName/ip1:port1,ip2:port2,ip3:port3'
-                # Otherwise it will be 'ip1:port1'
-                host_spec = shard["host"]
-                if not len(host_spec.split("/")) > 1:
-                    return False
             return True
         return False
 
@@ -1027,7 +1016,7 @@ class AsyncPyMongoTestCase(unittest.TestCase):
         auth_mech = kwargs.get("authMechanism", "")
         if async_client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
             # Only add the default username or password if one is not provided.
-            res = parse_uri(uri)
+            res = await parse_uri(uri)
             if (
                 not res["username"]
                 and not res["password"]
@@ -1058,7 +1047,7 @@ class AsyncPyMongoTestCase(unittest.TestCase):
         auth_mech = kwargs.get("authMechanism", "")
         if async_client_context.auth_enabled and authenticate and auth_mech != "MONGODB-OIDC":
             # Only add the default username or password if one is not provided.
-            res = parse_uri(uri)
+            res = await parse_uri(uri)
             if (
                 not res["username"]
                 and not res["password"]
