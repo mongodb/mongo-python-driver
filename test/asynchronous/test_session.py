@@ -458,7 +458,6 @@ class TestSession(AsyncIntegrationTest):
                     f"{name} sent wrong lsid with {event.command_name}",
                 )
 
-    @_csot.apply
     async def test_gridfs(self):
         client = self.client
         fs = AsyncGridFS(client.pymongo_test)
@@ -501,7 +500,6 @@ class TestSession(AsyncIntegrationTest):
             (fs.delete, [1], {}),
         )
 
-    @_csot.apply
     async def test_gridfs_bucket(self):
         client = self.client
         bucket = AsyncGridFSBucket(client.pymongo_test)
@@ -548,7 +546,6 @@ class TestSession(AsyncIntegrationTest):
             (bucket.delete, [2], {}),
         )
 
-    @_csot.apply
     async def test_gridfsbucket_cursor(self):
         client = self.client
         bucket = AsyncGridFSBucket(client.pymongo_test)

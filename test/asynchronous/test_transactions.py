@@ -240,7 +240,6 @@ class TestTransactions(AsyncTransactionsBase):
             self.assertEqual(ctx.exception.code, 48)  # NamespaceExists
 
     @async_client_context.require_transactions
-    @_csot.apply
     async def test_gridfs_does_not_support_transactions(self):
         client = async_client_context.client
         db = client.pymongo_test

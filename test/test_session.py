@@ -458,7 +458,6 @@ class TestSession(IntegrationTest):
                     f"{name} sent wrong lsid with {event.command_name}",
                 )
 
-    @_csot.apply
     def test_gridfs(self):
         client = self.client
         fs = GridFS(client.pymongo_test)
@@ -501,7 +500,6 @@ class TestSession(IntegrationTest):
             (fs.delete, [1], {}),
         )
 
-    @_csot.apply
     def test_gridfs_bucket(self):
         client = self.client
         bucket = GridFSBucket(client.pymongo_test)
@@ -548,7 +546,6 @@ class TestSession(IntegrationTest):
             (bucket.delete, [2], {}),
         )
 
-    @_csot.apply
     def test_gridfsbucket_cursor(self):
         client = self.client
         bucket = GridFSBucket(client.pymongo_test)
