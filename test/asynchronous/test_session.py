@@ -543,7 +543,7 @@ class TestSession(AsyncIntegrationTest):
             (bucket.rename, [1, "f2"], {}),
             # Delete both files so _test_ops can run these operations twice.
             (bucket.delete, [1], {}),
-            (bucket.delete, [2], {}),
+            (bucket.delete_by_name, ["f"], {}),
         )
 
     async def test_gridfsbucket_cursor(self):

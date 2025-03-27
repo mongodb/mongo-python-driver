@@ -287,6 +287,7 @@ class TestTransactions(TransactionsBase):
                     "new-name",
                 ),
             ),
+            (bucket.delete_by_name, ("new-name",)),
         ]
 
         with client.start_session() as s, s.start_transaction():
