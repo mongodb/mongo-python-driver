@@ -1105,7 +1105,7 @@ def write_variants_to_file():
     with target.open("w") as fid:
         fid.write("buildvariants:\n")
 
-    for name, func in getmembers(mod, isfunction):
+    for name, func in sorted(getmembers(mod, isfunction)):
         if not name.endswith("_variants"):
             continue
         if not name.startswith("create_"):
