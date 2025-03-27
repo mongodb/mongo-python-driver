@@ -179,17 +179,14 @@ def get_versions_until(max_version: str) -> list[str]:
     return versions
 
 
-def get_display_name(base: str, host: Host | None = None, **kwargs) -> str:
-    """Get the display name of a variant."""
+def get_common_name(base: str, sep: str, **kwargs) -> str:
     display_name = base
-    if host is not None:
-        display_name += f" {host.display_name}"
     version = kwargs.pop("VERSION", None)
     version = version or kwargs.pop("version", None)
     if version:
         if version not in ["rapid", "latest"]:
             version = f"v{version}"
-        display_name = f"{display_name} {version}"
+        display_name = f"{display_name}{sep}{version}"
     for key, value in kwargs.items():
         name = value
         if key.lower() == "python":
@@ -201,8 +198,20 @@ def get_display_name(base: str, host: Host | None = None, **kwargs) -> str:
             name = DISPLAY_LOOKUP[key.lower()][value]
         else:
             continue
-        display_name = f"{display_name} {name}"
+        display_name = f"{display_name}{sep}{name}"
     return display_name
+
+
+def get_variant_name(base: str, host: Host | None = None, **kwargs) -> str:
+    """Get the display name of a variant."""
+    display_name = base
+    if host is not None:
+        display_name += f" {host.display_name}"
+    return get_common_name(display_name, " ", **kwargs)
+
+
+def get_task_name(base: str, **kwargs):
+    return get_common_name(base, "-", **kwargs).lower()
 
 
 def zip_cycle(*iterables, empty_default=None):
@@ -244,7 +253,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
         host = DEFAULT_HOST
         variant = create_variant(
             [".ocsp"],
-            get_display_name(base_display, host, version=version, python=python),
+            get_variant_name(base_display, host, version=version, python=python),
             python=python,
             version=version,
             host=host,
@@ -260,7 +269,7 @@ def create_ocsp_variants() -> list[BuildVariant]:
         python = CPYTHONS[0] if version == "4.4" else CPYTHONS[-1]
         variant = create_variant(
             [".ocsp-rsa !.ocsp-staple"],
-            get_display_name(base_display, host, version=version, python=python),
+            get_variant_name(base_display, host, version=version, python=python),
             python=python,
             version=version,
             host=host,
@@ -282,7 +291,7 @@ def create_server_variants() -> list[BuildVariant]:
     for python, c_ext in product([*MIN_MAX_PYTHON, PYPYS[-1]], C_EXTS):
         expansions = dict(COVERAGE="coverage")
         handle_c_ext(c_ext, expansions)
-        display_name = get_display_name(base_display_name, host, python=python, **expansions)
+        display_name = get_variant_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
             [f".{t} .sync_async" for t in TOPOLOGIES],
             display_name,
@@ -296,7 +305,7 @@ def create_server_variants() -> list[BuildVariant]:
     # Test the rest of the pythons.
     for python in CPYTHONS[1:-1] + PYPYS[:-1]:
         display_name = f"Test {host}"
-        display_name = get_display_name(base_display_name, host, python=python)
+        display_name = get_variant_name(base_display_name, host, python=python)
         variant = create_variant(
             [f"{t} .sync_async" for t in SUB_TASKS],
             display_name,
@@ -316,7 +325,7 @@ def create_server_variants() -> list[BuildVariant]:
                 for version in get_versions_from("6.0"):
                     tasks.extend(f"{t} .{version} !.sync_async" for t in SUB_TASKS)
             host = HOSTS[host_name]
-            display_name = get_display_name(base_display_name, host, python=python)
+            display_name = get_variant_name(base_display_name, host, python=python)
             variant = create_variant(tasks, display_name, python=python, host=host)
             variants.append(variant)
 
@@ -332,7 +341,7 @@ def create_free_threaded_variants() -> list[BuildVariant]:
         tasks = [".free-threading"]
         host = HOSTS[host_name]
         python = "3.13t"
-        display_name = get_display_name("Free-threaded", host, python=python)
+        display_name = get_variant_name("Free-threaded", host, python=python)
         variant = create_variant(tasks, display_name, python=python, host=host)
         variants.append(variant)
     return variants
@@ -357,7 +366,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     encryptions = ["Encryption", "Encryption crypt_shared", "Encryption PyOpenSSL"]
     for encryption, python in product(encryptions, [*MIN_MAX_PYTHON, PYPYS[-1]]):
         expansions = get_encryption_expansions(encryption)
-        display_name = get_display_name(encryption, host, python=python, **expansions)
+        display_name = get_variant_name(encryption, host, python=python, **expansions)
         variant = create_variant(
             [f"{t} .sync_async" for t in SUB_TASKS],
             display_name,
@@ -372,7 +381,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     # Test the rest of the pythons on linux for all server versions.
     for encryption, python, task in zip_cycle(encryptions, CPYTHONS[1:-1] + PYPYS[:-1], SUB_TASKS):
         expansions = get_encryption_expansions(encryption)
-        display_name = get_display_name(encryption, host, python=python, **expansions)
+        display_name = get_variant_name(encryption, host, python=python, **expansions)
         variant = create_variant(
             [f"{task} .sync_async"],
             display_name,
@@ -388,7 +397,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     for host_name, encryption, python in product(["macos", "win64"], encryptions, MIN_MAX_PYTHON):
         host = HOSTS[host_name]
         expansions = get_encryption_expansions(encryption)
-        display_name = get_display_name(encryption, host, python=python, **expansions)
+        display_name = get_variant_name(encryption, host, python=python, **expansions)
         variant = create_variant(
             task_names,
             display_name,
@@ -410,7 +419,7 @@ def create_load_balancer_variants():
     variants = []
     for version in versions:
         python = CPYTHONS[0]
-        display_name = get_display_name("Load Balancer", host, python=python, version=version)
+        display_name = get_variant_name("Load Balancer", host, python=python, version=version)
         variant = create_variant(
             [".load-balancer"],
             display_name,
@@ -435,7 +444,7 @@ def create_compression_variants():
         handle_c_ext(c_ext, expansions)
         base_name = f"Compression {compressor}"
         python = CPYTHONS[ind % len(CPYTHONS)]
-        display_name = get_display_name(base_name, host, python=python, **expansions)
+        display_name = get_variant_name(base_name, host, python=python, **expansions)
         variant = create_variant(
             task_names[compressor],
             display_name,
@@ -450,7 +459,7 @@ def create_compression_variants():
         expansions = dict(COMPRESSORS=compressor)
         handle_c_ext(c_ext, expansions)
         base_name = f"Compression {compressor}"
-        display_name = get_display_name(base_name, host, python=python, **expansions)
+        display_name = get_variant_name(base_name, host, python=python, **expansions)
         variant = create_variant(
             task_names[compressor],
             display_name,
@@ -465,17 +474,13 @@ def create_compression_variants():
 
 def create_enterprise_auth_variants():
     variants = []
-
-    # All python versions across platforms.
-    for python in ALL_PYTHONS:
-        if python == CPYTHONS[0]:
-            host = HOSTS["macos"]
-        elif python == CPYTHONS[-1]:
-            host = HOSTS["win64"]
+    for host in [HOSTS["macos"], HOSTS["win64"], DEFAULT_HOST]:
+        display_name = get_variant_name("Auth Enterprise", host)
+        if host == DEFAULT_HOST:
+            tags = [".enterprise_auth"]
         else:
-            host = DEFAULT_HOST
-        display_name = get_display_name("Auth Enterprise", host, python=python)
-        variant = create_variant([".enterprise_auth"], display_name, host=host, python=python)
+            tags = [".enterprise_auth !.pypy"]
+        variant = create_variant(tags, display_name, host=host)
         variants.append(variant)
 
     return variants
@@ -498,7 +503,7 @@ def create_pyopenssl_variants():
         else:
             host = DEFAULT_HOST
 
-        display_name = get_display_name(base_name, host, python=python)
+        display_name = get_variant_name(base_name, host, python=python)
         variant = create_variant(
             [f".replica_set .{auth} .{ssl} .sync_async", f".7.0 .{auth} .{ssl} .sync_async"],
             display_name,
@@ -527,7 +532,7 @@ def create_storage_engine_variants():
             tasks = [f".standalone .{v} .noauth .nossl .sync_async" for v in versions] + [
                 f".replica_set .{v} .noauth .nossl .sync_async" for v in versions
             ]
-        display_name = get_display_name(f"Storage {engine}", host, python=python)
+        display_name = get_variant_name(f"Storage {engine}", host, python=python)
         variant = create_variant(
             tasks, display_name, host=host, python=python, expansions=expansions
         )
@@ -563,7 +568,7 @@ def create_stable_api_variants():
                 f".standalone .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")
             ]
         base_display_name = f"Stable API {test_type}"
-        display_name = get_display_name(base_display_name, host, python=python, **expansions)
+        display_name = get_variant_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
             tasks, display_name, host=host, python=python, tags=tags, expansions=expansions
         )
@@ -578,7 +583,7 @@ def create_green_framework_variants():
     host = DEFAULT_HOST
     for python, framework in product([CPYTHONS[0], CPYTHONS[-1]], ["eventlet", "gevent"]):
         expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
-        display_name = get_display_name(f"Green {framework.capitalize()}", host, python=python)
+        display_name = get_variant_name(f"Green {framework.capitalize()}", host, python=python)
         variant = create_variant(
             tasks, display_name, host=host, python=python, expansions=expansions
         )
@@ -593,7 +598,7 @@ def create_no_c_ext_variants():
         tasks = [f".{topology} .noauth .nossl !.sync_async"]
         expansions = dict()
         handle_c_ext(C_EXTS[0], expansions)
-        display_name = get_display_name("No C Ext", host, python=python)
+        display_name = get_variant_name("No C Ext", host, python=python)
         variant = create_variant(
             tasks, display_name, host=host, python=python, expansions=expansions
         )
@@ -606,7 +611,7 @@ def create_atlas_data_lake_variants():
     host = HOSTS["ubuntu22"]
     for python in MIN_MAX_PYTHON:
         tasks = [".atlas_data_lake"]
-        display_name = get_display_name("Atlas Data Lake", host, python=python)
+        display_name = get_variant_name("Atlas Data Lake", host, python=python)
         variant = create_variant(tasks, display_name, host=host, python=python)
         variants.append(variant)
     return variants
@@ -618,7 +623,7 @@ def create_mod_wsgi_variants():
     tasks = [".mod_wsgi"]
     expansions = dict(MOD_WSGI_VERSION="4")
     for python in MIN_MAX_PYTHON:
-        display_name = get_display_name("mod_wsgi", host, python=python)
+        display_name = get_variant_name("mod_wsgi", host, python=python)
         variant = create_variant(
             tasks, display_name, host=host, python=python, expansions=expansions
         )
@@ -630,7 +635,7 @@ def create_disable_test_commands_variants():
     host = DEFAULT_HOST
     expansions = dict(AUTH="auth", SSL="ssl", DISABLE_TEST_COMMANDS="1")
     python = CPYTHONS[0]
-    display_name = get_display_name("Disable test commands", host, python=python)
+    display_name = get_variant_name("Disable test commands", host, python=python)
     tasks = [".latest .sync_async"]
     return [create_variant(tasks, display_name, host=host, python=python, expansions=expansions)]
 
@@ -643,7 +648,7 @@ def create_serverless_variants():
     return [
         create_variant(
             tasks,
-            get_display_name(base_name, host, python=python),
+            get_variant_name(base_name, host, python=python),
             host=host,
             python=python,
             batchtime=batchtime,
@@ -663,7 +668,7 @@ def create_oidc_auth_variants():
         variants.append(
             create_variant(
                 tasks,
-                get_display_name("Auth OIDC", host),
+                get_variant_name("Auth OIDC", host),
                 host=host,
                 batchtime=BATCHTIME_WEEK,
             )
@@ -677,7 +682,7 @@ def create_search_index_variants():
     return [
         create_variant(
             [".search_index"],
-            get_display_name("Search Index Helpers", host, python=python),
+            get_variant_name("Search Index Helpers", host, python=python),
             python=python,
             host=host,
         )
@@ -690,7 +695,7 @@ def create_mockupdb_variants():
     return [
         create_variant(
             [".mockupdb"],
-            get_display_name("MockupDB", host, python=python),
+            get_variant_name("MockupDB", host, python=python),
             python=python,
             host=host,
         )
@@ -703,7 +708,7 @@ def create_doctests_variants():
     return [
         create_variant(
             [".doctests"],
-            get_display_name("Doctests", host, python=python),
+            get_variant_name("Doctests", host, python=python),
             python=python,
             host=host,
         )
@@ -715,7 +720,7 @@ def create_atlas_connect_variants():
     return [
         create_variant(
             [".atlas_connect"],
-            get_display_name("Atlas connect", host, python=python),
+            get_variant_name("Atlas connect", host, python=python),
             python=python,
             host=host,
         )
@@ -743,7 +748,7 @@ def create_aws_auth_variants():
         host = HOSTS[host_name]
         variant = create_variant(
             tasks,
-            get_display_name("Auth AWS", host, python=python),
+            get_variant_name("Auth AWS", host, python=python),
             host=host,
             python=python,
             expansions=expansions,
@@ -765,7 +770,7 @@ def create_alternative_hosts_variants():
     variants.append(
         create_variant(
             [".5.0 .standalone !.sync_async"],
-            get_display_name("OpenSSL 1.0.2", host, python=CPYTHONS[0]),
+            get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0]),
             host=host,
             python=CPYTHONS[0],
             batchtime=batchtime,
@@ -782,7 +787,7 @@ def create_alternative_hosts_variants():
         variants.append(
             create_variant(
                 tags,
-                display_name=get_display_name("Other hosts", host),
+                display_name=get_variant_name("Other hosts", host),
                 batchtime=batchtime,
                 host=host,
                 expansions=expansions,
@@ -975,13 +980,20 @@ def create_atlas_connect_tasks():
 
 
 def create_enterprise_auth_tasks():
-    vars = dict(TEST_NAME="enterprise_auth", AUTH="auth")
-    server_func = FunctionCall(func="run server", vars=vars)
-    assume_func = FunctionCall(func="assume ec2 role")
-    test_func = FunctionCall(func="run tests", vars=vars)
-    task_name = "test-enterprise-auth"
-    tags = ["enterprise_auth"]
-    return [EvgTask(name=task_name, tags=tags, commands=[server_func, assume_func, test_func])]
+    tasks = []
+    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
+        vars = dict(TEST_NAME="enterprise_auth", AUTH="auth", PYTHON_VERSION=python)
+        server_func = FunctionCall(func="run server", vars=vars)
+        assume_func = FunctionCall(func="assume ec2 role")
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = get_task_name("test-enterprise-auth", python=python)
+        tags = ["enterprise_auth"]
+        if python in PYPYS:
+            tags += ["pypy"]
+        tasks.append(
+            EvgTask(name=task_name, tags=tags, commands=[server_func, assume_func, test_func])
+        )
+    return tasks
 
 
 def create_perf_tasks():
