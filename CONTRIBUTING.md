@@ -367,7 +367,7 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 - If there are any special test considerations, including not running `pytest` at all, handle it in `.evergreen/scripts/run_tests.py`.
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
 - Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
-- Regenerate the test variants and tasks using `pre-commit run generate-config`.
+- Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
 ## Re-sync Spec Tests

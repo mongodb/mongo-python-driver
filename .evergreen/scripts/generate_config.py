@@ -1135,7 +1135,7 @@ def write_tasks_to_file():
     with target.open("w") as fid:
         fid.write("tasks:\n")
 
-    for name, func in getmembers(mod, isfunction):
+    for name, func in sorted(getmembers(mod, isfunction)):
         if not name.endswith("_tasks"):
             continue
         if not name.startswith("create_"):
