@@ -45,7 +45,7 @@ from test.utils_shared import (
 
 from bson import DBRef
 from gridfs.synchronous.grid_file import GridFS, GridFSBucket
-from pymongo import ASCENDING, MongoClient, monitoring
+from pymongo import ASCENDING, MongoClient, _csot, monitoring
 from pymongo.common import _MAX_END_SESSIONS
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import IndexModel, InsertOne, UpdateOne
@@ -458,6 +458,7 @@ class TestSession(IntegrationTest):
                     f"{name} sent wrong lsid with {event.command_name}",
                 )
 
+    @_csot.apply
     def test_gridfs(self):
         client = self.client
         fs = GridFS(client.pymongo_test)
@@ -500,6 +501,7 @@ class TestSession(IntegrationTest):
             (fs.delete, [1], {}),
         )
 
+    @_csot.apply
     def test_gridfs_bucket(self):
         client = self.client
         bucket = GridFSBucket(client.pymongo_test)
@@ -546,6 +548,7 @@ class TestSession(IntegrationTest):
             (bucket.delete, [2], {}),
         )
 
+    @_csot.apply
     def test_gridfsbucket_cursor(self):
         client = self.client
         bucket = GridFSBucket(client.pymongo_test)

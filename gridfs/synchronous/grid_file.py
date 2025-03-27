@@ -851,7 +851,7 @@ class GridFSBucket:
         """
         _disallow_transactions(session)
         files = self._files.find({"filename": filename}, {"_id": 1}, session=session)
-        file_ids = [file_id["_id"] for file_id in files]
+        file_ids = [file["_id"] for file in files]
         res = self._files.delete_many({"_id": {"$in": file_ids}}, session=session)
         self._chunks.delete_many({"files_id": {"$in": file_ids}}, session=session)
         if not res.deleted_count:

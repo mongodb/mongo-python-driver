@@ -32,7 +32,7 @@ from typing import List
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
-from pymongo import WriteConcern
+from pymongo import WriteConcern, _csot
 from pymongo.asynchronous import client_session
 from pymongo.asynchronous.client_session import TransactionOptions
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
@@ -240,6 +240,7 @@ class TestTransactions(AsyncTransactionsBase):
             self.assertEqual(ctx.exception.code, 48)  # NamespaceExists
 
     @async_client_context.require_transactions
+    @_csot.apply
     async def test_gridfs_does_not_support_transactions(self):
         client = async_client_context.client
         db = client.pymongo_test

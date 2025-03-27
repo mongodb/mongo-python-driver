@@ -32,7 +32,7 @@ from typing import List
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
-from pymongo import WriteConcern
+from pymongo import WriteConcern, _csot
 from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,
@@ -232,6 +232,7 @@ class TestTransactions(TransactionsBase):
             self.assertEqual(ctx.exception.code, 48)  # NamespaceExists
 
     @client_context.require_transactions
+    @_csot.apply
     def test_gridfs_does_not_support_transactions(self):
         client = client_context.client
         db = client.pymongo_test
