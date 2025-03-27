@@ -756,6 +756,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._host = host
         self._port = port
         self._topology: Topology = None  # type: ignore[assignment]
+        self._timeout: float | None = None
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
