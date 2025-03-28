@@ -830,6 +830,33 @@ class GridFSBucket:
         if not res.deleted_count:
             raise NoFile("no file could be deleted because none matched %s" % file_id)
 
+    @_csot.apply
+    def delete_by_name(self, filename: str, session: Optional[ClientSession] = None) -> None:
+        """Given a filename, delete this stored file's files collection document(s)
+        and associated chunks from a GridFS bucket.
+
+        For example::
+
+          my_db = MongoClient().test
+          fs = GridFSBucket(my_db)
+          fs.upload_from_stream("test_file", "data I want to store!")
+          fs.delete_by_name("test_file")
+
+        Raises :exc:`~gridfs.errors.NoFile` if no file with the given filename exists.
+
+        :param filename: The name of the file to be deleted.
+        :param session: a :class:`~pymongo.client_session.ClientSession`
+
+        .. versionadded:: 4.12
+        """
+        _disallow_transactions(session)
+        files = self._files.find({"filename": filename}, {"_id": 1}, session=session)
+        file_ids = [file["_id"] for file in files]
+        res = self._files.delete_many({"_id": {"$in": file_ids}}, session=session)
+        self._chunks.delete_many({"files_id": {"$in": file_ids}}, session=session)
+        if not res.deleted_count:
+            raise NoFile(f"no file could be deleted because none matched filename {filename!r}")
+
     def find(self, *args: Any, **kwargs: Any) -> GridOutCursor:
         """Find and return the files collection documents that match ``filter``
 

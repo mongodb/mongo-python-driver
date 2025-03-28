@@ -9,6 +9,8 @@ PyMongo 4.12 brings a number of changes including:
 - Support for configuring DEK cache lifetime via the ``key_expiration_ms`` argument to
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
 - Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
+- Added :meth:`gridfs.asynchronous.grid_file.AsyncGridFSBucket.delete_by_name` and :meth:`gridfs.grid_file.GridFSBucket.delete_by_name`
+  for more performant deletion of a file with multiple revisions.
 - AsyncMongoClient no longer performs DNS resolution for "mongodb+srv://" connection strings on creation.
   To avoid blocking the asyncio loop, the resolution is now deferred until the client is first connected.
 - Added index hinting support to the
