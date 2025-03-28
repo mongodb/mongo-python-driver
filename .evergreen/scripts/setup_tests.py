@@ -142,7 +142,6 @@ def handle_test_env() -> None:
     test_title = test_name
     if sub_test_name:
         test_title += f" {sub_test_name}"
-    LOGGER.info(f"Setting up '{test_title}' with {AUTH=} and {SSL=}...")
 
     # Create the test env file with the initial set of values.
     with ENV_FILE.open("w", newline="\n") as fid:
@@ -150,8 +149,6 @@ def handle_test_env() -> None:
         fid.write("set +x\n")
     ENV_FILE.chmod(ENV_FILE.stat().st_mode | stat.S_IEXEC)
 
-    write_env("AUTH", AUTH)
-    write_env("SSL", SSL)
     write_env("PIP_QUIET")  # Quiet by default.
     write_env("PIP_PREFER_BINARY")  # Prefer binary dists by default.
     write_env("UV_FROZEN")  # Do not modify lock files.
@@ -196,6 +193,13 @@ def handle_test_env() -> None:
 
     if test_name == "search_index":
         AUTH = "auth"
+
+    if test_name == "ocsp":
+        SSL = "ssl"
+
+    write_env("AUTH", AUTH)
+    write_env("SSL", SSL)
+    LOGGER.info(f"Setting up '{test_title}' with {AUTH=} and {SSL=}...")
 
     if test_name == "aws_lambda":
         UV_ARGS.append("--group pip")
