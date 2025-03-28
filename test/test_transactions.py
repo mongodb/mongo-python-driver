@@ -287,6 +287,13 @@ class TestTransactions(TransactionsBase):
                     "new-name",
                 ),
             ),
+            (
+                bucket.rename_by_name,
+                (
+                    "new-name",
+                    "new-name2",
+                ),
+            ),
         ]
 
         with client.start_session() as s, s.start_transaction():

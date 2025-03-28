@@ -65,7 +65,7 @@ import pymongo
 from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
-from gridfs import GridFSBucket, GridOut
+from gridfs import GridFSBucket, GridOut, NoFile
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
@@ -631,7 +631,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Connection errors are considered client errors.
             if isinstance(error, ConnectionFailure):
                 self.assertNotIsInstance(error, NotPrimaryError)
-            elif isinstance(error, (InvalidOperation, ConfigurationError, EncryptionError)):
+            elif isinstance(error, (InvalidOperation, ConfigurationError, EncryptionError, NoFile)):
                 pass
             else:
                 self.assertNotIsInstance(error, PyMongoError)
