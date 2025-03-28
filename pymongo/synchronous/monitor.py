@@ -36,7 +36,11 @@ from pymongo.server_description import ServerDescription
 from pymongo.synchronous.srv_resolver import _SrvResolver
 
 if TYPE_CHECKING:
-    from pymongo.synchronous.pool import Connection, Pool, _CancellationContext
+    from pymongo.synchronous.pool import (  # type: ignore[attr-defined]
+        Connection,
+        Pool,
+        _CancellationContext,
+    )
     from pymongo.synchronous.settings import TopologySettings
     from pymongo.synchronous.topology import Topology
 

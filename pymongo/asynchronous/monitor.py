@@ -36,7 +36,11 @@ from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.pool import AsyncConnection, Pool, _CancellationContext
+    from pymongo.asynchronous.pool import (  # type: ignore[attr-defined]
+        AsyncConnection,
+        Pool,
+        _CancellationContext,
+    )
     from pymongo.asynchronous.settings import TopologySettings
     from pymongo.asynchronous.topology import Topology
 
