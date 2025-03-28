@@ -249,41 +249,22 @@ def generate_yaml(tasks=None, variants=None):
 
 def create_ocsp_variants() -> list[BuildVariant]:
     variants = []
-    batchtime = BATCHTIME_WEEK
-    expansions = dict(AUTH="noauth", SSL="ssl", TOPOLOGY="server")
-    base_display = "OCSP"
-
-    # OCSP tests on default host with all servers v4.4+ and all python versions.
-    versions = get_versions_from("4.4")
-    for version, python in zip_cycle(versions, ALL_PYTHONS):
-        host = DEFAULT_HOST
-        variant = create_variant(
-            [".ocsp"],
-            get_variant_name(base_display, host, version=version, python=python),
-            python=python,
-            version=version,
-            host=host,
-            expansions=expansions,
-            batchtime=batchtime,
-        )
-        variants.append(variant)
-
-    # OCSP tests on Windows and MacOS.
-    # MongoDB servers on these hosts do not staple OCSP responses and only support RSA.
-    for host_name, version in product(["win64", "macos"], ["4.4", "8.0"]):
+    # OCSP tests on default host with all servers v4.4+.
+    # MongoDB servers on Windows and MacOS do not staple OCSP responses and only support RSA.
+    # Only test with MongoDB 4.4 and latest.
+    for host_name in ["rhel8", "win64", "macos"]:
         host = HOSTS[host_name]
-        python = CPYTHONS[0] if version == "4.4" else CPYTHONS[-1]
+        if host == DEFAULT_HOST:
+            tasks = [".ocsp"]
+        else:
+            tasks = [".ocsp-rsa !.ocsp-staple .latest", ".ocsp-rsa !.ocsp-staple .4.4"]
         variant = create_variant(
-            [".ocsp-rsa !.ocsp-staple"],
-            get_variant_name(base_display, host, version=version, python=python),
-            python=python,
-            version=version,
+            tasks,
+            get_variant_name("OCSP", host),
             host=host,
-            expansions=expansions,
-            batchtime=batchtime,
+            batchtime=BATCHTIME_WEEK,
         )
         variants.append(variant)
-
     return variants
 
 
@@ -950,22 +931,36 @@ def create_mod_wsgi_tasks():
     return tasks
 
 
-def _create_ocsp_task(algo, variant, server_type, base_task_name):
+def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
+    tasks = []
     file_name = f"{algo}-basic-tls-ocsp-{variant}.json"
 
-    vars = dict(TEST_NAME="ocsp", ORCHESTRATION_FILE=file_name)
-    server_func = FunctionCall(func="run server", vars=vars)
+    for version in get_versions_from("4.4"):
+        if version == "latest":
+            python = MIN_MAX_PYTHON[-1]
+        else:
+            python = MIN_MAX_PYTHON[0]
+        vars = dict(TEST_NAME="ocsp", ORCHESTRATION_FILE=file_name, VERSION=version)
+        server_func = FunctionCall(func="run server", vars=vars)
 
-    vars = dict(ORCHESTRATION_FILE=file_name, OCSP_SERVER_TYPE=server_type, TEST_NAME="ocsp")
-    test_func = FunctionCall(func="run tests", vars=vars)
+        vars = dict(
+            ORCHESTRATION_FILE=file_name,
+            OCSP_SERVER_TYPE=server_type,
+            TEST_NAME="ocsp",
+            PYTHON_VERSION=python,
+        )
+        test_func = FunctionCall(func="run tests", vars=vars)
 
-    tags = ["ocsp", f"ocsp-{algo}"]
-    if "disableStapling" not in variant:
-        tags.append("ocsp-staple")
+        tags = ["ocsp", f"ocsp-{algo}"]
+        if "disableStapling" not in variant:
+            tags.append("ocsp-staple")
 
-    task_name = f"test-ocsp-{algo}-{base_task_name}"
-    commands = [server_func, test_func]
-    return EvgTask(name=task_name, tags=tags, commands=commands)
+        task_name = get_task_name(
+            f"test-ocsp-{algo}-{base_task_name}", python=python, version=version
+        )
+        commands = [server_func, test_func]
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
+    return tasks
 
 
 def create_aws_lambda_tasks():
@@ -1077,8 +1072,8 @@ def create_ocsp_tasks():
     ]
     for algo in ["ecdsa", "rsa"]:
         for variant, server_type, base_task_name in tests:
-            task = _create_ocsp_task(algo, variant, server_type, base_task_name)
-            tasks.append(task)
+            new_tasks = _create_ocsp_tasks(algo, variant, server_type, base_task_name)
+            tasks.extend(new_tasks)
 
     return tasks
 
@@ -1167,7 +1162,7 @@ def write_tasks_to_file():
         fid.write("tasks:\n")
 
     for name, func in sorted(getmembers(mod, isfunction)):
-        if not name.endswith("_tasks"):
+        if name.startswith("_") or not name.endswith("_tasks"):
             continue
         if not name.startswith("create_"):
             raise ValueError("Task creators must start with create_")
