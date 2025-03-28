@@ -190,6 +190,10 @@ def _raise_connection_failure(
 ) -> NoReturn:
     """Convert a socket.error to ConnectionFailure and raise it."""
     host, port = address
+    if isinstance(error, PyMongoError) and error._error_labels:
+        labels = error._error_labels
+    else:
+        labels = None
     # If connecting to a Unix socket, port will be None.
     if port is not None:
         msg = "%s:%d: %s" % (host, port, error)
@@ -200,15 +204,15 @@ def _raise_connection_failure(
     if "configured timeouts" not in msg:
         msg += format_timeout_details(timeout_details)
     if isinstance(error, socket.timeout):
-        raise NetworkTimeout(msg) from error
+        raise NetworkTimeout(msg, errors={"errorLabels": labels}) from error
     elif isinstance(error, SSLError) and "timed out" in str(error):
         # Eventlet does not distinguish TLS network timeouts from other
         # SSLErrors (https://github.com/eventlet/eventlet/issues/692).
         # Luckily, we can work around this limitation because the phrase
         # 'timed out' appears in all the timeout related SSLErrors raised.
-        raise NetworkTimeout(msg) from error
+        raise NetworkTimeout(msg, errors={"errorLabels": labels}) from error
     else:
-        raise AutoReconnect(msg) from error
+        raise AutoReconnect(msg, errors={"errorLabels": labels}) from error
 
 
 def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
@@ -1420,9 +1424,9 @@ class Pool:
                     )
 
             details = _get_timeout_details(self.opts)
-            _raise_connection_failure(
-                self.address, AutoReconnect("connection pool paused"), timeout_details=details
-            )
+            error = AutoReconnect("connection pool paused")
+            error._add_error_label("TransientTransactionError")
+            _raise_connection_failure(self.address, error, timeout_details=details)
 
     async def _get_conn(
         self, checkout_started_time: float, handler: Optional[_MongoClientErrorHandler] = None

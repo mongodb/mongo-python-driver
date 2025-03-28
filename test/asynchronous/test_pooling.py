@@ -36,7 +36,7 @@ from test.asynchronous import AsyncIntegrationTest, async_client_context, unitte
 from test.asynchronous.helpers import ConcurrentRunner
 from test.utils_shared import delay
 
-from pymongo.asynchronous.pool import Pool, PoolOptions
+from pymongo.asynchronous.pool import Pool, PoolOptions, PoolState
 from pymongo.socket_checker import SocketChecker
 
 _IS_SYNC = False
@@ -607,6 +607,21 @@ class TestPoolMaxSize(_TestPoolingBase):
             # is sufficient right *now* to catch a semaphore leak. But that
             # seems error-prone, so check the message too.
             self.assertNotIn("waiting for socket from pool", str(context.exception))
+
+    async def test_pool_cleared_error_labelled_transient(self):
+        test_pool = Pool(
+            ("localhost", 27017),
+            PoolOptions(max_pool_size=1),
+        )
+        # Pause the pool, causing it to fail connection checkout.
+        test_pool.state = PoolState.PAUSED
+
+        with self.assertRaises(AutoReconnect) as context:
+            async with test_pool.checkout():
+                pass
+
+        # Verify that the TransientTransactionError label is present in the error.
+        self.assertTrue(context.exception.has_error_label("TransientTransactionError"))
 
 
 if __name__ == "__main__":
