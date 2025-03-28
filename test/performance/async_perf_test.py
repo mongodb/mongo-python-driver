@@ -370,7 +370,7 @@ class TestSmallDocCollectionBulkInsert(SmallDocInsertTest, AsyncPyMongoTestCase)
             self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
 
     async def do_task(self):
-        await self.client.corpus.bulk_write(self.models, ordered=True)
+        await self.corpus.bulk_write(self.models, ordered=True)
 
 
 class TestSmallDocClientBulkInsert(SmallDocInsertTest, AsyncPyMongoTestCase):
@@ -431,7 +431,7 @@ class TestLargeDocCollectionBulkInsert(LargeDocInsertTest, AsyncPyMongoTestCase)
             self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
 
     async def do_task(self):
-        await self.client.corpus.bulk_write(self.models, ordered=True)
+        await self.corpus.bulk_write(self.models, ordered=True)
 
 
 class TestLargeDocClientBulkInsert(LargeDocInsertTest, AsyncPyMongoTestCase):

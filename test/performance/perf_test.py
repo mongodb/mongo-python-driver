@@ -451,7 +451,7 @@ class TestSmallDocCollectionBulkInsert(SmallDocInsertTest, unittest.TestCase):
             self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
 
     def do_task(self):
-        self.client.corpus.bulk_write(self.models, ordered=True)
+        self.corpus.bulk_write(self.models, ordered=True)
 
 
 class TestSmallDocClientBulkInsert(SmallDocInsertTest, unittest.TestCase):
@@ -512,7 +512,7 @@ class TestLargeDocCollectionBulkInsert(LargeDocInsertTest, unittest.TestCase):
             self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
 
     def do_task(self):
-        self.client.corpus.bulk_write(self.models, ordered=True)
+        self.corpus.bulk_write(self.models, ordered=True)
 
 
 class TestLargeDocClientBulkInsert(LargeDocInsertTest, unittest.TestCase):
