@@ -951,7 +951,7 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         )
         test_func = FunctionCall(func="run tests", vars=vars)
 
-        tags = ["ocsp", f"ocsp-{algo}"]
+        tags = ["ocsp", f"ocsp-{algo}", version]
         if "disableStapling" not in variant:
             tags.append("ocsp-staple")
 
