@@ -62,6 +62,7 @@ HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20", dict())
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22", dict())
 HOSTS["rhel7"] = Host("rhel7", "rhel79-small", "RHEL7", dict())
 HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
+HOSTS["debian11"] = Host("debian11", "debian11-small", "Debian11", dict())
 DEFAULT_HOST = HOSTS["rhel8"]
 
 # Other hosts
@@ -85,7 +86,7 @@ for name, run_on in zip(
 
 
 def create_variant_generic(
-    task_names: list[str],
+    tasks: list[str | EvgTaskRef],
     display_name: str,
     *,
     host: Host | None = None,
@@ -94,7 +95,12 @@ def create_variant_generic(
     **kwargs: Any,
 ) -> BuildVariant:
     """Create a build variant for the given inputs."""
-    task_refs = [EvgTaskRef(name=n) for n in task_names]
+    task_refs = []
+    for t in tasks:
+        if isinstance(t, EvgTaskRef):
+            task_refs.append(t)
+        else:
+            task_refs.append(EvgTaskRef(name=t))
     expansions = expansions and expansions.copy() or dict()
     if "run_on" in kwargs:
         run_on = kwargs.pop("run_on")
@@ -118,7 +124,7 @@ def create_variant_generic(
 
 
 def create_variant(
-    task_names: list[str],
+    tasks: list[str | EvgTaskRef],
     display_name: str,
     *,
     version: str | None = None,
@@ -133,7 +139,7 @@ def create_variant(
     if python:
         expansions["PYTHON_BINARY"] = get_python_binary(python, host)
     return create_variant_generic(
-        task_names, display_name, version=version, host=host, expansions=expansions, **kwargs
+        tasks, display_name, version=version, host=host, expansions=expansions, **kwargs
     )
 
 
@@ -714,6 +720,27 @@ def create_atlas_connect_variants():
         )
         for python in MIN_MAX_PYTHON
     ]
+
+
+def create_coverage_report_variants():
+    return [create_variant(["coverage-report"], "Coverage Report", host=DEFAULT_HOST)]
+
+
+def create_kms_variants():
+    tasks = []
+    tasks.append(EvgTaskRef(name="test-gcpkms", batchtime=BATCHTIME_WEEK))
+    tasks.append("test-gcpkms-fail")
+    tasks.append(EvgTaskRef(name="test-azurekms", batchtime=BATCHTIME_WEEK))
+    tasks.append("test-azurekms-fail")
+    return [create_variant(tasks, "KMS", host=HOSTS["debian11"])]
+
+
+def create_import_time_variants():
+    return [create_variant(["check-import-time"], "Import Time", host=DEFAULT_HOST)]
+
+
+def create_backport_pr_variants():
+    return [create_variant(["backport-pr"], "Backport PR", host=DEFAULT_HOST)]
 
 
 def create_perf_variants():

@@ -151,6 +151,14 @@ buildvariants:
     run_on:
       - rhel87-small
 
+  # Backport pr tests
+  - name: backport-pr
+    tasks:
+      - name: backport-pr
+    display_name: Backport PR
+    run_on:
+      - rhel87-small
+
   # Compression tests
   - name: compression-snappy-rhel8-python3.9-no-c
     tasks:
@@ -236,6 +244,14 @@ buildvariants:
     expansions:
       COMPRESSORS: zstd
       PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
+
+  # Coverage report tests
+  - name: coverage-report
+    tasks:
+      - name: coverage-report
+    display_name: Coverage Report
+    run_on:
+      - rhel87-small
 
   # Disable test commands tests
   - name: disable-test-commands-rhel8-python3.9
@@ -597,6 +613,27 @@ buildvariants:
       AUTH: auth
       SSL: ssl
       PYTHON_BINARY: /opt/python/3.13/bin/python3
+
+  # Import time tests
+  - name: import-time
+    tasks:
+      - name: check-import-time
+    display_name: Import Time
+    run_on:
+      - rhel87-small
+
+  # Kms tests
+  - name: kms
+    tasks:
+      - name: test-gcpkms
+        batchtime: 10080
+      - name: test-gcpkms-fail
+      - name: test-azurekms
+        batchtime: 10080
+      - name: test-azurekms-fail
+    display_name: KMS
+    run_on:
+      - debian11-small
 
   # Load balancer tests
   - name: load-balancer
