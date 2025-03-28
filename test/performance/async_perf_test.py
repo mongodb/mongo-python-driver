@@ -362,6 +362,17 @@ class TestSmallDocBulkInsert(SmallDocInsertTest, AsyncPyMongoTestCase):
         await self.corpus.insert_many(self.documents, ordered=True)
 
 
+class TestSmallDocCollectionBulkInsert(SmallDocInsertTest, AsyncPyMongoTestCase):
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
+
+    async def do_task(self):
+        await self.client.corpus.bulk_write(self.models, ordered=True)
+
+
 class TestSmallDocClientBulkInsert(SmallDocInsertTest, AsyncPyMongoTestCase):
     @async_client_context.require_version_min(8, 0, 0, -24)
     async def asyncSetUp(self):
@@ -410,6 +421,17 @@ class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, AsyncPyMongoTestCase):
 class TestLargeDocBulkInsert(LargeDocInsertTest, AsyncPyMongoTestCase):
     async def do_task(self):
         await self.corpus.insert_many(self.documents, ordered=True)
+
+
+class TestLargeDocCollectionBulkInsert(LargeDocInsertTest, AsyncPyMongoTestCase):
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
+
+    async def do_task(self):
+        await self.client.corpus.bulk_write(self.models, ordered=True)
 
 
 class TestLargeDocClientBulkInsert(LargeDocInsertTest, AsyncPyMongoTestCase):

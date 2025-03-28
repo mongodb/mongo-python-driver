@@ -443,6 +443,17 @@ class TestSmallDocBulkInsert(SmallDocInsertTest, unittest.TestCase):
         self.corpus.insert_many(self.documents, ordered=True)
 
 
+class TestSmallDocCollectionBulkInsert(SmallDocInsertTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
+
+    def do_task(self):
+        self.client.corpus.bulk_write(self.models, ordered=True)
+
+
 class TestSmallDocClientBulkInsert(SmallDocInsertTest, unittest.TestCase):
     @client_context.require_version_min(8, 0, 0, -24)
     def setUp(self):
@@ -491,6 +502,17 @@ class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
 class TestLargeDocBulkInsert(LargeDocInsertTest, unittest.TestCase):
     def do_task(self):
         self.corpus.insert_many(self.documents, ordered=True)
+
+
+class TestLargeDocCollectionBulkInsert(LargeDocInsertTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.models = []
+        for doc in self.documents:
+            self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
+
+    def do_task(self):
+        self.client.corpus.bulk_write(self.models, ordered=True)
 
 
 class TestLargeDocClientBulkInsert(LargeDocInsertTest, unittest.TestCase):
