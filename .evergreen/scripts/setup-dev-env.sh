@@ -19,13 +19,6 @@ fi
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
-# Set the location of the python bin dir.
-if [ "Windows_NT" = "${OS:-}" ]; then
-  BIN_DIR=.venv/Scripts
-else
-  BIN_DIR=.venv/bin
-fi
-
 # Get the appropriate UV_PYTHON.
 . $ROOT/.evergreen/utils.sh
 set -x
