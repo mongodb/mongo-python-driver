@@ -76,6 +76,8 @@ EOT
 rm -rf $DRIVERS_TOOLS
 BRANCH=master
 ORG=mongodb-labs
+BRANCH=ocsp-cleanup
+ORG=blink0173
 git clone --branch $BRANCH https://github.com/$ORG/drivers-evergreen-tools.git $DRIVERS_TOOLS
 
 cat <<EOT > ${DRIVERS_TOOLS}/.env

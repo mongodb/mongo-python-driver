@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from utils import DRIVERS_TOOLS, LOGGER, ROOT, get_test_options, run_command
+from utils import DRIVERS_TOOLS, ROOT, get_test_options, run_command
 
 
 def set_env(name: str, value: Any = "1") -> None:
@@ -45,10 +45,6 @@ def start_server():
     if not os.environ.get("TEST_CRYPT_SHARED"):
         set_env("SKIP_CRYPT_SHARED")
 
-    LOGGER.info("Hello %s %s", test_name, opts.ssl)
-    import sys
-
-    sys.exit(1)
     if opts.ssl:
         extra_opts.append("--ssl")
         if test_name != "ocsp":
