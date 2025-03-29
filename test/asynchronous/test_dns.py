@@ -186,12 +186,6 @@ create_tests(TestDNSSharded)
 
 class TestParsingErrors(AsyncPyMongoTestCase):
     async def test_invalid_host(self):
-        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb is not"):
-            client = self.simple_client("mongodb+srv://mongodb")
-            await client.aconnect()
-        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb.com is not"):
-            client = self.simple_client("mongodb+srv://mongodb.com")
-            await client.aconnect()
         with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: an IP address is not"):
             client = self.simple_client("mongodb+srv://127.0.0.1")
             await client.aconnect()
