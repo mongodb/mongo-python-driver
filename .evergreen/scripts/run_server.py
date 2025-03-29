@@ -45,7 +45,7 @@ def start_server():
     if not os.environ.get("TEST_CRYPT_SHARED"):
         set_env("SKIP_CRYPT_SHARED")
 
-    LOGGER.INFO("Hello %s %s", test_name, opts.ssl)
+    LOGGER.info("Hello %s %s", test_name, opts.ssl)
     import sys
 
     sys.exit(1)
