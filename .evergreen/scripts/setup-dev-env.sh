@@ -29,6 +29,7 @@ fi
 # Ensure there is a python venv.
 if [ ! -d $BIN_DIR ]; then
   . $ROOT/.evergreen/utils.sh
+  set -x
 
   if [ -z "${PYTHON_BINARY:-}" ]; then
       if [ -n "${PYTHON_VERSION:-}" ]; then
