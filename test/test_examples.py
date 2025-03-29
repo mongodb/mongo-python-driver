@@ -1161,12 +1161,7 @@ class TestTransactionExamples(IntegrationTest):
         # Step 2: Start a client session.
         with client.start_session() as session:
             # Step 3: Use with_transaction to start a transaction, execute the callback, and commit (or abort on error).
-            session.with_transaction(
-                callback,
-                read_concern=ReadConcern("local"),
-                write_concern=wc_majority,
-                read_preference=ReadPreference.PRIMARY,
-            )
+            session.with_transaction(callback)
 
         # End Transactions withTxn API Example 1
 
