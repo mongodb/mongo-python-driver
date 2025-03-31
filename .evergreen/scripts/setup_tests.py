@@ -322,6 +322,15 @@ def handle_test_env() -> None:
             env["OCSP_ALGORITHM"] = ocsp_algo
             run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh", env=env)
 
+        # The mock OCSP responder MUST BE started before the mongod as the mongod expects that
+        # a responder will be available upon startup.
+        cmd = ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh", "--ssl"]
+        if opts.verbose:
+            cmd.append("-v")
+        elif opts.quiet:
+            cmd.append("-q")
+        run_command(cmd, cwd=DRIVERS_TOOLS)
+
     if SSL != "nossl":
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")

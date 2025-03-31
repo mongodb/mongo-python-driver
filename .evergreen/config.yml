@@ -207,7 +207,7 @@ functions:
         binary: bash
         working_dir: "src"
         include_expansions_in_env: [VERSION, TOPOLOGY, AUTH, SSL, ORCHESTRATION_FILE, PYTHON_BINARY, PYTHON_VERSION,
-          STORAGE_ENGINE, REQUIRE_API_VERSION, DRIVERS_TOOLS, TEST_CRYPT_SHARED, AUTH_AWS, LOAD_BALANCER]
+          STORAGE_ENGINE, REQUIRE_API_VERSION, DRIVERS_TOOLS, TEST_CRYPT_SHARED, AUTH_AWS, LOAD_BALANCER, LOCAL_ATLAS]
         args: [.evergreen/just.sh, run-server, "${TEST_NAME}"]
     - command: expansions.update
       params:
