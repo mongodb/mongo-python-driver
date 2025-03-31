@@ -255,8 +255,8 @@ class _Bulk:
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.STARTED,
+                clientId=client._topology_settings._topology_id,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=bwc.db_name,
@@ -276,8 +276,8 @@ class _Bulk:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.SUCCEEDED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     reply=reply,
                     commandName=next(iter(cmd)),
@@ -302,8 +302,8 @@ class _Bulk:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.FAILED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
@@ -340,8 +340,8 @@ class _Bulk:
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.STARTED,
+                clientId=client._topology_settings._topology_id,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=bwc.db_name,
@@ -366,8 +366,8 @@ class _Bulk:
                 if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _COMMAND_LOGGER,
-                        clientId=client._topology_settings._topology_id,
                         message=_CommandStatusMessage.SUCCEEDED,
+                        clientId=client._topology_settings._topology_id,
                         durationMS=duration,
                         reply=reply,
                         commandName=next(iter(cmd)),
@@ -393,8 +393,8 @@ class _Bulk:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.FAILED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),

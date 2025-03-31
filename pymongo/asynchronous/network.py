@@ -163,8 +163,8 @@ async def command(
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.STARTED,
+                clientId=client._topology_settings._topology_id,
                 command=spec,
                 commandName=next(iter(spec)),
                 databaseName=dbname,
@@ -225,8 +225,8 @@ async def command(
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.FAILED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(spec)),
@@ -259,8 +259,8 @@ async def command(
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.SUCCEEDED,
+                clientId=client._topology_settings._topology_id,
                 durationMS=duration,
                 reply=response_doc,
                 commandName=next(iter(spec)),
