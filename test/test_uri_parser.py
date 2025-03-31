@@ -576,6 +576,21 @@ class TestURI(unittest.TestCase):
                 "mock_target": "test_1.evil.com",
                 "expected_error": "Invalid SRV host",
             },
+            {
+                "query": "_mongodb._tcp.localhost",
+                "mock_target": "localhost",
+                "expected_error": "Invalid SRV host",
+            },
+            {
+                "query": "_mongodb._tcp.localhost",
+                "mock_target": "localhost",
+                "expected_error": "Invalid SRV host",
+            },
+            {
+                "query": "_mongodb._tcp.mongo.local",
+                "mock_target": "mongo.local",
+                "expected_error": "Invalid SRV host",
+            },
         ]
         for case in test_cases:
             with patch("dns.resolver.resolve") as mock_resolver:
