@@ -272,6 +272,7 @@ class Monitor(MonitorBase):
             if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _SDAM_LOGGER,
+                    message=_SDAMStatusMessage.HEARTBEAT_FAIL,
                     topologyId=self._topology._topology_id,
                     serverHost=address[0],
                     serverPort=address[1],
@@ -279,7 +280,6 @@ class Monitor(MonitorBase):
                     durationMS=duration * 1000,
                     failure=error,
                     driverConnectionId=self._conn_id,
-                    message=_SDAMStatusMessage.HEARTBEAT_FAIL,
                 )
             self._reset_connection()
             if isinstance(error, _OperationCancelled):
@@ -311,13 +311,13 @@ class Monitor(MonitorBase):
             if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _SDAM_LOGGER,
+                    message=_SDAMStatusMessage.HEARTBEAT_START,
                     topologyId=self._topology._topology_id,
                     driverConnectionId=conn.id,
                     serverConnectionId=conn.server_connection_id,
                     serverHost=address[0],
                     serverPort=address[1],
                     awaited=awaited,
-                    message=_SDAMStatusMessage.HEARTBEAT_START,
                 )
 
             self._cancel_context = conn.cancel_context
@@ -337,6 +337,7 @@ class Monitor(MonitorBase):
             if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _SDAM_LOGGER,
+                    message=_SDAMStatusMessage.HEARTBEAT_SUCCESS,
                     topologyId=self._topology._topology_id,
                     driverConnectionId=conn.id,
                     serverConnectionId=conn.server_connection_id,
@@ -345,7 +346,6 @@ class Monitor(MonitorBase):
                     awaited=awaited,
                     durationMS=round_trip_time * 1000,
                     reply=response.document,
-                    message=_SDAMStatusMessage.HEARTBEAT_SUCCESS,
                 )
             return sd
 

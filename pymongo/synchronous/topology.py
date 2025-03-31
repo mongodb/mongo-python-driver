@@ -120,8 +120,8 @@ class Topology:
         if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _SDAM_LOGGER,
-                topologyId=self._topology_id,
                 message=_SDAMStatusMessage.START_TOPOLOGY,
+                topologyId=self._topology_id,
             )
 
         if self._publish_tp:
@@ -152,10 +152,10 @@ class Topology:
         if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _SDAM_LOGGER,
+                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
                 topologyId=self._topology_id,
                 previousDescription=initial_td,
                 newDescription=self._description,
-                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
             )
 
         for seed in topology_settings.seeds:
@@ -165,10 +165,10 @@ class Topology:
             if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _SDAM_LOGGER,
+                    message=_SDAMStatusMessage.START_SERVER,
                     topologyId=self._topology_id,
                     serverHost=seed[0],
                     serverPort=seed[1],
-                    message=_SDAMStatusMessage.START_SERVER,
                 )
 
         # Store the seed list to help diagnose errors in _error_message().
@@ -514,10 +514,10 @@ class Topology:
         if _SDAM_LOGGER.isEnabledFor(logging.DEBUG) and not suppress_event:
             _debug_log(
                 _SDAM_LOGGER,
+                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
                 topologyId=self._topology_id,
                 previousDescription=td_old,
                 newDescription=self._description,
-                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
             )
 
         # Shutdown SRV polling for unsupported cluster types.
@@ -582,10 +582,10 @@ class Topology:
         if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _SDAM_LOGGER,
+                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
                 topologyId=self._topology_id,
                 previousDescription=td_old,
                 newDescription=self._description,
-                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
             )
 
     def on_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
@@ -746,13 +746,13 @@ class Topology:
         if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _SDAM_LOGGER,
+                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
                 topologyId=self._topology_id,
                 previousDescription=old_td,
                 newDescription=self._description,
-                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
             )
             _debug_log(
-                _SDAM_LOGGER, topologyId=self._topology_id, message=_SDAMStatusMessage.STOP_TOPOLOGY
+                _SDAM_LOGGER, message=_SDAMStatusMessage.STOP_TOPOLOGY, topologyId=self._topology_id
             )
 
         if self._publish_server or self._publish_tp:
