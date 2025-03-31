@@ -115,6 +115,17 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(0, self.db.fs.files.count_documents({}))
         self.assertEqual(0, self.db.fs.chunks.count_documents({}))
 
+    def test_delete_by_name(self):
+        self.assertEqual(0, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
+        gfs = gridfs.GridFSBucket(self.db)
+        gfs.upload_from_stream("test_filename", b"hello", chunk_size_bytes=1)
+        self.assertEqual(1, self.db.fs.files.count_documents({}))
+        self.assertEqual(5, self.db.fs.chunks.count_documents({}))
+        gfs.delete_by_name("test_filename")
+        self.assertEqual(0, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
+
     def test_empty_file(self):
         oid = self.fs.upload_from_stream("test_filename", b"")
         self.assertEqual(b"", (self.fs.open_download_stream(oid)).read())

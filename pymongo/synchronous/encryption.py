@@ -70,21 +70,21 @@ from pymongo.errors import (
     NetworkTimeout,
     ServerSelectionTimeoutError,
 )
-from pymongo.network_layer import BLOCKING_IO_ERRORS, sendall
+from pymongo.network_layer import sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
-from pymongo.read_concern import ReadConcern
-from pymongo.results import BulkWriteResult, DeleteResult
-from pymongo.ssl_support import get_ssl_context
-from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.cursor import Cursor
-from pymongo.synchronous.database import Database
-from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.pool import (
+from pymongo.pool_shared import (
     _configured_socket,
     _get_timeout_details,
     _raise_connection_failure,
 )
+from pymongo.read_concern import ReadConcern
+from pymongo.results import BulkWriteResult, DeleteResult
+from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
+from pymongo.synchronous.collection import Collection
+from pymongo.synchronous.cursor import Cursor
+from pymongo.synchronous.database import Database
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser_shared import parse_host
 from pymongo.write_concern import WriteConcern

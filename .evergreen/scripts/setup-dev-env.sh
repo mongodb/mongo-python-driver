@@ -31,7 +31,11 @@ if [ ! -d $BIN_DIR ]; then
   . $ROOT/.evergreen/utils.sh
 
   if [ -z "${PYTHON_BINARY:-}" ]; then
-      PYTHON_BINARY=$(find_python3)
+      if [ -n "${PYTHON_VERSION:-}" ]; then
+        PYTHON_BINARY=$(get_python_binary $PYTHON_VERSION)
+      else
+        PYTHON_BINARY=$(find_python3)
+      fi
   fi
   export UV_PYTHON=${PYTHON_BINARY}
   echo "export UV_PYTHON=$UV_PYTHON" >> $HERE/env.sh
