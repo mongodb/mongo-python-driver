@@ -324,7 +324,14 @@ def handle_test_env() -> None:
 
         # The mock OCSP responder MUST BE started before the mongod as the mongod expects that
         # a responder will be available upon startup.
-        cmd = ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh", "--ssl"]
+        version = os.environ.get("VERSION", "latest")
+        cmd = [
+            "bash",
+            f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh",
+            "--ssl",
+            "--version",
+            version,
+        ]
         if opts.verbose:
             cmd.append("-v")
         elif opts.quiet:
