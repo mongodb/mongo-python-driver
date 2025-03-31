@@ -360,9 +360,9 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8-python3.9
     tasks:
-      - name: .sharded_cluster .auth .ssl .sync_async
-      - name: .replica_set .noauth .ssl .sync_async
-      - name: .standalone .noauth .nossl .sync_async
+      - name: .sharded_cluster .auth .ssl .sync
+      - name: .replica_set .noauth .ssl .sync
+      - name: .standalone .noauth .nossl .sync
     display_name: Encryption PyOpenSSL RHEL8 Python3.9
     run_on:
       - rhel87-small
@@ -374,9 +374,9 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8-python3.13
     tasks:
-      - name: .sharded_cluster .auth .ssl .sync_async
-      - name: .replica_set .noauth .ssl .sync_async
-      - name: .standalone .noauth .nossl .sync_async
+      - name: .sharded_cluster .auth .ssl .sync
+      - name: .replica_set .noauth .ssl .sync
+      - name: .standalone .noauth .nossl .sync
     display_name: Encryption PyOpenSSL RHEL8 Python3.13
     run_on:
       - rhel87-small
@@ -388,9 +388,9 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8-pypy3.10
     tasks:
-      - name: .sharded_cluster .auth .ssl .sync_async
-      - name: .replica_set .noauth .ssl .sync_async
-      - name: .standalone .noauth .nossl .sync_async
+      - name: .sharded_cluster .auth .ssl .sync
+      - name: .replica_set .noauth .ssl .sync
+      - name: .standalone .noauth .nossl .sync
     display_name: Encryption PyOpenSSL RHEL8 PyPy3.10
     run_on:
       - rhel87-small
@@ -419,15 +419,14 @@ buildvariants:
       TEST_NAME: encryption
       TEST_CRYPT_SHARED: "true"
       PYTHON_BINARY: /opt/python/3.11/bin/python3
-  - name: encryption-pyopenssl-rhel8-python3.12
+  - name: encryption-rhel8-python3.12
     tasks:
       - name: .standalone .noauth .nossl .sync_async
-    display_name: Encryption PyOpenSSL RHEL8 Python3.12
+    display_name: Encryption RHEL8 Python3.12
     run_on:
       - rhel87-small
     expansions:
       TEST_NAME: encryption
-      SUB_TEST_NAME: pyopenssl
       PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: encryption-macos-python3.9
     tasks:
@@ -909,8 +908,8 @@ buildvariants:
   # Pyopenssl tests
   - name: pyopenssl-macos-python3.9
     tasks:
-      - name: .replica_set .noauth .nossl .sync_async
-      - name: .7.0 .noauth .nossl .sync_async
+      - name: .replica_set .noauth .nossl .sync
+      - name: .7.0 .noauth .nossl .sync
     display_name: PyOpenSSL macOS Python3.9
     run_on:
       - macos-14
@@ -920,8 +919,8 @@ buildvariants:
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
   - name: pyopenssl-rhel8-python3.10
     tasks:
-      - name: .replica_set .auth .ssl .sync_async
-      - name: .7.0 .auth .ssl .sync_async
+      - name: .replica_set .auth .ssl .sync
+      - name: .7.0 .auth .ssl .sync
     display_name: PyOpenSSL RHEL8 Python3.10
     run_on:
       - rhel87-small
@@ -931,8 +930,8 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.10/bin/python3
   - name: pyopenssl-rhel8-python3.11
     tasks:
-      - name: .replica_set .auth .ssl .sync_async
-      - name: .7.0 .auth .ssl .sync_async
+      - name: .replica_set .auth .ssl .sync
+      - name: .7.0 .auth .ssl .sync
     display_name: PyOpenSSL RHEL8 Python3.11
     run_on:
       - rhel87-small
@@ -942,8 +941,8 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.11/bin/python3
   - name: pyopenssl-rhel8-python3.12
     tasks:
-      - name: .replica_set .auth .ssl .sync_async
-      - name: .7.0 .auth .ssl .sync_async
+      - name: .replica_set .auth .ssl .sync
+      - name: .7.0 .auth .ssl .sync
     display_name: PyOpenSSL RHEL8 Python3.12
     run_on:
       - rhel87-small
@@ -953,8 +952,8 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: pyopenssl-win64-python3.13
     tasks:
-      - name: .replica_set .auth .ssl .sync_async
-      - name: .7.0 .auth .ssl .sync_async
+      - name: .replica_set .auth .ssl .sync
+      - name: .7.0 .auth .ssl .sync
     display_name: PyOpenSSL Win64 Python3.13
     run_on:
       - windows-64-vsMulti-small
@@ -964,8 +963,8 @@ buildvariants:
       PYTHON_BINARY: C:/python/Python313/python.exe
   - name: pyopenssl-rhel8-pypy3.10
     tasks:
-      - name: .replica_set .auth .ssl .sync_async
-      - name: .7.0 .auth .ssl .sync_async
+      - name: .replica_set .auth .ssl .sync
+      - name: .7.0 .auth .ssl .sync
     display_name: PyOpenSSL RHEL8 PyPy3.10
     run_on:
       - rhel87-small
