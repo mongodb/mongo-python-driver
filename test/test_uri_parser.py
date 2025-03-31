@@ -24,7 +24,7 @@ from urllib.parse import quote_plus
 sys.path[0:0] = [""]
 
 from test import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from bson.binary import JAVA_LEGACY
 from pymongo import ReadPreference
@@ -558,6 +558,42 @@ class TestURI(unittest.TestCase):
         with patch("dns.resolver.resolve"):
             parse_uri("mongodb+srv://localhost/")
             parse_uri("mongodb+srv://mongo.local/")
+
+    def test_error_when_return_address_does_not_end_with_srv_domain(self):
+        test_cases = [
+            {
+                "query": "_mongodb._tcp.localhost",
+                "mock_target": "localhost.mongodb",
+                "expected_error": "Invalid SRV host",
+            },
+            {
+                "query": "_mongodb._tcp.blogs.mongodb.com",
+                "mock_target": "blogs.evil.com",
+                "expected_error": "Invalid SRV host",
+            },
+            {
+                "query": "_mongodb._tcp.blogs.mongo.local",
+                "mock_target": "test_1.evil.com",
+                "expected_error": "Invalid SRV host",
+            },
+        ]
+        for case in test_cases:
+            with patch("dns.resolver.resolve") as mock_resolver:
+
+                def mock_resolve(query, record_type, *args, **kwargs):
+                    mock_srv = MagicMock()
+                    mock_srv.target.to_text.return_value = case["mock_target"]
+                    return [mock_srv]
+
+                mock_resolver.side_effect = mock_resolve
+                domain = case["query"].split("._tcp.")[1]
+                connection_string = f"mongodb+srv://{domain}"
+                try:
+                    parse_uri(connection_string)
+                except ConfigurationError as e:
+                    self.assertIn(case["expected_error"], str(e))
+                else:
+                    self.fail(f"ConfigurationError was not raised for query: {case['query']}")
 
 
 if __name__ == "__main__":
