@@ -940,14 +940,13 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
             python = MIN_MAX_PYTHON[-1]
         else:
             python = MIN_MAX_PYTHON[0]
-        vars = dict(TEST_NAME="ocsp", ORCHESTRATION_FILE=file_name, VERSION=version)
-        server_func = FunctionCall(func="run server", vars=vars)
 
         vars = dict(
             ORCHESTRATION_FILE=file_name,
             OCSP_SERVER_TYPE=server_type,
             TEST_NAME="ocsp",
             PYTHON_VERSION=python,
+            VERSION=version,
         )
         test_func = FunctionCall(func="run tests", vars=vars)
 
@@ -958,8 +957,7 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         task_name = get_task_name(
             f"test-ocsp-{algo}-{base_task_name}", python=python, version=version
         )
-        commands = [server_func, test_func]
-        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
 
 
