@@ -45,7 +45,7 @@ from test.utils_shared import (
 
 from bson import DBRef
 from gridfs.synchronous.grid_file import GridFS, GridFSBucket
-from pymongo import ASCENDING, MongoClient, monitoring
+from pymongo import ASCENDING, MongoClient, _csot, monitoring
 from pymongo.common import _MAX_END_SESSIONS
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import IndexModel, InsertOne, UpdateOne
@@ -543,7 +543,7 @@ class TestSession(IntegrationTest):
             (bucket.rename, [1, "f2"], {}),
             # Delete both files so _test_ops can run these operations twice.
             (bucket.delete, [1], {}),
-            (bucket.delete, [2], {}),
+            (bucket.delete_by_name, ["f"], {}),
         )
 
     def test_gridfsbucket_cursor(self):
