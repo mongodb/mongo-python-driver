@@ -87,7 +87,7 @@ class _AsyncBulk:
         self,
         collection: AsyncCollection[_DocumentType],
         ordered: bool,
-        bypass_document_validation: bool,
+        bypass_document_validation: Optional[bool],
         comment: Optional[str] = None,
         let: Optional[Any] = None,
     ) -> None:
@@ -516,8 +516,8 @@ class _AsyncBulk:
                 if self.comment:
                     cmd["comment"] = self.comment
                 _csot.apply_write_concern(cmd, write_concern)
-                if self.bypass_doc_val:
-                    cmd["bypassDocumentValidation"] = True
+                if self.bypass_doc_val is not None:
+                    cmd["bypassDocumentValidation"] = self.bypass_doc_val
                 if self.let is not None and run.op_type in (_DELETE, _UPDATE):
                     cmd["let"] = self.let
                 if session:

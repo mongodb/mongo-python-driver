@@ -1801,6 +1801,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
 
     @client_context.require_version_min(5, 0, -1)
     @client_context.require_no_mongos
+    @client_context.require_sync
     def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
@@ -1810,7 +1811,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
 
         listener.reset()
 
-        result = c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1).to_list()
+        result = list(c.find({}, cursor_type=pymongo.CursorType.EXHAUST, batch_size=1))
 
         self.assertEqual(len(result), 3)
 

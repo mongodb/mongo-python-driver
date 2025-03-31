@@ -32,7 +32,7 @@ from typing import List
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
-from pymongo import WriteConcern
+from pymongo import WriteConcern, _csot
 from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,
@@ -287,6 +287,7 @@ class TestTransactions(TransactionsBase):
                     "new-name",
                 ),
             ),
+            (bucket.delete_by_name, ("new-name",)),
         ]
 
         with client.start_session() as s, s.start_transaction():
