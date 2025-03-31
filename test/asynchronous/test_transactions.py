@@ -295,7 +295,14 @@ class TestTransactions(AsyncTransactionsBase):
                     "new-name",
                 ),
             ),
-            (bucket.delete_by_name, ("new-name",)),
+            (
+                bucket.rename_by_name,
+                (
+                    "new-name",
+                    "new-name2",
+                ),
+            ),
+            (bucket.delete_by_name, ("new-name2",)),
         ]
 
         async with client.start_session() as s, await s.start_transaction():
