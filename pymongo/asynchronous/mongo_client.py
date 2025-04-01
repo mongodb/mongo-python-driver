@@ -2869,7 +2869,7 @@ class _ClientConnectionRetryable(Generic[T]):
                 _debug_log(
                     _COMMAND_LOGGER,
                     message=f"Retrying read attempt number {self._attempt_number}",
-                    clientId=self._client.client_id,
+                    clientId=self._client._topology_settings._topology_id,
                     commandName=self._operation,
                     operationId=self._operation_id,
                 )
