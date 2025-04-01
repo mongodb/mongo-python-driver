@@ -280,20 +280,14 @@ async def _async_configured_socket(
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
         if HAS_SNI:
-            if hasattr(ssl_context, "a_wrap_socket"):
-                ssl_sock = await ssl_context.a_wrap_socket(sock, server_hostname=host)  # type: ignore[assignment, misc, unused-ignore]
-            else:
-                loop = asyncio.get_running_loop()
-                ssl_sock = await loop.run_in_executor(
-                    None,
-                    functools.partial(ssl_context.wrap_socket, sock, server_hostname=host),  # type: ignore[assignment, misc, unused-ignore]
-                )
+            loop = asyncio.get_running_loop()
+            ssl_sock = await loop.run_in_executor(
+                None,
+                functools.partial(ssl_context.wrap_socket, sock, server_hostname=host),  # type: ignore[assignment, misc, unused-ignore]
+            )
         else:
-            if hasattr(ssl_context, "a_wrap_socket"):
-                ssl_sock = await ssl_context.a_wrap_socket(sock)  # type: ignore[assignment, misc, unused-ignore]
-            else:
-                loop = asyncio.get_running_loop()
-                ssl_sock = await loop.run_in_executor(None, ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc, unused-ignore]
+            loop = asyncio.get_running_loop()
+            ssl_sock = await loop.run_in_executor(None, ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc, unused-ignore]
     except _CertificateError:
         sock.close()
         # Raise _CertificateError directly like we do after match_hostname

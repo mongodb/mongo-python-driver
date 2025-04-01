@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Set up the system on an evergreen host.
 set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
