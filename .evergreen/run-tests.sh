@@ -31,6 +31,10 @@ uv pip list
 # Ensure we go back to base environment after the test.
 trap "uv sync" EXIT HUP
 
+set -x
+curl -s "localhost:8100"
+set +x
+
 # Start the test runner.
 uv run ${UV_ARGS} .evergreen/scripts/run_tests.py "$@"
 
