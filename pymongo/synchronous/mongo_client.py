@@ -2823,7 +2823,10 @@ class _ClientConnectionRetryable(Generic[T]):
                 if self._retrying:
                     _debug_log(
                         _COMMAND_LOGGER,
-                        message=f"Retrying write attempt number {self._attempt_number} for operation `{self._operation}` with id {self._operation_id}",
+                        message=f"Retrying write attempt number {self._attempt_number}",
+                        clientId=self._client.client_id,
+                        commandName=self._operation,
+                        operationId=self._operation_id,
                     )
                 return self._func(self._session, conn, self._retryable)  # type: ignore
         except PyMongoError as exc:
@@ -2849,7 +2852,10 @@ class _ClientConnectionRetryable(Generic[T]):
             if self._retrying:
                 _debug_log(
                     _COMMAND_LOGGER,
-                    message=f"Retrying read attempt number {self._attempt_number} for operation `{self._operation}` with id {self._operation_id}",
+                    message=f"Retrying read attempt number {self._attempt_number}",
+                    clientId=self._client.client_id,
+                    commandName=self._operation,
+                    operationId=self._operation_id,
                 )
             return self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
