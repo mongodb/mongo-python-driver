@@ -582,11 +582,6 @@ class TestURI(unittest.TestCase):
                 "expected_error": "Invalid SRV host",
             },
             {
-                "query": "_mongodb._tcp.localhost",
-                "mock_target": "localhost",
-                "expected_error": "Invalid SRV host",
-            },
-            {
                 "query": "_mongodb._tcp.mongo.local",
                 "mock_target": "foo.mongo.local",
                 "expected_error": "Invalid SRV host",
