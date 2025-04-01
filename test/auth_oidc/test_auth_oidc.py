@@ -242,9 +242,9 @@ class TestAuthOIDCHuman(OIDCTestBase):
                 authmechanismproperties=props,
                 connect=False,
             )
-        # Assert that a find operation fails with a client-side error.
-        with self.assertRaises(ConfigurationError):
-            client.test.test.find_one()
+            # Assert that a find operation fails with a client-side error.
+            with self.assertRaises(ConfigurationError):
+                client.test.test.find_one()
         # Close the client.
         client.close()
 
