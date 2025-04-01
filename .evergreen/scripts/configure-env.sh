@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Configure an evergreen test environment.
 set -eu
 
 # Get the current unique version of this checkout
