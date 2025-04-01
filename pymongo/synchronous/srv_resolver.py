@@ -96,10 +96,6 @@ class _SrvResolver:
         except Exception:
             raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,)) from None
         self.__slen = len(self.__plist)
-        if fqdn == self._resolve_uri(True)[0].target.to_text():
-            raise ConfigurationError(
-                "Invalid SRV host: return address is identical to SRV hostname"
-            )
 
     def get_options(self) -> Optional[str]:
         from dns import resolver
