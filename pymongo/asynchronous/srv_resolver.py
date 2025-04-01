@@ -133,6 +133,11 @@ class _SrvResolver:
     ) -> tuple[resolver.Answer, list[tuple[str, Any]]]:
         results = await self._resolve_uri(encapsulate_errors)
 
+        if self.__fqdn == results[0].target.to_text():
+            raise ConfigurationError(
+                "Invalid SRV host: return address is identical to SRV hostname"
+            )
+
         # Construct address tuples
         nodes = [
             (maybe_decode(res.target.to_text(omit_final_dot=True)), res.port)  # type: ignore[attr-defined]
