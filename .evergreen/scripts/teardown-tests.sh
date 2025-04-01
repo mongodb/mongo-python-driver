@@ -1,4 +1,5 @@
 #!/bin/bash
+# Tear down any services that were used by tests.
 set -eu
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})

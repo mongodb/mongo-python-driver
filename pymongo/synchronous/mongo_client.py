@@ -89,7 +89,7 @@ from pymongo.logger import (
     _log_or_warn,
 )
 from pymongo.message import _CursorAddress, _GetMore, _Query
-from pymongo.monitoring import ConnectionClosedReason
+from pymongo.monitoring import ConnectionClosedReason, _EventListeners
 from pymongo.operations import (
     DeleteMany,
     DeleteOne,
@@ -763,6 +763,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._port = port
         self._topology: Topology = None  # type: ignore[assignment]
         self._timeout: float | None = None
+        self._topology_settings: TopologySettings = None  # type: ignore[assignment]
+        self._event_listeners: _EventListeners | None = None
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.

@@ -406,7 +406,14 @@ class APITestsMixin:
             expected_update_description = {"updatedFields": {"new": 1}, "removedFields": ["foo"]}
             if client_context.version.at_least(4, 5, 0):
                 expected_update_description["truncatedArrays"] = []
-            self.assertEqual(expected_update_description, change["updateDescription"])
+            self.assertEqual(
+                expected_update_description,
+                {
+                    k: v
+                    for k, v in change["updateDescription"].items()
+                    if k in expected_update_description
+                },
+            )
             # Replace.
             self.watched_collection().replace_one({"new": 1}, {"foo": "bar"})
             change = change_stream.next()

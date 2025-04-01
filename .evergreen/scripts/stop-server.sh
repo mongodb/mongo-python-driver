@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Stop a server that was started using run-orchestration.sh in DRIVERS_TOOLS.
 set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
