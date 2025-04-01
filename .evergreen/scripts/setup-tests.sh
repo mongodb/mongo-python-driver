@@ -20,7 +20,3 @@ if [ -f $SCRIPT_DIR/env.sh ]; then
 fi
 
 uv run $SCRIPT_DIR/setup_tests.py "$@"
-
-set -x
-curl -s "localhost:8100"
-set +x
