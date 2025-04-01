@@ -1063,6 +1063,9 @@ mockupdb = [
 perf = [
     { name = "simplejson" },
 ]
+pip = [
+    { name = "pip" },
+]
 pymongocrypt-source = [
     { name = "pymongocrypt" },
 ]
@@ -1109,6 +1112,7 @@ eventlet = [{ name = "eventlet" }]
 gevent = [{ name = "gevent" }]
 mockupdb = [{ name = "mockupdb", git = "https://github.com/mongodb-labs/mongo-mockup-db?rev=master" }]
 perf = [{ name = "simplejson" }]
+pip = [{ name = "pip" }]
 pymongocrypt-source = [{ name = "pymongocrypt", git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master" }]
 typing = [
     { name = "mypy", specifier = "==1.14.1" },
@@ -1133,7 +1137,7 @@ wheels = [
 [[package]]
 name = "pymongocrypt"
 version = "1.13.0.dev0"
-source = { git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master#1e96c283162aa7789cf01f99f211e0ace8e6d49f" }
+source = { git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master#1cad4ad1c4cd6c11c6a4710da2127dab6a374471" }
 dependencies = [
     { name = "cffi" },
     { name = "cryptography" },

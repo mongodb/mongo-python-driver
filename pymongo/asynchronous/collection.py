@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -701,7 +701,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         requests: Sequence[_WriteOp[_DocumentType]],
         ordered: bool = True,
-        bypass_document_validation: bool = False,
+        bypass_document_validation: Optional[bool] = None,
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
         let: Optional[Mapping] = None,
@@ -800,7 +800,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         ordered: bool,
         write_concern: WriteConcern,
         op_id: Optional[int],
-        bypass_doc_val: bool,
+        bypass_doc_val: Optional[bool],
         session: Optional[AsyncClientSession],
         comment: Optional[Any] = None,
     ) -> Any:
@@ -814,8 +814,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         async def _insert_command(
             session: Optional[AsyncClientSession], conn: AsyncConnection, retryable_write: bool
         ) -> None:
-            if bypass_doc_val:
-                command["bypassDocumentValidation"] = True
+            if bypass_doc_val is not None:
+                command["bypassDocumentValidation"] = bypass_doc_val
 
             result = await conn.command(
                 self._database.name,
@@ -840,7 +840,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def insert_one(
         self,
         document: Union[_DocumentType, RawBSONDocument],
-        bypass_document_validation: bool = False,
+        bypass_document_validation: Optional[bool] = None,
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
     ) -> InsertOneResult:
@@ -906,7 +906,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         documents: Iterable[Union[_DocumentType, RawBSONDocument]],
         ordered: bool = True,
-        bypass_document_validation: bool = False,
+        bypass_document_validation: Optional[bool] = None,
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
     ) -> InsertManyResult:
@@ -986,7 +986,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         op_id: Optional[int] = None,
         ordered: bool = True,
-        bypass_doc_val: Optional[bool] = False,
+        bypass_doc_val: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -1041,8 +1041,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
         # Update command.
-        if bypass_doc_val:
-            command["bypassDocumentValidation"] = True
+        if bypass_doc_val is not None:
+            command["bypassDocumentValidation"] = bypass_doc_val
 
         # The command result has to be published for APM unmodified
         # so we make a shallow copy here before adding updatedExisting.
@@ -1082,7 +1082,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         op_id: Optional[int] = None,
         ordered: bool = True,
-        bypass_doc_val: Optional[bool] = False,
+        bypass_doc_val: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -1128,7 +1128,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         filter: Mapping[str, Any],
         replacement: Mapping[str, Any],
         upsert: bool = False,
-        bypass_document_validation: bool = False,
+        bypass_document_validation: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[AsyncClientSession] = None,
@@ -1237,7 +1237,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         filter: Mapping[str, Any],
         update: Union[Mapping[str, Any], _Pipeline],
         upsert: bool = False,
-        bypass_document_validation: bool = False,
+        bypass_document_validation: Optional[bool] = None,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -2948,6 +2948,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             returning aggregate results using a cursor.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`.
+          - `bypassDocumentValidation` (bool): If ``True``, allows the write to opt-out of document level validation.
 
 
         :return: A :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor` over the result
@@ -3111,6 +3112,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         filter: Optional[Mapping[str, Any]] = None,
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
+        hint: Optional[_IndexKeyHint] = None,
         **kwargs: Any,
     ) -> list:
         """Get a list of distinct values for `key` among all documents
@@ -3138,7 +3140,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
             command.
+        :param hint: An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index`
+            (e.g. ``[('field', ASCENDING)]``).
         :param kwargs: See list of options above.
+
+        .. versionchanged:: 4.12
+           Added ``hint`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -3158,6 +3167,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
+        if hint is not None:
+            if not isinstance(hint, str):
+                hint = helpers_shared._index_document(hint)
+            cmd["hint"] = hint  # type: ignore[assignment]
 
         async def _cmd(
             session: Optional[AsyncClientSession],

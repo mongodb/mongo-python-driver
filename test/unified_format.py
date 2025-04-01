@@ -65,7 +65,7 @@ import pymongo
 from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
-from gridfs import GridFSBucket, GridOut
+from gridfs import GridFSBucket, GridOut, NoFile
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
@@ -567,7 +567,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
                 self.skipTest("CSOT not implemented for cursors")
-            if "tailable" in class_name:
+            if (
+                "tailable" in class_name
+                or "tailable" in description
+                and "non-tailable" not in description
+            ):
                 self.skipTest("CSOT not implemented for tailable cursors")
             if "sessions" in class_name:
                 self.skipTest("CSOT not implemented for sessions")
@@ -627,7 +631,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Connection errors are considered client errors.
             if isinstance(error, ConnectionFailure):
                 self.assertNotIsInstance(error, NotPrimaryError)
-            elif isinstance(error, (InvalidOperation, ConfigurationError, EncryptionError)):
+            elif isinstance(error, (InvalidOperation, ConfigurationError, EncryptionError, NoFile)):
                 pass
             else:
                 self.assertNotIsInstance(error, PyMongoError)

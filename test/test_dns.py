@@ -33,7 +33,8 @@ from test.utils_shared import wait_until
 
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
-from pymongo.uri_parser import parse_uri, split_hosts
+from pymongo.synchronous.uri_parser import parse_uri
+from pymongo.uri_parser_shared import split_hosts
 
 _IS_SYNC = True
 
@@ -183,35 +184,24 @@ create_tests(TestDNSSharded)
 
 class TestParsingErrors(PyMongoTestCase):
     def test_invalid_host(self):
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: mongodb is not",
-            self.simple_client,
-            "mongodb+srv://mongodb",
-        )
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: mongodb.com is not",
-            self.simple_client,
-            "mongodb+srv://mongodb.com",
-        )
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: an IP address is not",
-            self.simple_client,
-            "mongodb+srv://127.0.0.1",
-        )
-        self.assertRaisesRegex(
-            ConfigurationError,
-            "Invalid URI host: an IP address is not",
-            self.simple_client,
-            "mongodb+srv://[::1]",
-        )
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb is not"):
+            client = self.simple_client("mongodb+srv://mongodb")
+            client._connect()
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb.com is not"):
+            client = self.simple_client("mongodb+srv://mongodb.com")
+            client._connect()
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: an IP address is not"):
+            client = self.simple_client("mongodb+srv://127.0.0.1")
+            client._connect()
+        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: an IP address is not"):
+            client = self.simple_client("mongodb+srv://[::1]")
+            client._connect()
 
 
 class TestCaseInsensitive(IntegrationTest):
     def test_connect_case_insensitive(self):
         client = self.simple_client("mongodb+srv://TEST1.TEST.BUILD.10GEN.cc/")
+        client._connect()
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
 
 

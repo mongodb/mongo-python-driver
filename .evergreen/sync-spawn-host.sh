@@ -1,4 +1,6 @@
 #!/bin/bash
+# Synchronize local files to a remote Evergreen spawn host.
+set -eu
 
 if [ -z "$1" ]
   then

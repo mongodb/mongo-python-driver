@@ -4,7 +4,7 @@
 # may not use this file except in compliance with the License.  You
 # may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,10 +14,11 @@
 
 """A CPython compatible SSLContext implementation wrapping PyOpenSSL's
 context.
+
+Due to limitations of the CPython asyncio.Protocol implementation for SSL, the async API does not support PyOpenSSL.
 """
 from __future__ import annotations
 
-import asyncio
 import socket as _socket
 import ssl as _stdlibssl
 import sys as _sys
@@ -109,15 +110,12 @@ class _sslConn(_SSL.Connection):
         ctx: _SSL.Context,
         sock: Optional[_socket.socket],
         suppress_ragged_eofs: bool,
-        is_async: bool = False,
     ):
         self.socket_checker = _SocketChecker()
         self.suppress_ragged_eofs = suppress_ragged_eofs
         super().__init__(ctx, sock)
-        self._is_async = is_async
 
     def _call(self, call: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:
-        is_async = kwargs.pop("allow_async", True) and self._is_async
         timeout = self.gettimeout()
         if timeout:
             start = _time.monotonic()
@@ -126,7 +124,7 @@ class _sslConn(_SSL.Connection):
                 return call(*args, **kwargs)
             except BLOCKING_IO_ERRORS as exc:
                 # Do not retry if the connection is in non-blocking mode.
-                if is_async or timeout == 0:
+                if timeout == 0:
                     raise exc
                 # Check for closed socket.
                 if self.fileno() == -1:
@@ -148,7 +146,6 @@ class _sslConn(_SSL.Connection):
                 continue
 
     def do_handshake(self, *args: Any, **kwargs: Any) -> None:
-        kwargs["allow_async"] = False
         return self._call(super().do_handshake, *args, **kwargs)
 
     def recv(self, *args: Any, **kwargs: Any) -> bytes:
@@ -378,58 +375,6 @@ class SSLContext:
         # Note: See PyOpenSSL's docs for limitations, which are similar
         # but not that same as CPython's.
         self._ctx.set_default_verify_paths()
-
-    async def a_wrap_socket(
-        self,
-        sock: _socket.socket,
-        server_side: bool = False,
-        do_handshake_on_connect: bool = True,
-        suppress_ragged_eofs: bool = True,
-        server_hostname: Optional[str] = None,
-        session: Optional[_SSL.Session] = None,
-    ) -> _sslConn:
-        """Wrap an existing Python socket connection and return a TLS socket
-        object.
-        """
-        ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs, True)
-        loop = asyncio.get_running_loop()
-        if session:
-            ssl_conn.set_session(session)
-        if server_side is True:
-            ssl_conn.set_accept_state()
-        else:
-            # SNI
-            if server_hostname and not _is_ip_address(server_hostname):
-                # XXX: Do this in a callback registered with
-                # SSLContext.set_info_callback? See Twisted for an example.
-                ssl_conn.set_tlsext_host_name(server_hostname.encode("idna"))
-            if self.verify_mode != _stdlibssl.CERT_NONE:
-                # Request a stapled OCSP response.
-                await loop.run_in_executor(None, ssl_conn.request_ocsp)
-            ssl_conn.set_connect_state()
-        # If this wasn't true the caller of wrap_socket would call
-        # do_handshake()
-        if do_handshake_on_connect:
-            # XXX: If we do hostname checking in a callback we can get rid
-            # of this call to do_handshake() since the handshake
-            # will happen automatically later.
-            await loop.run_in_executor(None, ssl_conn.do_handshake)
-            # XXX: Do this in a callback registered with
-            # SSLContext.set_info_callback? See Twisted for an example.
-            if self.check_hostname and server_hostname is not None:
-                from service_identity import pyopenssl
-
-                try:
-                    if _is_ip_address(server_hostname):
-                        pyopenssl.verify_ip_address(ssl_conn, server_hostname)
-                    else:
-                        pyopenssl.verify_hostname(ssl_conn, server_hostname)
-                except (  # type:ignore[misc]
-                    service_identity.SICertificateError,
-                    service_identity.SIVerificationError,
-                ) as exc:
-                    raise _CertificateError(str(exc)) from None
-        return ssl_conn
 
     def wrap_socket(
         self,

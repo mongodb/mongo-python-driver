@@ -834,6 +834,35 @@ class AsyncGridFSBucket:
         if not res.deleted_count:
             raise NoFile("no file could be deleted because none matched %s" % file_id)
 
+    @_csot.apply
+    async def delete_by_name(
+        self, filename: str, session: Optional[AsyncClientSession] = None
+    ) -> None:
+        """Given a filename, delete this stored file's files collection document(s)
+        and associated chunks from a GridFS bucket.
+
+        For example::
+
+          my_db = AsyncMongoClient().test
+          fs = AsyncGridFSBucket(my_db)
+          await fs.upload_from_stream("test_file", "data I want to store!")
+          await fs.delete_by_name("test_file")
+
+        Raises :exc:`~gridfs.errors.NoFile` if no file with the given filename exists.
+
+        :param filename: The name of the file to be deleted.
+        :param session: a :class:`~pymongo.client_session.AsyncClientSession`
+
+        .. versionadded:: 4.12
+        """
+        _disallow_transactions(session)
+        files = self._files.find({"filename": filename}, {"_id": 1}, session=session)
+        file_ids = [file["_id"] async for file in files]
+        res = await self._files.delete_many({"_id": {"$in": file_ids}}, session=session)
+        await self._chunks.delete_many({"files_id": {"$in": file_ids}}, session=session)
+        if not res.deleted_count:
+            raise NoFile(f"no file could be deleted because none matched filename {filename!r}")
+
     def find(self, *args: Any, **kwargs: Any) -> AsyncGridOutCursor:
         """Find and return the files collection documents that match ``filter``
 
@@ -1019,6 +1048,35 @@ class AsyncGridFSBucket:
             raise NoFile(
                 "no files could be renamed %r because none "
                 "matched file_id %i" % (new_filename, file_id)
+            )
+
+    async def rename_by_name(
+        self, filename: str, new_filename: str, session: Optional[AsyncClientSession] = None
+    ) -> None:
+        """Renames the stored file with the specified filename.
+
+        For example::
+
+          my_db = AsyncMongoClient().test
+          fs = AsyncGridFSBucket(my_db)
+          await fs.upload_from_stream("test_file", "data I want to store!")
+          await fs.rename_by_name("test_file", "new_test_name")
+
+        Raises :exc:`~gridfs.errors.NoFile` if no file with the given filename exists.
+
+        :param filename: The filename of the file to be renamed.
+        :param new_filename: The new name of the file.
+        :param session: a :class:`~pymongo.client_session.AsyncClientSession`
+
+        .. versionadded:: 4.12
+        """
+        _disallow_transactions(session)
+        result = await self._files.update_many(
+            {"filename": filename}, {"$set": {"filename": new_filename}}, session=session
+        )
+        if not result.matched_count:
+            raise NoFile(
+                f"no files could be renamed {new_filename!r} because none matched filename {filename!r}"
             )
 
 

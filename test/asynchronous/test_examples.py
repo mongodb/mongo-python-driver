@@ -1163,12 +1163,7 @@ class TestTransactionExamples(AsyncIntegrationTest):
         # Step 2: Start a client session.
         async with client.start_session() as session:
             # Step 3: Use with_transaction to start a transaction, execute the callback, and commit (or abort on error).
-            await session.with_transaction(
-                callback,
-                read_concern=ReadConcern("local"),
-                write_concern=wc_majority,
-                read_preference=ReadPreference.PRIMARY,
-            )
+            await session.with_transaction(callback)
 
         # End Transactions withTxn API Example 1
 

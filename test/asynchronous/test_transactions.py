@@ -32,7 +32,7 @@ from typing import List
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
-from pymongo import WriteConcern
+from pymongo import WriteConcern, _csot
 from pymongo.asynchronous import client_session
 from pymongo.asynchronous.client_session import TransactionOptions
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
@@ -295,6 +295,14 @@ class TestTransactions(AsyncTransactionsBase):
                     "new-name",
                 ),
             ),
+            (
+                bucket.rename_by_name,
+                (
+                    "new-name",
+                    "new-name2",
+                ),
+            ),
+            (bucket.delete_by_name, ("new-name2",)),
         ]
 
         async with client.start_session() as s, await s.start_transaction():
@@ -576,6 +584,30 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             self.assertFalse(s.in_transaction)
             await s.with_transaction(callback)
             self.assertFalse(s.in_transaction)
+
+
+class TestOptionsInsideTransactionProse(AsyncTransactionsBase):
+    @async_client_context.require_transactions
+    @async_client_context.require_no_standalone
+    async def test_case_1(self):
+        # Write concern not inherited from collection object inside transaction
+        # Create a MongoClient running against a configured sharded/replica set/load balanced cluster.
+        client = async_client_context.client
+        coll = client[self.db.name].test
+        await coll.delete_many({})
+        # Start a new session on the client.
+        async with client.start_session() as s:
+            # Start a transaction on the session.
+            await s.start_transaction()
+            # Instantiate a collection object in the driver with a default write concern of { w: 0 }.
+            inner_coll = coll.with_options(write_concern=WriteConcern(w=0))
+            # Insert the document { n: 1 } on the instantiated collection.
+            result = await inner_coll.insert_one({"n": 1}, session=s)
+            # Commit the transaction.
+            await s.commit_transaction()
+        # End the session.
+        # Ensure the document was inserted and no error was thrown from the transaction.
+        assert result.inserted_id is not None
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@
 # may not use this file except in compliance with the License.  You
 # may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,14 +14,10 @@
 
 from __future__ import annotations
 
-import asyncio
 import collections
 import contextlib
-import functools
 import logging
 import os
-import socket
-import ssl
 import sys
 import time
 import weakref
@@ -49,16 +45,13 @@ from pymongo.common import (
 from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConfigurationError,
-    ConnectionFailure,
     DocumentTooLarge,
     ExecutionTimeout,
     InvalidOperation,
-    NetworkTimeout,
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
     WaitQueueTimeoutError,
-    _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.lock import (
@@ -76,16 +69,23 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
 )
-from pymongo.network_layer import sendall
+from pymongo.network_layer import NetworkingInterface, receive_message, sendall
 from pymongo.pool_options import PoolOptions
+from pymongo.pool_shared import (
+    _CancellationContext,
+    _configured_socket_interface,
+    _get_timeout_details,
+    _raise_connection_failure,
+    format_timeout_details,
+)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
-from pymongo.ssl_support import HAS_SNI, SSLError
+from pymongo.ssl_support import SSLError
 from pymongo.synchronous.client_session import _validate_session_write_concern
-from pymongo.synchronous.helpers import _getaddrinfo, _handle_reauth
-from pymongo.synchronous.network import command, receive_message
+from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.network import command
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -96,7 +96,6 @@ if TYPE_CHECKING:
         ZstdContext,
     )
     from pymongo.message import _OpMsg, _OpReply
-    from pymongo.pyopenssl_context import _sslConn
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.auth import _AuthContext
@@ -123,133 +122,6 @@ except ImportError:
 
 _IS_SYNC = True
 
-_MAX_TCP_KEEPIDLE = 120
-_MAX_TCP_KEEPINTVL = 10
-_MAX_TCP_KEEPCNT = 9
-
-if sys.platform == "win32":
-    try:
-        import _winreg as winreg
-    except ImportError:
-        import winreg
-
-    def _query(key, name, default):
-        try:
-            value, _ = winreg.QueryValueEx(key, name)
-            # Ensure the value is a number or raise ValueError.
-            return int(value)
-        except (OSError, ValueError):
-            # QueryValueEx raises OSError when the key does not exist (i.e.
-            # the system is using the Windows default value).
-            return default
-
-    try:
-        with winreg.OpenKey(
-            winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"
-        ) as key:
-            _WINDOWS_TCP_IDLE_MS = _query(key, "KeepAliveTime", 7200000)
-            _WINDOWS_TCP_INTERVAL_MS = _query(key, "KeepAliveInterval", 1000)
-    except OSError:
-        # We could not check the default values because winreg.OpenKey failed.
-        # Assume the system is using the default values.
-        _WINDOWS_TCP_IDLE_MS = 7200000
-        _WINDOWS_TCP_INTERVAL_MS = 1000
-
-    def _set_keepalive_times(sock):
-        idle_ms = min(_WINDOWS_TCP_IDLE_MS, _MAX_TCP_KEEPIDLE * 1000)
-        interval_ms = min(_WINDOWS_TCP_INTERVAL_MS, _MAX_TCP_KEEPINTVL * 1000)
-        if idle_ms < _WINDOWS_TCP_IDLE_MS or interval_ms < _WINDOWS_TCP_INTERVAL_MS:
-            sock.ioctl(socket.SIO_KEEPALIVE_VALS, (1, idle_ms, interval_ms))
-
-else:
-
-    def _set_tcp_option(sock: socket.socket, tcp_option: str, max_value: int) -> None:
-        if hasattr(socket, tcp_option):
-            sockopt = getattr(socket, tcp_option)
-            try:
-                # PYTHON-1350 - NetBSD doesn't implement getsockopt for
-                # TCP_KEEPIDLE and friends. Don't attempt to set the
-                # values there.
-                default = sock.getsockopt(socket.IPPROTO_TCP, sockopt)
-                if default > max_value:
-                    sock.setsockopt(socket.IPPROTO_TCP, sockopt, max_value)
-            except OSError:
-                pass
-
-    def _set_keepalive_times(sock: socket.socket) -> None:
-        _set_tcp_option(sock, "TCP_KEEPIDLE", _MAX_TCP_KEEPIDLE)
-        _set_tcp_option(sock, "TCP_KEEPINTVL", _MAX_TCP_KEEPINTVL)
-        _set_tcp_option(sock, "TCP_KEEPCNT", _MAX_TCP_KEEPCNT)
-
-
-def _raise_connection_failure(
-    address: Any,
-    error: Exception,
-    msg_prefix: Optional[str] = None,
-    timeout_details: Optional[dict[str, float]] = None,
-) -> NoReturn:
-    """Convert a socket.error to ConnectionFailure and raise it."""
-    host, port = address
-    # If connecting to a Unix socket, port will be None.
-    if port is not None:
-        msg = "%s:%d: %s" % (host, port, error)
-    else:
-        msg = f"{host}: {error}"
-    if msg_prefix:
-        msg = msg_prefix + msg
-    if "configured timeouts" not in msg:
-        msg += format_timeout_details(timeout_details)
-    if isinstance(error, socket.timeout):
-        raise NetworkTimeout(msg) from error
-    elif isinstance(error, SSLError) and "timed out" in str(error):
-        # Eventlet does not distinguish TLS network timeouts from other
-        # SSLErrors (https://github.com/eventlet/eventlet/issues/692).
-        # Luckily, we can work around this limitation because the phrase
-        # 'timed out' appears in all the timeout related SSLErrors raised.
-        raise NetworkTimeout(msg) from error
-    else:
-        raise AutoReconnect(msg) from error
-
-
-def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
-    details = {}
-    timeout = _csot.get_timeout()
-    socket_timeout = options.socket_timeout
-    connect_timeout = options.connect_timeout
-    if timeout:
-        details["timeoutMS"] = timeout * 1000
-    if socket_timeout and not timeout:
-        details["socketTimeoutMS"] = socket_timeout * 1000
-    if connect_timeout:
-        details["connectTimeoutMS"] = connect_timeout * 1000
-    return details
-
-
-def format_timeout_details(details: Optional[dict[str, float]]) -> str:
-    result = ""
-    if details:
-        result += " (configured timeouts:"
-        for timeout in ["socketTimeoutMS", "timeoutMS", "connectTimeoutMS"]:
-            if timeout in details:
-                result += f" {timeout}: {details[timeout]}ms,"
-        result = result[:-1]
-        result += ")"
-    return result
-
-
-class _CancellationContext:
-    def __init__(self) -> None:
-        self._cancelled = False
-
-    def cancel(self) -> None:
-        """Cancel this context."""
-        self._cancelled = True
-
-    @property
-    def cancelled(self) -> bool:
-        """Was cancel called?"""
-        return self._cancelled
-
 
 class Connection:
     """Store a connection with some metadata.
@@ -261,7 +133,11 @@ class Connection:
     """
 
     def __init__(
-        self, conn: Union[socket.socket, _sslConn], pool: Pool, address: tuple[str, int], id: int
+        self,
+        conn: NetworkingInterface,
+        pool: Pool,
+        address: tuple[str, int],
+        id: int,
     ):
         self.pool_ref = weakref.ref(pool)
         self.conn = conn
@@ -318,7 +194,7 @@ class Connection:
         if timeout == self.last_timeout:
             return
         self.last_timeout = timeout
-        self.conn.settimeout(timeout)
+        self.conn.get_conn.settimeout(timeout)
 
     def apply_timeout(
         self, client: MongoClient, cmd: Optional[MutableMapping[str, Any]]
@@ -573,7 +449,7 @@ class Connection:
             )
 
         try:
-            sendall(self.conn, message)
+            sendall(self.conn.get_conn, message)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             self._raise_connection_failure(error)
@@ -652,8 +528,8 @@ class Connection:
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
-                    clientId=self._client_id,
                     message=_ConnectionStatusMessage.CONN_READY,
+                    clientId=self._client_id,
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                     driverConnectionId=self.id,
@@ -683,8 +559,8 @@ class Connection:
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
-                    clientId=self._client_id,
                     message=_ConnectionStatusMessage.CONN_CLOSED,
+                    clientId=self._client_id,
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                     driverConnectionId=self.id,
@@ -707,7 +583,10 @@ class Connection:
 
     def conn_closed(self) -> bool:
         """Return True if we know socket has been closed, False otherwise."""
-        return self.socket_checker.socket_closed(self.conn)
+        if _IS_SYNC:
+            return self.socket_checker.socket_closed(self.conn.get_conn)
+        else:
+            return self.conn.is_closing()
 
     def send_cluster_time(
         self,
@@ -779,143 +658,6 @@ class Connection:
         )
 
 
-def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
-    """Given (host, port) and PoolOptions, connect and return a socket object.
-
-    Can raise socket.error.
-
-    This is a modified version of create_connection from CPython >= 2.7.
-    """
-    host, port = address
-
-    # Check if dealing with a unix domain socket
-    if host.endswith(".sock"):
-        if not hasattr(socket, "AF_UNIX"):
-            raise ConnectionFailure("UNIX-sockets are not supported on this system")
-        sock = socket.socket(socket.AF_UNIX)
-        # SOCK_CLOEXEC not supported for Unix sockets.
-        _set_non_inheritable_non_atomic(sock.fileno())
-        try:
-            sock.connect(host)
-            return sock
-        except OSError:
-            sock.close()
-            raise
-
-    # Don't try IPv6 if we don't support it. Also skip it if host
-    # is 'localhost' (::1 is fine). Avoids slow connect issues
-    # like PYTHON-356.
-    family = socket.AF_INET
-    if socket.has_ipv6 and host != "localhost":
-        family = socket.AF_UNSPEC
-
-    err = None
-    for res in _getaddrinfo(host, port, family=family, type=socket.SOCK_STREAM):  # type: ignore[attr-defined]
-        af, socktype, proto, dummy, sa = res
-        # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
-        # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
-        # all file descriptors are created non-inheritable. See PEP 446.
-        try:
-            sock = socket.socket(af, socktype | getattr(socket, "SOCK_CLOEXEC", 0), proto)
-        except OSError:
-            # Can SOCK_CLOEXEC be defined even if the kernel doesn't support
-            # it?
-            sock = socket.socket(af, socktype, proto)
-        # Fallback when SOCK_CLOEXEC isn't available.
-        _set_non_inheritable_non_atomic(sock.fileno())
-        try:
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            # CSOT: apply timeout to socket connect.
-            timeout = _csot.remaining()
-            if timeout is None:
-                timeout = options.connect_timeout
-            elif timeout <= 0:
-                raise socket.timeout("timed out")
-            sock.settimeout(timeout)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
-            _set_keepalive_times(sock)
-            sock.connect(sa)
-            return sock
-        except OSError as e:
-            err = e
-            sock.close()
-
-    if err is not None:
-        raise err
-    else:
-        # This likely means we tried to connect to an IPv6 only
-        # host with an OS/kernel or Python interpreter that doesn't
-        # support IPv6. The test case is Jython2.5.1 which doesn't
-        # support IPv6 at all.
-        raise OSError("getaddrinfo failed")
-
-
-def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
-    """Given (host, port) and PoolOptions, return a configured socket.
-
-    Can raise socket.error, ConnectionFailure, or _CertificateError.
-
-    Sets socket's SSL and timeout options.
-    """
-    sock = _create_connection(address, options)
-    ssl_context = options._ssl_context
-
-    if ssl_context is None:
-        sock.settimeout(options.socket_timeout)
-        return sock
-
-    host = address[0]
-    try:
-        # We have to pass hostname / ip address to wrap_socket
-        # to use SSLContext.check_hostname.
-        if HAS_SNI:
-            if _IS_SYNC:
-                ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
-            else:
-                if hasattr(ssl_context, "a_wrap_socket"):
-                    ssl_sock = ssl_context.a_wrap_socket(sock, server_hostname=host)  # type: ignore[assignment, misc]
-                else:
-                    loop = asyncio.get_running_loop()
-                    ssl_sock = loop.run_in_executor(
-                        None,
-                        functools.partial(ssl_context.wrap_socket, sock, server_hostname=host),  # type: ignore[assignment, misc]
-                    )
-        else:
-            if _IS_SYNC:
-                ssl_sock = ssl_context.wrap_socket(sock)
-            else:
-                if hasattr(ssl_context, "a_wrap_socket"):
-                    ssl_sock = ssl_context.a_wrap_socket(sock)  # type: ignore[assignment, misc]
-                else:
-                    loop = asyncio.get_running_loop()
-                    ssl_sock = loop.run_in_executor(None, ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc]
-    except _CertificateError:
-        sock.close()
-        # Raise _CertificateError directly like we do after match_hostname
-        # below.
-        raise
-    except (OSError, SSLError) as exc:
-        sock.close()
-        # We raise AutoReconnect for transient and permanent SSL handshake
-        # failures alike. Permanent handshake failures, like protocol
-        # mismatch, will be turned into ServerSelectionTimeoutErrors later.
-        details = _get_timeout_details(options)
-        _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
-    if (
-        ssl_context.verify_mode
-        and not ssl_context.check_hostname
-        and not options.tls_allow_invalid_hostnames
-    ):
-        try:
-            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined]
-        except _CertificateError:
-            ssl_sock.close()
-            raise
-
-    ssl_sock.settimeout(options.socket_timeout)
-    return ssl_sock
-
-
 class _PoolClosedError(PyMongoError):
     """Internal error raised when a thread tries to get a connection from a
     closed pool.
@@ -960,7 +702,7 @@ class PoolState:
 
 
 # Do *not* explicitly inherit from object or Jython won't call __del__
-# http://bugs.jython.org/issue1057
+# https://bugs.jython.org/issue1057
 class Pool:
     def __init__(
         self,
@@ -1033,8 +775,8 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.POOL_CREATED,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
                 **self.opts.non_default_options,
@@ -1059,8 +801,8 @@ class Pool:
                 if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _CONNECTION_LOGGER,
-                        clientId=self._client_id,
                         message=_ConnectionStatusMessage.POOL_READY,
+                        clientId=self._client_id,
                         serverHost=self.address[0],
                         serverPort=self.address[1],
                     )
@@ -1124,8 +866,8 @@ class Pool:
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
-                    clientId=self._client_id,
                     message=_ConnectionStatusMessage.POOL_CLOSED,
+                    clientId=self._client_id,
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                 )
@@ -1141,8 +883,8 @@ class Pool:
                 if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _CONNECTION_LOGGER,
-                        clientId=self._client_id,
                         message=_ConnectionStatusMessage.POOL_CLEARED,
+                        clientId=self._client_id,
                         serverHost=self.address[0],
                         serverPort=self.address[1],
                         serviceId=service_id,
@@ -1252,15 +994,15 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.CONN_CREATED,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
                 driverConnectionId=conn_id,
             )
 
         try:
-            sock = _configured_socket(self.address, self.opts)
+            networking_interface = _configured_socket_interface(self.address, self.opts)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             with self.lock:
@@ -1273,8 +1015,8 @@ class Pool:
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
-                    clientId=self._client_id,
                     message=_ConnectionStatusMessage.CONN_CLOSED,
+                    clientId=self._client_id,
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                     driverConnectionId=conn_id,
@@ -1287,7 +1029,7 @@ class Pool:
 
             raise
 
-        conn = Connection(sock, self, self.address, conn_id)  # type: ignore[arg-type]
+        conn = Connection(networking_interface, self, self.address, conn_id)  # type: ignore[arg-type]
         with self.lock:
             self.active_contexts.add(conn.cancel_context)
             self.active_contexts.discard(tmp_context)
@@ -1340,8 +1082,8 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.CHECKOUT_STARTED,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
             )
@@ -1355,8 +1097,8 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
                 driverConnectionId=conn.id,
@@ -1404,8 +1146,8 @@ class Pool:
                 if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _CONNECTION_LOGGER,
-                        clientId=self._client_id,
                         message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                        clientId=self._client_id,
                         serverHost=self.address[0],
                         serverPort=self.address[1],
                         reason="An error occurred while trying to establish a new connection",
@@ -1438,8 +1180,8 @@ class Pool:
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
-                    clientId=self._client_id,
                     message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                    clientId=self._client_id,
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                     reason="Connection pool was closed",
@@ -1534,8 +1276,8 @@ class Pool:
                 if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _CONNECTION_LOGGER,
-                        clientId=self._client_id,
                         message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                        clientId=self._client_id,
                         serverHost=self.address[0],
                         serverPort=self.address[1],
                         reason="An error occurred while trying to establish a new connection",
@@ -1567,8 +1309,8 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.CHECKEDIN,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
                 driverConnectionId=conn.id,
@@ -1588,8 +1330,8 @@ class Pool:
                 if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _CONNECTION_LOGGER,
-                        clientId=self._client_id,
                         message=_ConnectionStatusMessage.CONN_CLOSED,
+                        clientId=self._client_id,
                         serverHost=self.address[0],
                         serverPort=self.address[1],
                         driverConnectionId=conn.id,
@@ -1666,8 +1408,8 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
                 reason="Wait queue timeout elapsed without a connection becoming available",
@@ -1698,5 +1440,6 @@ class Pool:
         # Avoid ResourceWarnings in Python 3
         # Close all sockets without calling reset() or close() because it is
         # not safe to acquire a lock in __del__.
-        for conn in self.conns:
-            conn.close_conn(None)
+        if _IS_SYNC:
+            for conn in self.conns:
+                conn.close_conn(None)

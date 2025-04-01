@@ -1,6 +1,6 @@
 #!/bin/bash
-# exit when any command fails
-set -e
+# Resync test files from the specifications repo.
+set -eu
 PYMONGO=$(dirname "$(cd "$(dirname "$0")"; pwd)")
 SPECS=${MDB_SPECS:-~/Work/specifications}
 

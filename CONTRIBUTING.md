@@ -217,9 +217,11 @@ the pages will re-render and the browser will automatically refresh.
 
 ### Usage
 
-- Run `just run-server` with optional args to set up the server.
-  All given flags will be passed to `run-orchestration.sh` in `$DRIVERS_TOOLS`.
+- Run `just run-server` with optional args to set up the server.  All given options will be passed to
+  `run-orchestration.sh` in `$DRIVERS_TOOLS`.  See `$DRIVERS_TOOLS/evergreen/run-orchestration.sh -h`
+  for a full list of options.
 - Run `just setup-tests` with optional args to set up the test environment, secrets, etc.
+  See `just setup-tests -h` for a full list of available options.
 - Run `just run-tests` to run the tests in an appropriate Python environment.
 - When done, run `just teardown-tests` to clean up and `just stop-server` to stop the server.
 
@@ -248,6 +250,7 @@ the pages will re-render and the browser will automatically refresh.
 - Run the tests with `just run-tests`.
 
 The supported types are [`default`, `azure`, `gcp`, `eks`, `aks`, and `gke`].
+For the `eks` test, you will need to set up access to the `drivers-test-secrets-role`, see the [Wiki](https://wiki.corp.mongodb.com/spaces/DRIVERS/pages/239737385/Using+AWS+Secrets+Manager+to+Store+Testing+Secrets).
 
 ### KMS tests
 
@@ -262,22 +265,110 @@ For KMS tests that run remotely and are expected to pass, in this case using `gc
 - Run `just setup-tests kms gcp`.
 - Run `just run-tests`.
 
+### Enterprise Auth tests
+
+Note: these tests can only be run from an Evergreen host.
+
+- Run `just run-server enterprise_auth`.
+- Run `just setup-tests enterprise_auth`.
+- Run `just run-tests`.
+
+### Atlas Connect tests
+
+- Run `just setup-tests atlas_connect`.
+- Run `just run-tests`.
+
+### Search Index tests
+
+- Run `just run-server search_index`.
+- Run `just setup-tests search_index`.
+- Run `just run-tests`.
+
+### MockupDB tests
+
+- Run `just setup-tests mockupdb`.
+- Run `just run-tests`.
+
+### Doc tests
+
+The doc tests require a running server.
+
+- Run `just run-server`.
+- Run `just docs-test`.
+
+### Free-threaded Python Tests
+
+In the evergreen builds, the tests are configured to use the free-threaded python from the toolchain.
+Locally you can run:
+
+- Run `just run-server`.
+- Run `just setup-tests`.
+- Run `UV_PYTHON=3.13t just run-tests`.
+
+### AWS Lambda tests
+
+You will need to set up access to the `drivers-test-secrets-role`, see the [Wiki](https://wiki.corp.mongodb.com/spaces/DRIVERS/pages/239737385/Using+AWS+Secrets+Manager+to+Store+Testing+Secrets).
+
+- Run `just setup-tests aws_lambda`.
+- Run `just run-tests`.
+
+### mod_wsgi tests
+
+Note: these tests can only be run from an Evergreen Linux host that has the Python toolchain.
+
+- Run `just run-server`.
+- Run `just setup-tests mod_wsgi <mode>`.
+- Run `just run-tests`.
+
+The `mode` can be `standalone` or `embedded`.  For the `replica_set` version of the tests, use
+`TOPOLOGY=replica_set just run-server`.
+
+### Atlas Data Lake tests.
+
+You must have `docker` or `podman` installed locally.
+
+- Run `just setup-tests data_lake`.
+- Run `just run-tests`.
+
 ### OCSP tests
 
-  - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
-    This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
-    MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
-  - Run `just run-server ocsp`.
-  - Run `just setup-tests ocsp <sub test>` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
-  - Run `just run-tests`
+- Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
+This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
+MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
+- Run `just run-server ocsp`.
+- Run `just setup-tests ocsp <sub test>` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
+- Run `just run-tests`
 
-  If you are running one of the `no-responder` tests, omit the `run-server` step.
+If you are running one of the `no-responder` tests, omit the `run-server` step.
+
+### Perf Tests
+
+- Start the appropriate server, e.g. `just run-server --version=v8.0-perf --ssl`.
+- Set up the tests with `sync` or `async`: `just setup-tests perf sync`.
+- Run the tests: `just run-tests`.
 
 ## Enable Debug Logs
+
 - Use `-o log_cli_level="DEBUG" -o log_cli=1` with `just test` or `pytest`.
 - Add `log_cli_level = "DEBUG` and `log_cli = 1` to the `tool.pytest.ini_options` section in `pyproject.toml` for Evergreen patches or to enable debug logs by default on your machine.
 - You can also set `DEBUG_LOG=1` and run either `just setup-tests` or `just-test`.
+- Finally, you can use `just setup-tests --debug-log`.
 - For evergreen patch builds, you can use `evergreen patch --param DEBUG_LOG=1` to enable debug logs for the patch.
+
+## Adding a new test suite
+
+- If adding new tests files that should only be run for that test suite, add a pytest marker to the file and add
+  to the list of pytest markers in `pyproject.toml`.  Then add the test suite to the `TEST_SUITE_MAP` in `.evergreen/scripts/utils.py`.  If for some reason it is not a pytest-runnable test, add it to the list of `EXTRA_TESTS` instead.
+- If the test uses Atlas or otherwise doesn't use `run-orchestration.sh`, add it to the `NO_RUN_ORCHESTRATION` list in
+  `.evergreen/scripts/utils.py`.
+- If there is something special required to run the local server or there is an extra flag that should always be set
+  like `AUTH`, add that logic to `.evergreen/scripts/run_server.py`.
+- The bulk of the logic will typically be in `.evergreen/scripts/setup_tests.py`.  This is where you should fetch secrets and make them available using `write_env`, start services, and write other env vars needed using `write_env`.
+- If there are any special test considerations, including not running `pytest` at all, handle it in `.evergreen/scripts/run_tests.py`.
+- If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
+- Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
+- Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
+- Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
 ## Re-sync Spec Tests
 

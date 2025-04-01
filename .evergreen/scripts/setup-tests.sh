@@ -1,4 +1,5 @@
 #!/bin/bash
+# Set up the test environment, including secrets and services.
 set -eu
 
 # Supported/used environment variables:

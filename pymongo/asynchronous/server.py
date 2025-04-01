@@ -4,7 +4,7 @@
 # may not use this file except in compliance with the License.  You
 # may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -108,10 +108,10 @@ class Server:
         if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _SDAM_LOGGER,
+                message=_SDAMStatusMessage.STOP_SERVER,
                 topologyId=self._topology_id,
                 serverHost=self._description.address[0],
                 serverPort=self._description.address[1],
-                message=_SDAMStatusMessage.STOP_SERVER,
             )
 
         await self._monitor.close()
@@ -173,8 +173,8 @@ class Server:
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.STARTED,
+                clientId=client._topology_settings._topology_id,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=dbn,
@@ -234,8 +234,8 @@ class Server:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.FAILED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
@@ -278,8 +278,8 @@ class Server:
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.SUCCEEDED,
+                clientId=client._topology_settings._topology_id,
                 durationMS=duration,
                 reply=res,
                 commandName=next(iter(cmd)),

@@ -22,6 +22,8 @@ import sys
 import warnings
 from test.asynchronous import AsyncPyMongoTestCase
 
+import pytest
+
 sys.path[0:0] = [""]
 
 from test import unittest
@@ -29,6 +31,8 @@ from test.asynchronous.unified_format import generate_test_classes
 
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.auth_oidc import OIDCCallback
+
+pytestmark = pytest.mark.auth
 
 _IS_SYNC = False
 

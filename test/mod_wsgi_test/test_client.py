@@ -24,7 +24,7 @@ from optparse import OptionParser
 from urllib.request import urlopen
 
 
-def parse_args():
+def parse_args(args=None):
     parser = OptionParser(
         """usage: %prog [options] mode url [<url2>...]
 
@@ -70,7 +70,7 @@ def parse_args():
     )
 
     try:
-        options, args = parser.parse_args()
+        options, args = parser.parse_args(args or sys.argv[1:])
         mode, urls = args[0], args[1:]
     except (ValueError, IndexError):
         parser.print_usage()
@@ -103,11 +103,11 @@ class URLGetterThread(threading.Thread):
     def run(self):
         for _i in range(self.nrequests_per_thread):
             try:
-                get(urls)
+                get(self.urls)
             except Exception as e:
                 print(e)
 
-                if not options.continue_:
+                if not self.options.continue_:
                     thread.interrupt_main()
                     thread.exit()
 
@@ -117,7 +117,7 @@ class URLGetterThread(threading.Thread):
                 URLGetterThread.counter += 1
                 counter = URLGetterThread.counter
 
-            should_print = options.verbose and not counter % 1000
+            should_print = self.options.verbose and not counter % 1000
 
             if should_print:
                 print(counter)

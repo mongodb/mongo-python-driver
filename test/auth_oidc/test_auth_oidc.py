@@ -49,7 +49,7 @@ from pymongo.synchronous.auth_oidc import (
     OIDCCallbackResult,
     _get_authenticator,
 )
-from pymongo.uri_parser import parse_uri
+from pymongo.synchronous.uri_parser import parse_uri
 
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
@@ -242,9 +242,9 @@ class TestAuthOIDCHuman(OIDCTestBase):
                 authmechanismproperties=props,
                 connect=False,
             )
-        # Assert that a find operation fails with a client-side error.
-        with self.assertRaises(ConfigurationError):
-            client.test.test.find_one()
+            # Assert that a find operation fails with a client-side error.
+            with self.assertRaises(ConfigurationError):
+                client.test.test.find_one()
         # Close the client.
         client.close()
 

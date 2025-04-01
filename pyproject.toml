@@ -49,6 +49,7 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 dev = [
     "pre-commit>=4.0"
 ]
+pip = ["pip"]
 gevent = ["gevent"]
 eventlet = ["eventlet"]
 coverage = [
@@ -115,6 +116,7 @@ filterwarnings = [
     "module:unclosed <socket.socket:ResourceWarning",
     "module:unclosed <ssl.SSLSocket:ResourceWarning",
     "module:unclosed <socket object:ResourceWarning",
+    "module:unclosed transport:ResourceWarning",
     # https://github.com/eventlet/eventlet/issues/818
     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314
@@ -125,10 +127,10 @@ markers = [
     "auth_oidc: tests that rely on oidc auth",
     "auth: tests that rely on authentication",
     "ocsp: tests that rely on ocsp",
-    "atlas: tests that rely on atlas",
+    "atlas_connect: tests that rely on an atlas connection",
     "data_lake: tests that rely on atlas data lake",
     "perf: benchmark tests",
-    "index_management: index management tests",
+    "search_index: search index helper tests",
     "kms: client-side field-level encryption tests using kms",
     "encryption: encryption tests",
     "load_balancer: load balancer tests",

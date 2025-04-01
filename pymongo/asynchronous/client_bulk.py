@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -241,8 +241,8 @@ class _AsyncClientBulk:
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.STARTED,
+                clientId=client._topology_settings._topology_id,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=bwc.db_name,
@@ -262,8 +262,8 @@ class _AsyncClientBulk:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.SUCCEEDED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     reply=reply,
                     commandName=next(iter(cmd)),
@@ -289,8 +289,8 @@ class _AsyncClientBulk:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.FAILED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
@@ -330,8 +330,8 @@ class _AsyncClientBulk:
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.STARTED,
+                clientId=client._topology_settings._topology_id,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=bwc.db_name,
@@ -356,8 +356,8 @@ class _AsyncClientBulk:
                 if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _COMMAND_LOGGER,
-                        clientId=client._topology_settings._topology_id,
                         message=_CommandStatusMessage.SUCCEEDED,
+                        clientId=client._topology_settings._topology_id,
                         durationMS=duration,
                         reply=reply,
                         commandName=next(iter(cmd)),
@@ -383,8 +383,8 @@ class _AsyncClientBulk:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.FAILED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),

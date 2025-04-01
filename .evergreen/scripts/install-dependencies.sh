@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Install the dependencies needed for an evergreen run.
 set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
@@ -24,10 +24,14 @@ function _pip_install() {
   echo "Installing $2 using pip..."
   createvirtualenv "$(find_python3)" $_VENV_PATH
   python -m pip install $1
+  _suffix=""
   if [ "Windows_NT" = "${OS:-}" ]; then
-    ln -s "$(which $2)" $_BIN_DIR/$2.exe
-  else
-    ln -s "$(which $2)" $_BIN_DIR/$2
+    _suffix=".exe"
+  fi
+  ln -s "$(which $2)" $_BIN_DIR/${2}${_suffix}
+  # uv also comes with a uvx binary.
+  if [ $2 == "uv" ]; then
+    ln -s "$(which uvx)" $_BIN_DIR/uvx${_suffix}
   fi
   echo "Installed to ${_BIN_DIR}"
   echo "Installing $2 using pip... done."

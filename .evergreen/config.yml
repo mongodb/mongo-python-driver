@@ -42,7 +42,7 @@ functions:
     # Make an evergreen expansion file with dynamic values
     - command: subprocess.exec
       params:
-        include_expansions_in_env: ["is_patch", "project", "version_id", "skip_web_identity_auth_test", "skip_ECS_auth_test"]
+        include_expansions_in_env: ["is_patch", "project", "version_id"]
         binary: bash
         working_dir: "src"
         args:
@@ -206,55 +206,28 @@ functions:
       params:
         binary: bash
         working_dir: "src"
-        include_expansions_in_env: [VERSION, TOPOLOGY, AUTH, SSL, ORCHESTRATION_FILE, PYTHON_BINARY,
+        include_expansions_in_env: [VERSION, TOPOLOGY, AUTH, SSL, ORCHESTRATION_FILE, PYTHON_BINARY, PYTHON_VERSION,
           STORAGE_ENGINE, REQUIRE_API_VERSION, DRIVERS_TOOLS, TEST_CRYPT_SHARED, AUTH_AWS, LOAD_BALANCER]
         args: [.evergreen/just.sh, run-server, "${TEST_NAME}"]
     - command: expansions.update
       params:
         file: ${DRIVERS_TOOLS}/mo-expansion.yml
 
-  "bootstrap data lake":
-    - command: subprocess.exec
-      type: setup
-      params:
-        binary: bash
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/pull-mongohouse-image.sh
-    - command: subprocess.exec
-      type: setup
-      params:
-        binary: bash
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-image.sh
-
-  "run mod_wsgi tests":
+  "run just script":
     - command: subprocess.exec
       type: test
       params:
-        include_expansions_in_env: [MOD_WSGI_VERSION, MOD_WSGI_EMBEDDED, "PYTHON_BINARY"]
-        working_dir: "src"
-        binary: bash
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-mod-wsgi-tests.sh
-
-  "run doctests":
-     - command: subprocess.exec
-       type: test
-       params:
-         include_expansions_in_env: [ "PYTHON_BINARY" ]
-         working_dir: "src"
-         binary: bash
-         args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-doctests.sh
+       include_expansions_in_env: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN]
+       binary: bash
+       working_dir: "src"
+       args: [.evergreen/just.sh, "${JUSTFILE_TARGET}"]
 
   "run tests":
     - command: subprocess.exec
       type: test
       params:
         include_expansions_in_env: [AUTH, SSL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
-          AWS_SESSION_TOKEN, COVERAGE, PYTHON_BINARY, LIBMONGOCRYPT_URL, MONGODB_URI,
+          AWS_SESSION_TOKEN, COVERAGE, PYTHON_BINARY, LIBMONGOCRYPT_URL, MONGODB_URI, PYTHON_VERSION,
           DISABLE_TEST_COMMANDS, GREEN_FRAMEWORK, NO_EXT, COMPRESSORS, MONGODB_API_VERSION, DEBUG_LOG,
           ORCHESTRATION_FILE, OCSP_SERVER_TYPE]
         binary: bash
@@ -267,35 +240,12 @@ functions:
         binary: bash
         args: [.evergreen/just.sh, run-tests]
 
-  "run enterprise auth tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        binary: bash
-        working_dir: "src"
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-enterprise-auth-tests.sh
-
-  "run atlas tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        binary: bash
-        include_expansions_in_env: ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "PYTHON_BINARY"]
-        working_dir: "src"
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-atlas-tests.sh
-
   "cleanup":
     - command: subprocess.exec
       params:
         binary: bash
         working_dir: "src"
         args:
-          - .evergreen/scripts/run-with-env.sh
           - .evergreen/scripts/cleanup.sh
 
   "teardown system":
@@ -315,37 +265,7 @@ functions:
     - command: ec2.assume_role
       params:
         role_arn: ${aws_test_secrets_role}
-
-  "setup atlas":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        include_expansions_in_env: ["task_id", "execution"]
-        env:
-          MONGODB_VERSION: "7.0"
-          LAMBDA_STACK_NAME: dbx-python-lambda
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh
-    - command: expansions.update
-      params:
-        file: atlas-expansion.yml
-
-  "teardown atlas":
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh
-
-  "run perf tests":
-    - command: subprocess.exec
-      type: test
-      params:
-        working_dir: "src"
-        binary: bash
-        args:
-          - .evergreen/scripts/run-with-env.sh
-          - .evergreen/scripts/run-perf-tests.sh
+        duration_seconds: 3600
 
   "attach benchmark test results":
     - command: attach.results
@@ -371,54 +291,6 @@ post:
   - func: "upload test results"
   - func: "cleanup"
 
-task_groups:
-  - name: serverless_task_group
-    setup_group_can_fail_task: true
-    setup_group_timeout_secs: 1800 # 30 minutes
-    setup_group:
-      - func: "fetch source"
-      - func: "setup system"
-      - command: subprocess.exec
-        params:
-          binary: bash
-          env:
-            VAULT_NAME: ${VAULT_NAME}
-          args:
-            - ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
-    teardown_task:
-      - command: subprocess.exec
-        params:
-          binary: bash
-          args:
-            - ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
-      - func: "upload test results"
-    tasks:
-      - ".serverless"
-
-  - name: test_aws_lambda_task_group
-    setup_group:
-      - func: fetch source
-      - func: setup system
-      - func: setup atlas
-    teardown_task:
-      - func: teardown atlas
-    setup_group_can_fail_task: true
-    setup_group_timeout_secs: 1800
-    tasks:
-      - test-aws-lambda-deployed
-
-  - name: test_atlas_task_group_search_indexes
-    setup_group:
-      - func: fetch source
-      - func: setup system
-      - func: setup atlas
-    teardown_task:
-      - func: teardown atlas
-    setup_group_can_fail_task: true
-    setup_group_timeout_secs: 1800
-    tasks:
-      - test-search-index-helpers
-
 tasks:
     # Wildcard task. Do you need to find out what tools are available and where?
     # Throw it here, and execute this task on all buildvariants
@@ -430,124 +302,7 @@ tasks:
           params:
             args:
               - src/.evergreen/scripts/run-getdata.sh
-# Standard test tasks {{{
 
-    - name: "mockupdb"
-      tags: ["mockupdb"]
-      commands:
-        - func: "run tests"
-          vars:
-            TEST_NAME: mockupdb
-
-    - name: "doctests"
-      tags: ["doctests"]
-      commands:
-        - func: "run server"
-        - func: "run doctests"
-
-    - name: "test-serverless"
-      tags: ["serverless"]
-      commands:
-        - func: "run tests"
-          vars:
-            TEST_NAME: serverless
-
-    - name: "test-enterprise-auth"
-      tags: ["enterprise-auth"]
-      commands:
-        - func: "run server"
-        - func: "assume ec2 role"
-        - func: "run enterprise auth tests"
-
-    - name: "test-search-index-helpers"
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "6.0"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-          vars:
-            TEST_NAME: index_management
-            AUTH: "auth"
-
-    - name: "mod-wsgi-standalone"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-          vars:
-            TOPOLOGY: "server"
-        - func: "run mod_wsgi tests"
-
-    - name: "mod-wsgi-replica-set"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-          vars:
-            TOPOLOGY: "replica_set"
-        - func: "run mod_wsgi tests"
-
-    - name: "mod-wsgi-embedded-mode-standalone"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-        - func: "run mod_wsgi tests"
-          vars:
-            MOD_WSGI_EMBEDDED: "1"
-
-    - name: "mod-wsgi-embedded-mode-replica-set"
-      tags: ["mod_wsgi"]
-      commands:
-        - func: "run server"
-          vars:
-            TOPOLOGY: "replica_set"
-        - func: "run mod_wsgi tests"
-          vars:
-            MOD_WSGI_EMBEDDED: "1"
-
-    - name: "no-server"
-      tags: ["no-server"]
-      commands:
-        - func: "run tests"
-
-    - name: "free-threading"
-      tags: ["free-threading"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "8.0"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "atlas-connect"
-      tags: ["atlas-connect"]
-      commands:
-        - func: "assume ec2 role"
-        - func: "run atlas tests"
-
-    - name: atlas-data-lake-tests
-      commands:
-        - func: "bootstrap data lake"
-        - func: "run tests"
-          vars:
-            TEST_NAME: "data_lake"
-
-    - name: "test-aws-lambda-deployed"
-      commands:
-        - command: ec2.assume_role
-          params:
-            role_arn: ${LAMBDA_AWS_ROLE_ARN}
-            duration_seconds: 3600
-        - command: subprocess.exec
-          params:
-            working_dir: src
-            binary: bash
-            add_expansions_to_env: true
-            args:
-              - .evergreen/run-deployed-lambda-aws-tests.sh
-            env:
-              TEST_LAMBDA_DIRECTORY: ${PROJECT_DIRECTORY}/test/lambda
-
-# }}}
     - name: "coverage-report"
       tags: ["coverage"]
       depends_on:
@@ -569,37 +324,6 @@ tasks:
           patch_optional: true
       commands:
         - func: "download and merge coverage"
-
-    - name: "perf-6.0-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-        - func: "run perf tests"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-6.0-standalone-ssl"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "v6.0-perf"
-            SSL: "ssl"
-        - func: "run perf tests"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-8.0-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "run server"
-          vars:
-            VERSION: "8.0"
-        - func: "run perf tests"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
 
     - name: "check-import-time"
       tags: ["pr"]
@@ -626,72 +350,3 @@ tasks:
             - mongodb
             - mongo-python-driver
             - ${github_commit}
-
-buildvariants:
-- name: "no-server"
-  display_name: "No server"
-  run_on:
-    - rhel84-small
-  tasks:
-    - name: "no-server"
-
-- name: "Coverage Report"
-  display_name: "Coverage Report"
-  run_on:
-    - rhel84-small
-  tasks:
-     - name: "coverage-report"
-
-- name: testkms-variant
-  display_name: "KMS"
-  run_on:
-    - debian11-small
-  tasks:
-    - name: test-gcpkms
-      batchtime: 10080  # 7 days
-    - name: test-gcpkms-fail
-    - name: test-azurekms
-      batchtime: 10080  # 7 days
-    - name: test-azurekms-fail
-
-- name: rhel8-test-lambda
-  display_name: FaaS Lambda
-  run_on: rhel87-small
-  tasks:
-    - name: test_aws_lambda_task_group
-
-- name: rhel8-import-time
-  display_name: Import Time
-  run_on: rhel87-small
-  tasks:
-    - name: "check-import-time"
-
-- name: backport-pr
-  display_name: "Backport PR"
-  run_on:
-    - rhel8.7-small
-  tasks:
-    - name: "backport-pr"
-
-- name: "perf-tests"
-  display_name: "Performance Benchmarks"
-  batchtime: 10080  # 7 days
-  run_on: rhel90-dbx-perf-large
-  tasks:
-     - name: "perf-6.0-standalone"
-     - name: "perf-6.0-standalone-ssl"
-     - name: "perf-8.0-standalone"
-
-      # Platform notes
-      # i386 builds of OpenSSL or Cyrus SASL are not available
-      # Debian 8.1 only supports MongoDB 3.4+
-      # SUSE12 s390x is only supported by MongoDB 3.4+
-      # No enterprise build for Archlinux, SSL not available
-      # RHEL 7.6 and RHEL 8.4 only supports 3.6+.
-      # RHEL 7 only supports 2.6+
-      # RHEL 7.1 ppc64le is only supported by MongoDB 3.2+
-      # RHEL 7.2 s390x is only supported by MongoDB 3.4+
-      # Solaris MongoDB SSL builds are not available
-      # Darwin MongoDB SSL builds are not available for 2.6
-      # SUSE12 x86_64 is only supported by MongoDB 3.2+
-      # vim: set et sw=2 ts=2 :

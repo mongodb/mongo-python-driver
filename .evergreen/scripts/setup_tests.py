@@ -43,6 +43,9 @@ EXTRAS_MAP = {
 # Map the test name to test group.
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 
+# The python version used for perf tests.
+PERF_PYTHON_VERSION = "3.9.13"
+
 
 def is_set(var: str) -> bool:
     value = os.environ.get(var, "")
@@ -112,6 +115,19 @@ def setup_libmongocrypt():
         run_command("chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll")
 
 
+def load_config_from_file(path: str | Path) -> dict[str, str]:
+    config = read_env(path)
+    for key, value in config.items():
+        write_env(key, value)
+    return config
+
+
+def get_secrets(name: str) -> dict[str, str]:
+    secrets_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/secrets_handling")
+    run_command(f"bash {secrets_dir.as_posix()}/setup-secrets.sh {name}", cwd=secrets_dir)
+    return load_config_from_file(secrets_dir / "secrets-export.sh")
+
+
 def handle_test_env() -> None:
     opts, _ = get_test_options("Set up the test environment and services.")
     test_name = opts.test_name
@@ -121,8 +137,7 @@ def handle_test_env() -> None:
     TEST_ARGS = ""
 
     # Start compiling the args we'll pass to uv.
-    # Run in an isolated environment so as not to pollute the base venv.
-    UV_ARGS = ["--isolated --extra test"]
+    UV_ARGS = ["--extra test --no-group dev"]
 
     test_title = test_name
     if sub_test_name:
@@ -152,7 +167,7 @@ def handle_test_env() -> None:
 
     # Handle pass through env vars.
     for var in PASS_THROUGH_ENV:
-        if is_set(var):
+        if is_set(var) or getattr(opts, var.lower()):
             write_env(var, os.environ[var])
 
     if extra := EXTRAS_MAP.get(test_name, ""):
@@ -168,12 +183,41 @@ def handle_test_env() -> None:
         if not config:
             AUTH = "noauth"
 
+    if test_name in ["aws_lambda", "search_index"]:
+        env = os.environ.copy()
+        env["MONGODB_VERSION"] = "7.0"
+        env["LAMBDA_STACK_NAME"] = "dbx-python-lambda"
+        write_env("LAMBDA_STACK_NAME", env["LAMBDA_STACK_NAME"])
+        run_command(
+            f"bash {DRIVERS_TOOLS}/.evergreen/atlas/setup-atlas-cluster.sh",
+            env=env,
+            cwd=DRIVERS_TOOLS,
+        )
+
+    if test_name == "search_index":
+        AUTH = "auth"
+
+    if test_name == "aws_lambda":
+        UV_ARGS.append("--group pip")
+        # Store AWS creds if they were given.
+        if "AWS_ACCESS_KEY_ID" in os.environ:
+            for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+                if key in os.environ:
+                    write_env(key, os.environ[key])
+
+    if test_name == "data_lake":
+        # Stop any running mongo-orchestration which might be using the port.
+        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh")
+        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/atlas_data_lake/setup.sh")
+        AUTH = "auth"
+
     if AUTH != "noauth":
         if test_name == "data_lake":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas_data_lake/secrets-export.sh")
             DB_USER = config["ADL_USERNAME"]
             DB_PASSWORD = config["ADL_PASSWORD"]
         elif test_name == "serverless":
+            run_command(f"bash {DRIVERS_TOOLS}/.evergreen/serverless/setup.sh")
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/serverless/secrets-export.sh")
             DB_USER = config["SERVERLESS_ATLAS_USER"]
             DB_PASSWORD = config["SERVERLESS_ATLAS_PASSWORD"]
@@ -183,7 +227,7 @@ def handle_test_env() -> None:
         elif test_name == "auth_oidc":
             DB_USER = config["OIDC_ADMIN_USER"]
             DB_PASSWORD = config["OIDC_ADMIN_PWD"]
-        elif test_name == "index_management":
+        elif test_name == "search_index":
             config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas/secrets-export.sh")
             DB_USER = config["DRIVERS_ATLAS_LAMBDA_USER"]
             DB_PASSWORD = config["DRIVERS_ATLAS_LAMBDA_PASSWORD"]
@@ -198,11 +242,11 @@ def handle_test_env() -> None:
     if is_set("MONGODB_URI"):
         write_env("PYMONGO_MUST_CONNECT", "true")
 
-    if is_set("DISABLE_TEST_COMMANDS"):
+    if is_set("DISABLE_TEST_COMMANDS") or opts.disable_test_commands:
         write_env("PYMONGO_DISABLE_TEST_COMMANDS", "1")
 
     if test_name == "enterprise_auth":
-        config = read_env(f"{ROOT}/secrets-export.sh")
+        config = get_secrets("drivers/enterprise_auth")
         if PLATFORM == "windows":
             LOGGER.info("Setting GSSAPI_PASS")
             write_env("GSSAPI_PASS", config["SASL_PASS"])
@@ -245,6 +289,11 @@ def handle_test_env() -> None:
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
 
+    if test_name == "mod_wsgi":
+        from mod_wsgi_tester import setup_mod_wsgi
+
+        setup_mod_wsgi(sub_test_name)
+
     if test_name == "ocsp":
         if sub_test_name:
             os.environ["OCSP_SERVER_TYPE"] = sub_test_name
@@ -275,7 +324,7 @@ def handle_test_env() -> None:
         write_env("CLIENT_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/client.pem")
         write_env("CA_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/ca.pem")
 
-    compressors = os.environ.get("COMPRESSORS")
+    compressors = os.environ.get("COMPRESSORS") or opts.compressor
     if compressors == "snappy":
         UV_ARGS.append("--extra snappy")
     elif compressors == "zstd":
@@ -308,13 +357,15 @@ def handle_test_env() -> None:
     if test_name == "encryption":
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")
-        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/setup-secrets.sh")
-        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/start-servers.sh")
+        csfle_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/csfle")
+        run_command(f"bash {csfle_dir}/setup-secrets.sh", cwd=csfle_dir)
+        load_config_from_file(csfle_dir / "secrets-export.sh")
+        run_command(f"bash {csfle_dir}/start-servers.sh")
 
         if sub_test_name == "pyopenssl":
             UV_ARGS.append("--extra ocsp")
 
-    if is_set("TEST_CRYPT_SHARED"):
+    if is_set("TEST_CRYPT_SHARED") or opts.crypt_shared:
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
         CRYPT_SHARED_DIR = Path(config["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
@@ -345,29 +396,50 @@ def handle_test_env() -> None:
         else:
             run_command(f"bash {auth_aws_dir}/setup-secrets.sh")
 
+    if test_name == "atlas_connect":
+        get_secrets("drivers/atlas_connect")
+        # We do not want the default client_context to be initialized.
+        write_env("DISABLE_CONTEXT")
+
     if test_name == "perf":
+        data_dir = ROOT / "specifications/source/benchmarking/data"
+        if not data_dir.exists():
+            run_command("git clone --depth 1 https://github.com/mongodb/specifications.git")
+            run_command("tar xf extended_bson.tgz", cwd=data_dir)
+            run_command("tar xf parallel.tgz", cwd=data_dir)
+            run_command("tar xf single_and_multi_document.tgz", cwd=data_dir)
+        write_env("TEST_PATH", str(data_dir))
+        write_env("OUTPUT_FILE", str(ROOT / "results.json"))
+        # Overwrite the UV_PYTHON from the env.sh file.
+        write_env("UV_PYTHON", "")
+
+        UV_ARGS.append(f"--python={PERF_PYTHON_VERSION}")
+
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
         # affects the benchmark results.
-        TEST_ARGS = f"test/performance/perf_test.py {TEST_ARGS}"
+        if sub_test_name == "sync":
+            TEST_ARGS = f"test/performance/perf_test.py {TEST_ARGS}"
+        else:
+            TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
 
     # Add coverage if requested.
     # Only cover CPython. PyPy reports suspiciously low coverage.
-    if is_set("COVERAGE") and platform.python_implementation() == "CPython":
+    if (is_set("COVERAGE") or opts.cov) and platform.python_implementation() == "CPython":
         # Keep in sync with combine-coverage.sh.
         # coverage >=5 is needed for relative_files=true.
         UV_ARGS.append("--group coverage")
         TEST_ARGS = f"{TEST_ARGS} --cov"
         write_env("COVERAGE")
 
-    if is_set("GREEN_FRAMEWORK"):
-        framework = os.environ["GREEN_FRAMEWORK"]
+    if is_set("GREEN_FRAMEWORK") or opts.green_framework:
+        framework = opts.green_framework or os.environ["GREEN_FRAMEWORK"]
         UV_ARGS.append(f"--group {framework}")
 
     else:
         # Use --capture=tee-sys so pytest prints test output inline:
         # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
         TEST_ARGS = f"-v --capture=tee-sys --durations=5 {TEST_ARGS}"
-        TEST_SUITE = TEST_SUITE_MAP[test_name]
+        TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
 

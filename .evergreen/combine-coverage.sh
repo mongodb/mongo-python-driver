@@ -3,8 +3,7 @@
 # Coverage combine merges (and removes) all the coverage files and
 # generates a new .coverage file in the current directory.
 
-set -o xtrace   # Write all commands first to stderr
-set -o errexit  # Exit the script with error if any of the commands fail
+set -eu
 
 . .evergreen/utils.sh
 

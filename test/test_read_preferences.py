@@ -35,6 +35,7 @@ from test import (
 )
 from test.utils_shared import (
     OvertCommandListener,
+    _ignore_deprecations,
     one,
     wait_until,
 )
@@ -522,33 +523,44 @@ class TestMongosAndReadPreference(IntegrationTest):
         for mode, cls in cases.items():
             with self.assertRaises(TypeError):
                 cls(hedge=[])  # type: ignore
+            with _ignore_deprecations():
+                pref = cls(hedge={})
+                self.assertEqual(pref.document, {"mode": mode})
+                out = _maybe_add_read_preference({}, pref)
+                if cls == SecondaryPreferred:
+                    # SecondaryPreferred without hedge doesn't add $readPreference.
+                    self.assertEqual(out, {})
+                else:
+                    self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
 
-            pref = cls(hedge={})
-            self.assertEqual(pref.document, {"mode": mode})
-            out = _maybe_add_read_preference({}, pref)
-            if cls == SecondaryPreferred:
-                # SecondaryPreferred without hedge doesn't add $readPreference.
-                self.assertEqual(out, {})
-            else:
+                hedge: dict[str, Any] = {"enabled": True}
+                pref = cls(hedge=hedge)
+                self.assertEqual(pref.document, {"mode": mode, "hedge": hedge})
+                out = _maybe_add_read_preference({}, pref)
                 self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
 
-            hedge: dict[str, Any] = {"enabled": True}
-            pref = cls(hedge=hedge)
-            self.assertEqual(pref.document, {"mode": mode, "hedge": hedge})
-            out = _maybe_add_read_preference({}, pref)
-            self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
+                hedge = {"enabled": False}
+                pref = cls(hedge=hedge)
+                self.assertEqual(pref.document, {"mode": mode, "hedge": hedge})
+                out = _maybe_add_read_preference({}, pref)
+                self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
 
-            hedge = {"enabled": False}
-            pref = cls(hedge=hedge)
-            self.assertEqual(pref.document, {"mode": mode, "hedge": hedge})
-            out = _maybe_add_read_preference({}, pref)
-            self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
+                hedge = {"enabled": False, "extra": "option"}
+                pref = cls(hedge=hedge)
+                self.assertEqual(pref.document, {"mode": mode, "hedge": hedge})
+                out = _maybe_add_read_preference({}, pref)
+                self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
 
-            hedge = {"enabled": False, "extra": "option"}
-            pref = cls(hedge=hedge)
-            self.assertEqual(pref.document, {"mode": mode, "hedge": hedge})
-            out = _maybe_add_read_preference({}, pref)
-            self.assertEqual(out, SON([("$query", {}), ("$readPreference", pref.document)]))
+    def test_read_preference_hedge_deprecated(self):
+        cases = {
+            "primaryPreferred": PrimaryPreferred,
+            "secondary": Secondary,
+            "secondaryPreferred": SecondaryPreferred,
+            "nearest": Nearest,
+        }
+        for _, cls in cases.items():
+            with self.assertRaises(DeprecationWarning):
+                cls(hedge={"enabled": True})
 
     def test_send_hedge(self):
         cases = {
@@ -562,7 +574,8 @@ class TestMongosAndReadPreference(IntegrationTest):
         client = self.rs_client(event_listeners=[listener])
         client.admin.command("ping")
         for _mode, cls in cases.items():
-            pref = cls(hedge={"enabled": True})
+            with _ignore_deprecations():
+                pref = cls(hedge={"enabled": True})
             coll = client.test.get_collection("test", read_preference=pref)
             listener.reset()
             coll.find_one()

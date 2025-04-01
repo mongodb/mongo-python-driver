@@ -52,7 +52,7 @@ deprecated PyMongo features.
 .. seealso:: The Python documentation on `the warnings module`_,
    and `the -W command line option`_.
 
-.. _semantic versioning: http://semver.org/
+.. _semantic versioning: https://semver.org/
 
 .. _DeprecationWarning:
   https://docs.python.org/3/library/exceptions.html#DeprecationWarning
