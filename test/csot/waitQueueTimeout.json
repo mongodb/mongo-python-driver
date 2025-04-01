@@ -5,6 +5,7 @@
     {
       "minServerVersion": "4.4",
       "topologies": [
+        "single",
         "replicaset",
         "sharded"
       ]
@@ -50,7 +51,7 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 10
+                "times": 1
               },
               "data": {
                 "failCommands": [
