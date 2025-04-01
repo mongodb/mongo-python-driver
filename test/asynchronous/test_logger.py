@@ -110,6 +110,7 @@ class TestLogger(AsyncIntegrationTest):
         retry_messages = [
             r.getMessage() for r in cm.records if "Retrying read attempt" in r.getMessage()
         ]
+        print(retry_messages)
         self.assertEqual(len(retry_messages), 1)
 
 
