@@ -287,7 +287,14 @@ class TestTransactions(TransactionsBase):
                     "new-name",
                 ),
             ),
-            (bucket.delete_by_name, ("new-name",)),
+            (
+                bucket.rename_by_name,
+                (
+                    "new-name",
+                    "new-name2",
+                ),
+            ),
+            (bucket.delete_by_name, ("new-name2",)),
         ]
 
         with client.start_session() as s, s.start_transaction():
@@ -565,6 +572,30 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.assertFalse(s.in_transaction)
             s.with_transaction(callback)
             self.assertFalse(s.in_transaction)
+
+
+class TestOptionsInsideTransactionProse(TransactionsBase):
+    @client_context.require_transactions
+    @client_context.require_no_standalone
+    def test_case_1(self):
+        # Write concern not inherited from collection object inside transaction
+        # Create a MongoClient running against a configured sharded/replica set/load balanced cluster.
+        client = client_context.client
+        coll = client[self.db.name].test
+        coll.delete_many({})
+        # Start a new session on the client.
+        with client.start_session() as s:
+            # Start a transaction on the session.
+            s.start_transaction()
+            # Instantiate a collection object in the driver with a default write concern of { w: 0 }.
+            inner_coll = coll.with_options(write_concern=WriteConcern(w=0))
+            # Insert the document { n: 1 } on the instantiated collection.
+            result = inner_coll.insert_one({"n": 1}, session=s)
+            # Commit the transaction.
+            s.commit_transaction()
+        # End the session.
+        # Ensure the document was inserted and no error was thrown from the transaction.
+        assert result.inserted_id is not None
 
 
 if __name__ == "__main__":

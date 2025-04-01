@@ -528,8 +528,8 @@ class AsyncConnection:
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
-                    clientId=self._client_id,
                     message=_ConnectionStatusMessage.CONN_READY,
+                    clientId=self._client_id,
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                     driverConnectionId=self.id,
@@ -561,8 +561,8 @@ class AsyncConnection:
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
-                    clientId=self._client_id,
                     message=_ConnectionStatusMessage.CONN_CLOSED,
+                    clientId=self._client_id,
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                     driverConnectionId=self.id,
@@ -777,8 +777,8 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.POOL_CREATED,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
                 **self.opts.non_default_options,
@@ -803,8 +803,8 @@ class Pool:
                 if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _CONNECTION_LOGGER,
-                        clientId=self._client_id,
                         message=_ConnectionStatusMessage.POOL_READY,
+                        clientId=self._client_id,
                         serverHost=self.address[0],
                         serverPort=self.address[1],
                     )
@@ -868,8 +868,8 @@ class Pool:
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
-                    clientId=self._client_id,
                     message=_ConnectionStatusMessage.POOL_CLOSED,
+                    clientId=self._client_id,
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                 )
@@ -885,8 +885,8 @@ class Pool:
                 if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _CONNECTION_LOGGER,
-                        clientId=self._client_id,
                         message=_ConnectionStatusMessage.POOL_CLEARED,
+                        clientId=self._client_id,
                         serverHost=self.address[0],
                         serverPort=self.address[1],
                         serviceId=service_id,
@@ -1004,8 +1004,8 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.CONN_CREATED,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
                 driverConnectionId=conn_id,
@@ -1025,8 +1025,8 @@ class Pool:
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
-                    clientId=self._client_id,
                     message=_ConnectionStatusMessage.CONN_CLOSED,
+                    clientId=self._client_id,
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                     driverConnectionId=conn_id,
@@ -1092,8 +1092,8 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.CHECKOUT_STARTED,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
             )
@@ -1107,8 +1107,8 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
                 driverConnectionId=conn.id,
@@ -1156,8 +1156,8 @@ class Pool:
                 if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _CONNECTION_LOGGER,
-                        clientId=self._client_id,
                         message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                        clientId=self._client_id,
                         serverHost=self.address[0],
                         serverPort=self.address[1],
                         reason="An error occurred while trying to establish a new connection",
@@ -1190,8 +1190,8 @@ class Pool:
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
-                    clientId=self._client_id,
                     message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                    clientId=self._client_id,
                     serverHost=self.address[0],
                     serverPort=self.address[1],
                     reason="Connection pool was closed",
@@ -1286,8 +1286,8 @@ class Pool:
                 if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _CONNECTION_LOGGER,
-                        clientId=self._client_id,
                         message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                        clientId=self._client_id,
                         serverHost=self.address[0],
                         serverPort=self.address[1],
                         reason="An error occurred while trying to establish a new connection",
@@ -1319,8 +1319,8 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.CHECKEDIN,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
                 driverConnectionId=conn.id,
@@ -1340,8 +1340,8 @@ class Pool:
                 if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _CONNECTION_LOGGER,
-                        clientId=self._client_id,
                         message=_ConnectionStatusMessage.CONN_CLOSED,
+                        clientId=self._client_id,
                         serverHost=self.address[0],
                         serverPort=self.address[1],
                         driverConnectionId=conn.id,
@@ -1421,8 +1421,8 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                clientId=self._client_id,
                 message=_ConnectionStatusMessage.CHECKOUT_FAILED,
+                clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
                 reason="Wait queue timeout elapsed without a connection becoming available",

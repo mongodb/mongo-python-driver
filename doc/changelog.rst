@@ -9,6 +9,8 @@ PyMongo 4.12 brings a number of changes including:
 - Support for configuring DEK cache lifetime via the ``key_expiration_ms`` argument to
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
 - Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
+- Added :meth:`gridfs.asynchronous.grid_file.AsyncGridFSBucket.rename_by_name` and :meth:`gridfs.grid_file.GridFSBucket.rename_by_name`
+  for more performant renaming of a file with multiple revisions.
 - Added :meth:`gridfs.asynchronous.grid_file.AsyncGridFSBucket.delete_by_name` and :meth:`gridfs.grid_file.GridFSBucket.delete_by_name`
   for more performant deletion of a file with multiple revisions.
 - AsyncMongoClient no longer performs DNS resolution for "mongodb+srv://" connection strings on creation.
@@ -21,6 +23,7 @@ PyMongo 4.12 brings a number of changes including:
   :class:`~pymongo.read_preferences.Secondary`,
   :class:`~pymongo.read_preferences.SecondaryPreferred`,
   :class:`~pymongo.read_preferences.Nearest`. Support for ``hedge`` will be removed in PyMongo 5.0.
+- Removed PyOpenSSL support from the asynchronous API due to limitations of the CPython asyncio.Protocol SSL implementation.
 
 Issues Resolved
 ...............
