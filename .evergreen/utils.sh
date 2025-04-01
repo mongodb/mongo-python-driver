@@ -8,7 +8,7 @@ find_python3() {
     if [ "$(uname -s)" = "Darwin" ]; then
         PYTHON="/Library/Frameworks/Python.Framework/Versions/3.9/bin/python3"
     elif [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
-        PYTHON="C:/python/3.9/python.exe"
+        PYTHON="C:/python/Python39/python.exe"
     else
         # Prefer our own toolchain, fall back to mongodb toolchain if it has Python 3.9+.
         if [ -f "/opt/python/3.9/bin/python3" ]; then
