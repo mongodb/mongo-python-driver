@@ -19,6 +19,7 @@ import logging
 import os
 import sys
 import unittest
+from pathlib import Path
 
 import pytest
 
@@ -38,15 +39,9 @@ OCSP_TLS_SHOULD_SUCCEED = os.environ.get("OCSP_TLS_SHOULD_SUCCEED") == "true"
 FORMAT = "%(asctime)s %(levelname)s %(module)s %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
-if sys.platform == "win32":
-    # The non-stapled OCSP endpoint check is slow on Windows.
-    TIMEOUT_MS = 5000
-else:
-    TIMEOUT_MS = 500
-
 
 def _connect(options):
-    uri = f"mongodb://localhost:27017/?serverSelectionTimeoutMS={TIMEOUT_MS}&tlsCAFile={CA_FILE}&{options}"
+    uri = f"mongodb://localhost:27017/?serverSelectionTimeoutMS=5000&tlsCAFile={Path(CA_FILE).as_posix()}&{options}"
     print(uri)
     try:
         client = pymongo.MongoClient(uri)

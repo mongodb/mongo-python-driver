@@ -8,7 +8,6 @@ import shutil
 import stat
 import tarfile
 from pathlib import Path
-from time import sleep
 from urllib import request
 
 from utils import (
@@ -322,7 +321,6 @@ def handle_test_env() -> None:
             env["SERVER_TYPE"] = server_type
             env["OCSP_ALGORITHM"] = ocsp_algo
             run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh", env=env)
-        sleep(5)
 
         # The mock OCSP responder MUST BE started before the mongod as the mongod expects that
         # a responder will be available upon startup.
@@ -339,7 +337,6 @@ def handle_test_env() -> None:
         elif opts.quiet:
             cmd.append("-q")
         run_command(cmd, cwd=DRIVERS_TOOLS)
-        sleep(5)
 
     if SSL != "nossl":
         if not DRIVERS_TOOLS:
