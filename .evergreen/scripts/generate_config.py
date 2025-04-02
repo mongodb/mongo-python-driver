@@ -26,7 +26,7 @@ MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
 TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
-C_EXTS = ["with_ext", "without_ext"]
+C_EXTS = ["without_ext", "with_ext"]
 # By default test each of the topologies with a subset of auth/ssl.
 SUB_TASKS = [
     ".sharded_cluster .auth .ssl",
@@ -217,7 +217,7 @@ def get_variant_name(base: str, host: Host | None = None, **kwargs) -> str:
 
 
 def get_task_name(base: str, **kwargs):
-    return get_common_name(base, "-", **kwargs).lower()
+    return get_common_name(base, "-", **kwargs).replace(" ", "-").lower()
 
 
 def zip_cycle(*iterables, empty_default=None):
@@ -423,42 +423,22 @@ def create_load_balancer_variants():
 
 
 def create_compression_variants():
-    # Compression tests - standalone versions of each server, across python versions, with and without c extensions.
-    # PyPy interpreters are always tested without extensions.
+    # Compression tests - standalone versions of each server, across python versions.
     host = DEFAULT_HOST
-    base_task = ".standalone .noauth .nossl .sync_async"
-    task_names = dict(snappy=[base_task], zlib=[base_task], zstd=[f"{base_task} !.4.0"])
+    base_task = ".compression"
     variants = []
-    for ind, (compressor, c_ext) in enumerate(product(["snappy", "zlib", "zstd"], C_EXTS)):
-        expansions = dict(COMPRESSORS=compressor)
-        handle_c_ext(c_ext, expansions)
-        base_name = f"Compression {compressor}"
-        python = CPYTHONS[ind % len(CPYTHONS)]
-        display_name = get_variant_name(base_name, host, python=python, **expansions)
-        variant = create_variant(
-            task_names[compressor],
-            display_name,
-            python=python,
-            host=host,
-            expansions=expansions,
+    for compressor in "snappy", "zlib", "zstd":
+        expansions = dict(COMPRESSOR=compressor)
+        tasks = base_task if compressor != "zstd" else f"{base_task} !.4.0"
+        display_name = get_variant_name(f"Compression {compressor}", host)
+        variants.append(
+            create_variant(
+                tasks,
+                display_name,
+                host=host,
+                expansions=expansions,
+            )
         )
-        variants.append(variant)
-
-    other_pythons = PYPYS + CPYTHONS[ind:]
-    for compressor, python in zip_cycle(["snappy", "zlib", "zstd"], other_pythons):
-        expansions = dict(COMPRESSORS=compressor)
-        handle_c_ext(c_ext, expansions)
-        base_name = f"Compression {compressor}"
-        display_name = get_variant_name(base_name, host, python=python, **expansions)
-        variant = create_variant(
-            task_names[compressor],
-            display_name,
-            python=python,
-            host=host,
-            expansions=expansions,
-        )
-        variants.append(variant)
-
     return variants
 
 
@@ -856,6 +836,23 @@ def create_load_balancer_tasks():
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
 
+    return tasks
+
+
+def create_compression_tasks():
+    tasks = []
+    versions = get_versions_from("4.0")
+    tags = ["compression"]
+    for python, c_ext, version in product([*MIN_MAX_PYTHON, PYPYS[-1]], C_EXTS, versions):
+        expansions = dict()
+        if python != PYPYS[-1]:
+            handle_c_ext(c_ext, expansions)
+        elif c_ext == C_EXTS[1]:
+            continue
+        name = get_task_name("test-compression", python=python, version=version, **expansions)
+        server_func = FunctionCall(func="run server", vars=dict(VERSION=version))
+        test_func = FunctionCall(func="run tests")
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
 
 
