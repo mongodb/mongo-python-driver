@@ -9,14 +9,14 @@ tasks:
     tags: [atlas_connect]
 
   # Atlas data lake tests
-  - name: test-atlas-data-lake-with_ext
+  - name: test-atlas-data-lake-without_ext
     commands:
       - func: run tests
         vars:
           TEST_NAME: data_lake
           NO_EXT: "1"
     tags: [atlas_data_lake]
-  - name: test-atlas-data-lake-without_ext
+  - name: test-atlas-data-lake-with_ext
     commands:
       - func: run tests
         vars:
@@ -713,6 +713,128 @@ tasks:
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, auth-aws-web-identity]
 
+  # Backport pr tests
+  - name: backport-pr
+    commands:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/github_app/backport-pr.sh
+            - mongodb
+            - mongo-python-driver
+            - ${github_commit}
+          working_dir: src
+        type: test
+
+  # Compression tests
+  - name: test-compression-v4.0-python3.9
+    commands:
+      - func: run server
+        vars:
+          VERSION: "4.0"
+      - func: run tests
+    tags: [compression, "4.0"]
+  - name: test-compression-v4.2-python3.9
+    commands:
+      - func: run server
+        vars:
+          VERSION: "4.2"
+      - func: run tests
+    tags: [compression, "4.2"]
+  - name: test-compression-v4.4-python3.9
+    commands:
+      - func: run server
+        vars:
+          VERSION: "4.4"
+      - func: run tests
+    tags: [compression, "4.4"]
+  - name: test-compression-v5.0-python3.9
+    commands:
+      - func: run server
+        vars:
+          VERSION: "5.0"
+      - func: run tests
+    tags: [compression, "5.0"]
+  - name: test-compression-v6.0-python3.9
+    commands:
+      - func: run server
+        vars:
+          VERSION: "6.0"
+      - func: run tests
+    tags: [compression, "6.0"]
+  - name: test-compression-v7.0-python3.9
+    commands:
+      - func: run server
+        vars:
+          VERSION: "7.0"
+      - func: run tests
+    tags: [compression, "7.0"]
+  - name: test-compression-v8.0-python3.9
+    commands:
+      - func: run server
+        vars:
+          VERSION: "8.0"
+      - func: run tests
+    tags: [compression, "8.0"]
+  - name: test-compression-rapid-python3.9
+    commands:
+      - func: run server
+        vars:
+          VERSION: rapid
+      - func: run tests
+    tags: [compression, rapid]
+  - name: test-compression-latest-python3.9
+    commands:
+      - func: run server
+        vars:
+          VERSION: latest
+      - func: run tests
+    tags: [compression, latest]
+  - name: test-compression-latest-python3.13-no-c
+    commands:
+      - func: run server
+        vars:
+          VERSION: latest
+      - func: run tests
+        vars:
+          NO_EXT: "1"
+    tags: [compression, latest]
+  - name: test-compression-latest-python3.13
+    commands:
+      - func: run server
+        vars:
+          VERSION: latest
+      - func: run tests
+        vars: {}
+    tags: [compression, latest]
+  - name: test-compression-latest-pypy3.10
+    commands:
+      - func: run server
+        vars:
+          VERSION: latest
+      - func: run tests
+    tags: [compression, latest]
+
+  # Coverage report tests
+  - name: coverage-report
+    commands:
+      - func: download and merge coverage
+    depends_on:
+      - name: .standalone
+        variant: .coverage_tag
+        status: "*"
+        patch_optional: true
+      - name: .replica_set
+        variant: .coverage_tag
+        status: "*"
+        patch_optional: true
+      - name: .sharded_cluster
+        variant: .coverage_tag
+        status: "*"
+        patch_optional: true
+    tags: [coverage]
+
   # Doctest tests
   - name: test-doctests
     commands:
@@ -775,6 +897,31 @@ tasks:
           TOPOLOGY: replica_set
       - func: run tests
     tags: [free-threading]
+
+  # Getdata tests
+  - name: getdata
+    commands:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - .evergreen/scripts/run-getdata.sh
+          working_dir: src
+        type: test
+
+  # Import time tests
+  - name: check-import-time
+    commands:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - .evergreen/scripts/check-import-time.sh
+            - ${revision}
+            - ${github_commit}
+          working_dir: src
+        type: test
+    tags: [pr]
 
   # Kms tests
   - name: test-gcpkms

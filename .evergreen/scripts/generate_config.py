@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any
 
 from shrub.v3.evg_build_variant import BuildVariant
-from shrub.v3.evg_command import FunctionCall
+from shrub.v3.evg_command import EvgCommandType, FunctionCall, subprocess_exec
 from shrub.v3.evg_project import EvgProject
-from shrub.v3.evg_task import EvgTask, EvgTaskRef
+from shrub.v3.evg_task import EvgTask, EvgTaskDependency, EvgTaskRef
 from shrub.v3.shrub_service import ShrubService
 
 ##############
@@ -26,7 +26,7 @@ MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
 TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
-C_EXTS = ["with_ext", "without_ext"]
+C_EXTS = ["without_ext", "with_ext"]
 # By default test each of the topologies with a subset of auth/ssl.
 SUB_TASKS = [
     ".sharded_cluster .auth .ssl",
@@ -217,7 +217,7 @@ def get_variant_name(base: str, host: Host | None = None, **kwargs) -> str:
 
 
 def get_task_name(base: str, **kwargs):
-    return get_common_name(base, "-", **kwargs).lower()
+    return get_common_name(base, "-", **kwargs).replace(" ", "-").lower()
 
 
 def zip_cycle(*iterables, empty_default=None):
@@ -231,6 +231,13 @@ def handle_c_ext(c_ext, expansions) -> None:
     """Handle c extension option."""
     if c_ext == C_EXTS[0]:
         expansions["NO_EXT"] = "1"
+
+
+def get_subprocess_exec(**kwargs):
+    kwargs.setdefault("binary", "bash")
+    kwargs.setdefault("working_dir", "src")
+    kwargs.setdefault("command_type", EvgCommandType.TEST)
+    return subprocess_exec(**kwargs)
 
 
 def generate_yaml(tasks=None, variants=None):
@@ -423,42 +430,22 @@ def create_load_balancer_variants():
 
 
 def create_compression_variants():
-    # Compression tests - standalone versions of each server, across python versions, with and without c extensions.
-    # PyPy interpreters are always tested without extensions.
+    # Compression tests - standalone versions of each server, across python versions.
     host = DEFAULT_HOST
-    base_task = ".standalone .noauth .nossl .sync_async"
-    task_names = dict(snappy=[base_task], zlib=[base_task], zstd=[f"{base_task} !.4.0"])
+    base_task = ".compression"
     variants = []
-    for ind, (compressor, c_ext) in enumerate(product(["snappy", "zlib", "zstd"], C_EXTS)):
-        expansions = dict(COMPRESSORS=compressor)
-        handle_c_ext(c_ext, expansions)
-        base_name = f"Compression {compressor}"
-        python = CPYTHONS[ind % len(CPYTHONS)]
-        display_name = get_variant_name(base_name, host, python=python, **expansions)
-        variant = create_variant(
-            task_names[compressor],
-            display_name,
-            python=python,
-            host=host,
-            expansions=expansions,
+    for compressor in "snappy", "zlib", "zstd":
+        expansions = dict(COMPRESSOR=compressor)
+        tasks = [base_task] if compressor != "zstd" else [f"{base_task} !.4.0"]
+        display_name = get_variant_name(f"Compression {compressor}", host)
+        variants.append(
+            create_variant(
+                tasks,
+                display_name,
+                host=host,
+                expansions=expansions,
+            )
         )
-        variants.append(variant)
-
-    other_pythons = PYPYS + CPYTHONS[ind:]
-    for compressor, python in zip_cycle(["snappy", "zlib", "zstd"], other_pythons):
-        expansions = dict(COMPRESSORS=compressor)
-        handle_c_ext(c_ext, expansions)
-        base_name = f"Compression {compressor}"
-        display_name = get_variant_name(base_name, host, python=python, **expansions)
-        variant = create_variant(
-            task_names[compressor],
-            display_name,
-            python=python,
-            host=host,
-            expansions=expansions,
-        )
-        variants.append(variant)
-
     return variants
 
 
@@ -859,6 +846,39 @@ def create_load_balancer_tasks():
     return tasks
 
 
+def create_compression_tasks():
+    tasks = []
+    versions = get_versions_from("4.0")
+    # Test all server versions with min python.
+    for version in versions:
+        python = CPYTHONS[0]
+        tags = ["compression", version]
+        name = get_task_name("test-compression", python=python, version=version)
+        server_func = FunctionCall(func="run server", vars=dict(VERSION=version))
+        test_func = FunctionCall(func="run tests")
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+
+    # Test latest with max python, with and without c exts.
+    version = "latest"
+    tags = ["compression", "latest"]
+    for c_ext in C_EXTS:
+        python = CPYTHONS[-1]
+        expansions = dict()
+        handle_c_ext(c_ext, expansions)
+        name = get_task_name("test-compression", python=python, version=version, **expansions)
+        server_func = FunctionCall(func="run server", vars=dict(VERSION=version))
+        test_func = FunctionCall(func="run tests", vars=expansions)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+
+    # Test on latest with pypy.
+    python = PYPYS[-1]
+    name = get_task_name("test-compression", python=python, version=version)
+    server_func = FunctionCall(func="run server", vars=dict(VERSION=version))
+    test_func = FunctionCall(func="run tests")
+    tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
 def create_kms_tasks():
     tasks = []
     for kms_type in ["gcp", "azure"]:
@@ -1053,6 +1073,49 @@ def create_atlas_data_lake_tasks():
         task_name = f"test-atlas-data-lake-{c_ext}"
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
+
+
+def create_getdata_tasks():
+    # Wildcard task. Do you need to find out what tools are available and where?
+    # Throw it here, and execute this task on all buildvariants
+    cmd = get_subprocess_exec(args=[".evergreen/scripts/run-getdata.sh"])
+    return [EvgTask(name="getdata", commands=[cmd])]
+
+
+def create_coverage_report_tasks():
+    tags = ["coverage"]
+    task_name = "coverage-report"
+    # BUILD-3165: We can't use "*" (all tasks) and specify "variant".
+    # Instead list out all coverage tasks using tags.
+    # Run the coverage task even if some tasks fail.
+    # Run the coverage task even if some tasks are not scheduled in a patch build.
+    task_deps = []
+    for name in [".standalone", ".replica_set", ".sharded_cluster"]:
+        task_deps.append(
+            EvgTaskDependency(name=name, variant=".coverage_tag", status="*", patch_optional=True)
+        )
+    cmd = FunctionCall(func="download and merge coverage")
+    return [EvgTask(name=task_name, tags=tags, depends_on=task_deps, commands=[cmd])]
+
+
+def create_import_time_tasks():
+    name = "check-import-time"
+    tags = ["pr"]
+    args = [".evergreen/scripts/check-import-time.sh", "${revision}", "${github_commit}"]
+    cmd = get_subprocess_exec(args=args)
+    return [EvgTask(name=name, tags=tags, commands=[cmd])]
+
+
+def create_backport_pr_tasks():
+    name = "backport-pr"
+    args = [
+        "${DRIVERS_TOOLS}/.evergreen/github_app/backport-pr.sh",
+        "mongodb",
+        "mongo-python-driver",
+        "${github_commit}",
+    ]
+    cmd = get_subprocess_exec(args=args)
+    return [EvgTask(name=name, commands=[cmd], allowed_requesters=["commit"])]
 
 
 def create_ocsp_tasks():
