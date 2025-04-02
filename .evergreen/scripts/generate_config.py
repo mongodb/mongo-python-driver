@@ -842,7 +842,18 @@ def create_load_balancer_tasks():
 def create_compression_tasks():
     tasks = []
     versions = get_versions_from("4.0")
-    for python, c_ext, version in product([*MIN_MAX_PYTHON, PYPYS[-1]], C_EXTS, versions):
+    # Test all server versions with min python.
+    for version in versions:
+        python = CPYTHONS[-1]
+        tags = ["compression", version]
+        name = get_task_name("test-compression", python=python, version=version)
+        server_func = FunctionCall(func="run server", vars=dict(VERSION=version))
+        test_func = FunctionCall(func="run tests")
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+
+    # Test latest with other variants.
+    for python, c_ext in product([CPYTHONS[-1], PYPYS[-1]], C_EXTS):
+        version = "latest"
         tags = ["compression", version]
         expansions = dict()
         if python != PYPYS[-1]:
