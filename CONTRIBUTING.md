@@ -335,7 +335,9 @@ You must have `docker` or `podman` installed locally.
 - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
 This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
 MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
-- Run `just run-server ocsp`.
+NOTE: because the mock ocsp responder MUST be started prior to the server starting, the ocsp tests start the server
+as part of `setup-tests`.
+
 - Run `just setup-tests ocsp <sub test>` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
 - Run `just run-tests`
 
@@ -367,7 +369,7 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 - If there are any special test considerations, including not running `pytest` at all, handle it in `.evergreen/scripts/run_tests.py`.
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
 - Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
-- Regenerate the test variants and tasks using the instructions in `.evergreen/scripts/generate_config.py`.
+- Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
 ## Re-sync Spec Tests

@@ -124,7 +124,7 @@ def load_config_from_file(path: str | Path) -> dict[str, str]:
 
 def get_secrets(name: str) -> dict[str, str]:
     secrets_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/secrets_handling")
-    run_command(f"bash {secrets_dir}/setup-secrets.sh {name}", cwd=secrets_dir)
+    run_command(f"bash {secrets_dir.as_posix()}/setup-secrets.sh {name}", cwd=secrets_dir)
     return load_config_from_file(secrets_dir / "secrets-export.sh")
 
 
@@ -142,7 +142,6 @@ def handle_test_env() -> None:
     test_title = test_name
     if sub_test_name:
         test_title += f" {sub_test_name}"
-    LOGGER.info(f"Setting up '{test_title}' with {AUTH=} and {SSL=}...")
 
     # Create the test env file with the initial set of values.
     with ENV_FILE.open("w", newline="\n") as fid:
@@ -150,8 +149,6 @@ def handle_test_env() -> None:
         fid.write("set +x\n")
     ENV_FILE.chmod(ENV_FILE.stat().st_mode | stat.S_IEXEC)
 
-    write_env("AUTH", AUTH)
-    write_env("SSL", SSL)
     write_env("PIP_QUIET")  # Quiet by default.
     write_env("PIP_PREFER_BINARY")  # Prefer binary dists by default.
     write_env("UV_FROZEN")  # Do not modify lock files.
@@ -196,6 +193,13 @@ def handle_test_env() -> None:
 
     if test_name == "search_index":
         AUTH = "auth"
+
+    if test_name == "ocsp":
+        SSL = "ssl"
+
+    write_env("AUTH", AUTH)
+    write_env("SSL", SSL)
+    LOGGER.info(f"Setting up '{test_title}' with {AUTH=} and {SSL=}...")
 
     if test_name == "aws_lambda":
         UV_ARGS.append("--group pip")
@@ -317,6 +321,22 @@ def handle_test_env() -> None:
             env["SERVER_TYPE"] = server_type
             env["OCSP_ALGORITHM"] = ocsp_algo
             run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh", env=env)
+
+        # The mock OCSP responder MUST BE started before the mongod as the mongod expects that
+        # a responder will be available upon startup.
+        version = os.environ.get("VERSION", "latest")
+        cmd = [
+            "bash",
+            f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh",
+            "--ssl",
+            "--version",
+            version,
+        ]
+        if opts.verbose:
+            cmd.append("-v")
+        elif opts.quiet:
+            cmd.append("-q")
+        run_command(cmd, cwd=DRIVERS_TOOLS)
 
     if SSL != "nossl":
         if not DRIVERS_TOOLS:

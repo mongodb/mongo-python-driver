@@ -746,7 +746,7 @@ class TestClient(AsyncIntegrationTest):
 
             # Assert that if a socket is closed, a new one takes its place
             async with server._pool.checkout() as conn:
-                conn.close_conn(None)
+                await conn.close_conn(None)
             await async_wait_until(
                 lambda: len(server._pool.conns) == 10,
                 "a closed socket gets replaced from the pool",
@@ -1270,7 +1270,6 @@ class TestClient(AsyncIntegrationTest):
         no_timeout = self.client
         timeout_sec = 1
         timeout = await self.async_rs_or_single_client(socketTimeoutMS=1000 * timeout_sec)
-        self.addAsyncCleanup(timeout.close)
 
         await no_timeout.pymongo_test.drop_collection("test")
         await no_timeout.pymongo_test.test.insert_one({"x": 1})
@@ -1337,7 +1336,7 @@ class TestClient(AsyncIntegrationTest):
     async def test_socketKeepAlive(self):
         pool = await async_get_pool(self.client)
         async with pool.checkout() as conn:
-            keepalive = conn.conn.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
+            keepalive = conn.conn.sock.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
             self.assertTrue(keepalive)
 
     @no_type_check
@@ -1537,7 +1536,7 @@ class TestClient(AsyncIntegrationTest):
 
         # Cause a network error.
         conn = one(pool.conns)
-        conn.conn.close()
+        await conn.conn.close()
         cursor = collection.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(ConnectionFailure):
             await anext(cursor)
@@ -1562,7 +1561,7 @@ class TestClient(AsyncIntegrationTest):
         # Cause a network error on the actual socket.
         pool = await async_get_pool(c)
         conn = one(pool.conns)
-        conn.conn.close()
+        await conn.conn.close()
 
         # AsyncConnection.authenticate logs, but gets a socket.error. Should be
         # reraised as AutoReconnect.
@@ -2254,7 +2253,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
 
         # Cause a network error.
         conn = one(pool.conns)
-        conn.conn.close()
+        await conn.conn.close()
 
         cursor = collection.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(ConnectionFailure):
@@ -2282,7 +2281,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
 
         # Cause a network error.
         conn = cursor._sock_mgr.conn
-        conn.conn.close()
+        await conn.conn.close()
 
         # A getmore fails.
         with self.assertRaises(ConnectionFailure):

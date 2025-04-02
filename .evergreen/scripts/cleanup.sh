@@ -1,4 +1,6 @@
 #!/bin/bash
+# Clean up resources at the end of an evergreen run.
+set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
 
@@ -9,4 +11,4 @@ if [ -f $HERE/env.sh ]; then
 fi
 
 rm -rf "${DRIVERS_TOOLS}" || true
-rm -f ./secrets-export.sh || true
+rm -f $HERE/../../secrets-export.sh || true

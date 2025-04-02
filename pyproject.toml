@@ -116,6 +116,7 @@ filterwarnings = [
     "module:unclosed <socket.socket:ResourceWarning",
     "module:unclosed <ssl.SSLSocket:ResourceWarning",
     "module:unclosed <socket object:ResourceWarning",
+    "module:unclosed transport:ResourceWarning",
     # https://github.com/eventlet/eventlet/issues/818
     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314

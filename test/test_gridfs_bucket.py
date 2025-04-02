@@ -115,6 +115,17 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(0, self.db.fs.files.count_documents({}))
         self.assertEqual(0, self.db.fs.chunks.count_documents({}))
 
+    def test_delete_by_name(self):
+        self.assertEqual(0, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
+        gfs = gridfs.GridFSBucket(self.db)
+        gfs.upload_from_stream("test_filename", b"hello", chunk_size_bytes=1)
+        self.assertEqual(1, self.db.fs.files.count_documents({}))
+        self.assertEqual(5, self.db.fs.chunks.count_documents({}))
+        gfs.delete_by_name("test_filename")
+        self.assertEqual(0, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
+
     def test_empty_file(self):
         oid = self.fs.upload_from_stream("test_filename", b"")
         self.assertEqual(b"", (self.fs.open_download_stream(oid)).read())
@@ -409,6 +420,15 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(b"testing", (self.fs.open_download_stream_by_name("first_name")).read())
 
         self.fs.rename(_id, "second_name")
+        with self.assertRaises(NoFile):
+            self.fs.open_download_stream_by_name("first_name")
+        self.assertEqual(b"testing", (self.fs.open_download_stream_by_name("second_name")).read())
+
+    def test_rename_by_name(self):
+        _id = self.fs.upload_from_stream("first_name", b"testing")
+        self.assertEqual(b"testing", (self.fs.open_download_stream_by_name("first_name")).read())
+
+        self.fs.rename_by_name("first_name", "second_name")
         with self.assertRaises(NoFile):
             self.fs.open_download_stream_by_name("first_name")
         self.assertEqual(b"testing", (self.fs.open_download_stream_by_name("second_name")).read())

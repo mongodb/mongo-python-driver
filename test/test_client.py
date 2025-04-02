@@ -1233,7 +1233,6 @@ class TestClient(IntegrationTest):
         no_timeout = self.client
         timeout_sec = 1
         timeout = self.rs_or_single_client(socketTimeoutMS=1000 * timeout_sec)
-        self.addCleanup(timeout.close)
 
         no_timeout.pymongo_test.drop_collection("test")
         no_timeout.pymongo_test.test.insert_one({"x": 1})
@@ -1296,7 +1295,7 @@ class TestClient(IntegrationTest):
     def test_socketKeepAlive(self):
         pool = get_pool(self.client)
         with pool.checkout() as conn:
-            keepalive = conn.conn.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
+            keepalive = conn.conn.sock.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
             self.assertTrue(keepalive)
 
     @no_type_check

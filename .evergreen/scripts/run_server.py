@@ -28,16 +28,6 @@ def start_server():
     elif test_name == "load_balancer":
         set_env("LOAD_BALANCER")
 
-    elif test_name == "ocsp":
-        opts.ssl = True
-        if "ORCHESTRATION_FILE" not in os.environ:
-            found = False
-            for opt in extra_opts:
-                if opt.startswith("--orchestration-file"):
-                    found = True
-            if not found:
-                raise ValueError("Please provide an orchestration file")
-
     elif test_name == "search_index":
         os.environ["TOPOLOGY"] = "replica_set"
         os.environ["MONGODB_VERSION"] = "7.0"

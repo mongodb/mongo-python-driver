@@ -54,8 +54,8 @@ SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms", "mod_wsgi", "perf"]
 
 EXTRA_TESTS = ["mod_wsgi", "aws_lambda"]
 
-# Tests that do not use run-orchestration.
-NO_RUN_ORCHESTRATION = ["auth_oidc", "atlas_connect", "data_lake", "mockupdb", "serverless"]
+# Tests that do not use run-orchestration directly.
+NO_RUN_ORCHESTRATION = ["auth_oidc", "atlas_connect", "data_lake", "mockupdb", "serverless", "ocsp"]
 
 
 def get_test_options(

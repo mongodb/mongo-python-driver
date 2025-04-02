@@ -2692,7 +2692,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                     ]
                 )
             )
-            self.assertTrue("not supported" in str(exc))
+            self.assertIn("not supported", str(exc))
 
     @async_client_context.require_version_max(8, 1, -1)
     async def test_9_error(self):
@@ -2721,7 +2721,7 @@ class TestLookupProse(AsyncEncryptionIntegrationTest):
                     ]
                 )
             )
-            self.assertTrue("Upgrade" in str(exc))
+            self.assertIn("Upgrade", str(exc))
 
 
 # https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.md#rewrap

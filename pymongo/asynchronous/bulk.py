@@ -87,7 +87,7 @@ class _AsyncBulk:
         self,
         collection: AsyncCollection[_DocumentType],
         ordered: bool,
-        bypass_document_validation: bool,
+        bypass_document_validation: Optional[bool],
         comment: Optional[str] = None,
         let: Optional[Any] = None,
     ) -> None:
@@ -255,8 +255,8 @@ class _AsyncBulk:
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.STARTED,
+                clientId=client._topology_settings._topology_id,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=bwc.db_name,
@@ -276,8 +276,8 @@ class _AsyncBulk:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.SUCCEEDED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     reply=reply,
                     commandName=next(iter(cmd)),
@@ -302,8 +302,8 @@ class _AsyncBulk:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.FAILED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
@@ -340,8 +340,8 @@ class _AsyncBulk:
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.STARTED,
+                clientId=client._topology_settings._topology_id,
                 command=cmd,
                 commandName=next(iter(cmd)),
                 databaseName=bwc.db_name,
@@ -366,8 +366,8 @@ class _AsyncBulk:
                 if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                     _debug_log(
                         _COMMAND_LOGGER,
-                        clientId=client._topology_settings._topology_id,
                         message=_CommandStatusMessage.SUCCEEDED,
+                        clientId=client._topology_settings._topology_id,
                         durationMS=duration,
                         reply=reply,
                         commandName=next(iter(cmd)),
@@ -393,8 +393,8 @@ class _AsyncBulk:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.FAILED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(cmd)),
@@ -516,8 +516,8 @@ class _AsyncBulk:
                 if self.comment:
                     cmd["comment"] = self.comment
                 _csot.apply_write_concern(cmd, write_concern)
-                if self.bypass_doc_val:
-                    cmd["bypassDocumentValidation"] = True
+                if self.bypass_doc_val is not None:
+                    cmd["bypassDocumentValidation"] = self.bypass_doc_val
                 if self.let is not None and run.op_type in (_DELETE, _UPDATE):
                     cmd["let"] = self.let
                 if session:

@@ -45,7 +45,7 @@ from test.utils_shared import (
 
 from bson import DBRef
 from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
-from pymongo import ASCENDING, AsyncMongoClient, monitoring
+from pymongo import ASCENDING, AsyncMongoClient, _csot, monitoring
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.helpers import anext
@@ -541,9 +541,10 @@ class TestSession(AsyncIntegrationTest):
             (bucket.download_to_stream_by_name, ["f", sio], {}),
             (find, [], {}),
             (bucket.rename, [1, "f2"], {}),
+            (bucket.rename_by_name, ["f2", "f3"], {}),
             # Delete both files so _test_ops can run these operations twice.
             (bucket.delete, [1], {}),
-            (bucket.delete, [2], {}),
+            (bucket.delete_by_name, ["f"], {}),
         )
 
     async def test_gridfsbucket_cursor(self):

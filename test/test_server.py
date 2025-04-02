@@ -31,7 +31,7 @@ class TestServer(unittest.TestCase):
         hello = Hello({"ok": 1})
         sd = ServerDescription(("localhost", 27017), hello)
         server = Server(sd, pool=object(), monitor=object())  # type: ignore[arg-type]
-        self.assertTrue("Standalone" in str(server))
+        self.assertIn("Standalone", str(server))
 
 
 if __name__ == "__main__":
