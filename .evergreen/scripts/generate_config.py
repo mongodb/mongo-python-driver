@@ -429,7 +429,7 @@ def create_compression_variants():
     variants = []
     for compressor in "snappy", "zlib", "zstd":
         expansions = dict(COMPRESSOR=compressor)
-        tasks = base_task if compressor != "zstd" else f"{base_task} !.4.0"
+        tasks = [base_task] if compressor != "zstd" else [f"{base_task} !.4.0"]
         display_name = get_variant_name(f"Compression {compressor}", host)
         variants.append(
             create_variant(

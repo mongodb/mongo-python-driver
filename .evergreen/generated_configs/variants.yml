@@ -162,18 +162,7 @@ buildvariants:
   # Compression tests
   - name: compression-snappy-rhel8
     tasks:
-      - name: .
-      - name: c
-      - name: o
-      - name: m
-      - name: p
-      - name: r
-      - name: e
-      - name: s
-      - name: s
-      - name: i
-      - name: o
-      - name: n
+      - name: .compression
     display_name: Compression snappy RHEL8
     run_on:
       - rhel87-small
@@ -181,18 +170,7 @@ buildvariants:
       COMPRESSOR: snappy
   - name: compression-zlib-rhel8
     tasks:
-      - name: .
-      - name: c
-      - name: o
-      - name: m
-      - name: p
-      - name: r
-      - name: e
-      - name: s
-      - name: s
-      - name: i
-      - name: o
-      - name: n
+      - name: .compression
     display_name: Compression zlib RHEL8
     run_on:
       - rhel87-small
@@ -200,24 +178,7 @@ buildvariants:
       COMPRESSOR: zlib
   - name: compression-zstd-rhel8
     tasks:
-      - name: .
-      - name: c
-      - name: o
-      - name: m
-      - name: p
-      - name: r
-      - name: e
-      - name: s
-      - name: s
-      - name: i
-      - name: o
-      - name: n
-      - name: " "
-      - name: "!"
-      - name: .
-      - name: "4"
-      - name: .
-      - name: "0"
+      - name: .compression !.4.0
     display_name: Compression zstd RHEL8
     run_on:
       - rhel87-small
