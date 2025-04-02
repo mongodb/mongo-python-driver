@@ -852,14 +852,14 @@ def create_compression_tasks():
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
 
     # Test latest with other variants.
-    for python, c_ext in product([CPYTHONS[-1], PYPYS[-1]], C_EXTS):
+    for python, c_ext in product([*MIN_MAX_PYTHON, PYPYS[-1]], C_EXTS):
         version = "latest"
         tags = ["compression", version]
         expansions = dict()
+        if python in [CPYTHONS[0], PYPYS[-1]] and c_ext == C_EXTS[1]:
+            continue
         if python != PYPYS[-1]:
             handle_c_ext(c_ext, expansions)
-        elif c_ext == C_EXTS[1]:
-            continue
         name = get_task_name("test-compression", python=python, version=version, **expansions)
         server_func = FunctionCall(func="run server", vars=dict(VERSION=version))
         test_func = FunctionCall(func="run tests")

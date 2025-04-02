@@ -777,6 +777,13 @@ tasks:
           VERSION: latest
       - func: run tests
     tags: [compression, latest]
+  - name: test-compression-latest-python3.9-no-c
+    commands:
+      - func: run server
+        vars:
+          VERSION: latest
+      - func: run tests
+    tags: [compression, latest]
   - name: test-compression-latest-python3.13-no-c
     commands:
       - func: run server
