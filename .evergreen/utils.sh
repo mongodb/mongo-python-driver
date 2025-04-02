@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Utility functions used by pymongo evergreen scripts.
 set -eu
 
 find_python3() {
@@ -11,7 +11,7 @@ find_python3() {
         PYTHON="C:/python/Python39/python.exe"
     else
         # Prefer our own toolchain, fall back to mongodb toolchain if it has Python 3.9+.
-        if [ -f "/opt/python/Current/bin/python3" ]; then
+        if [ -f "/opt/python/3.9/bin/python3" ]; then
             PYTHON="/opt/python/Current/bin/python3"
         elif is_python_39 "$(command -v /opt/mongodbtoolchain/v5/bin/python3)"; then
             PYTHON="/opt/mongodbtoolchain/v5/bin/python3"

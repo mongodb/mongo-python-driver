@@ -350,12 +350,27 @@ def create_encryption_variants() -> list[BuildVariant]:
     host = DEFAULT_HOST
 
     # Test against all server versions for the three main python versions.
-    encryptions = ["Encryption", "Encryption crypt_shared", "Encryption PyOpenSSL"]
+    encryptions = ["Encryption", "Encryption crypt_shared"]
     for encryption, python in product(encryptions, [*MIN_MAX_PYTHON, PYPYS[-1]]):
         expansions = get_encryption_expansions(encryption)
         display_name = get_variant_name(encryption, host, python=python, **expansions)
         variant = create_variant(
             [f"{t} .sync_async" for t in SUB_TASKS],
+            display_name,
+            python=python,
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+            tags=tags,
+        )
+        variants.append(variant)
+
+    # Test PyOpenSSL against on all server versions for all python versions.
+    for encryption, python in product(["Encryption PyOpenSSL"], [*MIN_MAX_PYTHON, PYPYS[-1]]):
+        expansions = get_encryption_expansions(encryption)
+        display_name = get_variant_name(encryption, host, python=python, **expansions)
+        variant = create_variant(
+            [f"{t} .sync" for t in SUB_TASKS],
             display_name,
             python=python,
             host=host,
@@ -480,7 +495,7 @@ def create_pyopenssl_variants():
 
         display_name = get_variant_name(base_name, host, python=python)
         variant = create_variant(
-            [f".replica_set .{auth} .{ssl} .sync_async", f".7.0 .{auth} .{ssl} .sync_async"],
+            [f".replica_set .{auth} .{ssl} .sync", f".7.0 .{auth} .{ssl} .sync"],
             display_name,
             python=python,
             host=host,

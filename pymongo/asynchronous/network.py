@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import datetime
 import logging
-import time
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -31,20 +30,16 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo import _csot, helpers_shared, message
-from pymongo.common import MAX_MESSAGE_SIZE
-from pymongo.compression_support import _NO_COMPRESSION, decompress
+from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
-    ProtocolError,
 )
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
+from pymongo.message import _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import (
-    _UNPACK_COMPRESSION_HEADER,
-    _UNPACK_HEADER,
-    async_receive_data,
+    async_receive_message,
     async_sendall,
 )
 
@@ -168,8 +163,8 @@ async def command(
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.STARTED,
+                clientId=client._topology_settings._topology_id,
                 command=spec,
                 commandName=next(iter(spec)),
                 databaseName=dbname,
@@ -194,13 +189,13 @@ async def command(
         )
 
     try:
-        await async_sendall(conn.conn, msg)
+        await async_sendall(conn.conn.get_conn, msg)
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
             response_doc: _DocumentOut = {"ok": 1}
         else:
-            reply = await receive_message(conn, request_id)
+            reply = await async_receive_message(conn, request_id)
             conn.more_to_come = reply.more_to_come
             unpacked_docs = reply.unpack_response(
                 codec_options=codec_options, user_fields=user_fields
@@ -230,8 +225,8 @@ async def command(
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _COMMAND_LOGGER,
-                    clientId=client._topology_settings._topology_id,
                     message=_CommandStatusMessage.FAILED,
+                    clientId=client._topology_settings._topology_id,
                     durationMS=duration,
                     failure=failure,
                     commandName=next(iter(spec)),
@@ -264,8 +259,8 @@ async def command(
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
-                clientId=client._topology_settings._topology_id,
                 message=_CommandStatusMessage.SUCCEEDED,
+                clientId=client._topology_settings._topology_id,
                 durationMS=duration,
                 reply=response_doc,
                 commandName=next(iter(spec)),
@@ -301,47 +296,3 @@ async def command(
         )
 
     return response_doc  # type: ignore[return-value]
-
-
-async def receive_message(
-    conn: AsyncConnection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
-) -> Union[_OpReply, _OpMsg]:
-    """Receive a raw BSON message or raise socket.error."""
-    if _csot.get_timeout():
-        deadline = _csot.get_deadline()
-    else:
-        timeout = conn.conn.gettimeout()
-        if timeout:
-            deadline = time.monotonic() + timeout
-        else:
-            deadline = None
-    # Ignore the response's request id.
-    length, _, response_to, op_code = _UNPACK_HEADER(await async_receive_data(conn, 16, deadline))
-    # No request_id for exhaust cursor "getMore".
-    if request_id is not None:
-        if request_id != response_to:
-            raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
-    if length <= 16:
-        raise ProtocolError(
-            f"Message length ({length!r}) not longer than standard message header size (16)"
-        )
-    if length > max_message_size:
-        raise ProtocolError(
-            f"Message length ({length!r}) is larger than server max "
-            f"message size ({max_message_size!r})"
-        )
-    if op_code == 2012:
-        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
-            await async_receive_data(conn, 9, deadline)
-        )
-        data = decompress(await async_receive_data(conn, length - 25, deadline), compressor_id)
-    else:
-        data = await async_receive_data(conn, length - 16, deadline)
-
-    try:
-        unpack_reply = _UNPACK_REPLY[op_code]
-    except KeyError:
-        raise ProtocolError(
-            f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}"
-        ) from None
-    return unpack_reply(data)

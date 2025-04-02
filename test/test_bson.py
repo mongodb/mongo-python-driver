@@ -558,7 +558,7 @@ class TestBSON(unittest.TestCase):
                 decode(bs)
             except Exception as exc:
                 self.assertTrue(isinstance(exc, InvalidBSON))
-                self.assertTrue(part in str(exc))
+                self.assertIn(part, str(exc))
             else:
                 self.fail("Failed to raise an exception.")
 

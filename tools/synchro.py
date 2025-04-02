@@ -47,6 +47,7 @@ replacements = {
     "async_receive_message": "receive_message",
     "async_receive_data": "receive_data",
     "async_sendall": "sendall",
+    "async_socket_sendall": "sendall",
     "asynchronous": "synchronous",
     "Asynchronous": "Synchronous",
     "AsyncBulkTestBase": "BulkTestBase",
@@ -119,6 +120,9 @@ replacements = {
     "_async_create_lock": "_create_lock",
     "_async_create_condition": "_create_condition",
     "_async_cond_wait": "_cond_wait",
+    "AsyncNetworkingInterface": "NetworkingInterface",
+    "_configured_protocol_interface": "_configured_socket_interface",
+    "_async_configured_socket": "_configured_socket",
     "SpecRunnerTask": "SpecRunnerThread",
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",
@@ -127,6 +131,7 @@ replacements = {
     "async_create_barrier": "create_barrier",
     "async_barrier_wait": "barrier_wait",
     "async_joinall": "joinall",
+    "_async_create_connection": "_create_connection",
     "pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts": "pymongo.synchronous.srv_resolver._SrvResolver.get_hosts",
 }
 

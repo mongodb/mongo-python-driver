@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Set up a remote evergreen spawn host.
 set -eu
 
 if [ -z "$1" ]

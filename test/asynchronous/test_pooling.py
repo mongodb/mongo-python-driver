@@ -219,7 +219,7 @@ class TestPooling(_TestPoolingBase):
 
         async with cx_pool.checkout() as conn:
             # Use Connection's API to close the socket.
-            conn.close_conn(None)
+            await conn.close_conn(None)
 
         self.assertEqual(0, len(cx_pool.conns))
 
@@ -232,7 +232,7 @@ class TestPooling(_TestPoolingBase):
         async with cx_pool.checkout() as conn:
             # Simulate a closed socket without telling the Connection it's
             # closed.
-            conn.conn.close()
+            await conn.conn.close()
             self.assertTrue(conn.conn_closed())
 
         async with cx_pool.checkout() as new_connection:
@@ -306,7 +306,7 @@ class TestPooling(_TestPoolingBase):
         async with cx_pool.checkout() as conn:
             # Simulate a closed socket without telling the Connection it's
             # closed.
-            conn.conn.close()
+            await conn.conn.close()
 
         # Swap pool's address with a bad one.
         address, cx_pool.address = cx_pool.address, ("foo.com", 1234)
@@ -450,7 +450,7 @@ class TestPooling(_TestPoolingBase):
                 with timeout(0.5):
                     await client.db.t.find_one({"$where": delay(2)})
 
-        self.assertTrue("(configured timeouts: timeoutMS: 500.0ms" in str(error.exception))
+        self.assertIn("(configured timeouts: timeoutMS: 500.0ms", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_socket_timeout_message(self):
@@ -475,9 +475,9 @@ class TestPooling(_TestPoolingBase):
             with self.assertRaises(Exception) as error:
                 await client.db.t.find_one({"$where": delay(2)})
 
-        self.assertTrue(
-            "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 20000.0ms)"
-            in str(error.exception)
+        self.assertIn(
+            "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 20000.0ms)",
+            str(error.exception),
         )
 
     @async_client_context.require_failCommand_appName
@@ -507,9 +507,9 @@ class TestPooling(_TestPoolingBase):
             with self.assertRaises(Exception) as error:
                 await client.admin.command("ping")
 
-        self.assertTrue(
-            "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 500.0ms)"
-            in str(error.exception)
+        self.assertIn(
+            "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 500.0ms)",
+            str(error.exception),
         )
 
 
