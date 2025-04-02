@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any
 
 from shrub.v3.evg_build_variant import BuildVariant
-from shrub.v3.evg_command import FunctionCall
+from shrub.v3.evg_command import EvgCommandType, FunctionCall, subprocess_exec
 from shrub.v3.evg_project import EvgProject
-from shrub.v3.evg_task import EvgTask, EvgTaskRef
+from shrub.v3.evg_task import EvgTask, EvgTaskDependency, EvgTaskRef
 from shrub.v3.shrub_service import ShrubService
 
 ##############
@@ -231,6 +231,13 @@ def handle_c_ext(c_ext, expansions) -> None:
     """Handle c extension option."""
     if c_ext == C_EXTS[0]:
         expansions["NO_EXT"] = "1"
+
+
+def get_subprocess_exec(**kwargs):
+    kwargs.setdefault("binary", "bash")
+    kwargs.setdefault("working_dir", "src")
+    kwargs.setdefault("command_type", EvgCommandType.TEST)
+    return subprocess_exec(**kwargs)
 
 
 def generate_yaml(tasks=None, variants=None):
@@ -1066,6 +1073,49 @@ def create_atlas_data_lake_tasks():
         task_name = f"test-atlas-data-lake-{c_ext}"
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
+
+
+def create_getdata_tasks():
+    # Wildcard task. Do you need to find out what tools are available and where?
+    # Throw it here, and execute this task on all buildvariants
+    cmd = get_subprocess_exec(args=[".evergreen/scripts/run-getdata.sh"])
+    return [EvgTask(name="getdata", commands=[cmd])]
+
+
+def create_coverage_report_tasks():
+    tags = ["coverage"]
+    task_name = "coverage-report"
+    # BUILD-3165: We can't use "*" (all tasks) and specify "variant".
+    # Instead list out all coverage tasks using tags.
+    # Run the coverage task even if some tasks fail.
+    # Run the coverage task even if some tasks are not scheduled in a patch build.
+    task_deps = []
+    for name in [".standalone", ".replica_set", ".sharded_cluster"]:
+        task_deps.append(
+            EvgTaskDependency(name=name, variant=".coverage_tag", status="*", patch_optional=True)
+        )
+    cmd = FunctionCall(func="download and merge coverage")
+    return [EvgTask(name=task_name, tags=tags, depends_on=task_deps, commands=[cmd])]
+
+
+def create_import_time_tasks():
+    name = "check-import-time"
+    tags = ["pr"]
+    args = [".evergreen/scripts/check-import-time.sh", "${revision}", "${github_commit}"]
+    cmd = get_subprocess_exec(args=args)
+    return [EvgTask(name=name, tags=tags, commands=[cmd])]
+
+
+def create_backport_pr_tasks():
+    name = "backport-pr"
+    args = [
+        "${DRIVERS_TOOLS}/.evergreen/github_app/backport-pr.sh",
+        "mongodb",
+        "mongo-python-driver",
+        "${github_commit}",
+    ]
+    cmd = get_subprocess_exec(args=args)
+    return [EvgTask(name=name, commands=[cmd], allowed_requesters=["commit"])]
 
 
 def create_ocsp_tasks():

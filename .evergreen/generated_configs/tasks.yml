@@ -713,6 +713,20 @@ tasks:
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, auth-aws-web-identity]
 
+  # Backport pr tests
+  - name: backport-pr
+    commands:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - ${DRIVERS_TOOLS}/.evergreen/github_app/backport-pr.sh
+            - mongodb
+            - mongo-python-driver
+            - ${github_commit}
+          working_dir: src
+        type: test
+
   # Compression tests
   - name: test-compression-v4.0-python3.9
     commands:
@@ -802,6 +816,25 @@ tasks:
       - func: run tests
     tags: [compression, latest]
 
+  # Coverage report tests
+  - name: coverage-report
+    commands:
+      - func: download and merge coverage
+    depends_on:
+      - name: .standalone
+        variant: .coverage_tag
+        status: "*"
+        patch_optional: true
+      - name: .replica_set
+        variant: .coverage_tag
+        status: "*"
+        patch_optional: true
+      - name: .sharded_cluster
+        variant: .coverage_tag
+        status: "*"
+        patch_optional: true
+    tags: [coverage]
+
   # Doctest tests
   - name: test-doctests
     commands:
@@ -864,6 +897,31 @@ tasks:
           TOPOLOGY: replica_set
       - func: run tests
     tags: [free-threading]
+
+  # Getdata tests
+  - name: getdata
+    commands:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - .evergreen/scripts/run-getdata.sh
+          working_dir: src
+        type: test
+
+  # Import time tests
+  - name: check-import-time
+    commands:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - .evergreen/scripts/check-import-time.sh
+            - ${revision}
+            - ${github_commit}
+          working_dir: src
+        type: test
+    tags: [pr]
 
   # Kms tests
   - name: test-gcpkms
