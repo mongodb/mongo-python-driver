@@ -844,6 +844,7 @@ def create_compression_tasks():
     versions = get_versions_from("4.0")
     tags = ["compression"]
     for python, c_ext, version in product([*MIN_MAX_PYTHON, PYPYS[-1]], C_EXTS, versions):
+        tags.append(version)
         expansions = dict()
         if python != PYPYS[-1]:
             handle_c_ext(c_ext, expansions)
