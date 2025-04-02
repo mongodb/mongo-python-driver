@@ -629,9 +629,10 @@ class TestURI(unittest.TestCase):
                 else:
                     self.fail(f"ConfigurationError was not raised for query: {case['query']}")
 
-    def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(self):
+    def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(
+        self
+    ):
         test_cases = [
-
             {
                 "query": "_mongodb._tcp.localhost",
                 "mock_target": "test_1.cluster_1localhost",

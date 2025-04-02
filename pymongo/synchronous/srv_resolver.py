@@ -92,7 +92,7 @@ class _SrvResolver:
             pass
 
         try:
-            self.__plist = self.__fqdn.split(".")[1:]
+            self.__plist = self.__fqdn.split(".")
         except Exception:
             raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,)) from None
         self.__slen = len(self.__plist)
