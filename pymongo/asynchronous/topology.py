@@ -240,19 +240,13 @@ class Topology:
                 "https://dochub.mongodb.org/core/pymongo-fork-deadlock",
                 **kwargs,
             )
-            close_servers = []
             async with self._lock:
                 # Close servers and clear the pools.
                 for server in self._servers.values():
-                    close_servers.append(server)
-                    if not _IS_SYNC:
-                        self._monitor_tasks.append(server._monitor)
+                    await server.close()
                 # Reset the session pool to avoid duplicate sessions in
                 # the child process.
                 self._session_pool.reset()
-
-            for server in close_servers:
-                await server.close()
 
         async with self._lock:
             await self._ensure_opened()
