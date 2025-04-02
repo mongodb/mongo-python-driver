@@ -876,6 +876,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self._opened = False
         self._closed = False
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        if not _IS_SYNC:
+            # Check if the client was created within a running event loop.
+            try:
+                self._loop = asyncio.get_running_loop()
+            # It wasn't, so the loop will be stored during the first performed operation
+            except RuntimeError:
+                pass
         if not is_srv:
             self._init_background()
 
@@ -1703,6 +1711,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
+        if not _IS_SYNC:
+            if self._loop is None:
+                self._loop = asyncio.get_running_loop()
+            else:
+                if self._loop != asyncio.get_running_loop():
+                    raise RuntimeError("Cannot use MongoClient in different event loop")
         if not self._opened:
             if self._resolve_srv_info["is_srv"]:
                 self._resolve_srv()
