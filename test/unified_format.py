@@ -1425,6 +1425,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self._uri = uri
         self.entity_map = EntityMapUtil(self)
         self.entity_map.create_entities_from_spec(self.TEST_SPEC.get("createEntities", []), uri=uri)
+        self._cluster_time = None
         # process initialData
         if "initialData" in self.TEST_SPEC:
             self.insert_initial_data(self.TEST_SPEC["initialData"])
