@@ -165,7 +165,7 @@ def handle_test_env() -> None:
     # Handle pass through env vars.
     for var in PASS_THROUGH_ENV:
         if is_set(var) or getattr(opts, var.lower()):
-            write_env(var, os.environ[var])
+            write_env(var, os.environ.get(var, getattr(opts, var.lower())))
 
     if extra := EXTRAS_MAP.get(test_name, ""):
         UV_ARGS.append(f"--extra {extra}")
