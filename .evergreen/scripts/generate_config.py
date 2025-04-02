@@ -844,7 +844,7 @@ def create_compression_tasks():
     versions = get_versions_from("4.0")
     # Test all server versions with min python.
     for version in versions:
-        python = CPYTHONS[-1]
+        python = CPYTHONS[0]
         tags = ["compression", version]
         name = get_task_name("test-compression", python=python, version=version)
         server_func = FunctionCall(func="run server", vars=dict(VERSION=version))
