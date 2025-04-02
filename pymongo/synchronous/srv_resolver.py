@@ -90,13 +90,9 @@ class _SrvResolver:
             raise ConfigurationError(_INVALID_HOST_MSG % ("an IP address",))
         except ValueError:
             pass
-
         try:
-            self.__plist = (
-                self.__fqdn.split(".")[1:]
-                if len(self.__fqdn.split(".")) > 2
-                else self.__fqdn.split(".")
-            )
+            split_fqdn = self.__fqdn.split(".")
+            self.__plist = split_fqdn[1:] if len(split_fqdn) > 2 else split_fqdn
         except Exception:
             raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,)) from None
         self.__slen = len(self.__plist)
