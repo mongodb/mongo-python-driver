@@ -117,6 +117,8 @@ filterwarnings = [
     "module:unclosed <ssl.SSLSocket:ResourceWarning",
     "module:unclosed <socket object:ResourceWarning",
     "module:unclosed transport:ResourceWarning",
+    # pytest-asyncio known issue: https://github.com/pytest-dev/pytest-asyncio/issues/724
+    "module:unclosed event loop:ResourceWarning",
     # https://github.com/eventlet/eventlet/issues/818
     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314

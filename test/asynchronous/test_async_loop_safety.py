@@ -25,14 +25,12 @@ class TestClientLoopSafety(unittest.TestCase):
     def test_client_errors_on_different_loop(self):
         client = AsyncMongoClient()
         loop1 = asyncio.new_event_loop()
-        loop1.run_until_complete(client.admin.command("ping"))
+        loop1.run_until_complete(client.aconnect())
         loop2 = asyncio.new_event_loop()
         with self.assertRaisesRegex(
             RuntimeError, "Cannot use AsyncMongoClient in different event loop"
         ):
-            loop2.run_until_complete(client.admin.command("ping"))
+            loop2.run_until_complete(client.aconnect())
         loop1.run_until_complete(client.close())
         loop1.close()
         loop2.close()
-        assert loop1.is_closed()
-        assert loop2.is_closed()
