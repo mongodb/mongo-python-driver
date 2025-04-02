@@ -129,11 +129,6 @@ class _SrvResolver:
     ) -> tuple[resolver.Answer, list[tuple[str, Any]]]:
         results = self._resolve_uri(encapsulate_errors)
 
-        if self.__fqdn == results[0].target.to_text():
-            raise ConfigurationError(
-                "Invalid SRV host: return address is identical to SRV hostname"
-            )
-
         # Construct address tuples
         nodes = [
             (maybe_decode(res.target.to_text(omit_final_dot=True)), res.port)  # type: ignore[attr-defined]
@@ -141,7 +136,12 @@ class _SrvResolver:
         ]
 
         # Validate hosts
+        srv_host = results[0].target.to_text()
         for node in nodes:
+            if self.__fqdn == srv_host:
+                raise ConfigurationError(
+                    "Invalid SRV host: return address is identical to SRV hostname"
+                )
             try:
                 nlist = node[0].lower().split(".")[1:][-self.__slen :]
             except Exception:
