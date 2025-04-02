@@ -23,7 +23,8 @@ functions:
     - command: subprocess.exec
       params:
         binary: bash
-        args: .evergreen/combine-coverage.sh
+        args:
+          - .evergreen/combine-coverage.sh
         working_dir: src
       type: test
     - command: subprocess.exec

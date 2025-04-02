@@ -1249,7 +1249,7 @@ def create_download_and_merge_coverage_func():
     merge_cmd = get_subprocess_exec(
         silent=True, include_expansions_in_env=include_expansions, args=args
     )
-    combine_cmd = get_subprocess_exec(args=".evergreen/combine-coverage.sh")
+    combine_cmd = get_subprocess_exec(args=[".evergreen/combine-coverage.sh"])
     # Upload the resulting html coverage report.
     args = [
         ".evergreen/scripts/upload-coverage-report.sh",
