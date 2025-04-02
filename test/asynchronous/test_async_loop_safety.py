@@ -32,3 +32,5 @@ class TestClientLoopSafety(unittest.TestCase):
         ):
             loop2.run_until_complete(client.server_info())
         loop1.run_until_complete(client.close())
+        loop1.close()
+        loop2.close()
