@@ -1,0 +1,163 @@
+functions:
+  # Download and merge coverage
+  download and merge coverage:
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
+      type: setup
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/scripts/download-and-merge-coverage.sh
+          - ${bucket_name}
+          - ${revision}
+          - ${version_id}
+        working_dir: src
+        silent: true
+        include_expansions_in_env:
+          - AWS_ACCESS_KEY_ID
+          - AWS_SECRET_ACCESS_KEY
+          - AWS_SESSION_TOKEN
+      type: test
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args: .evergreen/combine-coverage.sh
+        working_dir: src
+      type: test
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/scripts/upload-coverage-report.sh
+          - ${bucket_name}
+          - ${revision}
+          - ${version_id}
+        working_dir: src
+        silent: true
+        include_expansions_in_env:
+          - AWS_ACCESS_KEY_ID
+          - AWS_SECRET_ACCESS_KEY
+          - AWS_SESSION_TOKEN
+      type: test
+    - command: s3.put
+      params:
+        remote_file: coverage/${revision}/${version_id}/htmlcov/index.html
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        bucket: ${bucket_name}
+        local_file: src/htmlcov/index.html
+        permissions: public-read
+        content_type: text/html
+        display_name: Coverage Report HTML
+        optional: "true"
+      type: setup
+
+  # Upload coverage
+  upload coverage:
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
+      type: setup
+    - command: s3.put
+      params:
+        remote_file: coverage/${revision}/${version_id}/coverage/coverage.${build_variant}.${task_name}
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        bucket: ${bucket_name}
+        local_file: src/.coverage
+        permissions: public-read
+        content_type: text/html
+        display_name: Raw Coverage Report
+        optional: "true"
+      type: setup
+
+  # Upload mo artifacts
+  upload mo artifacts:
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
+      type: setup
+    - command: archive.targz_pack
+      params:
+        target: mongo-coredumps.tgz
+        source_dir: ./
+        include:
+          - ./**.core
+          - ./**.mdmp
+    - command: s3.put
+      params:
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/coredumps/${task_id}-${execution}-mongodb-coredumps.tar.gz
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        bucket: ${bucket_name}
+        local_file: mongo-coredumps.tgz
+        permissions: public-read
+        content_type: ${content_type|application/x-gzip}
+        display_name: Core Dumps - Execution
+        optional: "true"
+      type: setup
+    - command: s3.put
+      params:
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-drivers-tools-logs.tar.gz
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        bucket: ${bucket_name}
+        local_file: ${DRIVERS_TOOLS}/.evergreen/test_logs.tar.gz
+        permissions: public-read
+        content_type: ${content_type|application/x-gzip}
+        display_name: drivers-tools-logs.tar.gz
+        optional: "true"
+      type: setup
+
+  # Upload working dir
+  upload working dir:
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
+      type: setup
+    - command: archive.targz_pack
+      params:
+        target: working-dir.tar.gz
+        source_dir: ${PROJECT_DIRECTORY}/
+        include:
+          - ./**
+    - command: s3.put
+      params:
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-working-dir.tar.gz
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        bucket: ${bucket_name}
+        local_file: working-dir.tar.gz
+        permissions: public-read
+        content_type: ${content_type|application/x-gzip}
+        display_name: working-dir.tar.gz
+        optional: "true"
+      type: setup
+    - command: archive.targz_pack
+      params:
+        target: drivers-dir.tar.gz
+        source_dir: ${DRIVERS_TOOLS}
+        include:
+          - ./**
+        exclude_files:
+          - "*.lock"
+    - command: s3.put
+      params:
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-drivers-dir.tar.gz
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        bucket: ${bucket_name}
+        local_file: working-dir.tar.gz
+        permissions: public-read
+        content_type: ${content_type|application/x-gzip}
+        display_name: drivers-dir.tar.gz
+        optional: "true"
+      type: setup
