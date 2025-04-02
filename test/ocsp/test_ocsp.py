@@ -41,6 +41,7 @@ logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
 
 def _connect(options):
+    assert CA_FILE is not None
     uri = f"mongodb://localhost:27017/?serverSelectionTimeoutMS=10000&tlsCAFile={Path(CA_FILE).as_posix()}&{options}"
     print(uri)
     try:
