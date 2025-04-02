@@ -81,7 +81,13 @@ from pymongo.lock import (
     _create_lock,
     _release_locks,
 )
-from pymongo.logger import _CLIENT_LOGGER, _log_client_error, _log_or_warn
+from pymongo.logger import (
+    _CLIENT_LOGGER,
+    _COMMAND_LOGGER,
+    _debug_log,
+    _log_client_error,
+    _log_or_warn,
+)
 from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason, _EventListeners
 from pymongo.operations import (
@@ -2672,6 +2678,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._deprioritized_servers: list[Server] = []
         self._operation = operation
         self._operation_id = operation_id
+        self._attempt_number = 0
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2714,6 +2721,7 @@ class _ClientConnectionRetryable(Generic[T]):
                             raise
                         self._retrying = True
                         self._last_error = exc
+                        self._attempt_number += 1
                     else:
                         raise
 
@@ -2735,6 +2743,7 @@ class _ClientConnectionRetryable(Generic[T]):
                             raise self._last_error from exc
                         else:
                             raise
+                    self._attempt_number += 1
                     if self._bulk:
                         self._bulk.retrying = True
                     else:
@@ -2813,6 +2822,14 @@ class _ClientConnectionRetryable(Generic[T]):
                     # not support sessions raise the last error.
                     self._check_last_error()
                     self._retryable = False
+                if self._retrying:
+                    _debug_log(
+                        _COMMAND_LOGGER,
+                        message=f"Retrying write attempt number {self._attempt_number}",
+                        clientId=self._client.client_id,
+                        commandName=self._operation,
+                        operationId=self._operation_id,
+                    )
                 return self._func(self._session, conn, self._retryable)  # type: ignore
         except PyMongoError as exc:
             if not self._retryable:
@@ -2834,6 +2851,14 @@ class _ClientConnectionRetryable(Generic[T]):
         ):
             if self._retrying and not self._retryable:
                 self._check_last_error()
+            if self._retrying:
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    message=f"Retrying read attempt number {self._attempt_number}",
+                    clientId=self._client._topology_settings._topology_id,
+                    commandName=self._operation,
+                    operationId=self._operation_id,
+                )
             return self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 

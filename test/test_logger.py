@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import os
-from test import IntegrationTest, unittest
+from test import IntegrationTest, client_context, unittest
 from unittest.mock import patch
 
 from bson import json_util
@@ -95,6 +95,22 @@ class TestLogger(IntegrationTest):
         with self.assertLogs("pymongo.serverSelection", level="DEBUG") as cm:
             c.db.test.insert_one({"x": "1"})
             self.assertGreater(len(cm.records), 0)
+
+    @client_context.require_failCommand_fail_point
+    def test_logging_retry_read_attempts(self):
+        self.db.test.insert_one({"x": "1"})
+
+        with self.fail_point(
+            {"mode": {"times": 1}, "data": {"failCommands": ["find"], "closeConnection": True}}
+        ):
+            with self.assertLogs("pymongo.command", level="DEBUG") as cm:
+                self.db.test.find_one({"x": "1"})
+
+        retry_messages = [
+            r.getMessage() for r in cm.records if "Retrying read attempt" in r.getMessage()
+        ]
+        print(retry_messages)
+        self.assertEqual(len(retry_messages), 1)
 
 
 if __name__ == "__main__":
