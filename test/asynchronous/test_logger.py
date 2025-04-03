@@ -102,7 +102,14 @@ class TestLogger(AsyncIntegrationTest):
         await self.db.test.insert_one({"x": "1"})
 
         async with self.fail_point(
-            {"mode": {"times": 1}, "data": {"failCommands": ["find"], "closeConnection": True}}
+            {
+                "mode": {"times": 1},
+                "data": {
+                    "failCommands": ["find"],
+                    "errorCode": 10107,
+                    "errorLabels": ["RetryableWriteError"],
+                },
+            }
         ):
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                 await self.db.test.find_one({"x": "1"})
@@ -110,7 +117,27 @@ class TestLogger(AsyncIntegrationTest):
         retry_messages = [
             r.getMessage() for r in cm.records if "Retrying read attempt" in r.getMessage()
         ]
-        print(retry_messages)
+        self.assertEqual(len(retry_messages), 1)
+
+    @async_client_context.require_failCommand_fail_point
+    @async_client_context.require_retryable_writes
+    async def test_logging_retry_write_attempts(self):
+        async with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {
+                    "errorCode": 10107,
+                    "errorLabels": ["RetryableWriteError"],
+                    "failCommands": ["insert"],
+                },
+            }
+        ):
+            with self.assertLogs("pymongo.command", level="DEBUG") as cm:
+                await self.db.test.insert_one({"x": "1"})
+
+        retry_messages = [
+            r.getMessage() for r in cm.records if "Retrying write attempt" in r.getMessage()
+        ]
         self.assertEqual(len(retry_messages), 1)
 
 
