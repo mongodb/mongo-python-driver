@@ -133,6 +133,7 @@ replacements = {
     "async_joinall": "joinall",
     "_async_create_connection": "_create_connection",
     "pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts": "pymongo.synchronous.srv_resolver._SrvResolver.get_hosts",
+    "dns.asyncresolver.resolve": "dns.resolver.resolve",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

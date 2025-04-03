@@ -208,7 +208,7 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
 
     def run_initial_dns_seedlist_discovery_prose_tests(self, test_cases):
         for case in test_cases:
-            with patch("dns.asyncresolver.resolve") as mock_resolver:
+            with patch("dns.resolver.resolve") as mock_resolver:
 
                 def mock_resolve(query, record_type, *args, **kwargs):
                     mock_srv = MagicMock()
@@ -226,7 +226,7 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
                     self.fail(f"ConfigurationError was not raised for query: {case['query']}")
 
     def test_1_allow_srv_hosts_with_fewer_than_three_dot_separated_parts(self):
-        with patch("dns.asyncresolver.resolve"):
+        with patch("dns.resolver.resolve"):
             parse_uri("mongodb+srv://localhost/")
             parse_uri("mongodb+srv://mongo.local/")
 
