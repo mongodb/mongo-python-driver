@@ -208,7 +208,7 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
 
     def run_initial_dns_seedlist_discovery_prose_tests(self, test_cases):
         for case in test_cases:
-            with patch("pymongo.srv_resolver._resolve") as mock_resolver:
+            with patch("dns.asyncresolver.resolve") as mock_resolver:
 
                 def mock_resolve(query, record_type, *args, **kwargs):
                     mock_srv = MagicMock()
