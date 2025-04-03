@@ -462,7 +462,7 @@ class Binary(bytes):
                 raise ValueError(f"{padding=}. It must be in [0,1, ..7].")
             if padding and not vector:
                 raise ValueError("Empty vector with non-zero padding.")
-            if padding and not (vector[-1] & ((1 << padding) - 1)) == 0:
+            if padding and not (vector[-1] & ((1 << padding) - 1)) == 0:  # type: ignore
                 raise ValueError(
                     "If padding p is provided, all bits in the final byte lower than p must be 0."
                 )
