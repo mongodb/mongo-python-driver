@@ -24,6 +24,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Generator,
     Iterator,
     Mapping,
     MutableMapping,
@@ -528,6 +529,13 @@ def validate_list(option: str, value: Any) -> list:
     if not isinstance(value, list):
         raise TypeError(f"{option} must be a list, not {type(value)}")
     return value
+
+
+def validate_list_or_generator(option: str, value: Any) -> Union[list, Generator]:
+    """Validates that 'value' is a list or generator."""
+    if isinstance(value, Generator):
+        return value
+    return validate_list(option, value)
 
 
 def validate_list_or_none(option: Any, value: Any) -> Optional[list]:

@@ -23,6 +23,7 @@ from typing import (
     AsyncContextManager,
     Callable,
     Coroutine,
+    Generator,
     Generic,
     Iterable,
     Iterator,
@@ -699,7 +700,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     async def bulk_write(
         self,
-        requests: Sequence[_WriteOp[_DocumentType]],
+        requests: Sequence[_WriteOp[_DocumentType]] | Generator[_WriteOp[_DocumentType]],
         ordered: bool = True,
         bypass_document_validation: Optional[bool] = None,
         session: Optional[AsyncClientSession] = None,
@@ -779,17 +780,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.0
         """
-        common.validate_list("requests", requests)
+        common.validate_list_or_generator("requests", requests)
 
         blk = _AsyncBulk(self, ordered, bypass_document_validation, comment=comment, let=let)
-        for request in requests:
-            try:
-                request._add_to_bulk(blk)
-            except AttributeError:
-                raise TypeError(f"{request!r} is not a valid request") from None
 
         write_concern = self._write_concern_for(session)
-        bulk_api_result = await blk.execute(write_concern, session, _Op.INSERT)
+        bulk_api_result = await blk.execute(requests, write_concern, session, _Op.INSERT)
         if bulk_api_result is not None:
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
