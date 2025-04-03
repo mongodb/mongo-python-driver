@@ -40,26 +40,6 @@ from pymongo.uri_parser_shared import split_hosts
 _IS_SYNC = True
 
 
-def run_initial_dns_seedlist_discovery_prose_tests(self, test_cases):
-    for case in test_cases:
-        with patch("dns.resolver.resolve") as mock_resolver:
-
-            def mock_resolve(query, record_type, *args, **kwargs):
-                mock_srv = MagicMock()
-                mock_srv.target.to_text.return_value = case["mock_target"]
-                return [mock_srv]
-
-            mock_resolver.side_effect = mock_resolve
-            domain = case["query"].split("._tcp.")[1]
-            connection_string = f"mongodb+srv://{domain}"
-            try:
-                parse_uri(connection_string)
-            except ConfigurationError as e:
-                self.assertIn(case["expected_error"], str(e))
-            else:
-                self.fail(f"ConfigurationError was not raised for query: {case['query']}")
-
-
 class TestDNSRepl(PyMongoTestCase):
     if _IS_SYNC:
         TEST_PATH = os.path.join(
@@ -226,8 +206,27 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
     https://github.com/mongodb/specifications/blob/0a7a8b5/source/initial-dns-seedlist-discovery/tests/README.md#prose-tests
     """
 
+    def run_initial_dns_seedlist_discovery_prose_tests(self, test_cases):
+        for case in test_cases:
+            with patch("dns.asyncresolver.resolve") as mock_resolver:
+
+                def mock_resolve(query, record_type, *args, **kwargs):
+                    mock_srv = MagicMock()
+                    mock_srv.target.to_text.return_value = case["mock_target"]
+                    return [mock_srv]
+
+                mock_resolver.side_effect = mock_resolve
+                domain = case["query"].split("._tcp.")[1]
+                connection_string = f"mongodb+srv://{domain}"
+                try:
+                    parse_uri(connection_string)
+                except ConfigurationError as e:
+                    self.assertIn(case["expected_error"], str(e))
+                else:
+                    self.fail(f"ConfigurationError was not raised for query: {case['query']}")
+
     def test_1_allow_srv_hosts_with_fewer_than_three_dot_separated_parts(self):
-        with patch("dns.resolver.resolve"):
+        with patch("dns.asyncresolver.resolve"):
             parse_uri("mongodb+srv://localhost/")
             parse_uri("mongodb+srv://mongo.local/")
 
@@ -249,7 +248,7 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
                 "expected_error": "Invalid SRV host",
             },
         ]
-        run_initial_dns_seedlist_discovery_prose_tests(self, test_cases)
+        self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
     def test_3_throw_when_return_address_is_identical_to_srv_hostname(self):
         test_cases = [
@@ -264,7 +263,7 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
                 "expected_error": "Invalid SRV host",
             },
         ]
-        run_initial_dns_seedlist_discovery_prose_tests(self, test_cases)
+        self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
     def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(
         self
@@ -286,7 +285,7 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
                 "expected_error": "Invalid SRV host",
             },
         ]
-        run_initial_dns_seedlist_discovery_prose_tests(self, test_cases)
+        self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
 
 if __name__ == "__main__":
