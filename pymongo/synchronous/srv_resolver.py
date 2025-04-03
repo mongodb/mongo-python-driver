@@ -136,9 +136,8 @@ class _SrvResolver:
         ]
 
         # Validate hosts
-        srv_host = results[0].target.to_text()
         for node in nodes:
-            if self.__fqdn == srv_host:
+            if self.__fqdn == node[0].lower():
                 raise ConfigurationError(
                     "Invalid SRV host: return address is identical to SRV hostname"
                 )
