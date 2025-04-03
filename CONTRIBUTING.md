@@ -335,7 +335,9 @@ You must have `docker` or `podman` installed locally.
 - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
 This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
 MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
-- Run `just run-server ocsp`.
+NOTE: because the mock ocsp responder MUST be started prior to the server starting, the ocsp tests start the server
+as part of `setup-tests`.
+
 - Run `just setup-tests ocsp <sub test>` (options are "valid", "revoked", "valid-delegate", "revoked-delegate").
 - Run `just run-tests`
 

@@ -450,7 +450,7 @@ class TestPooling(_TestPoolingBase):
                 with timeout(0.5):
                     client.db.t.find_one({"$where": delay(2)})
 
-        self.assertTrue("(configured timeouts: timeoutMS: 500.0ms" in str(error.exception))
+        self.assertIn("(configured timeouts: timeoutMS: 500.0ms", str(error.exception))
 
     @client_context.require_failCommand_appName
     def test_socket_timeout_message(self):
@@ -473,9 +473,9 @@ class TestPooling(_TestPoolingBase):
             with self.assertRaises(Exception) as error:
                 client.db.t.find_one({"$where": delay(2)})
 
-        self.assertTrue(
-            "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 20000.0ms)"
-            in str(error.exception)
+        self.assertIn(
+            "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 20000.0ms)",
+            str(error.exception),
         )
 
     @client_context.require_failCommand_appName
@@ -505,9 +505,9 @@ class TestPooling(_TestPoolingBase):
             with self.assertRaises(Exception) as error:
                 client.admin.command("ping")
 
-        self.assertTrue(
-            "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 500.0ms)"
-            in str(error.exception)
+        self.assertIn(
+            "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 500.0ms)",
+            str(error.exception),
         )
 
 
