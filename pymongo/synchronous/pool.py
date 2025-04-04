@@ -927,13 +927,15 @@ class Pool:
                 return
 
         if self.opts.max_idle_time_seconds is not None:
+            close_conns = []
             with self.lock:
                 while (
                     self.conns
                     and self.conns[-1].idle_time_seconds() > self.opts.max_idle_time_seconds
                 ):
-                    conn = self.conns.pop()
-                    conn.close_conn(ConnectionClosedReason.IDLE)
+                    close_conns.append(self.conns.pop())
+            for conn in close_conns:
+                conn.close_conn(ConnectionClosedReason.IDLE)
 
         while True:
             with self.size_cond:
@@ -953,14 +955,18 @@ class Pool:
                     self._pending += 1
                     incremented = True
                 conn = self.connect()
+                close_conn = False
                 with self.lock:
                     # Close connection and return if the pool was reset during
                     # socket creation or while acquiring the pool lock.
                     if self.gen.get_overall() != reference_generation:
-                        conn.close_conn(ConnectionClosedReason.STALE)
-                        return
-                    self.conns.appendleft(conn)
-                    self.active_contexts.discard(conn.cancel_context)
+                        close_conn = True
+                    if not close_conn:
+                        self.conns.appendleft(conn)
+                        self.active_contexts.discard(conn.cancel_context)
+                if close_conn:
+                    conn.close_conn(ConnectionClosedReason.STALE)
+                    return
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
@@ -1339,17 +1345,20 @@ class Pool:
                         error=ConnectionClosedReason.ERROR,
                     )
             else:
+                close_conn = False
                 with self.lock:
                     # Hold the lock to ensure this section does not race with
                     # Pool.reset().
                     if self.stale_generation(conn.generation, conn.service_id):
-                        conn.close_conn(ConnectionClosedReason.STALE)
+                        close_conn = True
                     else:
                         conn.update_last_checkin_time()
                         conn.update_is_writable(bool(self.is_writable))
                         self.conns.appendleft(conn)
                         # Notify any threads waiting to create a connection.
                         self._max_connecting_cond.notify()
+                if close_conn:
+                    conn.close_conn(ConnectionClosedReason.STALE)
 
         with self.size_cond:
             if txn:
