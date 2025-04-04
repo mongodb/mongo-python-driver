@@ -26,7 +26,14 @@ from utils import (
 )
 
 # Passthrough environment variables.
-PASS_THROUGH_ENV = ["GREEN_FRAMEWORK", "NO_EXT", "MONGODB_API_VERSION", "DEBUG_LOG"]
+PASS_THROUGH_ENV = [
+    "GREEN_FRAMEWORK",
+    "NO_EXT",
+    "MONGODB_API_VERSION",
+    "DEBUG_LOG",
+    "PYTHON_BINARY",
+    "PYTHON_VERSION",
+]
 
 # Map the test name to test extra.
 EXTRAS_MAP = {

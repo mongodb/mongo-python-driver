@@ -11,7 +11,7 @@ pushd $ROOT > /dev/null
 if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
-# PYTHON_BINARY may be defined in test-env.sh.
+# PYTHON_BINARY or PYTHON_VERSION may be defined in test-env.sh.
 if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
@@ -31,7 +31,6 @@ if [ -z "${PYTHON_BINARY:-}" ]; then
     fi
 fi
 export UV_PYTHON=${PYTHON_BINARY}
-echo "export PYTHON_BINARY=$PYTHON_BINARY" >> $HERE/env.sh
 echo "Using python $UV_PYTHON"
 
 # Add the default install path to the path if needed.
