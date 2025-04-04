@@ -1708,7 +1708,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             if self._loop is None:
                 self._loop = asyncio.get_running_loop()
             elif self._loop != asyncio.get_running_loop():
-                raise RuntimeError("Cannot use MongoClient in different event loop")
+                raise RuntimeError(
+                    "Cannot use MongoClient in different event loop. MongoClient uses low-level asyncio APIs that bind it to the event loop it was created on."
+                )
         if not self._opened:
             if self._resolve_srv_info["is_srv"]:
                 self._resolve_srv()
