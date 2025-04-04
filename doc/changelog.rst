@@ -24,6 +24,7 @@ PyMongo 4.12 brings a number of changes including:
   :class:`~pymongo.read_preferences.SecondaryPreferred`,
   :class:`~pymongo.read_preferences.Nearest`. Support for ``hedge`` will be removed in PyMongo 5.0.
 - Removed PyOpenSSL support from the asynchronous API due to limitations of the CPython asyncio.Protocol SSL implementation.
+- Allow valid SRV hostnames with less than 3 parts.
 
 Issues Resolved
 ...............
