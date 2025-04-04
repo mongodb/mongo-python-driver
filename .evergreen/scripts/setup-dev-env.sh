@@ -31,7 +31,7 @@ if [ -z "${PYTHON_BINARY:-}" ]; then
     fi
 fi
 export UV_PYTHON=${PYTHON_BINARY}
-echo "export UV_PYTHON=$UV_PYTHON" >> $HERE/env.sh
+echo "export PYTHON_BINARY=$PYTHON_BINARY" >> $HERE/env.sh
 echo "Using python $UV_PYTHON"
 
 # Add the default install path to the path if needed.
