@@ -878,6 +878,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self._opened = False
         self._closed = False
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
         if not is_srv:
             self._init_background()
 
@@ -1709,6 +1710,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
+        if not _IS_SYNC:
+            if self._loop is None:
+                self._loop = asyncio.get_running_loop()
+            elif self._loop != asyncio.get_running_loop():
+                raise RuntimeError(
+                    "Cannot use AsyncMongoClient in different event loop. AsyncMongoClient uses low-level asyncio APIs that bind it to the event loop it was created on."
+                )
         if not self._opened:
             if self._resolve_srv_info["is_srv"]:
                 await self._resolve_srv()
