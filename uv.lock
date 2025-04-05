@@ -1,4 +1,5 @@
 version = 1
+revision = 1
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.10'",
@@ -997,7 +998,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/07/e9/ae44ea7d7605df9e5
 
 [[package]]
 name = "pymongo"
-version = "4.12.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "dnspython" },
@@ -1086,7 +1086,7 @@ requires-dist = [
     { name = "pykerberos", marker = "os_name != 'nt' and extra == 'gssapi'" },
     { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.1.0,<2.0.0" },
     { name = "pymongo-auth-aws", marker = "extra == 'encryption'", specifier = ">=1.1.0,<2.0.0" },
-    { name = "pymongocrypt", marker = "extra == 'encryption'", specifier = ">=1.12.0,<2.0.0" },
+    { name = "pymongocrypt", marker = "extra == 'encryption'", specifier = ">=1.13.0,<2.0.0" },
     { name = "pyopenssl", marker = "extra == 'ocsp'", specifier = ">=17.2.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.2" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.24.0" },
@@ -1101,6 +1101,7 @@ requires-dist = [
     { name = "winkerberos", marker = "os_name == 'nt' and extra == 'gssapi'", specifier = ">=0.5.0" },
     { name = "zstandard", marker = "extra == 'zstd'" },
 ]
+provides-extras = ["aws", "docs", "encryption", "gssapi", "ocsp", "snappy", "test", "zstd"]
 
 [package.metadata.requires-dev]
 coverage = [
@@ -1136,8 +1137,8 @@ wheels = [
 
 [[package]]
 name = "pymongocrypt"
-version = "1.13.0.dev0"
-source = { git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master#1cad4ad1c4cd6c11c6a4710da2127dab6a374471" }
+version = "1.14.0.dev0"
+source = { git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master#af621673c46d3d8fd2a2fe9d5540e24a79d9357a" }
 dependencies = [
     { name = "cffi" },
     { name = "cryptography" },
