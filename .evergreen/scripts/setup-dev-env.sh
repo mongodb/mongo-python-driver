@@ -21,7 +21,6 @@ bash $HERE/install-dependencies.sh
 
 # Get the appropriate UV_PYTHON.
 . $ROOT/.evergreen/utils.sh
-set -x
 
 if [ -z "${PYTHON_BINARY:-}" ]; then
     if [ -n "${PYTHON_VERSION:-}" ]; then
