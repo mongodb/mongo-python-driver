@@ -36,7 +36,7 @@ from test.asynchronous import AsyncIntegrationTest, async_client_context, unitte
 from test.asynchronous.helpers import ConcurrentRunner
 from test.utils_shared import delay
 
-from pymongo.asynchronous.pool import Pool, PoolOptions, PoolState
+from pymongo.asynchronous.pool import Pool, PoolOptions
 from pymongo.socket_checker import SocketChecker
 
 _IS_SYNC = False

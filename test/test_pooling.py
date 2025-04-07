@@ -37,7 +37,7 @@ from test.helpers import ConcurrentRunner
 from test.utils_shared import delay
 
 from pymongo.socket_checker import SocketChecker
-from pymongo.synchronous.pool import Pool, PoolOptions, PoolState
+from pymongo.synchronous.pool import Pool, PoolOptions
 
 _IS_SYNC = True
 
