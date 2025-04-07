@@ -9,7 +9,14 @@ from pathlib import Path
 from typing import Any
 
 from shrub.v3.evg_build_variant import BuildVariant
-from shrub.v3.evg_command import EvgCommandType, FunctionCall, subprocess_exec
+from shrub.v3.evg_command import (
+    EvgCommandType,
+    FunctionCall,
+    archive_targz_pack,
+    ec2_assume_role,
+    s3_put,
+    subprocess_exec,
+)
 from shrub.v3.evg_project import EvgProject
 from shrub.v3.evg_task import EvgTask, EvgTaskDependency, EvgTaskRef
 from shrub.v3.shrub_service import ShrubService
@@ -233,11 +240,29 @@ def handle_c_ext(c_ext, expansions) -> None:
         expansions["NO_EXT"] = "1"
 
 
+def get_assume_role(**kwargs):
+    kwargs.setdefault("command_type", EvgCommandType.SETUP)
+    kwargs.setdefault("role_arn", "${assume_role_arn}")
+    return ec2_assume_role(**kwargs)
+
+
 def get_subprocess_exec(**kwargs):
     kwargs.setdefault("binary", "bash")
     kwargs.setdefault("working_dir", "src")
     kwargs.setdefault("command_type", EvgCommandType.TEST)
     return subprocess_exec(**kwargs)
+
+
+def get_s3_put(**kwargs):
+    kwargs["aws_key"] = "${AWS_ACCESS_KEY_ID}"
+    kwargs["aws_secret"] = "${AWS_SECRET_ACCESS_KEY}"  # noqa:S105
+    kwargs["aws_session_token"] = "${AWS_SESSION_TOKEN}"  # noqa:S105
+    kwargs["bucket"] = "${bucket_name}"
+    kwargs.setdefault("optional", "true")
+    kwargs.setdefault("permissions", "public-read")
+    kwargs.setdefault("content_type", "${content_type|application/x-gzip}")
+    kwargs.setdefault("command_type", EvgCommandType.SETUP)
+    return s3_put(**kwargs)
 
 
 def generate_yaml(tasks=None, variants=None):
@@ -1193,6 +1218,79 @@ def create_serverless_tasks():
     return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
 
 
+##############
+# Functions
+##############
+
+
+def create_upload_coverage_func():
+    # Upload the coverage report for all tasks in a single build to the same directory.
+    remote_file = (
+        "coverage/${revision}/${version_id}/coverage/coverage.${build_variant}.${task_name}"
+    )
+    display_name = "Raw Coverage Report"
+    cmd = get_s3_put(
+        local_file="src/.coverage",
+        remote_file=remote_file,
+        display_name=display_name,
+        content_type="text/html",
+    )
+    return "upload coverage", [get_assume_role(), cmd]
+
+
+def create_download_and_merge_coverage_func():
+    include_expansions = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+    args = [
+        ".evergreen/scripts/download-and-merge-coverage.sh",
+        "${bucket_name}",
+        "${revision}",
+        "${version_id}",
+    ]
+    merge_cmd = get_subprocess_exec(
+        silent=True, include_expansions_in_env=include_expansions, args=args
+    )
+    combine_cmd = get_subprocess_exec(args=[".evergreen/combine-coverage.sh"])
+    # Upload the resulting html coverage report.
+    args = [
+        ".evergreen/scripts/upload-coverage-report.sh",
+        "${bucket_name}",
+        "${revision}",
+        "${version_id}",
+    ]
+    upload_cmd = get_subprocess_exec(
+        silent=True, include_expansions_in_env=include_expansions, args=args
+    )
+    display_name = "Coverage Report HTML"
+    remote_file = "coverage/${revision}/${version_id}/htmlcov/index.html"
+    put_cmd = get_s3_put(
+        local_file="src/htmlcov/index.html",
+        remote_file=remote_file,
+        display_name=display_name,
+        content_type="text/html",
+    )
+    cmds = [get_assume_role(), merge_cmd, combine_cmd, upload_cmd, put_cmd]
+    return "download and merge coverage", cmds
+
+
+def create_upload_mo_artifacts_func():
+    include = ["./**.core", "./**.mdmp"]  # Windows: minidumps
+    archive_cmd = archive_targz_pack(target="mongo-coredumps.tgz", source_dir="./", include=include)
+    display_name = "Core Dumps - Execution"
+    remote_file = "${build_variant}/${revision}/${version_id}/${build_id}/coredumps/${task_id}-${execution}-mongodb-coredumps.tar.gz"
+    s3_dumps = get_s3_put(
+        local_file="mongo-coredumps.tgz", remote_file=remote_file, display_name=display_name
+    )
+    display_name = "drivers-tools-logs.tar.gz"
+    remote_file = "${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-drivers-tools-logs.tar.gz"
+    s3_logs = get_s3_put(
+        local_file="${DRIVERS_TOOLS}/.evergreen/test_logs.tar.gz",
+        remote_file=remote_file,
+        display_name=display_name,
+    )
+    cmds = [get_assume_role(), archive_cmd, s3_dumps, s3_logs]
+    return "upload mo artifacts", cmds
+
+
 ##################
 # Generate Config
 ##################
@@ -1258,5 +1356,40 @@ def write_tasks_to_file():
             fid.write(f"{line}\n")
 
 
+def write_functions_to_file():
+    mod = sys.modules[__name__]
+    here = Path(__file__).absolute().parent
+    target = here.parent / "generated_configs" / "functions.yml"
+    if target.exists():
+        target.unlink()
+    with target.open("w") as fid:
+        fid.write("functions:\n")
+
+    functions = dict()
+    for name, func in sorted(getmembers(mod, isfunction)):
+        if name.startswith("_") or not name.endswith("_func"):
+            continue
+        if not name.startswith("create_"):
+            raise ValueError("Function creators must start with create_")
+        title = name.replace("create_", "").replace("_func", "").replace("_", " ").capitalize()
+        func_name, cmds = func()
+        functions = dict()
+        functions[func_name] = cmds
+        project = EvgProject(functions=functions, tasks=None, buildvariants=None)
+        out = ShrubService.generate_yaml(project).splitlines()
+        with target.open("a") as fid:
+            fid.write(f"  # {title}\n")
+            for line in out[1:]:
+                fid.write(f"{line}\n")
+            fid.write("\n")
+
+    # Remove extra trailing newline:
+    data = target.read_text().splitlines()
+    with target.open("w") as fid:
+        for line in data[:-1]:
+            fid.write(f"{line}\n")
+
+
 write_variants_to_file()
 write_tasks_to_file()
+write_functions_to_file()
