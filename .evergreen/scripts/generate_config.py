@@ -1291,38 +1291,6 @@ def create_upload_mo_artifacts_func():
     return "upload mo artifacts", cmds
 
 
-def create_upload_working_dir_func():
-    archive_working_dir = archive_targz_pack(
-        target="working-dir.tar.gz", source_dir="${PROJECT_DIRECTORY}/", include=["./**"]
-    )
-    display_name = "working-dir.tar.gz"
-    remote_file = "${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-working-dir.tar.gz"
-    s3_working_dir = get_s3_put(
-        local_file="working-dir.tar.gz", remote_file=remote_file, display_name=display_name
-    )
-    # Windows cannot read the mongod *.lock files because they are locked.
-    exclude_files = ["*.lock"]
-    archive_drivers_dir = archive_targz_pack(
-        target="drivers-dir.tar.gz",
-        source_dir="${DRIVERS_TOOLS}",
-        include=["./**"],
-        exclude_files=exclude_files,
-    )
-    display_name = "drivers-dir.tar.gz"
-    remote_file = "${build_variant}/${revision}/${version_id}/${build_id}/artifacts/${task_id}-${execution}-drivers-dir.tar.gz"
-    s3_drivers_dir = get_s3_put(
-        local_file="working-dir.tar.gz", remote_file=remote_file, display_name=display_name
-    )
-    cmds = [
-        get_assume_role(),
-        archive_working_dir,
-        s3_working_dir,
-        archive_drivers_dir,
-        s3_drivers_dir,
-    ]
-    return "upload working dir", cmds
-
-
 ##################
 # Generate Config
 ##################
