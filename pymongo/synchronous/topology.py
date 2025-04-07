@@ -354,7 +354,7 @@ class Topology:
                     operationId=operation_id,
                     topologyDescription=self.description,
                     clientId=self.description._topology_settings._topology_id,
-                    remainingTimeMS=int(end_time - time.monotonic()),
+                    remainingTimeMS=int(1000 * (end_time - time.monotonic())),
                 )
                 logged_waiting = True
 
