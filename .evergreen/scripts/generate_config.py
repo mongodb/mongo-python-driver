@@ -13,7 +13,11 @@ from shrub.v3.evg_command import (
     EvgCommandType,
     FunctionCall,
     archive_targz_pack,
+    attach_results,
+    attach_xunit_results,
     ec2_assume_role,
+    expansions_update,
+    git_get_project,
     s3_put,
     subprocess_exec,
 )
@@ -1289,6 +1293,112 @@ def create_upload_mo_artifacts_func():
     )
     cmds = [get_assume_role(), archive_cmd, s3_dumps, s3_logs]
     return "upload mo artifacts", cmds
+
+
+def create_fetch_source_func():
+    # Executes clone and applies the submitted patch, if any.
+    cmd = git_get_project(directory="src")
+    return "fetch source", [cmd]
+
+
+def create_setup_system_func():
+    # Make an evergreen expansion file with dynamic values.
+    includes = ["is_patch", "project", "version_id"]
+    args = [".evergreen/scripts/setup-system.sh"]
+    setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
+    # Load the expansion file to make an evergreen variable with the current unique version.
+    expansion_cmd = expansions_update(file="src/expansion.yml")
+    return "setup system", [setup_cmd, expansion_cmd]
+
+
+def create_upload_test_results_func():
+    results_cmd = attach_results(file_location="${DRIVERS_TOOLS}/results.json")
+    xresults_cmd = attach_xunit_results(file="src/xunit-results/TEST-*.xml")
+    return "upload test results", [results_cmd, xresults_cmd]
+
+
+def create_run_server_func():
+    includes = [
+        "VERSION",
+        "TOPOLOGY",
+        "AUTH",
+        "SSL",
+        "ORCHESTRATION_FILE",
+        "PYTHON_BINARY",
+        "PYTHON_VERSION",
+        "STORAGE_ENGINE",
+        "REQUIRE_API_VERSION",
+        "DRIVERS_TOOLS",
+        "TEST_CRYPT_SHARED",
+        "AUTH_AWS",
+        "LOAD_BALANCER",
+        "LOCAL_ATLAS",
+    ]
+    args = [".evergreen/just.sh", "run-server", "${TEST_NAME}"]
+    sub_cmd = subprocess_exec(include_expansions_in_env=includes, args=args)
+    expansion_cmd = expansions_update(file="${DRIVERS_TOOLS}/mo-expansion.yml")
+    return "run server", [sub_cmd, expansion_cmd]
+
+
+def create_run_just_script_func():
+    includes = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+    args = [".evergreen/just.sh", "${JUSTFILE_TARGET}"]
+    cmd = subprocess_exec(include_expansions_in_env=includes, args=args)
+    return "run just script", [cmd]
+
+
+def create_run_tests_func():
+    includes = [
+        "AUTH",
+        "SSL",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+        "COVERAGE",
+        "PYTHON_BINARY",
+        "LIBMONGOCRYPT_URL",
+        "MONGODB_URI",
+        "PYTHON_VERSION",
+        "DISABLE_TEST_COMMANDS",
+        "GREEN_FRAMEWORK",
+        "NO_EXT",
+        "COMPRESSORS",
+        "MONGODB_API_VERSION",
+        "DEBUG_LOG",
+        "ORCHESTRATION_FILE",
+        "OCSP_SERVER_TYPE",
+        "VERSION",
+    ]
+    args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
+    setup_cmd = subprocess_exec(include_expansions_in_env=includes, args=args)
+    test_cmd = subprocess_exec(args=[".evergreen/just.sh", "run-tests"])
+    return "run tests", [setup_cmd, test_cmd]
+
+
+def create_cleanup_func():
+    cmd = subprocess_exec(args=[".evergreen/scripts/cleanup.sh"])
+    return "cleanup", [cmd]
+
+
+def create_teardown_system_func():
+    tests_cmd = subprocess_exec(args=[".evergreen/just.sh", "teardown-tests"])
+    drivers_cmd = subprocess_exec(args=["${DRIVERS_TOOLS}/.evergreen/teardown.sh"])
+    return "teardown system", [tests_cmd, drivers_cmd]
+
+
+def create_assume_ec2_role_func():
+    cmd = ec2_assume_role(role_arn="${aws_test_secrets_role}", duration_seconds=3600)
+    return "assume ec2 role", [cmd]
+
+
+def create_attach_benchmark_test_results_func():
+    cmd = attach_results(file_location="src/report.json")
+    return "attach benchmark test results", [cmd]
+
+
+# def create_send_dashboard_data_func():
+#     cmd = perf_send(file="src/results.json")
+#     return "send dashboard data", [cmd]
 
 
 ##################
