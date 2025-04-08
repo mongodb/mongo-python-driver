@@ -205,7 +205,7 @@ class Server:
                 reply = conn.receive_message(None)
             else:
                 conn.send_message(data, max_doc_size)
-                reply = conn.receive_message(request_id)
+                reply = conn.receive_message(request_id, operation.pending_enabled())
 
             # Unpack and check for command errors.
             if use_cmd:

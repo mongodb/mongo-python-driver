@@ -34,7 +34,7 @@ from typing import (
 )
 
 from bson import DEFAULT_CODEC_OPTIONS
-from pymongo import _csot, helpers_shared
+from pymongo import _csot, helpers_shared, network_layer
 from pymongo.asynchronous.client_session import _validate_session_write_concern
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.asynchronous.network import command
@@ -188,6 +188,41 @@ class AsyncConnection:
         self.creation_time = time.monotonic()
         # For gossiping $clusterTime from the connection handshake to the client.
         self._cluster_time = None
+        self.pending_response = False
+        self.pending_bytes = 0
+        self.pending_deadline = 0.0
+
+    def mark_pending(self, nbytes: int) -> None:
+        """Mark this connection as having a pending response."""
+        # TODO: add "if self.enable_pending:"
+        self.pending_response = True
+        self.pending_bytes = nbytes
+        self.pending_deadline = time.monotonic() + 3  # 3 seconds timeout for pending response
+
+    async def complete_pending(self) -> None:
+        """Complete a pending response."""
+        if not self.pending_response:
+            return
+
+        timeout: Optional[Union[float, int]]
+        timeout = self.conn.gettimeout
+        if _csot.get_timeout():
+            deadline = min(_csot.get_deadline(), self.pending_deadline)
+        elif timeout:
+            deadline = min(time.monotonic() + timeout, self.pending_deadline)
+        else:
+            deadline = self.pending_deadline
+
+        if not _IS_SYNC:
+            # In async the reader task reads the whole message at once.
+            # TODO: respect deadline
+            await self.receive_message(None, True)
+        else:
+            # In sync we need to track the bytes left for the message.
+            network_layer.receive_data(self.conn.get_conn, self.pending_byte, deadline)
+        self.pending_response = False
+        self.pending_bytes = 0
+        self.pending_deadline = 0.0
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
@@ -454,13 +489,17 @@ class AsyncConnection:
         except BaseException as error:
             await self._raise_connection_failure(error)
 
-    async def receive_message(self, request_id: Optional[int]) -> Union[_OpReply, _OpMsg]:
+    async def receive_message(
+        self, request_id: Optional[int], enable_pending: bool = False
+    ) -> Union[_OpReply, _OpMsg]:
         """Receive a raw BSON message or raise ConnectionFailure.
 
         If any exception is raised, the socket is closed.
         """
         try:
-            return await async_receive_message(self, request_id, self.max_message_size)
+            return await async_receive_message(
+                self, request_id, self.max_message_size, enable_pending
+            )
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             await self._raise_connection_failure(error)
@@ -495,7 +534,9 @@ class AsyncConnection:
         :param msg: bytes, the command message.
         """
         await self.send_message(msg, 0)
-        reply = await self.receive_message(request_id)
+        reply = await self.receive_message(
+            request_id, enable_pending=(_csot.get_timeout() is not None)
+        )
         result = reply.command_response(codec_options)
 
         # Raises NotPrimaryError or OperationFailure.
@@ -635,7 +676,10 @@ class AsyncConnection:
             reason = None
         else:
             reason = ConnectionClosedReason.ERROR
-        await self.close_conn(reason)
+
+        # Pending connections should be placed back in the pool.
+        if not self.pending_response:
+            await self.close_conn(reason)
         # SSLError from PyOpenSSL inherits directly from Exception.
         if isinstance(error, (IOError, OSError, SSLError)):
             details = _get_timeout_details(self.opts)
@@ -1076,7 +1120,7 @@ class Pool:
 
         This method should always be used in a with-statement::
 
-            with pool.get_conn() as connection:
+            with pool.checkout() as connection:
                 connection.send_message(msg)
                 data = connection.receive_message(op_code, request_id)
 
@@ -1388,6 +1432,7 @@ class Pool:
         pool, to keep performance reasonable - we can't avoid AutoReconnects
         completely anyway.
         """
+        await conn.complete_pending()
         idle_time_seconds = conn.idle_time_seconds()
         # If socket is idle, open a new one.
         if (

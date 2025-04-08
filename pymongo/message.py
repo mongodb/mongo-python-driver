@@ -1569,6 +1569,7 @@ class _Query:
         "allow_disk_use",
         "_as_command",
         "exhaust",
+        "_pending_enabled",
     )
 
     # For compatibility with the _GetMore class.
@@ -1612,6 +1613,10 @@ class _Query:
         self.name = "find"
         self._as_command: Optional[tuple[dict[str, Any], str]] = None
         self.exhaust = exhaust
+        self._pending_enabled = False
+
+    def pending_enabled(self):
+        return self._pending_enabled
 
     def reset(self) -> None:
         self._as_command = None
@@ -1673,7 +1678,9 @@ class _Query:
         conn.send_cluster_time(cmd, self.session, self.client)  # type: ignore[arg-type]
         # Support CSOT
         if apply_timeout:
-            conn.apply_timeout(self.client, cmd=cmd)  # type: ignore[arg-type]
+            res = conn.apply_timeout(self.client, cmd=cmd)  # type: ignore[arg-type]
+            if res is not None:
+                self._pending_enabled = True
         self._as_command = cmd, self.db
         return self._as_command
 
@@ -1747,6 +1754,7 @@ class _GetMore:
         "_as_command",
         "exhaust",
         "comment",
+        "_pending_enabled",
     )
 
     name = "getMore"
@@ -1779,6 +1787,10 @@ class _GetMore:
         self._as_command: Optional[tuple[dict[str, Any], str]] = None
         self.exhaust = exhaust
         self.comment = comment
+        self._pending_enabled = False
+
+    def pending_enabled(self):
+        return self._pending_enabled
 
     def reset(self) -> None:
         self._as_command = None
@@ -1822,7 +1834,9 @@ class _GetMore:
         conn.send_cluster_time(cmd, self.session, self.client)  # type: ignore[arg-type]
         # Support CSOT
         if apply_timeout:
-            conn.apply_timeout(self.client, cmd=None)  # type: ignore[arg-type]
+            res = conn.apply_timeout(self.client, cmd=None)  # type: ignore[arg-type]
+            if res is not None:
+                self._pending_enabled = True
         self._as_command = cmd, self.db
         return self._as_command
 
