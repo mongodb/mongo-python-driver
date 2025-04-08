@@ -800,10 +800,12 @@ def create_alternative_hosts_variants():
         )
     )
 
-    expansions = dict()
-    handle_c_ext(C_EXTS[0], expansions)
     for host_name in OTHER_HOSTS:
+        expansions = dict()
+        handle_c_ext(C_EXTS[0], expansions)
         host = HOSTS[host_name]
+        if "fips" in host_name.lower():
+            expansions["REQUIRE_FIPS"] = "1"
         tags = [".6.0 .standalone !.sync_async"]
         if host_name == "Amazon2023":
             tags = [f".latest !.sync_async {t}" for t in SUB_TASKS]

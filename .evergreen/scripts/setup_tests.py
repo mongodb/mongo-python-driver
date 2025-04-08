@@ -33,6 +33,7 @@ PASS_THROUGH_ENV = [
     "DEBUG_LOG",
     "PYTHON_BINARY",
     "PYTHON_VERSION",
+    "REQUIRE_FIPS",
 ]
 
 # Map the test name to test extra.
