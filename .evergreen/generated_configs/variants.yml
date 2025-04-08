@@ -18,6 +18,7 @@ buildvariants:
     batchtime: 10080
     expansions:
       NO_EXT: "1"
+      REQUIRE_FIPS: "1"
   - name: other-hosts-rhel8-zseries
     tasks:
       - name: .6.0 .standalone !.sync_async
