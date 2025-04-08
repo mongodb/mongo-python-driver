@@ -66,39 +66,20 @@ def create_ocsp_variants() -> list[BuildVariant]:
     return variants
 
 
+def create_server_version_variants() -> list[BuildVariant]:
+    variants = []
+    for version in ALL_VERSIONS:
+        display_name = get_variant_name("* MongoDB", version=version)
+        variant = create_variant(
+            [".server-version"], display_name, host=DEFAULT_HOST, tags=["server-version"]
+        )
+        variants.append(variant)
+    return variants
+
+
 def create_server_variants() -> list[BuildVariant]:
     variants = []
-
-    # Run the full matrix on linux with min and max CPython, and latest pypy.
-    host = DEFAULT_HOST
-    # Prefix the display name with an asterisk so it is sorted first.
     base_display_name = "* Test"
-    for python, c_ext in product([*MIN_MAX_PYTHON, PYPYS[-1]], C_EXTS):
-        expansions = dict(COVERAGE="coverage")
-        handle_c_ext(c_ext, expansions)
-        display_name = get_variant_name(base_display_name, host, python=python, **expansions)
-        variant = create_variant(
-            [f".{t} .sync_async" for t in TOPOLOGIES],
-            display_name,
-            python=python,
-            host=host,
-            tags=["coverage_tag"],
-            expansions=expansions,
-        )
-        variants.append(variant)
-
-    # Test the rest of the pythons.
-    for python in CPYTHONS[1:-1] + PYPYS[:-1]:
-        display_name = f"Test {host}"
-        display_name = get_variant_name(base_display_name, host, python=python)
-        variant = create_variant(
-            [f"{t} .sync_async" for t in SUB_TASKS],
-            display_name,
-            python=python,
-            host=host,
-            expansions=expansions,
-        )
-        variants.append(variant)
 
     # Test a subset on each of the other platforms.
     for host_name in ("macos", "macos-arm64", "win64", "win32"):
@@ -595,6 +576,29 @@ def create_aws_lambda_variants():
 ##############
 # Tasks
 ##############
+
+
+def create_server_version_tasks():
+    tasks = []
+    for python, topology in product(ALL_PYTHONS, TOPOLOGIES):
+        tags = ["server-version"]
+
+        if topology == "standalone":
+            auth = "noauth"
+            ssl = "nossl"
+        elif topology == "replica_set":
+            auth = "noauth"
+            ssl = "ssl"
+        else:
+            auth = "auth"
+            ssl = "ssl"
+        name = get_task_name("test-", python=python, topology=topology)
+        server_vars = dict(TOPOLOGY=topology, AUTH=auth, SSL=ssl)
+        server_func = FunctionCall(func="run server", vars=server_vars)
+        test_vars = dict(AUTH=auth, SSL=ssl)
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
 
 
 def create_server_tasks():
