@@ -20,6 +20,8 @@ from io import BytesIO
 from test.asynchronous.utils_spec_runner import AsyncSpecRunner
 
 from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
+from pymongo.asynchronous.pool import PoolState
+from pymongo.server_selectors import writable_server_selector
 
 sys.path[0:0] = [""]
 
@@ -39,6 +41,7 @@ from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.helpers import anext
 from pymongo.errors import (
+    AutoReconnect,
     CollectionInvalid,
     ConfigurationError,
     ConnectionFailure,
@@ -393,6 +396,22 @@ class TestTransactions(AsyncTransactionsBase):
                 res = await f(*args, session=s)  # type:ignore[operator]
                 if isinstance(res, (AsyncCommandCursor, AsyncCursor)):
                     await res.to_list()
+
+    @async_client_context.require_transactions
+    async def test_transaction_pool_cleared_error_labelled_transient(self):
+        c = await self.async_single_client()
+
+        with self.assertRaises(AutoReconnect) as context:
+            async with c.start_session() as session:
+                async with await session.start_transaction():
+                    server = await c._select_server(writable_server_selector, session, "test")
+                    # Pause the server's pool, causing it to fail connection checkout.
+                    server.pool.state = PoolState.PAUSED
+                    async with c._checkout(server, session):
+                        pass
+
+        # Verify that the TransientTransactionError label is present in the error.
+        self.assertTrue(context.exception.has_error_label("TransientTransactionError"))
 
 
 class PatchSessionTimeout:
