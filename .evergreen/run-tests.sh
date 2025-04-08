@@ -25,9 +25,6 @@ else
   exit 1
 fi
 
-echo "REQUIRE_FIPS=${REQUIRE_FIPS:-}"
-exit 1
-
 # List the packages.
 uv sync ${UV_ARGS} --reinstall
 uv pip list
