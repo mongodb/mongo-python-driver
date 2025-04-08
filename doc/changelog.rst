@@ -1,14 +1,18 @@
 Changelog
 =========
 
-Changes in Version 4.12.0 (YYYY/MM/DD)
+Changes in Version 4.12.0 (2025/04/08)
 --------------------------------------
+
+.. warning:: Driver support for MongoDB 4.0 reached end of life in April 2025.
+   PyMongo 4.12 will be the last release to support MongoDB 4.0.
 
 PyMongo 4.12 brings a number of changes including:
 
 - Support for configuring DEK cache lifetime via the ``key_expiration_ms`` argument to
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
 - Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
+- pymongocrypt>=1.13 is now required for :ref:`In-Use Encryption` support.
 - Added :meth:`gridfs.asynchronous.grid_file.AsyncGridFSBucket.rename_by_name` and :meth:`gridfs.grid_file.GridFSBucket.rename_by_name`
   for more performant renaming of a file with multiple revisions.
 - Added :meth:`gridfs.asynchronous.grid_file.AsyncGridFSBucket.delete_by_name` and :meth:`gridfs.grid_file.GridFSBucket.delete_by_name`
