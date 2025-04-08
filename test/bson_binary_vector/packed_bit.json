@@ -14,11 +14,11 @@
     {
       "description": "Simple Vector PACKED_BIT",
       "valid": true,
-      "vector": [127, 8],
+      "vector": [127, 7],
       "dtype_hex": "0x10",
       "dtype_alias": "PACKED_BIT",
       "padding": 0,
-      "canonical_bson": "1600000005766563746F7200040000000910007F0800"
+      "canonical_bson": "1600000005766563746F7200040000000910007F0700"
     },
     {
       "description": "PACKED_BIT with padding",
