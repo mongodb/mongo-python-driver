@@ -71,7 +71,7 @@ def create_server_version_variants() -> list[BuildVariant]:
     for version in ALL_VERSIONS:
         display_name = get_variant_name("* MongoDB", version=version)
         variant = create_variant(
-            [".server-version"], display_name, host=DEFAULT_HOST, tags=["server-version"]
+            [".server-version"], display_name, host=DEFAULT_HOST, tags=["coverage_tag"]
         )
         variants.append(variant)
     return variants

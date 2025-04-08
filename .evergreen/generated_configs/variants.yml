@@ -917,63 +917,63 @@ buildvariants:
     display_name: "* MongoDB v4.0"
     run_on:
       - rhel87-small
-    tags: [server-version]
+    tags: [coverage_tag]
   - name: mongodb-v4.2
     tasks:
       - name: .server-version
     display_name: "* MongoDB v4.2"
     run_on:
       - rhel87-small
-    tags: [server-version]
+    tags: [coverage_tag]
   - name: mongodb-v4.4
     tasks:
       - name: .server-version
     display_name: "* MongoDB v4.4"
     run_on:
       - rhel87-small
-    tags: [server-version]
+    tags: [coverage_tag]
   - name: mongodb-v5.0
     tasks:
       - name: .server-version
     display_name: "* MongoDB v5.0"
     run_on:
       - rhel87-small
-    tags: [server-version]
+    tags: [coverage_tag]
   - name: mongodb-v6.0
     tasks:
       - name: .server-version
     display_name: "* MongoDB v6.0"
     run_on:
       - rhel87-small
-    tags: [server-version]
+    tags: [coverage_tag]
   - name: mongodb-v7.0
     tasks:
       - name: .server-version
     display_name: "* MongoDB v7.0"
     run_on:
       - rhel87-small
-    tags: [server-version]
+    tags: [coverage_tag]
   - name: mongodb-v8.0
     tasks:
       - name: .server-version
     display_name: "* MongoDB v8.0"
     run_on:
       - rhel87-small
-    tags: [server-version]
+    tags: [coverage_tag]
   - name: mongodb-rapid
     tasks:
       - name: .server-version
     display_name: "* MongoDB rapid"
     run_on:
       - rhel87-small
-    tags: [server-version]
+    tags: [coverage_tag]
   - name: mongodb-latest
     tasks:
       - name: .server-version
     display_name: "* MongoDB latest"
     run_on:
       - rhel87-small
-    tags: [server-version]
+    tags: [coverage_tag]
 
   # Serverless tests
   - name: serverless-rhel8-python3.9
