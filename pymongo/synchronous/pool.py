@@ -216,7 +216,10 @@ class Connection:
             # TODO: respect deadline
             self.receive_message(None, True)
         else:
-            network_layer.receive_data(self, self.pending_bytes, deadline)  # type:ignore[call-arg]
+            try:
+                network_layer.receive_data(self, self.pending_bytes, deadline)  # type:ignore[call-arg]
+            except BaseException as error:
+                self._raise_connection_failure(error)
         self.pending_response = False
         self.pending_bytes = 0
         self.pending_deadline = 0.0
