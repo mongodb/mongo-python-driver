@@ -144,7 +144,7 @@ class _SrvResolver:
                     "Invalid SRV host: return address is identical to SRV hostname"
                 )
             try:
-                nlist = node[0].lower().split(".")[1:][-self.__slen :]
+                nlist = srv_host.split(".")[1:][-self.__slen :]
             except Exception:
                 raise ConfigurationError(f"Invalid SRV host: {node[0]}") from None
             if self.__plist != nlist:
