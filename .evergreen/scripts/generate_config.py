@@ -594,7 +594,7 @@ def create_server_version_tasks():
         else:
             auth = "auth"
             ssl = "ssl"
-        expansions = dict(AUTH=auth, SSL=ssl)
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
         name = get_task_name("test", python=python, **expansions)
