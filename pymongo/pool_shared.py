@@ -346,12 +346,10 @@ async def _configured_protocol_interface(
             ssl=ssl_context,
         )
     except _CertificateError:
-        transport.abort()
         # Raise _CertificateError directly like we do after match_hostname
         # below.
         raise
     except (OSError, SSLError) as exc:
-        transport.abort()
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
