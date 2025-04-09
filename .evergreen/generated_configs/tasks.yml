@@ -8126,39 +8126,39 @@ tasks:
           TOPOLOGY: sharded_cluster
           PYTHON_VERSION: pypy3.10
     tags: [server-version]
-  - name: test-python3.9-noauth-nossl-standalone-cov
+  - name: test-python3.9-auth-ssl-standalone-cov
     commands:
       - func: run server
         vars:
-          AUTH: noauth
-          SSL: nossl
+          AUTH: auth
+          SSL: ssl
           TOPOLOGY: standalone
           COVERAGE: "1"
       - func: run tests
         vars:
-          AUTH: noauth
-          SSL: nossl
+          AUTH: auth
+          SSL: ssl
           TOPOLOGY: standalone
           COVERAGE: "1"
           PYTHON_VERSION: "3.9"
     tags: [server-version]
-  - name: test-python3.10-noauth-ssl-replica-set-cov
+  - name: test-python3.10-noauth-nossl-replica-set-cov
     commands:
       - func: run server
         vars:
           AUTH: noauth
-          SSL: ssl
+          SSL: nossl
           TOPOLOGY: replica_set
           COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
-          SSL: ssl
+          SSL: nossl
           TOPOLOGY: replica_set
           COVERAGE: "1"
           PYTHON_VERSION: "3.10"
     tags: [server-version]
-  - name: test-python3.11-noauth-nossl-standalone-cov
+  - name: test-python3.12-noauth-nossl-standalone-cov
     commands:
       - func: run server
         vars:
@@ -8171,53 +8171,37 @@ tasks:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.11"
-    tags: [server-version]
-  - name: test-python3.12-noauth-ssl-replica-set-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
           COVERAGE: "1"
           PYTHON_VERSION: "3.12"
     tags: [server-version]
-  - name: test-python3.13-noauth-nossl-standalone-cov
+  - name: test-python3.13-auth-ssl-replica-set-cov
     commands:
       - func: run server
         vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: replica_set
           COVERAGE: "1"
       - func: run tests
         vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: replica_set
           COVERAGE: "1"
           PYTHON_VERSION: "3.13"
     tags: [server-version]
-  - name: test-pypy3.10-noauth-ssl-replica-set
+  - name: test-pypy3.10-noauth-nossl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
       - func: run tests
         vars:
           AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
           PYTHON_VERSION: pypy3.10
     tags: [server-version]
 
