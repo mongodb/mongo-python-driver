@@ -44,7 +44,7 @@ DISPLAY_LOOKUP = dict(
         standalone="Standalone", replica_set="Replica Set", sharded_cluster="Sharded Cluster"
     ),
     test_suites=dict(default="Sync", default_async="Async"),
-    coverage=dict(coverage="cov"),
+    coverage={"1": "cov"},
     no_ext={"1": "No C"},
 )
 HOSTS = dict()
