@@ -96,7 +96,7 @@ class _SrvResolver:
         except Exception:
             raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,)) from None
         self.__slen = len(self.__plist)
-        self.nparts = len(self.__fqdn.split("."))
+        self.nparts = len(split_fqdn)
 
     async def get_options(self) -> Optional[str]:
         from dns import resolver
