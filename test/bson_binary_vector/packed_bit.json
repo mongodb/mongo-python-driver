@@ -21,6 +21,24 @@
       "canonical_bson": "1600000005766563746F7200040000000910007F0700"
     },
     {
+      "description": "PACKED_BIT with padding",
+      "valid": true,
+      "vector": [127, 8],
+      "dtype_hex": "0x10",
+      "dtype_alias": "PACKED_BIT",
+      "padding": 3,
+      "canonical_bson": "1600000005766563746F7200040000000910037F0800"
+    },
+    {
+      "description": "PACKED_BIT with inconsistent padding",
+      "valid": false,
+      "vector": [127, 7],
+      "dtype_hex": "0x10",
+      "dtype_alias": "PACKED_BIT",
+      "padding": 3,
+      "canonical_bson": "1600000005766563746F7200040000000910037F0700"
+    },
+    {
       "description": "Empty Vector PACKED_BIT",
       "valid": true,
       "vector": [],
@@ -28,15 +46,6 @@
       "dtype_alias": "PACKED_BIT",
       "padding": 0,
       "canonical_bson": "1400000005766563746F72000200000009100000"
-    },
-    {
-      "description": "PACKED_BIT with padding",
-      "valid": true,
-      "vector": [127, 7],
-      "dtype_hex": "0x10",
-      "dtype_alias": "PACKED_BIT",
-      "padding": 3,
-      "canonical_bson": "1600000005766563746F7200040000000910037F0700"
     },
     {
       "description": "Overflow Vector PACKED_BIT",
