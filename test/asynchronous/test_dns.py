@@ -267,12 +267,6 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
                 "mock_target": "mongo.local",
                 "expected_error": "Invalid SRV host",
             },
-            # When the SRV hostname has three or more dot-separated parts
-            # it is valid for the returned hostnames to be identical.
-            {
-                "query": "_mongodb._tcp.blogs.mongodb.com",
-                "mock_target": "blogs.mongodb.com",
-            },
         ]
         await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
@@ -294,6 +288,17 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
                 "query": "_mongodb._tcp.blogs.mongodb.com",
                 "mock_target": "cluster.testmongodb.com",
                 "expected_error": "Invalid SRV host",
+            },
+        ]
+        await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
+
+    async def test_5_when_srv_hostname_has_two_dot_separated_parts_it_is_valid_for_the_returned_hostname_to_be_identical(
+        self
+    ):
+        test_cases = [
+            {
+                "query": "_mongodb._tcp.blogs.mongodb.com",
+                "mock_target": "blogs.mongodb.com",
             },
         ]
         await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
