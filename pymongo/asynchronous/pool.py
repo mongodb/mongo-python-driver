@@ -218,7 +218,7 @@ class AsyncConnection:
             await self.receive_message(None, True)
         else:
             try:
-                network_layer.receive_data(self, self.pending_bytes, deadline)  # type:ignore[arg-type]
+                network_layer.receive_data(self, self.pending_bytes, deadline, True)  # type:ignore[arg-type]
             except BaseException as error:
                 await self._raise_connection_failure(error)
         self.pending_response = False
