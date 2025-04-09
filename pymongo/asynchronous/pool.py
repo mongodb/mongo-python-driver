@@ -206,7 +206,7 @@ class AsyncConnection:
         timeout = self.conn.gettimeout
         if _csot.get_timeout():
             deadline = min(_csot.get_deadline(), self.pending_deadline)
-        elif timeout:
+        elif timeout is not None:
             deadline = min(time.monotonic() + timeout, self.pending_deadline)
         else:
             deadline = self.pending_deadline
@@ -216,8 +216,7 @@ class AsyncConnection:
             # TODO: respect deadline
             await self.receive_message(None, True)
         else:
-            # In sync we need to track the bytes left for the message.
-            network_layer.receive_data(self.conn, self.pending_bytes, deadline)
+            network_layer.receive_data(self, self.pending_bytes, deadline)  # type:ignore[call-arg]
         self.pending_response = False
         self.pending_bytes = 0
         self.pending_deadline = 0.0
