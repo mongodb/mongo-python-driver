@@ -580,10 +580,10 @@ def create_aws_lambda_variants():
 
 def create_server_version_tasks():
     tasks = []
-    variants = [(p, "sharded_cluster") for p in ALL_PYTHONS]
+    task_types = [(p, "sharded_cluster") for p in ALL_PYTHONS]
     for python, topology in zip_cycle(ALL_PYTHONS, ["standalone", "replica_set"]):
-        variants.append((python, topology))
-    for python, topology in variants:
+        task_types.append((python, topology))
+    for python, topology in task_types:
         tags = ["server-version"]
         if topology == "standalone":
             auth = "noauth"
