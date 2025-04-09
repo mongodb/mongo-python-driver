@@ -594,10 +594,12 @@ def create_server_version_tasks():
         else:
             auth = "auth"
             ssl = "ssl"
-        name = get_task_name("test", python=python, topology=topology, auth=auth, ssl=ssl)
-        server_vars = dict(TOPOLOGY=topology, AUTH=auth, SSL=ssl)
+        name = get_task_name(
+            "test", python=python, topology=topology, auth=auth, ssl=ssl, coverage="coverage"
+        )
+        server_vars = dict(TOPOLOGY=topology, AUTH=auth, SSL=ssl, COVERAGE="1")
         server_func = FunctionCall(func="run server", vars=server_vars)
-        test_vars = dict(AUTH=auth, SSL=ssl)
+        test_vars = dict(AUTH=auth, SSL=ssl, PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
