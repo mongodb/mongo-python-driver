@@ -583,8 +583,8 @@ def create_server_version_tasks():
     # Test all pythons with sharded_cluster, auth, and ssl.
     task_types = [(p, "sharded_cluster", "auth", "ssl") for p in ALL_PYTHONS]
     # Test all combinations of topology, auth, and ssl, with rotating pythons.
-    for python, topology, auth, ssl in zip_cycle(
-        ALL_PYTHONS, TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"]
+    for python, (topology, auth, ssl) in zip_cycle(
+        ALL_PYTHONS, product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"])
     ):
         # Skip the ones we already have.
         if topology == "sharded_cluster" and auth == "auth" and ssl == "ssl":
