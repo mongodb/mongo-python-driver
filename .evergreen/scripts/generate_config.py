@@ -891,7 +891,7 @@ def create_coverage_report_tasks():
     # Run the coverage task even if some tasks are not scheduled in a patch build.
     task_deps = [
         EvgTaskDependency(
-            name=".server_version", variant=".coverage_tag", status="*", patch_optional=True
+            name=".server-version", variant=".coverage_tag", status="*", patch_optional=True
         )
     ]
     cmd = FunctionCall(func="download and merge coverage")
