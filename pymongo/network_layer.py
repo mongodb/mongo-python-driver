@@ -338,7 +338,7 @@ def receive_data(
     # When the timeout has expired we perform one final non-blocking recv.
     # This helps avoid spurious timeouts when the response is actually already
     # buffered on the client.
-    orig_timeout = conn.conn.gettimeout()
+    orig_timeout = conn.conn.gettimeout
     try:
         while bytes_read < length:
             try:
@@ -444,6 +444,7 @@ class NetworkingInterface(NetworkingInterfaceBase):
     def __init__(self, conn: Union[socket.socket, _sslConn]):
         super().__init__(conn)
 
+    @property
     def gettimeout(self) -> float | None:
         return self.conn.gettimeout()
 
@@ -758,7 +759,7 @@ def receive_message(
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
     else:
-        timeout = conn.conn.gettimeout()
+        timeout = conn.conn.gettimeout
         if timeout:
             deadline = time.monotonic() + timeout
         else:

@@ -203,13 +203,14 @@ class Connection:
         if not self.pending_response:
             return
 
-        timeout = self.conn.gettimeout
         if _csot.get_timeout():
             deadline = min(_csot.get_deadline(), self.pending_deadline)
-        elif timeout is not None:
-            deadline = min(time.monotonic() + timeout, self.pending_deadline)
         else:
-            deadline = self.pending_deadline
+            timeout = self.conn.gettimeout
+            if timeout is not None:
+                deadline = min(time.monotonic() + timeout, self.pending_deadline)
+            else:
+                deadline = self.pending_deadline
 
         if not _IS_SYNC:
             # In async the reader task reads the whole message at once.
@@ -217,7 +218,7 @@ class Connection:
             self.receive_message(None, True)
         else:
             try:
-                network_layer.receive_data(self, self.pending_bytes, deadline)  # type:ignore[call-arg]
+                network_layer.receive_data(self, self.pending_bytes, deadline)  # type:ignore[arg-type]
             except BaseException as error:
                 self._raise_connection_failure(error)
         self.pending_response = False
