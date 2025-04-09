@@ -591,7 +591,7 @@ def create_server_version_tasks():
             continue
         task_types.append((python, topology, auth, ssl))
     for python, topology, auth, ssl in task_types:
-        tags = ["server-version", python, topology, auth, ssl]
+        tags = ["server-version", python, f"{topology}-{auth}-{ssl}"]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
