@@ -194,7 +194,6 @@ class Connection:
 
     def mark_pending(self, nbytes: int) -> None:
         """Mark this connection as having a pending response."""
-        # TODO: add "if self.enable_pending:"
         self.pending_response = True
         self.pending_bytes = nbytes
         self.pending_deadline = time.monotonic() + 3  # 3 seconds timeout for pending response
@@ -204,7 +203,6 @@ class Connection:
         if not self.pending_response:
             return
 
-        timeout: Optional[Union[float, int]]
         timeout = self.conn.gettimeout
         if _csot.get_timeout():
             deadline = min(_csot.get_deadline(), self.pending_deadline)
@@ -219,7 +217,7 @@ class Connection:
             self.receive_message(None, True)
         else:
             # In sync we need to track the bytes left for the message.
-            network_layer.receive_data(self.conn.get_conn, self.pending_byte, deadline)
+            network_layer.receive_data(self.conn, self.pending_bytes, deadline)
         self.pending_response = False
         self.pending_bytes = 0
         self.pending_deadline = 0.0

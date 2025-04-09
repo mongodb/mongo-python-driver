@@ -1615,7 +1615,7 @@ class _Query:
         self.exhaust = exhaust
         self._pending_enabled = False
 
-    def pending_enabled(self):
+    def pending_enabled(self) -> bool:
         return self._pending_enabled
 
     def reset(self) -> None:
@@ -1789,7 +1789,7 @@ class _GetMore:
         self.comment = comment
         self._pending_enabled = False
 
-    def pending_enabled(self):
+    def pending_enabled(self) -> bool:
         return self._pending_enabled
 
     def reset(self) -> None:

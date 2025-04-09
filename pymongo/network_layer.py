@@ -784,7 +784,7 @@ def receive_message(
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
             receive_data(conn, 9, deadline, enable_pending)
         )
-        data = decompress(receive_data(conn, length - 25, deadline), compressor_id, enable_pending)
+        data = decompress(receive_data(conn, length - 25, deadline, enable_pending), compressor_id)
     else:
         data = receive_data(conn, length - 16, deadline, enable_pending)
 

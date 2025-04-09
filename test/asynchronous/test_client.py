@@ -2222,7 +2222,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
         await cursor.next()
 
         # Cause a server error on getmore.
-        async def receive_message(request_id):
+        async def receive_message(request_id, enable_pending=False):
             # Discard the actual server response.
             await AsyncConnection.receive_message(conn, request_id)
 
