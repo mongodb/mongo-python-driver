@@ -8032,7 +8032,7 @@ tasks:
       - sync_async
 
   # Server version tests
-  - name: test-python3.9-standalone
+  - name: test-python3.9-standalone-noauth-nossl
     commands:
       - func: run server
         vars:
@@ -8044,7 +8044,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
     tags: [server-version]
-  - name: test-python3.9-replica-set
+  - name: test-python3.9-replica-set-noauth-ssl
     commands:
       - func: run server
         vars:
@@ -8056,7 +8056,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
     tags: [server-version]
-  - name: test-python3.9-sharded-cluster
+  - name: test-python3.9-sharded-cluster-auth-ssl
     commands:
       - func: run server
         vars:
@@ -8068,7 +8068,7 @@ tasks:
           AUTH: auth
           SSL: ssl
     tags: [server-version]
-  - name: test-python3.10-standalone
+  - name: test-python3.10-standalone-noauth-nossl
     commands:
       - func: run server
         vars:
@@ -8080,7 +8080,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
     tags: [server-version]
-  - name: test-python3.10-replica-set
+  - name: test-python3.10-replica-set-noauth-ssl
     commands:
       - func: run server
         vars:
@@ -8092,7 +8092,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
     tags: [server-version]
-  - name: test-python3.10-sharded-cluster
+  - name: test-python3.10-sharded-cluster-auth-ssl
     commands:
       - func: run server
         vars:
@@ -8104,7 +8104,7 @@ tasks:
           AUTH: auth
           SSL: ssl
     tags: [server-version]
-  - name: test-python3.11-standalone
+  - name: test-python3.11-standalone-noauth-nossl
     commands:
       - func: run server
         vars:
@@ -8116,7 +8116,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
     tags: [server-version]
-  - name: test-python3.11-replica-set
+  - name: test-python3.11-replica-set-noauth-ssl
     commands:
       - func: run server
         vars:
@@ -8128,7 +8128,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
     tags: [server-version]
-  - name: test-python3.11-sharded-cluster
+  - name: test-python3.11-sharded-cluster-auth-ssl
     commands:
       - func: run server
         vars:
@@ -8140,7 +8140,7 @@ tasks:
           AUTH: auth
           SSL: ssl
     tags: [server-version]
-  - name: test-python3.12-standalone
+  - name: test-python3.12-standalone-noauth-nossl
     commands:
       - func: run server
         vars:
@@ -8152,7 +8152,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
     tags: [server-version]
-  - name: test-python3.12-replica-set
+  - name: test-python3.12-replica-set-noauth-ssl
     commands:
       - func: run server
         vars:
@@ -8164,7 +8164,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
     tags: [server-version]
-  - name: test-python3.12-sharded-cluster
+  - name: test-python3.12-sharded-cluster-auth-ssl
     commands:
       - func: run server
         vars:
@@ -8176,7 +8176,7 @@ tasks:
           AUTH: auth
           SSL: ssl
     tags: [server-version]
-  - name: test-python3.13-standalone
+  - name: test-python3.13-standalone-noauth-nossl
     commands:
       - func: run server
         vars:
@@ -8188,7 +8188,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
     tags: [server-version]
-  - name: test-python3.13-replica-set
+  - name: test-python3.13-replica-set-noauth-ssl
     commands:
       - func: run server
         vars:
@@ -8200,7 +8200,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
     tags: [server-version]
-  - name: test-python3.13-sharded-cluster
+  - name: test-python3.13-sharded-cluster-auth-ssl
     commands:
       - func: run server
         vars:
@@ -8212,7 +8212,7 @@ tasks:
           AUTH: auth
           SSL: ssl
     tags: [server-version]
-  - name: test-pypy3.10-standalone
+  - name: test-pypy3.10-standalone-noauth-nossl
     commands:
       - func: run server
         vars:
@@ -8224,7 +8224,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
     tags: [server-version]
-  - name: test-pypy3.10-replica-set
+  - name: test-pypy3.10-replica-set-noauth-ssl
     commands:
       - func: run server
         vars:
@@ -8236,7 +8236,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
     tags: [server-version]
-  - name: test-pypy3.10-sharded-cluster
+  - name: test-pypy3.10-sharded-cluster-auth-ssl
     commands:
       - func: run server
         vars:

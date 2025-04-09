@@ -592,7 +592,7 @@ def create_server_version_tasks():
         else:
             auth = "auth"
             ssl = "ssl"
-        name = get_task_name("test", python=python, topology=topology)
+        name = get_task_name("test", python=python, topology=topology, auth=auth, ssl=ssl)
         server_vars = dict(TOPOLOGY=topology, AUTH=auth, SSL=ssl)
         server_func = FunctionCall(func="run server", vars=server_vars)
         test_vars = dict(AUTH=auth, SSL=ssl)
