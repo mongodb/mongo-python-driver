@@ -1,6 +1,23 @@
 Changelog
 =========
 
+
+Changes in Version 4.12.1 (XXXX/XX/XX)
+--------------------------------------
+
+Version 4.12.1 is a bug fix release.
+
+- Fixed a bug that could raise ``UnboundLocalError`` when creating asynchronous connections over SSL.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.12.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.12.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=43094
+
+
 Changes in Version 4.12.0 (2025/04/08)
 --------------------------------------
 
