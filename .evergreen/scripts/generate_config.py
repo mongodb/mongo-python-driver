@@ -580,8 +580,8 @@ def create_aws_lambda_variants():
 
 def create_server_version_tasks():
     tasks = []
-    variants = [(p, "standalone") for p in ALL_PYTHONS]
-    for python, topology in zip_cycle(ALL_PYTHONS, ["replica_set", "sharded_cluster"]):
+    variants = [(p, "sharded_cluster") for p in ALL_PYTHONS]
+    for python, topology in zip_cycle(ALL_PYTHONS, ["standalone", "replica_set"]):
         variants.append((python, topology))
     for python, topology in variants:
         tags = ["server-version"]

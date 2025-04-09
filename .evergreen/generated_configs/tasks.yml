@@ -8032,88 +8032,16 @@ tasks:
       - sync_async
 
   # Server version tests
-  - name: test-python3.9-standalone-noauth-nossl
+  - name: test-python3.9-sharded-cluster-auth-ssl
     commands:
       - func: run server
         vars:
-          TOPOLOGY: standalone
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-    tags: [server-version]
-  - name: test-python3.10-standalone-noauth-nossl
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: standalone
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-    tags: [server-version]
-  - name: test-python3.11-standalone-noauth-nossl
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: standalone
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-    tags: [server-version]
-  - name: test-python3.12-standalone-noauth-nossl
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: standalone
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-    tags: [server-version]
-  - name: test-python3.13-standalone-noauth-nossl
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: standalone
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-    tags: [server-version]
-  - name: test-pypy3.10-standalone-noauth-nossl
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: standalone
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-    tags: [server-version]
-  - name: test-python3.9-replica-set-noauth-ssl
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: replica_set
-          AUTH: noauth
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
           SSL: ssl
       - func: run tests
         vars:
-          AUTH: noauth
+          AUTH: auth
           SSL: ssl
     tags: [server-version]
   - name: test-python3.10-sharded-cluster-auth-ssl
@@ -8128,16 +8056,16 @@ tasks:
           AUTH: auth
           SSL: ssl
     tags: [server-version]
-  - name: test-python3.11-replica-set-noauth-ssl
+  - name: test-python3.11-sharded-cluster-auth-ssl
     commands:
       - func: run server
         vars:
-          TOPOLOGY: replica_set
-          AUTH: noauth
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
           SSL: ssl
       - func: run tests
         vars:
-          AUTH: noauth
+          AUTH: auth
           SSL: ssl
     tags: [server-version]
   - name: test-python3.12-sharded-cluster-auth-ssl
@@ -8152,16 +8080,16 @@ tasks:
           AUTH: auth
           SSL: ssl
     tags: [server-version]
-  - name: test-python3.13-replica-set-noauth-ssl
+  - name: test-python3.13-sharded-cluster-auth-ssl
     commands:
       - func: run server
         vars:
-          TOPOLOGY: replica_set
-          AUTH: noauth
+          TOPOLOGY: sharded_cluster
+          AUTH: auth
           SSL: ssl
       - func: run tests
         vars:
-          AUTH: noauth
+          AUTH: auth
           SSL: ssl
     tags: [server-version]
   - name: test-pypy3.10-sharded-cluster-auth-ssl
@@ -8174,6 +8102,78 @@ tasks:
       - func: run tests
         vars:
           AUTH: auth
+          SSL: ssl
+    tags: [server-version]
+  - name: test-python3.9-standalone-noauth-nossl
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: standalone
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+    tags: [server-version]
+  - name: test-python3.10-replica-set-noauth-ssl
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+    tags: [server-version]
+  - name: test-python3.11-standalone-noauth-nossl
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: standalone
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+    tags: [server-version]
+  - name: test-python3.12-replica-set-noauth-ssl
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+    tags: [server-version]
+  - name: test-python3.13-standalone-noauth-nossl
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: standalone
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+    tags: [server-version]
+  - name: test-pypy3.10-replica-set-noauth-ssl
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          AUTH: noauth
           SSL: ssl
     tags: [server-version]
 
