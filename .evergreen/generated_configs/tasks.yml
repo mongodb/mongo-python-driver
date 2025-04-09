@@ -820,19 +820,7 @@ tasks:
   - name: coverage-report
     commands:
       - func: download and merge coverage
-    depends_on:
-      - name: .standalone
-        variant: .coverage_tag
-        status: "*"
-        patch_optional: true
-      - name: .replica_set
-        variant: .coverage_tag
-        status: "*"
-        patch_optional: true
-      - name: .sharded_cluster
-        variant: .coverage_tag
-        status: "*"
-        patch_optional: true
+    depends_on: [{ name: .server_version, variant: .coverage_tag, status: "*", patch_optional: true }]
     tags: [coverage]
 
   # Doctest tests

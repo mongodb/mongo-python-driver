@@ -889,11 +889,11 @@ def create_coverage_report_tasks():
     # Instead list out all coverage tasks using tags.
     # Run the coverage task even if some tasks fail.
     # Run the coverage task even if some tasks are not scheduled in a patch build.
-    task_deps = []
-    for name in [".standalone", ".replica_set", ".sharded_cluster"]:
-        task_deps.append(
-            EvgTaskDependency(name=name, variant=".coverage_tag", status="*", patch_optional=True)
+    task_deps = [
+        EvgTaskDependency(
+            name=".server_version", variant=".coverage_tag", status="*", patch_optional=True
         )
+    ]
     cmd = FunctionCall(func="download and merge coverage")
     return [EvgTask(name=task_name, tags=tags, depends_on=task_deps, commands=[cmd])]
 
