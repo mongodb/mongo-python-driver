@@ -156,6 +156,12 @@ functions:
           - .evergreen/just.sh
           - run-tests
 
+  # Send dashboard data
+  send dashboard data:
+    - command: perf.send
+      params:
+        file: src/results.json
+
   # Setup system
   setup system:
     - command: subprocess.exec

@@ -391,6 +391,8 @@ class AsyncClientContext:
             self._fips_enabled = True
         except (subprocess.SubprocessError, FileNotFoundError):
             self._fips_enabled = False
+        if os.environ.get("REQUIRE_FIPS") and not self._fips_enabled:
+            raise RuntimeError("Expected FIPS to be enabled")
         return self._fips_enabled
 
     def check_auth_type(self, auth_type):
