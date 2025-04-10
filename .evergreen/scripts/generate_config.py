@@ -609,7 +609,10 @@ def create_server_version_tasks():
 
 def create_standard_non_linux_tasks():
     tasks = []
-    for version, python, topology, sync in zip_cycle(ALL_VERSIONS, CPYTHONS, TOPOLOGIES, SYNCS):
+
+    for (version, topology), python, sync in zip_cycle(
+        list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS, SYNCS
+    ):
         auth = "auth" if topology == "sharded_cluster" else "noauth"
         ssl = "nossl" if topology == "standalone" else "ssl"
         tags = [
