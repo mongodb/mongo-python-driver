@@ -1,21 +1,22 @@
 Changelog
 =========
 
+
 Changes in Version 4.12.1 (XXXX/XX/XX)
 --------------------------------------
 
 Version 4.12.1 is a bug fix release.
 
+- Fixed a bug that could raise ``UnboundLocalError`` when creating asynchronous connections over SSL.
 - Fixed a bug causing SRV hostname validation to fail when resolver and resolved hostnames are identical with three domain levels.
 
 Issues Resolved
 ...............
 
-See the `PyMongo 4.12 release notes in JIRA`_ for the list of resolved issues
+See the `PyMongo 4.12.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 4.12 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=41916
-.. _PYTHON-5288: https://jira.mongodb.org/browse/PYTHON-5288
+.. _PyMongo 4.12.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=43094
 
 Changes in Version 4.12.0 (2025/04/08)
 --------------------------------------
