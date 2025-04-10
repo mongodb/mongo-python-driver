@@ -2179,7 +2179,7 @@ class TestExhaustCursor(IntegrationTest):
         cursor.next()
 
         # Cause a server error on getmore.
-        def receive_message(request_id):
+        def receive_message(request_id, enable_pending=False):
             # Discard the actual server response.
             Connection.receive_message(conn, request_id)
 

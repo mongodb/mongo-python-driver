@@ -138,8 +138,10 @@ def command(
         spec = orig = client._encrypter.encrypt(dbname, spec, codec_options)
 
     # Support CSOT
+    applied_csot = False
     if client:
-        conn.apply_timeout(client, spec)
+        res = conn.apply_timeout(client, spec)
+        applied_csot = bool(res)
     _csot.apply_write_concern(spec, write_concern)
 
     if use_op_msg:
@@ -195,7 +197,7 @@ def command(
             reply = None
             response_doc: _DocumentOut = {"ok": 1}
         else:
-            reply = receive_message(conn, request_id)
+            reply = receive_message(conn, request_id, enable_pending=applied_csot)
             conn.more_to_come = reply.more_to_come
             unpacked_docs = reply.unpack_response(
                 codec_options=codec_options, user_fields=user_fields
