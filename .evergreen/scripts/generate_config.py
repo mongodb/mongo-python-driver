@@ -591,7 +591,7 @@ def create_server_version_tasks():
             continue
         task_types.append((python, topology, auth, ssl))
     for python, topology, auth, ssl in task_types:
-        tags = ["server-version", python, f"{topology}-{auth}-{ssl}"]
+        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}"]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
@@ -609,7 +609,13 @@ def create_standard_non_linux_tasks():
     for version, python, topology, sync in zip_cycle(ALL_VERSIONS, CPYTHONS, TOPOLOGIES, SYNCS):
         auth = "auth" if topology == "sharded_cluster" else "noauth"
         ssl = "nossl" if topology == "standalone" else "ssl"
-        tags = ["standard-non-linux", f"server-{version}", python, f"{topology}-{auth}-{ssl}"]
+        tags = [
+            "standard-non-linux",
+            f"server-{version}",
+            f"python-{python}",
+            f"{topology}-{auth}-{ssl}",
+            sync,
+        ]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         name = get_task_name("test", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
