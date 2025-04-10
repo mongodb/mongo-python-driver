@@ -610,7 +610,7 @@ def create_standard_non_linux_tasks():
         ssl = "nossl" if topology == "stanadlone" else "ssl"
         tags = ["standard-non-linux", f"server-{version}", python, f"{topology}-{auth}-{ssl}"]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
-        name = get_task_name("test", python=python, **expansions)
+        name = get_task_name("test", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
