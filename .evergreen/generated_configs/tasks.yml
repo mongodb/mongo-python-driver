@@ -8298,18 +8298,18 @@ tasks:
     tags: [serverless]
 
   # Standard non linux tests
-  - name: test-v4.0-python3.9-sync-noauth-ssl-standalone
+  - name: test-v4.0-python3.9-sync-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
           AUTH: noauth
-          SSL: ssl
+          SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.0"
       - func: run tests
         vars:
           AUTH: noauth
-          SSL: ssl
+          SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.0"
           PYTHON_VERSION: "3.9"
@@ -8318,7 +8318,7 @@ tasks:
       - standard-non-linux
       - server-4.0
       - "3.9"
-      - standalone-noauth-ssl
+      - standalone-noauth-nossl
   - name: test-v4.2-python3.10-async-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -8361,18 +8361,18 @@ tasks:
       - server-4.4
       - "3.11"
       - sharded_cluster-auth-ssl
-  - name: test-v5.0-python3.12-async-noauth-ssl-standalone
+  - name: test-v5.0-python3.12-async-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
           AUTH: noauth
-          SSL: ssl
+          SSL: nossl
           TOPOLOGY: standalone
           VERSION: "5.0"
       - func: run tests
         vars:
           AUTH: noauth
-          SSL: ssl
+          SSL: nossl
           TOPOLOGY: standalone
           VERSION: "5.0"
           PYTHON_VERSION: "3.12"
@@ -8381,7 +8381,7 @@ tasks:
       - standard-non-linux
       - server-5.0
       - "3.12"
-      - standalone-noauth-ssl
+      - standalone-noauth-nossl
   - name: test-v6.0-python3.13-sync-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -8424,18 +8424,18 @@ tasks:
       - server-7.0
       - "3.9"
       - sharded_cluster-auth-ssl
-  - name: test-v8.0-python3.10-sync-noauth-ssl-standalone
+  - name: test-v8.0-python3.10-sync-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
           AUTH: noauth
-          SSL: ssl
+          SSL: nossl
           TOPOLOGY: standalone
           VERSION: "8.0"
       - func: run tests
         vars:
           AUTH: noauth
-          SSL: ssl
+          SSL: nossl
           TOPOLOGY: standalone
           VERSION: "8.0"
           PYTHON_VERSION: "3.10"
@@ -8444,7 +8444,7 @@ tasks:
       - standard-non-linux
       - server-8.0
       - "3.10"
-      - standalone-noauth-ssl
+      - standalone-noauth-nossl
   - name: test-rapid-python3.11-async-noauth-ssl-replica-set
     commands:
       - func: run server

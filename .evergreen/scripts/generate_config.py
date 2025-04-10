@@ -607,7 +607,7 @@ def create_standard_non_linux_tasks():
     tasks = []
     for version, python, topology, sync in zip_cycle(ALL_VERSIONS, CPYTHONS, TOPOLOGIES, SYNCS):
         auth = "auth" if topology == "sharded_cluster" else "noauth"
-        ssl = "nossl" if topology == "stanadlone" else "ssl"
+        ssl = "nossl" if topology == "standalone" else "ssl"
         tags = ["standard-non-linux", f"server-{version}", python, f"{topology}-{auth}-{ssl}"]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         name = get_task_name("test", python=python, sync=sync, **expansions)
