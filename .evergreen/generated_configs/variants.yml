@@ -989,6 +989,8 @@ buildvariants:
     display_name: "* Test Win32"
     run_on:
       - windows-64-vsMulti-small
+    expansions:
+      IS_WIN32: "1"
     tags: [standard-non-linux]
 
   # Storage engine tests
