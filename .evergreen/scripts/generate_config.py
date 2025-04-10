@@ -622,7 +622,9 @@ def create_standard_non_linux_tasks():
 
 def create_server_tasks():
     tasks = []
-    for topo, version, (auth, ssl), sync in product(TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, SYNCS):
+    for topo, version, (auth, ssl), sync in product(
+        TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, [*SYNCS, "sync_async"]
+    ):
         name = f"test-{version}-{topo}-{auth}-{ssl}-{sync}".lower()
         tags = [version, topo, auth, ssl, sync]
         server_vars = dict(
