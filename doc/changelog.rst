@@ -1,7 +1,6 @@
 Changelog
 =========
 
-
 Changes in Version 4.12.1 (XXXX/XX/XX)
 --------------------------------------
 
