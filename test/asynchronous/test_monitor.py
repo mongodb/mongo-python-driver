@@ -57,6 +57,7 @@ class TestMonitor(AsyncIntegrationTest):
         await connected(client)
         return client
 
+    @unittest.skipIf("PyPy" in sys.version, "PYTHON-5283 fails often on PyPy")
     async def test_cleanup_executors_on_client_del(self):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")

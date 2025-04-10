@@ -820,19 +820,7 @@ tasks:
   - name: coverage-report
     commands:
       - func: download and merge coverage
-    depends_on:
-      - name: .standalone
-        variant: .coverage_tag
-        status: "*"
-        patch_optional: true
-      - name: .replica_set
-        variant: .coverage_tag
-        status: "*"
-        patch_optional: true
-      - name: .sharded_cluster
-        variant: .coverage_tag
-        status: "*"
-        patch_optional: true
+    depends_on: [{ name: .server-version, variant: .coverage_tag, status: "*", patch_optional: true }]
     tags: [coverage]
 
   # Doctest tests
@@ -8030,6 +8018,274 @@ tasks:
       - noauth
       - nossl
       - sync_async
+
+  # Server version tests
+  - name: test-python3.9-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.9"
+    tags: [server-version, "3.9", sharded_cluster-auth-ssl]
+  - name: test-python3.10-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.10"
+    tags: [server-version, "3.10", sharded_cluster-auth-ssl]
+  - name: test-python3.11-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.11"
+    tags: [server-version, "3.11", sharded_cluster-auth-ssl]
+  - name: test-python3.12-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.12"
+    tags: [server-version, "3.12", sharded_cluster-auth-ssl]
+  - name: test-python3.13-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.13"
+    tags: [server-version, "3.13", sharded_cluster-auth-ssl]
+  - name: test-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          PYTHON_VERSION: pypy3.10
+    tags: [server-version, pypy3.10, sharded_cluster-auth-ssl]
+  - name: test-python3.9-auth-ssl-standalone-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.9"
+    tags: [server-version, "3.9", standalone-auth-ssl]
+  - name: test-python3.10-auth-nossl-standalone-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.10"
+    tags: [server-version, "3.10", standalone-auth-nossl]
+  - name: test-python3.11-noauth-ssl-standalone-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.11"
+    tags: [server-version, "3.11", standalone-noauth-ssl]
+  - name: test-python3.12-noauth-nossl-standalone-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.12"
+    tags: [server-version, "3.12", standalone-noauth-nossl]
+  - name: test-python3.13-auth-ssl-replica-set-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.13"
+    tags: [server-version, "3.13", replica_set-auth-ssl]
+  - name: test-pypy3.10-auth-nossl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: replica_set
+          PYTHON_VERSION: pypy3.10
+    tags: [server-version, pypy3.10, replica_set-auth-nossl]
+  - name: test-python3.9-noauth-ssl-replica-set-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.9"
+    tags: [server-version, "3.9", replica_set-noauth-ssl]
+  - name: test-python3.10-noauth-nossl-replica-set-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.10"
+    tags: [server-version, "3.10", replica_set-noauth-nossl]
+  - name: test-python3.12-auth-nossl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.12"
+    tags: [server-version, "3.12", sharded_cluster-auth-nossl]
+  - name: test-python3.13-noauth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.13"
+    tags: [server-version, "3.13", sharded_cluster-noauth-ssl]
+  - name: test-pypy3.10-noauth-nossl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+          PYTHON_VERSION: pypy3.10
+    tags: [server-version, pypy3.10, sharded_cluster-noauth-nossl]
 
   # Serverless tests
   - name: test-serverless

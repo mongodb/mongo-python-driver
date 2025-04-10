@@ -66,39 +66,20 @@ def create_ocsp_variants() -> list[BuildVariant]:
     return variants
 
 
+def create_server_version_variants() -> list[BuildVariant]:
+    variants = []
+    for version in ALL_VERSIONS:
+        display_name = get_variant_name("* MongoDB", version=version)
+        variant = create_variant(
+            [".server-version"], display_name, host=DEFAULT_HOST, tags=["coverage_tag"]
+        )
+        variants.append(variant)
+    return variants
+
+
 def create_server_variants() -> list[BuildVariant]:
     variants = []
-
-    # Run the full matrix on linux with min and max CPython, and latest pypy.
-    host = DEFAULT_HOST
-    # Prefix the display name with an asterisk so it is sorted first.
     base_display_name = "* Test"
-    for python, c_ext in product([*MIN_MAX_PYTHON, PYPYS[-1]], C_EXTS):
-        expansions = dict(COVERAGE="coverage")
-        handle_c_ext(c_ext, expansions)
-        display_name = get_variant_name(base_display_name, host, python=python, **expansions)
-        variant = create_variant(
-            [f".{t} .sync_async" for t in TOPOLOGIES],
-            display_name,
-            python=python,
-            host=host,
-            tags=["coverage_tag"],
-            expansions=expansions,
-        )
-        variants.append(variant)
-
-    # Test the rest of the pythons.
-    for python in CPYTHONS[1:-1] + PYPYS[:-1]:
-        display_name = f"Test {host}"
-        display_name = get_variant_name(base_display_name, host, python=python)
-        variant = create_variant(
-            [f"{t} .sync_async" for t in SUB_TASKS],
-            display_name,
-            python=python,
-            host=host,
-            expansions=expansions,
-        )
-        variants.append(variant)
 
     # Test a subset on each of the other platforms.
     for host_name in ("macos", "macos-arm64", "win64", "win32"):
@@ -597,6 +578,32 @@ def create_aws_lambda_variants():
 ##############
 
 
+def create_server_version_tasks():
+    tasks = []
+    # Test all pythons with sharded_cluster, auth, and ssl.
+    task_types = [(p, "sharded_cluster", "auth", "ssl") for p in ALL_PYTHONS]
+    # Test all combinations of topology, auth, and ssl, with rotating pythons.
+    for (topology, auth, ssl), python in zip_cycle(
+        list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"])), ALL_PYTHONS
+    ):
+        # Skip the ones we already have.
+        if topology == "sharded_cluster" and auth == "auth" and ssl == "ssl":
+            continue
+        task_types.append((python, topology, auth, ssl))
+    for python, topology, auth, ssl in task_types:
+        tags = ["server-version", python, f"{topology}-{auth}-{ssl}"]
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
+        if python not in PYPYS:
+            expansions["COVERAGE"] = "1"
+        name = get_task_name("test", python=python, **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
+        test_vars["PYTHON_VERSION"] = python
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
 def create_server_tasks():
     tasks = []
     for topo, version, (auth, ssl), sync in product(TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, SYNCS):
@@ -882,11 +889,11 @@ def create_coverage_report_tasks():
     # Instead list out all coverage tasks using tags.
     # Run the coverage task even if some tasks fail.
     # Run the coverage task even if some tasks are not scheduled in a patch build.
-    task_deps = []
-    for name in [".standalone", ".replica_set", ".sharded_cluster"]:
-        task_deps.append(
-            EvgTaskDependency(name=name, variant=".coverage_tag", status="*", patch_optional=True)
+    task_deps = [
+        EvgTaskDependency(
+            name=".server-version", variant=".coverage_tag", status="*", patch_optional=True
         )
+    ]
     cmd = FunctionCall(func="download and merge coverage")
     return [EvgTask(name=task_name, tags=tags, depends_on=task_deps, commands=[cmd])]
 
