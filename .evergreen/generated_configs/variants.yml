@@ -964,6 +964,7 @@ buildvariants:
     display_name: "* Test macOS"
     run_on:
       - macos-14
+    tags: [standard-non-linux]
   - name: test-macos-arm64
     tasks:
       - name: .standard-non-linux .server-6.0
@@ -974,18 +975,21 @@ buildvariants:
     display_name: "* Test macOS Arm64"
     run_on:
       - macos-14-arm64
+    tags: [standard-non-linux]
   - name: test-win64
     tasks:
       - name: .standard-non-linux
     display_name: "* Test Win64"
     run_on:
       - windows-64-vsMulti-small
+    tags: [standard-non-linux]
   - name: test-win32
     tasks:
       - name: .standard-non-linux
     display_name: "* Test Win32"
     run_on:
       - windows-64-vsMulti-small
+    tags: [standard-non-linux]
 
   # Storage engine tests
   - name: storage-inmemory-rhel8-python3.9

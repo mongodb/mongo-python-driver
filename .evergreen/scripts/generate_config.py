@@ -90,8 +90,9 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
                 f".standard-non-linux .server-{version}" for version in get_versions_from("6.0")
             ]
         host = HOSTS[host_name]
+        tags = ["standard-non-linux"]
         display_name = get_variant_name(base_display_name, host)
-        variant = create_variant(tasks, display_name, host=host)
+        variant = create_variant(tasks, display_name, host=host, tags=tags)
         variants.append(variant)
 
     return variants
