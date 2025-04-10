@@ -804,112 +804,6 @@ buildvariants:
     expansions:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
 
-  # Server tests
-  - name: test-macos-python3.9
-    tasks:
-      - name: .sharded_cluster .auth .ssl !.sync_async
-      - name: .replica_set .noauth .ssl !.sync_async
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: "* Test macOS Python3.9"
-    run_on:
-      - macos-14
-    expansions:
-      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-  - name: test-macos-python3.13
-    tasks:
-      - name: .sharded_cluster .auth .ssl !.sync_async
-      - name: .replica_set .noauth .ssl !.sync_async
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: "* Test macOS Python3.13"
-    run_on:
-      - macos-14
-    expansions:
-      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
-  - name: test-macos-arm64-python3.9
-    tasks:
-      - name: .sharded_cluster .auth .ssl .6.0 !.sync_async
-      - name: .replica_set .noauth .ssl .6.0 !.sync_async
-      - name: .standalone .noauth .nossl .6.0 !.sync_async
-      - name: .sharded_cluster .auth .ssl .7.0 !.sync_async
-      - name: .replica_set .noauth .ssl .7.0 !.sync_async
-      - name: .standalone .noauth .nossl .7.0 !.sync_async
-      - name: .sharded_cluster .auth .ssl .8.0 !.sync_async
-      - name: .replica_set .noauth .ssl .8.0 !.sync_async
-      - name: .standalone .noauth .nossl .8.0 !.sync_async
-      - name: .sharded_cluster .auth .ssl .rapid !.sync_async
-      - name: .replica_set .noauth .ssl .rapid !.sync_async
-      - name: .standalone .noauth .nossl .rapid !.sync_async
-      - name: .sharded_cluster .auth .ssl .latest !.sync_async
-      - name: .replica_set .noauth .ssl .latest !.sync_async
-      - name: .standalone .noauth .nossl .latest !.sync_async
-    display_name: "* Test macOS Arm64 Python3.9"
-    run_on:
-      - macos-14-arm64
-    expansions:
-      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-  - name: test-macos-arm64-python3.13
-    tasks:
-      - name: .sharded_cluster .auth .ssl .6.0 !.sync_async
-      - name: .replica_set .noauth .ssl .6.0 !.sync_async
-      - name: .standalone .noauth .nossl .6.0 !.sync_async
-      - name: .sharded_cluster .auth .ssl .7.0 !.sync_async
-      - name: .replica_set .noauth .ssl .7.0 !.sync_async
-      - name: .standalone .noauth .nossl .7.0 !.sync_async
-      - name: .sharded_cluster .auth .ssl .8.0 !.sync_async
-      - name: .replica_set .noauth .ssl .8.0 !.sync_async
-      - name: .standalone .noauth .nossl .8.0 !.sync_async
-      - name: .sharded_cluster .auth .ssl .rapid !.sync_async
-      - name: .replica_set .noauth .ssl .rapid !.sync_async
-      - name: .standalone .noauth .nossl .rapid !.sync_async
-      - name: .sharded_cluster .auth .ssl .latest !.sync_async
-      - name: .replica_set .noauth .ssl .latest !.sync_async
-      - name: .standalone .noauth .nossl .latest !.sync_async
-    display_name: "* Test macOS Arm64 Python3.13"
-    run_on:
-      - macos-14-arm64
-    expansions:
-      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
-  - name: test-win64-python3.9
-    tasks:
-      - name: .sharded_cluster .auth .ssl !.sync_async
-      - name: .replica_set .noauth .ssl !.sync_async
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: "* Test Win64 Python3.9"
-    run_on:
-      - windows-64-vsMulti-small
-    expansions:
-      PYTHON_BINARY: C:/python/Python39/python.exe
-  - name: test-win64-python3.13
-    tasks:
-      - name: .sharded_cluster .auth .ssl !.sync_async
-      - name: .replica_set .noauth .ssl !.sync_async
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: "* Test Win64 Python3.13"
-    run_on:
-      - windows-64-vsMulti-small
-    expansions:
-      PYTHON_BINARY: C:/python/Python313/python.exe
-  - name: test-win32-python3.9
-    tasks:
-      - name: .sharded_cluster .auth .ssl !.sync_async
-      - name: .replica_set .noauth .ssl !.sync_async
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: "* Test Win32 Python3.9"
-    run_on:
-      - windows-64-vsMulti-small
-    expansions:
-      PYTHON_BINARY: C:/python/32/Python39/python.exe
-  - name: test-win32-python3.13
-    tasks:
-      - name: .sharded_cluster .auth .ssl !.sync_async
-      - name: .replica_set .noauth .ssl !.sync_async
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: "* Test Win32 Python3.13"
-    run_on:
-      - windows-64-vsMulti-small
-    expansions:
-      PYTHON_BINARY: C:/python/32/Python313/python.exe
-
   # Server version tests
   - name: mongodb-v4.0
     tasks:
@@ -1062,6 +956,42 @@ buildvariants:
       ORCHESTRATION_FILE: versioned-api-testing.json
       PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [versionedApi_tag]
+
+  # Standard nonlinux tests
+  - name: test-macos
+    tasks:
+      - name: .standard-non-linux
+    display_name: "* Test macOS"
+    run_on:
+      - macos-14
+    tags: [standard-non-linux]
+  - name: test-macos-arm64
+    tasks:
+      - name: .standard-non-linux .server-6.0
+      - name: .standard-non-linux .server-7.0
+      - name: .standard-non-linux .server-8.0
+      - name: .standard-non-linux .server-rapid
+      - name: .standard-non-linux .server-latest
+    display_name: "* Test macOS Arm64"
+    run_on:
+      - macos-14-arm64
+    tags: [standard-non-linux]
+  - name: test-win64
+    tasks:
+      - name: .standard-non-linux
+    display_name: "* Test Win64"
+    run_on:
+      - windows-64-vsMulti-small
+    tags: [standard-non-linux]
+  - name: test-win32
+    tasks:
+      - name: .standard-non-linux
+    display_name: "* Test Win32"
+    run_on:
+      - windows-64-vsMulti-small
+    expansions:
+      IS_WIN32: "1"
+    tags: [standard-non-linux]
 
   # Storage engine tests
   - name: storage-inmemory-rhel8-python3.9

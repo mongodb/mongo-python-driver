@@ -36,7 +36,7 @@ SUB_TASKS = [
     ".replica_set .noauth .ssl",
     ".standalone .noauth .nossl",
 ]
-SYNCS = ["sync", "async", "sync_async"]
+SYNCS = ["sync", "async"]
 DISPLAY_LOOKUP = dict(
     ssl=dict(ssl="SSL", nossl="NoSSL"),
     auth=dict(auth="Auth", noauth="NoAuth"),
@@ -44,6 +44,7 @@ DISPLAY_LOOKUP = dict(
         standalone="Standalone", replica_set="Replica Set", sharded_cluster="Sharded Cluster"
     ),
     test_suites=dict(default="Sync", default_async="Async"),
+    sync={"sync": "Sync", "async": "Async"},
     coverage={"1": "cov"},
     no_ext={"1": "No C"},
 )
