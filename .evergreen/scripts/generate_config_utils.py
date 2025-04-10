@@ -36,7 +36,7 @@ SUB_TASKS = [
     ".replica_set .noauth .ssl",
     ".standalone .noauth .nossl",
 ]
-SYNCS = ["sync", "async", "sync_async"]
+SYNCS = ["sync", "async"]
 DISPLAY_LOOKUP = dict(
     ssl=dict(ssl="SSL", nossl="NoSSL"),
     auth=dict(auth="Auth", noauth="NoAuth"),

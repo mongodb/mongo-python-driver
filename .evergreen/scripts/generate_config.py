@@ -77,23 +77,22 @@ def create_server_version_variants() -> list[BuildVariant]:
     return variants
 
 
-def create_server_variants() -> list[BuildVariant]:
+def create_standard_nonlinux_variants() -> list[BuildVariant]:
     variants = []
     base_display_name = "* Test"
 
     # Test a subset on each of the other platforms.
     for host_name in ("macos", "macos-arm64", "win64", "win32"):
-        for python in MIN_MAX_PYTHON:
-            tasks = [f"{t} !.sync_async" for t in SUB_TASKS]
-            # MacOS arm64 only works on server versions 6.0+
-            if host_name == "macos-arm64":
-                tasks = []
-                for version in get_versions_from("6.0"):
-                    tasks.extend(f"{t} .{version} !.sync_async" for t in SUB_TASKS)
-            host = HOSTS[host_name]
-            display_name = get_variant_name(base_display_name, host, python=python)
-            variant = create_variant(tasks, display_name, python=python, host=host)
-            variants.append(variant)
+        tasks = [".standard-non-linux"]
+        # MacOS arm64 only works on server versions 6.0+
+        if host_name == "macos-arm64":
+            tasks = [
+                f".standard-non-linux .server-{version}" for version in get_versions_from("6.0")
+            ]
+        host = HOSTS[host_name]
+        display_name = get_variant_name(base_display_name, host)
+        variant = create_variant(tasks, display_name, host=host)
+        variants.append(variant)
 
     return variants
 
@@ -599,6 +598,23 @@ def create_server_version_tasks():
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
+def create_standard_non_linux_tasks():
+    tasks = []
+    for version, python, topology, sync in zip_cycle(ALL_VERSIONS, CPYTHONS, TOPOLOGIES, SYNCS):
+        auth = "auth" if topology == "sharded_cluster" else "noauth"
+        ssl = "nossl" if topology == "stanadlone" else "ssl"
+        tags = ["standard-non-linux", f"server-{version}", python, f"{topology}-{auth}-{ssl}"]
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
+        name = get_task_name("test", python=python, **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
+        test_vars["PYTHON_VERSION"] = python
+        test_vars["TASK_NAME"] = f"default_{sync}"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks

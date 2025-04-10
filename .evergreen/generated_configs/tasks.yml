@@ -3279,25 +3279,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-4.0-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
   - name: test-4.0-standalone-noauth-ssl-sync
     commands:
       - func: run server
@@ -3338,25 +3319,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-4.0-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
   - name: test-4.0-standalone-noauth-nossl-sync
     commands:
       - func: run server
@@ -3397,25 +3359,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-4.0-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
   - name: test-4.2-standalone-auth-ssl-sync
     commands:
       - func: run server
@@ -3456,25 +3399,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-4.2-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
   - name: test-4.2-standalone-noauth-ssl-sync
     commands:
       - func: run server
@@ -3515,25 +3439,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-4.2-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
   - name: test-4.2-standalone-noauth-nossl-sync
     commands:
       - func: run server
@@ -3574,25 +3479,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-4.2-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
   - name: test-4.4-standalone-auth-ssl-sync
     commands:
       - func: run server
@@ -3633,25 +3519,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-4.4-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
   - name: test-4.4-standalone-noauth-ssl-sync
     commands:
       - func: run server
@@ -3692,25 +3559,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-4.4-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
   - name: test-4.4-standalone-noauth-nossl-sync
     commands:
       - func: run server
@@ -3751,25 +3599,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-4.4-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
   - name: test-5.0-standalone-auth-ssl-sync
     commands:
       - func: run server
@@ -3810,25 +3639,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-5.0-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
   - name: test-5.0-standalone-noauth-ssl-sync
     commands:
       - func: run server
@@ -3869,25 +3679,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-5.0-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
   - name: test-5.0-standalone-noauth-nossl-sync
     commands:
       - func: run server
@@ -3928,25 +3719,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-5.0-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
   - name: test-6.0-standalone-auth-ssl-sync
     commands:
       - func: run server
@@ -3987,25 +3759,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-6.0-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
   - name: test-6.0-standalone-noauth-ssl-sync
     commands:
       - func: run server
@@ -4046,25 +3799,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-6.0-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
   - name: test-6.0-standalone-noauth-nossl-sync
     commands:
       - func: run server
@@ -4105,25 +3839,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-6.0-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
   - name: test-7.0-standalone-auth-ssl-sync
     commands:
       - func: run server
@@ -4164,25 +3879,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-7.0-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
   - name: test-7.0-standalone-noauth-ssl-sync
     commands:
       - func: run server
@@ -4223,25 +3919,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-7.0-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
   - name: test-7.0-standalone-noauth-nossl-sync
     commands:
       - func: run server
@@ -4282,25 +3959,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-7.0-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
   - name: test-8.0-standalone-auth-ssl-sync
     commands:
       - func: run server
@@ -4341,25 +3999,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-8.0-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
   - name: test-8.0-standalone-noauth-ssl-sync
     commands:
       - func: run server
@@ -4400,25 +4039,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-8.0-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
   - name: test-8.0-standalone-noauth-nossl-sync
     commands:
       - func: run server
@@ -4459,25 +4079,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-8.0-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
   - name: test-rapid-standalone-auth-ssl-sync
     commands:
       - func: run server
@@ -4518,25 +4119,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-rapid-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - standalone
-      - auth
-      - ssl
-      - sync_async
   - name: test-rapid-standalone-noauth-ssl-sync
     commands:
       - func: run server
@@ -4577,25 +4159,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-rapid-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
   - name: test-rapid-standalone-noauth-nossl-sync
     commands:
       - func: run server
@@ -4636,25 +4199,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-rapid-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
   - name: test-latest-standalone-auth-ssl-sync
     commands:
       - func: run server
@@ -4695,25 +4239,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-latest-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - standalone
-      - auth
-      - ssl
-      - sync_async
   - name: test-latest-standalone-noauth-ssl-sync
     commands:
       - func: run server
@@ -4754,25 +4279,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-latest-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
   - name: test-latest-standalone-noauth-nossl-sync
     commands:
       - func: run server
@@ -4813,25 +4319,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-latest-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - latest
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
   - name: test-4.0-replica_set-auth-ssl-sync
     commands:
       - func: run server
@@ -4872,25 +4359,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-4.0-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
   - name: test-4.0-replica_set-noauth-ssl-sync
     commands:
       - func: run server
@@ -4931,25 +4399,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-4.0-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
   - name: test-4.0-replica_set-noauth-nossl-sync
     commands:
       - func: run server
@@ -4990,25 +4439,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-4.0-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
   - name: test-4.2-replica_set-auth-ssl-sync
     commands:
       - func: run server
@@ -5049,25 +4479,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-4.2-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
   - name: test-4.2-replica_set-noauth-ssl-sync
     commands:
       - func: run server
@@ -5108,25 +4519,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-4.2-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
   - name: test-4.2-replica_set-noauth-nossl-sync
     commands:
       - func: run server
@@ -5167,25 +4559,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-4.2-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
   - name: test-4.4-replica_set-auth-ssl-sync
     commands:
       - func: run server
@@ -5226,25 +4599,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-4.4-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
   - name: test-4.4-replica_set-noauth-ssl-sync
     commands:
       - func: run server
@@ -5285,25 +4639,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-4.4-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
   - name: test-4.4-replica_set-noauth-nossl-sync
     commands:
       - func: run server
@@ -5344,25 +4679,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-4.4-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
   - name: test-5.0-replica_set-auth-ssl-sync
     commands:
       - func: run server
@@ -5403,25 +4719,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-5.0-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
   - name: test-5.0-replica_set-noauth-ssl-sync
     commands:
       - func: run server
@@ -5462,25 +4759,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-5.0-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
   - name: test-5.0-replica_set-noauth-nossl-sync
     commands:
       - func: run server
@@ -5521,25 +4799,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-5.0-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
   - name: test-6.0-replica_set-auth-ssl-sync
     commands:
       - func: run server
@@ -5580,25 +4839,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-6.0-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
   - name: test-6.0-replica_set-noauth-ssl-sync
     commands:
       - func: run server
@@ -5639,25 +4879,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-6.0-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
   - name: test-6.0-replica_set-noauth-nossl-sync
     commands:
       - func: run server
@@ -5698,25 +4919,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-6.0-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
   - name: test-7.0-replica_set-auth-ssl-sync
     commands:
       - func: run server
@@ -5757,25 +4959,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-7.0-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
   - name: test-7.0-replica_set-noauth-ssl-sync
     commands:
       - func: run server
@@ -5816,25 +4999,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-7.0-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
   - name: test-7.0-replica_set-noauth-nossl-sync
     commands:
       - func: run server
@@ -5875,25 +5039,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-7.0-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
   - name: test-8.0-replica_set-auth-ssl-sync
     commands:
       - func: run server
@@ -5934,25 +5079,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-8.0-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
   - name: test-8.0-replica_set-noauth-ssl-sync
     commands:
       - func: run server
@@ -5993,25 +5119,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-8.0-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
   - name: test-8.0-replica_set-noauth-nossl-sync
     commands:
       - func: run server
@@ -6052,25 +5159,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-8.0-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
   - name: test-rapid-replica_set-auth-ssl-sync
     commands:
       - func: run server
@@ -6111,25 +5199,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-rapid-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
   - name: test-rapid-replica_set-noauth-ssl-sync
     commands:
       - func: run server
@@ -6170,25 +5239,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-rapid-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
   - name: test-rapid-replica_set-noauth-nossl-sync
     commands:
       - func: run server
@@ -6229,25 +5279,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-rapid-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
   - name: test-latest-replica_set-auth-ssl-sync
     commands:
       - func: run server
@@ -6288,25 +5319,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-latest-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
   - name: test-latest-replica_set-noauth-ssl-sync
     commands:
       - func: run server
@@ -6347,25 +5359,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-latest-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
   - name: test-latest-replica_set-noauth-nossl-sync
     commands:
       - func: run server
@@ -6406,25 +5399,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-latest-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - latest
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
   - name: test-4.0-sharded_cluster-auth-ssl-sync
     commands:
       - func: run server
@@ -6465,25 +5439,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-4.0-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
   - name: test-4.0-sharded_cluster-noauth-ssl-sync
     commands:
       - func: run server
@@ -6524,25 +5479,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-4.0-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
   - name: test-4.0-sharded_cluster-noauth-nossl-sync
     commands:
       - func: run server
@@ -6583,25 +5519,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-4.0-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
   - name: test-4.2-sharded_cluster-auth-ssl-sync
     commands:
       - func: run server
@@ -6642,25 +5559,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-4.2-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
   - name: test-4.2-sharded_cluster-noauth-ssl-sync
     commands:
       - func: run server
@@ -6701,25 +5599,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-4.2-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
   - name: test-4.2-sharded_cluster-noauth-nossl-sync
     commands:
       - func: run server
@@ -6760,25 +5639,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-4.2-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
   - name: test-4.4-sharded_cluster-auth-ssl-sync
     commands:
       - func: run server
@@ -6819,25 +5679,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-4.4-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
   - name: test-4.4-sharded_cluster-noauth-ssl-sync
     commands:
       - func: run server
@@ -6878,25 +5719,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-4.4-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
   - name: test-4.4-sharded_cluster-noauth-nossl-sync
     commands:
       - func: run server
@@ -6937,25 +5759,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-4.4-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
   - name: test-5.0-sharded_cluster-auth-ssl-sync
     commands:
       - func: run server
@@ -6996,25 +5799,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-5.0-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
   - name: test-5.0-sharded_cluster-noauth-ssl-sync
     commands:
       - func: run server
@@ -7055,25 +5839,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-5.0-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
   - name: test-5.0-sharded_cluster-noauth-nossl-sync
     commands:
       - func: run server
@@ -7114,25 +5879,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-5.0-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
   - name: test-6.0-sharded_cluster-auth-ssl-sync
     commands:
       - func: run server
@@ -7173,25 +5919,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-6.0-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
   - name: test-6.0-sharded_cluster-noauth-ssl-sync
     commands:
       - func: run server
@@ -7232,25 +5959,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-6.0-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
   - name: test-6.0-sharded_cluster-noauth-nossl-sync
     commands:
       - func: run server
@@ -7291,25 +5999,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-6.0-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
   - name: test-7.0-sharded_cluster-auth-ssl-sync
     commands:
       - func: run server
@@ -7350,25 +6039,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-7.0-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
   - name: test-7.0-sharded_cluster-noauth-ssl-sync
     commands:
       - func: run server
@@ -7409,25 +6079,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-7.0-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
   - name: test-7.0-sharded_cluster-noauth-nossl-sync
     commands:
       - func: run server
@@ -7468,25 +6119,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-7.0-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
   - name: test-8.0-sharded_cluster-auth-ssl-sync
     commands:
       - func: run server
@@ -7527,25 +6159,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-8.0-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
   - name: test-8.0-sharded_cluster-noauth-ssl-sync
     commands:
       - func: run server
@@ -7586,25 +6199,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-8.0-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
   - name: test-8.0-sharded_cluster-noauth-nossl-sync
     commands:
       - func: run server
@@ -7645,25 +6239,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-8.0-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
   - name: test-rapid-sharded_cluster-auth-ssl-sync
     commands:
       - func: run server
@@ -7704,25 +6279,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-rapid-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
   - name: test-rapid-sharded_cluster-noauth-ssl-sync
     commands:
       - func: run server
@@ -7763,25 +6319,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-rapid-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
   - name: test-rapid-sharded_cluster-noauth-nossl-sync
     commands:
       - func: run server
@@ -7822,25 +6359,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-rapid-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
   - name: test-latest-sharded_cluster-auth-ssl-sync
     commands:
       - func: run server
@@ -7881,25 +6399,6 @@ tasks:
       - auth
       - ssl
       - async
-  - name: test-latest-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
   - name: test-latest-sharded_cluster-noauth-ssl-sync
     commands:
       - func: run server
@@ -7940,25 +6439,6 @@ tasks:
       - noauth
       - ssl
       - async
-  - name: test-latest-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
   - name: test-latest-sharded_cluster-noauth-nossl-sync
     commands:
       - func: run server
@@ -7999,25 +6479,6 @@ tasks:
       - noauth
       - nossl
       - async
-  - name: test-latest-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - latest
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
 
   # Server version tests
   - name: test-python3.9-auth-ssl-sharded-cluster-cov
@@ -8296,3 +6757,194 @@ tasks:
           AUTH: auth
           SSL: ssl
     tags: [serverless]
+
+  # Standard non linux tests
+  - name: test-v4.0-python3.9-noauth-ssl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+          VERSION: "4.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+          VERSION: "4.0"
+          PYTHON_VERSION: "3.9"
+          TASK_NAME: default_sync
+    tags:
+      - standard-non-linux
+      - server-4.0
+      - "3.9"
+      - standalone-noauth-ssl
+  - name: test-v4.2-python3.10-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "4.2"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "4.2"
+          PYTHON_VERSION: "3.10"
+          TASK_NAME: default_async
+    tags:
+      - standard-non-linux
+      - server-4.2
+      - "3.10"
+      - replica_set-noauth-ssl
+  - name: test-v4.4-python3.11-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.4"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.4"
+          PYTHON_VERSION: "3.11"
+          TASK_NAME: default_sync
+    tags:
+      - standard-non-linux
+      - server-4.4
+      - "3.11"
+      - sharded_cluster-auth-ssl
+  - name: test-v5.0-python3.12-noauth-ssl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+          VERSION: "5.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+          VERSION: "5.0"
+          PYTHON_VERSION: "3.12"
+          TASK_NAME: default_async
+    tags:
+      - standard-non-linux
+      - server-5.0
+      - "3.12"
+      - standalone-noauth-ssl
+  - name: test-v6.0-python3.13-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "6.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "6.0"
+          PYTHON_VERSION: "3.13"
+          TASK_NAME: default_sync
+    tags:
+      - standard-non-linux
+      - server-6.0
+      - "3.13"
+      - replica_set-noauth-ssl
+  - name: test-v7.0-python3.9-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "7.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "7.0"
+          PYTHON_VERSION: "3.9"
+          TASK_NAME: default_async
+    tags:
+      - standard-non-linux
+      - server-7.0
+      - "3.9"
+      - sharded_cluster-auth-ssl
+  - name: test-v8.0-python3.10-noauth-ssl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+          VERSION: "8.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+          VERSION: "8.0"
+          PYTHON_VERSION: "3.10"
+          TASK_NAME: default_sync
+    tags:
+      - standard-non-linux
+      - server-8.0
+      - "3.10"
+      - standalone-noauth-ssl
+  - name: test-rapid-python3.11-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: rapid
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: rapid
+          PYTHON_VERSION: "3.11"
+          TASK_NAME: default_async
+    tags:
+      - standard-non-linux
+      - server-rapid
+      - "3.11"
+      - replica_set-noauth-ssl
+  - name: test-latest-python3.12-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+          PYTHON_VERSION: "3.12"
+          TASK_NAME: default_sync
+    tags:
+      - standard-non-linux
+      - server-latest
+      - "3.12"
+      - sharded_cluster-auth-ssl
