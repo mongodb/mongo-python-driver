@@ -40,8 +40,11 @@ SYNCS = ["sync", "async", "sync_async"]
 DISPLAY_LOOKUP = dict(
     ssl=dict(ssl="SSL", nossl="NoSSL"),
     auth=dict(auth="Auth", noauth="NoAuth"),
+    topology=dict(
+        standalone="Standalone", replica_set="Replica Set", sharded_cluster="Sharded Cluster"
+    ),
     test_suites=dict(default="Sync", default_async="Async"),
-    coverage=dict(coverage="cov"),
+    coverage={"1": "cov"},
     no_ext={"1": "No C"},
 )
 HOSTS = dict()
