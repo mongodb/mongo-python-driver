@@ -8313,7 +8313,7 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "4.0"
           PYTHON_VERSION: "3.9"
-          TASK_NAME: default_sync
+          TEST_NAME: default_sync
     tags:
       - standard-non-linux
       - server-4.0
@@ -8335,7 +8335,7 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: "4.2"
           PYTHON_VERSION: "3.10"
-          TASK_NAME: default_async
+          TEST_NAME: default_async
     tags:
       - standard-non-linux
       - server-4.2
@@ -8357,7 +8357,7 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "4.4"
           PYTHON_VERSION: "3.11"
-          TASK_NAME: default_sync
+          TEST_NAME: default_sync
     tags:
       - standard-non-linux
       - server-4.4
@@ -8379,7 +8379,7 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "5.0"
           PYTHON_VERSION: "3.12"
-          TASK_NAME: default_async
+          TEST_NAME: default_async
     tags:
       - standard-non-linux
       - server-5.0
@@ -8401,7 +8401,7 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: "6.0"
           PYTHON_VERSION: "3.13"
-          TASK_NAME: default_sync
+          TEST_NAME: default_sync
     tags:
       - standard-non-linux
       - server-6.0
@@ -8423,7 +8423,7 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "7.0"
           PYTHON_VERSION: "3.9"
-          TASK_NAME: default_async
+          TEST_NAME: default_async
     tags:
       - standard-non-linux
       - server-7.0
@@ -8445,7 +8445,7 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "8.0"
           PYTHON_VERSION: "3.10"
-          TASK_NAME: default_sync
+          TEST_NAME: default_sync
     tags:
       - standard-non-linux
       - server-8.0
@@ -8467,7 +8467,7 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: rapid
           PYTHON_VERSION: "3.11"
-          TASK_NAME: default_async
+          TEST_NAME: default_async
     tags:
       - standard-non-linux
       - server-rapid
@@ -8489,7 +8489,7 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: latest
           PYTHON_VERSION: "3.12"
-          TASK_NAME: default_sync
+          TEST_NAME: default_sync
     tags:
       - standard-non-linux
       - server-latest
