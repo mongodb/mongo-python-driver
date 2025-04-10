@@ -220,12 +220,15 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
                 mock_resolver.side_effect = mock_resolve
                 domain = case["query"].split("._tcp.")[1]
                 connection_string = f"mongodb+srv://{domain}"
-                try:
+                if "expected_error" not in case:
                     await parse_uri(connection_string)
-                except ConfigurationError as e:
-                    self.assertIn(case["expected_error"], str(e))
                 else:
-                    self.fail(f"ConfigurationError was not raised for query: {case['query']}")
+                    try:
+                        await parse_uri(connection_string)
+                    except ConfigurationError as e:
+                        self.assertIn(case["expected_error"], str(e))
+                    else:
+                        self.fail(f"ConfigurationError was not raised for query: {case['query']}")
 
     async def test_1_allow_srv_hosts_with_fewer_than_three_dot_separated_parts(self):
         with patch("dns.asyncresolver.resolve"):
@@ -285,6 +288,17 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
                 "query": "_mongodb._tcp.blogs.mongodb.com",
                 "mock_target": "cluster.testmongodb.com",
                 "expected_error": "Invalid SRV host",
+            },
+        ]
+        await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
+
+    async def test_5_when_srv_hostname_has_two_dot_separated_parts_it_is_valid_for_the_returned_hostname_to_be_identical(
+        self
+    ):
+        test_cases = [
+            {
+                "query": "_mongodb._tcp.blogs.mongodb.com",
+                "mock_target": "blogs.mongodb.com",
             },
         ]
         await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
