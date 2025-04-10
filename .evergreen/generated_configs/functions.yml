@@ -16,8 +16,11 @@ functions:
   cleanup:
     - command: subprocess.exec
       params:
+        binary: bash
         args:
           - .evergreen/scripts/cleanup.sh
+        working_dir: src
+      type: test
 
   # Download and merge coverage
   download and merge coverage:
@@ -86,22 +89,27 @@ functions:
   run just script:
     - command: subprocess.exec
       params:
+        binary: bash
         args:
           - .evergreen/just.sh
           - ${JUSTFILE_TARGET}
+        working_dir: src
         include_expansions_in_env:
           - AWS_ACCESS_KEY_ID
           - AWS_SECRET_ACCESS_KEY
           - AWS_SESSION_TOKEN
+      type: test
 
   # Run server
   run server:
     - command: subprocess.exec
       params:
+        binary: bash
         args:
           - .evergreen/just.sh
           - run-server
           - ${TEST_NAME}
+        working_dir: src
         include_expansions_in_env:
           - VERSION
           - TOPOLOGY
@@ -117,6 +125,8 @@ functions:
           - AUTH_AWS
           - LOAD_BALANCER
           - LOCAL_ATLAS
+          - NO_EXT
+      type: test
     - command: expansions.update
       params:
         file: ${DRIVERS_TOOLS}/mo-expansion.yml
@@ -125,11 +135,13 @@ functions:
   run tests:
     - command: subprocess.exec
       params:
+        binary: bash
         args:
           - .evergreen/just.sh
           - setup-tests
           - ${TEST_NAME}
           - ${SUB_TEST_NAME}
+        working_dir: src
         include_expansions_in_env:
           - AUTH
           - SSL
@@ -150,11 +162,16 @@ functions:
           - ORCHESTRATION_FILE
           - OCSP_SERVER_TYPE
           - VERSION
+          - REQUIRE_FIPS
+      type: test
     - command: subprocess.exec
       params:
+        binary: bash
         args:
           - .evergreen/just.sh
           - run-tests
+        working_dir: src
+      type: test
 
   # Send dashboard data
   send dashboard data:
@@ -183,13 +200,19 @@ functions:
   teardown system:
     - command: subprocess.exec
       params:
+        binary: bash
         args:
           - .evergreen/just.sh
           - teardown-tests
+        working_dir: src
+      type: test
     - command: subprocess.exec
       params:
+        binary: bash
         args:
           - ${DRIVERS_TOOLS}/.evergreen/teardown.sh
+        working_dir: src
+      type: test
 
   # Upload coverage
   upload coverage:

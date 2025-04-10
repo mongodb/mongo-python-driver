@@ -43,7 +43,6 @@ from shrub.v3.evg_command import (
     expansions_update,
     git_get_project,
     perf_send,
-    subprocess_exec,
 )
 from shrub.v3.evg_task import EvgTask, EvgTaskDependency, EvgTaskRef
 
@@ -1111,9 +1110,10 @@ def create_run_server_func():
         "AUTH_AWS",
         "LOAD_BALANCER",
         "LOCAL_ATLAS",
+        "NO_EXT",
     ]
     args = [".evergreen/just.sh", "run-server", "${TEST_NAME}"]
-    sub_cmd = subprocess_exec(include_expansions_in_env=includes, args=args)
+    sub_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
     expansion_cmd = expansions_update(file="${DRIVERS_TOOLS}/mo-expansion.yml")
     return "run server", [sub_cmd, expansion_cmd]
 
@@ -1121,7 +1121,7 @@ def create_run_server_func():
 def create_run_just_script_func():
     includes = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
     args = [".evergreen/just.sh", "${JUSTFILE_TARGET}"]
-    cmd = subprocess_exec(include_expansions_in_env=includes, args=args)
+    cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
     return "run just script", [cmd]
 
 
@@ -1146,21 +1146,22 @@ def create_run_tests_func():
         "ORCHESTRATION_FILE",
         "OCSP_SERVER_TYPE",
         "VERSION",
+        "REQUIRE_FIPS",
     ]
     args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
-    setup_cmd = subprocess_exec(include_expansions_in_env=includes, args=args)
-    test_cmd = subprocess_exec(args=[".evergreen/just.sh", "run-tests"])
+    setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
+    test_cmd = get_subprocess_exec(args=[".evergreen/just.sh", "run-tests"])
     return "run tests", [setup_cmd, test_cmd]
 
 
 def create_cleanup_func():
-    cmd = subprocess_exec(args=[".evergreen/scripts/cleanup.sh"])
+    cmd = get_subprocess_exec(args=[".evergreen/scripts/cleanup.sh"])
     return "cleanup", [cmd]
 
 
 def create_teardown_system_func():
-    tests_cmd = subprocess_exec(args=[".evergreen/just.sh", "teardown-tests"])
-    drivers_cmd = subprocess_exec(args=["${DRIVERS_TOOLS}/.evergreen/teardown.sh"])
+    tests_cmd = get_subprocess_exec(args=[".evergreen/just.sh", "teardown-tests"])
+    drivers_cmd = get_subprocess_exec(args=["${DRIVERS_TOOLS}/.evergreen/teardown.sh"])
     return "teardown system", [tests_cmd, drivers_cmd]
 
 
