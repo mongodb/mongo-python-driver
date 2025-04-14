@@ -1177,6 +1177,7 @@ def create_run_tests_func():
         "ORCHESTRATION_FILE",
         "OCSP_SERVER_TYPE",
         "VERSION",
+        "IS_WIN32",
         "REQUIRE_FIPS",
     ]
     args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]

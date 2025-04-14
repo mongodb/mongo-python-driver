@@ -162,6 +162,7 @@ functions:
           - ORCHESTRATION_FILE
           - OCSP_SERVER_TYPE
           - VERSION
+          - IS_WIN32
           - REQUIRE_FIPS
       type: test
     - command: subprocess.exec
