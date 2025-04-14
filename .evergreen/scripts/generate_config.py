@@ -83,23 +83,26 @@ def create_server_version_variants() -> list[BuildVariant]:
     return variants
 
 
-def create_server_variants() -> list[BuildVariant]:
+def create_standard_nonlinux_variants() -> list[BuildVariant]:
     variants = []
     base_display_name = "* Test"
 
     # Test a subset on each of the other platforms.
     for host_name in ("macos", "macos-arm64", "win64", "win32"):
-        for python in MIN_MAX_PYTHON:
-            tasks = [f"{t} !.sync_async" for t in SUB_TASKS]
-            # MacOS arm64 only works on server versions 6.0+
-            if host_name == "macos-arm64":
-                tasks = []
-                for version in get_versions_from("6.0"):
-                    tasks.extend(f"{t} .{version} !.sync_async" for t in SUB_TASKS)
-            host = HOSTS[host_name]
-            display_name = get_variant_name(base_display_name, host, python=python)
-            variant = create_variant(tasks, display_name, python=python, host=host)
-            variants.append(variant)
+        tasks = [".standard-non-linux"]
+        # MacOS arm64 only works on server versions 6.0+
+        if host_name == "macos-arm64":
+            tasks = [
+                f".standard-non-linux .server-{version}" for version in get_versions_from("6.0")
+            ]
+        host = HOSTS[host_name]
+        tags = ["standard-non-linux"]
+        expansions = dict()
+        if host_name == "win32":
+            expansions["IS_WIN32"] = "1"
+        display_name = get_variant_name(base_display_name, host)
+        variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
+        variants.append(variant)
 
     return variants
 
@@ -597,7 +600,7 @@ def create_server_version_tasks():
             continue
         task_types.append((python, topology, auth, ssl))
     for python, topology, auth, ssl in task_types:
-        tags = ["server-version", python, f"{topology}-{auth}-{ssl}"]
+        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}"]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
@@ -610,9 +613,37 @@ def create_server_version_tasks():
     return tasks
 
 
+def create_standard_non_linux_tasks():
+    tasks = []
+
+    for (version, topology), python, sync in zip_cycle(
+        list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS, SYNCS
+    ):
+        auth = "auth" if topology == "sharded_cluster" else "noauth"
+        ssl = "nossl" if topology == "standalone" else "ssl"
+        tags = [
+            "standard-non-linux",
+            f"server-{version}",
+            f"python-{python}",
+            f"{topology}-{auth}-{ssl}",
+            sync,
+        ]
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
+        name = get_task_name("test", python=python, sync=sync, **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
+        test_vars["PYTHON_VERSION"] = python
+        test_vars["TEST_NAME"] = f"default_{sync}"
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
 def create_server_tasks():
     tasks = []
-    for topo, version, (auth, ssl), sync in product(TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, SYNCS):
+    for topo, version, (auth, ssl), sync in product(
+        TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, [*SYNCS, "sync_async"]
+    ):
         name = f"test-{version}-{topo}-{auth}-{ssl}-{sync}".lower()
         tags = [version, topo, auth, ssl, sync]
         server_vars = dict(
