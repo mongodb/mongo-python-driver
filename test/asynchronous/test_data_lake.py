@@ -80,17 +80,20 @@ class TestDataLakeProse(AsyncIntegrationTest):
         self.assertEqual(cursor_ns, target_ns)
 
         self.assertIn(cursor_id, succeeded.reply["cursorsKilled"])
+        await client.close()
 
     # Test no auth
     async def test_2(self):
         client = await self.async_rs_client_noauth()
         await client.admin.command("ping")
+        await client.close()
 
     # Test with auth
     async def test_3(self):
         for mechanism in ["SCRAM-SHA-1", "SCRAM-SHA-256"]:
             client = await self.async_rs_or_single_client(authMechanism=mechanism)
             await client[self.TEST_DB][self.TEST_COLLECTION].find_one()
+            await client.close()
 
 
 # Location of JSON test specifications.

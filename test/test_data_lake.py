@@ -80,17 +80,20 @@ class TestDataLakeProse(IntegrationTest):
         self.assertEqual(cursor_ns, target_ns)
 
         self.assertIn(cursor_id, succeeded.reply["cursorsKilled"])
+        client.close()
 
     # Test no auth
     def test_2(self):
         client = self.rs_client_noauth()
         client.admin.command("ping")
+        client.close()
 
     # Test with auth
     def test_3(self):
         for mechanism in ["SCRAM-SHA-1", "SCRAM-SHA-256"]:
             client = self.rs_or_single_client(authMechanism=mechanism)
             client[self.TEST_DB][self.TEST_COLLECTION].find_one()
+            client.close()
 
 
 # Location of JSON test specifications.
