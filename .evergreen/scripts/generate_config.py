@@ -205,13 +205,15 @@ def create_load_balancer_variants():
 
 
 def create_compression_variants():
-    # Compression tests - standalone versions of each server, across python versions.
+    # Compression tests - use the standard linux tests.
     host = DEFAULT_HOST
-    base_task = ".compression"
     variants = []
     for compressor in "snappy", "zlib", "zstd":
         expansions = dict(COMPRESSOR=compressor)
-        tasks = [base_task] if compressor != "zstd" else [f"{base_task} !.4.0"]
+        if compressor == "zstd":
+            tasks = [".standard-linux !.server-4.0"]
+        else:
+            tasks = [".standard-linux"]
         display_name = get_variant_name(f"Compression {compressor}", host)
         variants.append(
             create_variant(
@@ -607,6 +609,30 @@ def create_server_version_tasks():
     return tasks
 
 
+def create_standard_linux_tasks():
+    tasks = []
+
+    for (version, topology), python in zip_cycle(
+        list(product(ALL_VERSIONS, TOPOLOGIES)), ALL_PYTHONS
+    ):
+        auth = "auth" if topology == "sharded_cluster" else "noauth"
+        ssl = "nossl" if topology == "standalone" else "ssl"
+        tags = [
+            "standard-linux",
+            f"server-{version}",
+            f"python-{python}",
+            f"{topology}-{auth}-{ssl}",
+        ]
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
+        name = get_task_name("test", python=python, **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
+        test_vars["PYTHON_VERSION"] = python
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
 def create_standard_non_linux_tasks():
     tasks = []
 
@@ -674,39 +700,6 @@ def create_load_balancer_tasks():
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
 
-    return tasks
-
-
-def create_compression_tasks():
-    tasks = []
-    versions = get_versions_from("4.0")
-    # Test all server versions with min python.
-    for version in versions:
-        python = CPYTHONS[0]
-        tags = ["compression", version]
-        name = get_task_name("test-compression", python=python, version=version)
-        server_func = FunctionCall(func="run server", vars=dict(VERSION=version))
-        test_func = FunctionCall(func="run tests")
-        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
-
-    # Test latest with max python, with and without c exts.
-    version = "latest"
-    tags = ["compression", "latest"]
-    for c_ext in C_EXTS:
-        python = CPYTHONS[-1]
-        expansions = dict()
-        handle_c_ext(c_ext, expansions)
-        name = get_task_name("test-compression", python=python, version=version, **expansions)
-        server_func = FunctionCall(func="run server", vars=dict(VERSION=version))
-        test_func = FunctionCall(func="run tests", vars=expansions)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
-
-    # Test on latest with pypy.
-    python = PYPYS[-1]
-    name = get_task_name("test-compression", python=python, version=version)
-    server_func = FunctionCall(func="run server", vars=dict(VERSION=version))
-    test_func = FunctionCall(func="run tests")
-    tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
 
 

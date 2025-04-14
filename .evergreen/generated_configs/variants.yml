@@ -163,7 +163,7 @@ buildvariants:
   # Compression tests
   - name: compression-snappy-rhel8
     tasks:
-      - name: .compression
+      - name: .standard-linux
     display_name: Compression snappy RHEL8
     run_on:
       - rhel87-small
@@ -171,7 +171,7 @@ buildvariants:
       COMPRESSOR: snappy
   - name: compression-zlib-rhel8
     tasks:
-      - name: .compression
+      - name: .standard-linux
     display_name: Compression zlib RHEL8
     run_on:
       - rhel87-small
@@ -179,7 +179,7 @@ buildvariants:
       COMPRESSOR: zlib
   - name: compression-zstd-rhel8
     tasks:
-      - name: .compression !.4.0
+      - name: .standard-linux !.server-4.0
     display_name: Compression zstd RHEL8
     run_on:
       - rhel87-small
