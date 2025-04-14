@@ -1207,6 +1207,7 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
         if async_client_context.serverless and not getattr(self, "RUN_ON_SERVERLESS", False):
             raise SkipTest("this test does not support serverless")
         self.client = async_client_context.client
+        self.addAsyncCleanup(self.client.close)
         self.db = self.client.pymongo_test
         if async_client_context.auth_enabled:
             self.credentials = {"username": db_user, "password": db_pwd}

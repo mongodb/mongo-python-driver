@@ -1189,6 +1189,7 @@ class IntegrationTest(PyMongoTestCase):
         if client_context.serverless and not getattr(self, "RUN_ON_SERVERLESS", False):
             raise SkipTest("this test does not support serverless")
         self.client = client_context.client
+        self.addCleanup(self.client.close)
         self.db = self.client.pymongo_test
         if client_context.auth_enabled:
             self.credentials = {"username": db_user, "password": db_pwd}
