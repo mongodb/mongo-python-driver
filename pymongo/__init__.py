@@ -103,6 +103,7 @@ from pymongo.operations import (
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.collection import ReturnDocument
 from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.uri_parser import *  # noqa: F403
 from pymongo.write_concern import WriteConcern
 
 version = __version__
