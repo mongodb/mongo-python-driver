@@ -59,6 +59,12 @@ buildvariants:
       NO_EXT: "1"
 
   # Atlas connect tests
+  - name: atlas-connect-rhel8
+    tasks:
+      - name: .min-max-python
+    display_name: Atlas connect RHEL8
+    run_on:
+      - rhel87-small
 
   # Atlas data lake tests
   - name: atlas-data-lake-ubuntu-22-python3.9

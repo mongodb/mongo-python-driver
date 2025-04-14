@@ -475,7 +475,7 @@ def create_doctests_variants():
 
 def create_atlas_connect_variants():
     host = DEFAULT_HOST
-    [
+    return [
         create_variant(
             [".min-max-python"],
             get_variant_name("Atlas connect", host),
