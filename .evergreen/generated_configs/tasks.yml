@@ -1157,29 +1157,6 @@ tasks:
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
 
-  # Min max tests
-  - name: test-python3.9
-    commands:
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          PYTHON_VERSION: "3.9"
-    tags: [min-max-python, python-3.9]
-  - name: test-python3.13
-    commands:
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          PYTHON_VERSION: "3.13"
-    tags: [min-max-python, python-3.13]
-  - name: test-pypy3.10
-    commands:
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          PYTHON_VERSION: pypy3.10
-    tags: [min-max-python, python-pypy3.10, pypy]
-
   # Mockupdb tests
   - name: test-mockupdb
     commands:
@@ -1229,6 +1206,29 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded
     tags: [mod_wsgi]
+
+  # No local server tests
+  - name: test-no-local-server-python3.9
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          PYTHON_VERSION: "3.9"
+    tags: [no-local-server, python-3.9]
+  - name: test-no-local-server-python3.13
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          PYTHON_VERSION: "3.13"
+    tags: [no-local-server, python-3.13]
+  - name: test-no-local-server-pypy3.10
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          PYTHON_VERSION: pypy3.10
+    tags: [no-local-server, python-pypy3.10]
 
   # No server tests
   - name: test-no-server

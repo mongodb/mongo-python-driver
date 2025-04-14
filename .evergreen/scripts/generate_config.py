@@ -477,7 +477,7 @@ def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [
         create_variant(
-            [".min-max-python"],
+            [".no-local-server"],
             get_variant_name("Atlas connect", host),
             host=DEFAULT_HOST,
         )
@@ -661,16 +661,14 @@ def create_server_tasks():
     return tasks
 
 
-def create_min_max_tasks():
+def create_no_local_server_tasks():
     tasks = []
     for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
         tags = [
-            "min-max-python",
+            "no-local-server",
             f"python-{python}",
         ]
-        if "pypy" in python:
-            tags.append("pypy")
-        name = get_task_name("test", python=python)
+        name = get_task_name("test-no-local-server", python=python)
         assume_func = FunctionCall(func="assume ec2 role")
         test_vars = dict(PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
