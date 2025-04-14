@@ -34,7 +34,7 @@ GRIDFS_IGNORE = [
     "ConfigurationError",
     "WriteConcern",
 ]
-PYMONGO_IGNORE = ["uri_parser"]
+PYMONGO_IGNORE = []
 GLOBAL_INGORE = ["TYPE_CHECKING", "annotations"]
 
 
