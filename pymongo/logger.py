@@ -114,8 +114,9 @@ class LoggingHandler(logging.handlers.MemoryHandler):
         self.capacity = self.original_capacity
 
     def clear(self):
-        self.buffer.clear()
-        self.capacity = self.original_capacity
+        with self.lock:
+            self.buffer.clear()
+            self.capacity = self.original_capacity
 
 
 if os.environ.get("DEBUG_LOG"):
