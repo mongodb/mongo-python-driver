@@ -67,24 +67,14 @@ buildvariants:
       - rhel87-small
 
   # Atlas data lake tests
-  - name: atlas-data-lake-ubuntu-22-python3.9
+  - name: atlas-data-lake-ubuntu-22
     tasks:
       - name: .no-local-server
-    display_name: Atlas Data Lake Ubuntu-22 Python3.9
+    display_name: Atlas Data Lake Ubuntu-22
     run_on:
       - ubuntu2204-small
     expansions:
       TEST_NAME: data_lake
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: atlas-data-lake-ubuntu-22-python3.13
-    tasks:
-      - name: .no-local-server
-    display_name: Atlas Data Lake Ubuntu-22 Python3.13
-    run_on:
-      - ubuntu2204-small
-    expansions:
-      TEST_NAME: data_lake
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Aws auth tests
   - name: auth-aws-ubuntu-20-python3.9

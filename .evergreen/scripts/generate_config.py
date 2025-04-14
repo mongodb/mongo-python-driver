@@ -365,17 +365,11 @@ def create_no_c_ext_variants():
 
 
 def create_atlas_data_lake_variants():
-    variants = []
     host = HOSTS["ubuntu22"]
-    for python in MIN_MAX_PYTHON:
-        tasks = [".no-local-server"]
-        expansions = dict(TEST_NAME="data_lake")
-        display_name = get_variant_name("Atlas Data Lake", host, python=python)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, expansions=expansions
-        )
-        variants.append(variant)
-    return variants
+    tasks = [".no-local-server"]
+    expansions = dict(TEST_NAME="data_lake")
+    display_name = get_variant_name("Atlas Data Lake", host)
+    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
 def create_mod_wsgi_variants():
