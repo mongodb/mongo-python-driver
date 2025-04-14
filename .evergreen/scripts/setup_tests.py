@@ -34,6 +34,7 @@ PASS_THROUGH_ENV = [
     "PYTHON_BINARY",
     "PYTHON_VERSION",
     "REQUIRE_FIPS",
+    "IS_WIN32",
 ]
 
 # Map the test name to test extra.

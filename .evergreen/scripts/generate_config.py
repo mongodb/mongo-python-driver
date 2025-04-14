@@ -37,6 +37,12 @@ from shrub.v3.evg_build_variant import BuildVariant
 from shrub.v3.evg_command import (
     FunctionCall,
     archive_targz_pack,
+    attach_results,
+    attach_xunit_results,
+    ec2_assume_role,
+    expansions_update,
+    git_get_project,
+    perf_send,
 )
 from shrub.v3.evg_task import EvgTask, EvgTaskDependency, EvgTaskRef
 
@@ -77,23 +83,26 @@ def create_server_version_variants() -> list[BuildVariant]:
     return variants
 
 
-def create_server_variants() -> list[BuildVariant]:
+def create_standard_nonlinux_variants() -> list[BuildVariant]:
     variants = []
     base_display_name = "* Test"
 
     # Test a subset on each of the other platforms.
     for host_name in ("macos", "macos-arm64", "win64", "win32"):
-        for python in MIN_MAX_PYTHON:
-            tasks = [f"{t} !.sync_async" for t in SUB_TASKS]
-            # MacOS arm64 only works on server versions 6.0+
-            if host_name == "macos-arm64":
-                tasks = []
-                for version in get_versions_from("6.0"):
-                    tasks.extend(f"{t} .{version} !.sync_async" for t in SUB_TASKS)
-            host = HOSTS[host_name]
-            display_name = get_variant_name(base_display_name, host, python=python)
-            variant = create_variant(tasks, display_name, python=python, host=host)
-            variants.append(variant)
+        tasks = [".standard-non-linux"]
+        # MacOS arm64 only works on server versions 6.0+
+        if host_name == "macos-arm64":
+            tasks = [
+                f".standard-non-linux .server-{version}" for version in get_versions_from("6.0")
+            ]
+        host = HOSTS[host_name]
+        tags = ["standard-non-linux"]
+        expansions = dict()
+        if host_name == "win32":
+            expansions["IS_WIN32"] = "1"
+        display_name = get_variant_name(base_display_name, host)
+        variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
+        variants.append(variant)
 
     return variants
 
@@ -591,7 +600,7 @@ def create_server_version_tasks():
             continue
         task_types.append((python, topology, auth, ssl))
     for python, topology, auth, ssl in task_types:
-        tags = ["server-version", python, f"{topology}-{auth}-{ssl}"]
+        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}"]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
@@ -604,9 +613,37 @@ def create_server_version_tasks():
     return tasks
 
 
+def create_standard_non_linux_tasks():
+    tasks = []
+
+    for (version, topology), python, sync in zip_cycle(
+        list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS, SYNCS
+    ):
+        auth = "auth" if topology == "sharded_cluster" else "noauth"
+        ssl = "nossl" if topology == "standalone" else "ssl"
+        tags = [
+            "standard-non-linux",
+            f"server-{version}",
+            f"python-{python}",
+            f"{topology}-{auth}-{ssl}",
+            sync,
+        ]
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
+        name = get_task_name("test", python=python, sync=sync, **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
+        test_vars["PYTHON_VERSION"] = python
+        test_vars["TEST_NAME"] = f"default_{sync}"
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
 def create_server_tasks():
     tasks = []
-    for topo, version, (auth, ssl), sync in product(TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, SYNCS):
+    for topo, version, (auth, ssl), sync in product(
+        TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, [*SYNCS, "sync_async"]
+    ):
         name = f"test-{version}-{topo}-{auth}-{ssl}-{sync}".lower()
         tags = [version, topo, auth, ssl, sync]
         server_vars = dict(
@@ -1064,6 +1101,115 @@ def create_upload_mo_artifacts_func():
     )
     cmds = [get_assume_role(), archive_cmd, s3_dumps, s3_logs]
     return "upload mo artifacts", cmds
+
+
+def create_fetch_source_func():
+    # Executes clone and applies the submitted patch, if any.
+    cmd = git_get_project(directory="src")
+    return "fetch source", [cmd]
+
+
+def create_setup_system_func():
+    # Make an evergreen expansion file with dynamic values.
+    includes = ["is_patch", "project", "version_id"]
+    args = [".evergreen/scripts/setup-system.sh"]
+    setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
+    # Load the expansion file to make an evergreen variable with the current unique version.
+    expansion_cmd = expansions_update(file="src/expansion.yml")
+    return "setup system", [setup_cmd, expansion_cmd]
+
+
+def create_upload_test_results_func():
+    results_cmd = attach_results(file_location="${DRIVERS_TOOLS}/results.json")
+    xresults_cmd = attach_xunit_results(file="src/xunit-results/TEST-*.xml")
+    return "upload test results", [results_cmd, xresults_cmd]
+
+
+def create_run_server_func():
+    includes = [
+        "VERSION",
+        "TOPOLOGY",
+        "AUTH",
+        "SSL",
+        "ORCHESTRATION_FILE",
+        "PYTHON_BINARY",
+        "PYTHON_VERSION",
+        "STORAGE_ENGINE",
+        "REQUIRE_API_VERSION",
+        "DRIVERS_TOOLS",
+        "TEST_CRYPT_SHARED",
+        "AUTH_AWS",
+        "LOAD_BALANCER",
+        "LOCAL_ATLAS",
+        "NO_EXT",
+    ]
+    args = [".evergreen/just.sh", "run-server", "${TEST_NAME}"]
+    sub_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
+    expansion_cmd = expansions_update(file="${DRIVERS_TOOLS}/mo-expansion.yml")
+    return "run server", [sub_cmd, expansion_cmd]
+
+
+def create_run_just_script_func():
+    includes = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+    args = [".evergreen/just.sh", "${JUSTFILE_TARGET}"]
+    cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
+    return "run just script", [cmd]
+
+
+def create_run_tests_func():
+    includes = [
+        "AUTH",
+        "SSL",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+        "COVERAGE",
+        "PYTHON_BINARY",
+        "LIBMONGOCRYPT_URL",
+        "MONGODB_URI",
+        "PYTHON_VERSION",
+        "DISABLE_TEST_COMMANDS",
+        "GREEN_FRAMEWORK",
+        "NO_EXT",
+        "COMPRESSORS",
+        "MONGODB_API_VERSION",
+        "DEBUG_LOG",
+        "ORCHESTRATION_FILE",
+        "OCSP_SERVER_TYPE",
+        "VERSION",
+        "IS_WIN32",
+        "REQUIRE_FIPS",
+    ]
+    args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
+    setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
+    test_cmd = get_subprocess_exec(args=[".evergreen/just.sh", "run-tests"])
+    return "run tests", [setup_cmd, test_cmd]
+
+
+def create_cleanup_func():
+    cmd = get_subprocess_exec(args=[".evergreen/scripts/cleanup.sh"])
+    return "cleanup", [cmd]
+
+
+def create_teardown_system_func():
+    tests_cmd = get_subprocess_exec(args=[".evergreen/just.sh", "teardown-tests"])
+    drivers_cmd = get_subprocess_exec(args=["${DRIVERS_TOOLS}/.evergreen/teardown.sh"])
+    return "teardown system", [tests_cmd, drivers_cmd]
+
+
+def create_assume_ec2_role_func():
+    cmd = ec2_assume_role(role_arn="${aws_test_secrets_role}", duration_seconds=3600)
+    return "assume ec2 role", [cmd]
+
+
+def create_attach_benchmark_test_results_func():
+    cmd = attach_results(file_location="src/report.json")
+    return "attach benchmark test results", [cmd]
+
+
+def create_send_dashboard_data_func():
+    cmd = perf_send(file="src/results.json")
+    return "send dashboard data", [cmd]
 
 
 mod = sys.modules[__name__]
