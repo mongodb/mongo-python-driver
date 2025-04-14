@@ -16,7 +16,7 @@ def pytest_runtest_makereport(item):
     if _DEBUG_LOG_HANDLER is not None:
         outcome = yield
         rep = outcome.get_result()
-        if rep.when == "call" and rep.failed:
+        if rep.failed:
             _DEBUG_LOG_HANDLER.flush()
         else:
             _DEBUG_LOG_HANDLER.clear()
