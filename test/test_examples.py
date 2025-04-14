@@ -182,40 +182,36 @@ class TestSampleShellCommands(IntegrationTest):
         db = self.db
 
         # Start Example 14
-        # Subdocument key order matters in a few of these examples so we have
-        # to use bson.son.SON instead of a Python dict.
-        from bson.son import SON
-
         db.inventory.insert_many(
             [
                 {
                     "item": "journal",
                     "qty": 25,
-                    "size": SON([("h", 14), ("w", 21), ("uom", "cm")]),
+                    "size": {"h": 14, "w": 21, "uom": "cm"},
                     "status": "A",
                 },
                 {
                     "item": "notebook",
                     "qty": 50,
-                    "size": SON([("h", 8.5), ("w", 11), ("uom", "in")]),
+                    "size": {"h": 8.5, "w": 11, "uom": "in"},
                     "status": "A",
                 },
                 {
                     "item": "paper",
                     "qty": 100,
-                    "size": SON([("h", 8.5), ("w", 11), ("uom", "in")]),
+                    "size": {"h": 8.5, "w": 11, "uom": "in"},
                     "status": "D",
                 },
                 {
                     "item": "planner",
                     "qty": 75,
-                    "size": SON([("h", 22.85), ("w", 30), ("uom", "cm")]),
+                    "size": {"h": 22.85, "w": 30, "uom": "cm"},
                     "status": "D",
                 },
                 {
                     "item": "postcard",
                     "qty": 45,
-                    "size": SON([("h", 10), ("w", 15.25), ("uom", "cm")]),
+                    "size": {"h": 10, "w": 15.25, "uom": "cm"},
                     "status": "A",
                 },
             ]
@@ -223,13 +219,13 @@ class TestSampleShellCommands(IntegrationTest):
         # End Example 14
 
         # Start Example 15
-        cursor = db.inventory.find({"size": SON([("h", 14), ("w", 21), ("uom", "cm")])})
+        cursor = db.inventory.find({"size": {"h": 14, "w": 21, "uom": "cm"}})
         # End Example 15
 
         self.assertEqual(len(cursor.to_list()), 1)
 
         # Start Example 16
-        cursor = db.inventory.find({"size": SON([("w", 21), ("h", 14), ("uom", "cm")])})
+        cursor = db.inventory.find({"size": {"w": 21, "h": 14, "uom": "cm"}})
         # End Example 16
 
         self.assertEqual(len(cursor.to_list()), 0)
@@ -324,39 +320,35 @@ class TestSampleShellCommands(IntegrationTest):
         db = self.db
 
         # Start Example 29
-        # Subdocument key order matters in a few of these examples so we have
-        # to use bson.son.SON instead of a Python dict.
-        from bson.son import SON
-
         db.inventory.insert_many(
             [
                 {
                     "item": "journal",
                     "instock": [
-                        SON([("warehouse", "A"), ("qty", 5)]),
-                        SON([("warehouse", "C"), ("qty", 15)]),
+                        {"warehouse": "A", "qty": 5},
+                        {"warehouse": "C", "qty": 15},
                     ],
                 },
-                {"item": "notebook", "instock": [SON([("warehouse", "C"), ("qty", 5)])]},
+                {"item": "notebook", "instock": [{"warehouse": "C", "qty": 5}]},
                 {
                     "item": "paper",
                     "instock": [
-                        SON([("warehouse", "A"), ("qty", 60)]),
-                        SON([("warehouse", "B"), ("qty", 15)]),
+                        {"warehouse": "A", "qty": 60},
+                        {"warehouse": "B", "qty": 15},
                     ],
                 },
                 {
                     "item": "planner",
                     "instock": [
-                        SON([("warehouse", "A"), ("qty", 40)]),
-                        SON([("warehouse", "B"), ("qty", 5)]),
+                        {"warehouse": "A", "qty": 40},
+                        {"warehouse": "B", "qty": 5},
                     ],
                 },
                 {
                     "item": "postcard",
                     "instock": [
-                        SON([("warehouse", "B"), ("qty", 15)]),
-                        SON([("warehouse", "C"), ("qty", 35)]),
+                        {"warehouse": "B", "qty": 15},
+                        {"warehouse": "C", "qty": 35},
                     ],
                 },
             ]
@@ -364,13 +356,13 @@ class TestSampleShellCommands(IntegrationTest):
         # End Example 29
 
         # Start Example 30
-        cursor = db.inventory.find({"instock": SON([("warehouse", "A"), ("qty", 5)])})
+        cursor = db.inventory.find({"instock": {"warehouse": "A", "qty": 5}})
         # End Example 30
 
         self.assertEqual(len(cursor.to_list()), 1)
 
         # Start Example 31
-        cursor = db.inventory.find({"instock": SON([("qty", 5), ("warehouse", "A")])})
+        cursor = db.inventory.find({"instock": {"qty": 5, "warehouse": "A"}})
         # End Example 31
 
         self.assertEqual(len(cursor.to_list()), 0)
