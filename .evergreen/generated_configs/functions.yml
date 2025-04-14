@@ -1,4 +1,27 @@
 functions:
+  # Assume ec2 role
+  assume ec2 role:
+    - command: ec2.assume_role
+      params:
+        role_arn: ${aws_test_secrets_role}
+        duration_seconds: 3600
+
+  # Attach benchmark test results
+  attach benchmark test results:
+    - command: attach.results
+      params:
+        file_location: src/report.json
+
+  # Cleanup
+  cleanup:
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/scripts/cleanup.sh
+        working_dir: src
+      type: test
+
   # Download and merge coverage
   download and merge coverage:
     - command: ec2.assume_role
@@ -55,6 +78,142 @@ functions:
         display_name: Coverage Report HTML
         optional: "true"
       type: setup
+
+  # Fetch source
+  fetch source:
+    - command: git.get_project
+      params:
+        directory: src
+
+  # Run just script
+  run just script:
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/just.sh
+          - ${JUSTFILE_TARGET}
+        working_dir: src
+        include_expansions_in_env:
+          - AWS_ACCESS_KEY_ID
+          - AWS_SECRET_ACCESS_KEY
+          - AWS_SESSION_TOKEN
+      type: test
+
+  # Run server
+  run server:
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/just.sh
+          - run-server
+          - ${TEST_NAME}
+        working_dir: src
+        include_expansions_in_env:
+          - VERSION
+          - TOPOLOGY
+          - AUTH
+          - SSL
+          - ORCHESTRATION_FILE
+          - PYTHON_BINARY
+          - PYTHON_VERSION
+          - STORAGE_ENGINE
+          - REQUIRE_API_VERSION
+          - DRIVERS_TOOLS
+          - TEST_CRYPT_SHARED
+          - AUTH_AWS
+          - LOAD_BALANCER
+          - LOCAL_ATLAS
+          - NO_EXT
+      type: test
+    - command: expansions.update
+      params:
+        file: ${DRIVERS_TOOLS}/mo-expansion.yml
+
+  # Run tests
+  run tests:
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/just.sh
+          - setup-tests
+          - ${TEST_NAME}
+          - ${SUB_TEST_NAME}
+        working_dir: src
+        include_expansions_in_env:
+          - AUTH
+          - SSL
+          - AWS_ACCESS_KEY_ID
+          - AWS_SECRET_ACCESS_KEY
+          - AWS_SESSION_TOKEN
+          - COVERAGE
+          - PYTHON_BINARY
+          - LIBMONGOCRYPT_URL
+          - MONGODB_URI
+          - PYTHON_VERSION
+          - DISABLE_TEST_COMMANDS
+          - GREEN_FRAMEWORK
+          - NO_EXT
+          - COMPRESSORS
+          - MONGODB_API_VERSION
+          - DEBUG_LOG
+          - ORCHESTRATION_FILE
+          - OCSP_SERVER_TYPE
+          - VERSION
+          - IS_WIN32
+          - REQUIRE_FIPS
+      type: test
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/just.sh
+          - run-tests
+        working_dir: src
+      type: test
+
+  # Send dashboard data
+  send dashboard data:
+    - command: perf.send
+      params:
+        file: src/results.json
+
+  # Setup system
+  setup system:
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/scripts/setup-system.sh
+        working_dir: src
+        include_expansions_in_env:
+          - is_patch
+          - project
+          - version_id
+      type: test
+    - command: expansions.update
+      params:
+        file: src/expansion.yml
+
+  # Teardown system
+  teardown system:
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/just.sh
+          - teardown-tests
+        working_dir: src
+      type: test
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/teardown.sh
+        working_dir: src
+      type: test
 
   # Upload coverage
   upload coverage:
@@ -115,3 +274,12 @@ functions:
         display_name: drivers-tools-logs.tar.gz
         optional: "true"
       type: setup
+
+  # Upload test results
+  upload test results:
+    - command: attach.results
+      params:
+        file_location: ${DRIVERS_TOOLS}/results.json
+    - command: attach.xunit_results
+      params:
+        file: src/xunit-results/TEST-*.xml
