@@ -1200,7 +1200,7 @@ tasks:
       - server-latest
       - python-3.13
       - sharded_cluster-auth-ssl
-  - name: test-v4.0-pypy3.10-noauth-ssl-replica-set
+  - name: test-v['8.0']-pypy3.10-noauth-ssl-replica-set
     commands:
       - func: assume ec2 role
       - func: run server
@@ -1208,17 +1208,19 @@ tasks:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
-          VERSION: "4.0"
+          VERSION:
+            - "8.0"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
-          VERSION: "4.0"
+          VERSION:
+            - "8.0"
           PYTHON_VERSION: pypy3.10
     tags:
       - min-max-tests
-      - server-4.0
+      - server-['8.0']
       - python-pypy3.10
       - replica_set-noauth-ssl
       - pypy

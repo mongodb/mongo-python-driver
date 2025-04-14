@@ -16,6 +16,7 @@ from generate_config_utils import (
     MIN_MAX_PYTHON,
     OTHER_HOSTS,
     PYPYS,
+    STABLE_VERSION,
     SUB_TASKS,
     SYNCS,
     TOPOLOGIES,
@@ -663,7 +664,7 @@ def create_server_tasks():
 
 def create_min_max_tasks():
     tasks = []
-    versions = [ALL_VERSIONS[0], ALL_VERSIONS[-1]]
+    versions = [ALL_VERSIONS[0], ALL_VERSIONS[-1], STABLE_VERSION]
     pythons = [*MIN_MAX_PYTHON, PYPYS[-1]]
     topologies = ["standalone", "sharded_cluster", "replica_set"]
     for version, python, topology in zip_cycle(versions, pythons, topologies):
