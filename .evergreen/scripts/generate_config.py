@@ -477,7 +477,7 @@ def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [
         create_variant(
-            [".min-max-python"],
+            [".min-max-tests"],
             get_variant_name("Atlas connect", host),
             host=DEFAULT_HOST,
         )
