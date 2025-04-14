@@ -1,13 +1,4 @@
 tasks:
-  # Atlas connect tests
-  - name: test-atlas-connect
-    commands:
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: atlas_connect
-    tags: [atlas_connect]
-
   # Atlas data lake tests
   - name: test-atlas-data-lake-without_ext
     commands:
@@ -1165,6 +1156,72 @@ tasks:
           SSL: nossl
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
+
+  # Min max tests
+  - name: test-v4.0-python3.9-noauth-nossl-standalone
+    commands:
+      - func: assume ec2 role
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "4.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "4.0"
+          PYTHON_VERSION: "3.9"
+    tags:
+      - min-max-tests
+      - server-4.0
+      - python-3.9
+      - standalone-noauth-nossl
+  - name: test-latest-python3.13-auth-ssl-sharded-cluster
+    commands:
+      - func: assume ec2 role
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+          PYTHON_VERSION: "3.13"
+    tags:
+      - min-max-tests
+      - server-latest
+      - python-3.13
+      - sharded_cluster-auth-ssl
+  - name: test-v4.0-pypy3.10-noauth-ssl-replica-set
+    commands:
+      - func: assume ec2 role
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "4.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "4.0"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - min-max-tests
+      - server-4.0
+      - python-pypy3.10
+      - replica_set-noauth-ssl
+      - pypy
 
   # Mockupdb tests
   - name: test-mockupdb

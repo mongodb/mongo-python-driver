@@ -475,14 +475,12 @@ def create_doctests_variants():
 
 def create_atlas_connect_variants():
     host = DEFAULT_HOST
-    return [
+    [
         create_variant(
-            [".atlas_connect"],
-            get_variant_name("Atlas connect", host, python=python),
-            python=python,
-            host=host,
+            [".min-max-python"],
+            get_variant_name("Atlas connect", host),
+            host=DEFAULT_HOST,
         )
-        for python in MIN_MAX_PYTHON
     ]
 
 
@@ -660,6 +658,34 @@ def create_server_tasks():
             test_vars["TEST_NAME"] = "default_async"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
+def create_min_max_tasks():
+    tasks = []
+    versions = [ALL_VERSIONS[0], ALL_VERSIONS[-1]]
+    pythons = [*MIN_MAX_PYTHON, PYPYS[-1]]
+    topologies = ["standalone", "sharded_cluster", "replica_set"]
+    for version, python, topology in zip_cycle(versions, pythons, topologies):
+        auth = "auth" if topology == "sharded_cluster" else "noauth"
+        ssl = "nossl" if topology == "standalone" else "ssl"
+        tags = [
+            "min-max-tests",
+            f"server-{version}",
+            f"python-{python}",
+            f"{topology}-{auth}-{ssl}",
+        ]
+        if "pypy" in python:
+            tags.append("pypy")
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
+        name = get_task_name("test", python=python, **expansions)
+        assume_func = FunctionCall(func="assume ec2 role")
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
+        test_vars["PYTHON_VERSION"] = python
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        commands = [assume_func, server_func, test_func]
+        tasks.append(EvgTask(name=name, tags=tags, commands=commands))
     return tasks
 
 
@@ -852,15 +878,6 @@ def create_search_index_tasks():
     tags = ["search_index"]
     commands = [assume_func, server_func, test_func]
     return [EvgTask(name=task_name, tags=tags, commands=commands)]
-
-
-def create_atlas_connect_tasks():
-    vars = dict(TEST_NAME="atlas_connect")
-    assume_func = FunctionCall(func="assume ec2 role")
-    test_func = FunctionCall(func="run tests", vars=vars)
-    task_name = "test-atlas-connect"
-    tags = ["atlas_connect"]
-    return [EvgTask(name=task_name, tags=tags, commands=[assume_func, test_func])]
 
 
 def create_enterprise_auth_tasks():

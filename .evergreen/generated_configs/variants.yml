@@ -59,22 +59,6 @@ buildvariants:
       NO_EXT: "1"
 
   # Atlas connect tests
-  - name: atlas-connect-rhel8-python3.9
-    tasks:
-      - name: .atlas_connect
-    display_name: Atlas connect RHEL8 Python3.9
-    run_on:
-      - rhel87-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: atlas-connect-rhel8-python3.13
-    tasks:
-      - name: .atlas_connect
-    display_name: Atlas connect RHEL8 Python3.13
-    run_on:
-      - rhel87-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Atlas data lake tests
   - name: atlas-data-lake-ubuntu-22-python3.9
