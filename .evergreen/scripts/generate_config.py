@@ -446,13 +446,13 @@ def create_search_index_variants():
 
 def create_mockupdb_variants():
     host = DEFAULT_HOST
-    python = CPYTHONS[0]
+    expansions = dict(TEST_NAME="mockupdb")
     return [
         create_variant(
-            [".mockupdb"],
-            get_variant_name("MockupDB", host, python=python),
-            python=python,
+            [".no-local-server"],
+            get_variant_name("MockupDB", host),
             host=host,
+            expansions=expansions,
         )
     ]
 
@@ -979,13 +979,6 @@ def create_ocsp_tasks():
             tasks.extend(new_tasks)
 
     return tasks
-
-
-def create_mockupdb_tasks():
-    test_func = FunctionCall(func="run tests", vars=dict(TEST_NAME="mockupdb"))
-    task_name = "test-mockupdb"
-    tags = ["mockupdb"]
-    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
 
 
 def create_doctest_tasks():

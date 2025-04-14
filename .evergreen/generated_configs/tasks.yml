@@ -1142,14 +1142,6 @@ tasks:
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
 
-  # Mockupdb tests
-  - name: test-mockupdb
-    commands:
-      - func: run tests
-        vars:
-          TEST_NAME: mockupdb
-    tags: [mockupdb]
-
   # Mod wsgi tests
   - name: mod-wsgi-standalone
     commands:
