@@ -34,7 +34,7 @@ GRIDFS_IGNORE = [
     "ConfigurationError",
     "WriteConcern",
 ]
-PYMONGO_IGNORE = []
+PYMONGO_IGNORE = ["uri_parser"]
 GLOBAL_INGORE = ["TYPE_CHECKING", "annotations"]
 
 
@@ -213,6 +213,8 @@ class TestDefaultExports(unittest.TestCase):
         import pymongo
 
         self.assertTrue(hasattr(pymongo, "uri_parser"))
+        self.assertTrue(pymongo.uri_parser)
+        self.assertTrue(pymongo.uri_parser.parse_uri)
 
     def test_gridfs_imports(self):
         import gridfs
