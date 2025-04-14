@@ -30,7 +30,7 @@ PASS_THROUGH_ENV = [
     "GREEN_FRAMEWORK",
     "NO_EXT",
     "MONGODB_API_VERSION",
-    "DEBUG_LOG",
+    "PYMONGO_DEBUG_LOG_PATH",
     "PYTHON_BINARY",
     "PYTHON_VERSION",
     "REQUIRE_FIPS",
@@ -464,9 +464,7 @@ def handle_test_env() -> None:
         UV_ARGS.append(f"--group {framework}")
 
     else:
-        # Use --capture=tee-sys so pytest prints test output inline:
-        # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
-        TEST_ARGS = f"-v --capture=tee-sys --durations=5 {TEST_ARGS}"
+        TEST_ARGS = f"-v --capture=no --show-capture=no --durations=5 {TEST_ARGS}"
         TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"

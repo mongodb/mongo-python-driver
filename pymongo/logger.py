@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import enum
 import logging
+import logging.handlers
 import os
 import warnings
 from typing import Any
@@ -94,6 +95,46 @@ _VERBOSE_CONNECTION_ERROR_REASONS = {
     ConnectionClosedReason.IDLE: "Connection was idle too long",
     ConnectionCheckOutFailedReason.TIMEOUT: "Connection exceeded the specified timeout",
 }
+_DEBUG_LOG_HANDLER = None
+
+
+# Custom logging handler to ensure we only flush the buffered logs on a test failure
+class LoggingHandler(logging.handlers.MemoryHandler):
+    def __init__(self, capacity=1000, target=None):
+        super().__init__(capacity, logging.DEBUG, target, flushOnClose=False)
+        self.original_capacity = capacity
+
+    def shouldFlush(self, record):
+        if len(self.buffer) >= self.capacity:
+            self.capacity = len(self.buffer) * 2
+        return False
+
+    def flush(self):
+        super().flush()
+        self.capacity = self.original_capacity
+
+    def clear(self):
+        self.buffer.clear()
+        self.capacity = self.original_capacity
+
+
+if os.environ.get("DEBUG_LOG"):
+    FORMAT = "%(levelname)s %(name)s %(message)s"
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(FORMAT))
+    _DEBUG_LOG_HANDLER = LoggingHandler(target=handler)
+
+    _COMMAND_LOGGER.setLevel(logging.DEBUG)
+    _SERVER_SELECTION_LOGGER.setLevel(logging.DEBUG)
+    _CONNECTION_LOGGER.setLevel(logging.DEBUG)
+    _CLIENT_LOGGER.setLevel(logging.DEBUG)
+    _SDAM_LOGGER.setLevel(logging.DEBUG)
+
+    _COMMAND_LOGGER.addHandler(_DEBUG_LOG_HANDLER)
+    _SERVER_SELECTION_LOGGER.addHandler(_DEBUG_LOG_HANDLER)
+    _CONNECTION_LOGGER.addHandler(_DEBUG_LOG_HANDLER)
+    _CLIENT_LOGGER.addHandler(_DEBUG_LOG_HANDLER)
+    _SDAM_LOGGER.addHandler(_DEBUG_LOG_HANDLER)
 
 
 def _log_client_error() -> None:
