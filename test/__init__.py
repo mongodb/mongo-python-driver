@@ -206,6 +206,7 @@ class ClientContext:
             if os.environ.get("TEST_DATA_LAKE"):
                 self.is_data_lake = True
                 self.auth_enabled = True
+                self.client.close()
                 self.client = self._connect(host, port, username=db_user, password=db_pwd)
                 self.connected = True
                 return
@@ -1189,7 +1190,6 @@ class IntegrationTest(PyMongoTestCase):
         if client_context.serverless and not getattr(self, "RUN_ON_SERVERLESS", False):
             raise SkipTest("this test does not support serverless")
         self.client = client_context.client
-        self.addCleanup(self.client.close)
         self.db = self.client.pymongo_test
         if client_context.auth_enabled:
             self.credentials = {"username": db_user, "password": db_pwd}

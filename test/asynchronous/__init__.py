@@ -206,6 +206,7 @@ class AsyncClientContext:
             if os.environ.get("TEST_DATA_LAKE"):
                 self.is_data_lake = True
                 self.auth_enabled = True
+                await self.client.close()
                 self.client = await self._connect(host, port, username=db_user, password=db_pwd)
                 self.connected = True
                 return
@@ -1207,7 +1208,6 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
         if async_client_context.serverless and not getattr(self, "RUN_ON_SERVERLESS", False):
             raise SkipTest("this test does not support serverless")
         self.client = async_client_context.client
-        self.addAsyncCleanup(self.client.close)
         self.db = self.client.pymongo_test
         if async_client_context.auth_enabled:
             self.credentials = {"username": db_user, "password": db_pwd}
