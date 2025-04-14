@@ -368,9 +368,12 @@ def create_atlas_data_lake_variants():
     variants = []
     host = HOSTS["ubuntu22"]
     for python in MIN_MAX_PYTHON:
-        tasks = [".atlas_data_lake"]
+        tasks = [".no-local-server"]
+        expansions = dict(TEST_NAME="data_lake")
         display_name = get_variant_name("Atlas Data Lake", host, python=python)
-        variant = create_variant(tasks, display_name, host=host, python=python)
+        variant = create_variant(
+            tasks, display_name, host=host, python=python, expansions=expansions
+        )
         variants.append(variant)
     return variants
 
@@ -902,18 +905,6 @@ def create_perf_tasks():
         tags = ["perf"]
         commands = [server_func, test_func, attach_func, send_func]
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
-    return tasks
-
-
-def create_atlas_data_lake_tasks():
-    tags = ["atlas_data_lake"]
-    tasks = []
-    for c_ext in C_EXTS:
-        vars = dict(TEST_NAME="data_lake")
-        handle_c_ext(c_ext, vars)
-        test_func = FunctionCall(func="run tests", vars=vars)
-        task_name = f"test-atlas-data-lake-{c_ext}"
-        tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
 
 
