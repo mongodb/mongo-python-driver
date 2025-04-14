@@ -533,7 +533,8 @@ def create_aws_auth_variants():
 
 def create_no_server_variants():
     host = HOSTS["rhel8"]
-    return [create_variant([".no-local-server"], "No server", host=host)]
+    name = get_variant_name("No server", host=host)
+    return [create_variant([".no-local-server"], name, host=host)]
 
 
 def create_alternative_hosts_variants():

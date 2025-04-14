@@ -644,10 +644,10 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # No server tests
-  - name: no-server
+  - name: no-server-rhel8
     tasks:
       - name: .no-local-server
-    display_name: No server
+    display_name: No server RHEL8
     run_on:
       - rhel87-small
 
