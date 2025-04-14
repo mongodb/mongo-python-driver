@@ -646,7 +646,7 @@ buildvariants:
   # No server tests
   - name: no-server
     tasks:
-      - name: .no-server
+      - name: .no-local-server
     display_name: No server
     run_on:
       - rhel87-small

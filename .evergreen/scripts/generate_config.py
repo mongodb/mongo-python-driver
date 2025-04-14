@@ -533,7 +533,7 @@ def create_aws_auth_variants():
 
 def create_no_server_variants():
     host = HOSTS["rhel8"]
-    return [create_variant([".no-server"], "No server", host=host)]
+    return [create_variant([".no-local-server"], "No server", host=host)]
 
 
 def create_alternative_hosts_variants():
@@ -987,13 +987,6 @@ def create_doctest_tasks():
     task_name = "test-doctests"
     tags = ["doctests"]
     return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
-
-
-def create_no_server_tasks():
-    test_func = FunctionCall(func="run tests")
-    task_name = "test-no-server"
-    tags = ["no-server"]
-    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
 
 
 def create_free_threading_tasks():

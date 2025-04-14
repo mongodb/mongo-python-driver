@@ -1207,12 +1207,6 @@ tasks:
           PYTHON_VERSION: pypy3.10
     tags: [no-local-server, python-pypy3.10]
 
-  # No server tests
-  - name: test-no-server
-    commands:
-      - func: run tests
-    tags: [no-server]
-
   # Ocsp tests
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v4.4-python3.9
     commands:
