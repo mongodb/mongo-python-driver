@@ -61,7 +61,7 @@ buildvariants:
   # Atlas connect tests
   - name: atlas-connect-rhel8
     tasks:
-      - name: .min-max-tests
+      - name: .min-max-python
     display_name: Atlas connect RHEL8
     run_on:
       - rhel87-small

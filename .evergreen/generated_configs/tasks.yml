@@ -1158,70 +1158,27 @@ tasks:
     tags: [load-balancer, noauth, nossl]
 
   # Min max tests
-  - name: test-v4.0-python3.9-noauth-nossl-standalone
+  - name: test-python3.9
     commands:
       - func: assume ec2 role
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "4.0"
       - func: run tests
         vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "4.0"
           PYTHON_VERSION: "3.9"
-    tags:
-      - min-max-tests
-      - server-4.0
-      - python-3.9
-      - standalone-noauth-nossl
-  - name: test-latest-python3.13-auth-ssl-sharded-cluster
+    tags: [min-max-python, python-3.9]
+  - name: test-python3.13
     commands:
       - func: assume ec2 role
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest
       - func: run tests
         vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest
           PYTHON_VERSION: "3.13"
-    tags:
-      - min-max-tests
-      - server-latest
-      - python-3.13
-      - sharded_cluster-auth-ssl
-  - name: test-v8.0-pypy3.10-noauth-ssl-replica-set
+    tags: [min-max-python, python-3.13]
+  - name: test-pypy3.10
     commands:
       - func: assume ec2 role
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "8.0"
       - func: run tests
         vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "8.0"
           PYTHON_VERSION: pypy3.10
-    tags:
-      - min-max-tests
-      - server-8.0
-      - python-pypy3.10
-      - replica_set-noauth-ssl
-      - pypy
+    tags: [min-max-python, python-pypy3.10, pypy]
 
   # Mockupdb tests
   - name: test-mockupdb
