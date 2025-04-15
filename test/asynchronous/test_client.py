@@ -816,6 +816,30 @@ class TestClient(AsyncIntegrationTest):
     async def test_init_disconnected(self):
         host, port = await async_client_context.host, await async_client_context.port
         c = await self.async_rs_or_single_client(connect=False)
+        # nodes returns an empty set if not connected
+        self.assertEqual(c.nodes, frozenset())
+        # topology_description returns the initial seed description if not connected
+        topology_description = c.topology_description
+        self.assertEqual(topology_description.topology_type, TOPOLOGY_TYPE.Unknown)
+        self.assertEqual(
+            topology_description.server_descriptions(),
+            {(host, port): ServerDescription((host, port))},
+        )
+        # address causes client to block until connected
+        self.assertIsNotNone(await c.address)
+        c = await self.async_rs_or_single_client(connect=False)
+        # primary causes client to block until connected
+        await c.primary
+        self.assertIsNotNone(c._topology)
+        c = await self.async_rs_or_single_client(connect=False)
+        # secondaries causes client to block until connected
+        await c.secondaries
+        self.assertIsNotNone(c._topology)
+        c = await self.async_rs_or_single_client(connect=False)
+        # arbiters causes client to block until connected
+        await c.arbiters
+        self.assertIsNotNone(c._topology)
+        c = await self.async_rs_or_single_client(connect=False)
         # is_primary causes client to block until connected
         self.assertIsInstance(await c.is_primary, bool)
         c = await self.async_rs_or_single_client(connect=False)
@@ -2169,6 +2193,18 @@ class TestClient(AsyncIntegrationTest):
         docs = await coll.find(predicate).to_list()
         self.assertEqual(2, len(docs))
         await coll.drop()
+
+    async def test_unconnected_client_properties_with_srv(self):
+        client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/", connect=False)
+        self.assertEqual(client.nodes, frozenset())
+        topology_description = client.topology_description
+        self.assertEqual(topology_description.topology_type, TOPOLOGY_TYPE.Unknown)
+        self.assertEqual(
+            topology_description.server_descriptions(),
+            {("unknown", None): ServerDescription(("unknown", None))},
+        )
+        await client.aconnect()
+        self.assertEqual(await client.address, None)
 
 
 class TestExhaustCursor(AsyncIntegrationTest):
