@@ -550,21 +550,24 @@ def create_alternative_hosts_variants():
     host = HOSTS["rhel7"]
     variants.append(
         create_variant(
-            [".standard-linux .server-5.0"],
+            [".standalone-auth-ssl .server-version"],
             get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0]),
             host=host,
             python=CPYTHONS[0],
             batchtime=batchtime,
+            expansions=dict(VERSION="5.0", PYTHON_VERSION=CPYTHONS[0]),
         )
     )
 
     for host_name in OTHER_HOSTS:
-        expansions = dict()
+        expansions = dict(VERSION="latest")
         handle_c_ext(C_EXTS[0], expansions)
         host = HOSTS[host_name]
         if "fips" in host_name.lower():
             expansions["REQUIRE_FIPS"] = "1"
-        tags = [".standard-linux .server-latest"]
+        tags = [
+            ".server-version .standalone-noauth-nossl .replica_set-noauth-ssl .sharded_cluster-auth-ssl"
+        ]
         variants.append(
             create_variant(
                 tags,

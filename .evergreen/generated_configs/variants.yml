@@ -2,58 +2,65 @@ buildvariants:
   # Alternative hosts tests
   - name: openssl-1.0.2-rhel7-python3.9
     tasks:
-      - name: .standard-linux .server-5.0
+      - name: .standalone-auth-ssl .server-version
     display_name: OpenSSL 1.0.2 RHEL7 Python3.9
     run_on:
       - rhel79-small
     batchtime: 10080
     expansions:
+      VERSION: "5.0"
+      PYTHON_VERSION: "3.9"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: other-hosts-rhel9-fips
     tasks:
-      - name: .standard-linux .server-latest
+      - name: .server-version .standalone-noauth-nossl .replica_set-noauth-ssl .sharded_cluster-auth-ssl
     display_name: Other hosts RHEL9-FIPS
     run_on:
       - rhel92-fips
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
       REQUIRE_FIPS: "1"
   - name: other-hosts-rhel8-zseries
     tasks:
-      - name: .standard-linux .server-latest
+      - name: .server-version .standalone-noauth-nossl .replica_set-noauth-ssl .sharded_cluster-auth-ssl
     display_name: Other hosts RHEL8-zseries
     run_on:
       - rhel8-zseries-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
   - name: other-hosts-rhel8-power8
     tasks:
-      - name: .standard-linux .server-latest
+      - name: .server-version .standalone-noauth-nossl .replica_set-noauth-ssl .sharded_cluster-auth-ssl
     display_name: Other hosts RHEL8-POWER8
     run_on:
       - rhel8-power-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
   - name: other-hosts-rhel8-arm64
     tasks:
-      - name: .standard-linux .server-latest
+      - name: .server-version .standalone-noauth-nossl .replica_set-noauth-ssl .sharded_cluster-auth-ssl
     display_name: Other hosts RHEL8-arm64
     run_on:
       - rhel82-arm64-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
   - name: other-hosts-amazon2023
     tasks:
-      - name: .standard-linux .server-latest
+      - name: .server-version .standalone-noauth-nossl .replica_set-noauth-ssl .sharded_cluster-auth-ssl
     display_name: Other hosts Amazon2023
     run_on:
       - amazon2023-arm64-latest-large-m8g
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
 
   # Atlas connect tests
