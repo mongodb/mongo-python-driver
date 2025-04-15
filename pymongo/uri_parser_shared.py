@@ -421,7 +421,8 @@ def _check_options(nodes: Sized, options: Mapping[str, Any]) -> None:
 
 
 def _parse_kms_tls_options(
-    kms_tls_options: Optional[Mapping[str, Any]], is_sync
+    kms_tls_options: Optional[Mapping[str, Any]],
+    is_sync: bool,
 ) -> dict[str, SSLContext]:
     """Parse KMS TLS connection options."""
     if not kms_tls_options:

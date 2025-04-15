@@ -15,8 +15,9 @@
 """Support for SSL in PyMongo."""
 from __future__ import annotations
 
+import types
 import warnings
-from typing import Optional
+from typing import Any, Optional, Union
 
 from pymongo.errors import ConfigurationError
 
@@ -60,15 +61,15 @@ if HAVE_SSL:
     BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
     if HAVE_PYSSL:
-        PYSSLError = _pyssl.SSLError
-        PYBLOCKING_IO_ERRORS = _pyssl.BLOCKING_IO_ERRORS
-        PYBLOCKING_IO_READ_ERROR = _pyssl.BLOCKING_IO_READ_ERROR
-        PYBLOCKING_IO_WRITE_ERROR = _pyssl.BLOCKING_IO_WRITE_ERROR
-        PYBLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
+        PYSSLError: Any = _pyssl.SSLError
+        PYBLOCKING_IO_ERRORS: Any = _pyssl.BLOCKING_IO_ERRORS
+        PYBLOCKING_IO_READ_ERROR: Any = _pyssl.BLOCKING_IO_READ_ERROR
+        PYBLOCKING_IO_WRITE_ERROR: Any = _pyssl.BLOCKING_IO_WRITE_ERROR
+        PYBLOCKING_IO_LOOKUP_ERROR: Any = BLOCKING_IO_READ_ERROR
     else:
         # just make them the same as SSL so imports won't error
         PYSSLError = _ssl.SSLError
-        PYBLOCKING_IO_ERRORS = ()
+        PYBLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
         PYBLOCKING_IO_READ_ERROR = _ssl.BLOCKING_IO_READ_ERROR
         PYBLOCKING_IO_WRITE_ERROR = _ssl.BLOCKING_IO_WRITE_ERROR
         PYBLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
@@ -82,14 +83,14 @@ if HAVE_SSL:
         allow_invalid_hostnames: bool,
         disable_ocsp_endpoint_check: bool,
         is_sync: bool,
-    ) -> _ssl.SSLContext:
+    ) -> Union[_pyssl.SSLContext, _ssl.SSLContext]:  # type: ignore[name-defined]
         """Create and return an SSLContext object."""
         if is_sync and HAVE_PYSSL:
-            ssl_in_use = _pyssl
+            ssl_in_use: types.ModuleType = _pyssl
         else:
             ssl_in_use = _ssl
         verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
-        ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
+        ctx = ssl_in_use.SSLContext(ssl_in_use.PROTOCOL_SSLv23)
         if verify_mode != CERT_NONE:
             ctx.check_hostname = not allow_invalid_hostnames
         else:
@@ -114,9 +115,7 @@ if HAVE_SSL:
             if ssl_in_use.IS_PYOPENSSL:
                 raise ConfigurationError("tlsCRLFile cannot be used with PyOpenSSL")
             # Match the server's behavior.
-            ctx.verify_flags = getattr(  # type:ignore[attr-defined]
-                ssl_in_use, "VERIFY_CRL_CHECK_LEAF", 0
-            )
+            ctx.verify_flags = getattr(ssl_in_use, "VERIFY_CRL_CHECK_LEAF", 0)
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
