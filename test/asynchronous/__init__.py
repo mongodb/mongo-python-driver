@@ -827,6 +827,12 @@ class AsyncClientContext:
             lambda: _IS_SYNC, "This test only works with the synchronous API", func=func
         )
 
+    def require_async(self, func):
+        """Run a test only if using the synchronous API."""
+        return self._require(
+            lambda: not _IS_SYNC, "This test only works with the asynchronous API", func=func
+        )
+
     def mongos_seeds(self):
         return ",".join("{}:{}".format(*address) for address in self.mongoses)
 

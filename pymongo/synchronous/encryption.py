@@ -80,7 +80,7 @@ from pymongo.pool_shared import (
 )
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
-from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
+from pymongo.ssl_support import BLOCKING_IO_ERRORS, PYBLOCKING_IO_ERRORS, get_ssl_context
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
@@ -215,7 +215,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                 raise  # Propagate MongoCryptError errors directly.
             except Exception as exc:
                 # Wrap I/O errors in PyMongo exceptions.
-                if isinstance(exc, BLOCKING_IO_ERRORS):
+                if isinstance(exc, (BLOCKING_IO_ERRORS, PYBLOCKING_IO_ERRORS)):
                     exc = socket.timeout("timed out")
                 # Async raises an OSError instead of returning empty bytes.
                 if isinstance(exc, OSError):

@@ -657,6 +657,16 @@ class TestSSL(AsyncIntegrationTest):
         ) as client:
             self.assertTrue(await client.admin.command("ping"))
 
+    @async_client_context.require_async
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
+    @unittest.skipUnless(HAVE_SSL, "The ssl module is not available.")
+    async def test_pyopenssl_not_ignored_in_async(self):
+        client = AsyncMongoClient(
+            "mongodb://localhost:27017?tls=true&tlsAllowInvalidCertificates=true"
+        )
+        await client.admin.command("ping")  # command doesn't matter, just needs it to connect
+        await client.close()
+
 
 if __name__ == "__main__":
     unittest.main()

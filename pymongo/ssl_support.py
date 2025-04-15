@@ -59,6 +59,20 @@ if HAVE_SSL:
     BLOCKING_IO_WRITE_ERROR = _ssl.BLOCKING_IO_WRITE_ERROR
     BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
+    if HAVE_PYSSL:
+        PYSSLError = _pyssl.SSLError
+        PYBLOCKING_IO_ERRORS = _pyssl.BLOCKING_IO_ERRORS
+        PYBLOCKING_IO_READ_ERROR = _pyssl.BLOCKING_IO_READ_ERROR
+        PYBLOCKING_IO_WRITE_ERROR = _pyssl.BLOCKING_IO_WRITE_ERROR
+        PYBLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
+    else:
+        # just make them the same as SSL so imports won't error
+        PYSSLError = _ssl.SSLError
+        PYBLOCKING_IO_ERRORS = ()
+        PYBLOCKING_IO_READ_ERROR = _ssl.BLOCKING_IO_READ_ERROR
+        PYBLOCKING_IO_WRITE_ERROR = _ssl.BLOCKING_IO_WRITE_ERROR
+        PYBLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
+
     def get_ssl_context(
         certfile: Optional[str],
         passphrase: Optional[str],
