@@ -549,17 +549,19 @@ def create_alternative_hosts_variants():
     variants = []
 
     host = HOSTS["rhel7"]
+    version = "5.0"
     variants.append(
         create_variant(
             [".other-hosts"],
-            get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0]),
+            get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0], version=version),
             host=host,
             python=CPYTHONS[0],
             batchtime=batchtime,
-            expansions=dict(VERSION="5.0", PYTHON_VERSION=CPYTHONS[0]),
+            expansions=dict(VERSION=version, PYTHON_VERSION=CPYTHONS[0]),
         )
     )
 
+    version = "latest"
     for host_name in OTHER_HOSTS:
         expansions = dict(VERSION="latest")
         handle_c_ext(C_EXTS[0], expansions)
@@ -569,7 +571,7 @@ def create_alternative_hosts_variants():
         variants.append(
             create_variant(
                 [".other-hosts"],
-                display_name=get_variant_name("Other hosts", host),
+                display_name=get_variant_name("Other hosts", host, version=version),
                 batchtime=batchtime,
                 host=host,
                 expansions=expansions,
