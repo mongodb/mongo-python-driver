@@ -420,3 +420,21 @@ partially-converted asynchronous version of the same name to the `test/asynchron
 Use this generated file as a starting point for the completed conversion.
 
 The script is used like so: `python tools/convert_test_to_async.py [test_file.py]`
+
+## Running PyMongo with SSL
+Note that `AsyncMongoClient` does not support PyOpenSSL.
+Assuming all required packages are installed, set the `tls` and `tlsAllowInvalidCertificates` flags in the URI to enable
+the driver to connect with SSL, like so:
+```python
+from pymongo import MongoClient
+
+client = MongoClient(
+    "mongodb://localhost:27017?tls=true&tlsAllowInvalidCertificates=true"
+)
+```
+Another way of doing this would be to pass these options in as parameters to the MongoClient, like so:
+```python
+client = MongoClient(
+    "mongodb://localhost:27017", tls=True, tlsAllowInvalidCertificates=True
+)
+```
