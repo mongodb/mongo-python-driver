@@ -550,7 +550,7 @@ def create_alternative_hosts_variants():
     host = HOSTS["rhel7"]
     variants.append(
         create_variant(
-            [".5.0 .standalone !.sync_async"],
+            [".standard-linux .server-5.0"],
             get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0]),
             host=host,
             python=CPYTHONS[0],
@@ -564,9 +564,7 @@ def create_alternative_hosts_variants():
         host = HOSTS[host_name]
         if "fips" in host_name.lower():
             expansions["REQUIRE_FIPS"] = "1"
-        tags = [".6.0 .standalone !.sync_async"]
-        if host_name == "Amazon2023":
-            tags = [f".latest !.sync_async {t}" for t in SUB_TASKS]
+        tags = [".standard-linux .server-latest"]
         variants.append(
             create_variant(
                 tags,

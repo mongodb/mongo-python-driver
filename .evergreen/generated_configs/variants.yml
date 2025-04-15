@@ -2,7 +2,7 @@ buildvariants:
   # Alternative hosts tests
   - name: openssl-1.0.2-rhel7-python3.9
     tasks:
-      - name: .5.0 .standalone !.sync_async
+      - name: .standard-linux .server-5.0
     display_name: OpenSSL 1.0.2 RHEL7 Python3.9
     run_on:
       - rhel79-small
@@ -11,7 +11,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: other-hosts-rhel9-fips
     tasks:
-      - name: .6.0 .standalone !.sync_async
+      - name: .standard-linux .server-latest
     display_name: Other hosts RHEL9-FIPS
     run_on:
       - rhel92-fips
@@ -21,7 +21,7 @@ buildvariants:
       REQUIRE_FIPS: "1"
   - name: other-hosts-rhel8-zseries
     tasks:
-      - name: .6.0 .standalone !.sync_async
+      - name: .standard-linux .server-latest
     display_name: Other hosts RHEL8-zseries
     run_on:
       - rhel8-zseries-small
@@ -30,7 +30,7 @@ buildvariants:
       NO_EXT: "1"
   - name: other-hosts-rhel8-power8
     tasks:
-      - name: .6.0 .standalone !.sync_async
+      - name: .standard-linux .server-latest
     display_name: Other hosts RHEL8-POWER8
     run_on:
       - rhel8-power-small
@@ -39,7 +39,7 @@ buildvariants:
       NO_EXT: "1"
   - name: other-hosts-rhel8-arm64
     tasks:
-      - name: .6.0 .standalone !.sync_async
+      - name: .standard-linux .server-latest
     display_name: Other hosts RHEL8-arm64
     run_on:
       - rhel82-arm64-small
@@ -48,9 +48,7 @@ buildvariants:
       NO_EXT: "1"
   - name: other-hosts-amazon2023
     tasks:
-      - name: .latest !.sync_async .sharded_cluster .auth .ssl
-      - name: .latest !.sync_async .replica_set .noauth .ssl
-      - name: .latest !.sync_async .standalone .noauth .nossl
+      - name: .standard-linux .server-latest
     display_name: Other hosts Amazon2023
     run_on:
       - amazon2023-arm64-latest-large-m8g
