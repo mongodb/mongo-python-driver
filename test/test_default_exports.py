@@ -209,6 +209,13 @@ class TestDefaultExports(unittest.TestCase):
         )
         from pymongo.write_concern import WriteConcern, validate_boolean
 
+    def test_pymongo_submodule_attributes(self):
+        import pymongo
+
+        self.assertTrue(hasattr(pymongo, "uri_parser"))
+        self.assertTrue(pymongo.uri_parser)
+        self.assertTrue(pymongo.uri_parser.parse_uri)
+
     def test_gridfs_imports(self):
         import gridfs
         from gridfs.errors import CorruptGridFile, FileExists, GridFSError, NoFile
