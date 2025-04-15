@@ -22,6 +22,7 @@ from generate_config_utils import (
     create_variant,
     get_assume_role,
     get_s3_put,
+    get_standard_auth_ssl,
     get_subprocess_exec,
     get_task_name,
     get_variant_name,
@@ -617,8 +618,7 @@ def create_other_hosts_tasks():
     tasks = []
 
     for topology in TOPOLOGIES:
-        auth = "auth" if topology == "sharded_cluster" else "noauth"
-        ssl = "nossl" if topology == "standalone" else "ssl"
+        auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "other-hosts",
             f"{topology}-{auth}-{ssl}",
@@ -638,8 +638,7 @@ def create_standard_linux_tasks():
     for (version, topology), python in zip_cycle(
         list(product(ALL_VERSIONS, TOPOLOGIES)), ALL_PYTHONS
     ):
-        auth = "auth" if topology == "sharded_cluster" else "noauth"
-        ssl = "nossl" if topology == "standalone" else "ssl"
+        auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "standard-linux",
             f"server-{version}",
@@ -662,8 +661,7 @@ def create_standard_non_linux_tasks():
     for (version, topology), python, sync in zip_cycle(
         list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS, SYNCS
     ):
-        auth = "auth" if topology == "sharded_cluster" else "noauth"
-        ssl = "nossl" if topology == "standalone" else "ssl"
+        auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "standard-non-linux",
             f"server-{version}",
