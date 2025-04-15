@@ -2,7 +2,9 @@ buildvariants:
   # Alternative hosts tests
   - name: openssl-1.0.2-rhel7-python3.9
     tasks:
-      - name: .standalone-auth-ssl .server-version
+      - name: .server-version .standalone-noauth-nossl
+      - name: .server-version .replica_set-noauth-ssl
+      - name: .server-version .sharded_cluster-auth-ssl
     display_name: OpenSSL 1.0.2 RHEL7 Python3.9
     run_on:
       - rhel79-small

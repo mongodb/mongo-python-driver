@@ -546,11 +546,16 @@ def create_no_server_variants():
 def create_alternative_hosts_variants():
     batchtime = BATCHTIME_WEEK
     variants = []
+    tags = [
+        ".server-version .standalone-noauth-nossl",
+        ".server-version .replica_set-noauth-ssl",
+        ".server-version .sharded_cluster-auth-ssl",
+    ]
 
     host = HOSTS["rhel7"]
     variants.append(
         create_variant(
-            [".standalone-auth-ssl .server-version"],
+            tags,
             get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0]),
             host=host,
             python=CPYTHONS[0],
@@ -565,11 +570,6 @@ def create_alternative_hosts_variants():
         host = HOSTS[host_name]
         if "fips" in host_name.lower():
             expansions["REQUIRE_FIPS"] = "1"
-        tags = [
-            ".server-version .standalone-noauth-nossl",
-            ".server-version .replica_set-noauth-ssl",
-            ".server-version .sharded_cluster-auth-ssl",
-        ]
         variants.append(
             create_variant(
                 tags,
