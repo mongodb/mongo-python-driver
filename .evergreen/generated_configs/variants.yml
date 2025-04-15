@@ -729,8 +729,8 @@ buildvariants:
   # Pyopenssl tests
   - name: pyopenssl-macos-python3.9
     tasks:
-      - name: .replica_set .noauth .nossl .sync
-      - name: .7.0 .noauth .nossl .sync
+      - name: .replica_set .noauth .nossl .sync_async
+      - name: .7.0 .noauth .nossl .sync_async
     display_name: PyOpenSSL macOS Python3.9
     run_on:
       - macos-14
@@ -773,8 +773,8 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: pyopenssl-win64-python3.13
     tasks:
-      - name: .replica_set .auth .ssl .sync
-      - name: .7.0 .auth .ssl .sync
+      - name: .replica_set .auth .ssl .sync_async
+      - name: .7.0 .auth .ssl .sync_async
     display_name: PyOpenSSL Win64 Python3.13
     run_on:
       - windows-64-vsMulti-small
