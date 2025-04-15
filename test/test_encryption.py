@@ -119,7 +119,10 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         # Test that we can pick up crypt_shared lib automatically
         self.simple_client(
             auto_encryption_opts=AutoEncryptionOpts(
-                KMS_PROVIDERS, "keyvault.datakeys", crypt_shared_lib_required=True
+                KMS_PROVIDERS,
+                "keyvault.datakeys",
+                crypt_shared_lib_required=True,
+                is_sync=_IS_SYNC,
             ),
             connect=False,
         )
@@ -127,11 +130,11 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
     @unittest.skipIf(_HAVE_PYMONGOCRYPT, "pymongocrypt is installed")
     def test_init_requires_pymongocrypt(self):
         with self.assertRaises(ConfigurationError):
-            AutoEncryptionOpts({}, "keyvault.datakeys")
+            AutoEncryptionOpts({}, "keyvault.datakeys", is_sync=_IS_SYNC)
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     def test_init(self):
-        opts = AutoEncryptionOpts({}, "keyvault.datakeys")
+        opts = AutoEncryptionOpts({}, "keyvault.datakeys", is_sync=_IS_SYNC)
         self.assertEqual(opts._kms_providers, {})
         self.assertEqual(opts._key_vault_namespace, "keyvault.datakeys")
         self.assertEqual(opts._key_vault_client, None)
@@ -147,17 +150,25 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
     def test_init_spawn_args(self):
         # User can override idleShutdownTimeoutSecs
         opts = AutoEncryptionOpts(
-            {}, "keyvault.datakeys", mongocryptd_spawn_args=["--idleShutdownTimeoutSecs=88"]
+            {},
+            "keyvault.datakeys",
+            mongocryptd_spawn_args=["--idleShutdownTimeoutSecs=88"],
+            is_sync=_IS_SYNC,
         )
         self.assertEqual(opts._mongocryptd_spawn_args, ["--idleShutdownTimeoutSecs=88"])
 
         # idleShutdownTimeoutSecs is added by default
-        opts = AutoEncryptionOpts({}, "keyvault.datakeys", mongocryptd_spawn_args=[])
+        opts = AutoEncryptionOpts(
+            {}, "keyvault.datakeys", mongocryptd_spawn_args=[], is_sync=_IS_SYNC
+        )
         self.assertEqual(opts._mongocryptd_spawn_args, ["--idleShutdownTimeoutSecs=60"])
 
         # Also added when other options are given
         opts = AutoEncryptionOpts(
-            {}, "keyvault.datakeys", mongocryptd_spawn_args=["--quiet", "--port=27020"]
+            {},
+            "keyvault.datakeys",
+            mongocryptd_spawn_args=["--quiet", "--port=27020"],
+            is_sync=_IS_SYNC,
         )
         self.assertEqual(
             opts._mongocryptd_spawn_args,
@@ -168,7 +179,7 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
     def test_init_kms_tls_options(self):
         # Error cases:
         with self.assertRaisesRegex(TypeError, r'kms_tls_options\["kmip"\] must be a dict'):
-            AutoEncryptionOpts({}, "k.d", kms_tls_options={"kmip": 1})
+            AutoEncryptionOpts({}, "k.d", kms_tls_options={"kmip": 1}, is_sync=_IS_SYNC)
         tls_opts: Any
         for tls_opts in [
             {"kmip": {"tls": True, "tlsInsecure": True}},
@@ -176,15 +187,22 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
             {"kmip": {"tls": True, "tlsAllowInvalidHostnames": True}},
         ]:
             with self.assertRaisesRegex(ConfigurationError, "Insecure TLS options prohibited"):
-                opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts)
+                opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts, is_sync=_IS_SYNC)
         with self.assertRaises(FileNotFoundError):
-            AutoEncryptionOpts({}, "k.d", kms_tls_options={"kmip": {"tlsCAFile": "does-not-exist"}})
+            AutoEncryptionOpts(
+                {},
+                "k.d",
+                kms_tls_options={"kmip": {"tlsCAFile": "does-not-exist"}},
+                is_sync=_IS_SYNC,
+            )
         # Success cases:
         tls_opts: Any
         for tls_opts in [None, {}]:
-            opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts)
+            opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts, is_sync=_IS_SYNC)
             self.assertEqual(opts._kms_ssl_contexts, {})
-        opts = AutoEncryptionOpts({}, "k.d", kms_tls_options={"kmip": {"tls": True}, "aws": {}})
+        opts = AutoEncryptionOpts(
+            {}, "k.d", kms_tls_options={"kmip": {"tls": True}, "aws": {}}, is_sync=_IS_SYNC
+        )
         ctx = opts._kms_ssl_contexts["kmip"]
         self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
@@ -195,6 +213,7 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
             {},
             "k.d",
             kms_tls_options={"kmip": {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM}},
+            is_sync=_IS_SYNC,
         )
         ctx = opts._kms_ssl_contexts["kmip"]
         self.assertEqual(ctx.check_hostname, True)
@@ -211,7 +230,7 @@ class TestClientOptions(PyMongoTestCase):
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     def test_kwargs(self):
-        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys", is_sync=_IS_SYNC)
         client = self.simple_client(auto_encryption_opts=opts, connect=False)
         self.assertEqual(get_client_opts(client).auto_encryption_opts, opts)
 
@@ -360,18 +379,24 @@ class TestClientSimple(EncryptionIntegrationTest):
         create_with_schema(self.db.test, json_schema)
         self.addCleanup(self.db.test.drop)
 
-        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
+        opts = AutoEncryptionOpts(
+            KMS_PROVIDERS,
+            "keyvault.datakeys",
+            is_sync=_IS_SYNC,
+        )
         self._test_auto_encrypt(opts)
 
     def test_auto_encrypt_local_schema_map(self):
         # Configure the encrypted field via the local schema_map option.
         schemas = {"pymongo_test.test": json_data("custom", "schema.json")}
-        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys", schema_map=schemas)
+        opts = AutoEncryptionOpts(
+            KMS_PROVIDERS, "keyvault.datakeys", schema_map=schemas, is_sync=_IS_SYNC
+        )
 
         self._test_auto_encrypt(opts)
 
     def test_use_after_close(self):
-        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys", is_sync=_IS_SYNC)
         client = self.rs_or_single_client(auto_encryption_opts=opts)
 
         client.admin.command("ping")
@@ -390,7 +415,7 @@ class TestClientSimple(EncryptionIntegrationTest):
     @client_context.require_sync
     def test_fork(self):
         self.skipTest("Test is flaky, PYTHON-4738")
-        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys", is_sync=_IS_SYNC)
         client = self.rs_or_single_client(auto_encryption_opts=opts)
 
         def target():
@@ -404,7 +429,7 @@ class TestClientSimple(EncryptionIntegrationTest):
 
 class TestEncryptedBulkWrite(BulkTestBase, EncryptionIntegrationTest):
     def test_upsert_uuid_standard_encrypt(self):
-        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys", is_sync=_IS_SYNC)
         client = self.rs_or_single_client(auto_encryption_opts=opts)
 
         options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
@@ -443,7 +468,7 @@ class TestClientMaxWireVersion(IntegrationTest):
 
     @client_context.require_version_max(4, 0, 99)
     def test_raise_max_wire_version_error(self):
-        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys", is_sync=_IS_SYNC)
         client = self.rs_or_single_client(auto_encryption_opts=opts)
         msg = "Auto-encryption requires a minimum MongoDB version of 4.2"
         with self.assertRaisesRegex(ConfigurationError, msg):
@@ -456,7 +481,7 @@ class TestClientMaxWireVersion(IntegrationTest):
             client.test.test.bulk_write([InsertOne({})])
 
     def test_raise_unsupported_error(self):
-        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys", is_sync=_IS_SYNC)
         client = self.rs_or_single_client(auto_encryption_opts=opts)
         msg = "find_raw_batches does not support auto encryption"
         with self.assertRaisesRegex(InvalidOperation, msg):
@@ -671,7 +696,7 @@ class TestSpec(SpecRunner):
             opts.update(camel_to_snake_args(opts.pop("extra_options")))
 
         opts = dict(opts)
-        return AutoEncryptionOpts(**opts)
+        return AutoEncryptionOpts(**opts, is_sync=_IS_SYNC)
 
     def parse_client_options(self, opts):
         """Override clientOptions parsing to support autoEncryptOpts."""
@@ -853,6 +878,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
             "keyvault.datakeys",
             schema_map=schemas,
             kms_tls_options=KMS_TLS_OPTS,
+            is_sync=_IS_SYNC,
         )
         self.client_encrypted = self.rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation="standard"
@@ -946,6 +972,7 @@ class TestExternalKeyVault(EncryptionIntegrationTest):
             "keyvault.datakeys",
             schema_map=schemas,
             key_vault_client=key_vault_client,
+            is_sync=_IS_SYNC,
         )
 
         client_encrypted = self.rs_or_single_client(
@@ -999,7 +1026,7 @@ class TestViews(EncryptionIntegrationTest):
         self.client.db.create_collection("view", viewOn="coll")
         self.addCleanup(self.client.db.view.drop)
 
-        opts = AutoEncryptionOpts(self.kms_providers(), "keyvault.datakeys")
+        opts = AutoEncryptionOpts(self.kms_providers(), "keyvault.datakeys", is_sync=_IS_SYNC)
         client_encrypted = self.rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation="standard"
         )
@@ -1157,7 +1184,10 @@ class TestCorpus(EncryptionIntegrationTest):
 
     def test_corpus(self):
         opts = AutoEncryptionOpts(
-            self.kms_providers(), "keyvault.datakeys", kms_tls_options=KMS_TLS_OPTS
+            self.kms_providers(),
+            "keyvault.datakeys",
+            kms_tls_options=KMS_TLS_OPTS,
+            is_sync=_IS_SYNC,
         )
         self._test_corpus(opts)
 
@@ -1169,6 +1199,7 @@ class TestCorpus(EncryptionIntegrationTest):
             "keyvault.datakeys",
             schema_map=schemas,
             kms_tls_options=KMS_TLS_OPTS,
+            is_sync=_IS_SYNC,
         )
         self._test_corpus(opts)
 
@@ -1206,7 +1237,9 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         coll.drop()
         coll.insert_one(json_data("limits", "limits-key.json"))
 
-        opts = AutoEncryptionOpts({"local": {"key": LOCAL_MASTER_KEY}}, "keyvault.datakeys")
+        opts = AutoEncryptionOpts(
+            {"local": {"key": LOCAL_MASTER_KEY}}, "keyvault.datakeys", is_sync=_IS_SYNC
+        )
         self.listener = OvertCommandListener()
         self.client_encrypted = self.rs_or_single_client(
             auto_encryption_opts=opts, event_listeners=[self.listener]
@@ -1519,6 +1552,7 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
             keyvault_namespace,
             schema_map=self.SCHEMA_MAP,
+            is_sync=_IS_SYNC,
         )
 
         insert_listener = AllowListEventListener("insert")
@@ -1657,7 +1691,10 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self._run_test(
             max_pool_size=1,
             auto_encryption_opts=AutoEncryptionOpts(
-                *self.optargs, bypass_auto_encryption=False, key_vault_client=None
+                *self.optargs,
+                bypass_auto_encryption=False,
+                key_vault_client=None,
+                is_sync=_IS_SYNC,
             ),
         )
 
@@ -1678,7 +1715,10 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self._run_test(
             max_pool_size=1,
             auto_encryption_opts=AutoEncryptionOpts(
-                *self.optargs, bypass_auto_encryption=False, key_vault_client=self.client_keyvault
+                *self.optargs,
+                bypass_auto_encryption=False,
+                key_vault_client=self.client_keyvault,
+                is_sync=_IS_SYNC,
             ),
         )
 
@@ -1702,7 +1742,10 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self._run_test(
             max_pool_size=1,
             auto_encryption_opts=AutoEncryptionOpts(
-                *self.optargs, bypass_auto_encryption=True, key_vault_client=None
+                *self.optargs,
+                bypass_auto_encryption=True,
+                key_vault_client=None,
+                is_sync=_IS_SYNC,
             ),
         )
 
@@ -1719,7 +1762,10 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self._run_test(
             max_pool_size=1,
             auto_encryption_opts=AutoEncryptionOpts(
-                *self.optargs, bypass_auto_encryption=True, key_vault_client=self.client_keyvault
+                *self.optargs,
+                bypass_auto_encryption=True,
+                key_vault_client=self.client_keyvault,
+                is_sync=_IS_SYNC,
             ),
         )
 
@@ -1739,7 +1785,10 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self._run_test(
             max_pool_size=None,
             auto_encryption_opts=AutoEncryptionOpts(
-                *self.optargs, bypass_auto_encryption=False, key_vault_client=None
+                *self.optargs,
+                bypass_auto_encryption=False,
+                key_vault_client=None,
+                is_sync=_IS_SYNC,
             ),
         )
 
@@ -1762,7 +1811,10 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self._run_test(
             max_pool_size=None,
             auto_encryption_opts=AutoEncryptionOpts(
-                *self.optargs, bypass_auto_encryption=False, key_vault_client=self.client_keyvault
+                *self.optargs,
+                bypass_auto_encryption=False,
+                key_vault_client=self.client_keyvault,
+                is_sync=_IS_SYNC,
             ),
         )
 
@@ -1786,7 +1838,10 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self._run_test(
             max_pool_size=None,
             auto_encryption_opts=AutoEncryptionOpts(
-                *self.optargs, bypass_auto_encryption=True, key_vault_client=None
+                *self.optargs,
+                bypass_auto_encryption=True,
+                key_vault_client=None,
+                is_sync=_IS_SYNC,
             ),
         )
 
@@ -1803,7 +1858,10 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self._run_test(
             max_pool_size=None,
             auto_encryption_opts=AutoEncryptionOpts(
-                *self.optargs, bypass_auto_encryption=True, key_vault_client=self.client_keyvault
+                *self.optargs,
+                bypass_auto_encryption=True,
+                key_vault_client=self.client_keyvault,
+                is_sync=_IS_SYNC,
             ),
         )
 
@@ -1841,7 +1899,9 @@ class TestDecryptProse(EncryptionIntegrationTest):
         )
         self.malformed_cipher_text = Binary(self.malformed_cipher_text, 6)
         opts = AutoEncryptionOpts(
-            key_vault_namespace="keyvault.datakeys", kms_providers=kms_providers_map
+            key_vault_namespace="keyvault.datakeys",
+            kms_providers=kms_providers_map,
+            is_sync=_IS_SYNC,
         )
         self.listener = AllowListEventListener("aggregate")
         self.encrypted_client = self.rs_or_single_client(
@@ -1922,6 +1982,7 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
                 "--pidfilepath=bypass-spawning-mongocryptd.pid",
                 "--port=27027",
             ],
+            is_sync=_IS_SYNC,
         )
         client_encrypted = self.rs_or_single_client(auto_encryption_opts=opts)
         with self.assertRaisesRegex(EncryptionError, "Timeout"):
@@ -1936,6 +1997,7 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
                 "--pidfilepath=bypass-spawning-mongocryptd.pid",
                 "--port=27027",
             ],
+            is_sync=_IS_SYNC,
         )
         client_encrypted = self.rs_or_single_client(auto_encryption_opts=opts)
         client_encrypted.db.coll.insert_one({"unencrypted": "test"})
@@ -1963,6 +2025,7 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
                 "--port=47021",
             ],
             crypt_shared_lib_required=True,
+            is_sync=_IS_SYNC,
         )
         client_encrypted = self.rs_or_single_client(auto_encryption_opts=opts)
         client_encrypted.db.coll.drop()
@@ -2003,6 +2066,7 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
             schema_map=schemas,
             mongocryptd_uri="mongodb://localhost:47021",
             crypt_shared_lib_required=False,
+            is_sync=_IS_SYNC,
         )
         client_encrypted = self.rs_or_single_client(auto_encryption_opts=opts)
         client_encrypted.db.coll.drop()
@@ -2312,6 +2376,7 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
             {"local": {"key": LOCAL_MASTER_KEY}},
             key_vault.full_name,
             bypass_query_analysis=True,
+            is_sync=_IS_SYNC,
         )
         self.encrypted_client = self.rs_or_single_client(auto_encryption_opts=opts)
 
@@ -2414,6 +2479,7 @@ class TestLookupProse(EncryptionIntegrationTest):
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+                is_sync=_IS_SYNC,
             )
         )
         encrypted_client.drop_database("db")
@@ -2465,6 +2531,7 @@ class TestLookupProse(EncryptionIntegrationTest):
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+                is_sync=_IS_SYNC,
             )
         )
         doc = next(
@@ -2493,6 +2560,7 @@ class TestLookupProse(EncryptionIntegrationTest):
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+                is_sync=_IS_SYNC,
             )
         )
         doc = next(
@@ -2521,6 +2589,7 @@ class TestLookupProse(EncryptionIntegrationTest):
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+                is_sync=_IS_SYNC,
             )
         )
         doc = next(
@@ -2546,6 +2615,7 @@ class TestLookupProse(EncryptionIntegrationTest):
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+                is_sync=_IS_SYNC,
             )
         )
         doc = next(
@@ -2574,6 +2644,7 @@ class TestLookupProse(EncryptionIntegrationTest):
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+                is_sync=_IS_SYNC,
             )
         )
         doc = next(
@@ -2602,6 +2673,7 @@ class TestLookupProse(EncryptionIntegrationTest):
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+                is_sync=_IS_SYNC,
             )
         )
         doc = next(
@@ -2630,6 +2702,7 @@ class TestLookupProse(EncryptionIntegrationTest):
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+                is_sync=_IS_SYNC,
             )
         )
         doc = next(
@@ -2658,6 +2731,7 @@ class TestLookupProse(EncryptionIntegrationTest):
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+                is_sync=_IS_SYNC,
             )
         )
         with self.assertRaises(PyMongoError) as exc:
@@ -2684,6 +2758,7 @@ class TestLookupProse(EncryptionIntegrationTest):
             auto_encryption_opts=AutoEncryptionOpts(
                 key_vault_namespace="db.keyvault",
                 kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+                is_sync=_IS_SYNC,
             )
         )
         with self.assertRaises(PyMongoError) as exc:
@@ -2874,7 +2949,10 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
 
         # Create an Queryable Encryption collection.
         opts = AutoEncryptionOpts(
-            kms_providers_map, "keyvault.datakeys", encrypted_fields_map=encrypted_fields_map
+            kms_providers_map,
+            "keyvault.datakeys",
+            encrypted_fields_map=encrypted_fields_map,
+            is_sync=_IS_SYNC,
         )
         encrypted_client = MongoClient(auto_encryption_opts=opts)
 
@@ -2929,6 +3007,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
             {"local": {"key": LOCAL_MASTER_KEY}},
             key_vault.full_name,
             bypass_query_analysis=True,
+            is_sync=_IS_SYNC,
         )
         self.encrypted_client = self.rs_or_single_client(auto_encryption_opts=opts)
         self.db = self.encrypted_client.db
