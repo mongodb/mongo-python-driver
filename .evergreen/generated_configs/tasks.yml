@@ -3083,6 +3083,47 @@ tasks:
           SUB_TEST_NAME: gke
     tags: [auth_oidc, auth_oidc_remote]
 
+  # Other hosts tests
+  - name: test-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+    tags: [other-hosts, standalone-noauth-nossl]
+  - name: test-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+    tags: [other-hosts, replica_set-noauth-ssl]
+  - name: test-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+    tags: [other-hosts, sharded_cluster-auth-ssl]
+
   # Perf tests
   - name: perf-8.0-standalone-ssl
     commands:

@@ -546,16 +546,11 @@ def create_no_server_variants():
 def create_alternative_hosts_variants():
     batchtime = BATCHTIME_WEEK
     variants = []
-    tags = [
-        ".server-version .standalone-noauth-nossl",
-        ".server-version .replica_set-noauth-ssl",
-        ".server-version .sharded_cluster-auth-ssl",
-    ]
 
     host = HOSTS["rhel7"]
     variants.append(
         create_variant(
-            tags,
+            [".other-hosts"],
             get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0]),
             host=host,
             python=CPYTHONS[0],
@@ -572,7 +567,7 @@ def create_alternative_hosts_variants():
             expansions["REQUIRE_FIPS"] = "1"
         variants.append(
             create_variant(
-                tags,
+                [".other-hosts"],
                 display_name=get_variant_name("Other hosts", host),
                 batchtime=batchtime,
                 host=host,
@@ -613,6 +608,25 @@ def create_server_version_tasks():
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
+def create_other_hosts_tasks():
+    tasks = []
+
+    for topology in TOPOLOGIES:
+        auth = "auth" if topology == "sharded_cluster" else "noauth"
+        ssl = "nossl" if topology == "standalone" else "ssl"
+        tags = [
+            "other-hosts",
+            f"{topology}-{auth}-{ssl}",
+        ]
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
+        name = get_task_name("test", **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
