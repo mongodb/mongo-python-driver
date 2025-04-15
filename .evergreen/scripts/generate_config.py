@@ -566,7 +566,9 @@ def create_alternative_hosts_variants():
         if "fips" in host_name.lower():
             expansions["REQUIRE_FIPS"] = "1"
         tags = [
-            ".server-version .standalone-noauth-nossl .replica_set-noauth-ssl .sharded_cluster-auth-ssl"
+            ".server-version .standalone-noauth-nossl",
+            ".server-version .replica_set-noauth-ssl",
+            ".server-version .sharded_cluster-auth-ssl",
         ]
         variants.append(
             create_variant(
