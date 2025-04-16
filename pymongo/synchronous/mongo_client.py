@@ -1219,6 +1219,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 TopologySettings(),
             )
             self._initial_topology_id = td._topology_settings._topology_id
+            return td
         return self._topology.description
 
     @property
