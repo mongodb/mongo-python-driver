@@ -343,6 +343,10 @@ def create_green_framework_variants():
     tasks = [".standalone .noauth .nossl .sync_async"]
     host = DEFAULT_HOST
     for python, framework in product([CPYTHONS[0], CPYTHONS[-1]], ["eventlet", "gevent"]):
+        if framework == "eventlet" and python == CPYTHONS[-1]:
+            # Eventlet has issues with dnspython > 2.0 and newer versions of CPython
+            # https://jira.mongodb.org/browse/PYTHON-5284
+            continue
         expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
         display_name = get_variant_name(f"Green {framework.capitalize()}", host, python=python)
         variant = create_variant(
