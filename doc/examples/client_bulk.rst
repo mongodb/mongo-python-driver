@@ -2,6 +2,7 @@ Client Bulk Write Operations
 =============================
 
 .. testsetup::
+  :skipif: server_major_version < 8
 
   from pymongo import MongoClient
 

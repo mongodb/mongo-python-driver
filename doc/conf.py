@@ -105,6 +105,7 @@ from pymongo.mongo_client import MongoClient
 client = MongoClient()
 client.drop_database("doctest_test")
 db = client.doctest_test
+server_major_version = int(client.server_info()['version'].split()[0])
 """
 
 # -- Options for HTML output ---------------------------------------------------
