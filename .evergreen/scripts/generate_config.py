@@ -626,7 +626,7 @@ def create_other_hosts_tasks():
             f"{topology}-{auth}-{ssl}",
         ]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
-        name = get_task_name("test", **expansions)
+        name = get_task_name("test", sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["TEST_NAME"] = f"default_{sync}"

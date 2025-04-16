@@ -3084,7 +3084,7 @@ tasks:
     tags: [auth_oidc, auth_oidc_remote]
 
   # Other hosts tests
-  - name: test-noauth-nossl-standalone
+  - name: test-sync-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -3098,7 +3098,7 @@ tasks:
           TOPOLOGY: standalone
           TEST_NAME: default_sync
     tags: [other-hosts, standalone-noauth-nossl]
-  - name: test-noauth-ssl-replica-set
+  - name: test-async-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -3112,7 +3112,7 @@ tasks:
           TOPOLOGY: replica_set
           TEST_NAME: default_async
     tags: [other-hosts, replica_set-noauth-ssl]
-  - name: test-auth-ssl-sharded-cluster
+  - name: test-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
