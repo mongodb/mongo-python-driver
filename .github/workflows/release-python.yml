@@ -3,9 +3,6 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "The new version to set"
-        required: true
       following_version:
         description: "The post (dev) version to set"
         required: true
@@ -26,7 +23,6 @@ env:
   # to 'false' when the input is set to 'false'.
   DRY_RUN: ${{ ! contains(inputs.dry_run, 'false') }}
   FOLLOWING_VERSION: ${{ inputs.following_version || '' }}
-  VERSION: ${{ inputs.version || '10.10.10.10' }}
 
 defaults:
   run:
