@@ -5,7 +5,6 @@ on:
     inputs:
       following_version:
         description: "The post (dev) version to set"
-        required: true
       dry_run:
         description: "Dry Run?"
         default: false
