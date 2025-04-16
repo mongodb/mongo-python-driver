@@ -43,7 +43,7 @@ from urllib.parse import quote_plus
 from pymongo import MongoClient, ssl_support
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from pymongo.hello import HelloCompat
-from pymongo.ssl_support import HAVE_SSL, _pyssl, _ssl, get_ssl_context
+from pymongo.ssl_support import HAVE_PYSSL, HAVE_SSL, _ssl, get_ssl_context
 from pymongo.write_concern import WriteConcern
 
 _HAVE_PYOPENSSL = False
@@ -134,7 +134,7 @@ class TestClientSSL(PyMongoTestCase):
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_use_pyopenssl_when_available(self):
-        self.assertTrue(_pyssl.IS_PYOPENSSL)
+        self.assertTrue(HAVE_PYSSL)
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "Cannot test without PyOpenSSL")
     def test_load_trusted_ca_certs(self):
@@ -177,7 +177,7 @@ class TestSSL(IntegrationTest):
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
-        if not hasattr(ssl, "SSLContext") and not _pyssl.IS_PYOPENSSL:
+        if not hasattr(ssl, "SSLContext") and not HAVE_PYSSL:
             self.assertRaises(
                 ConfigurationError,
                 self.simple_client,
@@ -378,7 +378,7 @@ class TestSSL(IntegrationTest):
     @client_context.require_tlsCertificateKeyFile
     @ignore_deprecations
     def test_tlsCRLFile_support(self):
-        if not hasattr(ssl, "VERIFY_CRL_CHECK_LEAF") or _pyssl.IS_PYOPENSSL:
+        if not hasattr(ssl, "VERIFY_CRL_CHECK_LEAF") or HAVE_PYSSL:
             self.assertRaises(
                 ConfigurationError,
                 self.simple_client,
