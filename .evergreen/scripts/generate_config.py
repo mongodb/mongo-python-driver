@@ -619,7 +619,7 @@ def create_server_version_tasks():
 def create_other_hosts_tasks():
     tasks = []
 
-    for topology in TOPOLOGIES:
+    for topology, sync in zip_cycle(TOPOLOGIES, SYNCS):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "other-hosts",
@@ -629,6 +629,7 @@ def create_other_hosts_tasks():
         name = get_task_name("test", **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
+        test_vars["TEST_NAME"] = f"default_{sync}"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
