@@ -10,6 +10,9 @@ Version 4.12.1 is a bug fix release.
 - Fixed a bug that could raise ``UnboundLocalError`` when creating asynchronous connections over SSL.
 - Fixed a bug causing SRV hostname validation to fail when resolver and resolved hostnames are identical with three domain levels.
 - Fixed a bug that caused direct use of ``pymongo.uri_parser`` to raise an ``AttributeError``.
+- Removed Eventlet testing against Python versions newer than 3.9 since
+  Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
+
 
 Issues Resolved
 ...............
