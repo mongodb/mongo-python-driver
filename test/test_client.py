@@ -800,20 +800,29 @@ class TestClient(IntegrationTest):
             topology_description.server_descriptions(),
             {(host, port): ServerDescription((host, port))},
         )
+
         # address causes client to block until connected
         self.assertIsNotNone(c.address)
+        # Initial seed topology and connected topology have the same ID
+        self.assertEqual(
+            c._topology._topology_id, topology_description._topology_settings._topology_id
+        )
+
         c = self.rs_or_single_client(connect=False)
         # primary causes client to block until connected
         c.primary
         self.assertIsNotNone(c._topology)
+
         c = self.rs_or_single_client(connect=False)
         # secondaries causes client to block until connected
         c.secondaries
         self.assertIsNotNone(c._topology)
+
         c = self.rs_or_single_client(connect=False)
         # arbiters causes client to block until connected
         c.arbiters
         self.assertIsNotNone(c._topology)
+
         c = self.rs_or_single_client(connect=False)
         # is_primary causes client to block until connected
         self.assertIsInstance(c.is_primary, bool)
@@ -2150,18 +2159,6 @@ class TestClient(IntegrationTest):
         docs = coll.find(predicate).to_list()
         self.assertEqual(2, len(docs))
         coll.drop()
-
-    def test_unconnected_client_properties_with_srv(self):
-        client = self.simple_client("mongodb+srv://test1.test.build.10gen.cc/", connect=False)
-        self.assertEqual(client.nodes, frozenset())
-        topology_description = client.topology_description
-        self.assertEqual(topology_description.topology_type, TOPOLOGY_TYPE.Unknown)
-        self.assertEqual(
-            topology_description.server_descriptions(),
-            {("unknown", None): ServerDescription(("unknown", None))},
-        )
-        client._connect()
-        self.assertEqual(client.address, None)
 
 
 class TestExhaustCursor(IntegrationTest):

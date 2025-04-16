@@ -768,6 +768,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._timeout: float | None = None
         self._topology_settings: TopologySettings = None  # type: ignore[assignment]
         self._event_listeners: _EventListeners | None = None
+        self._initial_topology_id: Optional[ObjectId] = None  # type: ignore[assignment]
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
@@ -976,6 +977,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             srv_service_name=srv_service_name,
             srv_max_hosts=srv_max_hosts,
             server_monitoring_mode=self._options.server_monitoring_mode,
+            topology_id=self._initial_topology_id,
         )
         if self._options.auto_encryption_opts:
             from pymongo.asynchronous.encryption import _Encrypter
@@ -1210,7 +1212,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             servers = {
                 (host, self._port): ServerDescription((host, self._port)) for host in self._seeds
             }
-            return TopologyDescription(
+            td = TopologyDescription(
                 TOPOLOGY_TYPE.Unknown,
                 servers,
                 None,
@@ -1218,6 +1220,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 None,
                 TopologySettings(),
             )
+            self._initial_topology_id = td._topology_settings._topology_id
         return self._topology.description
 
     @property
