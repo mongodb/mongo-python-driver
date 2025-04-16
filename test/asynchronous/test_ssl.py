@@ -376,6 +376,7 @@ class TestSSL(AsyncIntegrationTest):
             )
 
     @async_client_context.require_tlsCertificateKeyFile
+    @async_client_context.require_sync
     @ignore_deprecations
     async def test_tlsCRLFile_support(self):
         if not hasattr(ssl, "VERIFY_CRL_CHECK_LEAF") or HAVE_PYSSL:
