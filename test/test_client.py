@@ -791,39 +791,6 @@ class TestClient(IntegrationTest):
     def test_init_disconnected(self):
         host, port = client_context.host, client_context.port
         c = self.rs_or_single_client(connect=False)
-        # nodes returns an empty set if not connected
-        self.assertEqual(c.nodes, frozenset())
-        # topology_description returns the initial seed description if not connected
-        topology_description = c.topology_description
-        self.assertEqual(topology_description.topology_type, TOPOLOGY_TYPE.Unknown)
-        self.assertEqual(
-            topology_description.server_descriptions(),
-            {(host, port): ServerDescription((host, port))},
-        )
-
-        # address causes client to block until connected
-        self.assertIsNotNone(c.address)
-        # Initial seed topology and connected topology have the same ID
-        self.assertEqual(
-            c._topology._topology_id, topology_description._topology_settings._topology_id
-        )
-
-        c = self.rs_or_single_client(connect=False)
-        # primary causes client to block until connected
-        c.primary
-        self.assertIsNotNone(c._topology)
-
-        c = self.rs_or_single_client(connect=False)
-        # secondaries causes client to block until connected
-        c.secondaries
-        self.assertIsNotNone(c._topology)
-
-        c = self.rs_or_single_client(connect=False)
-        # arbiters causes client to block until connected
-        c.arbiters
-        self.assertIsNotNone(c._topology)
-
-        c = self.rs_or_single_client(connect=False)
         # is_primary causes client to block until connected
         self.assertIsInstance(c.is_primary, bool)
         c = self.rs_or_single_client(connect=False)
@@ -856,6 +823,54 @@ class TestClient(IntegrationTest):
         c = self.simple_client(uri, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
         with self.assertRaises(ConnectionFailure):
             c.pymongo_test.test.find_one()
+
+    @client_context.require_replica_set
+    @client_context.require_tls
+    def test_init_disconnected_with_srv(self):
+        c = self.rs_or_single_client(
+            "mongodb+srv://test1.test.build.10gen.cc", connect=False, tlsInsecure=True
+        )
+        # nodes returns an empty set if not connected
+        self.assertEqual(c.nodes, frozenset())
+        # topology_description returns the initial seed description if not connected
+        topology_description = c.topology_description
+        self.assertEqual(topology_description.topology_type, TOPOLOGY_TYPE.Unknown)
+        self.assertEqual(
+            {
+                ("test1.test.build.10gen.cc", None): ServerDescription(
+                    ("test1.test.build.10gen.cc", None)
+                )
+            },
+            topology_description.server_descriptions(),
+        )
+
+        # address causes client to block until connected
+        self.assertIsNotNone(c.address)
+        # Initial seed topology and connected topology have the same ID
+        self.assertEqual(
+            c._topology._topology_id, topology_description._topology_settings._topology_id
+        )
+
+        c = self.rs_or_single_client(
+            "mongodb+srv://test1.test.build.10gen.cc", connect=False, tlsInsecure=True
+        )
+        # primary causes client to block until connected
+        c.primary
+        self.assertIsNotNone(c._topology)
+
+        c = self.rs_or_single_client(
+            "mongodb+srv://test1.test.build.10gen.cc", connect=False, tlsInsecure=True
+        )
+        # secondaries causes client to block until connected
+        c.secondaries
+        self.assertIsNotNone(c._topology)
+
+        c = self.rs_or_single_client(
+            "mongodb+srv://test1.test.build.10gen.cc", connect=False, tlsInsecure=True
+        )
+        # arbiters causes client to block until connected
+        c.arbiters
+        self.assertIsNotNone(c._topology)
 
     def test_equality(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])

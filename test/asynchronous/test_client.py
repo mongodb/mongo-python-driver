@@ -816,39 +816,6 @@ class TestClient(AsyncIntegrationTest):
     async def test_init_disconnected(self):
         host, port = await async_client_context.host, await async_client_context.port
         c = await self.async_rs_or_single_client(connect=False)
-        # nodes returns an empty set if not connected
-        self.assertEqual(c.nodes, frozenset())
-        # topology_description returns the initial seed description if not connected
-        topology_description = c.topology_description
-        self.assertEqual(topology_description.topology_type, TOPOLOGY_TYPE.Unknown)
-        self.assertEqual(
-            topology_description.server_descriptions(),
-            {(host, port): ServerDescription((host, port))},
-        )
-
-        # address causes client to block until connected
-        self.assertIsNotNone(await c.address)
-        # Initial seed topology and connected topology have the same ID
-        self.assertEqual(
-            c._topology._topology_id, topology_description._topology_settings._topology_id
-        )
-
-        c = await self.async_rs_or_single_client(connect=False)
-        # primary causes client to block until connected
-        await c.primary
-        self.assertIsNotNone(c._topology)
-
-        c = await self.async_rs_or_single_client(connect=False)
-        # secondaries causes client to block until connected
-        await c.secondaries
-        self.assertIsNotNone(c._topology)
-
-        c = await self.async_rs_or_single_client(connect=False)
-        # arbiters causes client to block until connected
-        await c.arbiters
-        self.assertIsNotNone(c._topology)
-
-        c = await self.async_rs_or_single_client(connect=False)
         # is_primary causes client to block until connected
         self.assertIsInstance(await c.is_primary, bool)
         c = await self.async_rs_or_single_client(connect=False)
@@ -881,6 +848,54 @@ class TestClient(AsyncIntegrationTest):
         c = self.simple_client(uri, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
         with self.assertRaises(ConnectionFailure):
             await c.pymongo_test.test.find_one()
+
+    @async_client_context.require_replica_set
+    @async_client_context.require_tls
+    async def test_init_disconnected_with_srv(self):
+        c = await self.async_rs_or_single_client(
+            "mongodb+srv://test1.test.build.10gen.cc", connect=False, tlsInsecure=True
+        )
+        # nodes returns an empty set if not connected
+        self.assertEqual(c.nodes, frozenset())
+        # topology_description returns the initial seed description if not connected
+        topology_description = c.topology_description
+        self.assertEqual(topology_description.topology_type, TOPOLOGY_TYPE.Unknown)
+        self.assertEqual(
+            {
+                ("test1.test.build.10gen.cc", None): ServerDescription(
+                    ("test1.test.build.10gen.cc", None)
+                )
+            },
+            topology_description.server_descriptions(),
+        )
+
+        # address causes client to block until connected
+        self.assertIsNotNone(await c.address)
+        # Initial seed topology and connected topology have the same ID
+        self.assertEqual(
+            c._topology._topology_id, topology_description._topology_settings._topology_id
+        )
+
+        c = await self.async_rs_or_single_client(
+            "mongodb+srv://test1.test.build.10gen.cc", connect=False, tlsInsecure=True
+        )
+        # primary causes client to block until connected
+        await c.primary
+        self.assertIsNotNone(c._topology)
+
+        c = await self.async_rs_or_single_client(
+            "mongodb+srv://test1.test.build.10gen.cc", connect=False, tlsInsecure=True
+        )
+        # secondaries causes client to block until connected
+        await c.secondaries
+        self.assertIsNotNone(c._topology)
+
+        c = await self.async_rs_or_single_client(
+            "mongodb+srv://test1.test.build.10gen.cc", connect=False, tlsInsecure=True
+        )
+        # arbiters causes client to block until connected
+        await c.arbiters
+        self.assertIsNotNone(c._topology)
 
     async def test_equality(self):
         seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])

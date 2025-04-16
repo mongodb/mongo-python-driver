@@ -1209,9 +1209,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 4.0
         """
         if self._topology is None:
-            servers = {
-                (host, self._port): ServerDescription((host, self._port)) for host in self._seeds
-            }
+            servers = {(host, port): ServerDescription((host, port)) for host, port in self._seeds}
             td = TopologyDescription(
                 TOPOLOGY_TYPE.Unknown,
                 servers,
