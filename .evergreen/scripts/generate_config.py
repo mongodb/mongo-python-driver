@@ -263,7 +263,7 @@ def create_pyopenssl_variants():
 
         display_name = get_variant_name(base_name, host, python=python)
         # only need to run some on async
-        if python in (CPYTHONS[0], CPYTHONS[-1]):
+        if python in (CPYTHONS[1], CPYTHONS[-1]):
             variant = create_variant(
                 [f".replica_set .{auth} .{ssl} .sync_async", f".7.0 .{auth} .{ssl} .sync_async"],
                 display_name,
