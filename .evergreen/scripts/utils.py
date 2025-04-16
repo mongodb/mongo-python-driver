@@ -86,7 +86,7 @@ def get_test_options(
     else:
         parser.add_argument(
             "test_name",
-            choices=set(TEST_SUITE_MAP) + set(EXTRA_TESTS) - set(NO_RUN_ORCHESTRATION),
+            choices=set(list(TEST_SUITE_MAP) + EXTRA_TESTS) - set(NO_RUN_ORCHESTRATION),
             nargs="?",
             default="default",
             help="The optional name of the test suite to be run, which informs the server configuration.",
