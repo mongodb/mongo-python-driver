@@ -55,7 +55,15 @@ SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms", "mod_wsgi", "perf"]
 EXTRA_TESTS = ["mod_wsgi", "aws_lambda", "doctest"]
 
 # Tests that do not use run-orchestration directly.
-NO_RUN_ORCHESTRATION = ["auth_oidc", "atlas_connect", "data_lake", "mockupdb", "serverless", "ocsp"]
+NO_RUN_ORCHESTRATION = [
+    "auth_oidc",
+    "atlas_connect",
+    "aws_lambda",
+    "data_lake",
+    "mockupdb",
+    "serverless",
+    "ocsp",
+]
 
 
 def get_test_options(
@@ -78,7 +86,7 @@ def get_test_options(
     else:
         parser.add_argument(
             "test_name",
-            choices=set(TEST_SUITE_MAP) - set(NO_RUN_ORCHESTRATION),
+            choices=set(TEST_SUITE_MAP) + set(EXTRA_TESTS) - set(NO_RUN_ORCHESTRATION),
             nargs="?",
             default="default",
             help="The optional name of the test suite to be run, which informs the server configuration.",
