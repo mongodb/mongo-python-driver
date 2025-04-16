@@ -357,18 +357,12 @@ def create_green_framework_variants():
 
 
 def create_no_c_ext_variants():
-    variants = []
     host = DEFAULT_HOST
-    for python, topology in zip_cycle(CPYTHONS, TOPOLOGIES):
-        tasks = [f".{topology} .noauth .nossl !.sync_async"]
-        expansions = dict()
-        handle_c_ext(C_EXTS[0], expansions)
-        display_name = get_variant_name("No C Ext", host, python=python)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, expansions=expansions
-        )
-        variants.append(variant)
-    return variants
+    tasks = [".standard-linux"]
+    expansions = dict()
+    handle_c_ext(C_EXTS[0], expansions)
+    display_name = get_variant_name("No C Ext", host)
+    return [create_variant(tasks, display_name, host=host)]
 
 
 def create_atlas_data_lake_variants():
@@ -469,13 +463,13 @@ def create_mockupdb_variants():
 
 def create_doctests_variants():
     host = DEFAULT_HOST
-    python = CPYTHONS[0]
+    expansions = dict(TEST_NAME="doctest")
     return [
         create_variant(
-            [".doctests"],
-            get_variant_name("Doctests", host, python=python),
-            python=python,
+            [".standard-linux"],
+            get_variant_name("Doctests", host),
             host=host,
+            expansions=expansions,
         )
     ]
 
@@ -1013,14 +1007,6 @@ def create_mockupdb_tasks():
     return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
 
 
-def create_doctest_tasks():
-    server_func = FunctionCall(func="run server")
-    test_func = FunctionCall(func="run just script", vars=dict(JUSTFILE_TARGET="docs-test"))
-    task_name = "test-doctests"
-    tags = ["doctests"]
-    return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
-
-
 def create_no_server_tasks():
     test_func = FunctionCall(func="run tests")
     task_name = "test-no-server"
@@ -1162,13 +1148,6 @@ def create_run_server_func():
     sub_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
     expansion_cmd = expansions_update(file="${DRIVERS_TOOLS}/mo-expansion.yml")
     return "run server", [sub_cmd, expansion_cmd]
-
-
-def create_run_just_script_func():
-    includes = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-    args = [".evergreen/just.sh", "${JUSTFILE_TARGET}"]
-    cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
-    return "run just script", [cmd]
 
 
 def create_run_tests_func():

@@ -213,14 +213,14 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Doctests tests
-  - name: doctests-rhel8-python3.9
+  - name: doctests-rhel8
     tasks:
-      - name: .doctests
-    display_name: Doctests RHEL8 Python3.9
+      - name: .standard-linux
+    display_name: Doctests RHEL8
     run_on:
       - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      TEST_NAME: doctest
 
   # Encryption tests
   - name: encryption-rhel8-python3.9
@@ -609,51 +609,12 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # No c ext tests
-  - name: no-c-ext-rhel8-python3.9
+  - name: no-c-ext-rhel8
     tasks:
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.9
+      - name: .standard-linux
+    display_name: No C Ext RHEL8
     run_on:
       - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: no-c-ext-rhel8-python3.10
-    tasks:
-      - name: .replica_set .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.10
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.10/bin/python3
-  - name: no-c-ext-rhel8-python3.11
-    tasks:
-      - name: .sharded_cluster .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.11
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.11/bin/python3
-  - name: no-c-ext-rhel8-python3.12
-    tasks:
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.12
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.12/bin/python3
-  - name: no-c-ext-rhel8-python3.13
-    tasks:
-      - name: .replica_set .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.13
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # No server tests
   - name: no-server
