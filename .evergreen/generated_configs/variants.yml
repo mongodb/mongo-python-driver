@@ -1,61 +1,66 @@
 buildvariants:
   # Alternative hosts tests
-  - name: openssl-1.0.2-rhel7-python3.9
+  - name: openssl-1.0.2-rhel7-v5.0-python3.9
     tasks:
-      - name: .5.0 .standalone !.sync_async
-    display_name: OpenSSL 1.0.2 RHEL7 Python3.9
+      - name: .other-hosts
+    display_name: OpenSSL 1.0.2 RHEL7 v5.0 Python3.9
     run_on:
       - rhel79-small
     batchtime: 10080
     expansions:
+      VERSION: "5.0"
+      PYTHON_VERSION: "3.9"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: other-hosts-rhel9-fips
+  - name: other-hosts-rhel9-fips-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL9-FIPS
+      - name: .other-hosts
+    display_name: Other hosts RHEL9-FIPS latest
     run_on:
       - rhel92-fips
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
       REQUIRE_FIPS: "1"
-  - name: other-hosts-rhel8-zseries
+  - name: other-hosts-rhel8-zseries-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL8-zseries
+      - name: .other-hosts
+    display_name: Other hosts RHEL8-zseries latest
     run_on:
       - rhel8-zseries-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-rhel8-power8
+  - name: other-hosts-rhel8-power8-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL8-POWER8
+      - name: .other-hosts
+    display_name: Other hosts RHEL8-POWER8 latest
     run_on:
       - rhel8-power-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-rhel8-arm64
+  - name: other-hosts-rhel8-arm64-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL8-arm64
+      - name: .other-hosts
+    display_name: Other hosts RHEL8-arm64 latest
     run_on:
       - rhel82-arm64-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-amazon2023
+  - name: other-hosts-amazon2023-latest
     tasks:
-      - name: .latest !.sync_async .sharded_cluster .auth .ssl
-      - name: .latest !.sync_async .replica_set .noauth .ssl
-      - name: .latest !.sync_async .standalone .noauth .nossl
-    display_name: Other hosts Amazon2023
+      - name: .other-hosts
+    display_name: Other hosts Amazon2023 latest
     run_on:
       - amazon2023-arm64-latest-large-m8g
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
 
   # Atlas connect tests
@@ -531,17 +536,6 @@ buildvariants:
       AUTH: auth
       SSL: ssl
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: green-eventlet-rhel8-python3.13
-    tasks:
-      - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Eventlet RHEL8 Python3.13
-    run_on:
-      - rhel87-small
-    expansions:
-      GREEN_FRAMEWORK: eventlet
-      AUTH: auth
-      SSL: ssl
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
   - name: green-gevent-rhel8-python3.13
     tasks:
       - name: .standalone .noauth .nossl .sync_async

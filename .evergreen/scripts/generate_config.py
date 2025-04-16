@@ -22,6 +22,7 @@ from generate_config_utils import (
     create_variant,
     get_assume_role,
     get_s3_put,
+    get_standard_auth_ssl,
     get_subprocess_exec,
     get_task_name,
     get_variant_name,
@@ -342,6 +343,10 @@ def create_green_framework_variants():
     tasks = [".standalone .noauth .nossl .sync_async"]
     host = DEFAULT_HOST
     for python, framework in product([CPYTHONS[0], CPYTHONS[-1]], ["eventlet", "gevent"]):
+        if framework == "eventlet" and python == CPYTHONS[-1]:
+            # Eventlet has issues with dnspython > 2.0 and newer versions of CPython
+            # https://jira.mongodb.org/browse/PYTHON-5284
+            continue
         expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
         display_name = get_variant_name(f"Green {framework.capitalize()}", host, python=python)
         variant = create_variant(
@@ -548,29 +553,29 @@ def create_alternative_hosts_variants():
     variants = []
 
     host = HOSTS["rhel7"]
+    version = "5.0"
     variants.append(
         create_variant(
-            [".5.0 .standalone !.sync_async"],
-            get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0]),
+            [".other-hosts"],
+            get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0], version=version),
             host=host,
             python=CPYTHONS[0],
             batchtime=batchtime,
+            expansions=dict(VERSION=version, PYTHON_VERSION=CPYTHONS[0]),
         )
     )
 
+    version = "latest"
     for host_name in OTHER_HOSTS:
-        expansions = dict()
+        expansions = dict(VERSION="latest")
         handle_c_ext(C_EXTS[0], expansions)
         host = HOSTS[host_name]
         if "fips" in host_name.lower():
             expansions["REQUIRE_FIPS"] = "1"
-        tags = [".6.0 .standalone !.sync_async"]
-        if host_name == "Amazon2023":
-            tags = [f".latest !.sync_async {t}" for t in SUB_TASKS]
         variants.append(
             create_variant(
-                tags,
-                display_name=get_variant_name("Other hosts", host),
+                [".other-hosts"],
+                display_name=get_variant_name("Other hosts", host, version=version),
                 batchtime=batchtime,
                 host=host,
                 expansions=expansions,
@@ -615,14 +620,32 @@ def create_server_version_tasks():
     return tasks
 
 
+def create_other_hosts_tasks():
+    tasks = []
+
+    for topology, sync in zip_cycle(TOPOLOGIES, SYNCS):
+        auth, ssl = get_standard_auth_ssl(topology)
+        tags = [
+            "other-hosts",
+            f"{topology}-{auth}-{ssl}",
+        ]
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
+        name = get_task_name("test", sync=sync, **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
+        test_vars["TEST_NAME"] = f"default_{sync}"
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
 def create_standard_linux_tasks():
     tasks = []
 
     for (version, topology), python in zip_cycle(
         list(product(ALL_VERSIONS, TOPOLOGIES)), ALL_PYTHONS
     ):
-        auth = "auth" if topology == "sharded_cluster" else "noauth"
-        ssl = "nossl" if topology == "standalone" else "ssl"
+        auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "standard-linux",
             f"server-{version}",
@@ -645,8 +668,7 @@ def create_standard_non_linux_tasks():
     for (version, topology), python, sync in zip_cycle(
         list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS, SYNCS
     ):
-        auth = "auth" if topology == "sharded_cluster" else "noauth"
-        ssl = "nossl" if topology == "standalone" else "ssl"
+        auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "standard-non-linux",
             f"server-{version}",

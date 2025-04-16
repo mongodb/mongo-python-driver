@@ -239,6 +239,12 @@ def handle_c_ext(c_ext, expansions) -> None:
         expansions["NO_EXT"] = "1"
 
 
+def get_standard_auth_ssl(topology):
+    auth = "auth" if topology == "sharded_cluster" else "noauth"
+    ssl = "nossl" if topology == "standalone" else "ssl"
+    return auth, ssl
+
+
 def get_assume_role(**kwargs):
     kwargs.setdefault("command_type", EvgCommandType.SETUP)
     kwargs.setdefault("role_arn", "${assume_role_arn}")
