@@ -550,6 +550,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("PYTHON-5170 tests are flakey")
         if "Driver extends timeout while streaming" in spec["description"] and not _IS_SYNC:
             self.skipTest("PYTHON-5174 tests are flakey")
+        if (
+            "inserting _id with type null via clientBulkWrite" in spec["description"]
+            or "commitTransaction fails after Interrupted" in spec["description"]
+            or "commit is not retried after MaxTimeMSExpired error" in spec["description"]
+        ) and client_context.serverless:
+            self.skipTest("PYTHON-5326 known serverless failures")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
