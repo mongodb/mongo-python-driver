@@ -318,7 +318,7 @@ def create_stable_api_variants():
             # MONGODB_API_VERSION is the apiVersion to use in the test suite.
             expansions["MONGODB_API_VERSION"] = "1"
             tasks = [
-                ".standard-linux !.replica_set-noauth-ssl .server-{v}"
+                f".standard-linux !.replica_set-noauth-ssl .server-{v}"
                 for v in get_versions_from("5.0")
             ]
         else:

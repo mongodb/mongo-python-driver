@@ -886,12 +886,12 @@ buildvariants:
   # Stable api tests
   - name: stable-api-require-v1-rhel8-auth
     tasks:
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
+      - name: .standard-linux !.replica_set-noauth-ssl .server-5.0
+      - name: .standard-linux !.replica_set-noauth-ssl .server-6.0
+      - name: .standard-linux !.replica_set-noauth-ssl .server-7.0
+      - name: .standard-linux !.replica_set-noauth-ssl .server-8.0
+      - name: .standard-linux !.replica_set-noauth-ssl .server-rapid
+      - name: .standard-linux !.replica_set-noauth-ssl .server-latest
     display_name: Stable API require v1 RHEL8 Auth
     run_on:
       - rhel87-small
