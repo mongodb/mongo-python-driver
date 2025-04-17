@@ -884,7 +884,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Stable api tests
-  - name: stable-api-require-v1-rhel8-python3.9-auth
+  - name: stable-api-require-v1-rhel8-auth
     tasks:
       - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
       - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
@@ -892,16 +892,15 @@ buildvariants:
       - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
       - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
       - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-    display_name: Stable API require v1 RHEL8 Python3.9 Auth
+    display_name: Stable API require v1 RHEL8 Auth
     run_on:
       - rhel87-small
     expansions:
       AUTH: auth
       REQUIRE_API_VERSION: "1"
       MONGODB_API_VERSION: "1"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [versionedApi_tag]
-  - name: stable-api-accept-v2-rhel8-python3.9-auth
+  - name: stable-api-accept-v2-rhel8-auth
     tasks:
       - name: .standard-linux .server-5.0
       - name: .standard-linux .server-6.0
@@ -909,46 +908,12 @@ buildvariants:
       - name: .standard-linux .server-8.0
       - name: .standard-linux .server-rapid
       - name: .standard-linux .server-latest
-    display_name: Stable API accept v2 RHEL8 Python3.9 Auth
+    display_name: Stable API accept v2 RHEL8 Auth
     run_on:
       - rhel87-small
     expansions:
       AUTH: auth
       ORCHESTRATION_FILE: versioned-api-testing.json
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-    tags: [versionedApi_tag]
-  - name: stable-api-require-v1-rhel8-python3.13-auth
-    tasks:
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-      - name: .standard-linux !.replica_set-noauth-ssl .server-{v}
-    display_name: Stable API require v1 RHEL8 Python3.13 Auth
-    run_on:
-      - rhel87-small
-    expansions:
-      AUTH: auth
-      REQUIRE_API_VERSION: "1"
-      MONGODB_API_VERSION: "1"
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
-    tags: [versionedApi_tag]
-  - name: stable-api-accept-v2-rhel8-python3.13-auth
-    tasks:
-      - name: .standard-linux .server-5.0
-      - name: .standard-linux .server-6.0
-      - name: .standard-linux .server-7.0
-      - name: .standard-linux .server-8.0
-      - name: .standard-linux .server-rapid
-      - name: .standard-linux .server-latest
-    display_name: Stable API accept v2 RHEL8 Python3.13 Auth
-    run_on:
-      - rhel87-small
-    expansions:
-      AUTH: auth
-      ORCHESTRATION_FILE: versioned-api-testing.json
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [versionedApi_tag]
 
   # Standard nonlinux tests

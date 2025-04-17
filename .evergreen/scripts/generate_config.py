@@ -308,7 +308,7 @@ def create_stable_api_variants():
     types = ["require v1", "accept v2"]
 
     # All python versions across platforms.
-    for python, test_type in product(MIN_MAX_PYTHON, types):
+    for test_type in types:
         expansions = dict(AUTH="auth")
         # Test against a cluster with requireApiVersion=1.
         if test_type == types[0]:
@@ -328,10 +328,8 @@ def create_stable_api_variants():
             expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
             tasks = [f".standard-linux .server-{v}" for v in get_versions_from("5.0")]
         base_display_name = f"Stable API {test_type}"
-        display_name = get_variant_name(base_display_name, host, python=python, **expansions)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, tags=tags, expansions=expansions
-        )
+        display_name = get_variant_name(base_display_name, host, **expansions)
+        variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
         variants.append(variant)
 
     return variants
