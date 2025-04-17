@@ -964,7 +964,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: storage-mmapv1-rhel8-python3.9
     tasks:
-      - name: .standard-linux .server-4.0
+      - name: .standard-linux !.sharded_cluster-auth-ssl .server-4.0
     display_name: Storage MMAPv1 RHEL8 Python3.9
     run_on:
       - rhel87-small

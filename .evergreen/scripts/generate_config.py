@@ -290,7 +290,7 @@ def create_storage_engine_variants():
         else:
             # MongoDB 4.2 drops support for MMAPv1
             versions = get_versions_until("4.0")
-            tasks = [f".standard-linux .server-{v}" for v in versions]
+            tasks = [f".standard-linux !.sharded_cluster-auth-ssl .server-{v}" for v in versions]
         display_name = get_variant_name(f"Storage {engine}", host, python=python)
         variant = create_variant(
             tasks, display_name, host=host, python=python, expansions=expansions
