@@ -286,13 +286,11 @@ def create_storage_engine_variants():
         python = CPYTHONS[0]
         expansions = dict(STORAGE_ENGINE=engine.lower())
         if engine == engines[0]:
-            tasks = [f".standalone .noauth .nossl .{v} .sync_async" for v in ALL_VERSIONS]
+            tasks = [".standard-linux"]
         else:
             # MongoDB 4.2 drops support for MMAPv1
             versions = get_versions_until("4.0")
-            tasks = [f".standalone .{v} .noauth .nossl .sync_async" for v in versions] + [
-                f".replica_set .{v} .noauth .nossl .sync_async" for v in versions
-            ]
+            tasks = [f".standard-linux .server-{v}" for v in versions]
         display_name = get_variant_name(f"Storage {engine}", host, python=python)
         variant = create_variant(
             tasks, display_name, host=host, python=python, expansions=expansions

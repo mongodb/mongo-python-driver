@@ -955,15 +955,7 @@ buildvariants:
   # Storage engine tests
   - name: storage-inmemory-rhel8-python3.9
     tasks:
-      - name: .standalone .noauth .nossl .4.0 .sync_async
-      - name: .standalone .noauth .nossl .4.2 .sync_async
-      - name: .standalone .noauth .nossl .4.4 .sync_async
-      - name: .standalone .noauth .nossl .5.0 .sync_async
-      - name: .standalone .noauth .nossl .6.0 .sync_async
-      - name: .standalone .noauth .nossl .7.0 .sync_async
-      - name: .standalone .noauth .nossl .8.0 .sync_async
-      - name: .standalone .noauth .nossl .rapid .sync_async
-      - name: .standalone .noauth .nossl .latest .sync_async
+      - name: .standard-linux
     display_name: Storage InMemory RHEL8 Python3.9
     run_on:
       - rhel87-small
@@ -972,8 +964,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: storage-mmapv1-rhel8-python3.9
     tasks:
-      - name: .standalone .4.0 .noauth .nossl .sync_async
-      - name: .replica_set .4.0 .noauth .nossl .sync_async
+      - name: .standard-linux .server-4.0
     display_name: Storage MMAPv1 RHEL8 Python3.9
     run_on:
       - rhel87-small
