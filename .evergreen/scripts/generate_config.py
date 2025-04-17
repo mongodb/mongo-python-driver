@@ -1183,6 +1183,7 @@ def create_run_tests_func():
         "NO_EXT",
         "COMPRESSORS",
         "MONGODB_API_VERSION",
+        "REQUIRE_API_VERSION",
         "DEBUG_LOG",
         "ORCHESTRATION_FILE",
         "OCSP_SERVER_TYPE",
