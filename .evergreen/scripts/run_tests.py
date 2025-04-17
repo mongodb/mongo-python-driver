@@ -173,7 +173,6 @@ def run() -> None:
         return
 
     # Run local tests.
-    print(f"Running tests with args: {TEST_ARGS + sys.argv[1:]}")
     ret = pytest.main(TEST_ARGS + sys.argv[1:])
     if ret != 0:
         sys.exit(ret)

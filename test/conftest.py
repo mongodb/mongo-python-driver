@@ -6,22 +6,7 @@ from test import pytest_conf, setup, teardown
 
 import pytest
 
-from pymongo.logger import _DEBUG_LOG_HANDLER
-
 _IS_SYNC = True
-
-
-@pytest.hookimpl(hookwrapper=True)
-def pytest_runtest_makereport(item):
-    if _DEBUG_LOG_HANDLER is not None:
-        outcome = yield
-        rep = outcome.get_result()
-        if rep.failed:
-            _DEBUG_LOG_HANDLER.flush()
-        else:
-            _DEBUG_LOG_HANDLER.clear()
-    else:
-        yield
 
 
 @pytest.fixture(scope="session")

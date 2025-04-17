@@ -98,6 +98,7 @@ minversion = "7"
 addopts = ["-ra", "--strict-config", "--strict-markers", "--junitxml=xunit-results/TEST-results.xml", "-m default or default_async"]
 testpaths = ["test"]
 log_cli_level = "INFO"
+log_cli = true
 faulthandler_timeout = 1500
 asyncio_default_fixture_loop_scope = "session"
 xfail_strict = true

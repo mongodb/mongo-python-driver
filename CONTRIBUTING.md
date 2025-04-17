@@ -351,11 +351,11 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 
 ## Enable Debug Logs
 
-- Use `-o log_cli_level="DEBUG" -o log_cli=1` with `just test` or `pytest`.
-- Add `log_cli_level = "DEBUG` and `log_cli = 1` to the `tool.pytest.ini_options` section in `pyproject.toml` for Evergreen patches or to enable debug logs by default on your machine.
-- You can also set `DEBUG_LOG=1` and run either `just setup-tests` or `just-test`.
+- Use `-o log_cli_level="DEBUG" -o log_cli=1` with `just test` or `pytest` to output all debug logs to the terminal. **Warning**: This will output a huge amount of logs.
+- Add `log_cli_level = "DEBUG` to the `tool.pytest.ini_options` section in `pyproject.toml` to enable debug logs in this manner by default on your machine.
+- Set `DEBUG_LOG=1` and run `just setup-tests`, `just-test`, or `pytest` to enable debug logs only for failed tests.
 - Finally, you can use `just setup-tests --debug-log`.
-- For evergreen patch builds, you can use `evergreen patch --param DEBUG_LOG=1` to enable debug logs for the patch.
+- For evergreen patch builds, you can use `evergreen patch --param DEBUG_LOG=1` to enable debug logs for failed tests in the patch.
 
 ## Adding a new test suite
 

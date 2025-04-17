@@ -465,7 +465,7 @@ def handle_test_env() -> None:
         UV_ARGS.append(f"--group {framework}")
 
     else:
-        TEST_ARGS = f"-v --capture=no --show-capture=no --durations=5 {TEST_ARGS}"
+        TEST_ARGS = f"-v --durations=5 {TEST_ARGS}"
         TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
