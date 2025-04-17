@@ -754,7 +754,8 @@ def create_aws_tasks():
         "web-identity",
         "ecs",
     ]
-    for version, python in zip_cycle(get_versions_from("4.4"), CPYTHONS):
+    for idx, version in enumerate(get_versions_from("4.4")):
+        python = CPYTHONS[idx % len(CPYTHONS)]
         base_name = f"test-auth-aws-{version}"
         base_tags = ["auth-aws"]
         server_vars = dict(AUTH_AWS="1", VERSION=version)
