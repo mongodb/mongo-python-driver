@@ -902,12 +902,12 @@ buildvariants:
     tags: [versionedApi_tag]
   - name: stable-api-accept-v2-rhel8-auth
     tasks:
-      - name: .standard-linux .server-5.0
-      - name: .standard-linux .server-6.0
-      - name: .standard-linux .server-7.0
-      - name: .standard-linux .server-8.0
-      - name: .standard-linux .server-rapid
-      - name: .standard-linux .server-latest
+      - name: .standard-linux .server-5.0 .standalone-noauth-nossl
+      - name: .standard-linux .server-6.0 .standalone-noauth-nossl
+      - name: .standard-linux .server-7.0 .standalone-noauth-nossl
+      - name: .standard-linux .server-8.0 .standalone-noauth-nossl
+      - name: .standard-linux .server-rapid .standalone-noauth-nossl
+      - name: .standard-linux .server-latest .standalone-noauth-nossl
     display_name: Stable API accept v2 RHEL8 Auth
     run_on:
       - rhel87-small

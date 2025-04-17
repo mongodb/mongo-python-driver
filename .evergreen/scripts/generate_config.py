@@ -326,7 +326,10 @@ def create_stable_api_variants():
             # requireApiVersion, and don't automatically add apiVersion to
             # clients created in the test suite.
             expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
-            tasks = [f".standard-linux .server-{v}" for v in get_versions_from("5.0")]
+            tasks = [
+                f".standard-linux .server-{v} .standalone-noauth-nossl"
+                for v in get_versions_from("5.0")
+            ]
         base_display_name = f"Stable API {test_type}"
         display_name = get_variant_name(base_display_name, host, **expansions)
         variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
