@@ -286,7 +286,7 @@ def create_storage_engine_variants():
         python = CPYTHONS[0]
         expansions = dict(STORAGE_ENGINE=engine.lower())
         if engine == engines[0]:
-            tasks = [".standard-linux"]
+            tasks = [".standard-linux .standalone-noauth-nossl"]
         else:
             # MongoDB 4.2 drops support for MMAPv1
             versions = get_versions_until("4.0")
