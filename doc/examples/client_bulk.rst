@@ -2,7 +2,6 @@ Client Bulk Write Operations
 =============================
 
 .. testsetup::
-  :skipif: server_major_version < 8
 
   from pymongo import MongoClient
 
@@ -47,6 +46,7 @@ summary of the types of operations performed in the bulk write, along with their
 
 .. doctest::
   :options: +NORMALIZE_WHITESPACE
+  :skipif: server_major_version < 8
 
   >>> from pymongo import InsertOne, DeleteOne, UpdateOne
   >>> models = [
@@ -80,6 +80,7 @@ instance will also include detailed results about each successful operation perf
 
 .. doctest::
   :options: +NORMALIZE_WHITESPACE
+  :skipif: server_major_version < 8
 
   >>> from pymongo import InsertOne, DeleteMany, ReplaceOne, UpdateMany
   >>> models = [
@@ -126,6 +127,7 @@ For example, a duplicate key error on the third operation below aborts the remai
 
 .. doctest::
   :options: +NORMALIZE_WHITESPACE
+  :skipif: server_major_version < 8
 
   >>> from pymongo import InsertOne, DeleteOne
   >>> from pymongo.errors import ClientBulkWriteException
@@ -162,6 +164,7 @@ For example, the fourth and fifth write operations below get executed successful
 
 .. doctest::
   :options: +NORMALIZE_WHITESPACE
+  :skipif: server_major_version < 8
 
   >>> from pymongo import InsertOne, DeleteOne
   >>> from pymongo.errors import ClientBulkWriteException
