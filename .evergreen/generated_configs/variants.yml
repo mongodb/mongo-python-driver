@@ -215,7 +215,7 @@ buildvariants:
   # Doctests tests
   - name: doctests-rhel8
     tasks:
-      - name: .standard-linux
+      - name: .standard-linux .standalone-noauth-nossl
     display_name: Doctests RHEL8
     run_on:
       - rhel87-small
