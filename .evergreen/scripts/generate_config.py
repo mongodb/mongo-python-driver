@@ -283,7 +283,6 @@ def create_storage_engine_variants():
     engines = ["InMemory", "MMAPv1"]
     variants = []
     for engine in engines:
-        python = CPYTHONS[0]
         expansions = dict(STORAGE_ENGINE=engine.lower())
         if engine == engines[0]:
             tasks = [".standard-linux .standalone-noauth-nossl"]
@@ -291,10 +290,8 @@ def create_storage_engine_variants():
             # MongoDB 4.2 drops support for MMAPv1
             versions = get_versions_until("4.0")
             tasks = [f".standard-linux !.sharded_cluster-auth-ssl .server-{v}" for v in versions]
-        display_name = get_variant_name(f"Storage {engine}", host, python=python)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, expansions=expansions
-        )
+        display_name = get_variant_name(f"Storage {engine}", host)
+        variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants
 
