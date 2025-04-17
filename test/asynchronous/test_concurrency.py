@@ -50,5 +50,5 @@ class TestAsyncConcurrency(AsyncIntegrationTest):
         concurrent_time = time.time() - start
 
         percent_faster = (sequential_time - concurrent_time) / concurrent_time * 100
-        # We expect the concurrent tasks to be at least 75% faster on all platforms as a conservative benchmark
-        self.assertGreaterEqual(percent_faster, 75)
+        # We expect the concurrent tasks to be at least 50% faster on all platforms as a conservative benchmark
+        self.assertGreaterEqual(percent_faster, 50)

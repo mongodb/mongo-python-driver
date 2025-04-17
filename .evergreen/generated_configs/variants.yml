@@ -1,67 +1,72 @@
 buildvariants:
   # Alternative hosts tests
-  - name: openssl-1.0.2-rhel7-python3.9
+  - name: openssl-1.0.2-rhel7-v5.0-python3.9
     tasks:
-      - name: .5.0 .standalone !.sync_async
-    display_name: OpenSSL 1.0.2 RHEL7 Python3.9
+      - name: .other-hosts
+    display_name: OpenSSL 1.0.2 RHEL7 v5.0 Python3.9
     run_on:
       - rhel79-small
     batchtime: 10080
     expansions:
+      VERSION: "5.0"
+      PYTHON_VERSION: "3.9"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: other-hosts-rhel9-fips
+  - name: other-hosts-rhel9-fips-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL9-FIPS
+      - name: .other-hosts
+    display_name: Other hosts RHEL9-FIPS latest
     run_on:
       - rhel92-fips
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
       REQUIRE_FIPS: "1"
-  - name: other-hosts-rhel8-zseries
+  - name: other-hosts-rhel8-zseries-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL8-zseries
+      - name: .other-hosts
+    display_name: Other hosts RHEL8-zseries latest
     run_on:
       - rhel8-zseries-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-rhel8-power8
+  - name: other-hosts-rhel8-power8-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL8-POWER8
+      - name: .other-hosts
+    display_name: Other hosts RHEL8-POWER8 latest
     run_on:
       - rhel8-power-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-rhel8-arm64
+  - name: other-hosts-rhel8-arm64-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL8-arm64
+      - name: .other-hosts
+    display_name: Other hosts RHEL8-arm64 latest
     run_on:
       - rhel82-arm64-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-amazon2023
+  - name: other-hosts-amazon2023-latest
     tasks:
-      - name: .latest !.sync_async .sharded_cluster .auth .ssl
-      - name: .latest !.sync_async .replica_set .noauth .ssl
-      - name: .latest !.sync_async .standalone .noauth .nossl
-    display_name: Other hosts Amazon2023
+      - name: .other-hosts
+    display_name: Other hosts Amazon2023 latest
     run_on:
       - amazon2023-arm64-latest-large-m8g
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
 
   # Atlas connect tests
   - name: atlas-connect-rhel8
     tasks:
-      - name: .no-local-server
+      - name: .no-orchestration
     display_name: Atlas connect RHEL8
     run_on:
       - rhel87-small
@@ -69,7 +74,7 @@ buildvariants:
   # Atlas data lake tests
   - name: atlas-data-lake-ubuntu-22
     tasks:
-      - name: .no-local-server
+      - name: .no-orchestration
     display_name: Atlas Data Lake Ubuntu-22
     run_on:
       - ubuntu2204-small
@@ -145,7 +150,7 @@ buildvariants:
   # Compression tests
   - name: compression-snappy-rhel8
     tasks:
-      - name: .compression
+      - name: .standard-linux
     display_name: Compression snappy RHEL8
     run_on:
       - rhel87-small
@@ -153,7 +158,7 @@ buildvariants:
       COMPRESSOR: snappy
   - name: compression-zlib-rhel8
     tasks:
-      - name: .compression
+      - name: .standard-linux
     display_name: Compression zlib RHEL8
     run_on:
       - rhel87-small
@@ -161,7 +166,7 @@ buildvariants:
       COMPRESSOR: zlib
   - name: compression-zstd-rhel8
     tasks:
-      - name: .compression !.4.0
+      - name: .standard-linux !.server-4.0
     display_name: Compression zstd RHEL8
     run_on:
       - rhel87-small
@@ -190,14 +195,14 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Doctests tests
-  - name: doctests-rhel8-python3.9
+  - name: doctests-rhel8
     tasks:
-      - name: .doctests
-    display_name: Doctests RHEL8 Python3.9
+      - name: .standard-linux .standalone-noauth-nossl
+    display_name: Doctests RHEL8
     run_on:
       - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      TEST_NAME: doctest
 
   # Encryption tests
   - name: encryption-rhel8-python3.9
@@ -513,17 +518,6 @@ buildvariants:
       AUTH: auth
       SSL: ssl
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: green-eventlet-rhel8-python3.13
-    tasks:
-      - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Eventlet RHEL8 Python3.13
-    run_on:
-      - rhel87-small
-    expansions:
-      GREEN_FRAMEWORK: eventlet
-      AUTH: auth
-      SSL: ssl
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
   - name: green-gevent-rhel8-python3.13
     tasks:
       - name: .standalone .noauth .nossl .sync_async
@@ -569,7 +563,7 @@ buildvariants:
   # Mockupdb tests
   - name: mockupdb-rhel8
     tasks:
-      - name: .no-local-server
+      - name: .no-orchestration
     display_name: MockupDB RHEL8
     run_on:
       - rhel87-small
@@ -597,56 +591,17 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # No c ext tests
-  - name: no-c-ext-rhel8-python3.9
+  - name: no-c-ext-rhel8
     tasks:
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.9
+      - name: .standard-linux
+    display_name: No C Ext RHEL8
     run_on:
       - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: no-c-ext-rhel8-python3.10
-    tasks:
-      - name: .replica_set .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.10
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.10/bin/python3
-  - name: no-c-ext-rhel8-python3.11
-    tasks:
-      - name: .sharded_cluster .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.11
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.11/bin/python3
-  - name: no-c-ext-rhel8-python3.12
-    tasks:
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.12
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.12/bin/python3
-  - name: no-c-ext-rhel8-python3.13
-    tasks:
-      - name: .replica_set .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.13
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # No server tests
   - name: no-server-rhel8
     tasks:
-      - name: .no-local-server
+      - name: .no-orchestration
     display_name: No server RHEL8
     run_on:
       - rhel87-small

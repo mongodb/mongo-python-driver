@@ -3,12 +3,8 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "The new version to set"
-        required: true
       following_version:
         description: "The post (dev) version to set"
-        required: true
       dry_run:
         description: "Dry Run?"
         default: false
@@ -26,7 +22,6 @@ env:
   # to 'false' when the input is set to 'false'.
   DRY_RUN: ${{ ! contains(inputs.dry_run, 'false') }}
   FOLLOWING_VERSION: ${{ inputs.following_version || '' }}
-  VERSION: ${{ inputs.version || '10.10.10.10' }}
 
 defaults:
   run:
@@ -56,7 +51,6 @@ jobs:
       - uses: mongodb-labs/drivers-github-tools/python/pre-publish@v2
         id: pre-publish
         with:
-          version: ${{ env.VERSION }}
           dry_run: ${{ env.DRY_RUN }}
 
   build-dist:
@@ -118,7 +112,6 @@ jobs:
           artifactory_username: ${{ vars.ARTIFACTORY_USERNAME }}
       - uses: mongodb-labs/drivers-github-tools/python/post-publish@v2
         with:
-          version: ${{ env.VERSION }}
           following_version: ${{ env.FOLLOWING_VERSION }}
           product_name: ${{ env.PRODUCT_NAME }}
           evergreen_project: ${{ env.EVERGREEN_PROJECT }}
