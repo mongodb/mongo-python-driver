@@ -318,16 +318,15 @@ def create_stable_api_variants():
             # MONGODB_API_VERSION is the apiVersion to use in the test suite.
             expansions["MONGODB_API_VERSION"] = "1"
             tasks = [
-                f"!.replica_set .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")
+                ".standard-linux !.replica_set-noauth-ssl .server-{v}"
+                for v in get_versions_from("5.0")
             ]
         else:
             # Test against a cluster with acceptApiVersion2 but without
             # requireApiVersion, and don't automatically add apiVersion to
             # clients created in the test suite.
             expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
-            tasks = [
-                f".standalone .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")
-            ]
+            tasks = [f".standard-linux .server-{v}" for v in get_versions_from("5.0")]
         base_display_name = f"Stable API {test_type}"
         display_name = get_variant_name(base_display_name, host, python=python, **expansions)
         variant = create_variant(
