@@ -734,15 +734,6 @@ tasks:
     depends_on: [{ name: .server-version, variant: .coverage_tag, status: "*", patch_optional: true }]
     tags: [coverage]
 
-  # Doctest tests
-  - name: test-doctests
-    commands:
-      - func: run server
-      - func: run just script
-        vars:
-          JUSTFILE_TARGET: docs-test
-    tags: [doctests]
-
   # Enterprise auth tests
   - name: test-enterprise-auth-python3.9
     commands:

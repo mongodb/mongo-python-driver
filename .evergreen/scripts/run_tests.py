@@ -152,6 +152,13 @@ def run() -> None:
         test_kms_send_to_remote(SUB_TEST_NAME)
         return
 
+    # Handle doctests.
+    if TEST_NAME == "doctest":
+        from sphinx.cmd.build import main
+
+        result = main("-E -b doctest doc ./doc/_build/doctest".split())
+        sys.exit(result)
+
     # Send ecs tests to run remotely.
     if TEST_NAME == "auth_aws" and SUB_TEST_NAME == "ecs":
         run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh ecs")
