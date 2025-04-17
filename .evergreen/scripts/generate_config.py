@@ -518,7 +518,7 @@ def create_perf_variants():
 def create_aws_auth_variants():
     variants = []
 
-    for host_name, python in product(["ubuntu20", "win64", "macos"], MIN_MAX_PYTHON):
+    for host_name in ["ubuntu20", "win64", "macos"]:
         expansions = dict()
         tasks = [".auth-aws"]
         if host_name == "macos":
@@ -528,9 +528,8 @@ def create_aws_auth_variants():
         host = HOSTS[host_name]
         variant = create_variant(
             tasks,
-            get_variant_name("Auth AWS", host, python=python),
+            get_variant_name("Auth AWS", host),
             host=host,
-            python=python,
             expansions=expansions,
         )
         variants.append(variant)
@@ -755,7 +754,7 @@ def create_aws_tasks():
         "web-identity",
         "ecs",
     ]
-    for version in get_versions_from("4.4"):
+    for version, python in zip_cycle(get_versions_from("4.4"), CPYTHONS):
         base_name = f"test-auth-aws-{version}"
         base_tags = ["auth-aws"]
         server_vars = dict(AUTH_AWS="1", VERSION=version)
@@ -763,16 +762,19 @@ def create_aws_tasks():
         assume_func = FunctionCall(func="assume ec2 role")
         for test_type in aws_test_types:
             tags = [*base_tags, f"auth-aws-{test_type}"]
-            name = f"{base_name}-{test_type}"
-            test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type)
+            name = get_task_name(f"{base_name}-{test_type}", python=python)
+            test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
             test_func = FunctionCall(func="run tests", vars=test_vars)
             funcs = [server_func, assume_func, test_func]
             tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
         tags = [*base_tags, "auth-aws-web-identity"]
-        name = f"{base_name}-web-identity-session-name"
+        name = get_task_name(f"{base_name}-web-identity-session-name", python=python)
         test_vars = dict(
-            TEST_NAME="auth_aws", SUB_TEST_NAME="web-identity", AWS_ROLE_SESSION_NAME="test"
+            TEST_NAME="auth_aws",
+            SUB_TEST_NAME="web-identity",
+            AWS_ROLE_SESSION_NAME="test",
+            PYTHON_VERSION=python,
         )
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [server_func, assume_func, test_func]

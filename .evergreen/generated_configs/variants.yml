@@ -100,54 +100,24 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Aws auth tests
-  - name: auth-aws-ubuntu-20-python3.9
+  - name: auth-aws-ubuntu-20
     tasks:
       - name: .auth-aws
-    display_name: Auth AWS Ubuntu-20 Python3.9
+    display_name: Auth AWS Ubuntu-20
     run_on:
       - ubuntu2004-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: auth-aws-ubuntu-20-python3.13
-    tasks:
-      - name: .auth-aws
-    display_name: Auth AWS Ubuntu-20 Python3.13
-    run_on:
-      - ubuntu2004-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
-  - name: auth-aws-win64-python3.9
+  - name: auth-aws-win64
     tasks:
       - name: .auth-aws !.auth-aws-ecs
-    display_name: Auth AWS Win64 Python3.9
+    display_name: Auth AWS Win64
     run_on:
       - windows-64-vsMulti-small
-    expansions:
-      PYTHON_BINARY: C:/python/Python39/python.exe
-  - name: auth-aws-win64-python3.13
-    tasks:
-      - name: .auth-aws !.auth-aws-ecs
-    display_name: Auth AWS Win64 Python3.13
-    run_on:
-      - windows-64-vsMulti-small
-    expansions:
-      PYTHON_BINARY: C:/python/Python313/python.exe
-  - name: auth-aws-macos-python3.9
+  - name: auth-aws-macos
     tasks:
       - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2
-    display_name: Auth AWS macOS Python3.9
+    display_name: Auth AWS macOS
     run_on:
       - macos-14
-    expansions:
-      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-  - name: auth-aws-macos-python3.13
-    tasks:
-      - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2
-    display_name: Auth AWS macOS Python3.13
-    run_on:
-      - macos-14
-    expansions:
-      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 
   # Aws lambda tests
   - name: faas-lambda

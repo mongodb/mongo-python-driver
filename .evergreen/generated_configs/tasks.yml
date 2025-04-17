@@ -33,7 +33,7 @@ tasks:
     tags: [aws_lambda]
 
   # Aws tests
-  - name: test-auth-aws-4.4-regular
+  - name: test-auth-aws-4.4-regular-python3.9
     commands:
       - func: run server
         vars:
@@ -44,8 +44,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-4.4-assume-role
+  - name: test-auth-aws-4.4-assume-role-python3.9
     commands:
       - func: run server
         vars:
@@ -56,8 +57,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-4.4-ec2
+  - name: test-auth-aws-4.4-ec2-python3.9
     commands:
       - func: run server
         vars:
@@ -68,8 +70,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-4.4-env-creds
+  - name: test-auth-aws-4.4-env-creds-python3.9
     commands:
       - func: run server
         vars:
@@ -80,8 +83,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-4.4-session-creds
+  - name: test-auth-aws-4.4-session-creds-python3.9
     commands:
       - func: run server
         vars:
@@ -92,8 +96,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-4.4-web-identity
+  - name: test-auth-aws-4.4-web-identity-python3.9
     commands:
       - func: run server
         vars:
@@ -104,8 +109,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-4.4-ecs
+  - name: test-auth-aws-4.4-ecs-python3.9
     commands:
       - func: run server
         vars:
@@ -116,8 +122,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-4.4-web-identity-session-name
+  - name: test-auth-aws-4.4-web-identity-session-name-python3.9
     commands:
       - func: run server
         vars:
@@ -129,8 +136,9 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-5.0-regular
+  - name: test-auth-aws-5.0-regular-python3.10
     commands:
       - func: run server
         vars:
@@ -141,8 +149,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-5.0-assume-role
+  - name: test-auth-aws-5.0-assume-role-python3.10
     commands:
       - func: run server
         vars:
@@ -153,8 +162,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-5.0-ec2
+  - name: test-auth-aws-5.0-ec2-python3.10
     commands:
       - func: run server
         vars:
@@ -165,8 +175,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-5.0-env-creds
+  - name: test-auth-aws-5.0-env-creds-python3.10
     commands:
       - func: run server
         vars:
@@ -177,8 +188,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-5.0-session-creds
+  - name: test-auth-aws-5.0-session-creds-python3.10
     commands:
       - func: run server
         vars:
@@ -189,8 +201,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-5.0-web-identity
+  - name: test-auth-aws-5.0-web-identity-python3.10
     commands:
       - func: run server
         vars:
@@ -201,8 +214,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-5.0-ecs
+  - name: test-auth-aws-5.0-ecs-python3.10
     commands:
       - func: run server
         vars:
@@ -213,8 +227,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-5.0-web-identity-session-name
+  - name: test-auth-aws-5.0-web-identity-session-name-python3.10
     commands:
       - func: run server
         vars:
@@ -226,8 +241,9 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-6.0-regular
+  - name: test-auth-aws-6.0-regular-python3.11
     commands:
       - func: run server
         vars:
@@ -238,8 +254,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-6.0-assume-role
+  - name: test-auth-aws-6.0-assume-role-python3.11
     commands:
       - func: run server
         vars:
@@ -250,8 +267,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-6.0-ec2
+  - name: test-auth-aws-6.0-ec2-python3.11
     commands:
       - func: run server
         vars:
@@ -262,8 +280,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-6.0-env-creds
+  - name: test-auth-aws-6.0-env-creds-python3.11
     commands:
       - func: run server
         vars:
@@ -274,8 +293,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-6.0-session-creds
+  - name: test-auth-aws-6.0-session-creds-python3.11
     commands:
       - func: run server
         vars:
@@ -286,8 +306,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-6.0-web-identity
+  - name: test-auth-aws-6.0-web-identity-python3.11
     commands:
       - func: run server
         vars:
@@ -298,8 +319,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-6.0-ecs
+  - name: test-auth-aws-6.0-ecs-python3.11
     commands:
       - func: run server
         vars:
@@ -310,8 +332,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-6.0-web-identity-session-name
+  - name: test-auth-aws-6.0-web-identity-session-name-python3.11
     commands:
       - func: run server
         vars:
@@ -323,8 +346,9 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-7.0-regular
+  - name: test-auth-aws-7.0-regular-python3.12
     commands:
       - func: run server
         vars:
@@ -335,8 +359,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+          PYTHON_VERSION: "3.12"
     tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-7.0-assume-role
+  - name: test-auth-aws-7.0-assume-role-python3.12
     commands:
       - func: run server
         vars:
@@ -347,8 +372,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+          PYTHON_VERSION: "3.12"
     tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-7.0-ec2
+  - name: test-auth-aws-7.0-ec2-python3.12
     commands:
       - func: run server
         vars:
@@ -359,8 +385,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+          PYTHON_VERSION: "3.12"
     tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-7.0-env-creds
+  - name: test-auth-aws-7.0-env-creds-python3.12
     commands:
       - func: run server
         vars:
@@ -371,8 +398,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+          PYTHON_VERSION: "3.12"
     tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-7.0-session-creds
+  - name: test-auth-aws-7.0-session-creds-python3.12
     commands:
       - func: run server
         vars:
@@ -383,8 +411,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+          PYTHON_VERSION: "3.12"
     tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-7.0-web-identity
+  - name: test-auth-aws-7.0-web-identity-python3.12
     commands:
       - func: run server
         vars:
@@ -395,8 +424,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+          PYTHON_VERSION: "3.12"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-7.0-ecs
+  - name: test-auth-aws-7.0-ecs-python3.12
     commands:
       - func: run server
         vars:
@@ -407,8 +437,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+          PYTHON_VERSION: "3.12"
     tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-7.0-web-identity-session-name
+  - name: test-auth-aws-7.0-web-identity-session-name-python3.12
     commands:
       - func: run server
         vars:
@@ -420,8 +451,9 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
+          PYTHON_VERSION: "3.12"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-8.0-regular
+  - name: test-auth-aws-8.0-regular-python3.13
     commands:
       - func: run server
         vars:
@@ -432,8 +464,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+          PYTHON_VERSION: "3.13"
     tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-8.0-assume-role
+  - name: test-auth-aws-8.0-assume-role-python3.13
     commands:
       - func: run server
         vars:
@@ -444,8 +477,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+          PYTHON_VERSION: "3.13"
     tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-8.0-ec2
+  - name: test-auth-aws-8.0-ec2-python3.13
     commands:
       - func: run server
         vars:
@@ -456,8 +490,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+          PYTHON_VERSION: "3.13"
     tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-8.0-env-creds
+  - name: test-auth-aws-8.0-env-creds-python3.13
     commands:
       - func: run server
         vars:
@@ -468,8 +503,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+          PYTHON_VERSION: "3.13"
     tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-8.0-session-creds
+  - name: test-auth-aws-8.0-session-creds-python3.13
     commands:
       - func: run server
         vars:
@@ -480,8 +516,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+          PYTHON_VERSION: "3.13"
     tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-8.0-web-identity
+  - name: test-auth-aws-8.0-web-identity-python3.13
     commands:
       - func: run server
         vars:
@@ -492,8 +529,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+          PYTHON_VERSION: "3.13"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-8.0-ecs
+  - name: test-auth-aws-8.0-ecs-python3.13
     commands:
       - func: run server
         vars:
@@ -504,8 +542,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+          PYTHON_VERSION: "3.13"
     tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-8.0-web-identity-session-name
+  - name: test-auth-aws-8.0-web-identity-session-name-python3.13
     commands:
       - func: run server
         vars:
@@ -517,8 +556,9 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
+          PYTHON_VERSION: "3.13"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-rapid-regular
+  - name: test-auth-aws-rapid-regular-python3.9
     commands:
       - func: run server
         vars:
@@ -529,8 +569,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-rapid-assume-role
+  - name: test-auth-aws-rapid-assume-role-python3.9
     commands:
       - func: run server
         vars:
@@ -541,8 +582,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-rapid-ec2
+  - name: test-auth-aws-rapid-ec2-python3.9
     commands:
       - func: run server
         vars:
@@ -553,8 +595,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-rapid-env-creds
+  - name: test-auth-aws-rapid-env-creds-python3.9
     commands:
       - func: run server
         vars:
@@ -565,8 +608,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-rapid-session-creds
+  - name: test-auth-aws-rapid-session-creds-python3.9
     commands:
       - func: run server
         vars:
@@ -577,8 +621,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-rapid-web-identity
+  - name: test-auth-aws-rapid-web-identity-python3.9
     commands:
       - func: run server
         vars:
@@ -589,8 +634,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-rapid-ecs
+  - name: test-auth-aws-rapid-ecs-python3.9
     commands:
       - func: run server
         vars:
@@ -601,8 +647,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-rapid-web-identity-session-name
+  - name: test-auth-aws-rapid-web-identity-session-name-python3.9
     commands:
       - func: run server
         vars:
@@ -614,8 +661,9 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-latest-regular
+  - name: test-auth-aws-latest-regular-python3.10
     commands:
       - func: run server
         vars:
@@ -626,8 +674,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-latest-assume-role
+  - name: test-auth-aws-latest-assume-role-python3.10
     commands:
       - func: run server
         vars:
@@ -638,8 +687,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-latest-ec2
+  - name: test-auth-aws-latest-ec2-python3.10
     commands:
       - func: run server
         vars:
@@ -650,8 +700,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-latest-env-creds
+  - name: test-auth-aws-latest-env-creds-python3.10
     commands:
       - func: run server
         vars:
@@ -662,8 +713,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-latest-session-creds
+  - name: test-auth-aws-latest-session-creds-python3.10
     commands:
       - func: run server
         vars:
@@ -674,8 +726,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-latest-web-identity
+  - name: test-auth-aws-latest-web-identity-python3.10
     commands:
       - func: run server
         vars:
@@ -686,8 +739,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-latest-ecs
+  - name: test-auth-aws-latest-ecs-python3.10
     commands:
       - func: run server
         vars:
@@ -698,8 +752,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-latest-web-identity-session-name
+  - name: test-auth-aws-latest-web-identity-session-name-python3.10
     commands:
       - func: run server
         vars:
@@ -711,6 +766,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-web-identity]
 
   # Backport pr tests
