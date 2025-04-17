@@ -503,17 +503,7 @@ tasks:
     tags: [mockupdb]
 
   # Mod wsgi tests
-  - name: mod-wsgi-standalone
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: standalone
-      - func: run tests
-        vars:
-          TEST_NAME: mod_wsgi
-          SUB_TEST_NAME: standalone
-    tags: [mod_wsgi]
-  - name: mod-wsgi-replica-set
+  - name: mod-wsgi-replica-set-python3.9
     commands:
       - func: run server
         vars:
@@ -522,18 +512,9 @@ tasks:
         vars:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: standalone
+          PYTHON_VERSION: "3.9"
     tags: [mod_wsgi]
-  - name: mod-wsgi-embedded-mode-standalone
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: standalone
-      - func: run tests
-        vars:
-          TEST_NAME: mod_wsgi
-          SUB_TEST_NAME: embedded
-    tags: [mod_wsgi]
-  - name: mod-wsgi-embedded-mode-replica-set
+  - name: mod-wsgi-embedded-mode-replica-set-python3.10
     commands:
       - func: run server
         vars:
@@ -542,6 +523,40 @@ tasks:
         vars:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded
+          PYTHON_VERSION: "3.10"
+    tags: [mod_wsgi]
+  - name: mod-wsgi-replica-set-python3.11
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: standalone
+          PYTHON_VERSION: "3.11"
+    tags: [mod_wsgi]
+  - name: mod-wsgi-embedded-mode-replica-set-python3.12
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: embedded
+          PYTHON_VERSION: "3.12"
+    tags: [mod_wsgi]
+  - name: mod-wsgi-replica-set-python3.13
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: standalone
+          PYTHON_VERSION: "3.13"
     tags: [mod_wsgi]
 
   # No server tests
