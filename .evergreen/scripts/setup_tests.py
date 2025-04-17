@@ -285,6 +285,9 @@ def handle_test_env() -> None:
         write_env("GSSAPI_PORT", config["SASL_PORT"])
         write_env("GSSAPI_PRINCIPAL", config["PRINCIPAL"])
 
+    if test_name == "doctest":
+        UV_ARGS.append("--extra docs")
+
     if test_name == "load_balancer":
         SINGLE_MONGOS_LB_URI = os.environ.get(
             "SINGLE_MONGOS_LB_URI", "mongodb://127.0.0.1:8000/?loadBalanced=true"
