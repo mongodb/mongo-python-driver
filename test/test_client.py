@@ -824,7 +824,8 @@ class TestClient(IntegrationTest):
         with self.assertRaises(ConnectionFailure):
             c.pymongo_test.test.find_one()
 
-    @client_context.require_replica_set
+    @client_context.require_no_standalone
+    @client_context.require_no_load_balancer
     @client_context.require_tls
     def test_init_disconnected_with_srv(self):
         c = self.rs_or_single_client(
@@ -850,6 +851,7 @@ class TestClient(IntegrationTest):
         self.assertEqual(
             c._topology._topology_id, topology_description._topology_settings._topology_id
         )
+        c.close()
 
         c = self.rs_or_single_client(
             "mongodb+srv://test1.test.build.10gen.cc", connect=False, tlsInsecure=True
@@ -857,6 +859,7 @@ class TestClient(IntegrationTest):
         # primary causes client to block until connected
         c.primary
         self.assertIsNotNone(c._topology)
+        c.close()
 
         c = self.rs_or_single_client(
             "mongodb+srv://test1.test.build.10gen.cc", connect=False, tlsInsecure=True
@@ -864,6 +867,7 @@ class TestClient(IntegrationTest):
         # secondaries causes client to block until connected
         c.secondaries
         self.assertIsNotNone(c._topology)
+        c.close()
 
         c = self.rs_or_single_client(
             "mongodb+srv://test1.test.build.10gen.cc", connect=False, tlsInsecure=True
