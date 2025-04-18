@@ -283,20 +283,15 @@ def create_storage_engine_variants():
     engines = ["InMemory", "MMAPv1"]
     variants = []
     for engine in engines:
-        python = CPYTHONS[0]
         expansions = dict(STORAGE_ENGINE=engine.lower())
         if engine == engines[0]:
-            tasks = [f".standalone .noauth .nossl .{v} .sync_async" for v in ALL_VERSIONS]
+            tasks = [".standard-linux .standalone-noauth-nossl"]
         else:
             # MongoDB 4.2 drops support for MMAPv1
             versions = get_versions_until("4.0")
-            tasks = [f".standalone .{v} .noauth .nossl .sync_async" for v in versions] + [
-                f".replica_set .{v} .noauth .nossl .sync_async" for v in versions
-            ]
-        display_name = get_variant_name(f"Storage {engine}", host, python=python)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, expansions=expansions
-        )
+            tasks = [f".standard-linux !.sharded_cluster-auth-ssl .server-{v}" for v in versions]
+        display_name = get_variant_name(f"Storage {engine}", host)
+        variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants
 
@@ -308,7 +303,7 @@ def create_stable_api_variants():
     types = ["require v1", "accept v2"]
 
     # All python versions across platforms.
-    for python, test_type in product(MIN_MAX_PYTHON, types):
+    for test_type in types:
         expansions = dict(AUTH="auth")
         # Test against a cluster with requireApiVersion=1.
         if test_type == types[0]:
@@ -318,7 +313,8 @@ def create_stable_api_variants():
             # MONGODB_API_VERSION is the apiVersion to use in the test suite.
             expansions["MONGODB_API_VERSION"] = "1"
             tasks = [
-                f"!.replica_set .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")
+                f".standard-linux !.replica_set-noauth-ssl .server-{v}"
+                for v in get_versions_from("5.0")
             ]
         else:
             # Test against a cluster with acceptApiVersion2 but without
@@ -326,13 +322,12 @@ def create_stable_api_variants():
             # clients created in the test suite.
             expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
             tasks = [
-                f".standalone .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")
+                f".standard-linux .server-{v} .standalone-noauth-nossl"
+                for v in get_versions_from("5.0")
             ]
         base_display_name = f"Stable API {test_type}"
-        display_name = get_variant_name(base_display_name, host, python=python, **expansions)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, tags=tags, expansions=expansions
-        )
+        display_name = get_variant_name(base_display_name, host, **expansions)
+        variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
         variants.append(variant)
 
     return variants
@@ -1164,6 +1159,7 @@ def create_run_tests_func():
         "NO_EXT",
         "COMPRESSORS",
         "MONGODB_API_VERSION",
+        "REQUIRE_API_VERSION",
         "DEBUG_LOG",
         "ORCHESTRATION_FILE",
         "OCSP_SERVER_TYPE",
