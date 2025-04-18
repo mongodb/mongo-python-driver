@@ -508,6 +508,7 @@ tasks:
       - func: run server
         vars:
           TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.9"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
@@ -519,6 +520,7 @@ tasks:
       - func: run server
         vars:
           TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.10"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
@@ -530,6 +532,7 @@ tasks:
       - func: run server
         vars:
           TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.11"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
@@ -541,6 +544,7 @@ tasks:
       - func: run server
         vars:
           TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.12"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
@@ -552,6 +556,7 @@ tasks:
       - func: run server
         vars:
           TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.13"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi

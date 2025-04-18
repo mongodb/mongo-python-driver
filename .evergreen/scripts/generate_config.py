@@ -799,7 +799,7 @@ def create_mod_wsgi_tasks():
             task_name = "mod-wsgi-embedded-mode-"
         task_name += topology.replace("_", "-")
         task_name = get_task_name(task_name, python=python)
-        server_vars = dict(TOPOLOGY=topology)
+        server_vars = dict(TOPOLOGY=topology, PYTHON_VERSION=python)
         server_func = FunctionCall(func="run server", vars=server_vars)
         vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0], PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=vars)
