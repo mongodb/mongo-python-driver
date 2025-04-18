@@ -109,6 +109,7 @@ from pymongo.operations import (
 )
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import ClientBulkWriteResult
+from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
@@ -779,7 +780,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         keyword_opts["document_class"] = doc_class
         self._resolve_srv_info: dict[str, Any] = {"keyword_opts": keyword_opts}
 
-        seeds = set()
+        self._seeds = set()
         is_srv = False
         username = None
         password = None
@@ -804,18 +805,18 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     srv_max_hosts=srv_max_hosts,
                 )
                 is_srv = entity.startswith(SRV_SCHEME)
-                seeds.update(res["nodelist"])
+                self._seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password
                 dbase = res["database"] or dbase
                 opts = res["options"]
                 fqdn = res["fqdn"]
             else:
-                seeds.update(split_hosts(entity, self._port))
-        if not seeds:
+                self._seeds.update(split_hosts(entity, self._port))
+        if not self._seeds:
             raise ConfigurationError("need to specify at least one host")
 
-        for hostname in [node[0] for node in seeds]:
+        for hostname in [node[0] for node in self._seeds]:
             if _detect_external_db(hostname):
                 break
 
@@ -838,7 +839,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
 
         srv_max_hosts = srv_max_hosts or opts.get("srvmaxhosts")
-        opts = self._normalize_and_validate_options(opts, seeds)
+        opts = self._normalize_and_validate_options(opts, self._seeds)
 
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
@@ -857,7 +858,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 "username": username,
                 "password": password,
                 "dbase": dbase,
-                "seeds": seeds,
+                "seeds": self._seeds,
                 "fqdn": fqdn,
                 "srv_service_name": srv_service_name,
                 "pool_class": pool_class,
@@ -873,8 +874,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.read_concern,
         )
 
-        if not is_srv:
-            self._init_based_on_options(seeds, srv_max_hosts, srv_service_name)
+        self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
 
         self._opened = False
         self._closed = False
@@ -975,6 +975,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             srv_service_name=srv_service_name,
             srv_max_hosts=srv_max_hosts,
             server_monitoring_mode=self._options.server_monitoring_mode,
+            topology_id=self._topology_settings._topology_id if self._topology_settings else None,
         )
         if self._options.auto_encryption_opts:
             from pymongo.asynchronous.encryption import _Encrypter
@@ -1205,6 +1206,16 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.0
         """
+        if self._topology is None:
+            servers = {(host, port): ServerDescription((host, port)) for host, port in self._seeds}
+            return TopologyDescription(
+                TOPOLOGY_TYPE.Unknown,
+                servers,
+                None,
+                None,
+                None,
+                self._topology_settings,
+            )
         return self._topology.description
 
     @property
@@ -1218,6 +1229,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           to any servers, or a network partition causes it to lose connection
           to all servers.
         """
+        if self._topology is None:
+            return frozenset()
         description = self._topology.description
         return frozenset(s.address for s in description.known_servers)
 
@@ -1576,6 +1589,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.0
         """
+        if self._topology is None:
+            await self._get_topology()
         topology_type = self._topology._description.topology_type
         if (
             topology_type == TOPOLOGY_TYPE.Sharded
@@ -1598,6 +1613,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
            AsyncMongoClient gained this property in version 3.0.
         """
+        if self._topology is None:
+            await self._get_topology()
         return await self._topology.get_primary()  # type: ignore[return-value]
 
     @property
@@ -1611,6 +1628,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
            AsyncMongoClient gained this property in version 3.0.
         """
+        if self._topology is None:
+            await self._get_topology()
         return await self._topology.get_secondaries()
 
     @property
@@ -1621,6 +1640,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         connected to a replica set, there are no arbiters, or this client was
         created without the `replicaSet` option.
         """
+        if self._topology is None:
+            await self._get_topology()
         return await self._topology.get_arbiters()
 
     @property
