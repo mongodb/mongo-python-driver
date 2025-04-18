@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import platform
 import shutil
@@ -171,6 +172,9 @@ def run() -> None:
     if TEST_NAME == "aws_lambda":
         handle_aws_lambda()
         return
+
+    if os.environ.get("DEBUG_LOG"):
+        TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG}".split())
 
     # Run local tests.
     ret = pytest.main(TEST_ARGS + sys.argv[1:])

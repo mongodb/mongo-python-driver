@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import enum
 import logging
-import logging.handlers
 import os
 import warnings
 from typing import Any
@@ -95,13 +94,6 @@ _VERBOSE_CONNECTION_ERROR_REASONS = {
     ConnectionClosedReason.IDLE: "Connection was idle too long",
     ConnectionCheckOutFailedReason.TIMEOUT: "Connection exceeded the specified timeout",
 }
-
-if os.environ.get("DEBUG_LOG"):
-    _COMMAND_LOGGER.setLevel(logging.DEBUG)
-    _SERVER_SELECTION_LOGGER.setLevel(logging.DEBUG)
-    _CONNECTION_LOGGER.setLevel(logging.DEBUG)
-    _CLIENT_LOGGER.setLevel(logging.DEBUG)
-    _SDAM_LOGGER.setLevel(logging.DEBUG)
 
 
 def _log_client_error() -> None:
