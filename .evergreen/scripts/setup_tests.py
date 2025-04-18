@@ -468,9 +468,7 @@ def handle_test_env() -> None:
         UV_ARGS.append(f"--group {framework}")
 
     else:
-        # Use --capture=tee-sys so pytest prints test output inline:
-        # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
-        TEST_ARGS = f"-v --capture=tee-sys --durations=5 {TEST_ARGS}"
+        TEST_ARGS = f"-v --durations=5 {TEST_ARGS}"
         TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
