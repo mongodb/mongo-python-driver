@@ -545,6 +545,7 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         opts = AutoEncryptionOpts(
             key_vault_namespace="db.coll",
             kms_providers={"aws": {"accessKeyId": "foo", "secretAccessKey": "bar"}},
+            is_sync=_IS_SYNC,
         )
         client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
 

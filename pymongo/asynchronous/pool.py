@@ -85,7 +85,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
-from pymongo.ssl_support import SSLError
+from pymongo.ssl_support import PYSSLError, SSLError
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -637,7 +637,7 @@ class AsyncConnection:
             reason = ConnectionClosedReason.ERROR
         await self.close_conn(reason)
         # SSLError from PyOpenSSL inherits directly from Exception.
-        if isinstance(error, (IOError, OSError, SSLError)):
+        if isinstance(error, (IOError, OSError, SSLError, PYSSLError)):
             details = _get_timeout_details(self.opts)
             _raise_connection_failure(self.address, error, timeout_details=details)
         else:
@@ -1033,7 +1033,7 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
-            if isinstance(error, (IOError, OSError, SSLError)):
+            if isinstance(error, (IOError, OSError, SSLError, PYSSLError)):
                 details = _get_timeout_details(self.opts)
                 _raise_connection_failure(self.address, error, timeout_details=details)
 

@@ -35,6 +35,7 @@ def check_ocsp(host: str, port: int, capath: str) -> None:
         False,  # allow_invalid_certificates
         False,  # allow_invalid_hostnames
         False,
+        True,  # is sync
     )  # disable_ocsp_endpoint_check
 
     # Ensure we're using pyOpenSSL.
