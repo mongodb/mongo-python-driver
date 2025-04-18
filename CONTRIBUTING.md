@@ -294,7 +294,8 @@ Note: these tests can only be run from an Evergreen host.
 The doc tests require a running server.
 
 - Run `just run-server`.
-- Run `just docs-test`.
+- Run `just setup-tests doctest`.
+- Run `just run-tests`.
 
 ### Free-threaded Python Tests
 

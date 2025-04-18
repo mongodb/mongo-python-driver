@@ -1,148 +1,105 @@
 buildvariants:
   # Alternative hosts tests
-  - name: openssl-1.0.2-rhel7-python3.9
+  - name: openssl-1.0.2-rhel7-v5.0-python3.9
     tasks:
-      - name: .5.0 .standalone !.sync_async
-    display_name: OpenSSL 1.0.2 RHEL7 Python3.9
+      - name: .other-hosts
+    display_name: OpenSSL 1.0.2 RHEL7 v5.0 Python3.9
     run_on:
       - rhel79-small
     batchtime: 10080
     expansions:
+      VERSION: "5.0"
+      PYTHON_VERSION: "3.9"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: other-hosts-rhel9-fips
+  - name: other-hosts-rhel9-fips-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL9-FIPS
+      - name: .other-hosts
+    display_name: Other hosts RHEL9-FIPS latest
     run_on:
       - rhel92-fips
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
       REQUIRE_FIPS: "1"
-  - name: other-hosts-rhel8-zseries
+  - name: other-hosts-rhel8-zseries-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL8-zseries
+      - name: .other-hosts
+    display_name: Other hosts RHEL8-zseries latest
     run_on:
       - rhel8-zseries-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-rhel8-power8
+  - name: other-hosts-rhel8-power8-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL8-POWER8
+      - name: .other-hosts
+    display_name: Other hosts RHEL8-POWER8 latest
     run_on:
       - rhel8-power-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-rhel8-arm64
+  - name: other-hosts-rhel8-arm64-latest
     tasks:
-      - name: .6.0 .standalone !.sync_async
-    display_name: Other hosts RHEL8-arm64
+      - name: .other-hosts
+    display_name: Other hosts RHEL8-arm64 latest
     run_on:
       - rhel82-arm64-small
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-amazon2023
+  - name: other-hosts-amazon2023-latest
     tasks:
-      - name: .latest !.sync_async .sharded_cluster .auth .ssl
-      - name: .latest !.sync_async .replica_set .noauth .ssl
-      - name: .latest !.sync_async .standalone .noauth .nossl
-    display_name: Other hosts Amazon2023
+      - name: .other-hosts
+    display_name: Other hosts Amazon2023 latest
     run_on:
       - amazon2023-arm64-latest-large-m8g
     batchtime: 10080
     expansions:
+      VERSION: latest
       NO_EXT: "1"
 
   # Atlas connect tests
-  - name: atlas-connect-rhel8-python3.9
+  - name: atlas-connect-rhel8
     tasks:
-      - name: .atlas_connect
-    display_name: Atlas connect RHEL8 Python3.9
+      - name: .no-orchestration
+    display_name: Atlas connect RHEL8
     run_on:
       - rhel87-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: atlas-connect-rhel8-python3.13
-    tasks:
-      - name: .atlas_connect
-    display_name: Atlas connect RHEL8 Python3.13
-    run_on:
-      - rhel87-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Atlas data lake tests
-  - name: atlas-data-lake-ubuntu-22-python3.9
+  - name: atlas-data-lake-ubuntu-22
     tasks:
-      - name: .atlas_data_lake
-    display_name: Atlas Data Lake Ubuntu-22 Python3.9
+      - name: .no-orchestration
+    display_name: Atlas Data Lake Ubuntu-22
     run_on:
       - ubuntu2204-small
     expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: atlas-data-lake-ubuntu-22-python3.13
-    tasks:
-      - name: .atlas_data_lake
-    display_name: Atlas Data Lake Ubuntu-22 Python3.13
-    run_on:
-      - ubuntu2204-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
+      TEST_NAME: data_lake
 
   # Aws auth tests
-  - name: auth-aws-ubuntu-20-python3.9
+  - name: auth-aws-ubuntu-20
     tasks:
       - name: .auth-aws
-    display_name: Auth AWS Ubuntu-20 Python3.9
+    display_name: Auth AWS Ubuntu-20
     run_on:
       - ubuntu2004-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: auth-aws-ubuntu-20-python3.13
-    tasks:
-      - name: .auth-aws
-    display_name: Auth AWS Ubuntu-20 Python3.13
-    run_on:
-      - ubuntu2004-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
-  - name: auth-aws-win64-python3.9
+  - name: auth-aws-win64
     tasks:
       - name: .auth-aws !.auth-aws-ecs
-    display_name: Auth AWS Win64 Python3.9
+    display_name: Auth AWS Win64
     run_on:
       - windows-64-vsMulti-small
-    expansions:
-      PYTHON_BINARY: C:/python/Python39/python.exe
-  - name: auth-aws-win64-python3.13
-    tasks:
-      - name: .auth-aws !.auth-aws-ecs
-    display_name: Auth AWS Win64 Python3.13
-    run_on:
-      - windows-64-vsMulti-small
-    expansions:
-      PYTHON_BINARY: C:/python/Python313/python.exe
-  - name: auth-aws-macos-python3.9
+  - name: auth-aws-macos
     tasks:
       - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2
-    display_name: Auth AWS macOS Python3.9
+    display_name: Auth AWS macOS
     run_on:
       - macos-14
-    expansions:
-      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
-  - name: auth-aws-macos-python3.13
-    tasks:
-      - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2
-    display_name: Auth AWS macOS Python3.13
-    run_on:
-      - macos-14
-    expansions:
-      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3
 
   # Aws lambda tests
   - name: faas-lambda
@@ -163,7 +120,7 @@ buildvariants:
   # Compression tests
   - name: compression-snappy-rhel8
     tasks:
-      - name: .compression
+      - name: .standard-linux
     display_name: Compression snappy RHEL8
     run_on:
       - rhel87-small
@@ -171,7 +128,7 @@ buildvariants:
       COMPRESSOR: snappy
   - name: compression-zlib-rhel8
     tasks:
-      - name: .compression
+      - name: .standard-linux
     display_name: Compression zlib RHEL8
     run_on:
       - rhel87-small
@@ -179,7 +136,7 @@ buildvariants:
       COMPRESSOR: zlib
   - name: compression-zstd-rhel8
     tasks:
-      - name: .compression !.4.0
+      - name: .standard-linux !.server-4.0
     display_name: Compression zstd RHEL8
     run_on:
       - rhel87-small
@@ -208,14 +165,14 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Doctests tests
-  - name: doctests-rhel8-python3.9
+  - name: doctests-rhel8
     tasks:
-      - name: .doctests
-    display_name: Doctests RHEL8 Python3.9
+      - name: .standard-linux .standalone-noauth-nossl
+    display_name: Doctests RHEL8
     run_on:
       - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      TEST_NAME: doctest
 
   # Encryption tests
   - name: encryption-rhel8-python3.9
@@ -509,50 +466,26 @@ buildvariants:
       PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
 
   # Green framework tests
-  - name: green-eventlet-rhel8-python3.9
+  - name: green-eventlet-rhel8
     tasks:
-      - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Eventlet RHEL8 Python3.9
+      - name: .standard-linux .standalone-noauth-nossl .python-3.9
+    display_name: Green Eventlet RHEL8
     run_on:
       - rhel87-small
     expansions:
       GREEN_FRAMEWORK: eventlet
       AUTH: auth
       SSL: ssl
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: green-gevent-rhel8-python3.9
+  - name: green-gevent-rhel8
     tasks:
-      - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Gevent RHEL8 Python3.9
+      - name: .standard-linux .standalone-noauth-nossl
+    display_name: Green Gevent RHEL8
     run_on:
       - rhel87-small
     expansions:
       GREEN_FRAMEWORK: gevent
       AUTH: auth
       SSL: ssl
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: green-eventlet-rhel8-python3.13
-    tasks:
-      - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Eventlet RHEL8 Python3.13
-    run_on:
-      - rhel87-small
-    expansions:
-      GREEN_FRAMEWORK: eventlet
-      AUTH: auth
-      SSL: ssl
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
-  - name: green-gevent-rhel8-python3.13
-    tasks:
-      - name: .standalone .noauth .nossl .sync_async
-    display_name: Green Gevent RHEL8 Python3.13
-    run_on:
-      - rhel87-small
-    expansions:
-      GREEN_FRAMEWORK: gevent
-      AUTH: auth
-      SSL: ssl
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Import time tests
   - name: import-time
@@ -585,87 +518,38 @@ buildvariants:
     batchtime: 10080
 
   # Mockupdb tests
-  - name: mockupdb-rhel8-python3.9
+  - name: mockupdb-rhel8
     tasks:
-      - name: .mockupdb
-    display_name: MockupDB RHEL8 Python3.9
+      - name: .no-orchestration
+    display_name: MockupDB RHEL8
     run_on:
       - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      TEST_NAME: mockupdb
 
   # Mod wsgi tests
-  - name: mod_wsgi-ubuntu-22-python3.9
+  - name: mod_wsgi-ubuntu-22
     tasks:
       - name: .mod_wsgi
-    display_name: mod_wsgi Ubuntu-22 Python3.9
+    display_name: mod_wsgi Ubuntu-22
     run_on:
       - ubuntu2204-small
     expansions:
       MOD_WSGI_VERSION: "4"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: mod_wsgi-ubuntu-22-python3.13
-    tasks:
-      - name: .mod_wsgi
-    display_name: mod_wsgi Ubuntu-22 Python3.13
-    run_on:
-      - ubuntu2204-small
-    expansions:
-      MOD_WSGI_VERSION: "4"
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # No c ext tests
-  - name: no-c-ext-rhel8-python3.9
+  - name: no-c-ext-rhel8
     tasks:
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.9
+      - name: .standard-linux
+    display_name: No C Ext RHEL8
     run_on:
       - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: no-c-ext-rhel8-python3.10
-    tasks:
-      - name: .replica_set .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.10
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.10/bin/python3
-  - name: no-c-ext-rhel8-python3.11
-    tasks:
-      - name: .sharded_cluster .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.11
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.11/bin/python3
-  - name: no-c-ext-rhel8-python3.12
-    tasks:
-      - name: .standalone .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.12
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.12/bin/python3
-  - name: no-c-ext-rhel8-python3.13
-    tasks:
-      - name: .replica_set .noauth .nossl !.sync_async
-    display_name: No C Ext RHEL8 Python3.13
-    run_on:
-      - rhel87-small
-    expansions:
-      NO_EXT: "1"
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # No server tests
-  - name: no-server
+  - name: no-server-rhel8
     tasks:
-      - name: .no-server
-    display_name: No server
+      - name: .no-orchestration
+    display_name: No server RHEL8
     run_on:
       - rhel87-small
 
@@ -890,71 +774,36 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Stable api tests
-  - name: stable-api-require-v1-rhel8-python3.9-auth
+  - name: stable-api-require-v1-rhel8-auth
     tasks:
-      - name: "!.replica_set .5.0 .noauth .nossl .sync_async"
-      - name: "!.replica_set .6.0 .noauth .nossl .sync_async"
-      - name: "!.replica_set .7.0 .noauth .nossl .sync_async"
-      - name: "!.replica_set .8.0 .noauth .nossl .sync_async"
-      - name: "!.replica_set .rapid .noauth .nossl .sync_async"
-      - name: "!.replica_set .latest .noauth .nossl .sync_async"
-    display_name: Stable API require v1 RHEL8 Python3.9 Auth
+      - name: .standard-linux !.replica_set-noauth-ssl .server-5.0
+      - name: .standard-linux !.replica_set-noauth-ssl .server-6.0
+      - name: .standard-linux !.replica_set-noauth-ssl .server-7.0
+      - name: .standard-linux !.replica_set-noauth-ssl .server-8.0
+      - name: .standard-linux !.replica_set-noauth-ssl .server-rapid
+      - name: .standard-linux !.replica_set-noauth-ssl .server-latest
+    display_name: Stable API require v1 RHEL8 Auth
     run_on:
       - rhel87-small
     expansions:
       AUTH: auth
       REQUIRE_API_VERSION: "1"
       MONGODB_API_VERSION: "1"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
     tags: [versionedApi_tag]
-  - name: stable-api-accept-v2-rhel8-python3.9-auth
+  - name: stable-api-accept-v2-rhel8-auth
     tasks:
-      - name: .standalone .5.0 .noauth .nossl .sync_async
-      - name: .standalone .6.0 .noauth .nossl .sync_async
-      - name: .standalone .7.0 .noauth .nossl .sync_async
-      - name: .standalone .8.0 .noauth .nossl .sync_async
-      - name: .standalone .rapid .noauth .nossl .sync_async
-      - name: .standalone .latest .noauth .nossl .sync_async
-    display_name: Stable API accept v2 RHEL8 Python3.9 Auth
+      - name: .standard-linux .server-5.0 .standalone-noauth-nossl
+      - name: .standard-linux .server-6.0 .standalone-noauth-nossl
+      - name: .standard-linux .server-7.0 .standalone-noauth-nossl
+      - name: .standard-linux .server-8.0 .standalone-noauth-nossl
+      - name: .standard-linux .server-rapid .standalone-noauth-nossl
+      - name: .standard-linux .server-latest .standalone-noauth-nossl
+    display_name: Stable API accept v2 RHEL8 Auth
     run_on:
       - rhel87-small
     expansions:
       AUTH: auth
       ORCHESTRATION_FILE: versioned-api-testing.json
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-    tags: [versionedApi_tag]
-  - name: stable-api-require-v1-rhel8-python3.13-auth
-    tasks:
-      - name: "!.replica_set .5.0 .noauth .nossl .sync_async"
-      - name: "!.replica_set .6.0 .noauth .nossl .sync_async"
-      - name: "!.replica_set .7.0 .noauth .nossl .sync_async"
-      - name: "!.replica_set .8.0 .noauth .nossl .sync_async"
-      - name: "!.replica_set .rapid .noauth .nossl .sync_async"
-      - name: "!.replica_set .latest .noauth .nossl .sync_async"
-    display_name: Stable API require v1 RHEL8 Python3.13 Auth
-    run_on:
-      - rhel87-small
-    expansions:
-      AUTH: auth
-      REQUIRE_API_VERSION: "1"
-      MONGODB_API_VERSION: "1"
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
-    tags: [versionedApi_tag]
-  - name: stable-api-accept-v2-rhel8-python3.13-auth
-    tasks:
-      - name: .standalone .5.0 .noauth .nossl .sync_async
-      - name: .standalone .6.0 .noauth .nossl .sync_async
-      - name: .standalone .7.0 .noauth .nossl .sync_async
-      - name: .standalone .8.0 .noauth .nossl .sync_async
-      - name: .standalone .rapid .noauth .nossl .sync_async
-      - name: .standalone .latest .noauth .nossl .sync_async
-    display_name: Stable API accept v2 RHEL8 Python3.13 Auth
-    run_on:
-      - rhel87-small
-    expansions:
-      AUTH: auth
-      ORCHESTRATION_FILE: versioned-api-testing.json
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
     tags: [versionedApi_tag]
 
   # Standard nonlinux tests
@@ -994,30 +843,19 @@ buildvariants:
     tags: [standard-non-linux]
 
   # Storage engine tests
-  - name: storage-inmemory-rhel8-python3.9
+  - name: storage-inmemory-rhel8
     tasks:
-      - name: .standalone .noauth .nossl .4.0 .sync_async
-      - name: .standalone .noauth .nossl .4.2 .sync_async
-      - name: .standalone .noauth .nossl .4.4 .sync_async
-      - name: .standalone .noauth .nossl .5.0 .sync_async
-      - name: .standalone .noauth .nossl .6.0 .sync_async
-      - name: .standalone .noauth .nossl .7.0 .sync_async
-      - name: .standalone .noauth .nossl .8.0 .sync_async
-      - name: .standalone .noauth .nossl .rapid .sync_async
-      - name: .standalone .noauth .nossl .latest .sync_async
-    display_name: Storage InMemory RHEL8 Python3.9
+      - name: .standard-linux .standalone-noauth-nossl
+    display_name: Storage InMemory RHEL8
     run_on:
       - rhel87-small
     expansions:
       STORAGE_ENGINE: inmemory
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: storage-mmapv1-rhel8-python3.9
+  - name: storage-mmapv1-rhel8
     tasks:
-      - name: .standalone .4.0 .noauth .nossl .sync_async
-      - name: .replica_set .4.0 .noauth .nossl .sync_async
-    display_name: Storage MMAPv1 RHEL8 Python3.9
+      - name: .standard-linux !.sharded_cluster-auth-ssl .server-4.0
+    display_name: Storage MMAPv1 RHEL8
     run_on:
       - rhel87-small
     expansions:
       STORAGE_ENGINE: mmapv1
-      PYTHON_BINARY: /opt/python/3.9/bin/python3

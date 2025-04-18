@@ -85,21 +85,6 @@ functions:
       params:
         directory: src
 
-  # Run just script
-  run just script:
-    - command: subprocess.exec
-      params:
-        binary: bash
-        args:
-          - .evergreen/just.sh
-          - ${JUSTFILE_TARGET}
-        working_dir: src
-        include_expansions_in_env:
-          - AWS_ACCESS_KEY_ID
-          - AWS_SECRET_ACCESS_KEY
-          - AWS_SESSION_TOKEN
-      type: test
-
   # Run server
   run server:
     - command: subprocess.exec
@@ -158,6 +143,7 @@ functions:
           - NO_EXT
           - COMPRESSORS
           - MONGODB_API_VERSION
+          - REQUIRE_API_VERSION
           - DEBUG_LOG
           - ORCHESTRATION_FILE
           - OCSP_SERVER_TYPE

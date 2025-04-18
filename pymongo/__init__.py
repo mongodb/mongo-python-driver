@@ -105,6 +105,9 @@ from pymongo.synchronous.collection import ReturnDocument
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
+# Public module compatibility imports
+import pymongo.uri_parser  # noqa: F401 # isort: skip
+
 version = __version__
 """Current version of PyMongo."""
 
