@@ -26,6 +26,7 @@ from itertools import islice
 from typing import (
     TYPE_CHECKING,
     Any,
+    Generator,
     Iterator,
     Mapping,
     Optional,
@@ -72,7 +73,7 @@ from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
-    from pymongo.synchronous.collection import Collection
+    from pymongo.synchronous.collection import Collection, _WriteOp
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
     from pymongo.typings import _DocumentOut, _DocumentType, _Pipeline
@@ -214,28 +215,45 @@ class _Bulk:
             self.is_retryable = False
         self.ops.append((_DELETE, cmd))
 
-    def gen_ordered(self) -> Iterator[Optional[_Run]]:
+    def gen_ordered(self, requests) -> Iterator[Optional[_Run]]:
         """Generate batches of operations, batched by type of
         operation, in the order **provided**.
         """
         run = None
-        for idx, (op_type, operation) in enumerate(self.ops):
+        for idx, request in enumerate(requests):
+            try:
+                request._add_to_bulk(self)
+            except AttributeError:
+                raise TypeError(f"{request!r} is not a valid request") from None
+            (op_type, operation) = self.ops[idx]
             if run is None:
                 run = _Run(op_type)
             elif run.op_type != op_type:
                 yield run
                 run = _Run(op_type)
             run.add(idx, operation)
+        if run is None:
+            raise InvalidOperation("No operations to execute")
         yield run
 
-    def gen_unordered(self) -> Iterator[_Run]:
+    def gen_unordered(self, requests) -> Iterator[_Run]:
         """Generate batches of operations, batched by type of
         operation, in arbitrary order.
         """
         operations = [_Run(_INSERT), _Run(_UPDATE), _Run(_DELETE)]
-        for idx, (op_type, operation) in enumerate(self.ops):
+        for idx, request in enumerate(requests):
+            try:
+                request._add_to_bulk(self)
+            except AttributeError:
+                raise TypeError(f"{request!r} is not a valid request") from None
+            (op_type, operation) = self.ops[idx]
             operations[op_type].add(idx, operation)
-
+        if (
+            len(operations[_INSERT].ops) == 0
+            and len(operations[_UPDATE].ops) == 0
+            and len(operations[_DELETE].ops) == 0
+        ):
+            raise InvalidOperation("No operations to execute")
         for run in operations:
             if run.ops:
                 yield run
@@ -724,13 +742,12 @@ class _Bulk:
 
     def execute(
         self,
+        generator: Generator[_WriteOp[_DocumentType]],
         write_concern: WriteConcern,
         session: Optional[ClientSession],
         operation: str,
     ) -> Any:
         """Execute operations."""
-        if not self.ops:
-            raise InvalidOperation("No operations to execute")
         if self.executed:
             raise InvalidOperation("Bulk operations can only be executed once.")
         self.executed = True
@@ -738,9 +755,9 @@ class _Bulk:
         session = _validate_session_write_concern(session, write_concern)
 
         if self.ordered:
-            generator = self.gen_ordered()
+            generator = self.gen_ordered(generator)
         else:
-            generator = self.gen_unordered()
+            generator = self.gen_unordered(generator)
 
         client = self.collection.database.client
         if not write_concern.acknowledged:
