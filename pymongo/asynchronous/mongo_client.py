@@ -768,7 +768,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._timeout: float | None = None
         self._topology_settings: TopologySettings = None  # type: ignore[assignment]
         self._event_listeners: _EventListeners | None = None
-        self._initial_topology_id: Optional[ObjectId] = None
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
@@ -875,8 +874,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.read_concern,
         )
 
-        if not is_srv:
-            self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
+        self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
 
         self._opened = False
         self._closed = False
@@ -977,7 +975,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             srv_service_name=srv_service_name,
             srv_max_hosts=srv_max_hosts,
             server_monitoring_mode=self._options.server_monitoring_mode,
-            topology_id=self._initial_topology_id,
+            topology_id=self._topology_settings._topology_id if self._topology_settings else None,
         )
         if self._options.auto_encryption_opts:
             from pymongo.asynchronous.encryption import _Encrypter
@@ -1210,16 +1208,14 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         if self._topology is None:
             servers = {(host, port): ServerDescription((host, port)) for host, port in self._seeds}
-            td = TopologyDescription(
+            return TopologyDescription(
                 TOPOLOGY_TYPE.Unknown,
                 servers,
                 None,
                 None,
                 None,
-                TopologySettings(),
+                self._topology_settings,
             )
-            self._initial_topology_id = td._topology_settings._topology_id
-            return td
         return self._topology.description
 
     @property
