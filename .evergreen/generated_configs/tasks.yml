@@ -1,28 +1,4 @@
 tasks:
-  # Atlas connect tests
-  - name: test-atlas-connect
-    commands:
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: atlas_connect
-    tags: [atlas_connect]
-
-  # Atlas data lake tests
-  - name: test-atlas-data-lake-without_ext
-    commands:
-      - func: run tests
-        vars:
-          TEST_NAME: data_lake
-          NO_EXT: "1"
-    tags: [atlas_data_lake]
-  - name: test-atlas-data-lake-with_ext
-    commands:
-      - func: run tests
-        vars:
-          TEST_NAME: data_lake
-    tags: [atlas_data_lake]
-
   # Aws lambda tests
   - name: test-aws-lambda-deployed
     commands:
@@ -494,14 +470,6 @@ tasks:
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
 
-  # Mockupdb tests
-  - name: test-mockupdb
-    commands:
-      - func: run tests
-        vars:
-          TEST_NAME: mockupdb
-    tags: [mockupdb]
-
   # Mod wsgi tests
   - name: mod-wsgi-replica-set-python3.9
     commands:
@@ -564,11 +532,28 @@ tasks:
           PYTHON_VERSION: "3.13"
     tags: [mod_wsgi]
 
-  # No server tests
-  - name: test-no-server
+  # No orchestration tests
+  - name: test-no-orchestration-python3.9
     commands:
+      - func: assume ec2 role
       - func: run tests
-    tags: [no-server]
+        vars:
+          PYTHON_VERSION: "3.9"
+    tags: [no-orchestration, python-3.9]
+  - name: test-no-orchestration-python3.13
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          PYTHON_VERSION: "3.13"
+    tags: [no-orchestration, python-3.13]
+  - name: test-no-orchestration-pypy3.10
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          PYTHON_VERSION: pypy3.10
+    tags: [no-orchestration, python-pypy3.10]
 
   # Ocsp tests
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v4.4-python3.9

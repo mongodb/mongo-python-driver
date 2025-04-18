@@ -359,14 +359,11 @@ def create_no_c_ext_variants():
 
 
 def create_atlas_data_lake_variants():
-    variants = []
     host = HOSTS["ubuntu22"]
-    for python in MIN_MAX_PYTHON:
-        tasks = [".atlas_data_lake"]
-        display_name = get_variant_name("Atlas Data Lake", host, python=python)
-        variant = create_variant(tasks, display_name, host=host, python=python)
-        variants.append(variant)
-    return variants
+    tasks = [".no-orchestration"]
+    expansions = dict(TEST_NAME="data_lake")
+    display_name = get_variant_name("Atlas Data Lake", host)
+    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
 def create_mod_wsgi_variants():
@@ -437,13 +434,13 @@ def create_search_index_variants():
 
 def create_mockupdb_variants():
     host = DEFAULT_HOST
-    python = CPYTHONS[0]
+    expansions = dict(TEST_NAME="mockupdb")
     return [
         create_variant(
-            [".mockupdb"],
-            get_variant_name("MockupDB", host, python=python),
-            python=python,
+            [".no-orchestration"],
+            get_variant_name("MockupDB", host),
             host=host,
+            expansions=expansions,
         )
     ]
 
@@ -465,12 +462,10 @@ def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [
         create_variant(
-            [".atlas_connect"],
-            get_variant_name("Atlas connect", host, python=python),
-            python=python,
-            host=host,
+            [".no-orchestration"],
+            get_variant_name("Atlas connect", host),
+            host=DEFAULT_HOST,
         )
-        for python in MIN_MAX_PYTHON
     ]
 
 
@@ -525,7 +520,8 @@ def create_aws_auth_variants():
 
 def create_no_server_variants():
     host = HOSTS["rhel8"]
-    return [create_variant([".no-server"], "No server", host=host)]
+    name = get_variant_name("No server", host=host)
+    return [create_variant([".no-orchestration"], name, host=host)]
 
 
 def create_alternative_hosts_variants():
@@ -688,6 +684,22 @@ def create_server_tasks():
             test_vars["TEST_NAME"] = "default_async"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
+def create_no_orchestration_tasks():
+    tasks = []
+    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
+        tags = [
+            "no-orchestration",
+            f"python-{python}",
+        ]
+        name = get_task_name("test-no-orchestration", python=python)
+        assume_func = FunctionCall(func="assume ec2 role")
+        test_vars = dict(PYTHON_VERSION=python)
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        commands = [assume_func, test_func]
+        tasks.append(EvgTask(name=name, tags=tags, commands=commands))
     return tasks
 
 
@@ -855,15 +867,6 @@ def create_search_index_tasks():
     return [EvgTask(name=task_name, tags=tags, commands=commands)]
 
 
-def create_atlas_connect_tasks():
-    vars = dict(TEST_NAME="atlas_connect")
-    assume_func = FunctionCall(func="assume ec2 role")
-    test_func = FunctionCall(func="run tests", vars=vars)
-    task_name = "test-atlas-connect"
-    tags = ["atlas_connect"]
-    return [EvgTask(name=task_name, tags=tags, commands=[assume_func, test_func])]
-
-
 def create_enterprise_auth_tasks():
     tasks = []
     for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
@@ -898,18 +901,6 @@ def create_perf_tasks():
         tags = ["perf"]
         commands = [server_func, test_func, attach_func, send_func]
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
-    return tasks
-
-
-def create_atlas_data_lake_tasks():
-    tags = ["atlas_data_lake"]
-    tasks = []
-    for c_ext in C_EXTS:
-        vars = dict(TEST_NAME="data_lake")
-        handle_c_ext(c_ext, vars)
-        test_func = FunctionCall(func="run tests", vars=vars)
-        task_name = f"test-atlas-data-lake-{c_ext}"
-        tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
 
 
@@ -990,20 +981,6 @@ def create_ocsp_tasks():
             tasks.extend(new_tasks)
 
     return tasks
-
-
-def create_mockupdb_tasks():
-    test_func = FunctionCall(func="run tests", vars=dict(TEST_NAME="mockupdb"))
-    task_name = "test-mockupdb"
-    tags = ["mockupdb"]
-    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
-
-
-def create_no_server_tasks():
-    test_func = FunctionCall(func="run tests")
-    task_name = "test-no-server"
-    tags = ["no-server"]
-    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
 
 
 def create_free_threading_tasks():
