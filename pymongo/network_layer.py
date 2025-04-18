@@ -51,9 +51,9 @@ try:
     _HAVE_PYOPENSSL = True
 except ImportError:
     _HAVE_PYOPENSSL = False
-    _pysslConn = SSLSocket
+    _pysslConn = SSLSocket  # type: ignore[assignment, misc]
 
-from pymongo.ssl_support import (  # type: ignore[assignment]
+from pymongo.ssl_support import (
     BLOCKING_IO_LOOKUP_ERROR,
     BLOCKING_IO_READ_ERROR,
     BLOCKING_IO_WRITE_ERROR,
