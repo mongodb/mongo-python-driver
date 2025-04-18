@@ -325,7 +325,9 @@ def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
             raise socket.timeout("timed out")
 
 
-def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> memoryview:
+def receive_data(
+    conn: Connection, length: int, deadline: Optional[float], enable_pending: bool = False
+) -> memoryview:
     buf = bytearray(length)
     mv = memoryview(buf)
     bytes_read = 0
@@ -336,7 +338,7 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
     # When the timeout has expired we perform one final non-blocking recv.
     # This helps avoid spurious timeouts when the response is actually already
     # buffered on the client.
-    orig_timeout = conn.conn.gettimeout()
+    orig_timeout = conn.conn.gettimeout
     try:
         while bytes_read < length:
             try:
@@ -357,12 +359,16 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
                 if conn.cancel_context.cancelled:
                     raise _OperationCancelled("operation cancelled") from None
                 # We reached the true deadline.
+                if enable_pending:
+                    conn.mark_pending(length - bytes_read)
                 raise socket.timeout("timed out") from None
             except socket.timeout:
                 if conn.cancel_context.cancelled:
                     raise _OperationCancelled("operation cancelled") from None
                 if _PYPY:
                     # We reached the true deadline.
+                    if enable_pending:
+                        conn.mark_pending(length - bytes_read)
                     raise
                 continue
             except OSError as exc:
@@ -438,6 +444,7 @@ class NetworkingInterface(NetworkingInterfaceBase):
     def __init__(self, conn: Union[socket.socket, _sslConn]):
         super().__init__(conn)
 
+    @property
     def gettimeout(self) -> float | None:
         return self.conn.gettimeout()
 
@@ -692,6 +699,7 @@ async def async_receive_message(
     conn: AsyncConnection,
     request_id: Optional[int],
     max_message_size: int = MAX_MESSAGE_SIZE,
+    enable_pending: bool = False,
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     timeout: Optional[Union[float, int]]
@@ -721,6 +729,8 @@ async def async_receive_message(
         if pending:
             await asyncio.wait(pending)
         if len(done) == 0:
+            if enable_pending:
+                conn.mark_pending(1)
             raise socket.timeout("timed out")
         if read_task in done:
             data, op_code = read_task.result()
@@ -740,19 +750,24 @@ async def async_receive_message(
 
 
 def receive_message(
-    conn: Connection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
+    conn: Connection,
+    request_id: Optional[int],
+    max_message_size: int = MAX_MESSAGE_SIZE,
+    enable_pending: bool = False,
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
     else:
-        timeout = conn.conn.gettimeout()
+        timeout = conn.conn.gettimeout
         if timeout:
             deadline = time.monotonic() + timeout
         else:
             deadline = None
     # Ignore the response's request id.
-    length, _, response_to, op_code = _UNPACK_HEADER(receive_data(conn, 16, deadline))
+    length, _, response_to, op_code = _UNPACK_HEADER(
+        receive_data(conn, 16, deadline, enable_pending)
+    )
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         if request_id != response_to:
@@ -767,10 +782,12 @@ def receive_message(
             f"message size ({max_message_size!r})"
         )
     if op_code == 2012:
-        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(receive_data(conn, 9, deadline))
-        data = decompress(receive_data(conn, length - 25, deadline), compressor_id)
+        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
+            receive_data(conn, 9, deadline, enable_pending)
+        )
+        data = decompress(receive_data(conn, length - 25, deadline, enable_pending), compressor_id)
     else:
-        data = receive_data(conn, length - 16, deadline)
+        data = receive_data(conn, length - 16, deadline, enable_pending)
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
