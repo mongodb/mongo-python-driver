@@ -340,18 +340,16 @@ def create_stable_api_variants():
 
 def create_green_framework_variants():
     variants = []
-    tasks = [".standalone .noauth .nossl .sync_async"]
     host = DEFAULT_HOST
-    for python, framework in product([CPYTHONS[0], CPYTHONS[-1]], ["eventlet", "gevent"]):
-        if framework == "eventlet" and python == CPYTHONS[-1]:
+    for framework in ["eventlet", "gevent"]:
+        tasks = [".standard-linux .standalone-noauth-nossl"]
+        if framework == "eventlet":
             # Eventlet has issues with dnspython > 2.0 and newer versions of CPython
             # https://jira.mongodb.org/browse/PYTHON-5284
-            continue
+            tasks = [".standard-linux .standalone-noauth-nossl .python-3.9"]
         expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
-        display_name = get_variant_name(f"Green {framework.capitalize()}", host, python=python)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, expansions=expansions
-        )
+        display_name = get_variant_name(f"Green {framework.capitalize()}", host)
+        variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants
 
@@ -377,17 +375,11 @@ def create_atlas_data_lake_variants():
 
 
 def create_mod_wsgi_variants():
-    variants = []
     host = HOSTS["ubuntu22"]
     tasks = [".mod_wsgi"]
     expansions = dict(MOD_WSGI_VERSION="4")
-    for python in MIN_MAX_PYTHON:
-        display_name = get_variant_name("mod_wsgi", host, python=python)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, expansions=expansions
-        )
-        variants.append(variant)
-    return variants
+    display_name = get_variant_name("mod_wsgi", host)
+    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
 def create_disable_test_commands_variants():
@@ -518,7 +510,7 @@ def create_perf_variants():
 def create_aws_auth_variants():
     variants = []
 
-    for host_name, python in product(["ubuntu20", "win64", "macos"], MIN_MAX_PYTHON):
+    for host_name in ["ubuntu20", "win64", "macos"]:
         expansions = dict()
         tasks = [".auth-aws"]
         if host_name == "macos":
@@ -528,9 +520,8 @@ def create_aws_auth_variants():
         host = HOSTS[host_name]
         variant = create_variant(
             tasks,
-            get_variant_name("Auth AWS", host, python=python),
+            get_variant_name("Auth AWS", host),
             host=host,
-            python=python,
             expansions=expansions,
         )
         variants.append(variant)
@@ -755,28 +746,31 @@ def create_aws_tasks():
         "web-identity",
         "ecs",
     ]
-    for version in get_versions_from("4.4"):
+    for version, test_type, python in zip_cycle(get_versions_from("4.4"), aws_test_types, CPYTHONS):
         base_name = f"test-auth-aws-{version}"
         base_tags = ["auth-aws"]
         server_vars = dict(AUTH_AWS="1", VERSION=version)
         server_func = FunctionCall(func="run server", vars=server_vars)
         assume_func = FunctionCall(func="assume ec2 role")
-        for test_type in aws_test_types:
-            tags = [*base_tags, f"auth-aws-{test_type}"]
-            name = f"{base_name}-{test_type}"
-            test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type)
-            test_func = FunctionCall(func="run tests", vars=test_vars)
-            funcs = [server_func, assume_func, test_func]
-            tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
-
-        tags = [*base_tags, "auth-aws-web-identity"]
-        name = f"{base_name}-web-identity-session-name"
-        test_vars = dict(
-            TEST_NAME="auth_aws", SUB_TEST_NAME="web-identity", AWS_ROLE_SESSION_NAME="test"
-        )
+        tags = [*base_tags, f"auth-aws-{test_type}"]
+        name = get_task_name(f"{base_name}-{test_type}", python=python)
+        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [server_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
+
+        if test_type == "web-identity":
+            tags = [*base_tags, "auth-aws-web-identity"]
+            name = get_task_name(f"{base_name}-web-identity-session-name", python=python)
+            test_vars = dict(
+                TEST_NAME="auth_aws",
+                SUB_TEST_NAME="web-identity",
+                AWS_ROLE_SESSION_NAME="test",
+                PYTHON_VERSION=python,
+            )
+            test_func = FunctionCall(func="run tests", vars=test_vars)
+            funcs = [server_func, assume_func, test_func]
+            tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     return tasks
 
@@ -796,15 +790,18 @@ def create_oidc_tasks():
 
 def create_mod_wsgi_tasks():
     tasks = []
-    for test, topology in product(["standalone", "embedded-mode"], ["standalone", "replica_set"]):
+    for (test, topology), python in zip_cycle(
+        product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
+    ):
         if test == "standalone":
             task_name = "mod-wsgi-"
         else:
             task_name = "mod-wsgi-embedded-mode-"
         task_name += topology.replace("_", "-")
-        server_vars = dict(TOPOLOGY=topology)
+        task_name = get_task_name(task_name, python=python)
+        server_vars = dict(TOPOLOGY=topology, PYTHON_VERSION=python)
         server_func = FunctionCall(func="run server", vars=server_vars)
-        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0])
+        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0], PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=vars)
         tags = ["mod_wsgi"]
         commands = [server_func, test_func]
