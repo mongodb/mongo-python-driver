@@ -1,28 +1,4 @@
 tasks:
-  # Atlas connect tests
-  - name: test-atlas-connect
-    commands:
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: atlas_connect
-    tags: [atlas_connect]
-
-  # Atlas data lake tests
-  - name: test-atlas-data-lake-without_ext
-    commands:
-      - func: run tests
-        vars:
-          TEST_NAME: data_lake
-          NO_EXT: "1"
-    tags: [atlas_data_lake]
-  - name: test-atlas-data-lake-with_ext
-    commands:
-      - func: run tests
-        vars:
-          TEST_NAME: data_lake
-    tags: [atlas_data_lake]
-
   # Aws lambda tests
   - name: test-aws-lambda-deployed
     commands:
@@ -33,7 +9,7 @@ tasks:
     tags: [aws_lambda]
 
   # Aws tests
-  - name: test-auth-aws-4.4-regular
+  - name: test-auth-aws-4.4-regular-python3.9
     commands:
       - func: run server
         vars:
@@ -44,105 +20,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-4.4-assume-role
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "4.4"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: assume-role
-    tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-4.4-ec2
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "4.4"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ec2
-    tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-4.4-env-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "4.4"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: env-creds
-    tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-4.4-session-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "4.4"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: session-creds
-    tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-4.4-web-identity
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "4.4"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-4.4-ecs
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "4.4"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-4.4-web-identity-session-name
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "4.4"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-5.0-regular
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "5.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: regular
-    tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-5.0-assume-role
+  - name: test-auth-aws-5.0-assume-role-python3.10
     commands:
       - func: run server
         vars:
@@ -153,105 +33,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-5.0-ec2
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "5.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ec2
-    tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-5.0-env-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "5.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: env-creds
-    tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-5.0-session-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "5.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: session-creds
-    tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-5.0-web-identity
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "5.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-5.0-ecs
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "5.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-5.0-web-identity-session-name
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "5.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-6.0-regular
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "6.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: regular
-    tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-6.0-assume-role
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "6.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: assume-role
-    tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-6.0-ec2
+  - name: test-auth-aws-6.0-ec2-python3.11
     commands:
       - func: run server
         vars:
@@ -262,105 +46,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-6.0-env-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "6.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: env-creds
-    tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-6.0-session-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "6.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: session-creds
-    tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-6.0-web-identity
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "6.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-6.0-ecs
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "6.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-6.0-web-identity-session-name
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "6.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-7.0-regular
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "7.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: regular
-    tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-7.0-assume-role
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "7.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: assume-role
-    tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-7.0-ec2
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "7.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ec2
-    tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-7.0-env-creds
+  - name: test-auth-aws-7.0-env-creds-python3.12
     commands:
       - func: run server
         vars:
@@ -371,105 +59,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
+          PYTHON_VERSION: "3.12"
     tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-7.0-session-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "7.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: session-creds
-    tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-7.0-web-identity
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "7.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-7.0-ecs
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "7.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-7.0-web-identity-session-name
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "7.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-8.0-regular
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "8.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: regular
-    tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-8.0-assume-role
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "8.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: assume-role
-    tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-8.0-ec2
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "8.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ec2
-    tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-8.0-env-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "8.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: env-creds
-    tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-8.0-session-creds
+  - name: test-auth-aws-8.0-session-creds-python3.13
     commands:
       - func: run server
         vars:
@@ -480,105 +72,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
+          PYTHON_VERSION: "3.13"
     tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-8.0-web-identity
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "8.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-8.0-ecs
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "8.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-8.0-web-identity-session-name
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "8.0"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-rapid-regular
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: rapid
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: regular
-    tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-rapid-assume-role
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: rapid
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: assume-role
-    tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-rapid-ec2
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: rapid
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ec2
-    tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-rapid-env-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: rapid
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: env-creds
-    tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-rapid-session-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: rapid
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: session-creds
-    tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-rapid-web-identity
+  - name: test-auth-aws-rapid-web-identity-python3.9
     commands:
       - func: run server
         vars:
@@ -589,20 +85,9 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-rapid-ecs
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: rapid
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-    tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-rapid-web-identity-session-name
+  - name: test-auth-aws-rapid-web-identity-session-name-python3.9
     commands:
       - func: run server
         vars:
@@ -614,80 +99,9 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
+          PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-latest-regular
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: latest
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: regular
-    tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-latest-assume-role
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: latest
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: assume-role
-    tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-latest-ec2
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: latest
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ec2
-    tags: [auth-aws, auth-aws-ec2]
-  - name: test-auth-aws-latest-env-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: latest
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: env-creds
-    tags: [auth-aws, auth-aws-env-creds]
-  - name: test-auth-aws-latest-session-creds
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: latest
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: session-creds
-    tags: [auth-aws, auth-aws-session-creds]
-  - name: test-auth-aws-latest-web-identity
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: latest
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-latest-ecs
+  - name: test-auth-aws-latest-ecs-python3.10
     commands:
       - func: run server
         vars:
@@ -698,20 +112,8 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+          PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-ecs]
-  - name: test-auth-aws-latest-web-identity-session-name
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: latest
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, auth-aws-web-identity]
 
   # Backport pr tests
   - name: backport-pr
@@ -1068,61 +470,90 @@ tasks:
           TEST_NAME: load_balancer
     tags: [load-balancer, noauth, nossl]
 
-  # Mockupdb tests
-  - name: test-mockupdb
-    commands:
-      - func: run tests
-        vars:
-          TEST_NAME: mockupdb
-    tags: [mockupdb]
-
   # Mod wsgi tests
-  - name: mod-wsgi-standalone
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: standalone
-      - func: run tests
-        vars:
-          TEST_NAME: mod_wsgi
-          SUB_TEST_NAME: standalone
-    tags: [mod_wsgi]
-  - name: mod-wsgi-replica-set
+  - name: mod-wsgi-replica-set-python3.9
     commands:
       - func: run server
         vars:
           TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.9"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: standalone
+          PYTHON_VERSION: "3.9"
     tags: [mod_wsgi]
-  - name: mod-wsgi-embedded-mode-standalone
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: standalone
-      - func: run tests
-        vars:
-          TEST_NAME: mod_wsgi
-          SUB_TEST_NAME: embedded
-    tags: [mod_wsgi]
-  - name: mod-wsgi-embedded-mode-replica-set
+  - name: mod-wsgi-embedded-mode-replica-set-python3.10
     commands:
       - func: run server
         vars:
           TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.10"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded
+          PYTHON_VERSION: "3.10"
+    tags: [mod_wsgi]
+  - name: mod-wsgi-replica-set-python3.11
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.11"
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: standalone
+          PYTHON_VERSION: "3.11"
+    tags: [mod_wsgi]
+  - name: mod-wsgi-embedded-mode-replica-set-python3.12
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.12"
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: embedded
+          PYTHON_VERSION: "3.12"
+    tags: [mod_wsgi]
+  - name: mod-wsgi-replica-set-python3.13
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.13"
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: standalone
+          PYTHON_VERSION: "3.13"
     tags: [mod_wsgi]
 
-  # No server tests
-  - name: test-no-server
+  # No orchestration tests
+  - name: test-no-orchestration-python3.9
     commands:
+      - func: assume ec2 role
       - func: run tests
-    tags: [no-server]
+        vars:
+          PYTHON_VERSION: "3.9"
+    tags: [no-orchestration, python-3.9]
+  - name: test-no-orchestration-python3.13
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          PYTHON_VERSION: "3.13"
+    tags: [no-orchestration, python-3.13]
+  - name: test-no-orchestration-pypy3.10
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          PYTHON_VERSION: pypy3.10
+    tags: [no-orchestration, python-pypy3.10]
 
   # Ocsp tests
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v4.4-python3.9

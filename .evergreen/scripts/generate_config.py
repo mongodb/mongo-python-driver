@@ -283,20 +283,15 @@ def create_storage_engine_variants():
     engines = ["InMemory", "MMAPv1"]
     variants = []
     for engine in engines:
-        python = CPYTHONS[0]
         expansions = dict(STORAGE_ENGINE=engine.lower())
         if engine == engines[0]:
-            tasks = [f".standalone .noauth .nossl .{v} .sync_async" for v in ALL_VERSIONS]
+            tasks = [".standard-linux .standalone-noauth-nossl"]
         else:
             # MongoDB 4.2 drops support for MMAPv1
             versions = get_versions_until("4.0")
-            tasks = [f".standalone .{v} .noauth .nossl .sync_async" for v in versions] + [
-                f".replica_set .{v} .noauth .nossl .sync_async" for v in versions
-            ]
-        display_name = get_variant_name(f"Storage {engine}", host, python=python)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, expansions=expansions
-        )
+            tasks = [f".standard-linux !.sharded_cluster-auth-ssl .server-{v}" for v in versions]
+        display_name = get_variant_name(f"Storage {engine}", host)
+        variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants
 
@@ -308,7 +303,7 @@ def create_stable_api_variants():
     types = ["require v1", "accept v2"]
 
     # All python versions across platforms.
-    for python, test_type in product(MIN_MAX_PYTHON, types):
+    for test_type in types:
         expansions = dict(AUTH="auth")
         # Test against a cluster with requireApiVersion=1.
         if test_type == types[0]:
@@ -318,7 +313,8 @@ def create_stable_api_variants():
             # MONGODB_API_VERSION is the apiVersion to use in the test suite.
             expansions["MONGODB_API_VERSION"] = "1"
             tasks = [
-                f"!.replica_set .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")
+                f".standard-linux !.replica_set-noauth-ssl .server-{v}"
+                for v in get_versions_from("5.0")
             ]
         else:
             # Test against a cluster with acceptApiVersion2 but without
@@ -326,13 +322,12 @@ def create_stable_api_variants():
             # clients created in the test suite.
             expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
             tasks = [
-                f".standalone .{v} .noauth .nossl .sync_async" for v in get_versions_from("5.0")
+                f".standard-linux .server-{v} .standalone-noauth-nossl"
+                for v in get_versions_from("5.0")
             ]
         base_display_name = f"Stable API {test_type}"
-        display_name = get_variant_name(base_display_name, host, python=python, **expansions)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, tags=tags, expansions=expansions
-        )
+        display_name = get_variant_name(base_display_name, host, **expansions)
+        variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
         variants.append(variant)
 
     return variants
@@ -340,18 +335,16 @@ def create_stable_api_variants():
 
 def create_green_framework_variants():
     variants = []
-    tasks = [".standalone .noauth .nossl .sync_async"]
     host = DEFAULT_HOST
-    for python, framework in product([CPYTHONS[0], CPYTHONS[-1]], ["eventlet", "gevent"]):
-        if framework == "eventlet" and python == CPYTHONS[-1]:
+    for framework in ["eventlet", "gevent"]:
+        tasks = [".standard-linux .standalone-noauth-nossl"]
+        if framework == "eventlet":
             # Eventlet has issues with dnspython > 2.0 and newer versions of CPython
             # https://jira.mongodb.org/browse/PYTHON-5284
-            continue
+            tasks = [".standard-linux .standalone-noauth-nossl .python-3.9"]
         expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
-        display_name = get_variant_name(f"Green {framework.capitalize()}", host, python=python)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, expansions=expansions
-        )
+        display_name = get_variant_name(f"Green {framework.capitalize()}", host)
+        variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants
 
@@ -366,28 +359,19 @@ def create_no_c_ext_variants():
 
 
 def create_atlas_data_lake_variants():
-    variants = []
     host = HOSTS["ubuntu22"]
-    for python in MIN_MAX_PYTHON:
-        tasks = [".atlas_data_lake"]
-        display_name = get_variant_name("Atlas Data Lake", host, python=python)
-        variant = create_variant(tasks, display_name, host=host, python=python)
-        variants.append(variant)
-    return variants
+    tasks = [".no-orchestration"]
+    expansions = dict(TEST_NAME="data_lake")
+    display_name = get_variant_name("Atlas Data Lake", host)
+    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
 def create_mod_wsgi_variants():
-    variants = []
     host = HOSTS["ubuntu22"]
     tasks = [".mod_wsgi"]
     expansions = dict(MOD_WSGI_VERSION="4")
-    for python in MIN_MAX_PYTHON:
-        display_name = get_variant_name("mod_wsgi", host, python=python)
-        variant = create_variant(
-            tasks, display_name, host=host, python=python, expansions=expansions
-        )
-        variants.append(variant)
-    return variants
+    display_name = get_variant_name("mod_wsgi", host)
+    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
 def create_disable_test_commands_variants():
@@ -450,13 +434,13 @@ def create_search_index_variants():
 
 def create_mockupdb_variants():
     host = DEFAULT_HOST
-    python = CPYTHONS[0]
+    expansions = dict(TEST_NAME="mockupdb")
     return [
         create_variant(
-            [".mockupdb"],
-            get_variant_name("MockupDB", host, python=python),
-            python=python,
+            [".no-orchestration"],
+            get_variant_name("MockupDB", host),
             host=host,
+            expansions=expansions,
         )
     ]
 
@@ -478,12 +462,10 @@ def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [
         create_variant(
-            [".atlas_connect"],
-            get_variant_name("Atlas connect", host, python=python),
-            python=python,
-            host=host,
+            [".no-orchestration"],
+            get_variant_name("Atlas connect", host),
+            host=DEFAULT_HOST,
         )
-        for python in MIN_MAX_PYTHON
     ]
 
 
@@ -518,7 +500,7 @@ def create_perf_variants():
 def create_aws_auth_variants():
     variants = []
 
-    for host_name, python in product(["ubuntu20", "win64", "macos"], MIN_MAX_PYTHON):
+    for host_name in ["ubuntu20", "win64", "macos"]:
         expansions = dict()
         tasks = [".auth-aws"]
         if host_name == "macos":
@@ -528,9 +510,8 @@ def create_aws_auth_variants():
         host = HOSTS[host_name]
         variant = create_variant(
             tasks,
-            get_variant_name("Auth AWS", host, python=python),
+            get_variant_name("Auth AWS", host),
             host=host,
-            python=python,
             expansions=expansions,
         )
         variants.append(variant)
@@ -539,7 +520,8 @@ def create_aws_auth_variants():
 
 def create_no_server_variants():
     host = HOSTS["rhel8"]
-    return [create_variant([".no-server"], "No server", host=host)]
+    name = get_variant_name("No server", host=host)
+    return [create_variant([".no-orchestration"], name, host=host)]
 
 
 def create_alternative_hosts_variants():
@@ -705,6 +687,22 @@ def create_server_tasks():
     return tasks
 
 
+def create_no_orchestration_tasks():
+    tasks = []
+    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
+        tags = [
+            "no-orchestration",
+            f"python-{python}",
+        ]
+        name = get_task_name("test-no-orchestration", python=python)
+        assume_func = FunctionCall(func="assume ec2 role")
+        test_vars = dict(PYTHON_VERSION=python)
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        commands = [assume_func, test_func]
+        tasks.append(EvgTask(name=name, tags=tags, commands=commands))
+    return tasks
+
+
 def create_load_balancer_tasks():
     tasks = []
     for (auth, ssl), version in product(AUTH_SSLS, get_versions_from("6.0")):
@@ -755,28 +753,31 @@ def create_aws_tasks():
         "web-identity",
         "ecs",
     ]
-    for version in get_versions_from("4.4"):
+    for version, test_type, python in zip_cycle(get_versions_from("4.4"), aws_test_types, CPYTHONS):
         base_name = f"test-auth-aws-{version}"
         base_tags = ["auth-aws"]
         server_vars = dict(AUTH_AWS="1", VERSION=version)
         server_func = FunctionCall(func="run server", vars=server_vars)
         assume_func = FunctionCall(func="assume ec2 role")
-        for test_type in aws_test_types:
-            tags = [*base_tags, f"auth-aws-{test_type}"]
-            name = f"{base_name}-{test_type}"
-            test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type)
-            test_func = FunctionCall(func="run tests", vars=test_vars)
-            funcs = [server_func, assume_func, test_func]
-            tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
-
-        tags = [*base_tags, "auth-aws-web-identity"]
-        name = f"{base_name}-web-identity-session-name"
-        test_vars = dict(
-            TEST_NAME="auth_aws", SUB_TEST_NAME="web-identity", AWS_ROLE_SESSION_NAME="test"
-        )
+        tags = [*base_tags, f"auth-aws-{test_type}"]
+        name = get_task_name(f"{base_name}-{test_type}", python=python)
+        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [server_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
+
+        if test_type == "web-identity":
+            tags = [*base_tags, "auth-aws-web-identity"]
+            name = get_task_name(f"{base_name}-web-identity-session-name", python=python)
+            test_vars = dict(
+                TEST_NAME="auth_aws",
+                SUB_TEST_NAME="web-identity",
+                AWS_ROLE_SESSION_NAME="test",
+                PYTHON_VERSION=python,
+            )
+            test_func = FunctionCall(func="run tests", vars=test_vars)
+            funcs = [server_func, assume_func, test_func]
+            tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     return tasks
 
@@ -796,15 +797,18 @@ def create_oidc_tasks():
 
 def create_mod_wsgi_tasks():
     tasks = []
-    for test, topology in product(["standalone", "embedded-mode"], ["standalone", "replica_set"]):
+    for (test, topology), python in zip_cycle(
+        product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
+    ):
         if test == "standalone":
             task_name = "mod-wsgi-"
         else:
             task_name = "mod-wsgi-embedded-mode-"
         task_name += topology.replace("_", "-")
-        server_vars = dict(TOPOLOGY=topology)
+        task_name = get_task_name(task_name, python=python)
+        server_vars = dict(TOPOLOGY=topology, PYTHON_VERSION=python)
         server_func = FunctionCall(func="run server", vars=server_vars)
-        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0])
+        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0], PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=vars)
         tags = ["mod_wsgi"]
         commands = [server_func, test_func]
@@ -863,15 +867,6 @@ def create_search_index_tasks():
     return [EvgTask(name=task_name, tags=tags, commands=commands)]
 
 
-def create_atlas_connect_tasks():
-    vars = dict(TEST_NAME="atlas_connect")
-    assume_func = FunctionCall(func="assume ec2 role")
-    test_func = FunctionCall(func="run tests", vars=vars)
-    task_name = "test-atlas-connect"
-    tags = ["atlas_connect"]
-    return [EvgTask(name=task_name, tags=tags, commands=[assume_func, test_func])]
-
-
 def create_enterprise_auth_tasks():
     tasks = []
     for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
@@ -906,18 +901,6 @@ def create_perf_tasks():
         tags = ["perf"]
         commands = [server_func, test_func, attach_func, send_func]
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
-    return tasks
-
-
-def create_atlas_data_lake_tasks():
-    tags = ["atlas_data_lake"]
-    tasks = []
-    for c_ext in C_EXTS:
-        vars = dict(TEST_NAME="data_lake")
-        handle_c_ext(c_ext, vars)
-        test_func = FunctionCall(func="run tests", vars=vars)
-        task_name = f"test-atlas-data-lake-{c_ext}"
-        tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
 
 
@@ -998,20 +981,6 @@ def create_ocsp_tasks():
             tasks.extend(new_tasks)
 
     return tasks
-
-
-def create_mockupdb_tasks():
-    test_func = FunctionCall(func="run tests", vars=dict(TEST_NAME="mockupdb"))
-    task_name = "test-mockupdb"
-    tags = ["mockupdb"]
-    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
-
-
-def create_no_server_tasks():
-    test_func = FunctionCall(func="run tests")
-    task_name = "test-no-server"
-    tags = ["no-server"]
-    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
 
 
 def create_free_threading_tasks():
@@ -1167,6 +1136,7 @@ def create_run_tests_func():
         "NO_EXT",
         "COMPRESSORS",
         "MONGODB_API_VERSION",
+        "REQUIRE_API_VERSION",
         "DEBUG_LOG",
         "ORCHESTRATION_FILE",
         "OCSP_SERVER_TYPE",

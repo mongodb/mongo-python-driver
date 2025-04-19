@@ -206,6 +206,7 @@ class ClientContext:
             if os.environ.get("TEST_DATA_LAKE"):
                 self.is_data_lake = True
                 self.auth_enabled = True
+                self.client.close()
                 self.client = self._connect(host, port, username=db_user, password=db_pwd)
                 self.connected = True
                 return
