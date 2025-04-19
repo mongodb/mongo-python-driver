@@ -20,4 +20,6 @@ if [ -f $SCRIPT_DIR/env.sh ]; then
   source $SCRIPT_DIR/env.sh
 fi
 
+echo "Setting up tests with args \"$@\"..."
 uv run $SCRIPT_DIR/setup_tests.py "$@"
+echo "Setting up tests with args \"$@\"... done."
