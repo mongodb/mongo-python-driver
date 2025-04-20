@@ -39,21 +39,19 @@ function _pip_install() {
 
 #  Try to use the binaries in the toolchain if available.
 if [ -n "${CI}" ]; then
-    export PATH
-    case "${OSTYPE:?}" in
-    cygwin)
-      PATH="/cygdrive/c/Python/Current:${PATH:-}"
-      ;;
-    darwin*)
-      PATH="/Library/Frameworks/Python.Framework/Versions/Current/bin:${PATH:-}"
-      ;;
-    *)
-      PATH="/opt/python/Current/bin:${PATH:-}"
-      ;;
-    esac
-  fi
+  export PATH
+  case "${OSTYPE:?}" in
+  cygwin)
+    PATH="/cygdrive/c/Python/Current:${PATH:-}"
+    ;;
+  darwin*)
+    PATH="/Library/Frameworks/Python.Framework/Versions/Current/bin:${PATH:-}"
+    ;;
+  *)
+    PATH="/opt/python/Current/bin:${PATH:-}"
+    ;;
+  esac
 fi
-
 
 # Ensure just is installed.
 if ! command -v just >/dev/null 2>&1; then
@@ -71,7 +69,7 @@ if ! command -v just >/dev/null 2>&1; then
 fi
 
 # Fall back to installing uv.
-if [ ! command -v uv >/dev/null 2>&1 ]; then
+if ! command -v uv >/dev/null 2>&1; then
   echo "Installing uv..."
   # On most systems we can install directly.
   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
