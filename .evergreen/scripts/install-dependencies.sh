@@ -37,28 +37,6 @@ function _pip_install() {
   echo "Installing $2 using pip... done."
 }
 
-#  Try to use the binaries in the toolchain if available.
-if [ -n "${CI}" ]; then
-  echo "HELLO"!
-  export PATH
-  case "${OSTYPE:?}" in
-  cygwin)
-    PATH="/cygdrive/c/Python/Current:${PATH:-}"
-    ;;
-  darwin*)
-    PATH="/Library/Frameworks/Python.Framework/Versions/Current/bin:${PATH:-}"
-    ;;
-  *)
-    PATH="/opt/python/Current/bin:${PATH:-}"
-    ;;
-  esac
-fi
-set -x
-ls /Library/Frameworks/Python.Framework/Versions/
-which uv
-echo "$PATH"
-exit 1
-
 # Ensure just is installed.
 if ! command -v just >/dev/null 2>&1; then
   # On most systems we can install directly.

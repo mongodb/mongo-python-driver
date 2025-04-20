@@ -16,6 +16,23 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
+#  Try to use the binaries in the toolchain if available.
+if [ -n "${CI}" ]; then
+  echo "HELLO"!
+  export PATH
+  case "${OSTYPE:?}" in
+  cygwin)
+    PATH="/cygdrive/c/Python/Current:${PATH:-}"
+    ;;
+  darwin*)
+    PATH="/Library/Frameworks/Python.Framework/Versions/Current/bin:${PATH:-}"
+    ;;
+  *)
+    PATH="/opt/python/Current/bin:${PATH:-}"
+    ;;
+  esac
+fi
+
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
