@@ -39,6 +39,7 @@ function _pip_install() {
 
 #  Try to use the binaries in the toolchain if available.
 if [ -n "${CI}" ]; then
+  echo "HELLO"!
   export PATH
   case "${OSTYPE:?}" in
   cygwin)
@@ -52,6 +53,7 @@ if [ -n "${CI}" ]; then
     ;;
   esac
 fi
+ls /Library/Frameworks/Python.Framework/Versions/
 
 # Ensure just is installed.
 if ! command -v just >/dev/null 2>&1; then
