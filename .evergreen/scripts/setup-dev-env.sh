@@ -16,9 +16,8 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
-#  Try to use the binaries in the toolchain if available.
+# Try to use the binaries in the toolchain if available.
 if [ -n "${CI}" ]; then
-  echo "HELLO"!
   export PATH
   case "${OSTYPE:?}" in
   cygwin)
