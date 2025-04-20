@@ -53,7 +53,11 @@ if [ -n "${CI}" ]; then
     ;;
   esac
 fi
+set -x
 ls /Library/Frameworks/Python.Framework/Versions/
+which uv
+echo "$PATH"
+exit 1
 
 # Ensure just is installed.
 if ! command -v just >/dev/null 2>&1; then
