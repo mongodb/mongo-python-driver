@@ -84,6 +84,6 @@ fi
 
 # Write the binary locations to the env file.
 echo "UV_BINARY=$(which uv)" >> $HERE/env.sh
-echo "JUST_BINARY=$(which uv)" >> $HERE/env.sh
+echo "JUST_BINARY=$(which just)" >> $HERE/env.sh
 
 popd > /dev/null
