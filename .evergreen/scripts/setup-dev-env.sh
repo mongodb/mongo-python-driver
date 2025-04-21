@@ -16,10 +16,6 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
-# Ensure dependencies are installed.
-export JUST
-JUST=$($HERE/install-dependencies.sh)
-
 # Get the appropriate UV_PYTHON.
 . $ROOT/.evergreen/utils.sh
 
@@ -49,7 +45,7 @@ if [ -f $HOME/.visualStudioEnv.sh ]; then
   set -u
 fi
 
-UV=$(get_uv)
+UV=${UV_BINARY:-uv}
 $UV sync --frozen
 
 echo "Setting up python environment... done."
