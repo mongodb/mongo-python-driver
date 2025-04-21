@@ -25,14 +25,17 @@ else
   exit 1
 fi
 
+. $ROOT/.evergreen/utils.sh
+UV=$(get_uv)
+
 # List the packages.
-uv sync ${UV_ARGS} --reinstall
-uv pip list
+$UV sync ${UV_ARGS} --reinstall
+$UV pip list
 
 # Ensure we go back to base environment after the test.
 trap "uv sync" EXIT HUP
 
 # Start the test runner.
-uv run ${UV_ARGS} .evergreen/scripts/run_tests.py "$@"
+$UV run ${UV_ARGS} .evergreen/scripts/run_tests.py "$@"
 
 popd

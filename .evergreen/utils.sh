@@ -138,3 +138,22 @@ get_python_binary() {
         return 1
     fi
 }
+
+
+# Get the appropriate uv binary.
+get_uv() {
+    # Try to use the binaries in the toolchain if available.
+    if [ -f "/cygdrive/c/Python/Current/Scripts/uv.exe" ]; then
+        echo "/cygdrive/c/Python/Current/Scripts/uv.exe"
+        return
+    fi
+    if [ -f "/Library/Frameworks/Python.Framework/Versions/Current/bin/uv" ]; then
+        echo "/Library/Frameworks/Python.Framework/Versions/Current/bin/uv"
+        return
+    fi
+    if [ -f "/opt/python/Current/bin" ]; then
+        echo "/opt/python/Current/bin/uv"
+        return
+    fi
+    echo "$(which uv)"
+}

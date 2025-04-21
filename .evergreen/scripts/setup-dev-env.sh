@@ -16,22 +16,6 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
-# Try to use the binaries in the toolchain if available.
-if [ -n "${CI}" ]; then
-  export PATH
-  case "${OSTYPE:?}" in
-  cygwin)
-    PATH="/cygdrive/c/Python/Current:${PATH:-}"
-    ;;
-  darwin*)
-    PATH="/Library/Frameworks/Python.Framework/Versions/Current/bin:${PATH:-}"
-    ;;
-  *)
-    PATH="/opt/python/Current/bin:${PATH:-}"
-    ;;
-  esac
-fi
-
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
@@ -63,13 +47,15 @@ if [ -f $HOME/.visualStudioEnv.sh ]; then
   SSH_TTY=1 source $HOME/.visualStudioEnv.sh
   set -u
 fi
-uv sync --frozen
+
+UV=$(get_uv)
+$UV sync --frozen
 
 echo "Setting up python environment... done."
 
 # Ensure there is a pre-commit hook if there is a git checkout.
 if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
-    uv run --frozen pre-commit install
+    $UV run --frozen pre-commit install
 fi
 
 popd > /dev/null

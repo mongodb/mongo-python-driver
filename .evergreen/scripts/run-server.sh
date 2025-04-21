@@ -10,4 +10,7 @@ if [ -f $HERE/env.sh ]; then
   source $HERE/env.sh
 fi
 
-uv run $HERE/run_server.py "$@"
+. $ROOT/.evergreen/utils.sh
+UV=$(get_uv)
+
+$UV run $HERE/run_server.py "$@"
