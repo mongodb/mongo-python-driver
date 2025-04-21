@@ -43,7 +43,6 @@ TEST_SUITE_MAP = {
     "kms": "kms",
     "load_balancer": "load_balancer",
     "mockupdb": "mockupdb",
-    "pyopenssl": "",
     "ocsp": "ocsp",
     "perf": "perf",
     "serverless": "",

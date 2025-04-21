@@ -394,8 +394,8 @@ def handle_test_env() -> None:
         load_config_from_file(csfle_dir / "secrets-export.sh")
         run_command(f"bash {csfle_dir.as_posix()}/start-servers.sh")
 
-        if sub_test_name == "pyopenssl":
-            UV_ARGS.append("--extra ocsp")
+    if sub_test_name == "pyopenssl":
+        UV_ARGS.append("--extra ocsp")
 
     if is_set("TEST_CRYPT_SHARED") or opts.crypt_shared:
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
