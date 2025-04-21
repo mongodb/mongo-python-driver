@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import collections
 import contextlib
 import logging
@@ -858,8 +859,13 @@ class Pool:
         # PoolClosedEvent but that reset() SHOULD close sockets *after*
         # publishing the PoolClearedEvent.
         if close:
-            for conn in sockets:
-                conn.close_conn(ConnectionClosedReason.POOL_CLOSED)
+            if not _IS_SYNC:
+                asyncio.gather(
+                    *[conn._close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets]
+                )
+            else:
+                for conn in sockets:
+                    conn.close_conn(ConnectionClosedReason.POOL_CLOSED)
             if self.enabled_for_cmap:
                 assert listeners is not None
                 listeners.publish_pool_closed(self.address)
@@ -889,8 +895,13 @@ class Pool:
                         serverPort=self.address[1],
                         serviceId=service_id,
                     )
-            for conn in sockets:
-                conn.close_conn(ConnectionClosedReason.STALE)
+            if not _IS_SYNC:
+                asyncio.gather(
+                    *[conn._close_conn(ConnectionClosedReason.STALE) for conn in sockets]
+                )
+            else:
+                for conn in sockets:
+                    conn.close_conn(ConnectionClosedReason.STALE)
 
     def update_is_writable(self, is_writable: Optional[bool]) -> None:
         """Updates the is_writable attribute on all sockets currently in the
@@ -934,8 +945,13 @@ class Pool:
                     and self.conns[-1].idle_time_seconds() > self.opts.max_idle_time_seconds
                 ):
                     close_conns.append(self.conns.pop())
-            for conn in close_conns:
-                conn.close_conn(ConnectionClosedReason.IDLE)
+            if not _IS_SYNC:
+                asyncio.gather(
+                    *[conn._close_conn(ConnectionClosedReason.IDLE) for conn in close_conns]
+                )
+            else:
+                for conn in close_conns:
+                    conn.close_conn(ConnectionClosedReason.IDLE)
 
         while True:
             with self.size_cond:
