@@ -8,7 +8,6 @@ echo "Setting up system..."
 bash .evergreen/scripts/configure-env.sh
 source .evergreen/scripts/env.sh
 bash $DRIVERS_TOOLS/.evergreen/setup.sh
-bash .evergreen/scripts/install-dependencies.sh
 popd
 
 # Enable core dumps if enabled on the machine

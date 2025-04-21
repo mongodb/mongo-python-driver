@@ -10,7 +10,5 @@ if [ -f $HERE/env.sh ]; then
   source $HERE/env.sh
 fi
 
-. $ROOT/.evergreen/utils.sh
-UV=$(get_uv)
-
+UV=${UV_BINARY:-uv}
 $UV run $HERE/run_server.py "$@"

@@ -25,8 +25,7 @@ else
   exit 1
 fi
 
-. $ROOT/.evergreen/utils.sh
-UV=$(get_uv)
+UV=${UV_BINARY:-uv}
 
 # List the packages.
 $UV sync ${UV_ARGS} --reinstall

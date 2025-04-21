@@ -82,4 +82,8 @@ if ! command -v uv >/dev/null 2>&1; then
   echo "Installing uv... done."
 fi
 
+# Write the binary locations to the env file.
+echo "UV_BINARY=$(which uv)" >> $HERE/env.sh
+echo "JUST_BINARY=$(which uv)" >> $HERE/env.sh
+
 popd > /dev/null

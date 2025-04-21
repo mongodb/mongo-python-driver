@@ -20,7 +20,5 @@ if [ -f $SCRIPT_DIR/env.sh ]; then
   source $SCRIPT_DIR/env.sh
 fi
 
-. $ROOT/.evergreen/utils.sh
-UV=$(get_uv)
-
+UV=${UV_BINARY:-uv}
 $UV run $SCRIPT_DIR/setup_tests.py "$@"
