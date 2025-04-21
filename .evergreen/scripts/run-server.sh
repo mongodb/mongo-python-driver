@@ -11,6 +11,8 @@ if [ -f $HERE/env.sh ]; then
 fi
 
 set -x
+/Library/Frameworks/Python.Framework
+/Library/Frameworks/Python.Framework/Versions
 /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3 -c "import platform;print(platform.machine())"
 /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3 -c "import platform;print(platform.processor())"
 exit 1
