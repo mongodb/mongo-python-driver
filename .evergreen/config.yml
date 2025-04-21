@@ -18,6 +18,12 @@ command_type: system
 exec_timeout_secs: 3600 # 60 minutes is the longest we'll ever run (primarily
                         # for macos hosts)
 
+# Ensure that setup and teardown is working as expected.
+pre_error_fails_task: true
+pre_timeout_secs: 1800 # 5 minutes
+post_error_fails_task: true
+post_timeout_secs: 1800 # 5 minutes
+
 # What to do when evergreen hits the timeout (`post:` tasks are run automatically)
 timeout:
   - command: subprocess.exec
@@ -35,8 +41,6 @@ pre:
   - func: "assume ec2 role"
 
 post:
-  # Disabled, causing timeouts
-  # - func: "upload working dir"
   - func: "teardown system"
   - func: "upload coverage"
   - func: "upload mo artifacts"
