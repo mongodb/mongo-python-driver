@@ -250,7 +250,7 @@ def create_enterprise_auth_variants():
 def create_pyopenssl_variants():
     base_name = "PyOpenSSL"
     batchtime = BATCHTIME_WEEK
-    expansions = dict(SUB_TEST_NAME="pyopenssl")
+    expansions = dict(TEST_NAME="default", SUB_TEST_NAME="pyopenssl")
     variants = []
 
     for python in ALL_PYTHONS:
