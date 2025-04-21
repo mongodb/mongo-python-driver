@@ -116,6 +116,7 @@ class _ClientBulk:
         self.is_retryable = self.client.options.retry_writes
         self.retrying = False
         self.started_retryable_write = False
+        self.current_run = None
 
     @property
     def bulk_ctx_class(self) -> Type[_ClientBulkWriteContext]:
@@ -486,7 +487,6 @@ class _ClientBulk:
         session: Optional[ClientSession],
         conn: Connection,
         op_id: int,
-        retryable: bool,
         full_result: MutableMapping[str, Any],
         final_write_concern: Optional[WriteConcern] = None,
     ) -> None:
@@ -532,10 +532,10 @@ class _ClientBulk:
             if session:
                 # Start a new retryable write unless one was already
                 # started for this command.
-                if retryable and not self.started_retryable_write:
+                if self.is_retryable and not self.started_retryable_write:
                     session._start_retryable_write()
                     self.started_retryable_write = True
-                session._apply_to(cmd, retryable, ReadPreference.PRIMARY, conn)
+                session._apply_to(cmd, self.is_retryable, ReadPreference.PRIMARY, conn)
             conn.send_cluster_time(cmd, session, self.client)
             conn.add_server_api(cmd)
             # CSOT: apply timeout before encoding the command.
@@ -562,7 +562,7 @@ class _ClientBulk:
 
                     # Synthesize the full bulk result without modifying the
                     # current one because this write operation may be retried.
-                    if retryable and (retryable_top_level_error or retryable_network_error):
+                    if self.is_retryable and (retryable_top_level_error or retryable_network_error):
                         full = copy.deepcopy(full_result)
                         _merge_command(self.ops, self.idx_offset, full, result)
                         _throw_client_bulk_write_exception(full, self.verbose_results)
@@ -581,7 +581,7 @@ class _ClientBulk:
                     _merge_command(self.ops, self.idx_offset, full_result, result)
                     break
 
-                if retryable:
+                if self.is_retryable:
                     # Retryable writeConcernErrors halt the execution of this batch.
                     wce = result.get("writeConcernError", {})
                     if wce.get("code", 0) in _RETRYABLE_ERROR_CODES:
@@ -636,7 +636,6 @@ class _ClientBulk:
         def retryable_bulk(
             session: Optional[ClientSession],
             conn: Connection,
-            retryable: bool,
         ) -> None:
             if conn.max_wire_version < 25:
                 raise InvalidOperation(
@@ -647,12 +646,10 @@ class _ClientBulk:
                 session,
                 conn,
                 op_id,
-                retryable,
                 full_result,
             )
 
         self.client._retryable_write(
-            self.is_retryable,
             retryable_bulk,
             session,
             operation,

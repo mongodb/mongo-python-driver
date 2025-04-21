@@ -141,7 +141,7 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
-_WriteCall = Callable[[Optional["ClientSession"], "Connection", bool], T]
+_WriteCall = Callable[[Optional["ClientSession"], "Connection"], T]
 _ReadCall = Callable[
     [Optional["ClientSession"], "Server", "Connection", _ServerMode],
     T,
@@ -1888,7 +1888,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _retry_with_session(
         self,
-        retryable: bool,
         func: _WriteCall[T],
         session: Optional[ClientSession],
         bulk: Optional[Union[_Bulk, _ClientBulk]],
@@ -1904,15 +1903,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         # Ensure that the options supports retry_writes and there is a valid session not in
         # transaction, otherwise, we will not support retry behavior for this txn.
-        retryable = bool(
-            retryable and self.options.retry_writes and session and not session.in_transaction
-        )
         return self._retry_internal(
             func=func,
             session=session,
             bulk=bulk,
             operation=operation,
-            retryable=retryable,
             operation_id=operation_id,
         )
 
@@ -1926,7 +1921,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         is_read: bool = False,
         address: Optional[_Address] = None,
         read_pref: Optional[_ServerMode] = None,
-        retryable: bool = False,
         operation_id: Optional[int] = None,
     ) -> T:
         """Internal retryable helper for all client transactions.
@@ -1951,7 +1945,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             session=session,
             read_pref=read_pref,
             address=address,
-            retryable=retryable,
             operation_id=operation_id,
         ).run()
 
@@ -1994,13 +1987,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             is_read=True,
             address=address,
             read_pref=read_pref,
-            retryable=retryable,
             operation_id=operation_id,
         )
 
     def _retryable_write(
         self,
-        retryable: bool,
         func: _WriteCall[T],
         session: Optional[ClientSession],
         operation: str,
@@ -2021,7 +2012,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
         """
         with self._tmp_session(session) as s:
-            return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+            return self._retry_with_session(func, s, bulk, operation, operation_id)
 
     def _cleanup_cursor_no_lock(
         self,
@@ -2648,7 +2639,6 @@ class _ClientConnectionRetryable(Generic[T]):
         session: Optional[ClientSession] = None,
         read_pref: Optional[_ServerMode] = None,
         address: Optional[_Address] = None,
-        retryable: bool = False,
         operation_id: Optional[int] = None,
     ):
         self._last_error: Optional[Exception] = None
@@ -2660,7 +2650,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._bulk = bulk
         self._session = session
         self._is_read = is_read
-        self._retryable = retryable
+        self._retryable = True
         self._read_pref = read_pref
         self._server_selector: Callable[[Selection], Selection] = (
             read_pref if is_read else writable_server_selector  # type: ignore
@@ -2670,6 +2660,11 @@ class _ClientConnectionRetryable(Generic[T]):
         self._deprioritized_servers: list[Server] = []
         self._operation = operation
         self._operation_id = operation_id
+
+    def _bulk_retryable(self) -> bool:
+        if self._bulk is not None and self._bulk.current_run is not None:
+            return self._bulk.current_run.is_retryable
+        return True
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2681,10 +2676,15 @@ class _ClientConnectionRetryable(Generic[T]):
         # Increment the transaction id up front to ensure any retry attempt
         # will use the proper txnNumber, even if server or socket selection
         # fails before the command can be sent.
-        if self._is_session_state_retryable() and self._retryable and not self._is_read:
+        if (
+            self._is_session_state_retryable()
+            and self._retryable
+            and self._bulk_retryable()
+            and not self._is_read
+        ):
             self._session._start_retryable_write()  # type: ignore
-            if self._bulk:
-                self._bulk.started_retryable_write = True
+            if self._bulk and self._bulk.current_run:
+                self._bulk.current_run.started_retryable_write = True
 
         while True:
             self._check_last_error(check_csot=True)
@@ -2717,7 +2717,7 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 # Specialized catch on write operation
                 if not self._is_read:
-                    if not self._retryable:
+                    if not self._retryable and not self._bulk_retryable():
                         raise
                     if isinstance(exc, ClientBulkWriteException) and exc.error:
                         retryable_write_error_exc = isinstance(
@@ -2734,7 +2734,10 @@ class _ClientConnectionRetryable(Generic[T]):
                         else:
                             raise
                     if self._bulk:
-                        self._bulk.retrying = True
+                        if self._bulk.current_run:
+                            self._bulk.current_run.retrying = True
+                        else:
+                            self._bulk.retrying = True
                     else:
                         self._retrying = True
                     if not exc.has_error_label("NoWritesPerformed"):
@@ -2747,11 +2750,19 @@ class _ClientConnectionRetryable(Generic[T]):
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
-        return not self._retryable or (self._is_retrying() and not self._multiple_retries)
+        return (
+            not self._retryable
+            or not self._bulk_retryable()
+            or (self._is_retrying() and not self._multiple_retries)
+        )
 
     def _is_retrying(self) -> bool:
         """Checks if the exchange is currently undergoing a retry"""
-        return self._bulk.retrying if self._bulk else self._retrying
+        return (
+            self._bulk.current_run.retrying
+            if self._bulk is not None and self._bulk.current_run is not None
+            else self._retrying
+        )
 
     def _is_session_state_retryable(self) -> bool:
         """Checks if provided session is eligible for retry
@@ -2811,9 +2822,11 @@ class _ClientConnectionRetryable(Generic[T]):
                     # not support sessions raise the last error.
                     self._check_last_error()
                     self._retryable = False
-                return self._func(self._session, conn, self._retryable)  # type: ignore
+                    if self._bulk and self._bulk.current_run:
+                        self._bulk.current_run.is_retryable = False
+                return self._func(self._session, conn)  # type: ignore
         except PyMongoError as exc:
-            if not self._retryable:
+            if not self._retryable or not self._bulk_retryable():
                 raise
             # Add the RetryableWriteError label, if applicable.
             _add_retryable_write_error(exc, max_wire_version, is_mongos)
@@ -2830,7 +2843,7 @@ class _ClientConnectionRetryable(Generic[T]):
             conn,
             read_pref,
         ):
-            if self._retrying and not self._retryable:
+            if self._retrying and (not self._retryable or not self._bulk_retryable()):
                 self._check_last_error()
             return self._func(self._session, self._server, conn, read_pref)  # type: ignore
 

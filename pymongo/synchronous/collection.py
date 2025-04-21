@@ -22,7 +22,6 @@ from typing import (
     Any,
     Callable,
     ContextManager,
-    Generator,
     Generic,
     Iterable,
     Iterator,
@@ -699,7 +698,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def bulk_write(
         self,
-        requests: Sequence[_WriteOp[_DocumentType]] | Generator[_WriteOp[_DocumentType]],
+        requests: Iterable[_WriteOp],
         ordered: bool = True,
         bypass_document_validation: Optional[bool] = None,
         session: Optional[ClientSession] = None,
@@ -784,7 +783,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         blk = _Bulk(self, ordered, bypass_document_validation, comment=comment, let=let)
 
         write_concern = self._write_concern_for(session)
-        bulk_api_result = blk.execute(requests, write_concern, session, _Op.INSERT)
+
+        def process_for_bulk(request: _WriteOp) -> bool:
+            try:
+                return request._add_to_bulk(blk)
+            except AttributeError:
+                raise TypeError(f"{request!r} is not a valid request") from None
+
+        bulk_api_result = blk.execute(
+            requests, process_for_bulk, write_concern, session, _Op.INSERT
+        )
         if bulk_api_result is not None:
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
@@ -801,17 +809,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> Any:
         """Internal helper for inserting a single document."""
         write_concern = write_concern or self.write_concern
-        acknowledged = write_concern.acknowledged
         command = {"insert": self.name, "ordered": ordered, "documents": [doc]}
         if comment is not None:
             command["comment"] = comment
 
-        def _insert_command(
-            session: Optional[ClientSession], conn: Connection, retryable_write: bool
-        ) -> None:
+        def _insert_command(session: Optional[ClientSession], conn: Connection) -> None:
             if bypass_doc_val is not None:
                 command["bypassDocumentValidation"] = bypass_doc_val
-
             result = conn.command(
                 self._database.name,
                 command,
@@ -819,14 +823,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 codec_options=self._write_response_codec_options,
                 session=session,
                 client=self._database.client,
-                retryable_write=retryable_write,
             )
 
             _check_write_command_response(result)
 
-        self._database.client._retryable_write(
-            acknowledged, _insert_command, session, operation=_Op.INSERT
-        )
+        self._database.client._retryable_write(_insert_command, session, operation=_Op.INSERT)
 
         if not isinstance(doc, RawBSONDocument):
             return doc.get("_id")
@@ -955,20 +956,19 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise TypeError("documents must be a non-empty list")
         inserted_ids: list[ObjectId] = []
 
-        def gen() -> Iterator[tuple[int, Mapping[str, Any]]]:
+        def process_for_bulk(document: Union[_DocumentType, RawBSONDocument]) -> bool:
             """A generator that validates documents and handles _ids."""
-            for document in documents:
-                common.validate_is_document_type("document", document)
-                if not isinstance(document, RawBSONDocument):
-                    if "_id" not in document:
-                        document["_id"] = ObjectId()  # type: ignore[index]
-                    inserted_ids.append(document["_id"])
-                yield (message._INSERT, document)
+            common.validate_is_document_type("document", document)
+            if not isinstance(document, RawBSONDocument):
+                if "_id" not in document:
+                    document["_id"] = ObjectId()  # type: ignore[index]
+                inserted_ids.append(document["_id"])
+            blk.ops.append((message._INSERT, document))
+            return True
 
         write_concern = self._write_concern_for(session)
         blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
-        blk.ops = list(gen())
-        blk.execute(write_concern, session, _Op.INSERT)
+        blk.execute(documents, process_for_bulk, write_concern, session, _Op.INSERT)
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
     def _update(
@@ -986,7 +986,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
-        retryable_write: bool = False,
         let: Optional[Mapping[str, Any]] = None,
         sort: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
@@ -1049,7 +1048,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 codec_options=self._write_response_codec_options,
                 session=session,
                 client=self._database.client,
-                retryable_write=retryable_write,
             )
         ).copy()
         _check_write_command_response(result)
@@ -1089,7 +1087,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Internal update / replace helper."""
 
         def _update(
-            session: Optional[ClientSession], conn: Connection, retryable_write: bool
+            session: Optional[ClientSession], conn: Connection
         ) -> Optional[Mapping[str, Any]]:
             return self._update(
                 conn,
@@ -1105,14 +1103,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 array_filters=array_filters,
                 hint=hint,
                 session=session,
-                retryable_write=retryable_write,
                 let=let,
                 sort=sort,
                 comment=comment,
             )
 
         return self._database.client._retryable_write(
-            (write_concern or self.write_concern).acknowledged and not multi,
             _update,
             session,
             operation,
@@ -1502,7 +1498,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
-        retryable_write: bool = False,
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
     ) -> Mapping[str, Any]:
@@ -1542,7 +1537,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             codec_options=self._write_response_codec_options,
             session=session,
             client=self._database.client,
-            retryable_write=retryable_write,
         )
         _check_write_command_response(result)
         return result
@@ -1562,9 +1556,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> Mapping[str, Any]:
         """Internal delete helper."""
 
-        def _delete(
-            session: Optional[ClientSession], conn: Connection, retryable_write: bool
-        ) -> Mapping[str, Any]:
+        def _delete(session: Optional[ClientSession], conn: Connection) -> Mapping[str, Any]:
             return self._delete(
                 conn,
                 criteria,
@@ -1575,13 +1567,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 collation=collation,
                 hint=hint,
                 session=session,
-                retryable_write=retryable_write,
                 let=let,
                 comment=comment,
             )
 
         return self._database.client._retryable_write(
-            (write_concern or self.write_concern).acknowledged and not multi,
             _delete,
             session,
             operation=_Op.DELETE,
@@ -3219,9 +3209,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         write_concern = self._write_concern_for_cmd(cmd, session)
 
-        def _find_and_modify_helper(
-            session: Optional[ClientSession], conn: Connection, retryable_write: bool
-        ) -> Any:
+        def _find_and_modify_helper(session: Optional[ClientSession], conn: Connection) -> Any:
             acknowledged = write_concern.acknowledged
             if array_filters is not None:
                 if not acknowledged:
@@ -3246,7 +3234,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 write_concern=write_concern,
                 collation=collation,
                 session=session,
-                retryable_write=retryable_write,
                 user_fields=_FIND_AND_MODIFY_DOC_FIELDS,
             )
             _check_write_command_response(out)
@@ -3254,7 +3241,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             return out.get("value")
 
         return self._database.client._retryable_write(
-            write_concern.acknowledged,
             _find_and_modify_helper,
             session,
             operation=_Op.FIND_AND_MODIFY,

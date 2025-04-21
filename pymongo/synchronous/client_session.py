@@ -851,11 +851,12 @@ class ClientSession:
         """
 
         def func(
-            _session: Optional[ClientSession], conn: Connection, _retryable: bool
+            _session: Optional[ClientSession],
+            conn: Connection,
         ) -> dict[str, Any]:
             return self._finish_transaction(conn, command_name)
 
-        return self._client._retry_internal(func, self, None, retryable=True, operation=_Op.ABORT)
+        return self._client._retry_internal(func, self, None, operation=_Op.ABORT)
 
     def _finish_transaction(self, conn: Connection, command_name: str) -> dict[str, Any]:
         self._transaction.attempt += 1

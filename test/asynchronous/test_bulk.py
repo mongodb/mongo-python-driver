@@ -353,11 +353,6 @@ class AsyncTestBulk(AsyncBulkTestBase):
         self.assertRaises(InvalidOperation, lambda: result.upserted_ids)
 
     async def test_bulk_write_invalid_arguments(self):
-        # The requests argument must be a list.
-        generator = (InsertOne[dict]({}) for _ in range(10))
-        with self.assertRaises(TypeError):
-            await self.coll.bulk_write(generator)  # type: ignore[arg-type]
-
         # Document is not wrapped in a bulk write operation.
         with self.assertRaises(TypeError):
             await self.coll.bulk_write([{}])  # type: ignore[list-item]

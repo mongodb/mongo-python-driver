@@ -26,7 +26,8 @@ from itertools import islice
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generator,
+    Callable,
+    Iterable,
     Iterator,
     Mapping,
     Optional,
@@ -111,9 +112,6 @@ class _AsyncBulk:
         self.uses_hint_update = False
         self.uses_hint_delete = False
         self.uses_sort = False
-        self.is_retryable = True
-        self.retrying = False
-        self.started_retryable_write = False
         # Extra state so that we know where to pick up on a retry attempt.
         self.current_run = None
         self.next_run = None
@@ -129,13 +127,32 @@ class _AsyncBulk:
             self.is_encrypted = False
             return _BulkWriteContext
 
-    def add_insert(self, document: _DocumentOut) -> None:
+    @property
+    def is_retryable(self) -> bool:
+        if self.current_run:
+            return self.current_run.is_retryable
+        return True
+
+    @property
+    def retrying(self) -> bool:
+        if self.current_run:
+            return self.current_run.retrying
+        return False
+
+    @property
+    def started_retryable_write(self) -> bool:
+        if self.current_run:
+            return self.current_run.started_retryable_write
+        return False
+
+    def add_insert(self, document: _DocumentOut) -> bool:
         """Add an insert document to the list of ops."""
         validate_is_document_type("document", document)
         # Generate ObjectId client side.
         if not (isinstance(document, RawBSONDocument) or "_id" in document):
             document["_id"] = ObjectId()
         self.ops.append((_INSERT, document))
+        return True
 
     def add_update(
         self,
@@ -147,7 +164,7 @@ class _AsyncBulk:
         array_filters: Optional[list[Mapping[str, Any]]] = None,
         hint: Union[str, dict[str, Any], None] = None,
         sort: Optional[Mapping[str, Any]] = None,
-    ) -> None:
+    ) -> bool:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
         cmd: dict[str, Any] = {"q": selector, "u": update, "multi": multi}
@@ -165,10 +182,12 @@ class _AsyncBulk:
         if sort is not None:
             self.uses_sort = True
             cmd["sort"] = sort
+
+        self.ops.append((_UPDATE, cmd))
         if multi:
             # A bulk_write containing an update_many is not retryable.
-            self.is_retryable = False
-        self.ops.append((_UPDATE, cmd))
+            return False
+        return True
 
     def add_replace(
         self,
@@ -178,7 +197,7 @@ class _AsyncBulk:
         collation: Optional[Mapping[str, Any]] = None,
         hint: Union[str, dict[str, Any], None] = None,
         sort: Optional[Mapping[str, Any]] = None,
-    ) -> None:
+    ) -> bool:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
         cmd: dict[str, Any] = {"q": selector, "u": replacement}
@@ -194,6 +213,7 @@ class _AsyncBulk:
             self.uses_sort = True
             cmd["sort"] = sort
         self.ops.append((_UPDATE, cmd))
+        return True
 
     def add_delete(
         self,
@@ -201,7 +221,7 @@ class _AsyncBulk:
         limit: int,
         collation: Optional[Mapping[str, Any]] = None,
         hint: Union[str, dict[str, Any], None] = None,
-    ) -> None:
+    ) -> bool:
         """Create a delete document and add it to the list of ops."""
         cmd: dict[str, Any] = {"q": selector, "limit": limit}
         if collation is not None:
@@ -210,21 +230,24 @@ class _AsyncBulk:
         if hint is not None:
             self.uses_hint_delete = True
             cmd["hint"] = hint
+
+        self.ops.append((_DELETE, cmd))
         if limit == _DELETE_ALL:
             # A bulk_write containing a delete_many is not retryable.
-            self.is_retryable = False
-        self.ops.append((_DELETE, cmd))
+            return False
+        return True
 
-    def gen_ordered(self, requests) -> Iterator[Optional[_Run]]:
+    def gen_ordered(
+        self,
+        requests: Iterable[Any],
+        process: Callable[[Union[_DocumentType, RawBSONDocument, _WriteOp]], bool],
+    ) -> Iterator[_Run]:
         """Generate batches of operations, batched by type of
         operation, in the order **provided**.
         """
         run = None
         for idx, request in enumerate(requests):
-            try:
-                request._add_to_bulk(self)
-            except AttributeError:
-                raise TypeError(f"{request!r} is not a valid request") from None
+            retryable = process(request)
             (op_type, operation) = self.ops[idx]
             if run is None:
                 run = _Run(op_type)
@@ -232,22 +255,25 @@ class _AsyncBulk:
                 yield run
                 run = _Run(op_type)
             run.add(idx, operation)
+            run.is_retryable = run.is_retryable and retryable
         if run is None:
             raise InvalidOperation("No operations to execute")
         yield run
 
-    def gen_unordered(self, requests) -> Iterator[_Run]:
+    def gen_unordered(
+        self,
+        requests: Iterable[Any],
+        process: Callable[[Union[_DocumentType, RawBSONDocument, _WriteOp]], bool],
+    ) -> Iterator[_Run]:
         """Generate batches of operations, batched by type of
         operation, in arbitrary order.
         """
         operations = [_Run(_INSERT), _Run(_UPDATE), _Run(_DELETE)]
         for idx, request in enumerate(requests):
-            try:
-                request._add_to_bulk(self)
-            except AttributeError:
-                raise TypeError(f"{request!r} is not a valid request") from None
+            retryable = process(request)
             (op_type, operation) = self.ops[idx]
             operations[op_type].add(idx, operation)
+            operations[op_type].is_retryable = operations[op_type].is_retryable and retryable
         if (
             len(operations[_INSERT].ops) == 0
             and len(operations[_UPDATE].ops) == 0
@@ -488,8 +514,8 @@ class _AsyncBulk:
         session: Optional[AsyncClientSession],
         conn: AsyncConnection,
         op_id: int,
-        retryable: bool,
         full_result: MutableMapping[str, Any],
+        validate: bool,
         final_write_concern: Optional[WriteConcern] = None,
     ) -> None:
         db_name = self.collection.database.name
@@ -507,7 +533,7 @@ class _AsyncBulk:
         last_run = False
 
         while run:
-            if not self.retrying:
+            if not run.retrying:
                 self.next_run = next(generator, None)
                 if self.next_run is None:
                     last_run = True
@@ -541,10 +567,10 @@ class _AsyncBulk:
                 if session:
                     # Start a new retryable write unless one was already
                     # started for this command.
-                    if retryable and not self.started_retryable_write:
+                    if run.is_retryable and not run.started_retryable_write:
                         session._start_retryable_write()
                         self.started_retryable_write = True
-                    session._apply_to(cmd, retryable, ReadPreference.PRIMARY, conn)
+                    session._apply_to(cmd, run.is_retryable, ReadPreference.PRIMARY, conn)
                 conn.send_cluster_time(cmd, session, client)
                 conn.add_server_api(cmd)
                 # CSOT: apply timeout before encoding the command.
@@ -552,9 +578,10 @@ class _AsyncBulk:
                 ops = islice(run.ops, run.idx_offset, None)
 
                 # Run as many ops as possible in one command.
+                if validate:
+                    await self.validate_batch(conn, write_concern)
                 if write_concern.acknowledged:
                     result, to_send = await self._execute_batch(bwc, cmd, ops, client)
-
                     # Retryable writeConcernErrors halt the execution of this run.
                     wce = result.get("writeConcernError", {})
                     if wce.get("code", 0) in _RETRYABLE_ERROR_CODES:
@@ -567,8 +594,8 @@ class _AsyncBulk:
                     _merge_command(run, full_result, run.idx_offset, result)
 
                     # We're no longer in a retry once a command succeeds.
-                    self.retrying = False
-                    self.started_retryable_write = False
+                    run.retrying = False
+                    run.started_retryable_write = False
 
                     if self.ordered and "writeErrors" in result:
                         break
@@ -606,7 +633,8 @@ class _AsyncBulk:
         op_id = _randint()
 
         async def retryable_bulk(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable: bool
+            session: Optional[AsyncClientSession],
+            conn: AsyncConnection,
         ) -> None:
             await self._execute_command(
                 generator,
@@ -614,26 +642,24 @@ class _AsyncBulk:
                 session,
                 conn,
                 op_id,
-                retryable,
                 full_result,
+                validate=False,
             )
 
         client = self.collection.database.client
         _ = await client._retryable_write(
-            self.is_retryable,
             retryable_bulk,
             session,
             operation,
             bulk=self,  # type: ignore[arg-type]
             operation_id=op_id,
         )
-
         if full_result["writeErrors"] or full_result["writeConcernErrors"]:
             _raise_bulk_write_error(full_result)
         return full_result
 
     async def execute_op_msg_no_results(
-        self, conn: AsyncConnection, generator: Iterator[Any]
+        self, conn: AsyncConnection, generator: Iterator[Any], write_concern: WriteConcern
     ) -> None:
         """Execute write commands with OP_MSG and w=0 writeConcern, unordered."""
         db_name = self.collection.database.name
@@ -667,6 +693,7 @@ class _AsyncBulk:
                 conn.add_server_api(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible.
+                await self.validate_batch(conn, write_concern)
                 to_send = await self._execute_batch_unack(bwc, cmd, ops, client)
                 run.idx_offset += len(to_send)
             self.current_run = run = next(generator, None)
@@ -700,12 +727,15 @@ class _AsyncBulk:
                 None,
                 conn,
                 op_id,
-                False,
                 full_result,
+                True,
                 write_concern,
             )
-        except OperationFailure:
-            pass
+        except OperationFailure as exc:
+            if "Cannot set bypass_document_validation with unacknowledged write concern" in str(
+                exc
+            ):
+                raise exc
 
     async def execute_no_results(
         self,
@@ -714,6 +744,11 @@ class _AsyncBulk:
         write_concern: WriteConcern,
     ) -> None:
         """Execute all operations, returning no results (w=0)."""
+        if self.ordered:
+            return await self.execute_command_no_results(conn, generator, write_concern)
+        return await self.execute_op_msg_no_results(conn, generator, write_concern)
+
+    async def validate_batch(self, conn: AsyncConnection, write_concern: WriteConcern) -> None:
         if self.uses_collation:
             raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
         if self.uses_array_filters:
@@ -738,13 +773,10 @@ class _AsyncBulk:
                 "Cannot set bypass_document_validation with unacknowledged write concern"
             )
 
-        if self.ordered:
-            return await self.execute_command_no_results(conn, generator, write_concern)
-        return await self.execute_op_msg_no_results(conn, generator)
-
     async def execute(
         self,
-        generator: Generator[_WriteOp[_DocumentType]],
+        generator: Iterable[Any],
+        process: Callable[[Union[_DocumentType, RawBSONDocument, _WriteOp]], bool],
         write_concern: WriteConcern,
         session: Optional[AsyncClientSession],
         operation: str,
@@ -757,9 +789,9 @@ class _AsyncBulk:
         session = _validate_session_write_concern(session, write_concern)
 
         if self.ordered:
-            generator = self.gen_ordered(generator)
+            generator = self.gen_ordered(generator, process)
         else:
-            generator = self.gen_unordered(generator)
+            generator = self.gen_unordered(generator, process)
 
         client = self.collection.database.client
         if not write_concern.acknowledged:
