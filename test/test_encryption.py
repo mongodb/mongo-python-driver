@@ -178,7 +178,8 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
     def test_init_kms_tls_options(self):
         # Error cases:
         with self.assertRaisesRegex(TypeError, r'kms_tls_options\["kmip"\] must be a dict'):
-            AutoEncryptionOpts({}, "k.d", kms_tls_options={"kmip": 1})
+            opts = AutoEncryptionOpts({}, "k.d", kms_tls_options={"kmip": 1})
+            opts._parse_kms_tls_options(_IS_SYNC)
 
         tls_opts: Any
         for tls_opts in [

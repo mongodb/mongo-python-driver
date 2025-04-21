@@ -237,7 +237,7 @@ class AutoEncryptionOpts:
             self._mongocryptd_spawn_args.append("--idleShutdownTimeoutSecs=60")
         # Maps KMS provider name to a SSLContext.
         self._kms_tls_options = kms_tls_options
-        # self._kms_ssl_contexts = _parse_kms_tls_options(kms_tls_options, is_sync)
+        self._kms_ssl_contexts = {}
         self._bypass_query_analysis = bypass_query_analysis
         self._key_expiration_ms = key_expiration_ms
 
