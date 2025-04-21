@@ -861,7 +861,7 @@ class Pool:
         if close:
             if not _IS_SYNC:
                 asyncio.gather(
-                    *[conn._close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets]
+                    *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets]
                 )
             else:
                 for conn in sockets:
@@ -896,9 +896,7 @@ class Pool:
                         serviceId=service_id,
                     )
             if not _IS_SYNC:
-                asyncio.gather(
-                    *[conn._close_conn(ConnectionClosedReason.STALE) for conn in sockets]
-                )
+                asyncio.gather(*[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets])
             else:
                 for conn in sockets:
                     conn.close_conn(ConnectionClosedReason.STALE)
@@ -947,7 +945,7 @@ class Pool:
                     close_conns.append(self.conns.pop())
             if not _IS_SYNC:
                 asyncio.gather(
-                    *[conn._close_conn(ConnectionClosedReason.IDLE) for conn in close_conns]
+                    *[conn.close_conn(ConnectionClosedReason.IDLE) for conn in close_conns]
                 )
             else:
                 for conn in close_conns:
