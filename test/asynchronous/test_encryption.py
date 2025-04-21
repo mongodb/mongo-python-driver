@@ -207,6 +207,7 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
             "k.d",
             kms_tls_options={"kmip": {"tls": True}, "aws": {}},
         )
+        opts._parse_kms_tls_options(_IS_SYNC)
         ctx = opts._kms_ssl_contexts["kmip"]
         self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
@@ -218,6 +219,7 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
             "k.d",
             kms_tls_options={"kmip": {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM}},
         )
+        opts._parse_kms_tls_options(_IS_SYNC)
         ctx = opts._kms_ssl_contexts["kmip"]
         self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
