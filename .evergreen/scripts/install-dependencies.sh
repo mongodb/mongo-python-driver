@@ -10,7 +10,16 @@ if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
-_BIN_DIR=${PYMONGO_BIN_DIR:-$HOME/.local/bin}
+# On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
+if [ "${CI:-}" == "true" ]; then
+  _BIN_DIR=${DRIVERS_TOOLS_BINARIES:-}
+# We want to use a path that's already on PATH on spawn hosts.
+elif [ -d "$HOME/cli_bin" ]; then
+  _BIN_DIR="$HOME/cli_bin"
+else
+  _BIN_DIR="$HOME/.local/bin"
+fi
+
 export PATH="$PATH:${_BIN_DIR}"
 
 # Helper function to pip install a dependency using a temporary python env.

@@ -29,11 +29,6 @@ fi
 export UV_PYTHON=${PYTHON_BINARY}
 echo "Using python $UV_PYTHON"
 
-# Add the default install path to the path if needed.
-if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
-  export PATH="$PATH:$HOME/.local/bin"
-fi
-
 # Set up venv, making sure c extensions build unless disabled.
 if [ -z "${NO_EXT:-}" ]; then
   export PYMONGO_C_EXT_MUST_BUILD=1
