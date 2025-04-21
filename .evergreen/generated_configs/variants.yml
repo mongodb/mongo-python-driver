@@ -620,7 +620,7 @@ buildvariants:
       - macos-14
     batchtime: 10080
     expansions:
-      TEST_NAME: pyopenssl
+      SUB_TEST_NAME: pyopenssl
       PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.9/bin/python3
   - name: pyopenssl-rhel8-python3.10
     tasks:
@@ -631,7 +631,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      TEST_NAME: pyopenssl
+      SUB_TEST_NAME: pyopenssl
       PYTHON_BINARY: /opt/python/3.10/bin/python3
   - name: pyopenssl-rhel8-python3.11
     tasks:
@@ -642,7 +642,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      TEST_NAME: pyopenssl
+      SUB_TEST_NAME: pyopenssl
       PYTHON_BINARY: /opt/python/3.11/bin/python3
   - name: pyopenssl-rhel8-python3.12
     tasks:
@@ -653,7 +653,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      TEST_NAME: pyopenssl
+      SUB_TEST_NAME: pyopenssl
       PYTHON_BINARY: /opt/python/3.12/bin/python3
   - name: pyopenssl-win64-python3.13
     tasks:
@@ -664,7 +664,7 @@ buildvariants:
       - windows-64-vsMulti-small
     batchtime: 10080
     expansions:
-      TEST_NAME: pyopenssl
+      SUB_TEST_NAME: pyopenssl
       PYTHON_BINARY: C:/python/Python313/python.exe
   - name: pyopenssl-rhel8-pypy3.10
     tasks:
@@ -675,7 +675,7 @@ buildvariants:
       - rhel87-small
     batchtime: 10080
     expansions:
-      TEST_NAME: pyopenssl
+      SUB_TEST_NAME: pyopenssl
       PYTHON_BINARY: /opt/python/pypy3.10/bin/python3
 
   # Search index tests

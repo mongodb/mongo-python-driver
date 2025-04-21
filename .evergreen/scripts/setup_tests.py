@@ -394,8 +394,8 @@ def handle_test_env() -> None:
         load_config_from_file(csfle_dir / "secrets-export.sh")
         run_command(f"bash {csfle_dir.as_posix()}/start-servers.sh")
 
-        if sub_test_name == "pyopenssl":
-            UV_ARGS.append("--extra ocsp")
+    if sub_test_name == "pyopenssl":
+        UV_ARGS.append("--extra ocsp")
 
     if is_set("TEST_CRYPT_SHARED") or opts.crypt_shared:
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
@@ -468,9 +468,7 @@ def handle_test_env() -> None:
         UV_ARGS.append(f"--group {framework}")
 
     else:
-        # Use --capture=tee-sys so pytest prints test output inline:
-        # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
-        TEST_ARGS = f"-v --capture=tee-sys --durations=5 {TEST_ARGS}"
+        TEST_ARGS = f"-v --durations=5 {TEST_ARGS}"
         TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
