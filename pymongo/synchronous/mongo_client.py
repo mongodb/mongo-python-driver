@@ -2662,8 +2662,8 @@ class _ClientConnectionRetryable(Generic[T]):
         self._operation_id = operation_id
 
     def _bulk_retryable(self) -> bool:
-        if self._bulk is not None and self._bulk.current_run is not None:
-            return self._bulk.current_run.is_retryable
+        if self._bulk is not None:
+            return self._bulk.is_retryable
         return True
 
     def run(self) -> T:
@@ -2683,8 +2683,8 @@ class _ClientConnectionRetryable(Generic[T]):
             and not self._is_read
         ):
             self._session._start_retryable_write()  # type: ignore
-            if self._bulk and self._bulk.current_run:
-                self._bulk.current_run.started_retryable_write = True
+            if self._bulk:
+                self._bulk.started_retryable_write = True
 
         while True:
             self._check_last_error(check_csot=True)
@@ -2734,10 +2734,7 @@ class _ClientConnectionRetryable(Generic[T]):
                         else:
                             raise
                     if self._bulk:
-                        if self._bulk.current_run:
-                            self._bulk.current_run.retrying = True
-                        else:
-                            self._bulk.retrying = True
+                        self._bulk.retrying = True
                     else:
                         self._retrying = True
                     if not exc.has_error_label("NoWritesPerformed"):
@@ -2758,11 +2755,7 @@ class _ClientConnectionRetryable(Generic[T]):
 
     def _is_retrying(self) -> bool:
         """Checks if the exchange is currently undergoing a retry"""
-        return (
-            self._bulk.current_run.retrying
-            if self._bulk is not None and self._bulk.current_run is not None
-            else self._retrying
-        )
+        return self._bulk.retrying if self._bulk is not None else self._retrying
 
     def _is_session_state_retryable(self) -> bool:
         """Checks if provided session is eligible for retry
@@ -2822,8 +2815,8 @@ class _ClientConnectionRetryable(Generic[T]):
                     # not support sessions raise the last error.
                     self._check_last_error()
                     self._retryable = False
-                    if self._bulk and self._bulk.current_run:
-                        self._bulk.current_run.is_retryable = False
+                    if self._bulk:
+                        self._bulk.is_retryable = False
                 return self._func(self._session, conn)  # type: ignore
         except PyMongoError as exc:
             if not self._retryable or not self._bulk_retryable():

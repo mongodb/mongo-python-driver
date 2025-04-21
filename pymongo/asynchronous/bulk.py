@@ -112,6 +112,9 @@ class _AsyncBulk:
         self.uses_hint_update = False
         self.uses_hint_delete = False
         self.uses_sort = False
+        self.is_retryable = True
+        self.retrying = False
+        self.started_retryable_write = False
         # Extra state so that we know where to pick up on a retry attempt.
         self.current_run = None
         self.next_run = None
@@ -127,23 +130,23 @@ class _AsyncBulk:
             self.is_encrypted = False
             return _BulkWriteContext
 
-    @property
-    def is_retryable(self) -> bool:
-        if self.current_run:
-            return self.current_run.is_retryable
-        return True
-
-    @property
-    def retrying(self) -> bool:
-        if self.current_run:
-            return self.current_run.retrying
-        return False
-
-    @property
-    def started_retryable_write(self) -> bool:
-        if self.current_run:
-            return self.current_run.started_retryable_write
-        return False
+    # @property
+    # def is_retryable(self) -> bool:
+    #     if self.current_run:
+    #         return self.current_run.is_retryable
+    #     return True
+    #
+    # @property
+    # def retrying(self) -> bool:
+    #     if self.current_run:
+    #         return self.current_run.retrying
+    #     return False
+    #
+    # @property
+    # def started_retryable_write(self) -> bool:
+    #     if self.current_run:
+    #         return self.current_run.started_retryable_write
+    #     return False
 
     def add_insert(self, document: _DocumentOut) -> bool:
         """Add an insert document to the list of ops."""
@@ -255,7 +258,7 @@ class _AsyncBulk:
                 yield run
                 run = _Run(op_type)
             run.add(idx, operation)
-            run.is_retryable = run.is_retryable and retryable
+            self.is_retryable = self.is_retryable and retryable
         if run is None:
             raise InvalidOperation("No operations to execute")
         yield run
@@ -273,7 +276,7 @@ class _AsyncBulk:
             retryable = process(request)
             (op_type, operation) = self.ops[idx]
             operations[op_type].add(idx, operation)
-            operations[op_type].is_retryable = operations[op_type].is_retryable and retryable
+            self.is_retryable = self.is_retryable and retryable
         if (
             len(operations[_INSERT].ops) == 0
             and len(operations[_UPDATE].ops) == 0
@@ -533,7 +536,7 @@ class _AsyncBulk:
         last_run = False
 
         while run:
-            if not run.retrying:
+            if not self.retrying:
                 self.next_run = next(generator, None)
                 if self.next_run is None:
                     last_run = True
@@ -567,10 +570,10 @@ class _AsyncBulk:
                 if session:
                     # Start a new retryable write unless one was already
                     # started for this command.
-                    if run.is_retryable and not run.started_retryable_write:
+                    if self.is_retryable and not self.started_retryable_write:
                         session._start_retryable_write()
                         self.started_retryable_write = True
-                    session._apply_to(cmd, run.is_retryable, ReadPreference.PRIMARY, conn)
+                    session._apply_to(cmd, self.is_retryable, ReadPreference.PRIMARY, conn)
                 conn.send_cluster_time(cmd, session, client)
                 conn.add_server_api(cmd)
                 # CSOT: apply timeout before encoding the command.

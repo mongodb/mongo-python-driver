@@ -50,9 +50,6 @@ class _Run:
         self.index_map: list[int] = []
         self.ops: list[Any] = []
         self.idx_offset: int = 0
-        self.is_retryable = True
-        self.retrying = False
-        self.started_retryable_write = False
 
     def index(self, idx: int) -> int:
         """Get the original index of an operation in this run.
