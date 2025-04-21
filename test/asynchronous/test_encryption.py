@@ -189,12 +189,14 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
         ]:
             with self.assertRaisesRegex(ConfigurationError, "Insecure TLS options prohibited"):
                 opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts)
+                opts._parse_kms_tls_options(_IS_SYNC)
         with self.assertRaises(FileNotFoundError):
-            AutoEncryptionOpts(
+            opts = AutoEncryptionOpts(
                 {},
                 "k.d",
                 kms_tls_options={"kmip": {"tlsCAFile": "does-not-exist"}},
             )
+            opts._parse_kms_tls_options(_IS_SYNC)
         # Success cases:
         tls_opts: Any
         for tls_opts in [None, {}]:
