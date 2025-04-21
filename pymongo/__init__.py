@@ -107,12 +107,12 @@ from pymongo.write_concern import WriteConcern
 
 # Public module compatibility imports
 # isort: off
-import pymongo.uri_parser  # noqa: F401
-import pymongo.change_stream  # noqa: F401
-import pymongo.client_session  # noqa: F401
-import pymongo.collection  # noqa: F401
-import pymongo.command_cursor  # noqa: F401
-import pymongo.database  # noqa: F401
+from pymongo import uri_parser  # noqa: F401
+from pymongo import change_stream  # noqa: F401
+from pymongo import client_session  # noqa: F401
+from pymongo import collection  # noqa: F401
+from pymongo import command_cursor  # noqa: F401
+from pymongo import database  # noqa: F401
 # isort: on
 
 version = __version__
