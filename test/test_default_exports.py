@@ -215,6 +215,12 @@ class TestDefaultExports(unittest.TestCase):
         self.assertTrue(hasattr(pymongo, "uri_parser"))
         self.assertTrue(pymongo.uri_parser)
         self.assertTrue(pymongo.uri_parser.parse_uri)
+        self.assertTrue(pymongo.change_stream)
+        self.assertTrue(pymongo.client_session)
+        self.assertTrue(pymongo.collection)
+        self.assertTrue(pymongo.cursor)
+        self.assertTrue(pymongo.command_cursor)
+        self.assertTrue(pymongo.database)
 
     def test_gridfs_imports(self):
         import gridfs
