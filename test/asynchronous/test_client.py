@@ -34,7 +34,7 @@ import threading
 import time
 import uuid
 from typing import Any, Iterable, Type, no_type_check
-from unittest import mock
+from unittest import mock, skipIf
 from unittest.mock import patch
 
 import pytest
@@ -629,6 +629,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
             logs = [record.getMessage() for record in cm.records if record.name == "pymongo.client"]
             self.assertEqual(len(logs), 7)
 
+    @skipIf(os.environ.get("DEBUG_LOG"), "Enabling debug logs breaks this test")
     @patch("pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts")
     async def test_detected_environment_warning(self, mock_get_hosts):
         with self._caplog.at_level(logging.WARN):
