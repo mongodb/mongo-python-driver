@@ -11,6 +11,4 @@ if [ -f $HERE/env.sh ]; then
 fi
 
 UV=${UV_BINARY:-uv}
-env
-exit 1
 $UV run $HERE/run_server.py "$@"
