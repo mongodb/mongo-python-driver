@@ -99,7 +99,9 @@ jobs:
       - name: Install dependencies
         run: just install
       - name: Run tests
-        run:  just docs-test
+        run:  |
+          just setup-tests doctest
+          just run-tests
 
   docs:
     name: Docs Checks
