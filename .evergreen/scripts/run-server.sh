@@ -10,5 +10,11 @@ if [ -f $HERE/env.sh ]; then
   source $HERE/env.sh
 fi
 
+
+${DRIVERS_TOOLS}/.evergreen/mongodl --out mongodb-bin --strip-path-components 2
+set -x
+./mongodb-bin/mongod --version
+exit 1
+
 UV=${UV_BINARY:-uv}
 $UV run $HERE/run_server.py "$@"
