@@ -21,4 +21,5 @@ else
 fi
 
 # Teardown the test runner.
-uv run $SCRIPT_DIR/teardown_tests.py
+UV=${UV_BINARY:-uv}
+$UV run $SCRIPT_DIR/teardown_tests.py
