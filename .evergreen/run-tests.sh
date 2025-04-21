@@ -32,7 +32,7 @@ $UV sync ${UV_ARGS} --reinstall
 $UV pip list
 
 # Ensure we go back to base environment after the test.
-trap "uv sync" EXIT HUP
+trap "${UV} sync" EXIT HUP
 
 # Start the test runner.
 $UV run ${UV_ARGS} .evergreen/scripts/run_tests.py "$@"
