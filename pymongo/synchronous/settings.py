@@ -51,6 +51,7 @@ class TopologySettings:
         srv_service_name: str = common.SRV_SERVICE_NAME,
         srv_max_hosts: int = 0,
         server_monitoring_mode: str = common.SERVER_MONITORING_MODE,
+        topology_id: Optional[ObjectId] = None,
     ):
         """Represent MongoClient's configuration.
 
@@ -78,8 +79,10 @@ class TopologySettings:
         self._srv_service_name = srv_service_name
         self._srv_max_hosts = srv_max_hosts or 0
         self._server_monitoring_mode = server_monitoring_mode
-
-        self._topology_id = ObjectId()
+        if topology_id is not None:
+            self._topology_id = topology_id
+        else:
+            self._topology_id = ObjectId()
         # Store the allocation traceback to catch unclosed clients in the
         # test suite.
         self._stack = "".join(traceback.format_stack()[:-2])
