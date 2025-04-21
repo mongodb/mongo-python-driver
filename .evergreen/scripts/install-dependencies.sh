@@ -37,6 +37,7 @@ function _pip_install() {
   echo "Installing $2 using pip... done."
 }
 
+
 # Ensure just is installed.
 if ! command -v just >/dev/null 2>&1; then
   # On most systems we can install directly.
@@ -52,7 +53,7 @@ if ! command -v just >/dev/null 2>&1; then
   echo "Installing just... done."
 fi
 
-# Fall back to installing uv.
+# Ensure uv is installed.
 if ! command -v uv >/dev/null 2>&1; then
   echo "Installing uv..."
   # On most systems we can install directly.
