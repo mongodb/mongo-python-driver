@@ -165,6 +165,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
 
         :return: None
         """
+        self.opts._parse_kms_tls_options(_IS_SYNC)
         endpoint = kms_context.endpoint
         message = kms_context.message
         provider = kms_context.kms_provider
@@ -675,8 +676,8 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             key_vault_namespace,
             kms_tls_options=kms_tls_options,
             key_expiration_ms=key_expiration_ms,
-            is_sync=_IS_SYNC,
         )
+        opts._parse_kms_tls_options(_IS_SYNC)
         self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
             None, key_vault_coll, None, opts
         )

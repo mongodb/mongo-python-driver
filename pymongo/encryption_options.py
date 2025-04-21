@@ -58,7 +58,6 @@ class AutoEncryptionOpts:
         bypass_query_analysis: bool = False,
         encrypted_fields_map: Optional[Mapping[str, Any]] = None,
         key_expiration_ms: Optional[int] = None,
-        is_sync: bool = True,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -237,9 +236,13 @@ class AutoEncryptionOpts:
         if not any("idleShutdownTimeoutSecs" in s for s in self._mongocryptd_spawn_args):
             self._mongocryptd_spawn_args.append("--idleShutdownTimeoutSecs=60")
         # Maps KMS provider name to a SSLContext.
-        self._kms_ssl_contexts = _parse_kms_tls_options(kms_tls_options, is_sync)
+        self._kms_tls_options = kms_tls_options
+        # self._kms_ssl_contexts = _parse_kms_tls_options(kms_tls_options, is_sync)
         self._bypass_query_analysis = bypass_query_analysis
         self._key_expiration_ms = key_expiration_ms
+
+    def _parse_kms_tls_options(self, is_sync):
+        self._kms_ssl_contexts = _parse_kms_tls_options(self._kms_tls_options, is_sync)
 
 
 class RangeOpts:

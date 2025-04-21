@@ -541,7 +541,6 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         opts = AutoEncryptionOpts(
             key_vault_namespace="db.coll",
             kms_providers={"aws": {"accessKeyId": "foo", "secretAccessKey": "bar"}},
-            is_sync=_IS_SYNC,
         )
         client = self.rs_or_single_client(auto_encryption_opts=opts)
 
