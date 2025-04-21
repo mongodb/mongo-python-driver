@@ -241,7 +241,7 @@ class AutoEncryptionOpts:
         self._bypass_query_analysis = bypass_query_analysis
         self._key_expiration_ms = key_expiration_ms
 
-    def _parse_kms_tls_options(self, is_sync):
+    def _parse_kms_tls_options(self, is_sync: bool) -> None:
         self._kms_ssl_contexts = _parse_kms_tls_options(self._kms_tls_options, is_sync)
 
 
