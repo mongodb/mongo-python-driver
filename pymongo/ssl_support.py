@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import types
 import warnings
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from pymongo.errors import ConfigurationError
 
@@ -56,16 +56,17 @@ if HAVE_SSL:
 
     if HAVE_PYSSL:
         HAS_SNI = _pyssl.HAS_SNI | _ssl.HAS_SNI
-        SSLError = _pyssl.SSLError | _ssl.SSLError
-        BLOCKING_IO_ERRORS = _pyssl.BLOCKING_IO_ERRORS | _ssl.BLOCKING_IO_ERRORS
-        BLOCKING_IO_READ_ERROR = _pyssl.BLOCKING_IO_READ_ERROR | _ssl.BLOCKING_IO_READ_ERROR
-        BLOCKING_IO_WRITE_ERROR = _pyssl.BLOCKING_IO_WRITE_ERROR | _ssl.BLOCKING_IO_WRITE_ERROR
+        PYSSLError = _pyssl.SSLError
+        BLOCKING_IO_ERRORS: Any = _pyssl.BLOCKING_IO_ERRORS + _ssl.BLOCKING_IO_ERRORS
+        BLOCKING_IO_READ_ERROR: Any = _pyssl.BLOCKING_IO_READ_ERROR | _ssl.BLOCKING_IO_READ_ERROR
+        BLOCKING_IO_WRITE_ERROR: Any = _pyssl.BLOCKING_IO_WRITE_ERROR | _ssl.BLOCKING_IO_WRITE_ERROR
     else:
         HAS_SNI = _ssl.HAS_SNI
-        SSLError = _ssl.SSLError
+        PYSSLError = _ssl.SSLError
         BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
         BLOCKING_IO_READ_ERROR = _ssl.BLOCKING_IO_READ_ERROR
         BLOCKING_IO_WRITE_ERROR = _ssl.BLOCKING_IO_WRITE_ERROR
+    SSLError = _ssl.SSLError
     BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
     def get_ssl_context(
@@ -125,7 +126,7 @@ else:
 
     HAS_SNI = False
     IPADDR_SAFE = False
-    BLOCKING_IO_ERRORS = ()  # type:ignore[assignment]
+    BLOCKING_IO_ERRORS = ()
 
     def get_ssl_context(*dummy):  # type: ignore
         """No ssl module, raise ConfigurationError."""
