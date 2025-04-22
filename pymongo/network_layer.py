@@ -57,9 +57,6 @@ from pymongo.ssl_support import (
     BLOCKING_IO_LOOKUP_ERROR,
     BLOCKING_IO_READ_ERROR,
     BLOCKING_IO_WRITE_ERROR,
-    PYBLOCKING_IO_LOOKUP_ERROR,
-    PYBLOCKING_IO_READ_ERROR,
-    PYBLOCKING_IO_WRITE_ERROR,
 )
 
 if TYPE_CHECKING:
@@ -73,9 +70,7 @@ _POLL_TIMEOUT = 0.5
 BLOCKING_IO_ERRORS = (
     BlockingIOError,
     BLOCKING_IO_LOOKUP_ERROR,
-    PYBLOCKING_IO_LOOKUP_ERROR,
     *ssl_support.BLOCKING_IO_ERRORS,
-    *ssl_support.PYBLOCKING_IO_ERRORS,
 )
 
 
@@ -118,23 +113,21 @@ if sys.platform != "win32":
                 # Check for closed socket.
                 if fd == -1:
                     raise SSLError("Underlying socket has been closed") from None
-                if isinstance(exc, (BLOCKING_IO_READ_ERROR, PYBLOCKING_IO_READ_ERROR)):
+                if isinstance(exc, BLOCKING_IO_READ_ERROR):
                     fut = loop.create_future()
                     loop.add_reader(fd, _is_ready, fut)
                     try:
                         await fut
                     finally:
                         loop.remove_reader(fd)
-                if isinstance(exc, (BLOCKING_IO_WRITE_ERROR, PYBLOCKING_IO_WRITE_ERROR)):
+                if isinstance(exc, BLOCKING_IO_WRITE_ERROR):
                     fut = loop.create_future()
                     loop.add_writer(fd, _is_ready, fut)
                     try:
                         await fut
                     finally:
                         loop.remove_writer(fd)
-                if _HAVE_PYOPENSSL and isinstance(
-                    exc, (BLOCKING_IO_LOOKUP_ERROR, PYBLOCKING_IO_LOOKUP_ERROR)
-                ):
+                if _HAVE_PYOPENSSL and isinstance(exc, BLOCKING_IO_LOOKUP_ERROR):
                     fut = loop.create_future()
                     loop.add_reader(fd, _is_ready, fut)
                     try:
@@ -169,23 +162,21 @@ if sys.platform != "win32":
                 # Check for closed socket.
                 if fd == -1:
                     raise SSLError("Underlying socket has been closed") from None
-                if isinstance(exc, (BLOCKING_IO_READ_ERROR, PYBLOCKING_IO_READ_ERROR)):
+                if isinstance(exc, BLOCKING_IO_READ_ERROR):
                     fut = loop.create_future()
                     loop.add_reader(fd, _is_ready, fut)
                     try:
                         await fut
                     finally:
                         loop.remove_reader(fd)
-                if isinstance(exc, (BLOCKING_IO_WRITE_ERROR, PYBLOCKING_IO_WRITE_ERROR)):
+                if isinstance(exc, BLOCKING_IO_WRITE_ERROR):
                     fut = loop.create_future()
                     loop.add_writer(fd, _is_ready, fut)
                     try:
                         await fut
                     finally:
                         loop.remove_writer(fd)
-                if _HAVE_PYOPENSSL and isinstance(
-                    exc, (BLOCKING_IO_LOOKUP_ERROR, PYBLOCKING_IO_LOOKUP_ERROR)
-                ):
+                if _HAVE_PYOPENSSL and isinstance(exc, BLOCKING_IO_LOOKUP_ERROR):
                     fut = loop.create_future()
                     loop.add_reader(fd, _is_ready, fut)
                     try:

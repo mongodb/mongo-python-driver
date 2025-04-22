@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import types
 import warnings
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 from pymongo.errors import ConfigurationError
 
@@ -52,27 +52,21 @@ if HAVE_SSL:
     import ssl as _stdlibssl  # noqa: F401
     from ssl import CERT_NONE, CERT_REQUIRED
 
-    HAS_SNI = _ssl.HAS_SNI
     IPADDR_SAFE = True
-    SSLError = _ssl.SSLError
-    BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
-    BLOCKING_IO_READ_ERROR = _ssl.BLOCKING_IO_READ_ERROR
-    BLOCKING_IO_WRITE_ERROR = _ssl.BLOCKING_IO_WRITE_ERROR
-    BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
     if HAVE_PYSSL:
-        PYSSLError: Any = _pyssl.SSLError
-        PYBLOCKING_IO_ERRORS: Any = _pyssl.BLOCKING_IO_ERRORS
-        PYBLOCKING_IO_READ_ERROR: Any = _pyssl.BLOCKING_IO_READ_ERROR
-        PYBLOCKING_IO_WRITE_ERROR: Any = _pyssl.BLOCKING_IO_WRITE_ERROR
-        PYBLOCKING_IO_LOOKUP_ERROR: Any = BLOCKING_IO_READ_ERROR
+        HAS_SNI = _pyssl.HAS_SNI | _ssl.HAS_SNI
+        SSLError = _pyssl.SSLError | _ssl.SSLError
+        BLOCKING_IO_ERRORS = _pyssl.BLOCKING_IO_ERRORS | _ssl.BLOCKING_IO_ERRORS
+        BLOCKING_IO_READ_ERROR = _pyssl.BLOCKING_IO_READ_ERROR | _ssl.BLOCKING_IO_READ_ERROR
+        BLOCKING_IO_WRITE_ERROR = _pyssl.BLOCKING_IO_WRITE_ERROR | _ssl.BLOCKING_IO_WRITE_ERROR
     else:
-        # just make them the same as SSL so imports won't error
-        PYSSLError = _ssl.SSLError
-        PYBLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
-        PYBLOCKING_IO_READ_ERROR = _ssl.BLOCKING_IO_READ_ERROR
-        PYBLOCKING_IO_WRITE_ERROR = _ssl.BLOCKING_IO_WRITE_ERROR
-        PYBLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
+        HAS_SNI = _ssl.HAS_SNI
+        SSLError = _ssl.SSLError
+        BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
+        BLOCKING_IO_READ_ERROR = _ssl.BLOCKING_IO_READ_ERROR
+        BLOCKING_IO_WRITE_ERROR = _ssl.BLOCKING_IO_WRITE_ERROR
+    BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
     def get_ssl_context(
         certfile: Optional[str],
