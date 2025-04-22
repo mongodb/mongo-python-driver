@@ -69,7 +69,7 @@ _POLL_TIMEOUT = 0.5
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
 BLOCKING_IO_ERRORS = (
     BlockingIOError,
-    BLOCKING_IO_LOOKUP_ERROR,
+    *BLOCKING_IO_LOOKUP_ERROR,
     *ssl_support.BLOCKING_IO_ERRORS,
 )
 

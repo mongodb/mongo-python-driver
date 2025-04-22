@@ -57,9 +57,9 @@ if HAVE_SSL:
     if HAVE_PYSSL:
         HAS_SNI = _pyssl.HAS_SNI | _ssl.HAS_SNI
         PYSSLError: Any = _pyssl.SSLError
-        BLOCKING_IO_ERRORS: Any = _pyssl.BLOCKING_IO_ERRORS + _ssl.BLOCKING_IO_ERRORS
-        BLOCKING_IO_READ_ERROR: Any = (_pyssl.BLOCKING_IO_READ_ERROR, _ssl.BLOCKING_IO_READ_ERROR)
-        BLOCKING_IO_WRITE_ERROR: Any = (
+        BLOCKING_IO_ERRORS: tuple = _pyssl.BLOCKING_IO_ERRORS + _ssl.BLOCKING_IO_ERRORS
+        BLOCKING_IO_READ_ERROR: tuple = (_pyssl.BLOCKING_IO_READ_ERROR, _ssl.BLOCKING_IO_READ_ERROR)
+        BLOCKING_IO_WRITE_ERROR: tuple = (
             _pyssl.BLOCKING_IO_WRITE_ERROR,
             _ssl.BLOCKING_IO_WRITE_ERROR,
         )
