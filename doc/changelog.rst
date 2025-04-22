@@ -12,6 +12,7 @@ Version 4.12.1 is a bug fix release.
 - Fixed a bug that caused direct use of ``pymongo.uri_parser`` to raise an ``AttributeError``.
 - Removed Eventlet testing against Python versions newer than 3.9 since
   Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
+- Fixed a bug that would try to use PyOpenSSL with AsyncMongoClient, causing the client to fail.
 
 
 Issues Resolved
