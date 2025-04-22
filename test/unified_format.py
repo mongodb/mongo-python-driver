@@ -221,7 +221,6 @@ class EntityMapUtil:
         self._listeners: Dict[str, EventListenerUtil] = {}
         self._session_lsids: Dict[str, Mapping[str, Any]] = {}
         self.test: UnifiedSpecTestMixinV1 = test_class
-        self._cluster_time: Mapping[str, Any] = {}
 
     def __contains__(self, item):
         return item in self._entities
@@ -420,13 +419,11 @@ class EntityMapUtil:
             # session has been closed.
             return self._session_lsids[session_name]
 
-    def advance_cluster_times(self) -> None:
+    def advance_cluster_times(self, cluster_time) -> None:
         """Manually synchronize entities when desired"""
-        if not self._cluster_time:
-            self._cluster_time = (self.test.client.admin.command("ping")).get("$clusterTime")
         for entity in self._entities.values():
-            if isinstance(entity, ClientSession) and self._cluster_time:
-                entity.advance_cluster_time(self._cluster_time)
+            if isinstance(entity, ClientSession) and cluster_time:
+                entity.advance_cluster_time(cluster_time)
 
 
 class UnifiedSpecTestMixinV1(IntegrationTest):
@@ -553,6 +550,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("PYTHON-5170 tests are flakey")
         if "Driver extends timeout while streaming" in spec["description"] and not _IS_SYNC:
             self.skipTest("PYTHON-5174 tests are flakey")
+        if (
+            "inserting _id with type null via clientBulkWrite" in spec["description"]
+            or "commitTransaction fails after Interrupted" in spec["description"]
+            or "commit is not retried after MaxTimeMSExpired error" in spec["description"]
+        ) and client_context.serverless:
+            self.skipTest("PYTHON-5326 known serverless failures")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
@@ -1035,7 +1038,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _testOperation_createEntities(self, spec):
         self.entity_map.create_entities_from_spec(spec["entities"], uri=self._uri)
-        self.entity_map.advance_cluster_times()
+        self.entity_map.advance_cluster_times(self._cluster_time)
 
     def _testOperation_assertSessionTransactionState(self, spec):
         session = self.entity_map[spec["session"]]
@@ -1428,11 +1431,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self._uri = uri
         self.entity_map = EntityMapUtil(self)
         self.entity_map.create_entities_from_spec(self.TEST_SPEC.get("createEntities", []), uri=uri)
+        self._cluster_time = None
         # process initialData
         if "initialData" in self.TEST_SPEC:
             self.insert_initial_data(self.TEST_SPEC["initialData"])
-            self._cluster_time = (self.client.admin.command("ping")).get("$clusterTime")
-            self.entity_map.advance_cluster_times()
+            self._cluster_time = self.client._topology.max_cluster_time()
+            self.entity_map.advance_cluster_times(self._cluster_time)
 
         if "expectLogMessages" in spec:
             expect_log_messages = spec["expectLogMessages"]

@@ -244,8 +244,6 @@ class Topology:
                 # Close servers and clear the pools.
                 for server in self._servers.values():
                     await server.close()
-                    if not _IS_SYNC:
-                        self._monitor_tasks.append(server._monitor)
                 # Reset the session pool to avoid duplicate sessions in
                 # the child process.
                 self._session_pool.reset()
@@ -356,7 +354,7 @@ class Topology:
                     operationId=operation_id,
                     topologyDescription=self.description,
                     clientId=self.description._topology_settings._topology_id,
-                    remainingTimeMS=int(end_time - time.monotonic()),
+                    remainingTimeMS=int(1000 * (end_time - time.monotonic())),
                 )
                 logged_waiting = True
 

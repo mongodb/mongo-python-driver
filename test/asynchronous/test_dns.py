@@ -30,6 +30,7 @@ from test.asynchronous import (
     unittest,
 )
 from test.utils_shared import async_wait_until
+from unittest.mock import MagicMock, patch
 
 from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.common import validate_read_preference_tags
@@ -186,12 +187,6 @@ create_tests(TestDNSSharded)
 
 class TestParsingErrors(AsyncPyMongoTestCase):
     async def test_invalid_host(self):
-        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb is not"):
-            client = self.simple_client("mongodb+srv://mongodb")
-            await client.aconnect()
-        with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: mongodb.com is not"):
-            client = self.simple_client("mongodb+srv://mongodb.com")
-            await client.aconnect()
         with self.assertRaisesRegex(ConfigurationError, "Invalid URI host: an IP address is not"):
             client = self.simple_client("mongodb+srv://127.0.0.1")
             await client.aconnect()
@@ -205,6 +200,108 @@ class IsolatedAsyncioTestCaseInsensitive(AsyncIntegrationTest):
         client = self.simple_client("mongodb+srv://TEST1.TEST.BUILD.10GEN.cc/")
         await client.aconnect()
         self.assertGreater(len(client.topology_description.server_descriptions()), 1)
+
+
+class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
+    """
+    Initial DNS Seedlist Discovery prose tests
+    https://github.com/mongodb/specifications/blob/0a7a8b5/source/initial-dns-seedlist-discovery/tests/README.md#prose-tests
+    """
+
+    async def run_initial_dns_seedlist_discovery_prose_tests(self, test_cases):
+        for case in test_cases:
+            with patch("dns.asyncresolver.resolve") as mock_resolver:
+
+                async def mock_resolve(query, record_type, *args, **kwargs):
+                    mock_srv = MagicMock()
+                    mock_srv.target.to_text.return_value = case["mock_target"]
+                    return [mock_srv]
+
+                mock_resolver.side_effect = mock_resolve
+                domain = case["query"].split("._tcp.")[1]
+                connection_string = f"mongodb+srv://{domain}"
+                if "expected_error" not in case:
+                    await parse_uri(connection_string)
+                else:
+                    try:
+                        await parse_uri(connection_string)
+                    except ConfigurationError as e:
+                        self.assertIn(case["expected_error"], str(e))
+                    else:
+                        self.fail(f"ConfigurationError was not raised for query: {case['query']}")
+
+    async def test_1_allow_srv_hosts_with_fewer_than_three_dot_separated_parts(self):
+        with patch("dns.asyncresolver.resolve"):
+            await parse_uri("mongodb+srv://localhost/")
+            await parse_uri("mongodb+srv://mongo.local/")
+
+    async def test_2_throw_when_return_address_does_not_end_with_srv_domain(self):
+        test_cases = [
+            {
+                "query": "_mongodb._tcp.localhost",
+                "mock_target": "localhost.mongodb",
+                "expected_error": "Invalid SRV host",
+            },
+            {
+                "query": "_mongodb._tcp.blogs.mongodb.com",
+                "mock_target": "blogs.evil.com",
+                "expected_error": "Invalid SRV host",
+            },
+            {
+                "query": "_mongodb._tcp.blogs.mongo.local",
+                "mock_target": "test_1.evil.com",
+                "expected_error": "Invalid SRV host",
+            },
+        ]
+        await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
+
+    async def test_3_throw_when_return_address_is_identical_to_srv_hostname(self):
+        test_cases = [
+            {
+                "query": "_mongodb._tcp.localhost",
+                "mock_target": "localhost",
+                "expected_error": "Invalid SRV host",
+            },
+            {
+                "query": "_mongodb._tcp.mongo.local",
+                "mock_target": "mongo.local",
+                "expected_error": "Invalid SRV host",
+            },
+        ]
+        await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
+
+    async def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(
+        self
+    ):
+        test_cases = [
+            {
+                "query": "_mongodb._tcp.localhost",
+                "mock_target": "test_1.cluster_1localhost",
+                "expected_error": "Invalid SRV host",
+            },
+            {
+                "query": "_mongodb._tcp.mongo.local",
+                "mock_target": "test_1.my_hostmongo.local",
+                "expected_error": "Invalid SRV host",
+            },
+            {
+                "query": "_mongodb._tcp.blogs.mongodb.com",
+                "mock_target": "cluster.testmongodb.com",
+                "expected_error": "Invalid SRV host",
+            },
+        ]
+        await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
+
+    async def test_5_when_srv_hostname_has_two_dot_separated_parts_it_is_valid_for_the_returned_hostname_to_be_identical(
+        self
+    ):
+        test_cases = [
+            {
+                "query": "_mongodb._tcp.blogs.mongodb.com",
+                "mock_target": "blogs.mongodb.com",
+            },
+        ]
+        await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
 
 if __name__ == "__main__":

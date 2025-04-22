@@ -28,10 +28,6 @@ docs-serve:
 docs-linkcheck:
     {{docs_run}} sphinx-build -E -b linkcheck doc {{doc_build}}/linkcheck
 
-[group('docs')]
-docs-test:
-    {{docs_run}} --extra test sphinx-build -E -b doctest doc {{doc_build}}/doctest
-
 [group('typing')]
 typing:
     just typing-mypy

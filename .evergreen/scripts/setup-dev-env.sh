@@ -11,7 +11,7 @@ pushd $ROOT > /dev/null
 if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
-# PYTHON_BINARY may be defined in test-env.sh.
+# PYTHON_BINARY or PYTHON_VERSION may be defined in test-env.sh.
 if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
@@ -19,28 +19,18 @@ fi
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
-# Set the location of the python bin dir.
-if [ "Windows_NT" = "${OS:-}" ]; then
-  BIN_DIR=.venv/Scripts
-else
-  BIN_DIR=.venv/bin
-fi
+# Get the appropriate UV_PYTHON.
+. $ROOT/.evergreen/utils.sh
 
-# Ensure there is a python venv.
-if [ ! -d $BIN_DIR ]; then
-  . $ROOT/.evergreen/utils.sh
-
-  if [ -z "${PYTHON_BINARY:-}" ]; then
-      if [ -n "${PYTHON_VERSION:-}" ]; then
-        PYTHON_BINARY=$(get_python_binary $PYTHON_VERSION)
-      else
-        PYTHON_BINARY=$(find_python3)
-      fi
-  fi
-  export UV_PYTHON=${PYTHON_BINARY}
-  echo "export UV_PYTHON=$UV_PYTHON" >> $HERE/env.sh
-  echo "Using python $UV_PYTHON"
+if [ -z "${PYTHON_BINARY:-}" ]; then
+    if [ -n "${PYTHON_VERSION:-}" ]; then
+      PYTHON_BINARY=$(get_python_binary $PYTHON_VERSION)
+    else
+      PYTHON_BINARY=$(find_python3)
+    fi
 fi
+export UV_PYTHON=${PYTHON_BINARY}
+echo "Using python $UV_PYTHON"
 
 # Add the default install path to the path if needed.
 if [ -z "${PYMONGO_BIN_DIR:-}" ]; then

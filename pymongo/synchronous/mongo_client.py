@@ -81,9 +81,15 @@ from pymongo.lock import (
     _create_lock,
     _release_locks,
 )
-from pymongo.logger import _CLIENT_LOGGER, _log_client_error, _log_or_warn
+from pymongo.logger import (
+    _CLIENT_LOGGER,
+    _COMMAND_LOGGER,
+    _debug_log,
+    _log_client_error,
+    _log_or_warn,
+)
 from pymongo.message import _CursorAddress, _GetMore, _Query
-from pymongo.monitoring import ConnectionClosedReason
+from pymongo.monitoring import ConnectionClosedReason, _EventListeners
 from pymongo.operations import (
     DeleteMany,
     DeleteOne,
@@ -95,6 +101,7 @@ from pymongo.operations import (
 )
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import ClientBulkWriteResult
+from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous import client_session, database, uri_parser
@@ -757,6 +764,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._port = port
         self._topology: Topology = None  # type: ignore[assignment]
         self._timeout: float | None = None
+        self._topology_settings: TopologySettings = None  # type: ignore[assignment]
+        self._event_listeners: _EventListeners | None = None
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
@@ -769,7 +778,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         keyword_opts["document_class"] = doc_class
         self._resolve_srv_info: dict[str, Any] = {"keyword_opts": keyword_opts}
 
-        seeds = set()
+        self._seeds = set()
         is_srv = False
         username = None
         password = None
@@ -794,18 +803,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     srv_max_hosts=srv_max_hosts,
                 )
                 is_srv = entity.startswith(SRV_SCHEME)
-                seeds.update(res["nodelist"])
+                self._seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password
                 dbase = res["database"] or dbase
                 opts = res["options"]
                 fqdn = res["fqdn"]
             else:
-                seeds.update(split_hosts(entity, self._port))
-        if not seeds:
+                self._seeds.update(split_hosts(entity, self._port))
+        if not self._seeds:
             raise ConfigurationError("need to specify at least one host")
 
-        for hostname in [node[0] for node in seeds]:
+        for hostname in [node[0] for node in self._seeds]:
             if _detect_external_db(hostname):
                 break
 
@@ -828,7 +837,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
 
         srv_max_hosts = srv_max_hosts or opts.get("srvmaxhosts")
-        opts = self._normalize_and_validate_options(opts, seeds)
+        opts = self._normalize_and_validate_options(opts, self._seeds)
 
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
@@ -847,7 +856,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 "username": username,
                 "password": password,
                 "dbase": dbase,
-                "seeds": seeds,
+                "seeds": self._seeds,
                 "fqdn": fqdn,
                 "srv_service_name": srv_service_name,
                 "pool_class": pool_class,
@@ -863,11 +872,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.read_concern,
         )
 
-        if not is_srv:
-            self._init_based_on_options(seeds, srv_max_hosts, srv_service_name)
+        self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
 
         self._opened = False
         self._closed = False
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
         if not is_srv:
             self._init_background()
 
@@ -964,6 +973,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             srv_service_name=srv_service_name,
             srv_max_hosts=srv_max_hosts,
             server_monitoring_mode=self._options.server_monitoring_mode,
+            topology_id=self._topology_settings._topology_id if self._topology_settings else None,
         )
         if self._options.auto_encryption_opts:
             from pymongo.synchronous.encryption import _Encrypter
@@ -1194,6 +1204,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.0
         """
+        if self._topology is None:
+            servers = {(host, port): ServerDescription((host, port)) for host, port in self._seeds}
+            return TopologyDescription(
+                TOPOLOGY_TYPE.Unknown,
+                servers,
+                None,
+                None,
+                None,
+                self._topology_settings,
+            )
         return self._topology.description
 
     @property
@@ -1207,6 +1227,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           to any servers, or a network partition causes it to lose connection
           to all servers.
         """
+        if self._topology is None:
+            return frozenset()
         description = self._topology.description
         return frozenset(s.address for s in description.known_servers)
 
@@ -1561,6 +1583,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.0
         """
+        if self._topology is None:
+            self._get_topology()
         topology_type = self._topology._description.topology_type
         if (
             topology_type == TOPOLOGY_TYPE.Sharded
@@ -1583,6 +1607,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
            MongoClient gained this property in version 3.0.
         """
+        if self._topology is None:
+            self._get_topology()
         return self._topology.get_primary()  # type: ignore[return-value]
 
     @property
@@ -1596,6 +1622,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
            MongoClient gained this property in version 3.0.
         """
+        if self._topology is None:
+            self._get_topology()
         return self._topology.get_secondaries()
 
     @property
@@ -1606,6 +1634,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         connected to a replica set, there are no arbiters, or this client was
         created without the `replicaSet` option.
         """
+        if self._topology is None:
+            self._get_topology()
         return self._topology.get_arbiters()
 
     @property
@@ -1695,6 +1725,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
+        if not _IS_SYNC:
+            if self._loop is None:
+                self._loop = asyncio.get_running_loop()
+            elif self._loop != asyncio.get_running_loop():
+                raise RuntimeError(
+                    "Cannot use MongoClient in different event loop. MongoClient uses low-level asyncio APIs that bind it to the event loop it was created on."
+                )
         if not self._opened:
             if self._resolve_srv_info["is_srv"]:
                 self._resolve_srv()
@@ -2639,6 +2676,7 @@ class _ClientConnectionRetryable(Generic[T]):
         session: Optional[ClientSession] = None,
         read_pref: Optional[_ServerMode] = None,
         address: Optional[_Address] = None,
+        retryable: bool = False,
         operation_id: Optional[int] = None,
     ):
         self._last_error: Optional[Exception] = None
@@ -2650,7 +2688,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._bulk = bulk
         self._session = session
         self._is_read = is_read
-        self._retryable = True
+        self._retryable = retryable
         self._read_pref = read_pref
         self._server_selector: Callable[[Selection], Selection] = (
             read_pref if is_read else writable_server_selector  # type: ignore
@@ -2660,6 +2698,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._deprioritized_servers: list[Server] = []
         self._operation = operation
         self._operation_id = operation_id
+        self._attempt_number = 0
 
     def _bulk_retryable(self) -> bool:
         if self._bulk is not None:
@@ -2712,6 +2751,7 @@ class _ClientConnectionRetryable(Generic[T]):
                             raise
                         self._retrying = True
                         self._last_error = exc
+                        self._attempt_number += 1
                     else:
                         raise
 
@@ -2733,6 +2773,7 @@ class _ClientConnectionRetryable(Generic[T]):
                             raise self._last_error from exc
                         else:
                             raise
+                    self._attempt_number += 1
                     if self._bulk:
                         self._bulk.retrying = True
                     else:
@@ -2817,6 +2858,14 @@ class _ClientConnectionRetryable(Generic[T]):
                     self._retryable = False
                     if self._bulk:
                         self._bulk.is_retryable = False
+                if self._retrying:
+                    _debug_log(
+                        _COMMAND_LOGGER,
+                        message=f"Retrying write attempt number {self._attempt_number}",
+                        clientId=self._client._topology_settings._topology_id,
+                        commandName=self._operation,
+                        operationId=self._operation_id,
+                    )
                 return self._func(self._session, conn)  # type: ignore
         except PyMongoError as exc:
             if not self._retryable or not self._bulk_retryable():
@@ -2838,6 +2887,14 @@ class _ClientConnectionRetryable(Generic[T]):
         ):
             if self._retrying and (not self._retryable or not self._bulk_retryable()):
                 self._check_last_error()
+            if self._retrying:
+                _debug_log(
+                    _COMMAND_LOGGER,
+                    message=f"Retrying read attempt number {self._attempt_number}",
+                    clientId=self._client._topology_settings._topology_id,
+                    commandName=self._operation,
+                    operationId=self._operation_id,
+                )
             return self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 

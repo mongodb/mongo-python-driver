@@ -206,6 +206,7 @@ class AsyncClientContext:
             if os.environ.get("TEST_DATA_LAKE"):
                 self.is_data_lake = True
                 self.auth_enabled = True
+                await self.client.close()
                 self.client = await self._connect(host, port, username=db_user, password=db_pwd)
                 self.connected = True
                 return
@@ -391,6 +392,8 @@ class AsyncClientContext:
             self._fips_enabled = True
         except (subprocess.SubprocessError, FileNotFoundError):
             self._fips_enabled = False
+        if os.environ.get("REQUIRE_FIPS") and not self._fips_enabled:
+            raise RuntimeError("Expected FIPS to be enabled")
         return self._fips_enabled
 
     def check_auth_type(self, auth_type):

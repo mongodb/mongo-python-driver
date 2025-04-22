@@ -24,6 +24,7 @@ from urllib.parse import quote_plus
 sys.path[0:0] = [""]
 
 from test import unittest
+from unittest.mock import patch
 
 from bson.binary import JAVA_LEGACY
 from pymongo import ReadPreference

@@ -90,14 +90,13 @@ class _SrvResolver:
             raise ConfigurationError(_INVALID_HOST_MSG % ("an IP address",))
         except ValueError:
             pass
-
         try:
-            self.__plist = self.__fqdn.split(".")[1:]
+            split_fqdn = self.__fqdn.split(".")
+            self.__plist = split_fqdn[1:] if len(split_fqdn) > 2 else split_fqdn
         except Exception:
             raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,)) from None
         self.__slen = len(self.__plist)
-        if self.__slen < 2:
-            raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,))
+        self.nparts = len(split_fqdn)
 
     def get_options(self) -> Optional[str]:
         from dns import resolver
@@ -139,8 +138,13 @@ class _SrvResolver:
 
         # Validate hosts
         for node in nodes:
+            srv_host = node[0].lower()
+            if self.__fqdn == srv_host and self.nparts < 3:
+                raise ConfigurationError(
+                    "Invalid SRV host: return address is identical to SRV hostname"
+                )
             try:
-                nlist = node[0].lower().split(".")[1:][-self.__slen :]
+                nlist = srv_host.split(".")[1:][-self.__slen :]
             except Exception:
                 raise ConfigurationError(f"Invalid SRV host: {node[0]}") from None
             if self.__plist != nlist:

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import os
 from test import unittest
-from test.asynchronous import AsyncIntegrationTest
+from test.asynchronous import AsyncIntegrationTest, async_client_context
 from unittest.mock import patch
 
 from bson import json_util
@@ -96,6 +96,49 @@ class TestLogger(AsyncIntegrationTest):
         with self.assertLogs("pymongo.serverSelection", level="DEBUG") as cm:
             await c.db.test.insert_one({"x": "1"})
             self.assertGreater(len(cm.records), 0)
+
+    @async_client_context.require_failCommand_fail_point
+    async def test_logging_retry_read_attempts(self):
+        await self.db.test.insert_one({"x": "1"})
+
+        async with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {
+                    "failCommands": ["find"],
+                    "errorCode": 10107,
+                    "errorLabels": ["RetryableWriteError"],
+                },
+            }
+        ):
+            with self.assertLogs("pymongo.command", level="DEBUG") as cm:
+                await self.db.test.find_one({"x": "1"})
+
+        retry_messages = [
+            r.getMessage() for r in cm.records if "Retrying read attempt" in r.getMessage()
+        ]
+        self.assertEqual(len(retry_messages), 1)
+
+    @async_client_context.require_failCommand_fail_point
+    @async_client_context.require_retryable_writes
+    async def test_logging_retry_write_attempts(self):
+        async with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {
+                    "errorCode": 10107,
+                    "errorLabels": ["RetryableWriteError"],
+                    "failCommands": ["insert"],
+                },
+            }
+        ):
+            with self.assertLogs("pymongo.command", level="DEBUG") as cm:
+                await self.db.test.insert_one({"x": "1"})
+
+        retry_messages = [
+            r.getMessage() for r in cm.records if "Retrying write attempt" in r.getMessage()
+        ]
+        self.assertEqual(len(retry_messages), 1)
 
 
 if __name__ == "__main__":

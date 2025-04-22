@@ -26,7 +26,16 @@ from utils import (
 )
 
 # Passthrough environment variables.
-PASS_THROUGH_ENV = ["GREEN_FRAMEWORK", "NO_EXT", "MONGODB_API_VERSION", "DEBUG_LOG"]
+PASS_THROUGH_ENV = [
+    "GREEN_FRAMEWORK",
+    "NO_EXT",
+    "MONGODB_API_VERSION",
+    "DEBUG_LOG",
+    "PYTHON_BINARY",
+    "PYTHON_VERSION",
+    "REQUIRE_FIPS",
+    "IS_WIN32",
+]
 
 # Map the test name to test extra.
 EXTRAS_MAP = {
@@ -142,7 +151,6 @@ def handle_test_env() -> None:
     test_title = test_name
     if sub_test_name:
         test_title += f" {sub_test_name}"
-    LOGGER.info(f"Setting up '{test_title}' with {AUTH=} and {SSL=}...")
 
     # Create the test env file with the initial set of values.
     with ENV_FILE.open("w", newline="\n") as fid:
@@ -150,8 +158,6 @@ def handle_test_env() -> None:
         fid.write("set +x\n")
     ENV_FILE.chmod(ENV_FILE.stat().st_mode | stat.S_IEXEC)
 
-    write_env("AUTH", AUTH)
-    write_env("SSL", SSL)
     write_env("PIP_QUIET")  # Quiet by default.
     write_env("PIP_PREFER_BINARY")  # Prefer binary dists by default.
     write_env("UV_FROZEN")  # Do not modify lock files.
@@ -167,8 +173,8 @@ def handle_test_env() -> None:
 
     # Handle pass through env vars.
     for var in PASS_THROUGH_ENV:
-        if is_set(var) or getattr(opts, var.lower()):
-            write_env(var, os.environ[var])
+        if is_set(var) or getattr(opts, var.lower(), ""):
+            write_env(var, os.environ.get(var, getattr(opts, var.lower(), "")))
 
     if extra := EXTRAS_MAP.get(test_name, ""):
         UV_ARGS.append(f"--extra {extra}")
@@ -196,6 +202,13 @@ def handle_test_env() -> None:
 
     if test_name == "search_index":
         AUTH = "auth"
+
+    if test_name == "ocsp":
+        SSL = "ssl"
+
+    write_env("AUTH", AUTH)
+    write_env("SSL", SSL)
+    LOGGER.info(f"Setting up '{test_title}' with {AUTH=} and {SSL=}...")
 
     if test_name == "aws_lambda":
         UV_ARGS.append("--group pip")
@@ -272,6 +285,9 @@ def handle_test_env() -> None:
         write_env("GSSAPI_PORT", config["SASL_PORT"])
         write_env("GSSAPI_PRINCIPAL", config["PRINCIPAL"])
 
+    if test_name == "doctest":
+        UV_ARGS.append("--extra docs")
+
     if test_name == "load_balancer":
         SINGLE_MONGOS_LB_URI = os.environ.get(
             "SINGLE_MONGOS_LB_URI", "mongodb://127.0.0.1:8000/?loadBalanced=true"
@@ -318,6 +334,22 @@ def handle_test_env() -> None:
             env["OCSP_ALGORITHM"] = ocsp_algo
             run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/setup.sh", env=env)
 
+        # The mock OCSP responder MUST BE started before the mongod as the mongod expects that
+        # a responder will be available upon startup.
+        version = os.environ.get("VERSION", "latest")
+        cmd = [
+            "bash",
+            f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh",
+            "--ssl",
+            "--version",
+            version,
+        ]
+        if opts.verbose:
+            cmd.append("-v")
+        elif opts.quiet:
+            cmd.append("-q")
+        run_command(cmd, cwd=DRIVERS_TOOLS)
+
     if SSL != "nossl":
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")
@@ -358,12 +390,12 @@ def handle_test_env() -> None:
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")
         csfle_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/csfle")
-        run_command(f"bash {csfle_dir}/setup-secrets.sh", cwd=csfle_dir)
+        run_command(f"bash {csfle_dir.as_posix()}/setup-secrets.sh", cwd=csfle_dir)
         load_config_from_file(csfle_dir / "secrets-export.sh")
-        run_command(f"bash {csfle_dir}/start-servers.sh")
+        run_command(f"bash {csfle_dir.as_posix()}/start-servers.sh")
 
-        if sub_test_name == "pyopenssl":
-            UV_ARGS.append("--extra ocsp")
+    if sub_test_name == "pyopenssl":
+        UV_ARGS.append("--extra ocsp")
 
     if is_set("TEST_CRYPT_SHARED") or opts.crypt_shared:
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
@@ -436,9 +468,7 @@ def handle_test_env() -> None:
         UV_ARGS.append(f"--group {framework}")
 
     else:
-        # Use --capture=tee-sys so pytest prints test output inline:
-        # https://docs.pytest.org/en/stable/how-to/capture-stdout-stderr.html
-        TEST_ARGS = f"-v --capture=tee-sys --durations=5 {TEST_ARGS}"
+        TEST_ARGS = f"-v --durations=5 {TEST_ARGS}"
         TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"

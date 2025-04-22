@@ -20,6 +20,8 @@ from io import BytesIO
 from test.utils_spec_runner import SpecRunner
 
 from gridfs.synchronous.grid_file import GridFS, GridFSBucket
+from pymongo.server_selectors import writable_server_selector
+from pymongo.synchronous.pool import PoolState
 
 sys.path[0:0] = [""]
 
@@ -34,6 +36,7 @@ from bson import encode
 from bson.raw_bson import RawBSONDocument
 from pymongo import WriteConcern, _csot
 from pymongo.errors import (
+    AutoReconnect,
     CollectionInvalid,
     ConfigurationError,
     ConnectionFailure,
@@ -385,6 +388,22 @@ class TestTransactions(TransactionsBase):
                 res = f(*args, session=s)  # type:ignore[operator]
                 if isinstance(res, (CommandCursor, Cursor)):
                     res.to_list()
+
+    @client_context.require_transactions
+    def test_transaction_pool_cleared_error_labelled_transient(self):
+        c = self.single_client()
+
+        with self.assertRaises(AutoReconnect) as context:
+            with c.start_session() as session:
+                with session.start_transaction():
+                    server = c._select_server(writable_server_selector, session, "test")
+                    # Pause the server's pool, causing it to fail connection checkout.
+                    server.pool.state = PoolState.PAUSED
+                    with c._checkout(server, session):
+                        pass
+
+        # Verify that the TransientTransactionError label is present in the error.
+        self.assertTrue(context.exception.has_error_label("TransientTransactionError"))
 
 
 class PatchSessionTimeout:

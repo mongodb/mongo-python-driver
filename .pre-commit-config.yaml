@@ -18,6 +18,14 @@ repos:
     exclude: .patch
     exclude_types: [json]
 
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.1.3
+  hooks:
+    - id: ruff
+      args: ["--fix", "--show-fixes"]
+    - id: ruff-format
+
 - repo: local
   hooks:
     - id: synchro
@@ -29,14 +37,6 @@ repos:
       additional_dependencies:
         - ruff==0.1.3
         - unasync
-
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  # Ruff version.
-  rev: v0.1.3
-  hooks:
-    - id: ruff
-      args: ["--fix", "--show-fixes"]
-    - id: ruff-format
 
 - repo: https://github.com/adamchainz/blacken-docs
   rev: "1.16.0"
@@ -121,4 +121,4 @@ repos:
     entry: .evergreen/scripts/generate-config.sh
     language: python
     require_serial: true
-    additional_dependencies: ["shrub.py>=3.2.0", "pyyaml>=6.0.2"]
+    additional_dependencies: ["shrub.py>=3.10.0", "pyyaml>=6.0.2"]

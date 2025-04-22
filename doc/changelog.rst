@@ -1,14 +1,42 @@
 Changelog
 =========
 
-Changes in Version 4.12.0 (YYYY/MM/DD)
+
+Changes in Version 4.12.1 (XXXX/XX/XX)
 --------------------------------------
+
+Version 4.12.1 is a bug fix release.
+
+- Fixed a bug that could raise ``UnboundLocalError`` when creating asynchronous connections over SSL.
+- Fixed a bug causing SRV hostname validation to fail when resolver and resolved hostnames are identical with three domain levels.
+- Fixed a bug that caused direct use of ``pymongo.uri_parser`` to raise an ``AttributeError``.
+- Fixed a bug where clients created with connect=False and a "mongodb+srv://" connection string
+  could cause public ``pymongo.MongoClient`` and ``pymongo.AsyncMongoClient`` attributes (topology_description,
+  nodes, address, primary, secondaries, arbiters) to incorrectly return a Database, leading to type
+  errors such as: "NotImplementedError: Database objects do not implement truth value testing or bool()".
+- Removed Eventlet testing against Python versions newer than 3.9 since
+  Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.12.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.12.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=43094
+
+Changes in Version 4.12.0 (2025/04/08)
+--------------------------------------
+
+.. warning:: Driver support for MongoDB 4.0 reached end of life in April 2025.
+   PyMongo 4.12 will be the last release to support MongoDB 4.0.
 
 PyMongo 4.12 brings a number of changes including:
 
 - Support for configuring DEK cache lifetime via the ``key_expiration_ms`` argument to
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
 - Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
+- pymongocrypt>=1.13 is now required for :ref:`In-Use Encryption` support.
 - Added :meth:`gridfs.asynchronous.grid_file.AsyncGridFSBucket.rename_by_name` and :meth:`gridfs.grid_file.GridFSBucket.rename_by_name`
   for more performant renaming of a file with multiple revisions.
 - Added :meth:`gridfs.asynchronous.grid_file.AsyncGridFSBucket.delete_by_name` and :meth:`gridfs.grid_file.GridFSBucket.delete_by_name`
@@ -24,6 +52,7 @@ PyMongo 4.12 brings a number of changes including:
   :class:`~pymongo.read_preferences.SecondaryPreferred`,
   :class:`~pymongo.read_preferences.Nearest`. Support for ``hedge`` will be removed in PyMongo 5.0.
 - Removed PyOpenSSL support from the asynchronous API due to limitations of the CPython asyncio.Protocol SSL implementation.
+- Allow valid SRV hostnames with less than 3 parts.
 
 Issues Resolved
 ...............
