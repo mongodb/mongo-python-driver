@@ -41,6 +41,7 @@ import pytest
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.helpers import anext
 from pymongo.daemon import _spawn_daemon
+from pymongo.uri_parser import _parse_kms_tls_options
 
 try:
     from pymongo.pyopenssl_context import IS_PYOPENSSL
@@ -141,7 +142,7 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
         self.assertEqual(opts._mongocryptd_bypass_spawn, False)
         self.assertEqual(opts._mongocryptd_spawn_path, "mongocryptd")
         self.assertEqual(opts._mongocryptd_spawn_args, ["--idleShutdownTimeoutSecs=60"])
-        self.assertEqual(opts._kms_ssl_contexts, {})
+        self.assertEqual(opts._kms_tls_options, {})
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     def test_init_spawn_args(self):
@@ -189,13 +190,13 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
         tls_opts: Any
         for tls_opts in [None, {}]:
             opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts)
-            self.assertEqual(opts._kms_ssl_contexts, {})
+            self.assertEqual(opts._kms_tls_options, {})
         opts = AutoEncryptionOpts({}, "k.d", kms_tls_options={"kmip": {"tls": True}, "aws": {}})
-        opts._parse_kms_tls_options(_IS_SYNC)
-        ctx = opts._kms_ssl_contexts["kmip"]
+        _kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
+        ctx = _kms_ssl_contexts["kmip"]
         self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
-        ctx = opts._kms_ssl_contexts["aws"]
+        ctx = _kms_ssl_contexts["aws"]
         self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
         opts = AutoEncryptionOpts(
@@ -203,8 +204,8 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
             "k.d",
             kms_tls_options={"kmip": {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM}},
         )
-        opts._parse_kms_tls_options(_IS_SYNC)
-        ctx = opts._kms_ssl_contexts["kmip"]
+        _kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
+        ctx = _kms_ssl_contexts["kmip"]
         self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
 
@@ -2233,7 +2234,7 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
         encryption = self.create_client_encryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=options
         )
-        ctx = encryption._io_callbacks.opts._kms_ssl_contexts["aws"]
+        ctx = encryption._io_callbacks._kms_ssl_contexts["aws"]
         if not hasattr(ctx, "check_ocsp_endpoint"):
             raise self.skipTest("OCSP not enabled")
         self.assertFalse(ctx.check_ocsp_endpoint)

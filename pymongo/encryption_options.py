@@ -32,10 +32,8 @@ except ImportError:
 from bson import int64
 from pymongo.common import validate_is_mapping
 from pymongo.errors import ConfigurationError
-from pymongo.uri_parser_shared import _parse_kms_tls_options
 
 if TYPE_CHECKING:
-    from pymongo.pyopenssl_context import SSLContext
     from pymongo.typings import _AgnosticMongoClient, _DocumentTypeArg
 
 
@@ -238,12 +236,8 @@ class AutoEncryptionOpts:
             self._mongocryptd_spawn_args.append("--idleShutdownTimeoutSecs=60")
         # Maps KMS provider name to a SSLContext.
         self._kms_tls_options = kms_tls_options
-        self._kms_ssl_contexts: dict[str, SSLContext] = {}
         self._bypass_query_analysis = bypass_query_analysis
         self._key_expiration_ms = key_expiration_ms
-
-    def _parse_kms_tls_options(self, is_sync: bool) -> None:
-        self._kms_ssl_contexts = _parse_kms_tls_options(self._kms_tls_options, is_sync)
 
 
 class RangeOpts:
