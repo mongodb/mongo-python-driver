@@ -41,7 +41,7 @@ import pytest
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.helpers import anext
 from pymongo.daemon import _spawn_daemon
-from pymongo.uri_parser import _parse_kms_tls_options
+from pymongo.uri_parser_shared import _parse_kms_tls_options
 
 try:
     from pymongo.pyopenssl_context import IS_PYOPENSSL
