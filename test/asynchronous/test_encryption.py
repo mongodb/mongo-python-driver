@@ -190,7 +190,8 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
         tls_opts: Any
         for tls_opts in [None, {}]:
             opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts)
-            self.assertEqual(opts._kms_tls_options, {})
+            kms_tls_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
+            self.assertEqual(kms_tls_contexts, {})
         opts = AutoEncryptionOpts({}, "k.d", kms_tls_options={"kmip": {"tls": True}, "aws": {}})
         _kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
         ctx = _kms_ssl_contexts["kmip"]
