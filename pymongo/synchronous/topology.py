@@ -552,7 +552,7 @@ class Topology:
             if self._opened and self._description.has_server(server_description.address):
                 self._process_change(server_description, reset_pool, interrupt_connections)
         # Clear the pool from a failed heartbeat, done outside the lock to avoid blocking on connection close.
-        if self._opened and self._description.has_server(server_description.address) and reset_pool:
+        if reset_pool:
             server = self._servers.get(server_description.address)
             if server:
                 server.pool.reset(interrupt_connections=interrupt_connections)
