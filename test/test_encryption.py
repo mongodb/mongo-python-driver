@@ -2317,7 +2317,9 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
             {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, self.key_vault_client, OPTS
         )
         opts = AutoEncryptionOpts(
-            {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, bypass_query_analysis=True
+            {"local": {"key": LOCAL_MASTER_KEY}},
+            key_vault.full_name,
+            bypass_query_analysis=True,
         )
         self.encrypted_client = self.rs_or_single_client(auto_encryption_opts=opts)
 
@@ -2932,7 +2934,9 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
             {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, self.key_vault_client, OPTS
         )
         opts = AutoEncryptionOpts(
-            {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, bypass_query_analysis=True
+            {"local": {"key": LOCAL_MASTER_KEY}},
+            key_vault.full_name,
+            bypass_query_analysis=True,
         )
         self.encrypted_client = self.rs_or_single_client(auto_encryption_opts=opts)
         self.db = self.encrypted_client.db
