@@ -119,9 +119,7 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
         # Test that we can pick up crypt_shared lib automatically
         self.simple_client(
             auto_encryption_opts=AutoEncryptionOpts(
-                KMS_PROVIDERS,
-                "keyvault.datakeys",
-                crypt_shared_lib_required=True,
+                KMS_PROVIDERS, "keyvault.datakeys", crypt_shared_lib_required=True
             ),
             connect=False,
         )
