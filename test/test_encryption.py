@@ -142,7 +142,7 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         self.assertEqual(opts._mongocryptd_bypass_spawn, False)
         self.assertEqual(opts._mongocryptd_spawn_path, "mongocryptd")
         self.assertEqual(opts._mongocryptd_spawn_args, ["--idleShutdownTimeoutSecs=60"])
-        self.assertEqual(opts._kms_tls_options, {})
+        self.assertEqual(opts._kms_tls_options, None)
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     def test_init_spawn_args(self):
@@ -170,7 +170,7 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         # Error cases:
         with self.assertRaisesRegex(TypeError, r'kms_tls_options\["kmip"\] must be a dict'):
             opts = AutoEncryptionOpts({}, "k.d", kms_tls_options={"kmip": 1})
-            opts._parse_kms_tls_options(_IS_SYNC)
+            _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
 
         tls_opts: Any
         for tls_opts in [
@@ -180,12 +180,12 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         ]:
             with self.assertRaisesRegex(ConfigurationError, "Insecure TLS options prohibited"):
                 opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts)
-                opts._parse_kms_tls_options(_IS_SYNC)
+                _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
         with self.assertRaises(FileNotFoundError):
             opts = AutoEncryptionOpts(
                 {}, "k.d", kms_tls_options={"kmip": {"tlsCAFile": "does-not-exist"}}
             )
-            opts._parse_kms_tls_options(_IS_SYNC)
+            _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
         # Success cases:
         tls_opts: Any
         for tls_opts in [None, {}]:
