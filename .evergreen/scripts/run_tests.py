@@ -181,7 +181,7 @@ def run() -> None:
         return
 
     if os.environ.get("DEBUG_LOG"):
-        TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG} -o log_cli=1".split())
+        TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG}".split())
 
     # Run local tests.
     ret = pytest.main(TEST_ARGS + sys.argv[1:])
