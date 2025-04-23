@@ -201,7 +201,7 @@ def create_encryption_variants() -> list[BuildVariant]:
 
 
 def create_load_balancer_variants():
-    tasks = [f".test-named .server-{v} .sharded-auth-ssl" for v in get_versions_from("6.0")]
+    tasks = [f".test-named .server-{v} .sharded_cluster-auth-ssl" for v in get_versions_from("6.0")]
     expansions = dict(TEST_NAME="load_balancer")
     return [
         create_variant(
