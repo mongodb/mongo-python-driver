@@ -201,7 +201,7 @@ def create_encryption_variants() -> list[BuildVariant]:
 
 
 def create_load_balancer_variants():
-    tasks = [f".test-named .server-{v} .sharded_cluster-auth-ssl" for v in get_versions_from("6.0")]
+    tasks = [f".test-named .server-{v} .sharded-auth-ssl" for v in get_versions_from("6.0")]
     expansions = dict(TEST_NAME="load_balancer")
     return [
         create_variant(
@@ -598,8 +598,12 @@ def create_server_version_tasks():
 def create_test_named_tasks():
     """For variants that set a TEST_NAME."""
     tasks = []
-
-    for version, topology, python in product(ALL_VERSIONS, TOPOLOGIES, ALL_PYTHONS):
+    task_combos = []
+    for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
+        task_combos.append((version, topology, python))
+    for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
+        task_combos.append((version, topology, python))
+    for version, topology, python in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-named",
