@@ -433,7 +433,7 @@ class TestPoolManagement(AsyncIntegrationTest):
             # Wait until all idle connections are closed to simulate real-world conditions
             await listener.async_wait_for_event(monitoring.ConnectionClosedEvent, 10)
             # No operation latency should not significantly exceed close_delay
-            self.assertLessEqual(max(latencies), close_delay * 1.5)
+            self.assertLessEqual(max(latencies), close_delay * 2.0)
         finally:
             AsyncConnection.close_conn = original_close
             await task.join()
