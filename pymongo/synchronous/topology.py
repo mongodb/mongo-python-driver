@@ -529,12 +529,6 @@ class Topology:
             if not _IS_SYNC:
                 self._monitor_tasks.append(self._srv_monitor)
 
-        # Clear the pool from a failed heartbeat.
-        if reset_pool:
-            server = self._servers.get(server_description.address)
-            if server:
-                server.pool.reset(interrupt_connections=interrupt_connections)
-
         # Wake anything waiting in select_servers().
         self._condition.notify_all()
 
@@ -557,6 +551,11 @@ class Topology:
             # that didn't include this server.
             if self._opened and self._description.has_server(server_description.address):
                 self._process_change(server_description, reset_pool, interrupt_connections)
+        # Clear the pool from a failed heartbeat, done outside the lock to avoid blocking on connection close.
+        if reset_pool:
+            server = self._servers.get(server_description.address)
+            if server:
+                server.pool.reset(interrupt_connections=interrupt_connections)
 
     def _process_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new seedlist on an opened topology.
