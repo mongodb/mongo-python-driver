@@ -46,12 +46,12 @@ except ImportError:
     _HAVE_SSL = False
 
 try:
-    from pymongo.pyopenssl_context import _sslConn as _pysslConn
+    from pymongo.pyopenssl_context import _sslConn
 
     _HAVE_PYOPENSSL = True
 except ImportError:
     _HAVE_PYOPENSSL = False
-    _pysslConn = SSLSocket  # type: ignore[assignment, misc]
+    _sslConn = SSLSocket  # type: ignore[assignment, misc]
 
 from pymongo.ssl_support import (
     BLOCKING_IO_LOOKUP_ERROR,
@@ -76,12 +76,12 @@ BLOCKING_IO_ERRORS = (
 
 # These socket-based I/O methods are for KMS requests and any other network operations that do not use
 # the MongoDB wire protocol
-async def async_socket_sendall(sock: Union[socket.socket, _pysslConn], buf: bytes) -> None:
+async def async_socket_sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
     timeout = sock.gettimeout()
     sock.settimeout(0.0)
     loop = asyncio.get_running_loop()
     try:
-        if _HAVE_SSL and isinstance(sock, (SSLSocket, _pysslConn)):
+        if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
             await asyncio.wait_for(_async_socket_sendall_ssl(sock, buf, loop), timeout=timeout)
         else:
             await asyncio.wait_for(loop.sock_sendall(sock, buf), timeout=timeout)  # type: ignore[arg-type]
@@ -95,7 +95,7 @@ async def async_socket_sendall(sock: Union[socket.socket, _pysslConn], buf: byte
 if sys.platform != "win32":
 
     async def _async_socket_sendall_ssl(
-        sock: Union[socket.socket, _pysslConn], buf: bytes, loop: AbstractEventLoop
+        sock: Union[socket.socket, _sslConn], buf: bytes, loop: AbstractEventLoop
     ) -> None:
         view = memoryview(buf)
         sent = 0
@@ -138,7 +138,7 @@ if sys.platform != "win32":
                         loop.remove_writer(fd)
 
     async def _async_socket_receive_ssl(
-        conn: _pysslConn, length: int, loop: AbstractEventLoop, once: Optional[bool] = False
+        conn: _sslConn, length: int, loop: AbstractEventLoop, once: Optional[bool] = False
     ) -> memoryview:
         mv = memoryview(bytearray(length))
         total_read = 0
@@ -192,7 +192,7 @@ else:
     # https://docs.python.org/3/library/asyncio-platforms.html#asyncio-platform-support
     # Note: In PYTHON-4493 we plan to replace this code with asyncio streams.
     async def _async_socket_sendall_ssl(
-        sock: Union[socket.socket, _pysslConn], buf: bytes, dummy: AbstractEventLoop
+        sock: Union[socket.socket, _sslConn], buf: bytes, dummy: AbstractEventLoop
     ) -> None:
         view = memoryview(buf)
         total_length = len(buf)
@@ -213,7 +213,7 @@ else:
             total_sent += sent
 
     async def _async_socket_receive_ssl(
-        conn: _pysslConn, length: int, dummy: AbstractEventLoop, once: Optional[bool] = False
+        conn: _sslConn, length: int, dummy: AbstractEventLoop, once: Optional[bool] = False
     ) -> memoryview:
         mv = memoryview(bytearray(length))
         total_read = 0
@@ -239,7 +239,7 @@ else:
         return mv
 
 
-def sendall(sock: Union[socket.socket, _pysslConn], buf: bytes) -> None:
+def sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
     sock.sendall(buf)
 
 
@@ -252,7 +252,7 @@ async def _poll_cancellation(conn: AsyncConnection) -> None:
 
 
 async def async_receive_data_socket(
-    sock: Union[socket.socket, _pysslConn], length: int
+    sock: Union[socket.socket, _sslConn], length: int
 ) -> memoryview:
     sock_timeout = sock.gettimeout()
     timeout = sock_timeout
@@ -260,7 +260,7 @@ async def async_receive_data_socket(
     sock.settimeout(0.0)
     loop = asyncio.get_running_loop()
     try:
-        if _HAVE_SSL and isinstance(sock, (SSLSocket, _pysslConn)):
+        if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
             return await asyncio.wait_for(
                 _async_socket_receive_ssl(sock, length, loop, once=True),  # type: ignore[arg-type]
                 timeout=timeout,
@@ -435,7 +435,7 @@ class AsyncNetworkingInterface(NetworkingInterfaceBase):
 
 
 class NetworkingInterface(NetworkingInterfaceBase):
-    def __init__(self, conn: Union[socket.socket, _pysslConn]):
+    def __init__(self, conn: Union[socket.socket, _sslConn]):
         super().__init__(conn)
 
     def gettimeout(self) -> float | None:
@@ -451,11 +451,11 @@ class NetworkingInterface(NetworkingInterfaceBase):
         return self.conn.is_closing()
 
     @property
-    def get_conn(self) -> Union[socket.socket, _pysslConn]:
+    def get_conn(self) -> Union[socket.socket, _sslConn]:
         return self.conn
 
     @property
-    def sock(self) -> Union[socket.socket, _pysslConn]:
+    def sock(self) -> Union[socket.socket, _sslConn]:
         return self.conn
 
     def fileno(self) -> int:
