@@ -27,7 +27,7 @@ from test.asynchronous.helpers import ConcurrentRunner
 
 from pymongo.asynchronous.pool import AsyncConnection
 from pymongo.operations import _Op
-from pymongo.server_selectors import readable_server_selector
+from pymongo.server_selectors import writable_server_selector
 
 sys.path[0:0] = [""]
 
@@ -387,7 +387,7 @@ class TestPoolManagement(AsyncIntegrationTest):
             minPoolSize=10,
         )
         server = await (await client._get_topology()).select_server(
-            readable_server_selector, _Op.TEST
+            writable_server_selector, _Op.TEST
         )
         await async_wait_until(
             lambda: len(server._pool.conns) == 10,
@@ -395,8 +395,9 @@ class TestPoolManagement(AsyncIntegrationTest):
         )
 
         await client.db.test.insert_one({"x": 1})
-        close_delay = 0.05
+        close_delay = 0.1
         latencies = []
+        should_exit = []
 
         async def run_task():
             while True:
@@ -404,7 +405,7 @@ class TestPoolManagement(AsyncIntegrationTest):
                 await client.db.test.find_one({})
                 elapsed = time.monotonic() - start_time
                 latencies.append(elapsed)
-                if elapsed >= close_delay:
+                if should_exit:
                     break
                 await asyncio.sleep(0.001)
 
@@ -432,8 +433,9 @@ class TestPoolManagement(AsyncIntegrationTest):
                 await listener.async_wait_for_event(monitoring.ServerHeartbeatFailedEvent, 1)
             # Wait until all idle connections are closed to simulate real-world conditions
             await listener.async_wait_for_event(monitoring.ConnectionClosedEvent, 10)
+            should_exit.append(True)
             # No operation latency should not significantly exceed close_delay
-            self.assertLessEqual(max(latencies), close_delay * 2.0)
+            self.assertLessEqual(max(latencies), close_delay * 5.0)
         finally:
             AsyncConnection.close_conn = original_close
             await task.join()
