@@ -328,6 +328,50 @@ tasks:
           PYTHON_VERSION: pypy3.10
     tags: [no-orchestration, python-pypy3.10]
 
+  # No toolchain tests
+  - name: test-sync-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          TEST_NAME: default_sync
+    tags: [no-toolchain, standalone-noauth-nossl]
+  - name: test-async-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          TEST_NAME: default_async
+    tags: [no-toolchain, replica_set-noauth-ssl]
+  - name: test-sync-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          TEST_NAME: default_sync
+    tags: [no-toolchain, sharded_cluster-auth-ssl]
+
   # Ocsp tests
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v4.4-python3.9
     commands:

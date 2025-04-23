@@ -530,26 +530,29 @@ def create_alternative_hosts_variants():
     variants = []
 
     host = HOSTS["rhel7"]
+    version = "5.0"
     variants.append(
         create_variant(
-            [".standard .server-5.0"],
-            get_variant_name("OpenSSL 1.0.2", host),
+            [".no-toolchain"],
+            get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0], version=version),
             host=host,
             python=CPYTHONS[0],
             batchtime=batchtime,
+            expansions=dict(VERSION=version, PYTHON_VERSION=CPYTHONS[0]),
         )
     )
 
+    version = "latest"
     for host_name in OTHER_HOSTS:
-        expansions = dict()
+        expansions = dict(VERSION="latest")
         handle_c_ext(C_EXTS[0], expansions)
         host = HOSTS[host_name]
         if "fips" in host_name.lower():
             expansions["REQUIRE_FIPS"] = "1"
         variants.append(
             create_variant(
-                [".standard .server-latest"],
-                display_name=get_variant_name("Other hosts", host),
+                [".no-toolchain"],
+                display_name=get_variant_name("Other hosts", host, version=version),
                 batchtime=batchtime,
                 host=host,
                 expansions=expansions,
@@ -589,6 +592,25 @@ def create_server_version_tasks():
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
+        test_vars["TEST_NAME"] = f"default_{sync}"
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
+def create_no_toolchain_tasks():
+    tasks = []
+
+    for topology, sync in zip_cycle(TOPOLOGIES, SYNCS):
+        auth, ssl = get_standard_auth_ssl(topology)
+        tags = [
+            "no-toolchain",
+            f"{topology}-{auth}-{ssl}",
+        ]
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
+        name = get_task_name("test", sync=sync, **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
         test_vars["TEST_NAME"] = f"default_{sync}"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
