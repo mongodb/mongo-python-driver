@@ -1156,7 +1156,7 @@ class AsyncPyMongoTestCase(unittest.TestCase):
     def simple_client(self, h: Any = None, p: Any = None, **kwargs: Any) -> AsyncMongoClient:
         client_options: dict = async_client_context.default_client_options.copy()
         kwargs = kwargs.copy()
-        for key, value in client_options:
+        for key, value in client_options.items():
             kwargs.setdefault(key, value)
         if not h and not p:
             client = AsyncMongoClient(**kwargs)
@@ -1171,7 +1171,7 @@ class AsyncPyMongoTestCase(unittest.TestCase):
     ) -> AsyncMongoClient:
         client_options: dict = async_client_context.default_client_options.copy()
         kwargs = kwargs.copy()
-        for key, value in client_options:
+        for key, value in client_options.items():
             kwargs.setdefault(key, value)
         if not h and not p:
             client = AsyncMongoClient(**kwargs)
