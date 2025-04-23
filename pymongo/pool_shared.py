@@ -38,7 +38,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
 )
 from pymongo.network_layer import AsyncNetworkingInterface, NetworkingInterface, PyMongoProtocol
 from pymongo.pool_options import PoolOptions
-from pymongo.ssl_support import HAS_SNI, PYSSLError, SSLError
+from pymongo.ssl_support import PYSSLError, SSLError, _has_sni
 
 SSLErrors = (PYSSLError, SSLError)
 if TYPE_CHECKING:
@@ -280,7 +280,7 @@ async def _async_configured_socket(
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
-        if HAS_SNI:
+        if _has_sni(False):
             loop = asyncio.get_running_loop()
             ssl_sock = await loop.run_in_executor(
                 None,
@@ -459,7 +459,7 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
-        if HAS_SNI:
+        if _has_sni(True):
             ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)  # type: ignore[assignment, misc, unused-ignore]
         else:
             ssl_sock = ssl_context.wrap_socket(sock)  # type: ignore[assignment, misc, unused-ignore]
@@ -508,7 +508,7 @@ def _configured_socket_interface(address: _Address, options: PoolOptions) -> Net
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
-        if HAS_SNI:
+        if _has_sni(True):
             ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
         else:
             ssl_sock = ssl_context.wrap_socket(sock)

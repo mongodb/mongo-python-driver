@@ -55,11 +55,6 @@ if HAVE_SSL:
     IPADDR_SAFE = True
 
     if HAVE_PYSSL:
-        # # We have to pass hostname / ip address to wrap_socket
-        # # to use SSLContext.check_hostname.
-        # if ssl_context.has_sni:
-        #     ...
-        HAS_SNI = _pyssl.HAS_SNI and _ssl.HAS_SNI
         PYSSLError: Any = _pyssl.SSLError
         BLOCKING_IO_ERRORS: tuple = _pyssl.BLOCKING_IO_ERRORS + _ssl.BLOCKING_IO_ERRORS
         BLOCKING_IO_READ_ERROR: tuple = (
@@ -71,13 +66,17 @@ if HAVE_SSL:
             _ssl.BLOCKING_IO_WRITE_ERROR,
         )
     else:
-        HAS_SNI = _ssl.HAS_SNI
         PYSSLError = _ssl.SSLError
         BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
         BLOCKING_IO_READ_ERROR = (_ssl.BLOCKING_IO_READ_ERROR,)
         BLOCKING_IO_WRITE_ERROR = (_ssl.BLOCKING_IO_WRITE_ERROR,)
     SSLError = _ssl.SSLError
     BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
+
+    def _has_sni(is_sync: bool) -> bool:
+        if is_sync and HAVE_PYSSL:
+            return _pyssl.HAS_SNI
+        return _ssl.HAS_SNI
 
     def get_ssl_context(
         certfile: Optional[str],
@@ -92,6 +91,8 @@ if HAVE_SSL:
         """Create and return an SSLContext object."""
         if is_sync and HAVE_PYSSL:
             _ssl: types.ModuleType = _pyssl
+        else:
+            _ssl = globals()["_ssl"]
         verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
         if verify_mode != CERT_NONE:
@@ -132,9 +133,11 @@ else:
     class SSLError(Exception):  # type: ignore
         pass
 
-    HAS_SNI = False
     IPADDR_SAFE = False
     BLOCKING_IO_ERRORS = ()
+
+    def _has_sni(is_sync: bool) -> bool:  # noqa: ARG001
+        return False
 
     def get_ssl_context(*dummy):  # type: ignore
         """No ssl module, raise ConfigurationError."""
