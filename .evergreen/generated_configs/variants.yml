@@ -504,11 +504,11 @@ buildvariants:
   # Load balancer tests
   - name: load-balancer
     tasks:
-      - name: .test-named .server-6.0 .sharded-auth-ssl
-      - name: .test-named .server-7.0 .sharded-auth-ssl
-      - name: .test-named .server-8.0 .sharded-auth-ssl
-      - name: .test-named .server-rapid .sharded-auth-ssl
-      - name: .test-named .server-latest .sharded-auth-ssl
+      - name: .test-named .server-6.0 .sharded_cluster-auth-ssl
+      - name: .test-named .server-7.0 .sharded_cluster-auth-ssl
+      - name: .test-named .server-8.0 .sharded_cluster-auth-ssl
+      - name: .test-named .server-rapid .sharded_cluster-auth-ssl
+      - name: .test-named .server-latest .sharded_cluster-auth-ssl
     display_name: Load Balancer
     run_on:
       - rhel87-small
