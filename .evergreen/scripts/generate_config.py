@@ -599,9 +599,7 @@ def create_test_named_tasks():
     """For variants that set a TEST_NAME."""
     tasks = []
 
-    for (version, topology), python in zip_cycle(
-        list(product(ALL_VERSIONS, TOPOLOGIES)), ALL_PYTHONS
-    ):
+    for version, topology, python in product(ALL_VERSIONS, TOPOLOGIES, ALL_PYTHONS):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-named",
