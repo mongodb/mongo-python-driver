@@ -50,7 +50,6 @@ from test.utils_shared import (
     assertion_context,
     barrier_wait,
     create_barrier,
-    delay,
     server_name_to_type,
     wait_until,
 )

@@ -51,7 +51,6 @@ from test.utils_shared import (
     async_barrier_wait,
     async_create_barrier,
     async_wait_until,
-    delay,
     server_name_to_type,
 )
 from unittest.mock import patch
