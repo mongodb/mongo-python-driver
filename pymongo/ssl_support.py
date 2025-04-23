@@ -39,7 +39,7 @@ except (ImportError, AttributeError) as exc:
             stacklevel=2,
         )
 try:
-    import pymongo.ssl_context as _stdssl
+    import pymongo.ssl_context as _ssl
 except ImportError:
     HAVE_SSL = False
 
@@ -55,24 +55,28 @@ if HAVE_SSL:
     IPADDR_SAFE = True
 
     if HAVE_PYSSL:
-        HAS_SNI = _pyssl.HAS_SNI | _stdssl.HAS_SNI
+        # # We have to pass hostname / ip address to wrap_socket
+        # # to use SSLContext.check_hostname.
+        # if ssl_context.has_sni:
+        #     ...
+        HAS_SNI = _pyssl.HAS_SNI and _ssl.HAS_SNI
         PYSSLError: Any = _pyssl.SSLError
-        BLOCKING_IO_ERRORS: tuple = _pyssl.BLOCKING_IO_ERRORS + _stdssl.BLOCKING_IO_ERRORS
+        BLOCKING_IO_ERRORS: tuple = _pyssl.BLOCKING_IO_ERRORS + _ssl.BLOCKING_IO_ERRORS
         BLOCKING_IO_READ_ERROR: tuple = (
             _pyssl.BLOCKING_IO_READ_ERROR,
-            _stdssl.BLOCKING_IO_READ_ERROR,
+            _ssl.BLOCKING_IO_READ_ERROR,
         )
         BLOCKING_IO_WRITE_ERROR: tuple = (
             _pyssl.BLOCKING_IO_WRITE_ERROR,
-            _stdssl.BLOCKING_IO_WRITE_ERROR,
+            _ssl.BLOCKING_IO_WRITE_ERROR,
         )
     else:
-        HAS_SNI = _stdssl.HAS_SNI
-        PYSSLError = _stdssl.SSLError
-        BLOCKING_IO_ERRORS = _stdssl.BLOCKING_IO_ERRORS
-        BLOCKING_IO_READ_ERROR = (_stdssl.BLOCKING_IO_READ_ERROR,)
-        BLOCKING_IO_WRITE_ERROR = (_stdssl.BLOCKING_IO_WRITE_ERROR,)
-    SSLError = _stdssl.SSLError
+        HAS_SNI = _ssl.HAS_SNI
+        PYSSLError = _ssl.SSLError
+        BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
+        BLOCKING_IO_READ_ERROR = (_ssl.BLOCKING_IO_READ_ERROR,)
+        BLOCKING_IO_WRITE_ERROR = (_ssl.BLOCKING_IO_WRITE_ERROR,)
+    SSLError = _ssl.SSLError
     BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
     def get_ssl_context(
@@ -84,12 +88,10 @@ if HAVE_SSL:
         allow_invalid_hostnames: bool,
         disable_ocsp_endpoint_check: bool,
         is_sync: bool,
-    ) -> Union[_pyssl.SSLContext, _stdssl.SSLContext]:  # type: ignore[name-defined]
+    ) -> Union[_pyssl.SSLContext, _ssl.SSLContext]:  # type: ignore[name-defined]
         """Create and return an SSLContext object."""
         if is_sync and HAVE_PYSSL:
             _ssl: types.ModuleType = _pyssl
-        else:
-            _ssl = _stdssl
         verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
         if verify_mode != CERT_NONE:
