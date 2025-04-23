@@ -431,12 +431,15 @@ class TestPoolManagement(IntegrationTest):
                 listener.wait_for_event(monitoring.ServerHeartbeatFailedEvent, 1)
             # Wait until all idle connections are closed to simulate real-world conditions
             listener.wait_for_event(monitoring.ConnectionClosedEvent, 10)
+            # Wait for one more find to complete after the pool has been reset, then shutdown the task
+            n = len(latencies)
+            wait_until(lambda: len(latencies) >= n + 1, "run one more find")
             should_exit.append(True)
+            task.join()
             # No operation latency should not significantly exceed close_delay
             self.assertLessEqual(max(latencies), close_delay * 5.0)
         finally:
             Connection.close_conn = original_close
-            task.join()
 
 
 class TestServerMonitoringMode(IntegrationTest):
