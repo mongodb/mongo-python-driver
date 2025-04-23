@@ -626,10 +626,17 @@ def create_test_named_tasks():
 def create_standard_tasks():
     """For variants that do not set a TEST_NAME."""
     tasks = []
-
+    task_combos = []
     for (version, topology), python, sync in zip_cycle(
-        list(product(ALL_VERSIONS, TOPOLOGIES)), ALL_PYTHONS, SYNCS
+        list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS, SYNCS
     ):
+        task_combos.append((version, topology, python, sync))
+    for (python, topology), version, sync in zip_cycle(
+        list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS, SYNCS
+    ):
+        task_combos.append((version, topology, python, sync))
+
+    for version, topology, python, sync in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "standard",
