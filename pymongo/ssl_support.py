@@ -39,7 +39,7 @@ except (ImportError, AttributeError) as exc:
             stacklevel=2,
         )
 try:
-    import pymongo.ssl_context as _ssl
+    import pymongo.ssl_context as _stdssl
 except ImportError:
     HAVE_SSL = False
 
@@ -55,21 +55,24 @@ if HAVE_SSL:
     IPADDR_SAFE = True
 
     if HAVE_PYSSL:
-        HAS_SNI = _pyssl.HAS_SNI | _ssl.HAS_SNI
+        HAS_SNI = _pyssl.HAS_SNI | _stdssl.HAS_SNI
         PYSSLError: Any = _pyssl.SSLError
-        BLOCKING_IO_ERRORS: tuple = _pyssl.BLOCKING_IO_ERRORS + _ssl.BLOCKING_IO_ERRORS
-        BLOCKING_IO_READ_ERROR: tuple = (_pyssl.BLOCKING_IO_READ_ERROR, _ssl.BLOCKING_IO_READ_ERROR)
+        BLOCKING_IO_ERRORS: tuple = _pyssl.BLOCKING_IO_ERRORS + _stdssl.BLOCKING_IO_ERRORS
+        BLOCKING_IO_READ_ERROR: tuple = (
+            _pyssl.BLOCKING_IO_READ_ERROR,
+            _stdssl.BLOCKING_IO_READ_ERROR,
+        )
         BLOCKING_IO_WRITE_ERROR: tuple = (
             _pyssl.BLOCKING_IO_WRITE_ERROR,
-            _ssl.BLOCKING_IO_WRITE_ERROR,
+            _stdssl.BLOCKING_IO_WRITE_ERROR,
         )
     else:
-        HAS_SNI = _ssl.HAS_SNI
-        PYSSLError = _ssl.SSLError
-        BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
-        BLOCKING_IO_READ_ERROR = (_ssl.BLOCKING_IO_READ_ERROR,)
-        BLOCKING_IO_WRITE_ERROR = (_ssl.BLOCKING_IO_WRITE_ERROR,)
-    SSLError = _ssl.SSLError
+        HAS_SNI = _stdssl.HAS_SNI
+        PYSSLError = _stdssl.SSLError
+        BLOCKING_IO_ERRORS = _stdssl.BLOCKING_IO_ERRORS
+        BLOCKING_IO_READ_ERROR = (_stdssl.BLOCKING_IO_READ_ERROR,)
+        BLOCKING_IO_WRITE_ERROR = (_stdssl.BLOCKING_IO_WRITE_ERROR,)
+    SSLError = _stdssl.SSLError
     BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
     def get_ssl_context(
@@ -81,14 +84,14 @@ if HAVE_SSL:
         allow_invalid_hostnames: bool,
         disable_ocsp_endpoint_check: bool,
         is_sync: bool,
-    ) -> Union[_pyssl.SSLContext, _ssl.SSLContext]:  # type: ignore[name-defined]
+    ) -> Union[_pyssl.SSLContext, _stdssl.SSLContext]:  # type: ignore[name-defined]
         """Create and return an SSLContext object."""
         if is_sync and HAVE_PYSSL:
-            ssl_in_use: types.ModuleType = _pyssl
+            _ssl: types.ModuleType = _pyssl
         else:
-            ssl_in_use = _ssl
+            _ssl = _stdssl
         verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
-        ctx = ssl_in_use.SSLContext(ssl_in_use.PROTOCOL_SSLv23)
+        ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
         if verify_mode != CERT_NONE:
             ctx.check_hostname = not allow_invalid_hostnames
         else:
@@ -100,20 +103,20 @@ if HAVE_SSL:
             # up to date versions of MongoDB 2.4 and above already disable
             # SSLv2 and SSLv3, python disables SSLv2 by default in >= 2.7.7
             # and >= 3.3.4 and SSLv3 in >= 3.4.3.
-            ctx.options |= ssl_in_use.OP_NO_SSLv2
-            ctx.options |= ssl_in_use.OP_NO_SSLv3
-            ctx.options |= ssl_in_use.OP_NO_COMPRESSION
-            ctx.options |= ssl_in_use.OP_NO_RENEGOTIATION
+            ctx.options |= _ssl.OP_NO_SSLv2
+            ctx.options |= _ssl.OP_NO_SSLv3
+            ctx.options |= _ssl.OP_NO_COMPRESSION
+            ctx.options |= _ssl.OP_NO_RENEGOTIATION
         if certfile is not None:
             try:
                 ctx.load_cert_chain(certfile, None, passphrase)
-            except ssl_in_use.SSLError as exc:
+            except _ssl.SSLError as exc:
                 raise ConfigurationError(f"Private key doesn't match certificate: {exc}") from None
         if crlfile is not None:
-            if ssl_in_use.IS_PYOPENSSL:
+            if _ssl.IS_PYOPENSSL:
                 raise ConfigurationError("tlsCRLFile cannot be used with PyOpenSSL")
             # Match the server's behavior.
-            ctx.verify_flags = getattr(ssl_in_use, "VERIFY_CRL_CHECK_LEAF", 0)
+            ctx.verify_flags = getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0)
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
