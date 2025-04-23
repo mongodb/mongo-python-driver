@@ -850,7 +850,7 @@ class TestClient(AsyncIntegrationTest):
         with self.assertRaises(ConnectionFailure):
             await c.pymongo_test.test.find_one()
 
-    @async_client_context.require_no_standalone
+    @async_client_context.require_replica_set
     @async_client_context.require_no_load_balancer
     @async_client_context.require_tls
     async def test_init_disconnected_with_srv(self):
