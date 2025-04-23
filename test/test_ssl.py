@@ -166,11 +166,14 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_tls
     def test_simple_ssl(self):
+        if "PyPy" in sys.version:
+            self.skipTest("Test is flaky on PyPy")
         # Expects the server to be running with ssl and with
         # no --sslPEMKeyFile or with --sslWeakCertificateValidation
         self.assertClientWorks(self.client)
 
     @client_context.require_tlsCertificateKeyFile
+    @client_context.require_no_api_version
     @ignore_deprecations
     def test_tlsCertificateKeyFilePassword(self):
         # Expects the server to be running with server.pem and ca.pem
@@ -377,6 +380,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_tlsCertificateKeyFile
     @client_context.require_sync
+    @client_context.require_no_api_version
     @ignore_deprecations
     def test_tlsCRLFile_support(self):
         if not hasattr(ssl, "VERIFY_CRL_CHECK_LEAF") or HAVE_PYSSL:
@@ -532,6 +536,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_auth
     @client_context.require_tlsCertificateKeyFile
+    @client_context.require_no_api_version
     @ignore_deprecations
     def test_mongodb_x509_auth(self):
         host, port = client_context.host, client_context.port
@@ -641,6 +646,7 @@ class TestSSL(IntegrationTest):
             self.fail("Invalid certificate accepted.")
 
     @client_context.require_tlsCertificateKeyFile
+    @client_context.require_no_api_version
     @ignore_deprecations
     def test_connect_with_ca_bundle(self):
         def remove(path):

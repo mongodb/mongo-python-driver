@@ -10,11 +10,14 @@ Version 4.12.1 is a bug fix release.
 - Fixed a bug that could raise ``UnboundLocalError`` when creating asynchronous connections over SSL.
 - Fixed a bug causing SRV hostname validation to fail when resolver and resolved hostnames are identical with three domain levels.
 - Fixed a bug that caused direct use of ``pymongo.uri_parser`` to raise an ``AttributeError``.
+- Fixed a bug where clients created with connect=False and a "mongodb+srv://" connection string
+  could cause public ``pymongo.MongoClient`` and ``pymongo.AsyncMongoClient`` attributes (topology_description,
+  nodes, address, primary, secondaries, arbiters) to incorrectly return a Database, leading to type
+  errors such as: "NotImplementedError: Database objects do not implement truth value testing or bool()".
 - Removed Eventlet testing against Python versions newer than 3.9 since
   Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
 - Fixed a bug that would cause AsyncMongoClient to attempt to use PyOpenSSL when available, resulting in errors such as
   "pymongo.errors.ServerSelectionTimeoutError: 'SSLContext' object has no attribute 'wrap_bio'"
-
 
 Issues Resolved
 ...............
