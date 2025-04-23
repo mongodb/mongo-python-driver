@@ -588,7 +588,7 @@ def create_server_version_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
-        name = get_task_name("test", python=python, sync=sync, **expansions)
+        name = get_task_name("test-server-version", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
@@ -608,7 +608,7 @@ def create_no_toolchain_tasks():
             f"{topology}-{auth}-{ssl}",
         ]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
-        name = get_task_name("test", sync=sync, **expansions)
+        name = get_task_name("test-no-toolchain", sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["TEST_NAME"] = f"default_{sync}"

@@ -329,7 +329,7 @@ tasks:
     tags: [no-orchestration, python-pypy3.10]
 
   # No toolchain tests
-  - name: test-sync-noauth-nossl-standalone
+  - name: test-no-toolchain-sync-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -343,7 +343,7 @@ tasks:
           TOPOLOGY: standalone
           TEST_NAME: default_sync
     tags: [no-toolchain, standalone-noauth-nossl]
-  - name: test-async-noauth-ssl-replica-set
+  - name: test-no-toolchain-async-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -357,7 +357,7 @@ tasks:
           TOPOLOGY: replica_set
           TEST_NAME: default_async
     tags: [no-toolchain, replica_set-noauth-ssl]
-  - name: test-sync-auth-ssl-sharded-cluster
+  - name: test-no-toolchain-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -7170,7 +7170,7 @@ tasks:
       - sync_async
 
   # Server version tests
-  - name: test-python3.9-sync-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.9-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7187,7 +7187,7 @@ tasks:
           PYTHON_VERSION: "3.9"
           TEST_NAME: default_sync
     tags: [server-version, python-3.9, sharded_cluster-auth-ssl]
-  - name: test-python3.10-async-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.10-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7204,7 +7204,7 @@ tasks:
           PYTHON_VERSION: "3.10"
           TEST_NAME: default_async
     tags: [server-version, python-3.10, sharded_cluster-auth-ssl]
-  - name: test-python3.11-sync-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.11-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7221,7 +7221,7 @@ tasks:
           PYTHON_VERSION: "3.11"
           TEST_NAME: default_sync
     tags: [server-version, python-3.11, sharded_cluster-auth-ssl]
-  - name: test-python3.12-async-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.12-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7238,7 +7238,7 @@ tasks:
           PYTHON_VERSION: "3.12"
           TEST_NAME: default_async
     tags: [server-version, python-3.12, sharded_cluster-auth-ssl]
-  - name: test-python3.13-sync-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.13-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7255,7 +7255,7 @@ tasks:
           PYTHON_VERSION: "3.13"
           TEST_NAME: default_sync
     tags: [server-version, python-3.13, sharded_cluster-auth-ssl]
-  - name: test-pypy3.10-async-auth-ssl-sharded-cluster
+  - name: test-server-version-pypy3.10-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -7270,7 +7270,7 @@ tasks:
           PYTHON_VERSION: pypy3.10
           TEST_NAME: default_async
     tags: [server-version, python-pypy3.10, sharded_cluster-auth-ssl]
-  - name: test-python3.9-sync-auth-ssl-standalone-cov
+  - name: test-server-version-python3.9-sync-auth-ssl-standalone-cov
     commands:
       - func: run server
         vars:
@@ -7287,7 +7287,7 @@ tasks:
           PYTHON_VERSION: "3.9"
           TEST_NAME: default_sync
     tags: [server-version, python-3.9, standalone-auth-ssl]
-  - name: test-python3.10-async-auth-nossl-standalone-cov
+  - name: test-server-version-python3.10-async-auth-nossl-standalone-cov
     commands:
       - func: run server
         vars:
@@ -7304,7 +7304,7 @@ tasks:
           PYTHON_VERSION: "3.10"
           TEST_NAME: default_async
     tags: [server-version, python-3.10, standalone-auth-nossl]
-  - name: test-python3.11-sync-noauth-ssl-standalone-cov
+  - name: test-server-version-python3.11-sync-noauth-ssl-standalone-cov
     commands:
       - func: run server
         vars:
@@ -7321,7 +7321,7 @@ tasks:
           PYTHON_VERSION: "3.11"
           TEST_NAME: default_sync
     tags: [server-version, python-3.11, standalone-noauth-ssl]
-  - name: test-python3.12-async-noauth-nossl-standalone-cov
+  - name: test-server-version-python3.12-async-noauth-nossl-standalone-cov
     commands:
       - func: run server
         vars:
@@ -7338,7 +7338,7 @@ tasks:
           PYTHON_VERSION: "3.12"
           TEST_NAME: default_async
     tags: [server-version, python-3.12, standalone-noauth-nossl]
-  - name: test-python3.13-sync-auth-ssl-replica-set-cov
+  - name: test-server-version-python3.13-sync-auth-ssl-replica-set-cov
     commands:
       - func: run server
         vars:
@@ -7355,7 +7355,7 @@ tasks:
           PYTHON_VERSION: "3.13"
           TEST_NAME: default_sync
     tags: [server-version, python-3.13, replica_set-auth-ssl]
-  - name: test-pypy3.10-async-auth-nossl-replica-set
+  - name: test-server-version-pypy3.10-async-auth-nossl-replica-set
     commands:
       - func: run server
         vars:
@@ -7370,7 +7370,7 @@ tasks:
           PYTHON_VERSION: pypy3.10
           TEST_NAME: default_async
     tags: [server-version, python-pypy3.10, replica_set-auth-nossl]
-  - name: test-python3.9-sync-noauth-ssl-replica-set-cov
+  - name: test-server-version-python3.9-sync-noauth-ssl-replica-set-cov
     commands:
       - func: run server
         vars:
@@ -7387,7 +7387,7 @@ tasks:
           PYTHON_VERSION: "3.9"
           TEST_NAME: default_sync
     tags: [server-version, python-3.9, replica_set-noauth-ssl]
-  - name: test-python3.10-async-noauth-nossl-replica-set-cov
+  - name: test-server-version-python3.10-async-noauth-nossl-replica-set-cov
     commands:
       - func: run server
         vars:
@@ -7404,7 +7404,7 @@ tasks:
           PYTHON_VERSION: "3.10"
           TEST_NAME: default_async
     tags: [server-version, python-3.10, replica_set-noauth-nossl]
-  - name: test-python3.12-sync-auth-nossl-sharded-cluster-cov
+  - name: test-server-version-python3.12-sync-auth-nossl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7421,7 +7421,7 @@ tasks:
           PYTHON_VERSION: "3.12"
           TEST_NAME: default_sync
     tags: [server-version, python-3.12, sharded_cluster-auth-nossl]
-  - name: test-python3.13-async-noauth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.13-async-noauth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7438,7 +7438,7 @@ tasks:
           PYTHON_VERSION: "3.13"
           TEST_NAME: default_async
     tags: [server-version, python-3.13, sharded_cluster-noauth-ssl]
-  - name: test-pypy3.10-sync-noauth-nossl-sharded-cluster
+  - name: test-server-version-pypy3.10-sync-noauth-nossl-sharded-cluster
     commands:
       - func: run server
         vars:
