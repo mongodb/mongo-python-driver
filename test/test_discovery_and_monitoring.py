@@ -20,9 +20,14 @@ import os
 import socketserver
 import sys
 import threading
+import time
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
 from test.helpers import ConcurrentRunner
+
+from pymongo.operations import _Op
+from pymongo.server_selectors import readable_server_selector
+from pymongo.synchronous.pool import Connection
 
 sys.path[0:0] = [""]
 
@@ -45,6 +50,7 @@ from test.utils_shared import (
     assertion_context,
     barrier_wait,
     create_barrier,
+    delay,
     server_name_to_type,
     wait_until,
 )
@@ -369,6 +375,67 @@ class TestPoolManagement(IntegrationTest):
             listener.wait_for_event(monitoring.PoolClearedEvent, 1)
             listener.wait_for_event(monitoring.ServerHeartbeatSucceededEvent, 1)
             listener.wait_for_event(monitoring.PoolReadyEvent, 1)
+
+    @client_context.require_failCommand_appName
+    @client_context.require_test_commands
+    @client_context.require_async
+    def test_connection_close_does_not_block_other_operations(self):
+        listener = CMAPHeartbeatListener()
+        client = self.single_client(
+            appName="SDAMConnectionCloseTest",
+            event_listeners=[listener],
+            heartbeatFrequencyMS=500,
+            minPoolSize=10,
+        )
+        server = (client._get_topology()).select_server(readable_server_selector, _Op.TEST)
+        wait_until(
+            lambda: len(server._pool.conns) == 10,
+            "pool initialized with 10 connections",
+        )
+
+        client.db.test.insert_one({"x": 1})
+        close_delay = 0.05
+        latencies = []
+
+        def run_task():
+            while True:
+                start_time = time.monotonic()
+                client.db.test.find_one({})
+                elapsed = time.monotonic() - start_time
+                latencies.append(elapsed)
+                if elapsed >= close_delay:
+                    break
+                time.sleep(0.001)
+
+        task = ConcurrentRunner(target=run_task)
+        task.start()
+        original_close = Connection.close_conn
+        try:
+            # Artificially delay the close operation to simulate a slow close
+            def mock_close(self, reason):
+                time.sleep(close_delay)
+                original_close(self, reason)
+
+            Connection.close_conn = mock_close
+
+            fail_hello = {
+                "mode": {"times": 4},
+                "data": {
+                    "failCommands": [HelloCompat.LEGACY_CMD, "hello"],
+                    "errorCode": 91,
+                    "appName": "SDAMConnectionCloseTest",
+                },
+            }
+            with self.fail_point(fail_hello):
+                # Wait for server heartbeat to fail
+                listener.wait_for_event(monitoring.ServerHeartbeatFailedEvent, 1)
+            # Wait until all idle connections are closed to simulate real-world conditions
+            listener.wait_for_event(monitoring.ConnectionClosedEvent, 10)
+            # No operation latency should not significantly exceed close_delay
+            self.assertLessEqual(max(latencies), close_delay * 1.5)
+        finally:
+            Connection.close_conn = original_close
+            task.join()
 
 
 class TestServerMonitoringMode(IntegrationTest):
