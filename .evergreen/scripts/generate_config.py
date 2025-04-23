@@ -595,13 +595,17 @@ def create_server_version_tasks():
     return tasks
 
 
-def create_named_test_tasks():
+def create_test_named_tasks():
     """For variants that set a TEST_NAME."""
     tasks = []
-    # For each Python and Topology, rotate through the versions.
-    for (python, topology), version in zip_cycle(
-        list(product(ALL_PYTHONS, TOPOLOGIES)), ALL_VERSIONS
-    ):
+    task_combos = []
+    # For each version and topology, rotate through the CPythons.
+    for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
+        task_combos.append((version, topology, python))
+    # For each PyPy and topology, rotate through the the versions.
+    for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
+        task_combos.append((version, topology, python))
+    for version, topology, python in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-named",
@@ -624,10 +628,19 @@ def create_named_test_tasks():
 def create_standard_tasks():
     """For variants that do not set a TEST_NAME."""
     tasks = []
-    # For each Python and Topology, rotate through the versions and sync/async.
-    for (python, topology), version, sync in zip_cycle(
-        list(product(ALL_PYTHONS, TOPOLOGIES)), ALL_VERSIONS, SYNCS
+    task_combos = []
+    # For each version and topology, rotate through the CPythons and sync/async.
+    for (version, topology), python, sync in zip_cycle(
+        list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS, SYNCS
     ):
+        task_combos.append((version, topology, python, sync))
+    # For each PyPy and topology, rotate through the the versions and sync/async.
+    for (python, topology), version, sync in zip_cycle(
+        list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS, SYNCS
+    ):
+        task_combos.append((version, topology, python, sync))
+
+    for version, topology, python, sync in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "standard",
