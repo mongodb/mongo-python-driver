@@ -1138,10 +1138,6 @@ class PyMongoTestCase(unittest.TestCase):
         return self._async_mongo_client(h, p, **kwargs)
 
     def simple_client(self, h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient:
-        client_options: dict = client_context.default_client_options.copy()
-        kwargs = kwargs.copy()
-        for key, value in client_options.items():
-            kwargs.setdefault(key, value)
         if not h and not p:
             client = MongoClient(**kwargs)
         else:
@@ -1151,10 +1147,6 @@ class PyMongoTestCase(unittest.TestCase):
 
     @classmethod
     def unmanaged_simple_client(cls, h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient:
-        client_options: dict = client_context.default_client_options.copy()
-        kwargs = kwargs.copy()
-        for key, value in client_options.items():
-            kwargs.setdefault(key, value)
         if not h and not p:
             client = MongoClient(**kwargs)
         else:
