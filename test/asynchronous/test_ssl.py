@@ -166,6 +166,8 @@ class TestSSL(AsyncIntegrationTest):
 
     @async_client_context.require_tls
     async def test_simple_ssl(self):
+        if "PyPy" in sys.version:
+            self.skipTest("Test is flaky on PyPy")
         # Expects the server to be running with ssl and with
         # no --sslPEMKeyFile or with --sslWeakCertificateValidation
         await self.assertClientWorks(self.client)
