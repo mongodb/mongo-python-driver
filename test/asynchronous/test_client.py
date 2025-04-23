@@ -1907,6 +1907,7 @@ class TestClient(AsyncIntegrationTest):
             AsyncMongoClient(["host1", "host2"], directConnection=True)
 
     @unittest.skipIf("PyPy" in sys.version, "PYTHON-2927 fails often on PyPy")
+    @skipIf(os.environ.get("DEBUG_LOG"), "Enabling debug logs breaks this test")
     async def test_continuous_network_errors(self):
         def server_description_count():
             i = 0
