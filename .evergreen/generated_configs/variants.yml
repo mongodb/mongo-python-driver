@@ -160,7 +160,7 @@ buildvariants:
   # Doctests tests
   - name: doctests-rhel8
     tasks:
-      - name: .test-name .standalone-noauth-nossl
+      - name: .test-named .standalone-noauth-nossl
     display_name: Doctests RHEL8
     run_on:
       - rhel87-small
@@ -504,11 +504,17 @@ buildvariants:
   # Load balancer tests
   - name: load-balancer
     tasks:
-      - name: .load-balancer
+      - name: .test-named .server-6.0 .sharded-auth-ssl
+      - name: .test-named .server-7.0 .sharded-auth-ssl
+      - name: .test-named .server-8.0 .sharded-auth-ssl
+      - name: .test-named .server-rapid .sharded-auth-ssl
+      - name: .test-named .server-latest .sharded-auth-ssl
     display_name: Load Balancer
     run_on:
       - rhel87-small
     batchtime: 10080
+    expansions:
+      TEST_NAME: load_balancer
 
   # Mockupdb tests
   - name: mockupdb-rhel8

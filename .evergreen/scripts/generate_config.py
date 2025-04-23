@@ -201,10 +201,15 @@ def create_encryption_variants() -> list[BuildVariant]:
 
 
 def create_load_balancer_variants():
-    # Load balancer tests - run all supported server versions using the lowest supported python.
+    tasks = [f".test-named .server-{v} .sharded-auth-ssl" for v in get_versions_from("6.0")]
+    expansions = dict(TEST_NAME="load_balancer")
     return [
         create_variant(
-            [".load-balancer"], "Load Balancer", host=DEFAULT_HOST, batchtime=BATCHTIME_WEEK
+            tasks,
+            "Load Balancer",
+            host=DEFAULT_HOST,
+            batchtime=BATCHTIME_WEEK,
+            expansions=expansions,
         )
     ]
 
@@ -446,7 +451,7 @@ def create_doctests_variants():
     expansions = dict(TEST_NAME="doctest")
     return [
         create_variant(
-            [".test-name .standalone-noauth-nossl"],
+            [".test-named .standalone-noauth-nossl"],
             get_variant_name("Doctests", host),
             host=host,
             expansions=expansions,
@@ -590,7 +595,7 @@ def create_server_version_tasks():
     return tasks
 
 
-def create_test_name_tasks():
+def create_test_named_tasks():
     """For variants that set a TEST_NAME."""
     tasks = []
 
@@ -599,7 +604,7 @@ def create_test_name_tasks():
     ):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
-            "test-name",
+            "test-named",
             f"server-{version}",
             f"python-{python}",
             f"{topology}-{auth}-{ssl}",
@@ -607,7 +612,7 @@ def create_test_name_tasks():
         if python in PYPYS:
             tags.append("pypy")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
-        name = get_task_name("test", python=python, **expansions)
+        name = get_task_name("test-named", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
@@ -634,7 +639,7 @@ def create_standard_tasks():
         if python in PYPYS:
             tags.append("pypy")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
-        name = get_task_name("test", python=python, sync=sync, **expansions)
+        name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
@@ -681,26 +686,6 @@ def create_no_orchestration_tasks():
         test_func = FunctionCall(func="run tests", vars=test_vars)
         commands = [assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=commands))
-    return tasks
-
-
-def create_load_balancer_tasks():
-    tasks = []
-    for (auth, ssl), version in product(AUTH_SSLS, get_versions_from("6.0")):
-        name = get_task_name(f"test-load-balancer-{auth}-{ssl}", version=version)
-        tags = ["load-balancer", auth, ssl]
-        server_vars = dict(
-            TOPOLOGY="sharded_cluster",
-            AUTH=auth,
-            SSL=ssl,
-            TEST_NAME="load_balancer",
-            VERSION=version,
-        )
-        server_func = FunctionCall(func="run server", vars=server_vars)
-        test_vars = dict(AUTH=auth, SSL=ssl, TEST_NAME="load_balancer")
-        test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
-
     return tasks
 
 
