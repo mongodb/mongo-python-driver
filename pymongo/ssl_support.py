@@ -90,11 +90,11 @@ if HAVE_SSL:
     ) -> Union[_pyssl.SSLContext, _ssl.SSLContext]:  # type: ignore[name-defined]
         """Create and return an SSLContext object."""
         if is_sync and HAVE_PYSSL:
-            _ssl: types.ModuleType = _pyssl
+            ssl: types.ModuleType = _pyssl
         else:
-            _ssl = globals()["_ssl"]
+            ssl = _ssl
         verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
-        ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
+        ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
         if verify_mode != CERT_NONE:
             ctx.check_hostname = not allow_invalid_hostnames
         else:
@@ -106,20 +106,20 @@ if HAVE_SSL:
             # up to date versions of MongoDB 2.4 and above already disable
             # SSLv2 and SSLv3, python disables SSLv2 by default in >= 2.7.7
             # and >= 3.3.4 and SSLv3 in >= 3.4.3.
-            ctx.options |= _ssl.OP_NO_SSLv2
-            ctx.options |= _ssl.OP_NO_SSLv3
-            ctx.options |= _ssl.OP_NO_COMPRESSION
-            ctx.options |= _ssl.OP_NO_RENEGOTIATION
+            ctx.options |= ssl.OP_NO_SSLv2
+            ctx.options |= ssl.OP_NO_SSLv3
+            ctx.options |= ssl.OP_NO_COMPRESSION
+            ctx.options |= ssl.OP_NO_RENEGOTIATION
         if certfile is not None:
             try:
                 ctx.load_cert_chain(certfile, None, passphrase)
-            except _ssl.SSLError as exc:
+            except ssl.SSLError as exc:
                 raise ConfigurationError(f"Private key doesn't match certificate: {exc}") from None
         if crlfile is not None:
-            if _ssl.IS_PYOPENSSL:
+            if ssl.IS_PYOPENSSL:
                 raise ConfigurationError("tlsCRLFile cannot be used with PyOpenSSL")
             # Match the server's behavior.
-            ctx.verify_flags = getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0)
+            ctx.verify_flags = getattr(ssl, "VERIFY_CRL_CHECK_LEAF", 0)
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
