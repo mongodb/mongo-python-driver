@@ -1,66 +1,59 @@
 buildvariants:
   # Alternative hosts tests
-  - name: openssl-1.0.2-rhel7-v5.0-python3.9
+  - name: openssl-1.0.2-rhel7
     tasks:
-      - name: .other-hosts
-    display_name: OpenSSL 1.0.2 RHEL7 v5.0 Python3.9
+      - name: .standard .server-5.0
+    display_name: OpenSSL 1.0.2 RHEL7
     run_on:
       - rhel79-small
     batchtime: 10080
     expansions:
-      VERSION: "5.0"
-      PYTHON_VERSION: "3.9"
       PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: other-hosts-rhel9-fips-latest
+  - name: other-hosts-rhel9-fips
     tasks:
-      - name: .other-hosts
-    display_name: Other hosts RHEL9-FIPS latest
+      - name: .standard .server-latest
+    display_name: Other hosts RHEL9-FIPS
     run_on:
       - rhel92-fips
     batchtime: 10080
     expansions:
-      VERSION: latest
       NO_EXT: "1"
       REQUIRE_FIPS: "1"
-  - name: other-hosts-rhel8-zseries-latest
+  - name: other-hosts-rhel8-zseries
     tasks:
-      - name: .other-hosts
-    display_name: Other hosts RHEL8-zseries latest
+      - name: .standard .server-latest
+    display_name: Other hosts RHEL8-zseries
     run_on:
       - rhel8-zseries-small
     batchtime: 10080
     expansions:
-      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-rhel8-power8-latest
+  - name: other-hosts-rhel8-power8
     tasks:
-      - name: .other-hosts
-    display_name: Other hosts RHEL8-POWER8 latest
+      - name: .standard .server-latest
+    display_name: Other hosts RHEL8-POWER8
     run_on:
       - rhel8-power-small
     batchtime: 10080
     expansions:
-      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-rhel8-arm64-latest
+  - name: other-hosts-rhel8-arm64
     tasks:
-      - name: .other-hosts
-    display_name: Other hosts RHEL8-arm64 latest
+      - name: .standard .server-latest
+    display_name: Other hosts RHEL8-arm64
     run_on:
       - rhel82-arm64-small
     batchtime: 10080
     expansions:
-      VERSION: latest
       NO_EXT: "1"
-  - name: other-hosts-amazon2023-latest
+  - name: other-hosts-amazon2023
     tasks:
-      - name: .other-hosts
-    display_name: Other hosts Amazon2023 latest
+      - name: .standard .server-latest
+    display_name: Other hosts Amazon2023
     run_on:
       - amazon2023-arm64-latest-large-m8g
     batchtime: 10080
     expansions:
-      VERSION: latest
       NO_EXT: "1"
 
   # Atlas connect tests
@@ -120,7 +113,7 @@ buildvariants:
   # Compression tests
   - name: compression-snappy-rhel8
     tasks:
-      - name: .standard-linux
+      - name: .standard
     display_name: Compression snappy RHEL8
     run_on:
       - rhel87-small
@@ -128,7 +121,7 @@ buildvariants:
       COMPRESSOR: snappy
   - name: compression-zlib-rhel8
     tasks:
-      - name: .standard-linux
+      - name: .standard
     display_name: Compression zlib RHEL8
     run_on:
       - rhel87-small
@@ -136,7 +129,7 @@ buildvariants:
       COMPRESSOR: zlib
   - name: compression-zstd-rhel8
     tasks:
-      - name: .standard-linux !.server-4.0
+      - name: .standard !.server-4.0
     display_name: Compression zstd RHEL8
     run_on:
       - rhel87-small
@@ -167,7 +160,7 @@ buildvariants:
   # Doctests tests
   - name: doctests-rhel8
     tasks:
-      - name: .standard-linux .standalone-noauth-nossl
+      - name: .test-name .standalone-noauth-nossl
     display_name: Doctests RHEL8
     run_on:
       - rhel87-small
@@ -468,7 +461,7 @@ buildvariants:
   # Green framework tests
   - name: green-eventlet-rhel8
     tasks:
-      - name: .standard-linux .standalone-noauth-nossl .python-3.9
+      - name: .standard .standalone-noauth-nossl .python-3.9
     display_name: Green Eventlet RHEL8
     run_on:
       - rhel87-small
@@ -478,7 +471,7 @@ buildvariants:
       SSL: ssl
   - name: green-gevent-rhel8
     tasks:
-      - name: .standard-linux .standalone-noauth-nossl
+      - name: .standard .standalone-noauth-nossl
     display_name: Green Gevent RHEL8
     run_on:
       - rhel87-small
@@ -540,7 +533,7 @@ buildvariants:
   # No c ext tests
   - name: no-c-ext-rhel8
     tasks:
-      - name: .standard-linux
+      - name: .standard
     display_name: No C Ext RHEL8
     run_on:
       - rhel87-small
@@ -776,12 +769,12 @@ buildvariants:
   # Stable api tests
   - name: stable-api-require-v1-rhel8-auth
     tasks:
-      - name: .standard-linux !.replica_set-noauth-ssl .server-5.0
-      - name: .standard-linux !.replica_set-noauth-ssl .server-6.0
-      - name: .standard-linux !.replica_set-noauth-ssl .server-7.0
-      - name: .standard-linux !.replica_set-noauth-ssl .server-8.0
-      - name: .standard-linux !.replica_set-noauth-ssl .server-rapid
-      - name: .standard-linux !.replica_set-noauth-ssl .server-latest
+      - name: .standard !.replica_set-noauth-ssl .server-5.0
+      - name: .standard !.replica_set-noauth-ssl .server-6.0
+      - name: .standard !.replica_set-noauth-ssl .server-7.0
+      - name: .standard !.replica_set-noauth-ssl .server-8.0
+      - name: .standard !.replica_set-noauth-ssl .server-rapid
+      - name: .standard !.replica_set-noauth-ssl .server-latest
     display_name: Stable API require v1 RHEL8 Auth
     run_on:
       - rhel87-small
@@ -792,12 +785,12 @@ buildvariants:
     tags: [versionedApi_tag]
   - name: stable-api-accept-v2-rhel8-auth
     tasks:
-      - name: .standard-linux .server-5.0 .standalone-noauth-nossl
-      - name: .standard-linux .server-6.0 .standalone-noauth-nossl
-      - name: .standard-linux .server-7.0 .standalone-noauth-nossl
-      - name: .standard-linux .server-8.0 .standalone-noauth-nossl
-      - name: .standard-linux .server-rapid .standalone-noauth-nossl
-      - name: .standard-linux .server-latest .standalone-noauth-nossl
+      - name: .standard .server-5.0 .standalone-noauth-nossl
+      - name: .standard .server-6.0 .standalone-noauth-nossl
+      - name: .standard .server-7.0 .standalone-noauth-nossl
+      - name: .standard .server-8.0 .standalone-noauth-nossl
+      - name: .standard .server-rapid .standalone-noauth-nossl
+      - name: .standard .server-latest .standalone-noauth-nossl
     display_name: Stable API accept v2 RHEL8 Auth
     run_on:
       - rhel87-small
@@ -809,32 +802,32 @@ buildvariants:
   # Standard nonlinux tests
   - name: test-macos
     tasks:
-      - name: .standard-non-linux
+      - name: .standard !.pypy
     display_name: "* Test macOS"
     run_on:
       - macos-14
     tags: [standard-non-linux]
   - name: test-macos-arm64
     tasks:
-      - name: .standard-non-linux .server-6.0
-      - name: .standard-non-linux .server-7.0
-      - name: .standard-non-linux .server-8.0
-      - name: .standard-non-linux .server-rapid
-      - name: .standard-non-linux .server-latest
+      - name: .standard .server-6.0
+      - name: .standard .server-7.0
+      - name: .standard .server-8.0
+      - name: .standard .server-rapid
+      - name: .standard .server-latest
     display_name: "* Test macOS Arm64"
     run_on:
       - macos-14-arm64
     tags: [standard-non-linux]
   - name: test-win64
     tasks:
-      - name: .standard-non-linux
+      - name: .standard !.pypy
     display_name: "* Test Win64"
     run_on:
       - windows-64-vsMulti-small
     tags: [standard-non-linux]
   - name: test-win32
     tasks:
-      - name: .standard-non-linux
+      - name: .standard !.pypy
     display_name: "* Test Win32"
     run_on:
       - windows-64-vsMulti-small
@@ -845,7 +838,7 @@ buildvariants:
   # Storage engine tests
   - name: storage-inmemory-rhel8
     tasks:
-      - name: .standard-linux .standalone-noauth-nossl
+      - name: .standard .standalone-noauth-nossl
     display_name: Storage InMemory RHEL8
     run_on:
       - rhel87-small
@@ -853,7 +846,7 @@ buildvariants:
       STORAGE_ENGINE: inmemory
   - name: storage-mmapv1-rhel8
     tasks:
-      - name: .standard-linux !.sharded_cluster-auth-ssl .server-4.0
+      - name: .standard !.sharded_cluster-auth-ssl .server-4.0
     display_name: Storage MMAPv1 RHEL8
     run_on:
       - rhel87-small
