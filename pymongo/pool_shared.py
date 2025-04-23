@@ -40,6 +40,7 @@ from pymongo.network_layer import AsyncNetworkingInterface, NetworkingInterface,
 from pymongo.pool_options import PoolOptions
 from pymongo.ssl_support import HAS_SNI, PYSSLError, SSLError
 
+SSLErrors = (PYSSLError, SSLError)
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
@@ -138,7 +139,7 @@ def _raise_connection_failure(
         msg += format_timeout_details(timeout_details)
     if isinstance(error, socket.timeout):
         raise NetworkTimeout(msg) from error
-    elif isinstance(error, (SSLError, PYSSLError)) and "timed out" in str(error):
+    elif isinstance(error, SSLErrors) and "timed out" in str(error):
         # Eventlet does not distinguish TLS network timeouts from other
         # SSLErrors (https://github.com/eventlet/eventlet/issues/692).
         # Luckily, we can work around this limitation because the phrase
@@ -293,7 +294,7 @@ async def _async_configured_socket(
         # Raise _CertificateError directly like we do after match_hostname
         # below.
         raise
-    except (OSError, SSLError, PYSSLError) as exc:
+    except (OSError, *SSLErrors) as exc:
         sock.close()
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
@@ -349,7 +350,7 @@ async def _configured_protocol_interface(
         # Raise _CertificateError directly like we do after match_hostname
         # below.
         raise
-    except (OSError, SSLError, PYSSLError) as exc:
+    except (OSError, *SSLErrors) as exc:
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
@@ -467,7 +468,7 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
         # Raise _CertificateError directly like we do after match_hostname
         # below.
         raise
-    except (OSError, SSLError, PYSSLError) as exc:
+    except (OSError, *SSLErrors) as exc:
         sock.close()
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
@@ -516,7 +517,7 @@ def _configured_socket_interface(address: _Address, options: PoolOptions) -> Net
         # Raise _CertificateError directly like we do after match_hostname
         # below.
         raise
-    except (OSError, SSLError, PYSSLError) as exc:
+    except (OSError, *SSLErrors) as exc:
         sock.close()
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
