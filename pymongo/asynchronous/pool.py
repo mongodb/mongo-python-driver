@@ -638,7 +638,7 @@ class AsyncConnection:
             reason = ConnectionClosedReason.ERROR
         await self.close_conn(reason)
         # SSLError from PyOpenSSL inherits directly from Exception.
-        if isinstance(error, (IOError, OSError, SSLError, PYSSLError)):
+        if isinstance(error, (IOError, OSError, *SSLErrors)):
             details = _get_timeout_details(self.opts)
             _raise_connection_failure(self.address, error, timeout_details=details)
         else:
