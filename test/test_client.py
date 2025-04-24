@@ -825,7 +825,7 @@ class TestClient(IntegrationTest):
         with self.assertRaises(ConnectionFailure):
             c.pymongo_test.test.find_one()
 
-    @client_context.require_no_standalone
+    @client_context.require_replica_set
     @client_context.require_no_load_balancer
     @client_context.require_tls
     def test_init_disconnected_with_srv(self):

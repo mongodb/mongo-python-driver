@@ -20,9 +20,14 @@ import os
 import socketserver
 import sys
 import threading
+import time
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
 from test.asynchronous.helpers import ConcurrentRunner
+
+from pymongo.asynchronous.pool import AsyncConnection
+from pymongo.operations import _Op
+from pymongo.server_selectors import writable_server_selector
 
 sys.path[0:0] = [""]
 
@@ -369,6 +374,74 @@ class TestPoolManagement(AsyncIntegrationTest):
             await listener.async_wait_for_event(monitoring.PoolClearedEvent, 1)
             await listener.async_wait_for_event(monitoring.ServerHeartbeatSucceededEvent, 1)
             await listener.async_wait_for_event(monitoring.PoolReadyEvent, 1)
+
+    @async_client_context.require_failCommand_appName
+    @async_client_context.require_test_commands
+    @async_client_context.require_async
+    async def test_connection_close_does_not_block_other_operations(self):
+        listener = CMAPHeartbeatListener()
+        client = await self.async_single_client(
+            appName="SDAMConnectionCloseTest",
+            event_listeners=[listener],
+            heartbeatFrequencyMS=500,
+            minPoolSize=10,
+        )
+        server = await (await client._get_topology()).select_server(
+            writable_server_selector, _Op.TEST
+        )
+        await async_wait_until(
+            lambda: len(server._pool.conns) == 10,
+            "pool initialized with 10 connections",
+        )
+
+        await client.db.test.insert_one({"x": 1})
+        close_delay = 0.1
+        latencies = []
+        should_exit = []
+
+        async def run_task():
+            while True:
+                start_time = time.monotonic()
+                await client.db.test.find_one({})
+                elapsed = time.monotonic() - start_time
+                latencies.append(elapsed)
+                if should_exit:
+                    break
+                await asyncio.sleep(0.001)
+
+        task = ConcurrentRunner(target=run_task)
+        await task.start()
+        original_close = AsyncConnection.close_conn
+        try:
+            # Artificially delay the close operation to simulate a slow close
+            async def mock_close(self, reason):
+                await asyncio.sleep(close_delay)
+                await original_close(self, reason)
+
+            AsyncConnection.close_conn = mock_close
+
+            fail_hello = {
+                "mode": {"times": 4},
+                "data": {
+                    "failCommands": [HelloCompat.LEGACY_CMD, "hello"],
+                    "errorCode": 91,
+                    "appName": "SDAMConnectionCloseTest",
+                },
+            }
+            async with self.fail_point(fail_hello):
+                # Wait for server heartbeat to fail
+                await listener.async_wait_for_event(monitoring.ServerHeartbeatFailedEvent, 1)
+            # Wait until all idle connections are closed to simulate real-world conditions
+            await listener.async_wait_for_event(monitoring.ConnectionClosedEvent, 10)
+            # Wait for one more find to complete after the pool has been reset, then shutdown the task
+            n = len(latencies)
+            await async_wait_until(lambda: len(latencies) >= n + 1, "run one more find")
+            should_exit.append(True)
+            await task.join()
+            # No operation latency should not significantly exceed close_delay
+            self.assertLessEqual(max(latencies), close_delay * 5.0)
+        finally:
+            AsyncConnection.close_conn = original_close
 
 
 class TestServerMonitoringMode(AsyncIntegrationTest):
