@@ -398,6 +398,7 @@ class _Encrypter:
             encrypted_fields_map = _dict_to_bson(opts._encrypted_fields_map, False, _DATA_KEY_OPTS)
         self._bypass_auto_encryption = opts._bypass_auto_encryption
         self._internal_client = None
+        # parsing kms_ssl_contexts here so that parsing errors will be raised before internal clients are created
         opts._kms_ssl_contexts(_IS_SYNC)
 
         def _get_internal_client(
