@@ -166,11 +166,12 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
         )
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    def test_init_kms_tls_options(self):
+    async def test_init_kms_tls_options(self):
         # Error cases:
         opts = AutoEncryptionOpts({}, "k.d", kms_tls_options={"kmip": 1})
         with self.assertRaisesRegex(TypeError, r'kms_tls_options\["kmip"\] must be a dict'):
-            self.async_rs_or_single_client(auto_encryption_opts=opts)
+            client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
+            await client.db.coll.insert_one({"encrypted": "test"})
 
         tls_opts: Any
         for tls_opts in [
@@ -180,12 +181,14 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
         ]:
             opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts)
             with self.assertRaisesRegex(ConfigurationError, "Insecure TLS options prohibited"):
-                self.async_rs_or_single_client(auto_encryption_opts=opts)
+                client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
+                await client.db.coll.insert_one({"encrypted": "test"})
         opts = AutoEncryptionOpts(
             {}, "k.d", kms_tls_options={"kmip": {"tlsCAFile": "does-not-exist"}}
         )
         with self.assertRaises(FileNotFoundError):
-            self.async_rs_or_single_client(auto_encryption_opts=opts)
+            client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
+            await client.db.coll.insert_one({"encrypted": "test"})
         # Success cases:
         tls_opts: Any
         for tls_opts in [None, {}]:
