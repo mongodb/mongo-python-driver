@@ -18,6 +18,8 @@ Version 4.12.1 is a bug fix release.
   Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
 - Fixed a bug where MongoDB cluster topology changes could cause asynchronous operations to take much longer to complete
   due to holding the Topology lock while closing stale connections.
+- Fixed a bug that would cause AsyncMongoClient to attempt to use PyOpenSSL when available, resulting in errors such as
+  "pymongo.errors.ServerSelectionTimeoutError: 'SSLContext' object has no attribute 'wrap_bio'".
 
 Issues Resolved
 ...............
