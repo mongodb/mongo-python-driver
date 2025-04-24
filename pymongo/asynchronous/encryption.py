@@ -157,7 +157,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         self.mongocryptd_client = mongocryptd_client
         self.opts = opts
         self._spawned = False
-        self._kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
+        self._kms_ssl_contexts = opts._kms_ssl_contexts(_IS_SYNC)
 
     async def kms_request(self, kms_context: MongoCryptKmsContext) -> None:
         """Complete a KMS request.
@@ -398,6 +398,7 @@ class _Encrypter:
             encrypted_fields_map = _dict_to_bson(opts._encrypted_fields_map, False, _DATA_KEY_OPTS)
         self._bypass_auto_encryption = opts._bypass_auto_encryption
         self._internal_client = None
+        opts._kms_ssl_contexts(_IS_SYNC)
 
         def _get_internal_client(
             encrypter: _Encrypter, mongo_client: AsyncMongoClient[_DocumentTypeArg]

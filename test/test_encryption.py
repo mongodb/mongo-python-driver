@@ -170,8 +170,7 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         # Error cases:
         opts = AutoEncryptionOpts({}, "k.d", kms_tls_options={"kmip": 1})
         with self.assertRaisesRegex(TypeError, r'kms_tls_options\["kmip"\] must be a dict'):
-            client = MongoClient(auto_encryption_opts=opts)
-            client.close()
+            MongoClient(auto_encryption_opts=opts)
 
         tls_opts: Any
         for tls_opts in [
@@ -181,14 +180,12 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         ]:
             opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts)
             with self.assertRaisesRegex(ConfigurationError, "Insecure TLS options prohibited"):
-                client = MongoClient(auto_encryption_opts=opts)
-                client.close()
+                MongoClient(auto_encryption_opts=opts)
         opts = AutoEncryptionOpts(
             {}, "k.d", kms_tls_options={"kmip": {"tlsCAFile": "does-not-exist"}}
         )
         with self.assertRaises(FileNotFoundError):
-            client = MongoClient(auto_encryption_opts=opts)
-            client.close()
+            MongoClient(auto_encryption_opts=opts)
         # Success cases:
         tls_opts: Any
         for tls_opts in [None, {}]:
