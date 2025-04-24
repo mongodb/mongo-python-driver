@@ -43,7 +43,7 @@ from urllib.parse import quote_plus
 from pymongo import MongoClient, ssl_support
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from pymongo.hello import HelloCompat
-from pymongo.ssl_support import HAVE_SSL, _ssl, get_ssl_context
+from pymongo.ssl_support import HAVE_PYSSL, HAVE_SSL, _ssl, get_ssl_context
 from pymongo.write_concern import WriteConcern
 
 _HAVE_PYOPENSSL = False
@@ -134,7 +134,7 @@ class TestClientSSL(PyMongoTestCase):
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_use_pyopenssl_when_available(self):
-        self.assertTrue(_ssl.IS_PYOPENSSL)
+        self.assertTrue(HAVE_PYSSL)
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "Cannot test without PyOpenSSL")
     def test_load_trusted_ca_certs(self):
@@ -177,7 +177,7 @@ class TestSSL(IntegrationTest):
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
-        if not hasattr(ssl, "SSLContext") and not _ssl.IS_PYOPENSSL:
+        if not hasattr(ssl, "SSLContext") and not HAVE_PYSSL:
             self.assertRaises(
                 ConfigurationError,
                 self.simple_client,
@@ -309,13 +309,13 @@ class TestSSL(IntegrationTest):
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
-        ctx = get_ssl_context(None, None, None, None, True, True, False)
+        ctx = get_ssl_context(None, None, None, None, True, True, False, _IS_SYNC)
         self.assertFalse(ctx.check_hostname)
-        ctx = get_ssl_context(None, None, None, None, True, False, False)
+        ctx = get_ssl_context(None, None, None, None, True, False, False, _IS_SYNC)
         self.assertFalse(ctx.check_hostname)
-        ctx = get_ssl_context(None, None, None, None, False, True, False)
+        ctx = get_ssl_context(None, None, None, None, False, True, False, _IS_SYNC)
         self.assertFalse(ctx.check_hostname)
-        ctx = get_ssl_context(None, None, None, None, False, False, False)
+        ctx = get_ssl_context(None, None, None, None, False, False, False, _IS_SYNC)
         self.assertTrue(ctx.check_hostname)
 
         response = self.client.admin.command(HelloCompat.LEGACY_CMD)
@@ -376,9 +376,11 @@ class TestSSL(IntegrationTest):
             )
 
     @client_context.require_tlsCertificateKeyFile
+    @client_context.require_sync
+    @client_context.require_no_api_version
     @ignore_deprecations
     def test_tlsCRLFile_support(self):
-        if not hasattr(ssl, "VERIFY_CRL_CHECK_LEAF") or _ssl.IS_PYOPENSSL:
+        if not hasattr(ssl, "VERIFY_CRL_CHECK_LEAF") or HAVE_PYSSL:
             self.assertRaises(
                 ConfigurationError,
                 self.simple_client,
@@ -469,7 +471,7 @@ class TestSSL(IntegrationTest):
         )
 
     def test_system_certs_config_error(self):
-        ctx = get_ssl_context(None, None, None, None, True, True, False)
+        ctx = get_ssl_context(None, None, None, None, True, True, False, _IS_SYNC)
         if (sys.platform != "win32" and hasattr(ctx, "set_default_verify_paths")) or hasattr(
             ctx, "load_default_certs"
         ):
@@ -500,11 +502,11 @@ class TestSSL(IntegrationTest):
         # Force the test on Windows, regardless of environment.
         ssl_support.HAVE_WINCERTSTORE = False
         try:
-            ctx = get_ssl_context(None, None, CA_PEM, None, False, False, False)
+            ctx = get_ssl_context(None, None, CA_PEM, None, False, False, False, _IS_SYNC)
             ssl_sock = ctx.wrap_socket(socket.socket())
             self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-            ctx = get_ssl_context(None, None, None, None, False, False, False)
+            ctx = get_ssl_context(None, None, None, None, False, False, False, _IS_SYNC)
             ssl_sock = ctx.wrap_socket(socket.socket())
             self.assertEqual(ssl_sock.ca_certs, ssl_support.certifi.where())
         finally:
@@ -521,11 +523,11 @@ class TestSSL(IntegrationTest):
         if not ssl_support.HAVE_WINCERTSTORE:
             raise SkipTest("Need wincertstore to test wincertstore.")
 
-        ctx = get_ssl_context(None, None, CA_PEM, None, False, False, False)
+        ctx = get_ssl_context(None, None, CA_PEM, None, False, False, False, _IS_SYNC)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-        ctx = get_ssl_context(None, None, None, None, False, False, False)
+        ctx = get_ssl_context(None, None, None, None, False, False, False, _IS_SYNC)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, ssl_support._WINCERTS.name)
 
@@ -656,6 +658,14 @@ class TestSSL(IntegrationTest):
             "localhost", tls=True, tlsCertificateKeyFile=CLIENT_PEM, tlsCAFile=temp_ca_bundle
         ) as client:
             self.assertTrue(client.admin.command("ping"))
+
+    @client_context.require_async
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
+    @unittest.skipUnless(HAVE_SSL, "The ssl module is not available.")
+    def test_pyopenssl_ignored_in_async(self):
+        client = MongoClient("mongodb://localhost:27017?tls=true&tlsAllowInvalidCertificates=true")
+        client.admin.command("ping")  # command doesn't matter, just needs it to connect
+        client.close()
 
 
 if __name__ == "__main__":

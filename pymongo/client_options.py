@@ -84,7 +84,9 @@ def _parse_read_concern(options: Mapping[str, Any]) -> ReadConcern:
     return ReadConcern(concern)
 
 
-def _parse_ssl_options(options: Mapping[str, Any]) -> tuple[Optional[SSLContext], bool]:
+def _parse_ssl_options(
+    options: Mapping[str, Any], is_sync: bool
+) -> tuple[Optional[SSLContext], bool]:
     """Parse ssl options."""
     use_tls = options.get("tls")
     if use_tls is not None:
@@ -138,6 +140,7 @@ def _parse_ssl_options(options: Mapping[str, Any]) -> tuple[Optional[SSLContext]
             allow_invalid_certificates,
             allow_invalid_hostnames,
             disable_ocsp_endpoint_check,
+            is_sync,
         )
         return ctx, allow_invalid_hostnames
     return None, allow_invalid_hostnames
@@ -167,7 +170,7 @@ def _parse_pool_options(
     compression_settings = CompressionSettings(
         options.get("compressors", []), options.get("zlibcompressionlevel", -1)
     )
-    ssl_context, tls_allow_invalid_hostnames = _parse_ssl_options(options)
+    ssl_context, tls_allow_invalid_hostnames = _parse_ssl_options(options, is_sync)
     load_balanced = options.get("loadbalanced")
     max_connecting = options.get("maxconnecting", common.MAX_CONNECTING)
     return PoolOptions(

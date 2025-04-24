@@ -26,7 +26,7 @@ import pytest
 sys.path[0:0] = [""]
 
 import pymongo
-from pymongo.ssl_support import HAS_SNI
+from pymongo.ssl_support import _has_sni
 
 pytestmark = pytest.mark.atlas_connect
 
@@ -57,7 +57,7 @@ class TestAtlasConnect(PyMongoTestCase):
         # No auth error
         client.test.test.count_documents({})
 
-    @unittest.skipUnless(HAS_SNI, "Free tier requires SNI support")
+    @unittest.skipUnless(_has_sni(True), "Free tier requires SNI support")
     def test_free_tier(self):
         self.connect(URIS["ATLAS_FREE"])
 
@@ -80,7 +80,7 @@ class TestAtlasConnect(PyMongoTestCase):
         self.connect(uri)
         self.assertIn("mongodb+srv://", uri)
 
-    @unittest.skipUnless(HAS_SNI, "Free tier requires SNI support")
+    @unittest.skipUnless(_has_sni(True), "Free tier requires SNI support")
     def test_srv_free_tier(self):
         self.connect_srv(URIS["ATLAS_SRV_FREE"])
 
