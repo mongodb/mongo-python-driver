@@ -67,7 +67,7 @@ _UNPACK_HEADER = struct.Struct("<iiii").unpack
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 _POLL_TIMEOUT = 0.5
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
-BLOCKING_IO_ERRORS = (BlockingIOError, BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
+BLOCKING_IO_ERRORS = (BlockingIOError, *BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
 
 
 # These socket-based I/O methods are for KMS requests and any other network operations that do not use

@@ -57,17 +57,16 @@ if HAVE_SSL:
     if HAVE_PYSSL:
         PYSSLError: Any = _pyssl.SSLError
         BLOCKING_IO_ERRORS: tuple = _ssl.BLOCKING_IO_ERRORS + _pyssl.BLOCKING_IO_ERRORS
-        BLOCKING_IO_READ_ERROR: Any = Union[
-            _pyssl.BLOCKING_IO_READ_ERROR, _ssl.BLOCKING_IO_READ_ERROR
-        ]
-        BLOCKING_IO_WRITE_ERROR: Any = Union[
-            _pyssl.BLOCKING_IO_WRITE_ERROR, _ssl.BLOCKING_IO_WRITE_ERROR
-        ]
+        BLOCKING_IO_READ_ERROR: tuple = (_pyssl.BLOCKING_IO_READ_ERROR, _ssl.BLOCKING_IO_READ_ERROR)
+        BLOCKING_IO_WRITE_ERROR: tuple = (
+            _pyssl.BLOCKING_IO_WRITE_ERROR,
+            _ssl.BLOCKING_IO_WRITE_ERROR,
+        )
     else:
         PYSSLError = _ssl.SSLError
         BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
-        BLOCKING_IO_READ_ERROR = _ssl.BLOCKING_IO_READ_ERROR
-        BLOCKING_IO_WRITE_ERROR = _ssl.BLOCKING_IO_WRITE_ERROR
+        BLOCKING_IO_READ_ERROR = (_ssl.BLOCKING_IO_READ_ERROR,)
+        BLOCKING_IO_WRITE_ERROR = (_ssl.BLOCKING_IO_WRITE_ERROR,)
     SSLError = _ssl.SSLError
     BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
