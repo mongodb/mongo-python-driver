@@ -288,7 +288,8 @@ def process_files(
                 if file in docstring_translate_files:
                     lines = translate_docstrings(lines)
                 if file in sync_test_files:
-                    translate_imports(lines)
+                    lines = translate_imports(lines)
+                lines = process_ignores(lines)
                 f.seek(0)
                 f.writelines(lines)
                 f.truncate()
@@ -388,6 +389,14 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                 lines[i + 1] = "DOCSTRING_REMOVED"
 
     return [line for line in lines if line != "DOCSTRING_REMOVED"]
+
+
+def process_ignores(lines: list[str]) -> list[str]:
+    for i in range(len(lines)):
+        for k, v in replacements.items():
+            if "unasync: off" in lines[i] and v in lines[i]:
+                lines[i] = lines[i].replace(v, k)
+    return lines
 
 
 def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[str, str]) -> None:

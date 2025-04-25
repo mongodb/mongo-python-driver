@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping, Optional
 
+from pymongo.uri_parser_shared import _parse_kms_tls_options
+
 try:
     import pymongocrypt  # type:ignore[import-untyped] # noqa: F401
 
@@ -32,9 +34,9 @@ except ImportError:
 from bson import int64
 from pymongo.common import validate_is_mapping
 from pymongo.errors import ConfigurationError
-from pymongo.uri_parser_shared import _parse_kms_tls_options
 
 if TYPE_CHECKING:
+    from pymongo.pyopenssl_context import SSLContext
     from pymongo.typings import _AgnosticMongoClient, _DocumentTypeArg
 
 
@@ -236,9 +238,21 @@ class AutoEncryptionOpts:
         if not any("idleShutdownTimeoutSecs" in s for s in self._mongocryptd_spawn_args):
             self._mongocryptd_spawn_args.append("--idleShutdownTimeoutSecs=60")
         # Maps KMS provider name to a SSLContext.
-        self._kms_ssl_contexts = _parse_kms_tls_options(kms_tls_options)
+        self._kms_tls_options = kms_tls_options
+        self._sync_kms_ssl_contexts: Optional[dict[str, SSLContext]] = None
+        self._async_kms_ssl_contexts: Optional[dict[str, SSLContext]] = None
         self._bypass_query_analysis = bypass_query_analysis
         self._key_expiration_ms = key_expiration_ms
+
+    def _kms_ssl_contexts(self, is_sync: bool) -> dict[str, SSLContext]:
+        if is_sync:
+            if self._sync_kms_ssl_contexts is None:
+                self._sync_kms_ssl_contexts = _parse_kms_tls_options(self._kms_tls_options, True)
+            return self._sync_kms_ssl_contexts
+        else:
+            if self._async_kms_ssl_contexts is None:
+                self._async_kms_ssl_contexts = _parse_kms_tls_options(self._kms_tls_options, False)
+            return self._async_kms_ssl_contexts
 
 
 class RangeOpts:
