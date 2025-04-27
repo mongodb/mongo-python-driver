@@ -5,7 +5,7 @@ set -eu
 HERE=$(dirname ${BASH_SOURCE:-$0})
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
 
-echo "before PATH=$PATH_EXT"
+echo "before PATH=$PATH"
 
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
