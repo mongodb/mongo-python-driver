@@ -5,18 +5,10 @@ set -eu
 HERE=$(dirname ${BASH_SOURCE:-$0})
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
 
-echo "before PATH=$PATH"
-
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
-
-echo "after PATH=$PATH"
-echo "PYMONGO_BIN_DIR=$PYMONGO_BIN_DIR"
-exit 1
-_BIN_DIR=${PYMONGO_BIN_DIR:-$HOME/.local/bin}
-export PATH="$PATH:${_BIN_DIR}"
 
 # Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
@@ -42,9 +34,8 @@ function _pip_install() {
   echo "Installing $2 using pip... done."
 }
 
-
 # Ensure just is installed.
-if ! command -v just >/dev/null 2>&1; then
+if ! command -v just &>/dev/null; then
   # On most systems we can install directly.
   _TARGET=""
   if [ "Windows_NT" = "${OS:-}" ]; then
@@ -58,8 +49,8 @@ if ! command -v just >/dev/null 2>&1; then
   echo "Installing just... done."
 fi
 
-# Install uv.
-if ! command -v uv >/dev/null 2>&1; then
+# Ensure uv is installed.
+if ! command -v uv &>/dev/null; then
   echo "Installing uv..."
   # On most systems we can install directly.
   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
