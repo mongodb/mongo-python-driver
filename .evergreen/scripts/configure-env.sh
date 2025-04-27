@@ -93,6 +93,12 @@ EOT
 
 # If the toolchain is available, symlink binaries to the bin dir.  This has to be done
 # after drivers-tools is cloned, since we might be using its binary dir.
+set -x
+ls /Library/Frameworks/Python.Framework/Versions/
+ls /Library/Frameworks/Python.Framework/Versions/Current
+ls /Library/Frameworks/Python.Framework/Versions/Current/bin
+exit 1
+
 _bin_path=""
 if [ "Windows_NT" == "${OS:-}" ]; then
   _bin_path="/cygdrive/c/Python/Current/Scripts"
