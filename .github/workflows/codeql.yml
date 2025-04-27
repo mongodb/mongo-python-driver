@@ -54,7 +54,6 @@ jobs:
         queries: security-extended
         config: |
           paths-ignore:
-            - '.github/**'
             - 'doc/**'
             - 'tools/**'
             - 'test/**'
