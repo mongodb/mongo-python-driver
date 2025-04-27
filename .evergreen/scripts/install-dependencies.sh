@@ -25,12 +25,12 @@ function _pip_install() {
   if [ "Windows_NT" = "${OS:-}" ]; then
     _suffix=".exe"
   fi
-  ln -s "$(which $2)" $_BIN_DIR/${2}${_suffix}
+  ln -s "$(which $2)" $PYMONGO_BIN_DIR/${2}${_suffix}
   # uv also comes with a uvx binary.
   if [ $2 == "uv" ]; then
-    ln -s "$(which uvx)" $_BIN_DIR/uvx${_suffix}
+    ln -s "$(which uvx)" $PYMONGO_BIN_DIR/uvx${_suffix}
   fi
-  echo "Installed to ${_BIN_DIR}"
+  echo "Installed to ${PYMONGO_BIN_DIR}"
   echo "Installing $2 using pip... done."
 }
 
