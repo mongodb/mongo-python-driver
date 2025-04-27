@@ -93,16 +93,10 @@ EOT
 
 # If the toolchain is available, symlink binaries to the bin dir.  This has to be done
 # after drivers-tools is cloned, since we might be using its binary dir.
-set -x
-ls /Library/Frameworks/Python.Framework/Versions/
-ls /Library/Frameworks/Python.Framework/Versions/Current
-ls /Library/Frameworks/Python.Framework/Versions/Current/bin
-exit 1
-
 _bin_path=""
 if [ "Windows_NT" == "${OS:-}" ]; then
   _bin_path="/cygdrive/c/Python/Current/Scripts"
-elif [ "$(uname -s)" != "Darwin" ]; then
+elif [ "$(uname -s)" == "Darwin" ]; then
   _bin_path="/Library/Frameworks/Python.Framework/Versions/Current/bin"
 else
   _bin_path="/opt/python/Current/bin"
@@ -113,7 +107,6 @@ if [ -d "${_bin_path}" ]; then
     _suffix=".exe"
   fi
   echo "Symlinking binaries from toolchain"
-  echo "PATH_EXT=$PATH_EXT"
   mkdir -p $PYMONGO_BIN_DIR
   ln -s ${_bin_path}/just${_suffix} $PYMONGO_BIN_DIR/just${_suffix}
   ln -s ${_bin_path}/uv${_suffix} $PYMONGO_BIN_DIR/uv${_suffix}
