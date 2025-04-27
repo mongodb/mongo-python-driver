@@ -106,6 +106,8 @@ if [ -d "${_bin_path}" ]; then
   if [ "Windows_NT" == "${OS:-}" ]; then
     _suffix=".exe"
   fi
+  echo "Symlinking binaries from toolchain"
+  echo "PATH_EXT=$PATH_EXT"
   mkdir -p $PYMONGO_BIN_DIR
   ln -s ${_bin_path}/just${_suffix} $PYMONGO_BIN_DIR/just${_suffix}
   ln -s ${_bin_path}/uv${_suffix} $PYMONGO_BIN_DIR/uv${_suffix}

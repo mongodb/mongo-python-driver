@@ -10,6 +10,10 @@ if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
+echo "PATH_EXT=$PATH_EXT"
+echo "PATH=$PATH"
+echo "PYMONGO_BIN_DIR=$PYMONGO_BIN_DIR"
+exit 1
 _BIN_DIR=${PYMONGO_BIN_DIR:-$HOME/.local/bin}
 export PATH="$PATH:${_BIN_DIR}"
 
