@@ -5,13 +5,14 @@ set -eu
 HERE=$(dirname ${BASH_SOURCE:-$0})
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
 
+echo "before PATH=$PATH_EXT"
+
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
-echo "PATH_EXT=$PATH_EXT"
-echo "PATH=$PATH"
+echo "after PATH=$PATH"
 echo "PYMONGO_BIN_DIR=$PYMONGO_BIN_DIR"
 exit 1
 _BIN_DIR=${PYMONGO_BIN_DIR:-$HOME/.local/bin}
