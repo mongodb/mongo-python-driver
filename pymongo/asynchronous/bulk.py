@@ -258,7 +258,7 @@ class _AsyncBulk:
                 yield run
                 run = _Run(op_type)
             run.add(idx, operation)
-            self.is_retryable = self.is_retryable and retryable
+            run.is_retryable = run.is_retryable and retryable
         if run is None:
             raise InvalidOperation("No operations to execute")
         yield run
@@ -276,7 +276,7 @@ class _AsyncBulk:
             retryable = process(request)
             (op_type, operation) = self.ops[idx]
             operations[op_type].add(idx, operation)
-            self.is_retryable = self.is_retryable and retryable
+            operations[op_type].is_retryable = operations[op_type].is_retryable and retryable
         if (
             len(operations[_INSERT].ops) == 0
             and len(operations[_UPDATE].ops) == 0
@@ -517,6 +517,7 @@ class _AsyncBulk:
         session: Optional[AsyncClientSession],
         conn: AsyncConnection,
         op_id: int,
+        retryable: bool,
         full_result: MutableMapping[str, Any],
         validate: bool,
         final_write_concern: Optional[WriteConcern] = None,
@@ -536,6 +537,9 @@ class _AsyncBulk:
         last_run = False
 
         while run:
+            self.is_retryable = run.is_retryable
+            self.retrying = run.retrying
+            self.started_retryable_write = run.started_retryable_write
             if not self.retrying:
                 self.next_run = next(generator, None)
                 if self.next_run is None:
@@ -570,10 +574,13 @@ class _AsyncBulk:
                 if session:
                     # Start a new retryable write unless one was already
                     # started for this command.
-                    if self.is_retryable and not self.started_retryable_write:
+                    if retryable and self.is_retryable and not self.started_retryable_write:
+                        # print("starting retrayable write")
                         session._start_retryable_write()
                         self.started_retryable_write = True
-                    session._apply_to(cmd, self.is_retryable, ReadPreference.PRIMARY, conn)
+                    session._apply_to(
+                        cmd, retryable and self.is_retryable, ReadPreference.PRIMARY, conn
+                    )
                 conn.send_cluster_time(cmd, session, client)
                 conn.add_server_api(cmd)
                 # CSOT: apply timeout before encoding the command.
@@ -593,12 +600,10 @@ class _AsyncBulk:
                         full = copy.deepcopy(full_result)
                         _merge_command(run, full, run.idx_offset, result)
                         _raise_bulk_write_error(full)
-
                     _merge_command(run, full_result, run.idx_offset, result)
-
                     # We're no longer in a retry once a command succeeds.
-                    run.retrying = False
-                    run.started_retryable_write = False
+                    self.retrying = False
+                    self.started_retryable_write = False
 
                     if self.ordered and "writeErrors" in result:
                         break
@@ -636,8 +641,7 @@ class _AsyncBulk:
         op_id = _randint()
 
         async def retryable_bulk(
-            session: Optional[AsyncClientSession],
-            conn: AsyncConnection,
+            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable: bool
         ) -> None:
             await self._execute_command(
                 generator,
@@ -645,18 +649,21 @@ class _AsyncBulk:
                 session,
                 conn,
                 op_id,
+                retryable,
                 full_result,
                 validate=False,
             )
 
         client = self.collection.database.client
         _ = await client._retryable_write(
+            self.is_retryable,
             retryable_bulk,
             session,
             operation,
             bulk=self,  # type: ignore[arg-type]
             operation_id=op_id,
         )
+
         if full_result["writeErrors"] or full_result["writeConcernErrors"]:
             _raise_bulk_write_error(full_result)
         return full_result
@@ -730,6 +737,7 @@ class _AsyncBulk:
                 None,
                 conn,
                 op_id,
+                False,
                 full_result,
                 True,
                 write_concern,

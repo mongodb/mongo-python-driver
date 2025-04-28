@@ -785,7 +785,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         write_concern = self._write_concern_for(session)
 
-        def process_for_bulk(request: _WriteOp) -> bool:
+        def process_for_bulk(request: Union[_DocumentType, RawBSONDocument, _WriteOp]) -> bool:
             try:
                 return request._add_to_bulk(blk)
             except AttributeError:
@@ -810,15 +810,17 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> Any:
         """Internal helper for inserting a single document."""
         write_concern = write_concern or self.write_concern
+        acknowledged = write_concern.acknowledged
         command = {"insert": self.name, "ordered": ordered, "documents": [doc]}
         if comment is not None:
             command["comment"] = comment
 
         async def _insert_command(
-            session: Optional[AsyncClientSession], conn: AsyncConnection
+            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable_write: bool
         ) -> None:
             if bypass_doc_val is not None:
                 command["bypassDocumentValidation"] = bypass_doc_val
+
             result = await conn.command(
                 self._database.name,
                 command,
@@ -826,11 +828,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 codec_options=self._write_response_codec_options,
                 session=session,
                 client=self._database.client,
+                retryable_write=retryable_write,
             )
 
             _check_write_command_response(result)
 
-        await self._database.client._retryable_write(_insert_command, session, operation=_Op.INSERT)
+        await self._database.client._retryable_write(
+            acknowledged, _insert_command, session, operation=_Op.INSERT
+        )
 
         if not isinstance(doc, RawBSONDocument):
             return doc.get("_id")
@@ -959,7 +964,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             raise TypeError("documents must be a non-empty list")
         inserted_ids: list[ObjectId] = []
 
-        def process_for_bulk(document: Union[_DocumentType, RawBSONDocument]) -> bool:
+        def process_for_bulk(document: Union[_DocumentType, RawBSONDocument, _WriteOp]) -> bool:
             """A generator that validates documents and handles _ids."""
             common.validate_is_document_type("document", document)
             if not isinstance(document, RawBSONDocument):
@@ -989,6 +994,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[AsyncClientSession] = None,
+        retryable_write: bool = False,
         let: Optional[Mapping[str, Any]] = None,
         sort: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
@@ -1051,6 +1057,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 codec_options=self._write_response_codec_options,
                 session=session,
                 client=self._database.client,
+                retryable_write=retryable_write,
             )
         ).copy()
         _check_write_command_response(result)
@@ -1090,7 +1097,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """Internal update / replace helper."""
 
         async def _update(
-            session: Optional[AsyncClientSession], conn: AsyncConnection
+            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable_write: bool
         ) -> Optional[Mapping[str, Any]]:
             return await self._update(
                 conn,
@@ -1106,12 +1113,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 array_filters=array_filters,
                 hint=hint,
                 session=session,
+                retryable_write=retryable_write,
                 let=let,
                 sort=sort,
                 comment=comment,
             )
 
         return await self._database.client._retryable_write(
+            (write_concern or self.write_concern).acknowledged and not multi,
             _update,
             session,
             operation,
@@ -1501,6 +1510,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[AsyncClientSession] = None,
+        retryable_write: bool = False,
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
     ) -> Mapping[str, Any]:
@@ -1540,6 +1550,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             codec_options=self._write_response_codec_options,
             session=session,
             client=self._database.client,
+            retryable_write=retryable_write,
         )
         _check_write_command_response(result)
         return result
@@ -1560,7 +1571,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """Internal delete helper."""
 
         async def _delete(
-            session: Optional[AsyncClientSession], conn: AsyncConnection
+            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable_write: bool
         ) -> Mapping[str, Any]:
             return await self._delete(
                 conn,
@@ -1572,11 +1583,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 collation=collation,
                 hint=hint,
                 session=session,
+                retryable_write=retryable_write,
                 let=let,
                 comment=comment,
             )
 
         return await self._database.client._retryable_write(
+            (write_concern or self.write_concern).acknowledged and not multi,
             _delete,
             session,
             operation=_Op.DELETE,
@@ -3221,7 +3234,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         write_concern = self._write_concern_for_cmd(cmd, session)
 
         async def _find_and_modify_helper(
-            session: Optional[AsyncClientSession], conn: AsyncConnection
+            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable_write: bool
         ) -> Any:
             acknowledged = write_concern.acknowledged
             if array_filters is not None:
@@ -3247,6 +3260,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 write_concern=write_concern,
                 collation=collation,
                 session=session,
+                retryable_write=retryable_write,
                 user_fields=_FIND_AND_MODIFY_DOC_FIELDS,
             )
             _check_write_command_response(out)
@@ -3254,6 +3268,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             return out.get("value")
 
         return await self._database.client._retryable_write(
+            write_concern.acknowledged,
             _find_and_modify_helper,
             session,
             operation=_Op.FIND_AND_MODIFY,

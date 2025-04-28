@@ -854,12 +854,13 @@ class AsyncClientSession:
         """
 
         async def func(
-            _session: Optional[AsyncClientSession],
-            conn: AsyncConnection,
+            _session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable: bool
         ) -> dict[str, Any]:
             return await self._finish_transaction(conn, command_name)
 
-        return await self._client._retry_internal(func, self, None, operation=_Op.ABORT)
+        return await self._client._retry_internal(
+            func, self, None, retryable=True, operation=_Op.ABORT
+        )
 
     async def _finish_transaction(self, conn: AsyncConnection, command_name: str) -> dict[str, Any]:
         self._transaction.attempt += 1
