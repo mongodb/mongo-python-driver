@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Changes in Version 4.12.1 (XXXX/XX/XX)
+Changes in Version 4.12.1 (2025/04/29)
 --------------------------------------
 
 Version 4.12.1 is a bug fix release.
