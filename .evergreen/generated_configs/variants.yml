@@ -66,7 +66,7 @@ buildvariants:
   # Atlas connect tests
   - name: atlas-connect-rhel8
     tasks:
-      - name: .no-orchestration
+      - name: .test-no-orchestration
     display_name: Atlas connect RHEL8
     run_on:
       - rhel87-small
