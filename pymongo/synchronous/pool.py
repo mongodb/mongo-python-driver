@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import collections
 import contextlib
 import logging
@@ -72,6 +73,7 @@ from pymongo.monitoring import (
 from pymongo.network_layer import NetworkingInterface, receive_message, sendall
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
+    SSLErrors,
     _CancellationContext,
     _configured_socket_interface,
     _get_timeout_details,
@@ -82,7 +84,6 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
-from pymongo.ssl_support import SSLError
 from pymongo.synchronous.client_session import _validate_session_write_concern
 from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.synchronous.network import command
@@ -635,7 +636,7 @@ class Connection:
             reason = ConnectionClosedReason.ERROR
         self.close_conn(reason)
         # SSLError from PyOpenSSL inherits directly from Exception.
-        if isinstance(error, (IOError, OSError, SSLError)):
+        if isinstance(error, (IOError, OSError, *SSLErrors)):
             details = _get_timeout_details(self.opts)
             _raise_connection_failure(self.address, error, timeout_details=details)
         else:
@@ -858,8 +859,14 @@ class Pool:
         # PoolClosedEvent but that reset() SHOULD close sockets *after*
         # publishing the PoolClearedEvent.
         if close:
-            for conn in sockets:
-                conn.close_conn(ConnectionClosedReason.POOL_CLOSED)
+            if not _IS_SYNC:
+                asyncio.gather(
+                    *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets],
+                    return_exceptions=True,
+                )
+            else:
+                for conn in sockets:
+                    conn.close_conn(ConnectionClosedReason.POOL_CLOSED)
             if self.enabled_for_cmap:
                 assert listeners is not None
                 listeners.publish_pool_closed(self.address)
@@ -889,8 +896,14 @@ class Pool:
                         serverPort=self.address[1],
                         serviceId=service_id,
                     )
-            for conn in sockets:
-                conn.close_conn(ConnectionClosedReason.STALE)
+            if not _IS_SYNC:
+                asyncio.gather(
+                    *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],
+                    return_exceptions=True,
+                )
+            else:
+                for conn in sockets:
+                    conn.close_conn(ConnectionClosedReason.STALE)
 
     def update_is_writable(self, is_writable: Optional[bool]) -> None:
         """Updates the is_writable attribute on all sockets currently in the
@@ -934,8 +947,14 @@ class Pool:
                     and self.conns[-1].idle_time_seconds() > self.opts.max_idle_time_seconds
                 ):
                     close_conns.append(self.conns.pop())
-            for conn in close_conns:
-                conn.close_conn(ConnectionClosedReason.IDLE)
+            if not _IS_SYNC:
+                asyncio.gather(
+                    *[conn.close_conn(ConnectionClosedReason.IDLE) for conn in close_conns],
+                    return_exceptions=True,
+                )
+            else:
+                for conn in close_conns:
+                    conn.close_conn(ConnectionClosedReason.IDLE)
 
         while True:
             with self.size_cond:
@@ -1029,7 +1048,7 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
-            if isinstance(error, (IOError, OSError, SSLError)):
+            if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
                 _raise_connection_failure(self.address, error, timeout_details=details)
 

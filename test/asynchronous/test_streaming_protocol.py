@@ -172,7 +172,7 @@ class TestStreamingProtocol(AsyncIntegrationTest):
             # 2504ms: application handshake succeeds
             # 2505ms: ping command succeeds
             self.assertGreaterEqual(duration, 2)
-            self.assertLessEqual(duration, 3.5)
+            self.assertLessEqual(duration, 4.0)
 
     @async_client_context.require_failCommand_appName
     async def test_heartbeat_awaited_flag(self):

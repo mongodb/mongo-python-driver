@@ -420,7 +420,10 @@ def _check_options(nodes: Sized, options: Mapping[str, Any]) -> None:
             raise ConfigurationError("Cannot specify replicaSet with loadBalanced=true")
 
 
-def _parse_kms_tls_options(kms_tls_options: Optional[Mapping[str, Any]]) -> dict[str, SSLContext]:
+def _parse_kms_tls_options(
+    kms_tls_options: Optional[Mapping[str, Any]],
+    is_sync: bool,
+) -> dict[str, SSLContext]:
     """Parse KMS TLS connection options."""
     if not kms_tls_options:
         return {}
@@ -435,7 +438,7 @@ def _parse_kms_tls_options(kms_tls_options: Optional[Mapping[str, Any]]) -> dict
         opts = _handle_security_options(opts)
         opts = _normalize_options(opts)
         opts = cast(_CaseInsensitiveDictionary, validate_options(opts))
-        ssl_context, allow_invalid_hostnames = _parse_ssl_options(opts)
+        ssl_context, allow_invalid_hostnames = _parse_ssl_options(opts, is_sync)
         if ssl_context is None:
             raise ConfigurationError("TLS is required for KMS providers")
         if allow_invalid_hostnames:
