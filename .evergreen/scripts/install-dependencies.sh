@@ -10,9 +10,6 @@ if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
-_BIN_DIR=${PYMONGO_BIN_DIR:-$HOME/.local/bin}
-export PATH="$PATH:${_BIN_DIR}"
-
 # Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
   _HERE=$(dirname ${BASH_SOURCE:-$0})
@@ -28,23 +25,27 @@ function _pip_install() {
   if [ "Windows_NT" = "${OS:-}" ]; then
     _suffix=".exe"
   fi
-  ln -s "$(which $2)" $_BIN_DIR/${2}${_suffix}
+  ln -s "$(which $2)" $PYMONGO_BIN_DIR/${2}${_suffix}
   # uv also comes with a uvx binary.
   if [ $2 == "uv" ]; then
-    ln -s "$(which uvx)" $_BIN_DIR/uvx${_suffix}
+    ln -s "$(which uvx)" $PYMONGO_BIN_DIR/uvx${_suffix}
   fi
-  echo "Installed to ${_BIN_DIR}"
+  echo "Installed to ${PYMONGO_BIN_DIR}"
   echo "Installing $2 using pip... done."
 }
 
-
 # Ensure just is installed.
-if ! command -v just >/dev/null 2>&1; then
+if ! command -v just &>/dev/null; then
   # On most systems we can install directly.
   _TARGET=""
   if [ "Windows_NT" = "${OS:-}" ]; then
     _TARGET="--target x86_64-pc-windows-msvc"
   fi
+  if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
+    echo "Please install just!"
+    exit 1
+  fi
+  _BIN_DIR=$PYMONGO_BIN_DIR
   echo "Installing just..."
   mkdir -p "$_BIN_DIR" 2>/dev/null || true
   curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- $_TARGET --to "$_BIN_DIR" || {
@@ -53,8 +54,13 @@ if ! command -v just >/dev/null 2>&1; then
   echo "Installing just... done."
 fi
 
-# Install uv.
-if ! command -v uv >/dev/null 2>&1; then
+# Ensure uv is installed.
+if ! command -v uv &>/dev/null; then
+  if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
+    echo "Please install uv!"
+    exit 1
+  fi
+  _BIN_DIR=$PYMONGO_BIN_DIR
   echo "Installing uv..."
   # On most systems we can install directly.
   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
