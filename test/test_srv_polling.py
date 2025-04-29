@@ -20,6 +20,7 @@ import sys
 import time
 from test.utils_shared import FunctionCallRecorder
 from typing import Any
+from unittest import skipIf
 
 sys.path[0:0] = [""]
 
@@ -91,6 +92,7 @@ class SrvPollingKnobs:
         self.disable()
 
 
+@skipIf(not _IS_SYNC and sys.platform == "win32", "PYTHON-5342 known issue on Windows")
 class TestSrvPolling(PyMongoTestCase):
     BASE_SRV_RESPONSE = [
         ("localhost.test.build.10gen.cc", 27017),
