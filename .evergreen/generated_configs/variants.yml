@@ -2,7 +2,7 @@ buildvariants:
   # Alternative hosts tests
   - name: openssl-1.0.2-rhel7-v5.0-python3.9
     tasks:
-      - name: .no-toolchain
+      - name: .test-no-toolchain
     display_name: OpenSSL 1.0.2 RHEL7 v5.0 Python3.9
     run_on:
       - rhel79-small
@@ -13,7 +13,7 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: other-hosts-rhel9-fips-latest
     tasks:
-      - name: .no-toolchain
+      - name: .test-no-toolchain
     display_name: Other hosts RHEL9-FIPS latest
     run_on:
       - rhel92-fips
@@ -24,7 +24,7 @@ buildvariants:
       REQUIRE_FIPS: "1"
   - name: other-hosts-rhel8-zseries-latest
     tasks:
-      - name: .no-toolchain
+      - name: .test-no-toolchain
     display_name: Other hosts RHEL8-zseries latest
     run_on:
       - rhel8-zseries-small
@@ -34,7 +34,7 @@ buildvariants:
       NO_EXT: "1"
   - name: other-hosts-rhel8-power8-latest
     tasks:
-      - name: .no-toolchain
+      - name: .test-no-toolchain
     display_name: Other hosts RHEL8-POWER8 latest
     run_on:
       - rhel8-power-small
@@ -44,7 +44,7 @@ buildvariants:
       NO_EXT: "1"
   - name: other-hosts-rhel8-arm64-latest
     tasks:
-      - name: .no-toolchain
+      - name: .test-no-toolchain
     display_name: Other hosts RHEL8-arm64 latest
     run_on:
       - rhel82-arm64-small
@@ -54,7 +54,7 @@ buildvariants:
       NO_EXT: "1"
   - name: other-hosts-amazon2023-latest
     tasks:
-      - name: .no-toolchain
+      - name: .test-no-toolchain
     display_name: Other hosts Amazon2023 latest
     run_on:
       - amazon2023-arm64-latest-large-m8g
@@ -554,7 +554,7 @@ buildvariants:
   # No server tests
   - name: no-server-rhel8
     tasks:
-      - name: .no-orchestration
+      - name: .test-no-orchestration
     display_name: No server RHEL8
     run_on:
       - rhel87-small

@@ -342,7 +342,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           TEST_NAME: default_sync
-    tags: [no-toolchain, standalone-noauth-nossl]
+    tags: [test-no-toolchain, standalone-noauth-nossl]
   - name: test-no-toolchain-async-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -356,7 +356,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           TEST_NAME: default_async
-    tags: [no-toolchain, replica_set-noauth-ssl]
+    tags: [test-no-toolchain, replica_set-noauth-ssl]
   - name: test-no-toolchain-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -370,7 +370,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           TEST_NAME: default_sync
-    tags: [no-toolchain, sharded_cluster-auth-ssl]
+    tags: [test-no-toolchain, sharded_cluster-auth-ssl]
 
   # Ocsp tests
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v4.4-python3.9

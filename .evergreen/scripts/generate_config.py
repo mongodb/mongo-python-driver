@@ -540,7 +540,7 @@ def create_aws_auth_variants():
 def create_no_server_variants():
     host = HOSTS["rhel8"]
     name = get_variant_name("No server", host=host)
-    return [create_variant([".no-orchestration"], name, host=host)]
+    return [create_variant([".test-no-orchestration"], name, host=host)]
 
 
 def create_alternative_hosts_variants():
@@ -551,7 +551,7 @@ def create_alternative_hosts_variants():
     version = "5.0"
     variants.append(
         create_variant(
-            [".no-toolchain"],
+            [".test-no-toolchain"],
             get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0], version=version),
             host=host,
             python=CPYTHONS[0],
@@ -569,7 +569,7 @@ def create_alternative_hosts_variants():
             expansions["REQUIRE_FIPS"] = "1"
         variants.append(
             create_variant(
-                [".no-toolchain"],
+                [".test-no-toolchain"],
                 display_name=get_variant_name("Other hosts", host, version=version),
                 batchtime=batchtime,
                 host=host,
@@ -622,7 +622,7 @@ def create_no_toolchain_tasks():
     for topology, sync in zip_cycle(TOPOLOGIES, SYNCS):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
-            "no-toolchain",
+            "test-no-toolchain",
             f"{topology}-{auth}-{ssl}",
         ]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
