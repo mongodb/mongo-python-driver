@@ -312,21 +312,21 @@ tasks:
       - func: run tests
         vars:
           PYTHON_VERSION: "3.9"
-    tags: [no-orchestration, python-3.9]
+    tags: [test-no-orchestration, python-3.9]
   - name: test-no-orchestration-python3.13
     commands:
       - func: assume ec2 role
       - func: run tests
         vars:
           PYTHON_VERSION: "3.13"
-    tags: [no-orchestration, python-3.13]
+    tags: [test-no-orchestration, python-3.13]
   - name: test-no-orchestration-pypy3.10
     commands:
       - func: assume ec2 role
       - func: run tests
         vars:
           PYTHON_VERSION: pypy3.10
-    tags: [no-orchestration, python-pypy3.10]
+    tags: [test-no-orchestration, python-pypy3.10]
 
   # No toolchain tests
   - name: test-no-toolchain-sync-noauth-nossl-standalone
@@ -7482,7 +7482,7 @@ tasks:
           PYTHON_VERSION: "3.9"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-4.0
       - python-3.9
       - standalone-noauth-nossl
@@ -7504,7 +7504,7 @@ tasks:
           PYTHON_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-4.0
       - python-3.10
       - replica_set-noauth-ssl
@@ -7526,7 +7526,7 @@ tasks:
           PYTHON_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-4.0
       - python-3.11
       - sharded_cluster-auth-ssl
@@ -7548,7 +7548,7 @@ tasks:
           PYTHON_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-4.2
       - python-3.12
       - standalone-noauth-nossl
@@ -7570,7 +7570,7 @@ tasks:
           PYTHON_VERSION: "3.13"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-4.2
       - python-3.13
       - replica_set-noauth-ssl
@@ -7592,7 +7592,7 @@ tasks:
           PYTHON_VERSION: "3.9"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-4.2
       - python-3.9
       - sharded_cluster-auth-ssl
@@ -7614,7 +7614,7 @@ tasks:
           PYTHON_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-4.4
       - python-3.10
       - standalone-noauth-nossl
@@ -7636,7 +7636,7 @@ tasks:
           PYTHON_VERSION: "3.11"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-4.4
       - python-3.11
       - replica_set-noauth-ssl
@@ -7658,7 +7658,7 @@ tasks:
           PYTHON_VERSION: "3.12"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-4.4
       - python-3.12
       - sharded_cluster-auth-ssl
@@ -7680,7 +7680,7 @@ tasks:
           PYTHON_VERSION: "3.13"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-5.0
       - python-3.13
       - standalone-noauth-nossl
@@ -7702,7 +7702,7 @@ tasks:
           PYTHON_VERSION: "3.9"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-5.0
       - python-3.9
       - replica_set-noauth-ssl
@@ -7724,7 +7724,7 @@ tasks:
           PYTHON_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-5.0
       - python-3.10
       - sharded_cluster-auth-ssl
@@ -7746,7 +7746,7 @@ tasks:
           PYTHON_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-6.0
       - python-3.11
       - standalone-noauth-nossl
@@ -7768,7 +7768,7 @@ tasks:
           PYTHON_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-6.0
       - python-3.12
       - replica_set-noauth-ssl
@@ -7790,7 +7790,7 @@ tasks:
           PYTHON_VERSION: "3.13"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-6.0
       - python-3.13
       - sharded_cluster-auth-ssl
@@ -7812,7 +7812,7 @@ tasks:
           PYTHON_VERSION: "3.9"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-7.0
       - python-3.9
       - standalone-noauth-nossl
@@ -7834,7 +7834,7 @@ tasks:
           PYTHON_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-7.0
       - python-3.10
       - replica_set-noauth-ssl
@@ -7856,7 +7856,7 @@ tasks:
           PYTHON_VERSION: "3.11"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-7.0
       - python-3.11
       - sharded_cluster-auth-ssl
@@ -7878,7 +7878,7 @@ tasks:
           PYTHON_VERSION: "3.12"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-8.0
       - python-3.12
       - standalone-noauth-nossl
@@ -7900,7 +7900,7 @@ tasks:
           PYTHON_VERSION: "3.13"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-8.0
       - python-3.13
       - replica_set-noauth-ssl
@@ -7922,7 +7922,7 @@ tasks:
           PYTHON_VERSION: "3.9"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-8.0
       - python-3.9
       - sharded_cluster-auth-ssl
@@ -7944,7 +7944,7 @@ tasks:
           PYTHON_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-rapid
       - python-3.10
       - standalone-noauth-nossl
@@ -7966,7 +7966,7 @@ tasks:
           PYTHON_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-rapid
       - python-3.11
       - replica_set-noauth-ssl
@@ -7988,7 +7988,7 @@ tasks:
           PYTHON_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-rapid
       - python-3.12
       - sharded_cluster-auth-ssl
@@ -8010,7 +8010,7 @@ tasks:
           PYTHON_VERSION: "3.13"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-latest
       - python-3.13
       - standalone-noauth-nossl
@@ -8032,7 +8032,7 @@ tasks:
           PYTHON_VERSION: "3.9"
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-latest
       - python-3.9
       - replica_set-noauth-ssl
@@ -8054,7 +8054,7 @@ tasks:
           PYTHON_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-latest
       - python-3.10
       - sharded_cluster-auth-ssl
@@ -8076,7 +8076,7 @@ tasks:
           PYTHON_VERSION: pypy3.10
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-4.0
       - python-pypy3.10
       - standalone-noauth-nossl
@@ -8099,7 +8099,7 @@ tasks:
           PYTHON_VERSION: pypy3.10
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-4.2
       - python-pypy3.10
       - replica_set-noauth-ssl
@@ -8122,7 +8122,7 @@ tasks:
           PYTHON_VERSION: pypy3.10
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-4.4
       - python-pypy3.10
       - sharded_cluster-auth-ssl
@@ -8145,7 +8145,7 @@ tasks:
           PYTHON_VERSION: pypy3.10
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-5.0
       - python-pypy3.10
       - standalone-noauth-nossl
@@ -8168,7 +8168,7 @@ tasks:
           PYTHON_VERSION: pypy3.10
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-6.0
       - python-pypy3.10
       - replica_set-noauth-ssl
@@ -8191,7 +8191,7 @@ tasks:
           PYTHON_VERSION: pypy3.10
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-7.0
       - python-pypy3.10
       - sharded_cluster-auth-ssl
@@ -8214,7 +8214,7 @@ tasks:
           PYTHON_VERSION: pypy3.10
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-8.0
       - python-pypy3.10
       - standalone-noauth-nossl
@@ -8237,7 +8237,7 @@ tasks:
           PYTHON_VERSION: pypy3.10
           TEST_NAME: default_async
     tags:
-      - standard
+      - test-standard
       - server-rapid
       - python-pypy3.10
       - replica_set-noauth-ssl
@@ -8260,7 +8260,7 @@ tasks:
           PYTHON_VERSION: pypy3.10
           TEST_NAME: default_sync
     tags:
-      - standard
+      - test-standard
       - server-latest
       - python-pypy3.10
       - sharded_cluster-auth-ssl

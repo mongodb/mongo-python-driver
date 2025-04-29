@@ -90,10 +90,12 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
 
     # Test a subset on each of the other platforms.
     for host_name in ("macos", "macos-arm64", "win64", "win32"):
-        tasks = [".standard !.pypy"]
+        tasks = [".test-standard !.pypy"]
         # MacOS arm64 only works on server versions 6.0+
         if host_name == "macos-arm64":
-            tasks = [f".standard !.pypy .server-{version}" for version in get_versions_from("6.0")]
+            tasks = [
+                f".test-standard !.pypy .server-{version}" for version in get_versions_from("6.0")
+            ]
         host = HOSTS[host_name]
         tags = ["standard-non-linux"]
         expansions = dict()
@@ -224,9 +226,9 @@ def create_compression_variants():
     for compressor in "snappy", "zlib", "zstd":
         expansions = dict(COMPRESSOR=compressor)
         if compressor == "zstd":
-            tasks = [".standard !.server-4.0"]
+            tasks = [".test-standard !.server-4.0"]
         else:
-            tasks = [".standard"]
+            tasks = [".test-standard"]
         display_name = get_variant_name(f"Compression {compressor}", host)
         variants.append(
             create_variant(
@@ -302,11 +304,11 @@ def create_storage_engine_variants():
     for engine in engines:
         expansions = dict(STORAGE_ENGINE=engine.lower())
         if engine == engines[0]:
-            tasks = [".standard .standalone-noauth-nossl"]
+            tasks = [".test-standard .standalone-noauth-nossl"]
         else:
             # MongoDB 4.2 drops support for MMAPv1
             versions = get_versions_until("4.0")
-            tasks = [f".standard !.sharded_cluster-auth-ssl .server-{v}" for v in versions]
+            tasks = [f".test-standard !.sharded_cluster-auth-ssl .server-{v}" for v in versions]
         display_name = get_variant_name(f"Storage {engine}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
@@ -330,7 +332,8 @@ def create_stable_api_variants():
             # MONGODB_API_VERSION is the apiVersion to use in the test suite.
             expansions["MONGODB_API_VERSION"] = "1"
             tasks = [
-                f".standard !.replica_set-noauth-ssl .server-{v}" for v in get_versions_from("5.0")
+                f".test-standard !.replica_set-noauth-ssl .server-{v}"
+                for v in get_versions_from("5.0")
             ]
         else:
             # Test against a cluster with acceptApiVersion2 but without
@@ -338,7 +341,8 @@ def create_stable_api_variants():
             # clients created in the test suite.
             expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
             tasks = [
-                f".standard .server-{v} .standalone-noauth-nossl" for v in get_versions_from("5.0")
+                f".test-standard .server-{v} .standalone-noauth-nossl"
+                for v in get_versions_from("5.0")
             ]
         base_display_name = f"Stable API {test_type}"
         display_name = get_variant_name(base_display_name, host, **expansions)
@@ -352,11 +356,11 @@ def create_green_framework_variants():
     variants = []
     host = DEFAULT_HOST
     for framework in ["eventlet", "gevent"]:
-        tasks = [".standard .standalone-noauth-nossl"]
+        tasks = [".test-standard .standalone-noauth-nossl"]
         if framework == "eventlet":
             # Eventlet has issues with dnspython > 2.0 and newer versions of CPython
             # https://jira.mongodb.org/browse/PYTHON-5284
-            tasks = [".standard .standalone-noauth-nossl .python-3.9"]
+            tasks = [".test-standard .standalone-noauth-nossl .python-3.9"]
         expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
         display_name = get_variant_name(f"Green {framework.capitalize()}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
@@ -366,7 +370,7 @@ def create_green_framework_variants():
 
 def create_no_c_ext_variants():
     host = DEFAULT_HOST
-    tasks = [".standard"]
+    tasks = [".test-standard"]
     expansions = dict()
     handle_c_ext(C_EXTS[0], expansions)
     display_name = get_variant_name("No C Ext", host)
@@ -375,7 +379,7 @@ def create_no_c_ext_variants():
 
 def create_atlas_data_lake_variants():
     host = HOSTS["ubuntu22"]
-    tasks = [".no-orchestration"]
+    tasks = [".test-no-orchestration"]
     expansions = dict(TEST_NAME="data_lake")
     display_name = get_variant_name("Atlas Data Lake", host)
     return [create_variant(tasks, display_name, host=host, expansions=expansions)]
@@ -452,7 +456,7 @@ def create_mockupdb_variants():
     expansions = dict(TEST_NAME="mockupdb")
     return [
         create_variant(
-            [".no-orchestration"],
+            [".test-no-orchestration"],
             get_variant_name("MockupDB", host),
             host=host,
             expansions=expansions,
@@ -679,7 +683,7 @@ def create_standard_tasks():
     for version, topology, python, sync in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
-            "standard",
+            "test-standard",
             f"server-{version}",
             f"python-{python}",
             f"{topology}-{auth}-{ssl}",
@@ -726,7 +730,7 @@ def create_no_orchestration_tasks():
     tasks = []
     for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
         tags = [
-            "no-orchestration",
+            "test-no-orchestration",
             f"python-{python}",
         ]
         name = get_task_name("test-no-orchestration", python=python)

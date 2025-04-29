@@ -74,7 +74,7 @@ buildvariants:
   # Atlas data lake tests
   - name: atlas-data-lake-ubuntu-22
     tasks:
-      - name: .no-orchestration
+      - name: .test-no-orchestration
     display_name: Atlas Data Lake Ubuntu-22
     run_on:
       - ubuntu2204-small
@@ -120,7 +120,7 @@ buildvariants:
   # Compression tests
   - name: compression-snappy-rhel8
     tasks:
-      - name: .standard
+      - name: .test-standard
     display_name: Compression snappy RHEL8
     run_on:
       - rhel87-small
@@ -128,7 +128,7 @@ buildvariants:
       COMPRESSOR: snappy
   - name: compression-zlib-rhel8
     tasks:
-      - name: .standard
+      - name: .test-standard
     display_name: Compression zlib RHEL8
     run_on:
       - rhel87-small
@@ -136,7 +136,7 @@ buildvariants:
       COMPRESSOR: zlib
   - name: compression-zstd-rhel8
     tasks:
-      - name: .standard !.server-4.0
+      - name: .test-standard !.server-4.0
     display_name: Compression zstd RHEL8
     run_on:
       - rhel87-small
@@ -468,7 +468,7 @@ buildvariants:
   # Green framework tests
   - name: green-eventlet-rhel8
     tasks:
-      - name: .standard .standalone-noauth-nossl .python-3.9
+      - name: .test-standard .standalone-noauth-nossl .python-3.9
     display_name: Green Eventlet RHEL8
     run_on:
       - rhel87-small
@@ -478,7 +478,7 @@ buildvariants:
       SSL: ssl
   - name: green-gevent-rhel8
     tasks:
-      - name: .standard .standalone-noauth-nossl
+      - name: .test-standard .standalone-noauth-nossl
     display_name: Green Gevent RHEL8
     run_on:
       - rhel87-small
@@ -526,7 +526,7 @@ buildvariants:
   # Mockupdb tests
   - name: mockupdb-rhel8
     tasks:
-      - name: .no-orchestration
+      - name: .test-no-orchestration
     display_name: MockupDB RHEL8
     run_on:
       - rhel87-small
@@ -546,7 +546,7 @@ buildvariants:
   # No c ext tests
   - name: no-c-ext-rhel8
     tasks:
-      - name: .standard
+      - name: .test-standard
     display_name: No C Ext RHEL8
     run_on:
       - rhel87-small
@@ -788,12 +788,12 @@ buildvariants:
   # Stable api tests
   - name: stable-api-require-v1-rhel8-auth
     tasks:
-      - name: .standard !.replica_set-noauth-ssl .server-5.0
-      - name: .standard !.replica_set-noauth-ssl .server-6.0
-      - name: .standard !.replica_set-noauth-ssl .server-7.0
-      - name: .standard !.replica_set-noauth-ssl .server-8.0
-      - name: .standard !.replica_set-noauth-ssl .server-rapid
-      - name: .standard !.replica_set-noauth-ssl .server-latest
+      - name: .test-standard !.replica_set-noauth-ssl .server-5.0
+      - name: .test-standard !.replica_set-noauth-ssl .server-6.0
+      - name: .test-standard !.replica_set-noauth-ssl .server-7.0
+      - name: .test-standard !.replica_set-noauth-ssl .server-8.0
+      - name: .test-standard !.replica_set-noauth-ssl .server-rapid
+      - name: .test-standard !.replica_set-noauth-ssl .server-latest
     display_name: Stable API require v1 RHEL8 Auth
     run_on:
       - rhel87-small
@@ -804,12 +804,12 @@ buildvariants:
     tags: [versionedApi_tag]
   - name: stable-api-accept-v2-rhel8-auth
     tasks:
-      - name: .standard .server-5.0 .standalone-noauth-nossl
-      - name: .standard .server-6.0 .standalone-noauth-nossl
-      - name: .standard .server-7.0 .standalone-noauth-nossl
-      - name: .standard .server-8.0 .standalone-noauth-nossl
-      - name: .standard .server-rapid .standalone-noauth-nossl
-      - name: .standard .server-latest .standalone-noauth-nossl
+      - name: .test-standard .server-5.0 .standalone-noauth-nossl
+      - name: .test-standard .server-6.0 .standalone-noauth-nossl
+      - name: .test-standard .server-7.0 .standalone-noauth-nossl
+      - name: .test-standard .server-8.0 .standalone-noauth-nossl
+      - name: .test-standard .server-rapid .standalone-noauth-nossl
+      - name: .test-standard .server-latest .standalone-noauth-nossl
     display_name: Stable API accept v2 RHEL8 Auth
     run_on:
       - rhel87-small
@@ -821,32 +821,32 @@ buildvariants:
   # Standard nonlinux tests
   - name: test-macos
     tasks:
-      - name: .standard !.pypy
+      - name: .test-standard !.pypy
     display_name: "* Test macOS"
     run_on:
       - macos-14
     tags: [standard-non-linux]
   - name: test-macos-arm64
     tasks:
-      - name: .standard !.pypy .server-6.0
-      - name: .standard !.pypy .server-7.0
-      - name: .standard !.pypy .server-8.0
-      - name: .standard !.pypy .server-rapid
-      - name: .standard !.pypy .server-latest
+      - name: .test-standard !.pypy .server-6.0
+      - name: .test-standard !.pypy .server-7.0
+      - name: .test-standard !.pypy .server-8.0
+      - name: .test-standard !.pypy .server-rapid
+      - name: .test-standard !.pypy .server-latest
     display_name: "* Test macOS Arm64"
     run_on:
       - macos-14-arm64
     tags: [standard-non-linux]
   - name: test-win64
     tasks:
-      - name: .standard !.pypy
+      - name: .test-standard !.pypy
     display_name: "* Test Win64"
     run_on:
       - windows-64-vsMulti-small
     tags: [standard-non-linux]
   - name: test-win32
     tasks:
-      - name: .standard !.pypy
+      - name: .test-standard !.pypy
     display_name: "* Test Win32"
     run_on:
       - windows-64-vsMulti-small
@@ -857,7 +857,7 @@ buildvariants:
   # Storage engine tests
   - name: storage-inmemory-rhel8
     tasks:
-      - name: .standard .standalone-noauth-nossl
+      - name: .test-standard .standalone-noauth-nossl
     display_name: Storage InMemory RHEL8
     run_on:
       - rhel87-small
@@ -865,7 +865,7 @@ buildvariants:
       STORAGE_ENGINE: inmemory
   - name: storage-mmapv1-rhel8
     tasks:
-      - name: .standard !.sharded_cluster-auth-ssl .server-4.0
+      - name: .test-standard !.sharded_cluster-auth-ssl .server-4.0
     display_name: Storage MMAPv1 RHEL8
     run_on:
       - rhel87-small
