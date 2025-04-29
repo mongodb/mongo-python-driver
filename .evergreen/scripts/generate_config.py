@@ -93,7 +93,7 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
         tasks = [".standard !.pypy"]
         # MacOS arm64 only works on server versions 6.0+
         if host_name == "macos-arm64":
-            tasks = [f".standard .server-{version}" for version in get_versions_from("6.0")]
+            tasks = [f".standard !.pypy .server-{version}" for version in get_versions_from("6.0")]
         host = HOSTS[host_name]
         tags = ["standard-non-linux"]
         expansions = dict()
@@ -201,7 +201,10 @@ def create_encryption_variants() -> list[BuildVariant]:
 
 
 def create_load_balancer_variants():
-    tasks = [f".test-named .server-{v} .sharded_cluster-auth-ssl" for v in get_versions_from("6.0")]
+    tasks = [
+        f".test-non-standard .server-{v} .sharded_cluster-auth-ssl"
+        for v in get_versions_from("6.0")
+    ]
     expansions = dict(TEST_NAME="load_balancer")
     return [
         create_variant(
@@ -462,7 +465,7 @@ def create_doctests_variants():
     expansions = dict(TEST_NAME="doctest")
     return [
         create_variant(
-            [".test-named .standalone-noauth-nossl"],
+            [".test-non-standard .standalone-noauth-nossl"],
             get_variant_name("Doctests", host),
             host=host,
             expansions=expansions,
@@ -628,7 +631,7 @@ def create_no_toolchain_tasks():
     return tasks
 
 
-def create_test_named_tasks():
+def create_test_non_standard_tasks():
     """For variants that set a TEST_NAME."""
     tasks = []
     task_combos = []
@@ -641,7 +644,7 @@ def create_test_named_tasks():
     for version, topology, python in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
-            "test-named",
+            "test-non-standard",
             f"server-{version}",
             f"python-{python}",
             f"{topology}-{auth}-{ssl}",
@@ -649,7 +652,7 @@ def create_test_named_tasks():
         if python in PYPYS:
             tags.append("pypy")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
-        name = get_task_name("test-named", python=python, **expansions)
+        name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python

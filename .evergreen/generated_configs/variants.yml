@@ -167,7 +167,7 @@ buildvariants:
   # Doctests tests
   - name: doctests-rhel8
     tasks:
-      - name: .test-named .standalone-noauth-nossl
+      - name: .test-non-standard .standalone-noauth-nossl
     display_name: Doctests RHEL8
     run_on:
       - rhel87-small
@@ -511,11 +511,11 @@ buildvariants:
   # Load balancer tests
   - name: load-balancer
     tasks:
-      - name: .test-named .server-6.0 .sharded_cluster-auth-ssl
-      - name: .test-named .server-7.0 .sharded_cluster-auth-ssl
-      - name: .test-named .server-8.0 .sharded_cluster-auth-ssl
-      - name: .test-named .server-rapid .sharded_cluster-auth-ssl
-      - name: .test-named .server-latest .sharded_cluster-auth-ssl
+      - name: .test-non-standard .server-6.0 .sharded_cluster-auth-ssl
+      - name: .test-non-standard .server-7.0 .sharded_cluster-auth-ssl
+      - name: .test-non-standard .server-8.0 .sharded_cluster-auth-ssl
+      - name: .test-non-standard .server-rapid .sharded_cluster-auth-ssl
+      - name: .test-non-standard .server-latest .sharded_cluster-auth-ssl
     display_name: Load Balancer
     run_on:
       - rhel87-small
@@ -828,11 +828,11 @@ buildvariants:
     tags: [standard-non-linux]
   - name: test-macos-arm64
     tasks:
-      - name: .standard .server-6.0
-      - name: .standard .server-7.0
-      - name: .standard .server-8.0
-      - name: .standard .server-rapid
-      - name: .standard .server-latest
+      - name: .standard !.pypy .server-6.0
+      - name: .standard !.pypy .server-7.0
+      - name: .standard !.pypy .server-8.0
+      - name: .standard !.pypy .server-rapid
+      - name: .standard !.pypy .server-latest
     display_name: "* Test macOS Arm64"
     run_on:
       - macos-14-arm64
