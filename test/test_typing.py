@@ -428,13 +428,9 @@ class TestDocumentType(PyMongoTestCase):
     def test_bulk_write_document_type_insertion(self):
         client: MongoClient[MovieWithId] = MongoClient()
         coll: Collection[MovieWithId] = client.test.test
-        coll.bulk_write(
-            [InsertOne(Movie({"name": "THX-1138", "year": 1971}))]  # type:ignore[arg-type]
-        )
+        coll.bulk_write([InsertOne(Movie({"name": "THX-1138", "year": 1971}))])
         mov_dict = {"_id": ObjectId(), "name": "THX-1138", "year": 1971}
-        coll.bulk_write(
-            [InsertOne(mov_dict)]  # type:ignore[arg-type]
-        )
+        coll.bulk_write([InsertOne(mov_dict)])
         coll.bulk_write(
             [
                 InsertOne({"_id": ObjectId(), "name": "THX-1138", "year": 1971})  # pyright: ignore
@@ -445,13 +441,9 @@ class TestDocumentType(PyMongoTestCase):
     def test_bulk_write_document_type_replacement(self):
         client: MongoClient[MovieWithId] = MongoClient()
         coll: Collection[MovieWithId] = client.test.test
-        coll.bulk_write(
-            [ReplaceOne({}, Movie({"name": "THX-1138", "year": 1971}))]  # type:ignore[arg-type]
-        )
+        coll.bulk_write([ReplaceOne({}, Movie({"name": "THX-1138", "year": 1971}))])
         mov_dict = {"_id": ObjectId(), "name": "THX-1138", "year": 1971}
-        coll.bulk_write(
-            [ReplaceOne({}, mov_dict)]  # type:ignore[arg-type]
-        )
+        coll.bulk_write([ReplaceOne({}, mov_dict)])
         coll.bulk_write(
             [
                 ReplaceOne({}, {"_id": ObjectId(), "name": "THX-1138", "year": 1971})  # pyright: ignore

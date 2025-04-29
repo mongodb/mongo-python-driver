@@ -243,7 +243,9 @@ class _AsyncBulk:
     def gen_ordered(
         self,
         requests: Iterable[Any],
-        process: Callable[[Union[_DocumentType, RawBSONDocument, _WriteOp]], bool],
+        process: Union[
+            Callable[[_WriteOp], bool], Callable[[Union[_DocumentType, RawBSONDocument]], bool]
+        ],
     ) -> Iterator[_Run]:
         """Generate batches of operations, batched by type of
         operation, in the order **provided**.
@@ -266,7 +268,9 @@ class _AsyncBulk:
     def gen_unordered(
         self,
         requests: Iterable[Any],
-        process: Callable[[Union[_DocumentType, RawBSONDocument, _WriteOp]], bool],
+        process: Union[
+            Callable[[_WriteOp], bool], Callable[[Union[_DocumentType, RawBSONDocument]], bool]
+        ],
     ) -> Iterator[_Run]:
         """Generate batches of operations, batched by type of
         operation, in arbitrary order.
@@ -787,7 +791,9 @@ class _AsyncBulk:
     async def execute(
         self,
         generator: Iterable[Any],
-        process: Callable[[Union[_DocumentType, RawBSONDocument, _WriteOp]], bool],
+        process: Union[
+            Callable[[_WriteOp], bool], Callable[[Union[_DocumentType, RawBSONDocument]], bool]
+        ],
         write_concern: WriteConcern,
         session: Optional[AsyncClientSession],
         operation: str,

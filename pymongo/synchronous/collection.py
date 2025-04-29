@@ -784,7 +784,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         write_concern = self._write_concern_for(session)
 
-        def process_for_bulk(request: Union[_DocumentType, RawBSONDocument, _WriteOp]) -> bool:
+        def process_for_bulk(request: _WriteOp) -> bool:
             try:
                 return request._add_to_bulk(blk)
             except AttributeError:
@@ -963,7 +963,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise TypeError("documents must be a non-empty list")
         inserted_ids: list[ObjectId] = []
 
-        def process_for_bulk(document: Union[_DocumentType, RawBSONDocument, _WriteOp]) -> bool:
+        def process_for_bulk(document: Union[_DocumentType, RawBSONDocument]) -> bool:
             """A generator that validates documents and handles _ids."""
             common.validate_is_document_type("document", document)
             if not isinstance(document, RawBSONDocument):
