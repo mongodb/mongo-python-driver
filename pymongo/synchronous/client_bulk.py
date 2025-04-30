@@ -533,17 +533,10 @@ class _ClientBulk:
             if session:
                 # Start a new retryable write unless one was already
                 # started for this command.
-                if (
-                    retryable
-                    and self.is_retryable
-                    and not self.started_retryable_write
-                    and not session.in_transaction
-                ):
+                if retryable and not self.started_retryable_write:
                     session._start_retryable_write()
                     self.started_retryable_write = True
-                session._apply_to(
-                    cmd, retryable and self.is_retryable, ReadPreference.PRIMARY, conn
-                )
+                session._apply_to(cmd, retryable, ReadPreference.PRIMARY, conn)
             conn.send_cluster_time(cmd, session, self.client)
             conn.add_server_api(cmd)
             # CSOT: apply timeout before encoding the command.
@@ -570,11 +563,7 @@ class _ClientBulk:
 
                     # Synthesize the full bulk result without modifying the
                     # current one because this write operation may be retried.
-                    if (
-                        retryable
-                        and self.is_retryable
-                        and (retryable_top_level_error or retryable_network_error)
-                    ):
+                    if retryable and (retryable_top_level_error or retryable_network_error):
                         full = copy.deepcopy(full_result)
                         _merge_command(self.ops, self.idx_offset, full, result)
                         _throw_client_bulk_write_exception(full, self.verbose_results)
@@ -593,7 +582,7 @@ class _ClientBulk:
                     _merge_command(self.ops, self.idx_offset, full_result, result)
                     break
 
-                if retryable and self.is_retryable:
+                if retryable:
                     # Retryable writeConcernErrors halt the execution of this batch.
                     wce = result.get("writeConcernError", {})
                     if wce.get("code", 0) in _RETRYABLE_ERROR_CODES:
