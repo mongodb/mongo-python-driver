@@ -1941,6 +1941,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         # Ensure that the options supports retry_writes and there is a valid session not in
         # transaction, otherwise, we will not support retry behavior for this txn.
+        retryable = bool(
+            retryable and self.options.retry_writes and session and not session.in_transaction
+        )
         return self._retry_internal(
             func=func,
             session=session,

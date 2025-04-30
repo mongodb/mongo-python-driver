@@ -533,7 +533,12 @@ class _ClientBulk:
             if session:
                 # Start a new retryable write unless one was already
                 # started for this command.
-                if retryable and self.is_retryable and not self.started_retryable_write:
+                if (
+                    retryable
+                    and self.is_retryable
+                    and not self.started_retryable_write
+                    and not session.in_transaction
+                ):
                     session._start_retryable_write()
                     self.started_retryable_write = True
                 session._apply_to(

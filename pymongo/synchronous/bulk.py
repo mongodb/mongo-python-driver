@@ -130,24 +130,6 @@ class _Bulk:
             self.is_encrypted = False
             return _BulkWriteContext
 
-    # @property
-    # def is_retryable(self) -> bool:
-    #     if self.current_run:
-    #         return self.current_run.is_retryable
-    #     return True
-    #
-    # @property
-    # def retrying(self) -> bool:
-    #     if self.current_run:
-    #         return self.current_run.retrying
-    #     return False
-    #
-    # @property
-    # def started_retryable_write(self) -> bool:
-    #     if self.current_run:
-    #         return self.current_run.started_retryable_write
-    #     return False
-
     def add_insert(self, document: _DocumentOut) -> bool:
         """Add an insert document to the list of ops."""
         validate_is_document_type("document", document)
@@ -579,7 +561,6 @@ class _Bulk:
                     # Start a new retryable write unless one was already
                     # started for this command.
                     if retryable and self.is_retryable and not self.started_retryable_write:
-                        # print("starting retrayable write")
                         session._start_retryable_write()
                         self.started_retryable_write = True
                     session._apply_to(
@@ -596,6 +577,7 @@ class _Bulk:
                     self.validate_batch(conn, write_concern)
                 if write_concern.acknowledged:
                     result, to_send = self._execute_batch(bwc, cmd, ops, client)
+
                     # Retryable writeConcernErrors halt the execution of this run.
                     wce = result.get("writeConcernError", {})
                     if wce.get("code", 0) in _RETRYABLE_ERROR_CODES:
@@ -604,7 +586,9 @@ class _Bulk:
                         full = copy.deepcopy(full_result)
                         _merge_command(run, full, run.idx_offset, result)
                         _raise_bulk_write_error(full)
+
                     _merge_command(run, full_result, run.idx_offset, result)
+
                     # We're no longer in a retry once a command succeeds.
                     self.retrying = False
                     self.started_retryable_write = False
