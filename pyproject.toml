@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "pymongo"
 dynamic = ["version", "dependencies", "optional-dependencies"]
-description = "Python driver for MongoDB <http://www.mongodb.org>"
+description = "PyMongo - the Official MongoDB Python driver"
 readme = "README.md"
 license = {file="LICENSE"}
 requires-python = ">=3.9"

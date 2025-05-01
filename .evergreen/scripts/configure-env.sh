@@ -96,7 +96,7 @@ EOT
 _bin_path=""
 if [ "Windows_NT" == "${OS:-}" ]; then
   _bin_path="/cygdrive/c/Python/Current/Scripts"
-elif [ "$(uname -s)" != "Darwin" ]; then
+elif [ "$(uname -s)" == "Darwin" ]; then
   _bin_path="/Library/Frameworks/Python.Framework/Versions/Current/bin"
 else
   _bin_path="/opt/python/Current/bin"
@@ -106,6 +106,7 @@ if [ -d "${_bin_path}" ]; then
   if [ "Windows_NT" == "${OS:-}" ]; then
     _suffix=".exe"
   fi
+  echo "Symlinking binaries from toolchain"
   mkdir -p $PYMONGO_BIN_DIR
   ln -s ${_bin_path}/just${_suffix} $PYMONGO_BIN_DIR/just${_suffix}
   ln -s ${_bin_path}/uv${_suffix} $PYMONGO_BIN_DIR/uv${_suffix}
