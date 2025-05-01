@@ -591,18 +591,11 @@ def create_aws_lambda_variants():
 
 def create_server_version_tasks():
     tasks = []
-    # Test all pythons with sharded_cluster, auth, and ssl.
-    task_types = [(p, "sharded_cluster", "auth", "ssl") for p in ALL_PYTHONS]
-    # Test all combinations of topology, auth, and ssl, with rotating pythons.
-    for (topology, auth, ssl), python in zip_cycle(
-        list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"])), ALL_PYTHONS
+    # Test all combinations of topology, auth, ssl, and sync, with rotating pythons.
+    for (topology, auth, ssl, sync), python in zip_cycle(
+        list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
     ):
-        # Skip the ones we already have.
-        if topology == "sharded_cluster" and auth == "auth" and ssl == "ssl":
-            continue
-        task_types.append((python, topology, auth, ssl))
-    for (python, topology, auth, ssl), sync in zip_cycle(task_types, SYNCS):
-        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}"]
+        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}", sync]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
