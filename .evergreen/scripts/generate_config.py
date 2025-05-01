@@ -598,7 +598,7 @@ def create_server_version_tasks():
     ):
         task_inputs.append((topology, auth, ssl, sync, python))
 
-    # Every python should be tested with sharded cluster auth ssl, sync and async.
+    # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
     for python, sync in product(ALL_PYTHONS, SYNCS):
         task_input = ("sharded_cluster", "auth", "ssl", sync, python)
         if task_input not in task_inputs:
