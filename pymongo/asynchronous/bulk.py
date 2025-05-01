@@ -525,7 +525,6 @@ class _AsyncBulk:
         while run:
             self.is_retryable = run.is_retryable
             self.retrying = run.retrying
-            self.started_retryable_write = run.started_retryable_write
             if not self.retrying:
                 self.next_run = next(generator, None)
                 if self.next_run is None:
