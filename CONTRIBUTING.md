@@ -231,6 +231,17 @@ the pages will re-render and the browser will automatically refresh.
 - Run `just setup-tests encryption`.
 - Run the tests with `just run-tests`.
 
+To test with `encryption` and `PyOpenSSL`, use `just setup-tests encryption pyopenssl`.
+
+### PyOpenSSL tests
+
+- Run `just run-server` to start the server.
+- Run `just setup-tests default_sync pyopenssl`.
+- Run the tests with `just run-tests`.
+
+Note: `PyOpenSSL` is not used in async tests, but you can use `just setup-tests default_async pyopenssl`
+to verify that PyMongo falls back to the standard library `OpenSSL`.
+
 ### Load balancer tests
 
 - Install `haproxy` (available as `brew install haproxy` on macOS).
