@@ -262,7 +262,7 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-macos
     tasks:
-      - name: .test-non-standard !.pypy
+      - name: .test-non-standard !.pypy .auth
     display_name: Auth Enterprise macOS
     run_on:
       - macos-14
@@ -271,7 +271,7 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-win64
     tasks:
-      - name: .test-non-standard !.pypy
+      - name: .test-non-standard !.pypy .auth
     display_name: Auth Enterprise Win64
     run_on:
       - windows-64-vsMulti-small

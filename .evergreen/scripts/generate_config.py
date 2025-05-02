@@ -216,7 +216,7 @@ def create_enterprise_auth_variants():
         display_name = get_variant_name("Auth Enterprise", host)
         tasks = [".test-non-standard"]
         if host != "rhel8":
-            tasks = [".test-non-standard !.pypy"]
+            tasks = [".test-non-standard !.pypy .auth"]
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants
@@ -618,6 +618,7 @@ def create_test_non_standard_tasks():
             f"server-{version}",
             f"python-{python}",
             f"{topology}-{auth}-{ssl}",
+            auth,
         ]
         if python in PYPYS:
             tags.append("pypy")
