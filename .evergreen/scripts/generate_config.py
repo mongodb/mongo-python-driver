@@ -211,15 +211,14 @@ def create_compression_variants():
 
 def create_enterprise_auth_variants():
     variants = []
-    for host in [HOSTS["macos"], HOSTS["win64"], DEFAULT_HOST]:
+    for host in ["rhel8", "macos", "win64"]:
+        expansions = dict(TEST_NAME="enterprise_auth", AUTH="auth")
         display_name = get_variant_name("Auth Enterprise", host)
-        if host == DEFAULT_HOST:
-            tags = [".enterprise_auth"]
-        else:
-            tags = [".enterprise_auth !.pypy"]
-        variant = create_variant(tags, display_name, host=host)
+        tasks = [".test-non-standard .auth"]
+        if host != "rhel8":
+            tasks = [".test-non-standard !.pypy .auth"]
+        variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
-
     return variants
 
 
@@ -338,7 +337,7 @@ def create_mod_wsgi_variants():
     host = HOSTS["ubuntu22"]
     tasks = [".mod_wsgi"]
     expansions = dict(MOD_WSGI_VERSION="4")
-    display_name = get_variant_name("mod_wsgi", host)
+    display_name = get_variant_name("Mod_WSGI", host)
     return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
@@ -605,6 +604,7 @@ def create_test_non_standard_tasks():
             f"server-{version}",
             f"python-{python}",
             f"{topology}-{auth}-{ssl}",
+            auth,
         ]
         if python in PYPYS:
             tags.append("pypy")
@@ -813,23 +813,6 @@ def create_search_index_tasks():
     tags = ["search_index"]
     commands = [assume_func, server_func, test_func]
     return [EvgTask(name=task_name, tags=tags, commands=commands)]
-
-
-def create_enterprise_auth_tasks():
-    tasks = []
-    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
-        vars = dict(TEST_NAME="enterprise_auth", AUTH="auth", PYTHON_VERSION=python)
-        server_func = FunctionCall(func="run server", vars=vars)
-        assume_func = FunctionCall(func="assume ec2 role")
-        test_func = FunctionCall(func="run tests", vars=vars)
-        task_name = get_task_name("test-enterprise-auth", python=python)
-        tags = ["enterprise_auth"]
-        if python in PYPYS:
-            tags += ["pypy"]
-        tasks.append(
-            EvgTask(name=task_name, tags=tags, commands=[server_func, assume_func, test_func])
-        )
-    return tasks
 
 
 def create_perf_tasks():
