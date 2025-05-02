@@ -219,6 +219,7 @@ def create_enterprise_auth_variants():
             tasks = [".test-non-standard !.pypy"]
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
+    return variants
 
 
 def create_pyopenssl_variants():

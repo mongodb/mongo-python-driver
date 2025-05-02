@@ -251,6 +251,33 @@ buildvariants:
     tags: [encryption_tag]
 
   # Enterprise auth tests
+  - name: auth-enterprise-rhel8
+    tasks:
+      - name: .test-non-standard
+    display_name: Auth Enterprise RHEL8
+    run_on:
+      - rhel87-small
+    expansions:
+      TEST_NAME: enterprise_auth
+      AUTH: auth
+  - name: auth-enterprise-macos
+    tasks:
+      - name: .test-non-standard !.pypy
+    display_name: Auth Enterprise macOS
+    run_on:
+      - macos-14
+    expansions:
+      TEST_NAME: enterprise_auth
+      AUTH: auth
+  - name: auth-enterprise-win64
+    tasks:
+      - name: .test-non-standard !.pypy
+    display_name: Auth Enterprise Win64
+    run_on:
+      - windows-64-vsMulti-small
+    expansions:
+      TEST_NAME: enterprise_auth
+      AUTH: auth
 
   # Free threaded tests
   - name: free-threaded-rhel8-python3.13t
