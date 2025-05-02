@@ -342,7 +342,10 @@ def create_mod_wsgi_variants():
         display_name = get_variant_name(f"mod_wsgi {test_type}", host)
         variants.append(
             create_variant(
-                [".test-non-standard .replica_set", ".test-non-standard .standalone"],
+                [
+                    ".test-non-standard .replica_set-noauth-ssl",
+                    ".test-non-standard .standalone-noauth-nossl",
+                ],
                 display_name,
                 host=host,
                 expansions=expansions,

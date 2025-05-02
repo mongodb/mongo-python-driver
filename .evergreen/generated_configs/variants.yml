@@ -349,8 +349,8 @@ buildvariants:
   # Mod wsgi tests
   - name: mod_wsgi-standalone-ubuntu-22
     tasks:
-      - name: .test-non-standard .replica_set
-      - name: .test-non-standard .standalone
+      - name: .test-non-standard .replica_set-noauth-ssl
+      - name: .test-non-standard .standalone-noauth-nossl
     display_name: mod_wsgi standalone Ubuntu-22
     run_on:
       - ubuntu2204-small
@@ -360,8 +360,8 @@ buildvariants:
       SUB_TEST_NAME: standalone
   - name: mod_wsgi-embedded-mode-ubuntu-22
     tasks:
-      - name: .test-non-standard .replica_set
-      - name: .test-non-standard .standalone
+      - name: .test-non-standard .replica_set-noauth-ssl
+      - name: .test-non-standard .standalone-noauth-nossl
     display_name: mod_wsgi embedded-mode Ubuntu-22
     run_on:
       - ubuntu2204-small
