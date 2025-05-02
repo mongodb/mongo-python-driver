@@ -199,6 +199,68 @@ tasks:
           TEST_NAME: kms
           SUB_TEST_NAME: azure-fail
 
+  # Mod wsgi tests
+  - name: mod-wsgi-replica-set-python3.9
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.9"
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: standalone
+          PYTHON_VERSION: "3.9"
+    tags: [mod_wsgi]
+  - name: mod-wsgi-embedded-mode-replica-set-python3.10
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.10"
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: embedded
+          PYTHON_VERSION: "3.10"
+    tags: [mod_wsgi]
+  - name: mod-wsgi-replica-set-python3.11
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.11"
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: standalone
+          PYTHON_VERSION: "3.11"
+    tags: [mod_wsgi]
+  - name: mod-wsgi-embedded-mode-replica-set-python3.12
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.12"
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: embedded
+          PYTHON_VERSION: "3.12"
+    tags: [mod_wsgi]
+  - name: mod-wsgi-replica-set-python3.13
+    commands:
+      - func: run server
+        vars:
+          TOPOLOGY: replica_set
+          PYTHON_VERSION: "3.13"
+      - func: run tests
+        vars:
+          TEST_NAME: mod_wsgi
+          SUB_TEST_NAME: standalone
+          PYTHON_VERSION: "3.13"
+    tags: [mod_wsgi]
+
   # No orchestration tests
   - name: test-no-orchestration-python3.9
     commands:
