@@ -344,8 +344,8 @@ def create_mod_wsgi_variants():
         variants.append(
             create_variant(
                 [
-                    ".test-non-standard .replica_set-noauth-ssl",
-                    ".test-non-standard .standalone-noauth-nossl",
+                    ".test-non-standard .replica_set-noauth-ssl .server-latest",
+                    ".test-non-standard .standalone-noauth-nossl .server-latest",
                 ],
                 display_name,
                 host=host,
