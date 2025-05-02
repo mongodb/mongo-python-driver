@@ -193,6 +193,6 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
 
 def create_archive() -> str:
     run_command("git add .", cwd=ROOT)
-    run_command('git commit -m "add files"', check=False, cwd=ROOT)
+    run_command('git commit --no-verify -m "add files"', check=False, cwd=ROOT)
     run_command(f"git archive -o {TMP_DRIVER_FILE} HEAD", cwd=ROOT)
     return TMP_DRIVER_FILE
