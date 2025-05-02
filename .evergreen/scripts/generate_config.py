@@ -5,8 +5,8 @@ import sys
 from itertools import product
 
 from generate_config_utils import (
+    ALL_PYTHONS,
     ALL_VERSIONS,
-    AUTH_SSLS,
     BATCHTIME_WEEK,
     C_EXTS,
     CPYTHONS,
@@ -537,6 +537,37 @@ def create_aws_lambda_variants():
 ##############
 
 
+def create_server_version_tasks():
+    tasks = []
+    task_inputs = []
+    # All combinations of topology, auth, ssl, and sync should be tested.
+    for (topology, auth, ssl, sync), python in zip_cycle(
+        list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
+    ):
+        task_inputs.append((topology, auth, ssl, sync, python))
+
+    # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
+    for python, sync in product(ALL_PYTHONS, SYNCS):
+        task_input = ("sharded_cluster", "auth", "ssl", sync, python)
+        if task_input not in task_inputs:
+            task_inputs.append(task_input)
+
+    # Assemble the tasks.
+    for topology, auth, ssl, sync, python in task_inputs:
+        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}", sync]
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
+        if python not in PYPYS:
+            expansions["COVERAGE"] = "1"
+        name = get_task_name("test-server-version", python=python, sync=sync, **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
+        test_vars["PYTHON_VERSION"] = python
+        test_vars["TEST_NAME"] = f"default_{sync}"
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
 def create_no_toolchain_tasks():
     tasks = []
 
@@ -618,30 +649,6 @@ def create_standard_tasks():
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
         test_vars["TEST_NAME"] = f"default_{sync}"
-        test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
-    return tasks
-
-
-def create_server_tasks():
-    tasks = []
-    for topo, version, (auth, ssl), sync in product(
-        TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, [*SYNCS, "sync_async"]
-    ):
-        name = f"test-{version}-{topo}-{auth}-{ssl}-{sync}".lower()
-        tags = [version, topo, auth, ssl, sync]
-        server_vars = dict(
-            VERSION=version,
-            TOPOLOGY=topo if topo != "standalone" else "server",
-            AUTH=auth,
-            SSL=ssl,
-        )
-        server_func = FunctionCall(func="run server", vars=server_vars)
-        test_vars = dict(AUTH=auth, SSL=ssl, SYNC=sync)
-        if sync == "sync":
-            test_vars["TEST_NAME"] = "default_sync"
-        elif sync == "async":
-            test_vars["TEST_NAME"] = "default_async"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
