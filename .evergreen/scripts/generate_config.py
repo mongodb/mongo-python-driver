@@ -233,7 +233,7 @@ def create_pyopenssl_variants():
         display_name = get_variant_name(base_name, host)
         base_task = ".test-standard" if host == "rhel8" else ".test-standard !.pypy"
         # We only need to run a subset on async.
-        tasks = [f"{base_task} .sync", f"{base_task} .async .replica-set-noauth-ssl"]
+        tasks = [f"{base_task} .sync", f"{base_task} .async .replica_set-noauth-ssl"]
         variants.append(
             create_variant(
                 tasks,

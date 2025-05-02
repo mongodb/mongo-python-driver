@@ -451,7 +451,7 @@ buildvariants:
   - name: pyopenssl-rhel8
     tasks:
       - name: .test-standard .sync
-      - name: .test-standard .async .replica-set-noauth-ssl
+      - name: .test-standard .async .replica_set-noauth-ssl
     display_name: PyOpenSSL RHEL8
     run_on:
       - rhel87-small
@@ -461,7 +461,7 @@ buildvariants:
   - name: pyopenssl-macos
     tasks:
       - name: .test-standard !.pypy .sync
-      - name: .test-standard !.pypy .async .replica-set-noauth-ssl
+      - name: .test-standard !.pypy .async .replica_set-noauth-ssl
     display_name: PyOpenSSL macOS
     run_on:
       - rhel87-small
@@ -471,7 +471,7 @@ buildvariants:
   - name: pyopenssl-win64
     tasks:
       - name: .test-standard !.pypy .sync
-      - name: .test-standard !.pypy .async .replica-set-noauth-ssl
+      - name: .test-standard !.pypy .async .replica_set-noauth-ssl
     display_name: PyOpenSSL Win64
     run_on:
       - rhel87-small
