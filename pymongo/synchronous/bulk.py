@@ -524,7 +524,6 @@ class _Bulk:
 
         while run:
             self.is_retryable = run.is_retryable
-            self.retrying = run.retrying
             if not self.retrying:
                 self.next_run = next(generator, None)
                 if self.next_run is None:
