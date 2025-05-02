@@ -154,6 +154,7 @@ def create_encryption_variants() -> list[BuildVariant]:
         variants.append(variant)
 
     # Test PyOpenSSL on linux.
+    host = DEFAULT_HOST
     encryption = "Encryption PyOpenSSL"
     expansions = get_encryption_expansions(encryption)
     display_name = get_variant_name(encryption, host, **expansions)

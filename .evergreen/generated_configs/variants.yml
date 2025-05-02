@@ -238,12 +238,12 @@ buildvariants:
       TEST_NAME: encryption
       TEST_CRYPT_SHARED: "true"
     tags: [encryption_tag]
-  - name: encryption-pyopenssl-win64
+  - name: encryption-pyopenssl-rhel8
     tasks:
       - name: .test-non-standard
-    display_name: Encryption PyOpenSSL Win64
+    display_name: Encryption PyOpenSSL RHEL8
     run_on:
-      - windows-64-vsMulti-small
+      - rhel87-small
     batchtime: 10080
     expansions:
       TEST_NAME: encryption

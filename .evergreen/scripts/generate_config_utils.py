@@ -130,7 +130,7 @@ def create_variant(
     display_name: str,
     *,
     version: str | None = None,
-    host: Host | None = None,
+    host: Host | str | None = None,
     python: str | None = None,
     expansions: dict | None = None,
     **kwargs: Any,
