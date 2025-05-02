@@ -346,7 +346,7 @@ def create_disable_test_commands_variants():
     expansions = dict(AUTH="auth", SSL="ssl", DISABLE_TEST_COMMANDS="1")
     python = CPYTHONS[0]
     display_name = get_variant_name("Disable test commands", host, python=python)
-    tasks = [".version-latest .test-standard"]
+    tasks = [".test-standard .server-latest"]
     return [create_variant(tasks, display_name, host=host, python=python, expansions=expansions)]
 
 

@@ -154,7 +154,7 @@ buildvariants:
   # Disable test commands tests
   - name: disable-test-commands-rhel8-python3.9
     tasks:
-      - name: .version-latest .test-standard
+      - name: .test-standard .server-latest
     display_name: Disable test commands RHEL8 Python3.9
     run_on:
       - rhel87-small
