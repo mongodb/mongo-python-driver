@@ -385,11 +385,11 @@ buildvariants:
       MOD_WSGI_VERSION: "4"
       TEST_NAME: mod_wsgi
       SUB_TEST_NAME: standalone
-  - name: mod_wsgi-embedded-mode-ubuntu-22
+  - name: mod_wsgi-embedded-ubuntu-22
     tasks:
       - name: .test-non-standard .replica_set-noauth-ssl .server-latest
       - name: .test-non-standard .standalone-noauth-nossl .server-latest
-    display_name: Mod_WSGI Embedded-Mode Ubuntu-22
+    display_name: Mod_WSGI Embedded Ubuntu-22
     run_on:
       - ubuntu2204-small
     expansions:

@@ -336,11 +336,9 @@ def create_atlas_data_lake_variants():
 def create_mod_wsgi_variants():
     host = HOSTS["ubuntu22"]
     variants = []
-    for test_type in ["standalone", "embedded-mode"]:
-        expansions = dict(
-            MOD_WSGI_VERSION="4", TEST_NAME="mod_wsgi", SUB_TEST_NAME=test_type.split("-")[0]
-        )
-        display_name = get_variant_name(f"Mod_WSGI {test_type.title()}", host)
+    for test_type in ["standalone", "embedded"]:
+        expansions = dict(MOD_WSGI_VERSION="4", TEST_NAME="mod_wsgi", SUB_TEST_NAME=test_type)
+        display_name = get_variant_name(f"Mod_WSGI {test_type.capitalize()}", host)
         variants.append(
             create_variant(
                 [
