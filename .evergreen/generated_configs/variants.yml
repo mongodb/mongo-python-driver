@@ -3,7 +3,7 @@ buildvariants:
   - name: openssl-1.0.2-rhel7-v5.0-python3.9
     tasks:
       - name: .test-no-toolchain
-    display_name: OpenSSL 1.0.2 RHEL7 v5.0 Python3.9
+    display_name: Openssl 1.0.2 rhel7 v5.0 python3.9
     run_on:
       - rhel79-small
     batchtime: 10080
@@ -14,7 +14,7 @@ buildvariants:
   - name: other-hosts-rhel9-fips-latest
     tasks:
       - name: .test-no-toolchain
-    display_name: Other hosts RHEL9-FIPS latest
+    display_name: Other hosts rhel9-fips latest
     run_on:
       - rhel92-fips
     batchtime: 10080
@@ -25,7 +25,7 @@ buildvariants:
   - name: other-hosts-rhel8-zseries-latest
     tasks:
       - name: .test-no-toolchain
-    display_name: Other hosts RHEL8-zseries latest
+    display_name: Other hosts rhel8-zseries latest
     run_on:
       - rhel8-zseries-small
     batchtime: 10080
@@ -35,7 +35,7 @@ buildvariants:
   - name: other-hosts-rhel8-power8-latest
     tasks:
       - name: .test-no-toolchain
-    display_name: Other hosts RHEL8-POWER8 latest
+    display_name: Other hosts rhel8-power8 latest
     run_on:
       - rhel8-power-small
     batchtime: 10080
@@ -45,7 +45,7 @@ buildvariants:
   - name: other-hosts-rhel8-arm64-latest
     tasks:
       - name: .test-no-toolchain
-    display_name: Other hosts RHEL8-arm64 latest
+    display_name: Other hosts rhel8-arm64 latest
     run_on:
       - rhel82-arm64-small
     batchtime: 10080
@@ -55,7 +55,7 @@ buildvariants:
   - name: other-hosts-amazon2023-latest
     tasks:
       - name: .test-no-toolchain
-    display_name: Other hosts Amazon2023 latest
+    display_name: Other hosts amazon2023 latest
     run_on:
       - amazon2023-arm64-latest-large-m8g
     batchtime: 10080
@@ -67,7 +67,7 @@ buildvariants:
   - name: atlas-connect-rhel8
     tasks:
       - name: .test-no-orchestration
-    display_name: Atlas connect RHEL8
+    display_name: Atlas connect rhel8
     run_on:
       - rhel87-small
 
@@ -75,7 +75,7 @@ buildvariants:
   - name: atlas-data-lake-ubuntu-22
     tasks:
       - name: .test-no-orchestration
-    display_name: Atlas Data Lake Ubuntu-22
+    display_name: Atlas data lake ubuntu-22
     run_on:
       - ubuntu2204-small
     expansions:
@@ -85,19 +85,19 @@ buildvariants:
   - name: auth-aws-ubuntu-20
     tasks:
       - name: .auth-aws
-    display_name: Auth AWS Ubuntu-20
+    display_name: Auth aws ubuntu-20
     run_on:
       - ubuntu2004-small
   - name: auth-aws-win64
     tasks:
       - name: .auth-aws !.auth-aws-ecs
-    display_name: Auth AWS Win64
+    display_name: Auth aws win64
     run_on:
       - windows-64-vsMulti-small
   - name: auth-aws-macos
     tasks:
       - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2
-    display_name: Auth AWS macOS
+    display_name: Auth aws macos
     run_on:
       - macos-14
 
@@ -121,7 +121,7 @@ buildvariants:
   - name: compression-snappy-rhel8
     tasks:
       - name: .test-standard
-    display_name: Compression snappy RHEL8
+    display_name: Compression snappy rhel8
     run_on:
       - rhel87-small
     expansions:
@@ -129,7 +129,7 @@ buildvariants:
   - name: compression-zlib-rhel8
     tasks:
       - name: .test-standard
-    display_name: Compression zlib RHEL8
+    display_name: Compression zlib rhel8
     run_on:
       - rhel87-small
     expansions:
@@ -137,7 +137,7 @@ buildvariants:
   - name: compression-zstd-rhel8
     tasks:
       - name: .test-standard !.server-4.0
-    display_name: Compression zstd RHEL8
+    display_name: Compression zstd rhel8
     run_on:
       - rhel87-small
     expansions:
@@ -155,7 +155,7 @@ buildvariants:
   - name: disable-test-commands-rhel8-python3.9
     tasks:
       - name: .test-standard .server-latest
-    display_name: Disable test commands RHEL8 Python3.9
+    display_name: Disable test commands rhel8 python3.9
     run_on:
       - rhel87-small
     expansions:
@@ -168,7 +168,7 @@ buildvariants:
   - name: doctests-rhel8
     tasks:
       - name: .test-non-standard .standalone-noauth-nossl
-    display_name: Doctests RHEL8
+    display_name: Doctests rhel8
     run_on:
       - rhel87-small
     expansions:
@@ -178,7 +178,7 @@ buildvariants:
   - name: encryption-rhel8
     tasks:
       - name: .test-non-standard
-    display_name: Encryption RHEL8
+    display_name: Encryption rhel8
     run_on:
       - rhel87-small
     batchtime: 10080
@@ -188,7 +188,7 @@ buildvariants:
   - name: encryption-macos
     tasks:
       - name: .test-non-standard !.pypy
-    display_name: Encryption macOS
+    display_name: Encryption macos
     run_on:
       - macos-14
     batchtime: 10080
@@ -198,7 +198,7 @@ buildvariants:
   - name: encryption-win64
     tasks:
       - name: .test-non-standard !.pypy
-    display_name: Encryption Win64
+    display_name: Encryption win64
     run_on:
       - windows-64-vsMulti-small
     batchtime: 10080
@@ -208,7 +208,7 @@ buildvariants:
   - name: encryption-crypt_shared-rhel8
     tasks:
       - name: .test-non-standard
-    display_name: Encryption crypt_shared RHEL8
+    display_name: Encryption crypt_shared rhel8
     run_on:
       - rhel87-small
     batchtime: 10080
@@ -219,7 +219,7 @@ buildvariants:
   - name: encryption-crypt_shared-macos
     tasks:
       - name: .test-non-standard !.pypy
-    display_name: Encryption crypt_shared macOS
+    display_name: Encryption crypt_shared macos
     run_on:
       - macos-14
     batchtime: 10080
@@ -230,7 +230,7 @@ buildvariants:
   - name: encryption-crypt_shared-win64
     tasks:
       - name: .test-non-standard !.pypy
-    display_name: Encryption crypt_shared Win64
+    display_name: Encryption crypt_shared win64
     run_on:
       - windows-64-vsMulti-small
     batchtime: 10080
@@ -241,7 +241,7 @@ buildvariants:
   - name: encryption-pyopenssl-rhel8
     tasks:
       - name: .test-non-standard
-    display_name: Encryption PyOpenSSL RHEL8
+    display_name: Encryption pyopenssl rhel8
     run_on:
       - rhel87-small
     batchtime: 10080
@@ -254,7 +254,7 @@ buildvariants:
   - name: auth-enterprise-rhel8
     tasks:
       - name: .test-non-standard .auth
-    display_name: Auth Enterprise RHEL8
+    display_name: Auth enterprise rhel8
     run_on:
       - rhel87-small
     expansions:
@@ -263,7 +263,7 @@ buildvariants:
   - name: auth-enterprise-macos
     tasks:
       - name: .test-non-standard !.pypy .auth
-    display_name: Auth Enterprise macOS
+    display_name: Auth enterprise macos
     run_on:
       - macos-14
     expansions:
@@ -272,7 +272,7 @@ buildvariants:
   - name: auth-enterprise-win64
     tasks:
       - name: .test-non-standard !.pypy .auth
-    display_name: Auth Enterprise Win64
+    display_name: Auth enterprise win64
     run_on:
       - windows-64-vsMulti-small
     expansions:
@@ -283,7 +283,7 @@ buildvariants:
   - name: free-threaded-rhel8-python3.13t
     tasks:
       - name: .free-threading
-    display_name: Free-threaded RHEL8 Python3.13t
+    display_name: Free-threaded rhel8 python3.13t
     run_on:
       - rhel87-small
     expansions:
@@ -291,7 +291,7 @@ buildvariants:
   - name: free-threaded-macos-python3.13t
     tasks:
       - name: .free-threading
-    display_name: Free-threaded macOS Python3.13t
+    display_name: Free-threaded macos python3.13t
     run_on:
       - macos-14
     expansions:
@@ -299,7 +299,7 @@ buildvariants:
   - name: free-threaded-macos-arm64-python3.13t
     tasks:
       - name: .free-threading
-    display_name: Free-threaded macOS Arm64 Python3.13t
+    display_name: Free-threaded macos arm64 python3.13t
     run_on:
       - macos-14-arm64
     expansions:
@@ -309,7 +309,7 @@ buildvariants:
   - name: green-eventlet-rhel8
     tasks:
       - name: .test-standard .standalone-noauth-nossl .python-3.9
-    display_name: Green Eventlet RHEL8
+    display_name: Green eventlet rhel8
     run_on:
       - rhel87-small
     expansions:
@@ -319,7 +319,7 @@ buildvariants:
   - name: green-gevent-rhel8
     tasks:
       - name: .test-standard .standalone-noauth-nossl
-    display_name: Green Gevent RHEL8
+    display_name: Green gevent rhel8
     run_on:
       - rhel87-small
     expansions:
@@ -367,7 +367,7 @@ buildvariants:
   - name: mockupdb-rhel8
     tasks:
       - name: .test-no-orchestration
-    display_name: MockupDB RHEL8
+    display_name: Mockupdb rhel8
     run_on:
       - rhel87-small
     expansions:
@@ -378,7 +378,7 @@ buildvariants:
     tasks:
       - name: .test-non-standard .replica_set-noauth-ssl
       - name: .test-non-standard .standalone-noauth-nossl
-    display_name: mod_wsgi standalone Ubuntu-22
+    display_name: Mod_wsgi standalone ubuntu-22
     run_on:
       - ubuntu2204-small
     expansions:
@@ -389,7 +389,7 @@ buildvariants:
     tasks:
       - name: .test-non-standard .replica_set-noauth-ssl
       - name: .test-non-standard .standalone-noauth-nossl
-    display_name: mod_wsgi embedded-mode Ubuntu-22
+    display_name: Mod_wsgi embedded-mode ubuntu-22
     run_on:
       - ubuntu2204-small
     expansions:
@@ -401,7 +401,7 @@ buildvariants:
   - name: no-c-ext-rhel8
     tasks:
       - name: .test-standard
-    display_name: No C Ext RHEL8
+    display_name: No c ext rhel8
     run_on:
       - rhel87-small
 
@@ -409,7 +409,7 @@ buildvariants:
   - name: no-server-rhel8
     tasks:
       - name: .test-no-orchestration
-    display_name: No server RHEL8
+    display_name: No server rhel8
     run_on:
       - rhel87-small
 
@@ -417,7 +417,7 @@ buildvariants:
   - name: ocsp-rhel8
     tasks:
       - name: .ocsp
-    display_name: OCSP RHEL8
+    display_name: Ocsp rhel8
     run_on:
       - rhel87-small
     batchtime: 10080
@@ -425,7 +425,7 @@ buildvariants:
     tasks:
       - name: .ocsp-rsa !.ocsp-staple .latest
       - name: .ocsp-rsa !.ocsp-staple .4.4
-    display_name: OCSP Win64
+    display_name: Ocsp win64
     run_on:
       - windows-64-vsMulti-small
     batchtime: 10080
@@ -433,7 +433,7 @@ buildvariants:
     tasks:
       - name: .ocsp-rsa !.ocsp-staple .latest
       - name: .ocsp-rsa !.ocsp-staple .4.4
-    display_name: OCSP macOS
+    display_name: Ocsp macos
     run_on:
       - macos-14
     batchtime: 10080
@@ -442,21 +442,21 @@ buildvariants:
   - name: auth-oidc-ubuntu-22
     tasks:
       - name: .auth_oidc
-    display_name: Auth OIDC Ubuntu-22
+    display_name: Auth oidc ubuntu-22
     run_on:
       - ubuntu2204-small
     batchtime: 10080
   - name: auth-oidc-macos
     tasks:
       - name: .auth_oidc !.auth_oidc_remote
-    display_name: Auth OIDC macOS
+    display_name: Auth oidc macos
     run_on:
       - macos-14
     batchtime: 10080
   - name: auth-oidc-win64
     tasks:
       - name: .auth_oidc !.auth_oidc_remote
-    display_name: Auth OIDC Win64
+    display_name: Auth oidc win64
     run_on:
       - windows-64-vsMulti-small
     batchtime: 10080
@@ -475,7 +475,7 @@ buildvariants:
     tasks:
       - name: .test-standard .sync
       - name: .test-standard .async .replica_set-noauth-ssl
-    display_name: PyOpenSSL RHEL8
+    display_name: Pyopenssl rhel8
     run_on:
       - rhel87-small
     batchtime: 10080
@@ -485,7 +485,7 @@ buildvariants:
     tasks:
       - name: .test-standard !.pypy .sync
       - name: .test-standard !.pypy .async .replica_set-noauth-ssl
-    display_name: PyOpenSSL macOS
+    display_name: Pyopenssl macos
     run_on:
       - rhel87-small
     batchtime: 10080
@@ -495,7 +495,7 @@ buildvariants:
     tasks:
       - name: .test-standard !.pypy .sync
       - name: .test-standard !.pypy .async .replica_set-noauth-ssl
-    display_name: PyOpenSSL Win64
+    display_name: Pyopenssl win64
     run_on:
       - rhel87-small
     batchtime: 10080
@@ -506,7 +506,7 @@ buildvariants:
   - name: search-index-helpers-rhel8-python3.9
     tasks:
       - name: .search_index
-    display_name: Search Index Helpers RHEL8 Python3.9
+    display_name: Search index helpers rhel8 python3.9
     run_on:
       - rhel87-small
     expansions:
@@ -516,63 +516,63 @@ buildvariants:
   - name: mongodb-v4.0
     tasks:
       - name: .server-version
-    display_name: "* MongoDB v4.0"
+    display_name: "* mongodb v4.0"
     run_on:
       - rhel87-small
     tags: [coverage_tag]
   - name: mongodb-v4.2
     tasks:
       - name: .server-version
-    display_name: "* MongoDB v4.2"
+    display_name: "* mongodb v4.2"
     run_on:
       - rhel87-small
     tags: [coverage_tag]
   - name: mongodb-v4.4
     tasks:
       - name: .server-version
-    display_name: "* MongoDB v4.4"
+    display_name: "* mongodb v4.4"
     run_on:
       - rhel87-small
     tags: [coverage_tag]
   - name: mongodb-v5.0
     tasks:
       - name: .server-version
-    display_name: "* MongoDB v5.0"
+    display_name: "* mongodb v5.0"
     run_on:
       - rhel87-small
     tags: [coverage_tag]
   - name: mongodb-v6.0
     tasks:
       - name: .server-version
-    display_name: "* MongoDB v6.0"
+    display_name: "* mongodb v6.0"
     run_on:
       - rhel87-small
     tags: [coverage_tag]
   - name: mongodb-v7.0
     tasks:
       - name: .server-version
-    display_name: "* MongoDB v7.0"
+    display_name: "* mongodb v7.0"
     run_on:
       - rhel87-small
     tags: [coverage_tag]
   - name: mongodb-v8.0
     tasks:
       - name: .server-version
-    display_name: "* MongoDB v8.0"
+    display_name: "* mongodb v8.0"
     run_on:
       - rhel87-small
     tags: [coverage_tag]
   - name: mongodb-rapid
     tasks:
       - name: .server-version
-    display_name: "* MongoDB rapid"
+    display_name: "* mongodb rapid"
     run_on:
       - rhel87-small
     tags: [coverage_tag]
   - name: mongodb-latest
     tasks:
       - name: .server-version
-    display_name: "* MongoDB latest"
+    display_name: "* mongodb latest"
     run_on:
       - rhel87-small
     tags: [coverage_tag]
@@ -581,7 +581,7 @@ buildvariants:
   - name: serverless-rhel8-python3.9
     tasks:
       - name: .serverless
-    display_name: Serverless RHEL8 Python3.9
+    display_name: Serverless rhel8 python3.9
     run_on:
       - rhel87-small
     batchtime: 10080
@@ -590,7 +590,7 @@ buildvariants:
   - name: serverless-rhel8-python3.13
     tasks:
       - name: .serverless
-    display_name: Serverless RHEL8 Python3.13
+    display_name: Serverless rhel8 python3.13
     run_on:
       - rhel87-small
     batchtime: 10080
@@ -606,7 +606,7 @@ buildvariants:
       - name: .test-standard !.replica_set-noauth-ssl .server-8.0
       - name: .test-standard !.replica_set-noauth-ssl .server-rapid
       - name: .test-standard !.replica_set-noauth-ssl .server-latest
-    display_name: Stable API require v1 RHEL8 Auth
+    display_name: Stable api require v1 rhel8 auth
     run_on:
       - rhel87-small
     expansions:
@@ -622,7 +622,7 @@ buildvariants:
       - name: .test-standard .server-8.0 .standalone-noauth-nossl
       - name: .test-standard .server-rapid .standalone-noauth-nossl
       - name: .test-standard .server-latest .standalone-noauth-nossl
-    display_name: Stable API accept v2 RHEL8 Auth
+    display_name: Stable api accept v2 rhel8 auth
     run_on:
       - rhel87-small
     expansions:
@@ -634,7 +634,7 @@ buildvariants:
   - name: test-macos
     tasks:
       - name: .test-standard !.pypy
-    display_name: "* Test macOS"
+    display_name: "* test macos"
     run_on:
       - macos-14
     tags: [standard-non-linux]
@@ -645,21 +645,21 @@ buildvariants:
       - name: .test-standard !.pypy .server-8.0
       - name: .test-standard !.pypy .server-rapid
       - name: .test-standard !.pypy .server-latest
-    display_name: "* Test macOS Arm64"
+    display_name: "* test macos arm64"
     run_on:
       - macos-14-arm64
     tags: [standard-non-linux]
   - name: test-win64
     tasks:
       - name: .test-standard !.pypy
-    display_name: "* Test Win64"
+    display_name: "* test win64"
     run_on:
       - windows-64-vsMulti-small
     tags: [standard-non-linux]
   - name: test-win32
     tasks:
       - name: .test-standard !.pypy
-    display_name: "* Test Win32"
+    display_name: "* test win32"
     run_on:
       - windows-64-vsMulti-small
     expansions:
@@ -670,7 +670,7 @@ buildvariants:
   - name: storage-inmemory-rhel8
     tasks:
       - name: .test-standard .standalone-noauth-nossl
-    display_name: Storage InMemory RHEL8
+    display_name: Storage inmemory rhel8
     run_on:
       - rhel87-small
     expansions:
@@ -678,7 +678,7 @@ buildvariants:
   - name: storage-mmapv1-rhel8
     tasks:
       - name: .test-standard !.sharded_cluster-auth-ssl .server-4.0
-    display_name: Storage MMAPv1 RHEL8
+    display_name: Storage mmapv1 rhel8
     run_on:
       - rhel87-small
     expansions:
