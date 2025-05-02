@@ -356,7 +356,7 @@ buildvariants:
       - ubuntu2204-small
     expansions:
       MOD_WSGI_VERSION: "4"
-      TEST_NAME: mode_wsgi
+      TEST_NAME: mod_wsgi
       SUB_TEST_NAME: standalone
   - name: mod_wsgi-embedded-mode-ubuntu-22
     tasks:
@@ -367,7 +367,7 @@ buildvariants:
       - ubuntu2204-small
     expansions:
       MOD_WSGI_VERSION: "4"
-      TEST_NAME: mode_wsgi
+      TEST_NAME: mod_wsgi
       SUB_TEST_NAME: embedded
 
   # No c ext tests

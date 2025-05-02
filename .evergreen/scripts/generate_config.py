@@ -337,7 +337,7 @@ def create_mod_wsgi_variants():
     variants = []
     for test_type in ["standalone", "embedded-mode"]:
         expansions = dict(
-            MOD_WSGI_VERSION="4", TEST_NAME="mode_wsgi", SUB_TEST_NAME=test_type.split("-")[0]
+            MOD_WSGI_VERSION="4", TEST_NAME="mod_wsgi", SUB_TEST_NAME=test_type.split("-")[0]
         )
         display_name = get_variant_name(f"mod_wsgi {test_type}", host)
         variants.append(
