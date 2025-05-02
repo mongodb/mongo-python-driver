@@ -207,7 +207,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
         else:
             continue
         display_name = f"{display_name}{sep}{name}"
-    return display_name.capitalize()
+    return display_name.title()
 
 
 def get_variant_name(base: str, host: str | Host | None = None, **kwargs) -> str:
