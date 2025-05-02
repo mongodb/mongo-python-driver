@@ -7,7 +7,6 @@ from itertools import product
 from generate_config_utils import (
     ALL_PYTHONS,
     ALL_VERSIONS,
-    AUTH_SSLS,
     BATCHTIME_WEEK,
     C_EXTS,
     CPYTHONS,
@@ -16,7 +15,6 @@ from generate_config_utils import (
     MIN_MAX_PYTHON,
     OTHER_HOSTS,
     PYPYS,
-    SUB_TASKS,
     SYNCS,
     TOPOLOGIES,
     create_variant,
@@ -136,69 +134,39 @@ def create_encryption_variants() -> list[BuildVariant]:
             expansions["SUB_TEST_NAME"] = "pyopenssl"
         return expansions
 
+    # Test encryption on all hosts.
+    for encryption, host in product(
+        ["Encryption", "Encryption crypt_shared"], ["rhel8", "macos", "win64"]
+    ):
+        expansions = get_encryption_expansions(encryption)
+        display_name = get_variant_name(encryption, host, **expansions)
+        tasks = [".test-non-standard"]
+        if host != "rhel8":
+            tasks = [".test-non-standard !.pypy"]
+        variant = create_variant(
+            tasks,
+            display_name,
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+            tags=tags,
+        )
+        variants.append(variant)
+
+    # Test PyOpenSSL on linux.
     host = DEFAULT_HOST
-
-    # Test against all server versions for the three main python versions.
-    encryptions = ["Encryption", "Encryption crypt_shared"]
-    for encryption, python in product(encryptions, [*MIN_MAX_PYTHON, PYPYS[-1]]):
-        expansions = get_encryption_expansions(encryption)
-        display_name = get_variant_name(encryption, host, python=python, **expansions)
-        variant = create_variant(
-            [f"{t} .sync_async" for t in SUB_TASKS],
-            display_name,
-            python=python,
-            host=host,
-            expansions=expansions,
-            batchtime=batchtime,
-            tags=tags,
-        )
-        variants.append(variant)
-
-    # Test PyOpenSSL against on all server versions for all python versions.
-    for encryption, python in product(["Encryption PyOpenSSL"], [*MIN_MAX_PYTHON, PYPYS[-1]]):
-        expansions = get_encryption_expansions(encryption)
-        display_name = get_variant_name(encryption, host, python=python, **expansions)
-        variant = create_variant(
-            [f"{t} .sync" for t in SUB_TASKS],
-            display_name,
-            python=python,
-            host=host,
-            expansions=expansions,
-            batchtime=batchtime,
-            tags=tags,
-        )
-        variants.append(variant)
-
-    # Test the rest of the pythons on linux for all server versions.
-    for encryption, python, task in zip_cycle(encryptions, CPYTHONS[1:-1] + PYPYS[:-1], SUB_TASKS):
-        expansions = get_encryption_expansions(encryption)
-        display_name = get_variant_name(encryption, host, python=python, **expansions)
-        variant = create_variant(
-            [f"{task} .sync_async"],
-            display_name,
-            python=python,
-            host=host,
-            expansions=expansions,
-        )
-        variants.append(variant)
-
-    # Test on macos and linux on one server version and topology for min and max python.
-    encryptions = ["Encryption", "Encryption crypt_shared"]
-    task_names = [".latest .replica_set .sync_async"]
-    for host_name, encryption, python in product(["macos", "win64"], encryptions, MIN_MAX_PYTHON):
-        host = HOSTS[host_name]
-        expansions = get_encryption_expansions(encryption)
-        display_name = get_variant_name(encryption, host, python=python, **expansions)
-        variant = create_variant(
-            task_names,
-            display_name,
-            python=python,
-            host=host,
-            expansions=expansions,
-            batchtime=batchtime,
-            tags=tags,
-        )
-        variants.append(variant)
+    encryption = "Encryption PyOpenSSL"
+    expansions = get_encryption_expansions(encryption)
+    display_name = get_variant_name(encryption, host, **expansions)
+    variant = create_variant(
+        [".test-non-standard"],
+        display_name,
+        host=host,
+        expansions=expansions,
+        batchtime=batchtime,
+        tags=tags,
+    )
+    variants.append(variant)
     return variants
 
 
@@ -258,41 +226,22 @@ def create_enterprise_auth_variants():
 def create_pyopenssl_variants():
     base_name = "PyOpenSSL"
     batchtime = BATCHTIME_WEEK
-    expansions = dict(TEST_NAME="default", SUB_TEST_NAME="pyopenssl")
+    expansions = dict(SUB_TEST_NAME="pyopenssl")
     variants = []
 
-    for python in ALL_PYTHONS:
-        # Only test "noauth" with min python.
-        auth = "noauth" if python == CPYTHONS[0] else "auth"
-        ssl = "nossl" if auth == "noauth" else "ssl"
-        if python == CPYTHONS[0]:
-            host = HOSTS["macos"]
-        elif python == CPYTHONS[-1]:
-            host = HOSTS["win64"]
-        else:
-            host = DEFAULT_HOST
-
-        display_name = get_variant_name(base_name, host, python=python)
-        # only need to run some on async
-        if python in (CPYTHONS[1], CPYTHONS[-1]):
-            variant = create_variant(
-                [f".replica_set .{auth} .{ssl} .sync_async", f".7.0 .{auth} .{ssl} .sync_async"],
+    for host in ["rhel8", "macos", "win64"]:
+        display_name = get_variant_name(base_name, host)
+        base_task = ".test-standard" if host == "rhel8" else ".test-standard !.pypy"
+        # We only need to run a subset on async.
+        tasks = [f"{base_task} .sync", f"{base_task} .async .replica_set-noauth-ssl"]
+        variants.append(
+            create_variant(
+                tasks,
                 display_name,
-                python=python,
-                host=host,
                 expansions=expansions,
                 batchtime=batchtime,
             )
-        else:
-            variant = create_variant(
-                [f".replica_set .{auth} .{ssl} .sync", f".7.0 .{auth} .{ssl} .sync"],
-                display_name,
-                python=python,
-                host=host,
-                expansions=expansions,
-                batchtime=batchtime,
-            )
-        variants.append(variant)
+        )
 
     return variants
 
@@ -398,7 +347,7 @@ def create_disable_test_commands_variants():
     expansions = dict(AUTH="auth", SSL="ssl", DISABLE_TEST_COMMANDS="1")
     python = CPYTHONS[0]
     display_name = get_variant_name("Disable test commands", host, python=python)
-    tasks = [".latest .sync_async"]
+    tasks = [".test-standard .server-latest"]
     return [create_variant(tasks, display_name, host=host, python=python, expansions=expansions)]
 
 
@@ -701,30 +650,6 @@ def create_standard_tasks():
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
         test_vars["TEST_NAME"] = f"default_{sync}"
-        test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
-    return tasks
-
-
-def create_server_tasks():
-    tasks = []
-    for topo, version, (auth, ssl), sync in product(
-        TOPOLOGIES, ALL_VERSIONS, AUTH_SSLS, [*SYNCS, "sync_async"]
-    ):
-        name = f"test-{version}-{topo}-{auth}-{ssl}-{sync}".lower()
-        tags = [version, topo, auth, ssl, sync]
-        server_vars = dict(
-            VERSION=version,
-            TOPOLOGY=topo if topo != "standalone" else "server",
-            AUTH=auth,
-            SSL=ssl,
-        )
-        server_func = FunctionCall(func="run server", vars=server_vars)
-        test_vars = dict(AUTH=auth, SSL=ssl, SYNC=sync)
-        if sync == "sync":
-            test_vars["TEST_NAME"] = "default_sync"
-        elif sync == "async":
-            test_vars["TEST_NAME"] = "default_async"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
