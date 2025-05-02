@@ -10,8 +10,11 @@ if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
-# Set a default bin directory.
-PYMONGO_BIN_DIR="${PYMONGO_BIN_DIR:-$HOME/.local/bin}"
+# Set up the default bin directory.
+if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
+  PYMONGO_BIN_DIR="$HOME/.local/bin"
+  export PATH="$PYMONGO_BIN_DIR:$PATH"
+fi
 
 # Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
