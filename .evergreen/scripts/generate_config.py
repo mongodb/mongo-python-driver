@@ -214,7 +214,7 @@ def create_enterprise_auth_variants():
     for host in ["rhel8", "macos", "win64"]:
         expansions = dict(TEST_NAME="enterprise_auth", AUTH="auth")
         display_name = get_variant_name("Auth Enterprise", host)
-        tasks = [".test-non-standard"]
+        tasks = [".test-non-standard .auth"]
         if host != "rhel8":
             tasks = [".test-non-standard !.pypy .auth"]
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
