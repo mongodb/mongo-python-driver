@@ -340,7 +340,7 @@ def create_mod_wsgi_variants():
         expansions = dict(
             MOD_WSGI_VERSION="4", TEST_NAME="mod_wsgi", SUB_TEST_NAME=test_type.split("-")[0]
         )
-        display_name = get_variant_name(f"mod_wsgi {test_type}", host)
+        display_name = get_variant_name(f"Mod_WSGI {test_type.title()}", host)
         variants.append(
             create_variant(
                 [
