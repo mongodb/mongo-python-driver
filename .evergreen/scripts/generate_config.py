@@ -90,11 +90,11 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
 
     # Test a subset on each of the other platforms.
     for host_name in ("macos", "macos-arm64", "win64", "win32"):
-        tasks = [".standard-non-linux"]
+        tasks = [".test-standard !.pypy"]
         # MacOS arm64 only works on server versions 6.0+
         if host_name == "macos-arm64":
             tasks = [
-                f".standard-non-linux .server-{version}" for version in get_versions_from("6.0")
+                f".test-standard !.pypy .server-{version}" for version in get_versions_from("6.0")
             ]
         host = HOSTS[host_name]
         tags = ["standard-non-linux"]
@@ -203,10 +203,18 @@ def create_encryption_variants() -> list[BuildVariant]:
 
 
 def create_load_balancer_variants():
-    # Load balancer tests - run all supported server versions using the lowest supported python.
+    tasks = [
+        f".test-non-standard .server-{v} .sharded_cluster-auth-ssl"
+        for v in get_versions_from("6.0")
+    ]
+    expansions = dict(TEST_NAME="load_balancer")
     return [
         create_variant(
-            [".load-balancer"], "Load Balancer", host=DEFAULT_HOST, batchtime=BATCHTIME_WEEK
+            tasks,
+            "Load Balancer",
+            host=DEFAULT_HOST,
+            batchtime=BATCHTIME_WEEK,
+            expansions=expansions,
         )
     ]
 
@@ -218,9 +226,9 @@ def create_compression_variants():
     for compressor in "snappy", "zlib", "zstd":
         expansions = dict(COMPRESSOR=compressor)
         if compressor == "zstd":
-            tasks = [".standard-linux !.server-4.0"]
+            tasks = [".test-standard !.server-4.0"]
         else:
-            tasks = [".standard-linux"]
+            tasks = [".test-standard"]
         display_name = get_variant_name(f"Compression {compressor}", host)
         variants.append(
             create_variant(
@@ -296,11 +304,11 @@ def create_storage_engine_variants():
     for engine in engines:
         expansions = dict(STORAGE_ENGINE=engine.lower())
         if engine == engines[0]:
-            tasks = [".standard-linux .standalone-noauth-nossl"]
+            tasks = [".test-standard .standalone-noauth-nossl"]
         else:
             # MongoDB 4.2 drops support for MMAPv1
             versions = get_versions_until("4.0")
-            tasks = [f".standard-linux !.sharded_cluster-auth-ssl .server-{v}" for v in versions]
+            tasks = [f".test-standard !.sharded_cluster-auth-ssl .server-{v}" for v in versions]
         display_name = get_variant_name(f"Storage {engine}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
@@ -324,7 +332,7 @@ def create_stable_api_variants():
             # MONGODB_API_VERSION is the apiVersion to use in the test suite.
             expansions["MONGODB_API_VERSION"] = "1"
             tasks = [
-                f".standard-linux !.replica_set-noauth-ssl .server-{v}"
+                f".test-standard !.replica_set-noauth-ssl .server-{v}"
                 for v in get_versions_from("5.0")
             ]
         else:
@@ -333,7 +341,7 @@ def create_stable_api_variants():
             # clients created in the test suite.
             expansions["ORCHESTRATION_FILE"] = "versioned-api-testing.json"
             tasks = [
-                f".standard-linux .server-{v} .standalone-noauth-nossl"
+                f".test-standard .server-{v} .standalone-noauth-nossl"
                 for v in get_versions_from("5.0")
             ]
         base_display_name = f"Stable API {test_type}"
@@ -348,11 +356,11 @@ def create_green_framework_variants():
     variants = []
     host = DEFAULT_HOST
     for framework in ["eventlet", "gevent"]:
-        tasks = [".standard-linux .standalone-noauth-nossl"]
+        tasks = [".test-standard .standalone-noauth-nossl"]
         if framework == "eventlet":
             # Eventlet has issues with dnspython > 2.0 and newer versions of CPython
             # https://jira.mongodb.org/browse/PYTHON-5284
-            tasks = [".standard-linux .standalone-noauth-nossl .python-3.9"]
+            tasks = [".test-standard .standalone-noauth-nossl .python-3.9"]
         expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
         display_name = get_variant_name(f"Green {framework.capitalize()}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
@@ -362,7 +370,7 @@ def create_green_framework_variants():
 
 def create_no_c_ext_variants():
     host = DEFAULT_HOST
-    tasks = [".standard-linux"]
+    tasks = [".test-standard"]
     expansions = dict()
     handle_c_ext(C_EXTS[0], expansions)
     display_name = get_variant_name("No C Ext", host)
@@ -371,7 +379,7 @@ def create_no_c_ext_variants():
 
 def create_atlas_data_lake_variants():
     host = HOSTS["ubuntu22"]
-    tasks = [".no-orchestration"]
+    tasks = [".test-no-orchestration"]
     expansions = dict(TEST_NAME="data_lake")
     display_name = get_variant_name("Atlas Data Lake", host)
     return [create_variant(tasks, display_name, host=host, expansions=expansions)]
@@ -448,7 +456,7 @@ def create_mockupdb_variants():
     expansions = dict(TEST_NAME="mockupdb")
     return [
         create_variant(
-            [".no-orchestration"],
+            [".test-no-orchestration"],
             get_variant_name("MockupDB", host),
             host=host,
             expansions=expansions,
@@ -461,7 +469,7 @@ def create_doctests_variants():
     expansions = dict(TEST_NAME="doctest")
     return [
         create_variant(
-            [".standard-linux .standalone-noauth-nossl"],
+            [".test-non-standard .standalone-noauth-nossl"],
             get_variant_name("Doctests", host),
             host=host,
             expansions=expansions,
@@ -473,7 +481,7 @@ def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [
         create_variant(
-            [".no-orchestration"],
+            [".test-no-orchestration"],
             get_variant_name("Atlas connect", host),
             host=DEFAULT_HOST,
         )
@@ -532,7 +540,7 @@ def create_aws_auth_variants():
 def create_no_server_variants():
     host = HOSTS["rhel8"]
     name = get_variant_name("No server", host=host)
-    return [create_variant([".no-orchestration"], name, host=host)]
+    return [create_variant([".test-no-orchestration"], name, host=host)]
 
 
 def create_alternative_hosts_variants():
@@ -543,7 +551,7 @@ def create_alternative_hosts_variants():
     version = "5.0"
     variants.append(
         create_variant(
-            [".other-hosts"],
+            [".test-no-toolchain"],
             get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0], version=version),
             host=host,
             python=CPYTHONS[0],
@@ -561,7 +569,7 @@ def create_alternative_hosts_variants():
             expansions["REQUIRE_FIPS"] = "1"
         variants.append(
             create_variant(
-                [".other-hosts"],
+                [".test-no-toolchain"],
                 display_name=get_variant_name("Other hosts", host, version=version),
                 batchtime=batchtime,
                 host=host,
@@ -583,41 +591,46 @@ def create_aws_lambda_variants():
 
 def create_server_version_tasks():
     tasks = []
-    # Test all pythons with sharded_cluster, auth, and ssl.
-    task_types = [(p, "sharded_cluster", "auth", "ssl") for p in ALL_PYTHONS]
-    # Test all combinations of topology, auth, and ssl, with rotating pythons.
-    for (topology, auth, ssl), python in zip_cycle(
-        list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"])), ALL_PYTHONS
+    task_inputs = []
+    # All combinations of topology, auth, ssl, and sync should be tested.
+    for (topology, auth, ssl, sync), python in zip_cycle(
+        list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
     ):
-        # Skip the ones we already have.
-        if topology == "sharded_cluster" and auth == "auth" and ssl == "ssl":
-            continue
-        task_types.append((python, topology, auth, ssl))
-    for python, topology, auth, ssl in task_types:
-        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}"]
+        task_inputs.append((topology, auth, ssl, sync, python))
+
+    # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
+    for python, sync in product(ALL_PYTHONS, SYNCS):
+        task_input = ("sharded_cluster", "auth", "ssl", sync, python)
+        if task_input not in task_inputs:
+            task_inputs.append(task_input)
+
+    # Assemble the tasks.
+    for topology, auth, ssl, sync, python in task_inputs:
+        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}", sync]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
-        name = get_task_name("test", python=python, **expansions)
+        name = get_task_name("test-server-version", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
+        test_vars["TEST_NAME"] = f"default_{sync}"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
 
 
-def create_other_hosts_tasks():
+def create_no_toolchain_tasks():
     tasks = []
 
     for topology, sync in zip_cycle(TOPOLOGIES, SYNCS):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
-            "other-hosts",
+            "test-no-toolchain",
             f"{topology}-{auth}-{ssl}",
         ]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
-        name = get_task_name("test", sync=sync, **expansions)
+        name = get_task_name("test-no-toolchain", sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["TEST_NAME"] = f"default_{sync}"
@@ -626,21 +639,28 @@ def create_other_hosts_tasks():
     return tasks
 
 
-def create_standard_linux_tasks():
+def create_test_non_standard_tasks():
+    """For variants that set a TEST_NAME."""
     tasks = []
-
-    for (version, topology), python in zip_cycle(
-        list(product(ALL_VERSIONS, TOPOLOGIES)), ALL_PYTHONS
-    ):
+    task_combos = []
+    # For each version and topology, rotate through the CPythons.
+    for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
+        task_combos.append((version, topology, python))
+    # For each PyPy and topology, rotate through the the versions.
+    for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
+        task_combos.append((version, topology, python))
+    for version, topology, python in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
-            "standard-linux",
+            "test-non-standard",
             f"server-{version}",
             f"python-{python}",
             f"{topology}-{auth}-{ssl}",
         ]
+        if python in PYPYS:
+            tags.append("pypy")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
-        name = get_task_name("test", python=python, **expansions)
+        name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
@@ -649,22 +669,34 @@ def create_standard_linux_tasks():
     return tasks
 
 
-def create_standard_non_linux_tasks():
+def create_standard_tasks():
+    """For variants that do not set a TEST_NAME."""
     tasks = []
-
+    task_combos = []
+    # For each version and topology, rotate through the CPythons and sync/async.
     for (version, topology), python, sync in zip_cycle(
         list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS, SYNCS
     ):
+        task_combos.append((version, topology, python, sync))
+    # For each PyPy and topology, rotate through the the versions and sync/async.
+    for (python, topology), version, sync in zip_cycle(
+        list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS, SYNCS
+    ):
+        task_combos.append((version, topology, python, sync))
+
+    for version, topology, python, sync in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
-            "standard-non-linux",
+            "test-standard",
             f"server-{version}",
             f"python-{python}",
             f"{topology}-{auth}-{ssl}",
             sync,
         ]
+        if python in PYPYS:
+            tags.append("pypy")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
-        name = get_task_name("test", python=python, sync=sync, **expansions)
+        name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
@@ -702,7 +734,7 @@ def create_no_orchestration_tasks():
     tasks = []
     for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
         tags = [
-            "no-orchestration",
+            "test-no-orchestration",
             f"python-{python}",
         ]
         name = get_task_name("test-no-orchestration", python=python)
@@ -711,26 +743,6 @@ def create_no_orchestration_tasks():
         test_func = FunctionCall(func="run tests", vars=test_vars)
         commands = [assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=commands))
-    return tasks
-
-
-def create_load_balancer_tasks():
-    tasks = []
-    for (auth, ssl), version in product(AUTH_SSLS, get_versions_from("6.0")):
-        name = get_task_name(f"test-load-balancer-{auth}-{ssl}", version=version)
-        tags = ["load-balancer", auth, ssl]
-        server_vars = dict(
-            TOPOLOGY="sharded_cluster",
-            AUTH=auth,
-            SSL=ssl,
-            TEST_NAME="load_balancer",
-            VERSION=version,
-        )
-        server_func = FunctionCall(func="run server", vars=server_vars)
-        test_vars = dict(AUTH=auth, SSL=ssl, TEST_NAME="load_balancer")
-        test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
-
     return tasks
 
 
