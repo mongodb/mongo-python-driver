@@ -314,6 +314,14 @@ class TestBulk(BulkTestBase):
         self.assertEqual(n_docs, result.inserted_count)
         self.assertEqual(n_docs, self.coll.count_documents({}))
 
+    def test_huge_inserts_generator(self):
+        # Ensure we don't exceed server's maxWriteBatchSize size limit.
+        n_docs = 1000000
+        requests = (InsertOne({"x": "large" * 1024 * 1024}) for _ in range(n_docs))
+        result = self.coll.bulk_write(requests)
+        self.assertEqual(n_docs, result.inserted_count)
+        self.assertEqual(n_docs, self.coll.count_documents({}))
+
     def test_bulk_max_message_size(self):
         self.coll.delete_many({})
         self.addCleanup(self.coll.delete_many, {})

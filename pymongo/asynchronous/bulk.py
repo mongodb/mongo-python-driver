@@ -233,14 +233,17 @@ class _AsyncBulk:
         operation, in the order **provided**.
         """
         run = None
+        ctr = 0
         for idx, request in enumerate(requests):
             retryable = process(request)
             (op_type, operation) = self.ops[idx]
             if run is None:
                 run = _Run(op_type)
-            elif run.op_type != op_type:
+            elif run.op_type != op_type or ctr >= common.MAX_WRITE_BATCH_SIZE // 200:
                 yield run
+                ctr = 0
                 run = _Run(op_type)
+            ctr += 1
             run.add(idx, operation)
             run.is_retryable = run.is_retryable and retryable
         if run is None:
@@ -604,6 +607,9 @@ class _AsyncBulk:
                 break
             # Reset our state
             self.current_run = run = self.next_run
+            import gc
+
+            gc.collect()
 
     async def execute_command(
         self,

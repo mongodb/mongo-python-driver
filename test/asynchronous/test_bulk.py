@@ -314,6 +314,14 @@ class AsyncTestBulk(AsyncBulkTestBase):
         self.assertEqual(n_docs, result.inserted_count)
         self.assertEqual(n_docs, await self.coll.count_documents({}))
 
+    async def test_huge_inserts_generator(self):
+        # Ensure we don't exceed server's maxWriteBatchSize size limit.
+        n_docs = 1000000
+        requests = (InsertOne({"x": "large" * 1024 * 1024}) for _ in range(n_docs))
+        result = await self.coll.bulk_write(requests)
+        self.assertEqual(n_docs, result.inserted_count)
+        self.assertEqual(n_docs, await self.coll.count_documents({}))
+
     async def test_bulk_max_message_size(self):
         await self.coll.delete_many({})
         self.addAsyncCleanup(self.coll.delete_many, {})
