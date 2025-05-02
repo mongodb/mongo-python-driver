@@ -36,6 +36,7 @@ from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import decompress
 from pymongo.errors import ProtocolError, _OperationCancelled
 from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
+from pymongo.pool_options import _is_faas
 from pymongo.socket_checker import _errno_from_exception
 
 try:
@@ -357,7 +358,12 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
             except socket.timeout:
                 if conn.cancel_context.cancelled:
                     raise _OperationCancelled("operation cancelled") from None
-                if _PYPY or deadline is not None and deadline - time.monotonic() < 0:
+                if (
+                    _PYPY
+                    or not _is_faas()
+                    and deadline is not None
+                    and deadline - time.monotonic() < 0
+                ):
                     # We reached the true deadline.
                     raise
                 continue
