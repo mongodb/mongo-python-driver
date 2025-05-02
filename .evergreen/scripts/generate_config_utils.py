@@ -30,12 +30,6 @@ BATCHTIME_WEEK = 10080
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
 TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
 C_EXTS = ["without_ext", "with_ext"]
-# By default test each of the topologies with a subset of auth/ssl.
-SUB_TASKS = [
-    ".sharded_cluster .auth .ssl",
-    ".replica_set .noauth .ssl",
-    ".standalone .noauth .nossl",
-]
 SYNCS = ["sync", "async"]
 DISPLAY_LOOKUP = dict(
     ssl=dict(ssl="SSL", nossl="NoSSL"),
@@ -95,13 +89,15 @@ def create_variant_generic(
     tasks: list[str | EvgTaskRef],
     display_name: str,
     *,
-    host: Host | None = None,
+    host: Host | str | None = None,
     default_run_on="rhel87-small",
     expansions: dict | None = None,
     **kwargs: Any,
 ) -> BuildVariant:
     """Create a build variant for the given inputs."""
     task_refs = []
+    if isinstance(host, str):
+        host = HOSTS[host]
     for t in tasks:
         if isinstance(t, EvgTaskRef):
             task_refs.append(t)
@@ -214,9 +210,11 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
     return display_name
 
 
-def get_variant_name(base: str, host: Host | None = None, **kwargs) -> str:
+def get_variant_name(base: str, host: str | Host | None = None, **kwargs) -> str:
     """Get the display name of a variant."""
     display_name = base
+    if isinstance(host, str):
+        host = HOSTS[host]
     if host is not None:
         display_name += f" {host.display_name}"
     return get_common_name(display_name, " ", **kwargs)
