@@ -211,16 +211,14 @@ def create_compression_variants():
 
 def create_enterprise_auth_variants():
     variants = []
-    for host in [HOSTS["macos"], HOSTS["win64"], DEFAULT_HOST]:
+    for host in ["rhel8", "macos", "win64"]:
+        expansions = dict(TEST_NAME="enterprise_auth", AUTH="auth")
         display_name = get_variant_name("Auth Enterprise", host)
-        if host == DEFAULT_HOST:
-            tags = [".enterprise_auth"]
-        else:
-            tags = [".enterprise_auth !.pypy"]
-        variant = create_variant(tags, display_name, host=host)
+        tasks = [".test-non-standard"]
+        if host != "rhel8":
+            tasks = [".test-non-standard !.pypy"]
+        variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
-
-    return variants
 
 
 def create_pyopenssl_variants():
@@ -336,10 +334,21 @@ def create_atlas_data_lake_variants():
 
 def create_mod_wsgi_variants():
     host = HOSTS["ubuntu22"]
-    tasks = [".mod_wsgi"]
-    expansions = dict(MOD_WSGI_VERSION="4")
-    display_name = get_variant_name("mod_wsgi", host)
-    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
+    variants = []
+    for test_type in ["standalone", "embedded-mode"]:
+        expansions = dict(
+            MOD_WSGI_VERSION="4", TEST_NAME="mode_wsgi", SUB_TEST_NAME=test_type.split("-")[0]
+        )
+        display_name = get_variant_name(f"mod_wsgi {test_type}", host)
+        variants.append(
+            create_variant(
+                [".test-non-standard .replica_set", ".test-non-standard .standalone"],
+                display_name,
+                host=host,
+                expansions=expansions,
+            )
+        )
+    return variants
 
 
 def create_disable_test_commands_variants():
@@ -743,27 +752,6 @@ def create_oidc_tasks():
     return tasks
 
 
-def create_mod_wsgi_tasks():
-    tasks = []
-    for (test, topology), python in zip_cycle(
-        product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
-    ):
-        if test == "standalone":
-            task_name = "mod-wsgi-"
-        else:
-            task_name = "mod-wsgi-embedded-mode-"
-        task_name += topology.replace("_", "-")
-        task_name = get_task_name(task_name, python=python)
-        server_vars = dict(TOPOLOGY=topology, PYTHON_VERSION=python)
-        server_func = FunctionCall(func="run server", vars=server_vars)
-        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0], PYTHON_VERSION=python)
-        test_func = FunctionCall(func="run tests", vars=vars)
-        tags = ["mod_wsgi"]
-        commands = [server_func, test_func]
-        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
-    return tasks
-
-
 def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
     tasks = []
     file_name = f"{algo}-basic-tls-ocsp-{variant}.json"
@@ -813,23 +801,6 @@ def create_search_index_tasks():
     tags = ["search_index"]
     commands = [assume_func, server_func, test_func]
     return [EvgTask(name=task_name, tags=tags, commands=commands)]
-
-
-def create_enterprise_auth_tasks():
-    tasks = []
-    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
-        vars = dict(TEST_NAME="enterprise_auth", AUTH="auth", PYTHON_VERSION=python)
-        server_func = FunctionCall(func="run server", vars=vars)
-        assume_func = FunctionCall(func="assume ec2 role")
-        test_func = FunctionCall(func="run tests", vars=vars)
-        task_name = get_task_name("test-enterprise-auth", python=python)
-        tags = ["enterprise_auth"]
-        if python in PYPYS:
-            tags += ["pypy"]
-        tasks.append(
-            EvgTask(name=task_name, tags=tags, commands=[server_func, assume_func, test_func])
-        )
-    return tasks
 
 
 def create_perf_tasks():

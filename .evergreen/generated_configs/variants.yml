@@ -251,24 +251,6 @@ buildvariants:
     tags: [encryption_tag]
 
   # Enterprise auth tests
-  - name: auth-enterprise-macos
-    tasks:
-      - name: .enterprise_auth !.pypy
-    display_name: Auth Enterprise macOS
-    run_on:
-      - macos-14
-  - name: auth-enterprise-win64
-    tasks:
-      - name: .enterprise_auth !.pypy
-    display_name: Auth Enterprise Win64
-    run_on:
-      - windows-64-vsMulti-small
-  - name: auth-enterprise-rhel8
-    tasks:
-      - name: .enterprise_auth
-    display_name: Auth Enterprise RHEL8
-    run_on:
-      - rhel87-small
 
   # Free threaded tests
   - name: free-threaded-rhel8-python3.13t
@@ -365,14 +347,28 @@ buildvariants:
       TEST_NAME: mockupdb
 
   # Mod wsgi tests
-  - name: mod_wsgi-ubuntu-22
+  - name: mod_wsgi-standalone-ubuntu-22
     tasks:
-      - name: .mod_wsgi
-    display_name: mod_wsgi Ubuntu-22
+      - name: .test-non-standard .replica_set
+      - name: .test-non-standard .standalone
+    display_name: mod_wsgi standalone Ubuntu-22
     run_on:
       - ubuntu2204-small
     expansions:
       MOD_WSGI_VERSION: "4"
+      TEST_NAME: mode_wsgi
+      SUB_TEST_NAME: standalone
+  - name: mod_wsgi-embedded-mode-ubuntu-22
+    tasks:
+      - name: .test-non-standard .replica_set
+      - name: .test-non-standard .standalone
+    display_name: mod_wsgi embedded-mode Ubuntu-22
+    run_on:
+      - ubuntu2204-small
+    expansions:
+      MOD_WSGI_VERSION: "4"
+      TEST_NAME: mode_wsgi
+      SUB_TEST_NAME: embedded
 
   # No c ext tests
   - name: no-c-ext-rhel8
