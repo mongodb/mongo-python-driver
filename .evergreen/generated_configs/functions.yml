@@ -168,6 +168,17 @@ functions:
         args:
           - .evergreen/scripts/perf-submission-setup.sh
         working_dir: src
+        include_expansions_in_env:
+          - requester
+          - revision_order_id
+          - project_id
+          - version_id
+          - build_variant
+          - parsed_order_id
+          - task_name
+          - task_id
+          - execution
+          - is_mainline
       type: test
     - command: expansions.update
       params:
@@ -178,6 +189,17 @@ functions:
         args:
           - .evergreen/scripts/perf-submission.sh
         working_dir: src
+        include_expansions_in_env:
+          - requester
+          - revision_order_id
+          - project_id
+          - version_id
+          - build_variant
+          - parsed_order_id
+          - task_name
+          - task_id
+          - execution
+          - is_mainline
       type: test
 
   # Setup system

@@ -1102,10 +1102,26 @@ def create_attach_benchmark_test_results_func():
 
 
 def create_send_dashboard_data_func():
+    includes = [
+        "requester",
+        "revision_order_id",
+        "project_id",
+        "version_id",
+        "build_variant",
+        "parsed_order_id",
+        "task_name",
+        "task_id",
+        "execution",
+        "is_mainline",
+    ]
     cmds = [
-        get_subprocess_exec(args=[".evergreen/scripts/perf-submission-setup.sh"]),
+        get_subprocess_exec(
+            include_expansions_in_env=includes, args=[".evergreen/scripts/perf-submission-setup.sh"]
+        ),
         expansions_update(file="src/expansion.yml"),
-        get_subprocess_exec(args=[".evergreen/scripts/perf-submission.sh"]),
+        get_subprocess_exec(
+            include_expansions_in_env=includes, args=[".evergreen/scripts/perf-submission.sh"]
+        ),
     ]
     return "send dashboard data", cmds
 

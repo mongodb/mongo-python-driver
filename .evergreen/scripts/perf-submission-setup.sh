@@ -1,7 +1,7 @@
 #!/bin/bash
 # We use the requester expansion to determine whether the data is from a mainline evergreen run or not
 
-set -eu
+set -x
 
 # shellcheck disable=SC2154
 if [ "${requester}" == "commit" ]; then
