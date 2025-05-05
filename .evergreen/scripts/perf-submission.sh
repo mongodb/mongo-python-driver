@@ -1,7 +1,7 @@
 #!/bin/bash
 # We use the requester expansion to determine whether the data is from a mainline evergreen run or not
 
-set -x
+set -eu
 
 # Submit the performance data to the SPS endpoint
 # shellcheck disable=SC2154
