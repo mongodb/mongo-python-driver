@@ -134,7 +134,7 @@ tasks:
     commands:
       - func: download and merge coverage
     depends_on: [{ name: .server-version, variant: .coverage_tag, status: "*", patch_optional: true }]
-    tags: [coverage]
+    tags: [coverage, pr]
 
   # Free threading tests
   - name: test-free-threading

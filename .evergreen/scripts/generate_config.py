@@ -860,7 +860,7 @@ def create_getdata_tasks():
 
 
 def create_coverage_report_tasks():
-    tags = ["coverage"]
+    tags = ["coverage", "pr"]
     task_name = "coverage-report"
     # BUILD-3165: We can't use "*" (all tasks) and specify "variant".
     # Instead list out all coverage tasks using tags.
