@@ -225,7 +225,6 @@ the pages will re-render and the browser will automatically refresh.
 - Run `just run-tests` to run the tests in an appropriate Python environment.
 - When done, run `just teardown-tests` to clean up and `just stop-server` to stop the server.
 
-foo
 ### Encryption tests
 
 - Run `just run-server` to start the server.
