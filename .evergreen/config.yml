@@ -42,3 +42,12 @@ post:
   - func: "upload mo artifacts"
   - func: "upload test results"
   - func: "cleanup"
+
+tasks:
+  - name: resync_specs
+    commands:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - .evergreen/scripts/resync_all_specs.sh
