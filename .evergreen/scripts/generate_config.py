@@ -544,23 +544,24 @@ def create_server_version_tasks():
     for (topology, auth, ssl, sync), python in zip_cycle(
         list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
     ):
-        task_inputs.append((topology, auth, ssl, sync, python))
+        combo = f"{topology}-{auth}-{ssl}"
+        pr = combo in [
+            "standalone-noauth-nossl",
+            "replica_set-noauth-ssl",
+            "sharded_cluster-auth-ssl",
+        ]
+        task_inputs.append((topology, auth, ssl, sync, python, pr))
 
     # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
     for python, sync in product(ALL_PYTHONS, SYNCS):
-        task_input = ("sharded_cluster", "auth", "ssl", sync, python)
+        task_input = ("sharded_cluster", "auth", "ssl", sync, python, False)
         if task_input not in task_inputs:
             task_inputs.append(task_input)
 
     # Assemble the tasks.
-    for topology, auth, ssl, sync, python in task_inputs:
-        combo = f"{topology}-{auth}-{ssl}"
-        tags = ["server-version", f"python-{python}", combo, sync]
-        if combo in [
-            "standalone-noauth-nossl",
-            "replica_set-noauth-ssl",
-            "sharded_cluster-auth-ssl",
-        ]:
+    for topology, auth, ssl, sync, python, pr in task_inputs:
+        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}", sync]
+        if pr:
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
@@ -600,11 +601,12 @@ def create_test_non_standard_tasks():
     task_combos = []
     # For each version and topology, rotate through the CPythons.
     for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
-        task_combos.append((version, topology, python))
+        pr = version == "latest"
+        task_combos.append((version, topology, python, pr))
     # For each PyPy and topology, rotate through the the versions.
     for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
-        task_combos.append((version, topology, python))
-    for version, topology, python in task_combos:
+        task_combos.append((version, topology, python, False))
+    for version, topology, python, pr in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-non-standard",
@@ -615,7 +617,7 @@ def create_test_non_standard_tasks():
         ]
         if python in PYPYS:
             tags.append("pypy")
-        if version == "latest":
+        if pr:
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         name = get_task_name("test-non-standard", python=python, **expansions)
@@ -635,14 +637,15 @@ def create_standard_tasks():
     for (version, topology), python, sync in zip_cycle(
         list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS, SYNCS
     ):
-        task_combos.append((version, topology, python, sync))
+        pr = version == "latest"
+        task_combos.append((version, topology, python, sync, pr))
     # For each PyPy and topology, rotate through the the versions and sync/async.
     for (python, topology), version, sync in zip_cycle(
         list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS, SYNCS
     ):
-        task_combos.append((version, topology, python, sync))
+        task_combos.append((version, topology, python, sync, False))
 
-    for version, topology, python, sync in task_combos:
+    for version, topology, python, sync, pr in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-standard",
@@ -653,7 +656,7 @@ def create_standard_tasks():
         ]
         if python in PYPYS:
             tags.append("pypy")
-        if version == "latest":
+        if pr:
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
