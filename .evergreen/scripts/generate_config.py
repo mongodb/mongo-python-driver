@@ -775,7 +775,7 @@ def create_mod_wsgi_tasks():
         server_func = FunctionCall(func="run server", vars=server_vars)
         vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0], PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=vars)
-        tags = ["mod_wsgi"]
+        tags = ["mod_wsgi", "pr"]
         commands = [server_func, test_func]
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
     return tasks
