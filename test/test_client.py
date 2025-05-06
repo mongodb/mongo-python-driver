@@ -1967,8 +1967,8 @@ class TestClient(IntegrationTest):
         "loadBalanced clients do not run SDAM",
     )
     @unittest.skipIf(sys.platform == "win32", "Windows does not support SIGSTOP")
-    @unittest.skipUnless(_is_faas(), "Non-FaaS environments raise timeouts faster")
     @client_context.require_sync
+    @mock.patch.dict("os.environ", {"AWS_LAMBDA_RUNTIME_API": "1"})
     def test_sigstop_sigcont(self):
         test_dir = os.path.dirname(os.path.realpath(__file__))
         script = os.path.join(test_dir, "sigstop_sigcont.py")
