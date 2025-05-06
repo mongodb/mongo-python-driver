@@ -41,7 +41,6 @@ from shrub.v3.evg_command import (
     ec2_assume_role,
     expansions_update,
     git_get_project,
-    perf_send,
 )
 from shrub.v3.evg_task import EvgTask, EvgTaskDependency, EvgTaskRef
 
@@ -1103,8 +1102,28 @@ def create_attach_benchmark_test_results_func():
 
 
 def create_send_dashboard_data_func():
-    cmd = perf_send(file="src/results.json")
-    return "send dashboard data", [cmd]
+    includes = [
+        "requester",
+        "revision_order_id",
+        "project_id",
+        "version_id",
+        "build_variant",
+        "parsed_order_id",
+        "task_name",
+        "task_id",
+        "execution",
+        "is_mainline",
+    ]
+    cmds = [
+        get_subprocess_exec(
+            include_expansions_in_env=includes, args=[".evergreen/scripts/perf-submission-setup.sh"]
+        ),
+        expansions_update(file="src/expansion.yml"),
+        get_subprocess_exec(
+            include_expansions_in_env=includes, args=[".evergreen/scripts/perf-submission.sh"]
+        ),
+    ]
+    return "send dashboard data", cmds
 
 
 mod = sys.modules[__name__]
