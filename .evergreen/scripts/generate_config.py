@@ -544,24 +544,27 @@ def create_server_version_tasks():
     for (topology, auth, ssl, sync), python in zip_cycle(
         list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
     ):
-        combo = f"{topology}-{auth}-{ssl}"
-        pr = combo in [
-            "standalone-noauth-nossl",
-            "replica_set-noauth-ssl",
-            "sharded_cluster-auth-ssl",
-        ]
-        task_inputs.append((topology, auth, ssl, sync, python, pr))
+        task_inputs.append((topology, auth, ssl, sync, python))
 
     # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
     for python, sync in product(ALL_PYTHONS, SYNCS):
-        task_input = ("sharded_cluster", "auth", "ssl", sync, python, False)
+        task_input = ("sharded_cluster", "auth", "ssl", sync, python)
         if task_input not in task_inputs:
             task_inputs.append(task_input)
 
     # Assemble the tasks.
-    for topology, auth, ssl, sync, python, pr in task_inputs:
-        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}", sync]
-        if pr:
+    seen = set()
+    for topology, auth, ssl, sync, python in task_inputs:
+        combo = f"{topology}-{auth}-{ssl}"
+        tags = ["server-version", f"python-{python}", combo, sync]
+        if combo in seen:
+            continue
+        if combo in [
+            "standalone-noauth-nossl",
+            "replica_set-noauth-nossl",
+            "sharded_cluster-auth-ssl",
+        ]:
+            seen.add(combo)
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
