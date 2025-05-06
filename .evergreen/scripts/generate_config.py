@@ -557,15 +557,15 @@ def create_server_version_tasks():
     for topology, auth, ssl, sync, python in task_inputs:
         combo = f"{topology}-{auth}-{ssl}"
         tags = ["server-version", f"python-{python}", combo, sync]
-        if combo in seen:
-            continue
         if combo in [
             "standalone-noauth-nossl",
             "replica_set-noauth-nossl",
             "sharded_cluster-auth-ssl",
         ]:
-            seen.add(combo)
-            tags.append("pr")
+            combo = f"{combo}-{sync}"
+            if combo not in seen:
+                seen.add(combo)
+                tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
