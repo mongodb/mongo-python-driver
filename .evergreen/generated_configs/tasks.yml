@@ -2490,6 +2490,7 @@ tasks:
       - python-3.9
       - standalone-noauth-nossl
       - sync
+      - pr
   - name: test-server-version-python3.10-async-noauth-nossl-standalone-cov
     commands:
       - func: run server
@@ -2511,6 +2512,7 @@ tasks:
       - python-3.10
       - standalone-noauth-nossl
       - async
+      - pr
   - name: test-server-version-python3.11-sync-auth-ssl-replica-set-cov
     commands:
       - func: run server
@@ -2614,6 +2616,7 @@ tasks:
       - python-3.9
       - replica_set-noauth-ssl
       - sync
+      - pr
   - name: test-server-version-python3.10-async-noauth-ssl-replica-set-cov
     commands:
       - func: run server
@@ -2635,6 +2638,7 @@ tasks:
       - python-3.10
       - replica_set-noauth-ssl
       - async
+      - pr
   - name: test-server-version-python3.11-sync-noauth-nossl-replica-set-cov
     commands:
       - func: run server
@@ -2698,6 +2702,7 @@ tasks:
       - python-3.13
       - sharded_cluster-auth-ssl
       - sync
+      - pr
   - name: test-server-version-pypy3.10-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -2717,6 +2722,7 @@ tasks:
       - python-pypy3.10
       - sharded_cluster-auth-ssl
       - async
+      - pr
   - name: test-server-version-python3.9-sync-auth-nossl-sharded-cluster-cov
     commands:
       - func: run server
@@ -2862,6 +2868,7 @@ tasks:
       - python-3.9
       - sharded_cluster-auth-ssl
       - sync
+      - pr
   - name: test-server-version-python3.9-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
@@ -2883,6 +2890,7 @@ tasks:
       - python-3.9
       - sharded_cluster-auth-ssl
       - async
+      - pr
   - name: test-server-version-python3.10-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
@@ -2904,6 +2912,7 @@ tasks:
       - python-3.10
       - sharded_cluster-auth-ssl
       - sync
+      - pr
   - name: test-server-version-python3.10-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
@@ -2925,6 +2934,7 @@ tasks:
       - python-3.10
       - sharded_cluster-auth-ssl
       - async
+      - pr
   - name: test-server-version-python3.11-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
@@ -2946,6 +2956,7 @@ tasks:
       - python-3.11
       - sharded_cluster-auth-ssl
       - sync
+      - pr
   - name: test-server-version-python3.11-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
@@ -2967,6 +2978,7 @@ tasks:
       - python-3.11
       - sharded_cluster-auth-ssl
       - async
+      - pr
   - name: test-server-version-python3.12-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
@@ -2988,6 +3000,7 @@ tasks:
       - python-3.12
       - sharded_cluster-auth-ssl
       - sync
+      - pr
   - name: test-server-version-python3.12-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
@@ -3009,6 +3022,7 @@ tasks:
       - python-3.12
       - sharded_cluster-auth-ssl
       - async
+      - pr
   - name: test-server-version-python3.13-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
@@ -3030,6 +3044,7 @@ tasks:
       - python-3.13
       - sharded_cluster-auth-ssl
       - async
+      - pr
   - name: test-server-version-pypy3.10-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -3049,6 +3064,7 @@ tasks:
       - python-pypy3.10
       - sharded_cluster-auth-ssl
       - sync
+      - pr
 
   # Serverless tests
   - name: test-serverless
@@ -3611,6 +3627,7 @@ tasks:
       - python-3.13
       - standalone-noauth-nossl
       - sync
+      - pr
   - name: test-standard-latest-python3.9-async-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -3633,6 +3650,7 @@ tasks:
       - python-3.9
       - replica_set-noauth-ssl
       - async
+      - pr
   - name: test-standard-latest-python3.10-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -3655,6 +3673,7 @@ tasks:
       - python-3.10
       - sharded_cluster-auth-ssl
       - sync
+      - pr
   - name: test-standard-v4.0-pypy3.10-sync-noauth-nossl-standalone
     commands:
       - func: run server
@@ -3862,6 +3881,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - sync
       - pypy
+      - pr
 
   # Test non standard tests
   - name: test-non-standard-v4.0-python3.9-noauth-nossl-standalone
@@ -4389,6 +4409,7 @@ tasks:
       - python-3.13
       - standalone-noauth-nossl
       - noauth
+      - pr
   - name: test-non-standard-latest-python3.9-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -4410,6 +4431,7 @@ tasks:
       - python-3.9
       - replica_set-noauth-ssl
       - noauth
+      - pr
   - name: test-non-standard-latest-python3.10-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -4431,6 +4453,7 @@ tasks:
       - python-3.10
       - sharded_cluster-auth-ssl
       - auth
+      - pr
   - name: test-non-standard-v4.0-pypy3.10-noauth-nossl-standalone
     commands:
       - func: run server
@@ -4629,3 +4652,4 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - pypy
+      - pr

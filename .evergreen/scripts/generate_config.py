@@ -554,7 +554,14 @@ def create_server_version_tasks():
 
     # Assemble the tasks.
     for topology, auth, ssl, sync, python in task_inputs:
-        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}", sync]
+        combo = f"{topology}-{auth}-{ssl}"
+        tags = ["server-version", f"python-{python}", combo, sync]
+        if combo in [
+            "standalone-noauth-nossl",
+            "replica_set-noauth-ssl",
+            "sharded_cluster-auth-ssl",
+        ]:
+            tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
@@ -608,6 +615,8 @@ def create_test_non_standard_tasks():
         ]
         if python in PYPYS:
             tags.append("pypy")
+        if version == "latest":
+            tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
@@ -644,6 +653,8 @@ def create_standard_tasks():
         ]
         if python in PYPYS:
             tags.append("pypy")
+        if version == "latest":
+            tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
