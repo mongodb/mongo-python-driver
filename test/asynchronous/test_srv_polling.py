@@ -177,7 +177,7 @@ class TestSrvPolling(AsyncPyMongoTestCase):
         with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
             client = self.simple_client(self.CONNECTION_STRING)
             await client.aconnect()
-            await assertion_method(self.BASE_SRV_RESPONSE, client)
+            await self.assert_nodelist_change(self.BASE_SRV_RESPONSE, client)
             # Patch list of hosts returned by DNS query.
             with SrvPollingKnobs(
                 nodelist_callback=dns_resolver_response, count_resolver_calls=count_resolver_calls
@@ -218,6 +218,8 @@ class TestSrvPolling(AsyncPyMongoTestCase):
 
             def response_callback(*args):
                 raise exc("DNS Failure!")
+
+            print(exc)
 
             await self.run_scenario(response_callback, False)
 
