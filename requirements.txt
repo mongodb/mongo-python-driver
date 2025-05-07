@@ -1,1 +1,1 @@
-dnspython>=1.16.0,<3.0.0
+git+https://github.com/blink1073/dnspython.git@windows-ctypes
