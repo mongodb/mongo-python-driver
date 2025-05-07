@@ -41,7 +41,6 @@ from shrub.v3.evg_command import (
     ec2_assume_role,
     expansions_update,
     git_get_project,
-    perf_send,
 )
 from shrub.v3.evg_task import EvgTask, EvgTaskDependency, EvgTaskRef
 
@@ -553,8 +552,19 @@ def create_server_version_tasks():
             task_inputs.append(task_input)
 
     # Assemble the tasks.
+    seen = set()
     for topology, auth, ssl, sync, python in task_inputs:
-        tags = ["server-version", f"python-{python}", f"{topology}-{auth}-{ssl}", sync]
+        combo = f"{topology}-{auth}-{ssl}"
+        tags = ["server-version", f"python-{python}", combo, sync]
+        if combo in [
+            "standalone-noauth-nossl",
+            "replica_set-noauth-nossl",
+            "sharded_cluster-auth-ssl",
+        ]:
+            combo = f"{combo}-{sync}"
+            if combo not in seen:
+                seen.add(combo)
+                tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
@@ -593,11 +603,12 @@ def create_test_non_standard_tasks():
     task_combos = []
     # For each version and topology, rotate through the CPythons.
     for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
-        task_combos.append((version, topology, python))
+        pr = version == "latest"
+        task_combos.append((version, topology, python, pr))
     # For each PyPy and topology, rotate through the the versions.
     for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
-        task_combos.append((version, topology, python))
-    for version, topology, python in task_combos:
+        task_combos.append((version, topology, python, False))
+    for version, topology, python, pr in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-non-standard",
@@ -608,6 +619,8 @@ def create_test_non_standard_tasks():
         ]
         if python in PYPYS:
             tags.append("pypy")
+        if pr:
+            tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
@@ -626,14 +639,15 @@ def create_standard_tasks():
     for (version, topology), python, sync in zip_cycle(
         list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS, SYNCS
     ):
-        task_combos.append((version, topology, python, sync))
+        pr = version == "latest"
+        task_combos.append((version, topology, python, sync, pr))
     # For each PyPy and topology, rotate through the the versions and sync/async.
     for (python, topology), version, sync in zip_cycle(
         list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS, SYNCS
     ):
-        task_combos.append((version, topology, python, sync))
+        task_combos.append((version, topology, python, sync, False))
 
-    for version, topology, python, sync in task_combos:
+    for version, topology, python, sync, pr in task_combos:
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-standard",
@@ -644,6 +658,8 @@ def create_standard_tasks():
         ]
         if python in PYPYS:
             tags.append("pypy")
+        if pr:
+            tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
@@ -758,7 +774,7 @@ def create_mod_wsgi_tasks():
         server_func = FunctionCall(func="run server", vars=server_vars)
         vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0], PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=vars)
-        tags = ["mod_wsgi"]
+        tags = ["mod_wsgi", "pr"]
         commands = [server_func, test_func]
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
     return tasks
@@ -843,7 +859,7 @@ def create_getdata_tasks():
 
 
 def create_coverage_report_tasks():
-    tags = ["coverage"]
+    tags = ["coverage", "pr"]
     task_name = "coverage-report"
     # BUILD-3165: We can't use "*" (all tasks) and specify "variant".
     # Instead list out all coverage tasks using tags.
@@ -1103,8 +1119,28 @@ def create_attach_benchmark_test_results_func():
 
 
 def create_send_dashboard_data_func():
-    cmd = perf_send(file="src/results.json")
-    return "send dashboard data", [cmd]
+    includes = [
+        "requester",
+        "revision_order_id",
+        "project_id",
+        "version_id",
+        "build_variant",
+        "parsed_order_id",
+        "task_name",
+        "task_id",
+        "execution",
+        "is_mainline",
+    ]
+    cmds = [
+        get_subprocess_exec(
+            include_expansions_in_env=includes, args=[".evergreen/scripts/perf-submission-setup.sh"]
+        ),
+        expansions_update(file="src/expansion.yml"),
+        get_subprocess_exec(
+            include_expansions_in_env=includes, args=[".evergreen/scripts/perf-submission.sh"]
+        ),
+    ]
+    return "send dashboard data", cmds
 
 
 mod = sys.modules[__name__]

@@ -151,7 +151,15 @@ class PerformanceTest:
                     },
                 },
                 "metrics": [
-                    {"name": "megabytes_per_sec", "type": "MEDIAN", "value": megabytes_per_sec},
+                    {
+                        "name": "megabytes_per_sec",
+                        "type": "MEDIAN",
+                        "value": megabytes_per_sec,
+                        "metadata": {
+                            "improvement_direction": "up",
+                            "measurement_unit": "megabytes_per_second",
+                        },
+                    },
                 ],
             }
         )

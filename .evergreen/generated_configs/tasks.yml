@@ -134,7 +134,7 @@ tasks:
     commands:
       - func: download and merge coverage
     depends_on: [{ name: .server-version, variant: .coverage_tag, status: "*", patch_optional: true }]
-    tags: [coverage]
+    tags: [coverage, pr]
 
   # Free threading tests
   - name: test-free-threading
@@ -211,7 +211,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: standalone
           PYTHON_VERSION: "3.9"
-    tags: [mod_wsgi]
+    tags: [mod_wsgi, pr]
   - name: mod-wsgi-embedded-mode-replica-set-python3.10
     commands:
       - func: run server
@@ -223,7 +223,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded
           PYTHON_VERSION: "3.10"
-    tags: [mod_wsgi]
+    tags: [mod_wsgi, pr]
   - name: mod-wsgi-replica-set-python3.11
     commands:
       - func: run server
@@ -235,7 +235,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: standalone
           PYTHON_VERSION: "3.11"
-    tags: [mod_wsgi]
+    tags: [mod_wsgi, pr]
   - name: mod-wsgi-embedded-mode-replica-set-python3.12
     commands:
       - func: run server
@@ -247,7 +247,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded
           PYTHON_VERSION: "3.12"
-    tags: [mod_wsgi]
+    tags: [mod_wsgi, pr]
   - name: mod-wsgi-replica-set-python3.13
     commands:
       - func: run server
@@ -259,7 +259,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: standalone
           PYTHON_VERSION: "3.13"
-    tags: [mod_wsgi]
+    tags: [mod_wsgi, pr]
 
   # No orchestration tests
   - name: test-no-orchestration-python3.9
@@ -2490,6 +2490,7 @@ tasks:
       - python-3.9
       - standalone-noauth-nossl
       - sync
+      - pr
   - name: test-server-version-python3.10-async-noauth-nossl-standalone-cov
     commands:
       - func: run server
@@ -2511,6 +2512,7 @@ tasks:
       - python-3.10
       - standalone-noauth-nossl
       - async
+      - pr
   - name: test-server-version-python3.11-sync-auth-ssl-replica-set-cov
     commands:
       - func: run server
@@ -2656,6 +2658,7 @@ tasks:
       - python-3.11
       - replica_set-noauth-nossl
       - sync
+      - pr
   - name: test-server-version-python3.12-async-noauth-nossl-replica-set-cov
     commands:
       - func: run server
@@ -2677,6 +2680,7 @@ tasks:
       - python-3.12
       - replica_set-noauth-nossl
       - async
+      - pr
   - name: test-server-version-python3.13-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
@@ -2698,6 +2702,7 @@ tasks:
       - python-3.13
       - sharded_cluster-auth-ssl
       - sync
+      - pr
   - name: test-server-version-pypy3.10-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -2717,6 +2722,7 @@ tasks:
       - python-pypy3.10
       - sharded_cluster-auth-ssl
       - async
+      - pr
   - name: test-server-version-python3.9-sync-auth-nossl-sharded-cluster-cov
     commands:
       - func: run server
@@ -3611,6 +3617,7 @@ tasks:
       - python-3.13
       - standalone-noauth-nossl
       - sync
+      - pr
   - name: test-standard-latest-python3.9-async-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -3633,6 +3640,7 @@ tasks:
       - python-3.9
       - replica_set-noauth-ssl
       - async
+      - pr
   - name: test-standard-latest-python3.10-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -3655,6 +3663,7 @@ tasks:
       - python-3.10
       - sharded_cluster-auth-ssl
       - sync
+      - pr
   - name: test-standard-v4.0-pypy3.10-sync-noauth-nossl-standalone
     commands:
       - func: run server
@@ -4389,6 +4398,7 @@ tasks:
       - python-3.13
       - standalone-noauth-nossl
       - noauth
+      - pr
   - name: test-non-standard-latest-python3.9-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -4410,6 +4420,7 @@ tasks:
       - python-3.9
       - replica_set-noauth-ssl
       - noauth
+      - pr
   - name: test-non-standard-latest-python3.10-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -4431,6 +4442,7 @@ tasks:
       - python-3.10
       - sharded_cluster-auth-ssl
       - auth
+      - pr
   - name: test-non-standard-v4.0-pypy3.10-noauth-nossl-standalone
     commands:
       - func: run server
