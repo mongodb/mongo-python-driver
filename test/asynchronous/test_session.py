@@ -380,6 +380,13 @@ class TestSession(AsyncIntegrationTest):
             clone = cursor.clone()
             self.assertTrue(clone.session is s)
 
+        # Explicit session via context variable.
+        async with self.client.start_session(bind=True) as s:
+            cursor = coll.find()
+            self.assertTrue(cursor.session is s)
+            clone = cursor.clone()
+            self.assertTrue(clone.session is s)
+
         # No explicit session.
         cursor = coll.find(batch_size=2)
         await anext(cursor)

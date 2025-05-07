@@ -65,7 +65,7 @@ from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
-from pymongo.asynchronous.client_session import _EmptyServerSession
+from pymongo.asynchronous.client_session import SESSION, _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
@@ -1355,13 +1355,18 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     def _start_session(self, implicit: bool, **kwargs: Any) -> AsyncClientSession:
         server_session = _EmptyServerSession()
         opts = client_session.SessionOptions(**kwargs)
-        return client_session.AsyncClientSession(self, server_session, opts, implicit)
+        bind = opts._bind
+        session = client_session.AsyncClientSession(self, server_session, opts, implicit)
+        if bind:
+            SESSION.set(session)
+        return session
 
     def start_session(
         self,
         causal_consistency: Optional[bool] = None,
         default_transaction_options: Optional[client_session.TransactionOptions] = None,
         snapshot: Optional[bool] = False,
+        bind: Optional[bool] = False,
     ) -> client_session.AsyncClientSession:
         """Start a logical session.
 
@@ -1384,6 +1389,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             causal_consistency=causal_consistency,
             default_transaction_options=default_transaction_options,
             snapshot=snapshot,
+            bind=bind,
         )
 
     def _ensure_session(

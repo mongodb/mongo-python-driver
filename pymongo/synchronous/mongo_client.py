@@ -107,7 +107,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous import client_session, database, uri_parser
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
-from pymongo.synchronous.client_session import _EmptyServerSession
+from pymongo.synchronous.client_session import SESSION, _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
@@ -1353,13 +1353,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _start_session(self, implicit: bool, **kwargs: Any) -> ClientSession:
         server_session = _EmptyServerSession()
         opts = client_session.SessionOptions(**kwargs)
-        return client_session.ClientSession(self, server_session, opts, implicit)
+        bind = opts._bind
+        session = client_session.ClientSession(self, server_session, opts, implicit)
+        if bind:
+            SESSION.set(session)
+        return session
 
     def start_session(
         self,
         causal_consistency: Optional[bool] = None,
         default_transaction_options: Optional[client_session.TransactionOptions] = None,
         snapshot: Optional[bool] = False,
+        bind: Optional[bool] = False,
     ) -> client_session.ClientSession:
         """Start a logical session.
 
@@ -1382,6 +1387,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             causal_consistency=causal_consistency,
             default_transaction_options=default_transaction_options,
             snapshot=snapshot,
+            bind=bind,
         )
 
     def _ensure_session(self, session: Optional[ClientSession] = None) -> Optional[ClientSession]:

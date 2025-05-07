@@ -139,6 +139,7 @@ import collections
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
+from contextvars import ContextVar
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -204,6 +205,7 @@ class SessionOptions:
         causal_consistency: Optional[bool] = None,
         default_transaction_options: Optional[TransactionOptions] = None,
         snapshot: Optional[bool] = False,
+        bind: Optional[bool] = False,
     ) -> None:
         if snapshot:
             if causal_consistency:
@@ -222,6 +224,7 @@ class SessionOptions:
                 )
         self._default_transaction_options = default_transaction_options
         self._snapshot = snapshot
+        self._bind = bind
 
     @property
     def causal_consistency(self) -> bool:
@@ -1063,6 +1066,9 @@ class AsyncClientSession:
 
     def __copy__(self) -> NoReturn:
         raise TypeError("A AsyncClientSession cannot be copied, create a new session instead")
+
+
+SESSION: ContextVar[Optional[AsyncClientSession]] = ContextVar("SESSION", default=None)
 
 
 class _EmptyServerSession:
