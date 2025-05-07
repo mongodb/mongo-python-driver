@@ -53,6 +53,7 @@ class SrvPollingKnobs:
         self.old_dns_resolver_response = None
 
     def enable(self):
+        print("enable")
         self.old_min_srv_rescan_interval = common.MIN_SRV_RESCAN_INTERVAL
         self.old_dns_resolver_response = (
             pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts_and_min_ttl
@@ -82,6 +83,7 @@ class SrvPollingKnobs:
         self.enable()
 
     def disable(self):
+        print("disable")
         common.MIN_SRV_RESCAN_INTERVAL = self.old_min_srv_rescan_interval  # type: ignore
         pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts_and_min_ttl = (  # type: ignore
             self.old_dns_resolver_response
