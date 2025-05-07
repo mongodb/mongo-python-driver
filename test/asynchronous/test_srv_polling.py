@@ -216,7 +216,7 @@ class TestSrvPolling(AsyncPyMongoTestCase):
     async def test_dns_failures(self):
         from dns import exception
 
-        for exc in (exception.FormError, exception.TooBig, exception.Timeout):
+        for exc in (exception.FormError, exception.Timeout, exception.TooBig):
 
             def response_callback(*args):
                 raise exc("DNS Failure!")
