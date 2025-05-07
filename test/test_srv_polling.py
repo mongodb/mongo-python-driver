@@ -177,7 +177,7 @@ class TestSrvPolling(PyMongoTestCase):
         with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
             client = self.simple_client(self.CONNECTION_STRING)
             client._connect()
-            self.assert_nodelist_change(self.BASE_SRV_RESPONSE, client)
+            assertion_method(self.BASE_SRV_RESPONSE, client)
             # Patch list of hosts returned by DNS query.
             with SrvPollingKnobs(
                 nodelist_callback=dns_resolver_response, count_resolver_calls=count_resolver_calls
