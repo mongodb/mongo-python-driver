@@ -222,6 +222,7 @@ class TestSrvPolling(AsyncPyMongoTestCase):
                 raise exc("DNS Failure!")
 
             print(exc)
+            await asyncio.sleep(0.1)
 
             await self.run_scenario(response_callback, False)
 
