@@ -77,6 +77,9 @@ typing = [
 path = "pymongo/_version.py"
 validate-bump = false
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["bson","gridfs", "pymongo"]
 
