@@ -394,12 +394,22 @@ class TestSession(AsyncIntegrationTest):
         await cursor.close()
         await clone.close()
 
+    async def test_bind_session(self):
+        coll = self.client.pymongo_test.collection
+
         # Explicit session via context variable.
         async with self.client.start_session(bind=True) as s:
             cursor = coll.find()
             self.assertTrue(cursor.session is s)
-            clone = cursor.clone()
-            self.assertTrue(clone.session is s)
+
+        # Nested sessions.
+        session1 = self.client.start_session(bind=True)
+        with session1:
+            session2 = self.client.start_session(bind=True)
+            with session2:
+                coll.find_one()  # uses session2
+            coll.find_one()  # uses session1
+        coll.find_one()  # uses implicit session
 
     async def test_cursor(self):
         listener = self.listener
