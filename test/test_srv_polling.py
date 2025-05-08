@@ -53,7 +53,6 @@ class SrvPollingKnobs:
         self.old_dns_resolver_response = None
 
     def enable(self):
-        print("enable")
         self.old_min_srv_rescan_interval = common.MIN_SRV_RESCAN_INTERVAL
         self.old_dns_resolver_response = (
             pymongo.synchronous.srv_resolver._SrvResolver.get_hosts_and_min_ttl
@@ -83,7 +82,6 @@ class SrvPollingKnobs:
         self.enable()
 
     def disable(self):
-        print("disable")
         common.MIN_SRV_RESCAN_INTERVAL = self.old_min_srv_rescan_interval  # type: ignore
         pymongo.synchronous.srv_resolver._SrvResolver.get_hosts_and_min_ttl = (  # type: ignore
             self.old_dns_resolver_response
@@ -186,6 +184,9 @@ class TestSrvPolling(PyMongoTestCase):
             ):
                 assertion_method(expected_response, client)
 
+        # Close the client early to avoid affecting the next scenario run.
+        client.close()
+
     def test_addition(self):
         response = self.BASE_SRV_RESPONSE[:]
         response.append(("localhost.test.build.10gen.cc", 27019))
@@ -219,11 +220,7 @@ class TestSrvPolling(PyMongoTestCase):
         for exc in (exception.FormError, exception.Timeout, exception.TooBig):
 
             def response_callback(*args):
-                # raise exc("DNS Failure!")
-                return []
-
-            print(exc)
-            # time.sleep(0.5)
+                raise exc("DNS Failure!")
 
             self.run_scenario(response_callback, False)
 
