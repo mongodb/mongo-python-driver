@@ -257,7 +257,7 @@ class EntityMapUtil:
                 current[key] = self._handle_placeholders(spec, value, subpath)
         return current
 
-    async def _create_entity(self, entity_spec, uri=None, init_client=False):
+    async def _create_entity(self, entity_spec, uri=None):
         if len(entity_spec) != 1:
             self.test.fail(f"Entity spec {entity_spec} did not contain exactly one top-level key")
 
@@ -303,8 +303,7 @@ class EntityMapUtil:
             if uri:
                 kwargs["h"] = uri
             client = await self.test.async_rs_or_single_client(**kwargs)
-            if init_client:
-                await client.aconnect()
+            await client.aconnect()
             self[spec["id"]] = client
             return
         elif entity_type == "database":
@@ -392,9 +391,9 @@ class EntityMapUtil:
 
         self.test.fail(f"Unable to create entity of unknown type {entity_type}")
 
-    async def create_entities_from_spec(self, entity_spec, uri=None, init_client=False):
+    async def create_entities_from_spec(self, entity_spec, uri=None):
         for spec in entity_spec:
-            await self._create_entity(spec, uri=uri, init_client=init_client)
+            await self._create_entity(spec, uri=uri)
 
     def get_listener_for_client(self, client_name: str) -> EventListenerUtil:
         client = self[client_name]
@@ -1408,7 +1407,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             attempts = 3
             for i in range(attempts):
                 try:
-                    return await self._run_scenario(spec, uri, init_client=True)
+                    return await self._run_scenario(spec, uri)
                 except (AssertionError, OperationFailure) as exc:
                     if isinstance(exc, OperationFailure) and (
                         _IS_SYNC or "failpoint" not in exc._message
@@ -1428,7 +1427,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             await self._run_scenario(spec, uri)
             return None
 
-    async def _run_scenario(self, spec, uri=None, init_client=False):
+    async def _run_scenario(self, spec, uri=None):
         # maybe skip test manually
         self.maybe_skip_test(spec)
 
@@ -1446,7 +1445,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         self._uri = uri
         self.entity_map = EntityMapUtil(self)
         await self.entity_map.create_entities_from_spec(
-            self.TEST_SPEC.get("createEntities", []), uri=uri, init_client=init_client
+            self.TEST_SPEC.get("createEntities", []), uri=uri
         )
         self._cluster_time = None
         # process initialData

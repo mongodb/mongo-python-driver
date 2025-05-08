@@ -256,7 +256,7 @@ class EntityMapUtil:
                 current[key] = self._handle_placeholders(spec, value, subpath)
         return current
 
-    def _create_entity(self, entity_spec, uri=None, init_client=False):
+    def _create_entity(self, entity_spec, uri=None):
         if len(entity_spec) != 1:
             self.test.fail(f"Entity spec {entity_spec} did not contain exactly one top-level key")
 
@@ -302,8 +302,7 @@ class EntityMapUtil:
             if uri:
                 kwargs["h"] = uri
             client = self.test.rs_or_single_client(**kwargs)
-            if init_client:
-                client._connect()
+            client._connect()
             self[spec["id"]] = client
             return
         elif entity_type == "database":
@@ -391,9 +390,9 @@ class EntityMapUtil:
 
         self.test.fail(f"Unable to create entity of unknown type {entity_type}")
 
-    def create_entities_from_spec(self, entity_spec, uri=None, init_client=False):
+    def create_entities_from_spec(self, entity_spec, uri=None):
         for spec in entity_spec:
-            self._create_entity(spec, uri=uri, init_client=init_client)
+            self._create_entity(spec, uri=uri)
 
     def get_listener_for_client(self, client_name: str) -> EventListenerUtil:
         client = self[client_name]
@@ -1395,7 +1394,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             attempts = 3
             for i in range(attempts):
                 try:
-                    return self._run_scenario(spec, uri, init_client=True)
+                    return self._run_scenario(spec, uri)
                 except (AssertionError, OperationFailure) as exc:
                     if isinstance(exc, OperationFailure) and (
                         _IS_SYNC or "failpoint" not in exc._message
@@ -1415,7 +1414,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self._run_scenario(spec, uri)
             return None
 
-    def _run_scenario(self, spec, uri=None, init_client=False):
+    def _run_scenario(self, spec, uri=None):
         # maybe skip test manually
         self.maybe_skip_test(spec)
 
@@ -1432,9 +1431,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process createEntities
         self._uri = uri
         self.entity_map = EntityMapUtil(self)
-        self.entity_map.create_entities_from_spec(
-            self.TEST_SPEC.get("createEntities", []), uri=uri, init_client=init_client
-        )
+        self.entity_map.create_entities_from_spec(self.TEST_SPEC.get("createEntities", []), uri=uri)
         self._cluster_time = None
         # process initialData
         if "initialData" in self.TEST_SPEC:
