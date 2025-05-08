@@ -407,9 +407,9 @@ class TestSession(AsyncIntegrationTest):
         async with session1:
             session2 = self.client.start_session(bind=True)
             async with session2:
-                coll.find_one()  # uses session2
-            coll.find_one()  # uses session1
-        coll.find_one()  # uses implicit session
+                await coll.find_one()  # uses session2
+            await coll.find_one()  # uses session1
+        await coll.find_one()  # uses implicit session
 
     async def test_cursor(self):
         listener = self.listener
