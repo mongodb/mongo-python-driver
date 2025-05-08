@@ -139,8 +139,7 @@ import collections
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
-from contextlib import AbstractContextManager
-from contextvars import ContextVar, Token
+from contextvars import ContextVar
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -1065,24 +1064,6 @@ class ClientSession:
 
 
 _SESSION: ContextVar[Optional[ClientSession]] = ContextVar("SESSION", default=None)
-
-
-class _BindSession(AbstractContextManager):
-    def __init__(self, session: ClientSession) -> None:
-        self.session = session
-        self.token: Optional[Token[Optional[ClientSession]]] = None
-
-    def __enter__(self) -> None:
-        self.token = _SESSION.set(self.session)
-
-    def __exit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> Optional[bool]:
-        if self.token is not None:
-            _SESSION.reset(self.token)
 
 
 class _EmptyServerSession:
