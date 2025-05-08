@@ -64,7 +64,7 @@ if TYPE_CHECKING:
 
     from bson.codec_options import CodecOptions
     from pymongo.read_preferences import _ServerMode
-    from pymongo.synchronous.client_session import SESSION, ClientSession
+    from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.pool import Connection
 
@@ -136,13 +136,15 @@ class Cursor(Generic[_DocumentType]):
         self._killed = False
         self._session: Optional[ClientSession]
 
-        _SESSION = SESSION.get()
+        from .client_session import _SESSION
+
+        bound_session = _SESSION.get()
 
         if session:
             self._session = session
             self._explicit_session = True
-        elif _SESSION:
-            self._session = _SESSION
+        elif bound_session:
+            self._session = bound_session
             self._explicit_session = True
         else:
             self._session = None

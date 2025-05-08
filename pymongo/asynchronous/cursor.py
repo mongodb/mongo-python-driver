@@ -63,7 +63,7 @@ if TYPE_CHECKING:
     from _typeshed import SupportsItems
 
     from bson.codec_options import CodecOptions
-    from pymongo.asynchronous.client_session import SESSION, AsyncClientSession
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.read_preferences import _ServerMode
@@ -136,13 +136,15 @@ class AsyncCursor(Generic[_DocumentType]):
         self._killed = False
         self._session: Optional[AsyncClientSession]
 
-        _SESSION = SESSION.get()
+        from .client_session import _SESSION
+
+        bound_session = _SESSION.get()
 
         if session:
             self._session = session
             self._explicit_session = True
-        elif _SESSION:
-            self._session = _SESSION
+        elif bound_session:
+            self._session = bound_session
             self._explicit_session = True
         else:
             self._session = None

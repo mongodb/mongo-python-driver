@@ -1063,7 +1063,7 @@ class ClientSession:
         raise TypeError("A ClientSession cannot be copied, create a new session instead")
 
 
-SESSION: ContextVar[Optional[ClientSession]] = ContextVar("SESSION", default=None)
+_SESSION: ContextVar[Optional[ClientSession]] = ContextVar("SESSION", default=None)
 
 
 class _EmptyServerSession:

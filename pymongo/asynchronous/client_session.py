@@ -1068,7 +1068,7 @@ class AsyncClientSession:
         raise TypeError("A AsyncClientSession cannot be copied, create a new session instead")
 
 
-SESSION: ContextVar[Optional[AsyncClientSession]] = ContextVar("SESSION", default=None)
+_SESSION: ContextVar[Optional[AsyncClientSession]] = ContextVar("SESSION", default=None)
 
 
 class _EmptyServerSession:

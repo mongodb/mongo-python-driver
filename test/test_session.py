@@ -380,13 +380,6 @@ class TestSession(IntegrationTest):
             clone = cursor.clone()
             self.assertTrue(clone.session is s)
 
-        # Explicit session via context variable.
-        with self.client.start_session(bind=True) as s:
-            cursor = coll.find()
-            self.assertTrue(cursor.session is s)
-            clone = cursor.clone()
-            self.assertTrue(clone.session is s)
-
         # No explicit session.
         cursor = coll.find(batch_size=2)
         next(cursor)
@@ -400,6 +393,13 @@ class TestSession(IntegrationTest):
         self.assertFalse(cursor._session is clone._session)
         cursor.close()
         clone.close()
+
+        # Explicit session via context variable.
+        with self.client.start_session(bind=True) as s:
+            cursor = coll.find()
+            self.assertTrue(cursor.session is s)
+            clone = cursor.clone()
+            self.assertTrue(clone.session is s)
 
     def test_cursor(self):
         listener = self.listener
