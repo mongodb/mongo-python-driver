@@ -404,9 +404,9 @@ class TestSession(AsyncIntegrationTest):
 
         # Nested sessions.
         session1 = self.client.start_session(bind=True)
-        with session1:
+        async with session1:
             session2 = self.client.start_session(bind=True)
-            with session2:
+            async with session2:
                 coll.find_one()  # uses session2
             coll.find_one()  # uses session1
         coll.find_one()  # uses implicit session
