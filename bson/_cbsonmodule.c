@@ -3222,7 +3222,6 @@ _cbson_exec(PyObject *m)
 
     /* Import several python objects */
     if (_load_python_objects(m)) {
-        Py_DECREF(c_api_object);
         Py_DECREF(m);
         INITERROR;
     }
