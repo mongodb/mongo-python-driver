@@ -359,7 +359,7 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
                     raise _OperationCancelled("operation cancelled") from None
                 if (
                     _PYPY
-                    or not conn.is_sdam()
+                    or not conn.is_sdam
                     and deadline is not None
                     and deadline - time.monotonic() < 0
                 ):

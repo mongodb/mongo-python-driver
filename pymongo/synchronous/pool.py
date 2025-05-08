@@ -712,7 +712,7 @@ class Pool:
         self,
         address: _Address,
         options: PoolOptions,
-        is_sdam: bool = True,
+        is_sdam: bool = False,
         client_id: Optional[ObjectId] = None,
     ):
         """
