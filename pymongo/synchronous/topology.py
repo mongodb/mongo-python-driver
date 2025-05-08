@@ -154,8 +154,8 @@ class Topology:
                 _SDAM_LOGGER,
                 message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
                 topologyId=self._topology_id,
-                previousDescription=initial_td,
-                newDescription=self._description,
+                previousDescription=repr(initial_td),
+                newDescription=repr(self._description),
             )
 
         for seed in topology_settings.seeds:
@@ -514,8 +514,8 @@ class Topology:
                 _SDAM_LOGGER,
                 message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
                 topologyId=self._topology_id,
-                previousDescription=td_old,
-                newDescription=self._description,
+                previousDescription=repr(td_old),
+                newDescription=repr(self._description),
             )
 
         # Shutdown SRV polling for unsupported cluster types.
@@ -581,8 +581,8 @@ class Topology:
                 _SDAM_LOGGER,
                 message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
                 topologyId=self._topology_id,
-                previousDescription=td_old,
-                newDescription=self._description,
+                previousDescription=repr(td_old),
+                newDescription=repr(self._description),
             )
 
     def on_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
@@ -745,8 +745,8 @@ class Topology:
                 _SDAM_LOGGER,
                 message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
                 topologyId=self._topology_id,
-                previousDescription=old_td,
-                newDescription=self._description,
+                previousDescription=repr(old_td),
+                newDescription=repr(self._description),
             )
             _debug_log(
                 _SDAM_LOGGER, message=_SDAMStatusMessage.STOP_TOPOLOGY, topologyId=self._topology_id

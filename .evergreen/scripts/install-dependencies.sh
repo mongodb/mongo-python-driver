@@ -10,6 +10,12 @@ if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
+# Set up the default bin directory.
+if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
+  PYMONGO_BIN_DIR="$HOME/.local/bin"
+  export PATH="$PYMONGO_BIN_DIR:$PATH"
+fi
+
 # Helper function to pip install a dependency using a temporary python env.
 function _pip_install() {
   _HERE=$(dirname ${BASH_SOURCE:-$0})
@@ -41,10 +47,6 @@ if ! command -v just &>/dev/null; then
   if [ "Windows_NT" = "${OS:-}" ]; then
     _TARGET="--target x86_64-pc-windows-msvc"
   fi
-  if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
-    echo "Please install just!"
-    exit 1
-  fi
   _BIN_DIR=$PYMONGO_BIN_DIR
   echo "Installing just..."
   mkdir -p "$_BIN_DIR" 2>/dev/null || true
@@ -56,10 +58,6 @@ fi
 
 # Ensure uv is installed.
 if ! command -v uv &>/dev/null; then
-  if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
-    echo "Please install uv!"
-    exit 1
-  fi
   _BIN_DIR=$PYMONGO_BIN_DIR
   echo "Installing uv..."
   # On most systems we can install directly.

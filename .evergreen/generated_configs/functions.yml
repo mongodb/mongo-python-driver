@@ -162,9 +162,45 @@ functions:
 
   # Send dashboard data
   send dashboard data:
-    - command: perf.send
+    - command: subprocess.exec
       params:
-        file: src/results.json
+        binary: bash
+        args:
+          - .evergreen/scripts/perf-submission-setup.sh
+        working_dir: src
+        include_expansions_in_env:
+          - requester
+          - revision_order_id
+          - project_id
+          - version_id
+          - build_variant
+          - parsed_order_id
+          - task_name
+          - task_id
+          - execution
+          - is_mainline
+      type: test
+    - command: expansions.update
+      params:
+        file: src/expansion.yml
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/scripts/perf-submission.sh
+        working_dir: src
+        include_expansions_in_env:
+          - requester
+          - revision_order_id
+          - project_id
+          - version_id
+          - build_variant
+          - parsed_order_id
+          - task_name
+          - task_id
+          - execution
+          - is_mainline
+      type: test
 
   # Setup system
   setup system:
