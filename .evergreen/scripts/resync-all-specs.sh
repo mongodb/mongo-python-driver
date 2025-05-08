@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Run spec syncing script and create PR
 
 SPEC_DEST="../../test"
@@ -39,7 +39,7 @@ changed_specs=()
 errored_specs=()
 
 # Create branch and switch to it
-git checkout -b $BRANCH_NAME 2>/dev/null || git checkout $BRANCH_NAME
+#git checkout -b $BRANCH_NAME 2>/dev/null || git checkout $BRANCH_NAME
 
 for item in "$SPEC_DEST"/*; do
   item_name=$(basename "$item")
@@ -86,9 +86,13 @@ else
 fi
 
 # Output the PR body (optional step for verification)
-echo -e "$pr_body"
+echo "$pr_body" >> spec_sync.txt
 
-git add $SPEC_DEST
-git commit -m $BRANCH_NAME
-git push -u origin $BRANCH_NAME
+# call scrypt to create PR for us
+./create-pr.sh
+
+rm spec_sync.txt
+#git add $SPEC_DEST
+#git commit -m $BRANCH_NAME
+#git push -u origin $BRANCH_NAME
 #gh pr create --title "[Spec Resync] $(date '+%m-%d-%Y')" --body "Resyncing specs for review" --base main --head $BRANCH_NAME --draft

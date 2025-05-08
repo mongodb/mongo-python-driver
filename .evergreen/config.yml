@@ -50,4 +50,4 @@ tasks:
         params:
           binary: bash
           args:
-            - .evergreen/scripts/resync_all_specs.sh
+            - .evergreen/scripts/resync-all-specs.sh
