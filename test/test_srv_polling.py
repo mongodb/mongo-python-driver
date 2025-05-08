@@ -184,8 +184,8 @@ class TestSrvPolling(PyMongoTestCase):
             ):
                 assertion_method(expected_response, client)
 
-        # Close the client early to avoid affecting the next scenario run.
-        client.close()
+            # Close the client early to avoid affecting the next scenario run.
+            client.close()
 
     def test_addition(self):
         response = self.BASE_SRV_RESPONSE[:]
