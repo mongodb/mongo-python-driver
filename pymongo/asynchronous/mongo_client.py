@@ -65,7 +65,7 @@ from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
-from pymongo.asynchronous.client_session import _SESSION, _EmptyServerSession
+from pymongo.asynchronous.client_session import _BindSession, _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
@@ -1358,7 +1358,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         bind = opts._bind
         session = client_session.AsyncClientSession(self, server_session, opts, implicit)
         if bind:
-            _SESSION.set(session)
+            session = _BindSession(session)
         return session
 
     def start_session(

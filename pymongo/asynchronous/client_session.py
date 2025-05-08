@@ -139,7 +139,8 @@ import collections
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
-from contextvars import ContextVar
+from contextlib import AbstractAsyncContextManager
+from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -1069,6 +1070,24 @@ class AsyncClientSession:
 
 
 _SESSION: ContextVar[Optional[AsyncClientSession]] = ContextVar("SESSION", default=None)
+
+
+class _BindSession(AbstractAsyncContextManager):
+    def __init__(self, session: AsyncClientSession) -> None:
+        self.session = session
+        self.token: Optional[Token[Optional[AsyncClientSession]]] = None
+
+    async def __aenter__(self) -> None:
+        self.token = _SESSION.set(self.session)
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> Optional[bool]:
+        if self.token is not None:
+            _SESSION.reset(self.token)
 
 
 class _EmptyServerSession:
