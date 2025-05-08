@@ -1,1 +1,1 @@
-dnspython @ git+https://github.com/blink1073/dnspython.git@windows-ctypes
+dnspython  # @ git+https://github.com/blink1073/dnspython.git@windows-ctypes
