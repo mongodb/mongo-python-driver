@@ -254,9 +254,6 @@ class TestSrvPolling(AsyncPyMongoTestCase):
             # Nodelist should reflect new valid DNS resolver response.
             await self.assert_nodelist_change(response_final, client)
 
-        # Close the client early to avoid affecting the next scenario run.
-        await client.close()
-
     async def test_recover_from_initially_empty_seedlist(self):
         def empty_seedlist():
             return []
