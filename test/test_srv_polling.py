@@ -217,7 +217,7 @@ class TestSrvPolling(PyMongoTestCase):
     def test_dns_failures(self):
         from dns import exception
 
-        for exc in (exception.FormError, exception.Timeout, exception.TooBig):
+        for exc in (exception.FormError, exception.TooBig, exception.Timeout):
 
             def response_callback(*args):
                 raise exc("DNS Failure!")
@@ -253,6 +253,9 @@ class TestSrvPolling(PyMongoTestCase):
         ):
             # Nodelist should reflect new valid DNS resolver response.
             self.assert_nodelist_change(response_final, client)
+
+        # Close the client early to avoid affecting the next scenario run.
+        client.close()
 
     def test_recover_from_initially_empty_seedlist(self):
         def empty_seedlist():
