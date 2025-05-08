@@ -547,10 +547,12 @@ class ClientSession:
             raise InvalidOperation("Cannot use ended session")
 
     def __enter__(self) -> ClientSession:
-        _SESSION.set(self)
+        self._token = _SESSION.set(self)
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if self._token:
+            _SESSION.reset(self._token)
         self._end_session(lock=True)
 
     @property
