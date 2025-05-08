@@ -134,51 +134,7 @@ tasks:
     commands:
       - func: download and merge coverage
     depends_on: [{ name: .server-version, variant: .coverage_tag, status: "*", patch_optional: true }]
-    tags: [coverage]
-
-  # Enterprise auth tests
-  - name: test-enterprise-auth-python3.9
-    commands:
-      - func: run server
-        vars:
-          TEST_NAME: enterprise_auth
-          AUTH: auth
-          PYTHON_VERSION: "3.9"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: enterprise_auth
-          AUTH: auth
-          PYTHON_VERSION: "3.9"
-    tags: [enterprise_auth]
-  - name: test-enterprise-auth-python3.13
-    commands:
-      - func: run server
-        vars:
-          TEST_NAME: enterprise_auth
-          AUTH: auth
-          PYTHON_VERSION: "3.13"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: enterprise_auth
-          AUTH: auth
-          PYTHON_VERSION: "3.13"
-    tags: [enterprise_auth]
-  - name: test-enterprise-auth-pypy3.10
-    commands:
-      - func: run server
-        vars:
-          TEST_NAME: enterprise_auth
-          AUTH: auth
-          PYTHON_VERSION: pypy3.10
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: enterprise_auth
-          AUTH: auth
-          PYTHON_VERSION: pypy3.10
-    tags: [enterprise_auth, pypy]
+    tags: [coverage, pr]
 
   # Free threading tests
   - name: test-free-threading
@@ -243,233 +199,6 @@ tasks:
           TEST_NAME: kms
           SUB_TEST_NAME: azure-fail
 
-  # Load balancer tests
-  - name: test-load-balancer-auth-ssl-v6.0
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-          TEST_NAME: load_balancer
-          VERSION: "6.0"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, auth, ssl]
-  - name: test-load-balancer-auth-ssl-v7.0
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-          TEST_NAME: load_balancer
-          VERSION: "7.0"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, auth, ssl]
-  - name: test-load-balancer-auth-ssl-v8.0
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-          TEST_NAME: load_balancer
-          VERSION: "8.0"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, auth, ssl]
-  - name: test-load-balancer-auth-ssl-rapid
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-          TEST_NAME: load_balancer
-          VERSION: rapid
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, auth, ssl]
-  - name: test-load-balancer-auth-ssl-latest
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-          TEST_NAME: load_balancer
-          VERSION: latest
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, auth, ssl]
-  - name: test-load-balancer-noauth-ssl-v6.0
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-          TEST_NAME: load_balancer
-          VERSION: "6.0"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, noauth, ssl]
-  - name: test-load-balancer-noauth-ssl-v7.0
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-          TEST_NAME: load_balancer
-          VERSION: "7.0"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, noauth, ssl]
-  - name: test-load-balancer-noauth-ssl-v8.0
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-          TEST_NAME: load_balancer
-          VERSION: "8.0"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, noauth, ssl]
-  - name: test-load-balancer-noauth-ssl-rapid
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-          TEST_NAME: load_balancer
-          VERSION: rapid
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, noauth, ssl]
-  - name: test-load-balancer-noauth-ssl-latest
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-          TEST_NAME: load_balancer
-          VERSION: latest
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, noauth, ssl]
-  - name: test-load-balancer-noauth-nossl-v6.0
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-          TEST_NAME: load_balancer
-          VERSION: "6.0"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, noauth, nossl]
-  - name: test-load-balancer-noauth-nossl-v7.0
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-          TEST_NAME: load_balancer
-          VERSION: "7.0"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, noauth, nossl]
-  - name: test-load-balancer-noauth-nossl-v8.0
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-          TEST_NAME: load_balancer
-          VERSION: "8.0"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, noauth, nossl]
-  - name: test-load-balancer-noauth-nossl-rapid
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-          TEST_NAME: load_balancer
-          VERSION: rapid
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, noauth, nossl]
-  - name: test-load-balancer-noauth-nossl-latest
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-          TEST_NAME: load_balancer
-          VERSION: latest
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TEST_NAME: load_balancer
-    tags: [load-balancer, noauth, nossl]
-
   # Mod wsgi tests
   - name: mod-wsgi-replica-set-python3.9
     commands:
@@ -482,7 +211,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: standalone
           PYTHON_VERSION: "3.9"
-    tags: [mod_wsgi]
+    tags: [mod_wsgi, pr]
   - name: mod-wsgi-embedded-mode-replica-set-python3.10
     commands:
       - func: run server
@@ -494,7 +223,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded
           PYTHON_VERSION: "3.10"
-    tags: [mod_wsgi]
+    tags: [mod_wsgi, pr]
   - name: mod-wsgi-replica-set-python3.11
     commands:
       - func: run server
@@ -506,7 +235,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: standalone
           PYTHON_VERSION: "3.11"
-    tags: [mod_wsgi]
+    tags: [mod_wsgi, pr]
   - name: mod-wsgi-embedded-mode-replica-set-python3.12
     commands:
       - func: run server
@@ -518,7 +247,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded
           PYTHON_VERSION: "3.12"
-    tags: [mod_wsgi]
+    tags: [mod_wsgi, pr]
   - name: mod-wsgi-replica-set-python3.13
     commands:
       - func: run server
@@ -530,7 +259,7 @@ tasks:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: standalone
           PYTHON_VERSION: "3.13"
-    tags: [mod_wsgi]
+    tags: [mod_wsgi, pr]
 
   # No orchestration tests
   - name: test-no-orchestration-python3.9
@@ -539,21 +268,65 @@ tasks:
       - func: run tests
         vars:
           PYTHON_VERSION: "3.9"
-    tags: [no-orchestration, python-3.9]
+    tags: [test-no-orchestration, python-3.9]
   - name: test-no-orchestration-python3.13
     commands:
       - func: assume ec2 role
       - func: run tests
         vars:
           PYTHON_VERSION: "3.13"
-    tags: [no-orchestration, python-3.13]
+    tags: [test-no-orchestration, python-3.13]
   - name: test-no-orchestration-pypy3.10
     commands:
       - func: assume ec2 role
       - func: run tests
         vars:
           PYTHON_VERSION: pypy3.10
-    tags: [no-orchestration, python-pypy3.10]
+    tags: [test-no-orchestration, python-pypy3.10]
+
+  # No toolchain tests
+  - name: test-no-toolchain-sync-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          TEST_NAME: default_sync
+    tags: [test-no-toolchain, standalone-noauth-nossl]
+  - name: test-no-toolchain-async-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          TEST_NAME: default_async
+    tags: [test-no-toolchain, replica_set-noauth-ssl]
+  - name: test-no-toolchain-sync-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          TEST_NAME: default_sync
+    tags: [test-no-toolchain, sharded_cluster-auth-ssl]
 
   # Ocsp tests
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v4.4-python3.9
@@ -2505,50 +2278,6 @@ tasks:
           SUB_TEST_NAME: gke
     tags: [auth_oidc, auth_oidc_remote]
 
-  # Other hosts tests
-  - name: test-sync-noauth-nossl-standalone
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          TEST_NAME: default_sync
-    tags: [other-hosts, standalone-noauth-nossl]
-  - name: test-async-noauth-ssl-replica-set
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          TEST_NAME: default_async
-    tags: [other-hosts, replica_set-noauth-ssl]
-  - name: test-sync-auth-ssl-sharded-cluster
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          TEST_NAME: default_sync
-    tags: [other-hosts, sharded_cluster-auth-ssl]
-
   # Perf tests
   - name: perf-8.0-standalone-ssl
     commands:
@@ -2615,4789 +2344,510 @@ tasks:
           TEST_NAME: search_index
     tags: [search_index]
 
-  # Server tests
-  - name: test-4.0-standalone-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.0"
-      - standalone
-      - auth
-      - ssl
-      - sync
-  - name: test-4.0-standalone-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.0"
-      - standalone
-      - auth
-      - ssl
-      - async
-  - name: test-4.0-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
-  - name: test-4.0-standalone-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync
-  - name: test-4.0-standalone-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.0"
-      - standalone
-      - noauth
-      - ssl
-      - async
-  - name: test-4.0-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-4.0-standalone-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync
-  - name: test-4.0-standalone-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.0"
-      - standalone
-      - noauth
-      - nossl
-      - async
-  - name: test-4.0-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-4.2-standalone-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.2"
-      - standalone
-      - auth
-      - ssl
-      - sync
-  - name: test-4.2-standalone-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.2"
-      - standalone
-      - auth
-      - ssl
-      - async
-  - name: test-4.2-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
-  - name: test-4.2-standalone-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.2"
-      - standalone
-      - noauth
-      - ssl
-      - sync
-  - name: test-4.2-standalone-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.2"
-      - standalone
-      - noauth
-      - ssl
-      - async
-  - name: test-4.2-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-4.2-standalone-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.2"
-      - standalone
-      - noauth
-      - nossl
-      - sync
-  - name: test-4.2-standalone-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.2"
-      - standalone
-      - noauth
-      - nossl
-      - async
-  - name: test-4.2-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-4.4-standalone-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.4"
-      - standalone
-      - auth
-      - ssl
-      - sync
-  - name: test-4.4-standalone-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.4"
-      - standalone
-      - auth
-      - ssl
-      - async
-  - name: test-4.4-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
-  - name: test-4.4-standalone-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.4"
-      - standalone
-      - noauth
-      - ssl
-      - sync
-  - name: test-4.4-standalone-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.4"
-      - standalone
-      - noauth
-      - ssl
-      - async
-  - name: test-4.4-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-4.4-standalone-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.4"
-      - standalone
-      - noauth
-      - nossl
-      - sync
-  - name: test-4.4-standalone-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.4"
-      - standalone
-      - noauth
-      - nossl
-      - async
-  - name: test-4.4-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-5.0-standalone-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "5.0"
-      - standalone
-      - auth
-      - ssl
-      - sync
-  - name: test-5.0-standalone-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "5.0"
-      - standalone
-      - auth
-      - ssl
-      - async
-  - name: test-5.0-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
-  - name: test-5.0-standalone-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "5.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync
-  - name: test-5.0-standalone-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "5.0"
-      - standalone
-      - noauth
-      - ssl
-      - async
-  - name: test-5.0-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-5.0-standalone-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "5.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync
-  - name: test-5.0-standalone-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "5.0"
-      - standalone
-      - noauth
-      - nossl
-      - async
-  - name: test-5.0-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-6.0-standalone-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "6.0"
-      - standalone
-      - auth
-      - ssl
-      - sync
-  - name: test-6.0-standalone-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "6.0"
-      - standalone
-      - auth
-      - ssl
-      - async
-  - name: test-6.0-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
-  - name: test-6.0-standalone-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "6.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync
-  - name: test-6.0-standalone-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "6.0"
-      - standalone
-      - noauth
-      - ssl
-      - async
-  - name: test-6.0-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-6.0-standalone-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "6.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync
-  - name: test-6.0-standalone-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "6.0"
-      - standalone
-      - noauth
-      - nossl
-      - async
-  - name: test-6.0-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-7.0-standalone-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "7.0"
-      - standalone
-      - auth
-      - ssl
-      - sync
-  - name: test-7.0-standalone-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "7.0"
-      - standalone
-      - auth
-      - ssl
-      - async
-  - name: test-7.0-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
-  - name: test-7.0-standalone-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "7.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync
-  - name: test-7.0-standalone-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "7.0"
-      - standalone
-      - noauth
-      - ssl
-      - async
-  - name: test-7.0-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-7.0-standalone-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "7.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync
-  - name: test-7.0-standalone-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "7.0"
-      - standalone
-      - noauth
-      - nossl
-      - async
-  - name: test-7.0-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-8.0-standalone-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "8.0"
-      - standalone
-      - auth
-      - ssl
-      - sync
-  - name: test-8.0-standalone-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "8.0"
-      - standalone
-      - auth
-      - ssl
-      - async
-  - name: test-8.0-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - standalone
-      - auth
-      - ssl
-      - sync_async
-  - name: test-8.0-standalone-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "8.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync
-  - name: test-8.0-standalone-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "8.0"
-      - standalone
-      - noauth
-      - ssl
-      - async
-  - name: test-8.0-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-8.0-standalone-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "8.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync
-  - name: test-8.0-standalone-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "8.0"
-      - standalone
-      - noauth
-      - nossl
-      - async
-  - name: test-8.0-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-rapid-standalone-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - rapid
-      - standalone
-      - auth
-      - ssl
-      - sync
-  - name: test-rapid-standalone-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - rapid
-      - standalone
-      - auth
-      - ssl
-      - async
-  - name: test-rapid-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - standalone
-      - auth
-      - ssl
-      - sync_async
-  - name: test-rapid-standalone-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - rapid
-      - standalone
-      - noauth
-      - ssl
-      - sync
-  - name: test-rapid-standalone-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - rapid
-      - standalone
-      - noauth
-      - ssl
-      - async
-  - name: test-rapid-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-rapid-standalone-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - rapid
-      - standalone
-      - noauth
-      - nossl
-      - sync
-  - name: test-rapid-standalone-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - rapid
-      - standalone
-      - noauth
-      - nossl
-      - async
-  - name: test-rapid-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-latest-standalone-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - latest
-      - standalone
-      - auth
-      - ssl
-      - sync
-  - name: test-latest-standalone-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - latest
-      - standalone
-      - auth
-      - ssl
-      - async
-  - name: test-latest-standalone-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - standalone
-      - auth
-      - ssl
-      - sync_async
-  - name: test-latest-standalone-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - latest
-      - standalone
-      - noauth
-      - ssl
-      - sync
-  - name: test-latest-standalone-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - latest
-      - standalone
-      - noauth
-      - ssl
-      - async
-  - name: test-latest-standalone-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - standalone
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-latest-standalone-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - latest
-      - standalone
-      - noauth
-      - nossl
-      - sync
-  - name: test-latest-standalone-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - latest
-      - standalone
-      - noauth
-      - nossl
-      - async
-  - name: test-latest-standalone-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: server
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - latest
-      - standalone
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-4.0-replica_set-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync
-  - name: test-4.0-replica_set-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.0"
-      - replica_set
-      - auth
-      - ssl
-      - async
-  - name: test-4.0-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
-  - name: test-4.0-replica_set-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync
-  - name: test-4.0-replica_set-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.0"
-      - replica_set
-      - noauth
-      - ssl
-      - async
-  - name: test-4.0-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-4.0-replica_set-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync
-  - name: test-4.0-replica_set-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.0"
-      - replica_set
-      - noauth
-      - nossl
-      - async
-  - name: test-4.0-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-4.2-replica_set-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.2"
-      - replica_set
-      - auth
-      - ssl
-      - sync
-  - name: test-4.2-replica_set-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.2"
-      - replica_set
-      - auth
-      - ssl
-      - async
-  - name: test-4.2-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
-  - name: test-4.2-replica_set-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.2"
-      - replica_set
-      - noauth
-      - ssl
-      - sync
-  - name: test-4.2-replica_set-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.2"
-      - replica_set
-      - noauth
-      - ssl
-      - async
-  - name: test-4.2-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-4.2-replica_set-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.2"
-      - replica_set
-      - noauth
-      - nossl
-      - sync
-  - name: test-4.2-replica_set-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.2"
-      - replica_set
-      - noauth
-      - nossl
-      - async
-  - name: test-4.2-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-4.4-replica_set-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.4"
-      - replica_set
-      - auth
-      - ssl
-      - sync
-  - name: test-4.4-replica_set-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.4"
-      - replica_set
-      - auth
-      - ssl
-      - async
-  - name: test-4.4-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
-  - name: test-4.4-replica_set-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.4"
-      - replica_set
-      - noauth
-      - ssl
-      - sync
-  - name: test-4.4-replica_set-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.4"
-      - replica_set
-      - noauth
-      - ssl
-      - async
-  - name: test-4.4-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-4.4-replica_set-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.4"
-      - replica_set
-      - noauth
-      - nossl
-      - sync
-  - name: test-4.4-replica_set-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.4"
-      - replica_set
-      - noauth
-      - nossl
-      - async
-  - name: test-4.4-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-5.0-replica_set-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "5.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync
-  - name: test-5.0-replica_set-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "5.0"
-      - replica_set
-      - auth
-      - ssl
-      - async
-  - name: test-5.0-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
-  - name: test-5.0-replica_set-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "5.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync
-  - name: test-5.0-replica_set-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "5.0"
-      - replica_set
-      - noauth
-      - ssl
-      - async
-  - name: test-5.0-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-5.0-replica_set-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "5.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync
-  - name: test-5.0-replica_set-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "5.0"
-      - replica_set
-      - noauth
-      - nossl
-      - async
-  - name: test-5.0-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-6.0-replica_set-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "6.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync
-  - name: test-6.0-replica_set-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "6.0"
-      - replica_set
-      - auth
-      - ssl
-      - async
-  - name: test-6.0-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
-  - name: test-6.0-replica_set-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "6.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync
-  - name: test-6.0-replica_set-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "6.0"
-      - replica_set
-      - noauth
-      - ssl
-      - async
-  - name: test-6.0-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-6.0-replica_set-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "6.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync
-  - name: test-6.0-replica_set-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "6.0"
-      - replica_set
-      - noauth
-      - nossl
-      - async
-  - name: test-6.0-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-7.0-replica_set-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "7.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync
-  - name: test-7.0-replica_set-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "7.0"
-      - replica_set
-      - auth
-      - ssl
-      - async
-  - name: test-7.0-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
-  - name: test-7.0-replica_set-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "7.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync
-  - name: test-7.0-replica_set-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "7.0"
-      - replica_set
-      - noauth
-      - ssl
-      - async
-  - name: test-7.0-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-7.0-replica_set-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "7.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync
-  - name: test-7.0-replica_set-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "7.0"
-      - replica_set
-      - noauth
-      - nossl
-      - async
-  - name: test-7.0-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-8.0-replica_set-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "8.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync
-  - name: test-8.0-replica_set-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "8.0"
-      - replica_set
-      - auth
-      - ssl
-      - async
-  - name: test-8.0-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
-  - name: test-8.0-replica_set-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "8.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync
-  - name: test-8.0-replica_set-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "8.0"
-      - replica_set
-      - noauth
-      - ssl
-      - async
-  - name: test-8.0-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-8.0-replica_set-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "8.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync
-  - name: test-8.0-replica_set-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "8.0"
-      - replica_set
-      - noauth
-      - nossl
-      - async
-  - name: test-8.0-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-rapid-replica_set-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - rapid
-      - replica_set
-      - auth
-      - ssl
-      - sync
-  - name: test-rapid-replica_set-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - rapid
-      - replica_set
-      - auth
-      - ssl
-      - async
-  - name: test-rapid-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
-  - name: test-rapid-replica_set-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - rapid
-      - replica_set
-      - noauth
-      - ssl
-      - sync
-  - name: test-rapid-replica_set-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - rapid
-      - replica_set
-      - noauth
-      - ssl
-      - async
-  - name: test-rapid-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-rapid-replica_set-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - rapid
-      - replica_set
-      - noauth
-      - nossl
-      - sync
-  - name: test-rapid-replica_set-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - rapid
-      - replica_set
-      - noauth
-      - nossl
-      - async
-  - name: test-rapid-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-latest-replica_set-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - latest
-      - replica_set
-      - auth
-      - ssl
-      - sync
-  - name: test-latest-replica_set-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - latest
-      - replica_set
-      - auth
-      - ssl
-      - async
-  - name: test-latest-replica_set-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - replica_set
-      - auth
-      - ssl
-      - sync_async
-  - name: test-latest-replica_set-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - latest
-      - replica_set
-      - noauth
-      - ssl
-      - sync
-  - name: test-latest-replica_set-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - latest
-      - replica_set
-      - noauth
-      - ssl
-      - async
-  - name: test-latest-replica_set-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - replica_set
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-latest-replica_set-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - latest
-      - replica_set
-      - noauth
-      - nossl
-      - sync
-  - name: test-latest-replica_set-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - latest
-      - replica_set
-      - noauth
-      - nossl
-      - async
-  - name: test-latest-replica_set-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: replica_set
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - latest
-      - replica_set
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-4.0-sharded_cluster-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync
-  - name: test-4.0-sharded_cluster-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - async
-  - name: test-4.0-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
-  - name: test-4.0-sharded_cluster-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync
-  - name: test-4.0-sharded_cluster-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - async
-  - name: test-4.0-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-4.0-sharded_cluster-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync
-  - name: test-4.0-sharded_cluster-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - async
-  - name: test-4.0-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-4.2-sharded_cluster-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync
-  - name: test-4.2-sharded_cluster-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - auth
-      - ssl
-      - async
-  - name: test-4.2-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
-  - name: test-4.2-sharded_cluster-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync
-  - name: test-4.2-sharded_cluster-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - async
-  - name: test-4.2-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-4.2-sharded_cluster-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync
-  - name: test-4.2-sharded_cluster-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - async
-  - name: test-4.2-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.2"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.2"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-4.4-sharded_cluster-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync
-  - name: test-4.4-sharded_cluster-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - auth
-      - ssl
-      - async
-  - name: test-4.4-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
-  - name: test-4.4-sharded_cluster-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync
-  - name: test-4.4-sharded_cluster-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - async
-  - name: test-4.4-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-4.4-sharded_cluster-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync
-  - name: test-4.4-sharded_cluster-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - async
-  - name: test-4.4-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "4.4"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "4.4"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-5.0-sharded_cluster-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync
-  - name: test-5.0-sharded_cluster-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - async
-  - name: test-5.0-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
-  - name: test-5.0-sharded_cluster-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync
-  - name: test-5.0-sharded_cluster-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - async
-  - name: test-5.0-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-5.0-sharded_cluster-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync
-  - name: test-5.0-sharded_cluster-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - async
-  - name: test-5.0-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "5.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "5.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-6.0-sharded_cluster-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync
-  - name: test-6.0-sharded_cluster-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - async
-  - name: test-6.0-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
-  - name: test-6.0-sharded_cluster-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync
-  - name: test-6.0-sharded_cluster-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - async
-  - name: test-6.0-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-6.0-sharded_cluster-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync
-  - name: test-6.0-sharded_cluster-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - async
-  - name: test-6.0-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "6.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "6.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-7.0-sharded_cluster-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync
-  - name: test-7.0-sharded_cluster-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - async
-  - name: test-7.0-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
-  - name: test-7.0-sharded_cluster-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync
-  - name: test-7.0-sharded_cluster-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - async
-  - name: test-7.0-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-7.0-sharded_cluster-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync
-  - name: test-7.0-sharded_cluster-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - async
-  - name: test-7.0-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "7.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "7.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-8.0-sharded_cluster-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync
-  - name: test-8.0-sharded_cluster-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - async
-  - name: test-8.0-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
-  - name: test-8.0-sharded_cluster-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync
-  - name: test-8.0-sharded_cluster-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - async
-  - name: test-8.0-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-8.0-sharded_cluster-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync
-  - name: test-8.0-sharded_cluster-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - async
-  - name: test-8.0-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - "8.0"
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-rapid-sharded_cluster-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - rapid
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync
-  - name: test-rapid-sharded_cluster-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - rapid
-      - sharded_cluster
-      - auth
-      - ssl
-      - async
-  - name: test-rapid-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
-  - name: test-rapid-sharded_cluster-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - rapid
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync
-  - name: test-rapid-sharded_cluster-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - rapid
-      - sharded_cluster
-      - noauth
-      - ssl
-      - async
-  - name: test-rapid-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-rapid-sharded_cluster-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - rapid
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync
-  - name: test-rapid-sharded_cluster-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - rapid
-      - sharded_cluster
-      - noauth
-      - nossl
-      - async
-  - name: test-rapid-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: rapid
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - rapid
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
-  - name: test-latest-sharded_cluster-auth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - latest
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync
-  - name: test-latest-sharded_cluster-auth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - latest
-      - sharded_cluster
-      - auth
-      - ssl
-      - async
-  - name: test-latest-sharded_cluster-auth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: auth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - sharded_cluster
-      - auth
-      - ssl
-      - sync_async
-  - name: test-latest-sharded_cluster-noauth-ssl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - latest
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync
-  - name: test-latest-sharded_cluster-noauth-ssl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - latest
-      - sharded_cluster
-      - noauth
-      - ssl
-      - async
-  - name: test-latest-sharded_cluster-noauth-ssl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: ssl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          SYNC: sync_async
-    tags:
-      - latest
-      - sharded_cluster
-      - noauth
-      - ssl
-      - sync_async
-  - name: test-latest-sharded_cluster-noauth-nossl-sync
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync
-          TEST_NAME: default_sync
-    tags:
-      - latest
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync
-  - name: test-latest-sharded_cluster-noauth-nossl-async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: async
-          TEST_NAME: default_async
-    tags:
-      - latest
-      - sharded_cluster
-      - noauth
-      - nossl
-      - async
-  - name: test-latest-sharded_cluster-noauth-nossl-sync_async
-    commands:
-      - func: run server
-        vars:
-          VERSION: latest
-          TOPOLOGY: sharded_cluster
-          AUTH: noauth
-          SSL: nossl
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          SYNC: sync_async
-    tags:
-      - latest
-      - sharded_cluster
-      - noauth
-      - nossl
-      - sync_async
-
   # Server version tests
-  - name: test-python3.9-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.9-sync-auth-ssl-standalone-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.9"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.9
+      - standalone-auth-ssl
+      - sync
+  - name: test-server-version-python3.10-async-auth-ssl-standalone-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.10"
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.10
+      - standalone-auth-ssl
+      - async
+  - name: test-server-version-python3.11-sync-auth-nossl-standalone-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.11"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.11
+      - standalone-auth-nossl
+      - sync
+  - name: test-server-version-python3.12-async-auth-nossl-standalone-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.12"
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.12
+      - standalone-auth-nossl
+      - async
+  - name: test-server-version-python3.13-sync-noauth-ssl-standalone-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.13"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.13
+      - standalone-noauth-ssl
+      - sync
+  - name: test-server-version-pypy3.10-async-noauth-ssl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: standalone
+          PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-pypy3.10
+      - standalone-noauth-ssl
+      - async
+  - name: test-server-version-python3.9-sync-noauth-nossl-standalone-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.9"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.9
+      - standalone-noauth-nossl
+      - sync
+      - pr
+  - name: test-server-version-python3.10-async-noauth-nossl-standalone-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.10"
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.10
+      - standalone-noauth-nossl
+      - async
+      - pr
+  - name: test-server-version-python3.11-sync-auth-ssl-replica-set-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.11"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.11
+      - replica_set-auth-ssl
+      - sync
+  - name: test-server-version-python3.12-async-auth-ssl-replica-set-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.12"
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.12
+      - replica_set-auth-ssl
+      - async
+  - name: test-server-version-python3.13-sync-auth-nossl-replica-set-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.13"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.13
+      - replica_set-auth-nossl
+      - sync
+  - name: test-server-version-pypy3.10-async-auth-nossl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: replica_set
+          PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-pypy3.10
+      - replica_set-auth-nossl
+      - async
+  - name: test-server-version-python3.9-sync-noauth-ssl-replica-set-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.9"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.9
+      - replica_set-noauth-ssl
+      - sync
+  - name: test-server-version-python3.10-async-noauth-ssl-replica-set-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.10"
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.10
+      - replica_set-noauth-ssl
+      - async
+  - name: test-server-version-python3.11-sync-noauth-nossl-replica-set-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.11"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.11
+      - replica_set-noauth-nossl
+      - sync
+      - pr
+  - name: test-server-version-python3.12-async-noauth-nossl-replica-set-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: replica_set
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.12"
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.12
+      - replica_set-noauth-nossl
+      - async
+      - pr
+  - name: test-server-version-python3.13-sync-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.13"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.13
+      - sharded_cluster-auth-ssl
+      - sync
+      - pr
+  - name: test-server-version-pypy3.10-async-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - async
+      - pr
+  - name: test-server-version-python3.9-sync-auth-nossl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.9"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.9
+      - sharded_cluster-auth-nossl
+      - sync
+  - name: test-server-version-python3.10-async-auth-nossl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.10"
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.10
+      - sharded_cluster-auth-nossl
+      - async
+  - name: test-server-version-python3.11-sync-noauth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.11"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.11
+      - sharded_cluster-noauth-ssl
+      - sync
+  - name: test-server-version-python3.12-async-noauth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.12"
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.12
+      - sharded_cluster-noauth-ssl
+      - async
+  - name: test-server-version-python3.13-sync-noauth-nossl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.13"
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.13
+      - sharded_cluster-noauth-nossl
+      - sync
+  - name: test-server-version-pypy3.10-async-noauth-nossl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: sharded_cluster
+          PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-pypy3.10
+      - sharded_cluster-noauth-nossl
+      - async
+  - name: test-server-version-python3.9-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7412,8 +2862,34 @@ tasks:
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
           PYTHON_VERSION: "3.9"
-    tags: [server-version, python-3.9, sharded_cluster-auth-ssl]
-  - name: test-python3.10-auth-ssl-sharded-cluster-cov
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.9
+      - sharded_cluster-auth-ssl
+      - sync
+  - name: test-server-version-python3.9-async-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.9"
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.9
+      - sharded_cluster-auth-ssl
+      - async
+  - name: test-server-version-python3.10-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7428,8 +2904,34 @@ tasks:
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
           PYTHON_VERSION: "3.10"
-    tags: [server-version, python-3.10, sharded_cluster-auth-ssl]
-  - name: test-python3.11-auth-ssl-sharded-cluster-cov
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.10
+      - sharded_cluster-auth-ssl
+      - sync
+  - name: test-server-version-python3.10-async-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.10"
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.10
+      - sharded_cluster-auth-ssl
+      - async
+  - name: test-server-version-python3.11-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7444,8 +2946,13 @@ tasks:
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
           PYTHON_VERSION: "3.11"
-    tags: [server-version, python-3.11, sharded_cluster-auth-ssl]
-  - name: test-python3.12-auth-ssl-sharded-cluster-cov
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.11
+      - sharded_cluster-auth-ssl
+      - sync
+  - name: test-server-version-python3.11-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7458,211 +2965,96 @@ tasks:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.12"
-    tags: [server-version, python-3.12, sharded_cluster-auth-ssl]
-  - name: test-python3.13-auth-ssl-sharded-cluster-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.13"
-    tags: [server-version, python-3.13, sharded_cluster-auth-ssl]
-  - name: test-pypy3.10-auth-ssl-sharded-cluster
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          PYTHON_VERSION: pypy3.10
-    tags: [server-version, python-pypy3.10, sharded_cluster-auth-ssl]
-  - name: test-python3.9-auth-ssl-standalone-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: standalone
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: standalone
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.9"
-    tags: [server-version, python-3.9, standalone-auth-ssl]
-  - name: test-python3.10-auth-nossl-standalone-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: nossl
-          TOPOLOGY: standalone
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: nossl
-          TOPOLOGY: standalone
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.10"
-    tags: [server-version, python-3.10, standalone-auth-nossl]
-  - name: test-python3.11-noauth-ssl-standalone-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: standalone
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: standalone
           COVERAGE: "1"
           PYTHON_VERSION: "3.11"
-    tags: [server-version, python-3.11, standalone-noauth-ssl]
-  - name: test-python3.12-noauth-nossl-standalone-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.12"
-    tags: [server-version, python-3.12, standalone-noauth-nossl]
-  - name: test-python3.13-auth-ssl-replica-set-cov
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.11
+      - sharded_cluster-auth-ssl
+      - async
+  - name: test-server-version-python3.12-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
-          TOPOLOGY: replica_set
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.13"
-    tags: [server-version, python-3.13, replica_set-auth-ssl]
-  - name: test-pypy3.10-auth-nossl-replica-set
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: nossl
-          TOPOLOGY: replica_set
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: nossl
-          TOPOLOGY: replica_set
-          PYTHON_VERSION: pypy3.10
-    tags: [server-version, python-pypy3.10, replica_set-auth-nossl]
-  - name: test-python3.9-noauth-ssl-replica-set-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.9"
-    tags: [server-version, python-3.9, replica_set-noauth-ssl]
-  - name: test-python3.10-noauth-nossl-replica-set-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: replica_set
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: replica_set
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.10"
-    tags: [server-version, python-3.10, replica_set-noauth-nossl]
-  - name: test-python3.12-auth-nossl-sharded-cluster-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: nossl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
-          SSL: nossl
+          SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
           PYTHON_VERSION: "3.12"
-    tags: [server-version, python-3.12, sharded_cluster-auth-nossl]
-  - name: test-python3.13-noauth-ssl-sharded-cluster-cov
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-3.12
+      - sharded_cluster-auth-ssl
+      - sync
+  - name: test-server-version-python3.12-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
-          AUTH: noauth
+          AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
       - func: run tests
         vars:
-          AUTH: noauth
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.12"
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.12
+      - sharded_cluster-auth-ssl
+      - async
+  - name: test-server-version-python3.13-async-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
           PYTHON_VERSION: "3.13"
-    tags: [server-version, python-3.13, sharded_cluster-noauth-ssl]
-  - name: test-pypy3.10-noauth-nossl-sharded-cluster
+          TEST_NAME: default_async
+    tags:
+      - server-version
+      - python-3.13
+      - sharded_cluster-auth-ssl
+      - async
+  - name: test-server-version-pypy3.10-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
-          AUTH: noauth
-          SSL: nossl
+          AUTH: auth
+          SSL: ssl
           TOPOLOGY: sharded_cluster
       - func: run tests
         vars:
-          AUTH: noauth
-          SSL: nossl
+          AUTH: auth
+          SSL: ssl
           TOPOLOGY: sharded_cluster
           PYTHON_VERSION: pypy3.10
-    tags: [server-version, python-pypy3.10, sharded_cluster-noauth-nossl]
+          TEST_NAME: default_sync
+    tags:
+      - server-version
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - sync
 
   # Serverless tests
   - name: test-serverless
@@ -7674,8 +3066,8 @@ tasks:
           SSL: ssl
     tags: [serverless]
 
-  # Standard linux tests
-  - name: test-v4.0-python3.9-noauth-nossl-standalone
+  # Standard tests
+  - name: test-standard-v4.0-python3.9-sync-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -7690,12 +3082,14 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "4.0"
           PYTHON_VERSION: "3.9"
+          TEST_NAME: default_sync
     tags:
-      - standard-linux
+      - test-standard
       - server-4.0
       - python-3.9
       - standalone-noauth-nossl
-  - name: test-v4.0-python3.10-noauth-ssl-replica-set
+      - sync
+  - name: test-standard-v4.0-python3.10-async-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -7710,12 +3104,14 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: "4.0"
           PYTHON_VERSION: "3.10"
+          TEST_NAME: default_async
     tags:
-      - standard-linux
+      - test-standard
       - server-4.0
       - python-3.10
       - replica_set-noauth-ssl
-  - name: test-v4.0-python3.11-auth-ssl-sharded-cluster
+      - async
+  - name: test-standard-v4.0-python3.11-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -7730,12 +3126,14 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "4.0"
           PYTHON_VERSION: "3.11"
+          TEST_NAME: default_sync
     tags:
-      - standard-linux
+      - test-standard
       - server-4.0
       - python-3.11
       - sharded_cluster-auth-ssl
-  - name: test-v4.2-python3.12-noauth-nossl-standalone
+      - sync
+  - name: test-standard-v4.2-python3.12-async-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -7750,12 +3148,14 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "4.2"
           PYTHON_VERSION: "3.12"
+          TEST_NAME: default_async
     tags:
-      - standard-linux
+      - test-standard
       - server-4.2
       - python-3.12
       - standalone-noauth-nossl
-  - name: test-v4.2-python3.13-noauth-ssl-replica-set
+      - async
+  - name: test-standard-v4.2-python3.13-sync-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -7770,12 +3170,14 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: "4.2"
           PYTHON_VERSION: "3.13"
+          TEST_NAME: default_sync
     tags:
-      - standard-linux
+      - test-standard
       - server-4.2
       - python-3.13
       - replica_set-noauth-ssl
-  - name: test-v4.2-pypy3.10-auth-ssl-sharded-cluster
+      - sync
+  - name: test-standard-v4.2-python3.9-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -7789,53 +3191,526 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.2"
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: "3.9"
+          TEST_NAME: default_async
     tags:
-      - standard-linux
+      - test-standard
+      - server-4.2
+      - python-3.9
+      - sharded_cluster-auth-ssl
+      - async
+  - name: test-standard-v4.4-python3.10-sync-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "4.4"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "4.4"
+          PYTHON_VERSION: "3.10"
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-4.4
+      - python-3.10
+      - standalone-noauth-nossl
+      - sync
+  - name: test-standard-v4.4-python3.11-async-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "4.4"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "4.4"
+          PYTHON_VERSION: "3.11"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-4.4
+      - python-3.11
+      - replica_set-noauth-ssl
+      - async
+  - name: test-standard-v4.4-python3.12-sync-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.4"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.4"
+          PYTHON_VERSION: "3.12"
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-4.4
+      - python-3.12
+      - sharded_cluster-auth-ssl
+      - sync
+  - name: test-standard-v5.0-python3.13-async-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "5.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "5.0"
+          PYTHON_VERSION: "3.13"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-5.0
+      - python-3.13
+      - standalone-noauth-nossl
+      - async
+  - name: test-standard-v5.0-python3.9-sync-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "5.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "5.0"
+          PYTHON_VERSION: "3.9"
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-5.0
+      - python-3.9
+      - replica_set-noauth-ssl
+      - sync
+  - name: test-standard-v5.0-python3.10-async-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "5.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "5.0"
+          PYTHON_VERSION: "3.10"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-5.0
+      - python-3.10
+      - sharded_cluster-auth-ssl
+      - async
+  - name: test-standard-v6.0-python3.11-sync-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "6.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "6.0"
+          PYTHON_VERSION: "3.11"
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-6.0
+      - python-3.11
+      - standalone-noauth-nossl
+      - sync
+  - name: test-standard-v6.0-python3.12-async-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "6.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "6.0"
+          PYTHON_VERSION: "3.12"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-6.0
+      - python-3.12
+      - replica_set-noauth-ssl
+      - async
+  - name: test-standard-v6.0-python3.13-sync-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "6.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "6.0"
+          PYTHON_VERSION: "3.13"
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-6.0
+      - python-3.13
+      - sharded_cluster-auth-ssl
+      - sync
+  - name: test-standard-v7.0-python3.9-async-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "7.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "7.0"
+          PYTHON_VERSION: "3.9"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-7.0
+      - python-3.9
+      - standalone-noauth-nossl
+      - async
+  - name: test-standard-v7.0-python3.10-sync-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "7.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "7.0"
+          PYTHON_VERSION: "3.10"
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-7.0
+      - python-3.10
+      - replica_set-noauth-ssl
+      - sync
+  - name: test-standard-v7.0-python3.11-async-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "7.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "7.0"
+          PYTHON_VERSION: "3.11"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-7.0
+      - python-3.11
+      - sharded_cluster-auth-ssl
+      - async
+  - name: test-standard-v8.0-python3.12-sync-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "8.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "8.0"
+          PYTHON_VERSION: "3.12"
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-8.0
+      - python-3.12
+      - standalone-noauth-nossl
+      - sync
+  - name: test-standard-v8.0-python3.13-async-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "8.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "8.0"
+          PYTHON_VERSION: "3.13"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-8.0
+      - python-3.13
+      - replica_set-noauth-ssl
+      - async
+  - name: test-standard-v8.0-python3.9-sync-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "8.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "8.0"
+          PYTHON_VERSION: "3.9"
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-8.0
+      - python-3.9
+      - sharded_cluster-auth-ssl
+      - sync
+  - name: test-standard-rapid-python3.10-async-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: rapid
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: rapid
+          PYTHON_VERSION: "3.10"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-rapid
+      - python-3.10
+      - standalone-noauth-nossl
+      - async
+  - name: test-standard-rapid-python3.11-sync-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: rapid
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: rapid
+          PYTHON_VERSION: "3.11"
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-rapid
+      - python-3.11
+      - replica_set-noauth-ssl
+      - sync
+  - name: test-standard-rapid-python3.12-async-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: rapid
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: rapid
+          PYTHON_VERSION: "3.12"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-rapid
+      - python-3.12
+      - sharded_cluster-auth-ssl
+      - async
+  - name: test-standard-latest-python3.13-sync-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: latest
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: latest
+          PYTHON_VERSION: "3.13"
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-latest
+      - python-3.13
+      - standalone-noauth-nossl
+      - sync
+      - pr
+  - name: test-standard-latest-python3.9-async-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: latest
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: latest
+          PYTHON_VERSION: "3.9"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-latest
+      - python-3.9
+      - replica_set-noauth-ssl
+      - async
+      - pr
+  - name: test-standard-latest-python3.10-sync-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+          PYTHON_VERSION: "3.10"
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-latest
+      - python-3.10
+      - sharded_cluster-auth-ssl
+      - sync
+      - pr
+  - name: test-standard-v4.0-pypy3.10-sync-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "4.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "4.0"
+          PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-4.0
+      - python-pypy3.10
+      - standalone-noauth-nossl
+      - sync
+      - pypy
+  - name: test-standard-v4.2-pypy3.10-async-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "4.2"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "4.2"
+          PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_async
+    tags:
+      - test-standard
       - server-4.2
       - python-pypy3.10
-      - sharded_cluster-auth-ssl
-  - name: test-v4.4-python3.9-noauth-nossl-standalone
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "4.4"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "4.4"
-          PYTHON_VERSION: "3.9"
-    tags:
-      - standard-linux
-      - server-4.4
-      - python-3.9
-      - standalone-noauth-nossl
-  - name: test-v4.4-python3.10-noauth-ssl-replica-set
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "4.4"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "4.4"
-          PYTHON_VERSION: "3.10"
-    tags:
-      - standard-linux
-      - server-4.4
-      - python-3.10
       - replica_set-noauth-ssl
-  - name: test-v4.4-python3.11-auth-ssl-sharded-cluster
+      - async
+      - pypy
+  - name: test-standard-v4.4-pypy3.10-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -7849,93 +3724,39 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.4"
-          PYTHON_VERSION: "3.11"
-    tags:
-      - standard-linux
-      - server-4.4
-      - python-3.11
-      - sharded_cluster-auth-ssl
-  - name: test-v5.0-python3.12-noauth-nossl-standalone
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "5.0"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "5.0"
-          PYTHON_VERSION: "3.12"
-    tags:
-      - standard-linux
-      - server-5.0
-      - python-3.12
-      - standalone-noauth-nossl
-  - name: test-v5.0-python3.13-noauth-ssl-replica-set
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "5.0"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "5.0"
-          PYTHON_VERSION: "3.13"
-    tags:
-      - standard-linux
-      - server-5.0
-      - python-3.13
-      - replica_set-noauth-ssl
-  - name: test-v5.0-pypy3.10-auth-ssl-sharded-cluster
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: "5.0"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: "5.0"
           PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_sync
     tags:
-      - standard-linux
-      - server-5.0
+      - test-standard
+      - server-4.4
       - python-pypy3.10
       - sharded_cluster-auth-ssl
-  - name: test-v6.0-python3.9-noauth-nossl-standalone
+      - sync
+      - pypy
+  - name: test-standard-v5.0-pypy3.10-async-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
-          VERSION: "6.0"
+          VERSION: "5.0"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
-          VERSION: "6.0"
-          PYTHON_VERSION: "3.9"
+          VERSION: "5.0"
+          PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_async
     tags:
-      - standard-linux
-      - server-6.0
-      - python-3.9
+      - test-standard
+      - server-5.0
+      - python-pypy3.10
       - standalone-noauth-nossl
-  - name: test-v6.0-python3.10-noauth-ssl-replica-set
+      - async
+      - pypy
+  - name: test-standard-v6.0-pypy3.10-sync-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -7949,73 +3770,16 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "6.0"
-          PYTHON_VERSION: "3.10"
+          PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_sync
     tags:
-      - standard-linux
+      - test-standard
       - server-6.0
-      - python-3.10
+      - python-pypy3.10
       - replica_set-noauth-ssl
-  - name: test-v6.0-python3.11-auth-ssl-sharded-cluster
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: "6.0"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: "6.0"
-          PYTHON_VERSION: "3.11"
-    tags:
-      - standard-linux
-      - server-6.0
-      - python-3.11
-      - sharded_cluster-auth-ssl
-  - name: test-v7.0-python3.12-noauth-nossl-standalone
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "7.0"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "7.0"
-          PYTHON_VERSION: "3.12"
-    tags:
-      - standard-linux
-      - server-7.0
-      - python-3.12
-      - standalone-noauth-nossl
-  - name: test-v7.0-python3.13-noauth-ssl-replica-set
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "7.0"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "7.0"
-          PYTHON_VERSION: "3.13"
-    tags:
-      - standard-linux
-      - server-7.0
-      - python-3.13
-      - replica_set-noauth-ssl
-  - name: test-v7.0-pypy3.10-auth-ssl-sharded-cluster
+      - sync
+      - pypy
+  - name: test-standard-v7.0-pypy3.10-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -8030,12 +3794,15 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "7.0"
           PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_async
     tags:
-      - standard-linux
+      - test-standard
       - server-7.0
       - python-pypy3.10
       - sharded_cluster-auth-ssl
-  - name: test-v8.0-python3.9-noauth-nossl-standalone
+      - async
+      - pypy
+  - name: test-standard-v8.0-pypy3.10-sync-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -8049,73 +3816,16 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "8.0"
-          PYTHON_VERSION: "3.9"
+          PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_sync
     tags:
-      - standard-linux
+      - test-standard
       - server-8.0
-      - python-3.9
+      - python-pypy3.10
       - standalone-noauth-nossl
-  - name: test-v8.0-python3.10-noauth-ssl-replica-set
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "8.0"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "8.0"
-          PYTHON_VERSION: "3.10"
-    tags:
-      - standard-linux
-      - server-8.0
-      - python-3.10
-      - replica_set-noauth-ssl
-  - name: test-v8.0-python3.11-auth-ssl-sharded-cluster
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: "8.0"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: "8.0"
-          PYTHON_VERSION: "3.11"
-    tags:
-      - standard-linux
-      - server-8.0
-      - python-3.11
-      - sharded_cluster-auth-ssl
-  - name: test-rapid-python3.12-noauth-nossl-standalone
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: rapid
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: rapid
-          PYTHON_VERSION: "3.12"
-    tags:
-      - standard-linux
-      - server-rapid
-      - python-3.12
-      - standalone-noauth-nossl
-  - name: test-rapid-python3.13-noauth-ssl-replica-set
+      - sync
+      - pypy
+  - name: test-standard-rapid-pypy3.10-async-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -8128,74 +3838,17 @@ tasks:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
-          VERSION: rapid
-          PYTHON_VERSION: "3.13"
-    tags:
-      - standard-linux
-      - server-rapid
-      - python-3.13
-      - replica_set-noauth-ssl
-  - name: test-rapid-pypy3.10-auth-ssl-sharded-cluster
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: rapid
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
           VERSION: rapid
           PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_async
     tags:
-      - standard-linux
+      - test-standard
       - server-rapid
       - python-pypy3.10
-      - sharded_cluster-auth-ssl
-  - name: test-latest-python3.9-noauth-nossl-standalone
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: latest
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: latest
-          PYTHON_VERSION: "3.9"
-    tags:
-      - standard-linux
-      - server-latest
-      - python-3.9
-      - standalone-noauth-nossl
-  - name: test-latest-python3.10-noauth-ssl-replica-set
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: latest
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: latest
-          PYTHON_VERSION: "3.10"
-    tags:
-      - standard-linux
-      - server-latest
-      - python-3.10
       - replica_set-noauth-ssl
-  - name: test-latest-python3.11-auth-ssl-sharded-cluster
+      - async
+      - pypy
+  - name: test-standard-latest-pypy3.10-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -8209,15 +3862,18 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: latest
-          PYTHON_VERSION: "3.11"
+          PYTHON_VERSION: pypy3.10
+          TEST_NAME: default_sync
     tags:
-      - standard-linux
+      - test-standard
       - server-latest
-      - python-3.11
+      - python-pypy3.10
       - sharded_cluster-auth-ssl
+      - sync
+      - pypy
 
-  # Standard non linux tests
-  - name: test-v4.0-python3.9-sync-noauth-nossl-standalone
+  # Test non standard tests
+  - name: test-non-standard-v4.0-python3.9-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -8232,14 +3888,13 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "4.0"
           PYTHON_VERSION: "3.9"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-4.0
       - python-3.9
       - standalone-noauth-nossl
-      - sync
-  - name: test-v4.0-python3.10-async-noauth-ssl-replica-set
+      - noauth
+  - name: test-non-standard-v4.0-python3.10-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -8254,14 +3909,13 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: "4.0"
           PYTHON_VERSION: "3.10"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-4.0
       - python-3.10
       - replica_set-noauth-ssl
-      - async
-  - name: test-v4.0-python3.11-sync-auth-ssl-sharded-cluster
+      - noauth
+  - name: test-non-standard-v4.0-python3.11-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -8276,14 +3930,13 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "4.0"
           PYTHON_VERSION: "3.11"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-4.0
       - python-3.11
       - sharded_cluster-auth-ssl
-      - sync
-  - name: test-v4.2-python3.12-async-noauth-nossl-standalone
+      - auth
+  - name: test-non-standard-v4.2-python3.12-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -8298,14 +3951,13 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "4.2"
           PYTHON_VERSION: "3.12"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-4.2
       - python-3.12
       - standalone-noauth-nossl
-      - async
-  - name: test-v4.2-python3.13-sync-noauth-ssl-replica-set
+      - noauth
+  - name: test-non-standard-v4.2-python3.13-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -8320,14 +3972,13 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: "4.2"
           PYTHON_VERSION: "3.13"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-4.2
       - python-3.13
       - replica_set-noauth-ssl
-      - sync
-  - name: test-v4.2-python3.9-async-auth-ssl-sharded-cluster
+      - noauth
+  - name: test-non-standard-v4.2-python3.9-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -8342,14 +3993,13 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "4.2"
           PYTHON_VERSION: "3.9"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-4.2
       - python-3.9
       - sharded_cluster-auth-ssl
-      - async
-  - name: test-v4.4-python3.10-sync-noauth-nossl-standalone
+      - auth
+  - name: test-non-standard-v4.4-python3.10-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -8364,14 +4014,13 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "4.4"
           PYTHON_VERSION: "3.10"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-4.4
       - python-3.10
       - standalone-noauth-nossl
-      - sync
-  - name: test-v4.4-python3.11-async-noauth-ssl-replica-set
+      - noauth
+  - name: test-non-standard-v4.4-python3.11-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -8386,14 +4035,13 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: "4.4"
           PYTHON_VERSION: "3.11"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-4.4
       - python-3.11
       - replica_set-noauth-ssl
-      - async
-  - name: test-v4.4-python3.12-sync-auth-ssl-sharded-cluster
+      - noauth
+  - name: test-non-standard-v4.4-python3.12-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -8408,14 +4056,13 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "4.4"
           PYTHON_VERSION: "3.12"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-4.4
       - python-3.12
       - sharded_cluster-auth-ssl
-      - sync
-  - name: test-v5.0-python3.13-async-noauth-nossl-standalone
+      - auth
+  - name: test-non-standard-v5.0-python3.13-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -8430,14 +4077,13 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "5.0"
           PYTHON_VERSION: "3.13"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-5.0
       - python-3.13
       - standalone-noauth-nossl
-      - async
-  - name: test-v5.0-python3.9-sync-noauth-ssl-replica-set
+      - noauth
+  - name: test-non-standard-v5.0-python3.9-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -8452,14 +4098,13 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: "5.0"
           PYTHON_VERSION: "3.9"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-5.0
       - python-3.9
       - replica_set-noauth-ssl
-      - sync
-  - name: test-v5.0-python3.10-async-auth-ssl-sharded-cluster
+      - noauth
+  - name: test-non-standard-v5.0-python3.10-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -8474,14 +4119,13 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "5.0"
           PYTHON_VERSION: "3.10"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-5.0
       - python-3.10
       - sharded_cluster-auth-ssl
-      - async
-  - name: test-v6.0-python3.11-sync-noauth-nossl-standalone
+      - auth
+  - name: test-non-standard-v6.0-python3.11-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -8496,14 +4140,13 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "6.0"
           PYTHON_VERSION: "3.11"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-6.0
       - python-3.11
       - standalone-noauth-nossl
-      - sync
-  - name: test-v6.0-python3.12-async-noauth-ssl-replica-set
+      - noauth
+  - name: test-non-standard-v6.0-python3.12-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -8518,14 +4161,13 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: "6.0"
           PYTHON_VERSION: "3.12"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-6.0
       - python-3.12
       - replica_set-noauth-ssl
-      - async
-  - name: test-v6.0-python3.13-sync-auth-ssl-sharded-cluster
+      - noauth
+  - name: test-non-standard-v6.0-python3.13-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -8540,14 +4182,13 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "6.0"
           PYTHON_VERSION: "3.13"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-6.0
       - python-3.13
       - sharded_cluster-auth-ssl
-      - sync
-  - name: test-v7.0-python3.9-async-noauth-nossl-standalone
+      - auth
+  - name: test-non-standard-v7.0-python3.9-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -8562,14 +4203,13 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "7.0"
           PYTHON_VERSION: "3.9"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-7.0
       - python-3.9
       - standalone-noauth-nossl
-      - async
-  - name: test-v7.0-python3.10-sync-noauth-ssl-replica-set
+      - noauth
+  - name: test-non-standard-v7.0-python3.10-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -8584,14 +4224,13 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: "7.0"
           PYTHON_VERSION: "3.10"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-7.0
       - python-3.10
       - replica_set-noauth-ssl
-      - sync
-  - name: test-v7.0-python3.11-async-auth-ssl-sharded-cluster
+      - noauth
+  - name: test-non-standard-v7.0-python3.11-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -8606,14 +4245,13 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "7.0"
           PYTHON_VERSION: "3.11"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-7.0
       - python-3.11
       - sharded_cluster-auth-ssl
-      - async
-  - name: test-v8.0-python3.12-sync-noauth-nossl-standalone
+      - auth
+  - name: test-non-standard-v8.0-python3.12-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -8628,14 +4266,13 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "8.0"
           PYTHON_VERSION: "3.12"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-8.0
       - python-3.12
       - standalone-noauth-nossl
-      - sync
-  - name: test-v8.0-python3.13-async-noauth-ssl-replica-set
+      - noauth
+  - name: test-non-standard-v8.0-python3.13-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -8650,14 +4287,13 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: "8.0"
           PYTHON_VERSION: "3.13"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-8.0
       - python-3.13
       - replica_set-noauth-ssl
-      - async
-  - name: test-v8.0-python3.9-sync-auth-ssl-sharded-cluster
+      - noauth
+  - name: test-non-standard-v8.0-python3.9-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -8672,14 +4308,13 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "8.0"
           PYTHON_VERSION: "3.9"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-8.0
       - python-3.9
       - sharded_cluster-auth-ssl
-      - sync
-  - name: test-rapid-python3.10-async-noauth-nossl-standalone
+      - auth
+  - name: test-non-standard-rapid-python3.10-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -8694,14 +4329,13 @@ tasks:
           TOPOLOGY: standalone
           VERSION: rapid
           PYTHON_VERSION: "3.10"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-rapid
       - python-3.10
       - standalone-noauth-nossl
-      - async
-  - name: test-rapid-python3.11-sync-noauth-ssl-replica-set
+      - noauth
+  - name: test-non-standard-rapid-python3.11-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -8716,14 +4350,13 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: rapid
           PYTHON_VERSION: "3.11"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-rapid
       - python-3.11
       - replica_set-noauth-ssl
-      - sync
-  - name: test-rapid-python3.12-async-auth-ssl-sharded-cluster
+      - noauth
+  - name: test-non-standard-rapid-python3.12-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -8738,14 +4371,13 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: rapid
           PYTHON_VERSION: "3.12"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-rapid
       - python-3.12
       - sharded_cluster-auth-ssl
-      - async
-  - name: test-latest-python3.13-sync-noauth-nossl-standalone
+      - auth
+  - name: test-non-standard-latest-python3.13-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -8760,14 +4392,14 @@ tasks:
           TOPOLOGY: standalone
           VERSION: latest
           PYTHON_VERSION: "3.13"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-latest
       - python-3.13
       - standalone-noauth-nossl
-      - sync
-  - name: test-latest-python3.9-async-noauth-ssl-replica-set
+      - noauth
+      - pr
+  - name: test-non-standard-latest-python3.9-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -8782,14 +4414,14 @@ tasks:
           TOPOLOGY: replica_set
           VERSION: latest
           PYTHON_VERSION: "3.9"
-          TEST_NAME: default_async
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-latest
       - python-3.9
       - replica_set-noauth-ssl
-      - async
-  - name: test-latest-python3.10-sync-auth-ssl-sharded-cluster
+      - noauth
+      - pr
+  - name: test-non-standard-latest-python3.10-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -8804,10 +4436,208 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: latest
           PYTHON_VERSION: "3.10"
-          TEST_NAME: default_sync
     tags:
-      - standard-non-linux
+      - test-non-standard
       - server-latest
       - python-3.10
       - sharded_cluster-auth-ssl
-      - sync
+      - auth
+      - pr
+  - name: test-non-standard-v4.0-pypy3.10-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "4.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "4.0"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-non-standard
+      - server-4.0
+      - python-pypy3.10
+      - standalone-noauth-nossl
+      - noauth
+      - pypy
+  - name: test-non-standard-v4.2-pypy3.10-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "4.2"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "4.2"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-non-standard
+      - server-4.2
+      - python-pypy3.10
+      - replica_set-noauth-ssl
+      - noauth
+      - pypy
+  - name: test-non-standard-v4.4-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.4"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.4"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-non-standard
+      - server-4.4
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - auth
+      - pypy
+  - name: test-non-standard-v5.0-pypy3.10-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "5.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "5.0"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-non-standard
+      - server-5.0
+      - python-pypy3.10
+      - standalone-noauth-nossl
+      - noauth
+      - pypy
+  - name: test-non-standard-v6.0-pypy3.10-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "6.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "6.0"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-non-standard
+      - server-6.0
+      - python-pypy3.10
+      - replica_set-noauth-ssl
+      - noauth
+      - pypy
+  - name: test-non-standard-v7.0-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "7.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "7.0"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-non-standard
+      - server-7.0
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - auth
+      - pypy
+  - name: test-non-standard-v8.0-pypy3.10-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "8.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "8.0"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-non-standard
+      - server-8.0
+      - python-pypy3.10
+      - standalone-noauth-nossl
+      - noauth
+      - pypy
+  - name: test-non-standard-rapid-pypy3.10-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: rapid
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: rapid
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-non-standard
+      - server-rapid
+      - python-pypy3.10
+      - replica_set-noauth-ssl
+      - noauth
+      - pypy
+  - name: test-non-standard-latest-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-non-standard
+      - server-latest
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - auth
+      - pypy

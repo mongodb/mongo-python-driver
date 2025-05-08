@@ -20,7 +20,6 @@ import sys
 import time
 from test.utils_shared import FunctionCallRecorder
 from typing import Any
-from unittest import skipIf
 
 sys.path[0:0] = [""]
 
@@ -92,7 +91,6 @@ class SrvPollingKnobs:
         self.disable()
 
 
-@skipIf(not _IS_SYNC and sys.platform == "win32", "PYTHON-5342 known issue on Windows")
 class TestSrvPolling(AsyncPyMongoTestCase):
     BASE_SRV_RESPONSE = [
         ("localhost.test.build.10gen.cc", 27017),
@@ -185,6 +183,9 @@ class TestSrvPolling(AsyncPyMongoTestCase):
                 nodelist_callback=dns_resolver_response, count_resolver_calls=count_resolver_calls
             ):
                 await assertion_method(expected_response, client)
+
+            # Close the client early to avoid affecting the next scenario run.
+            await client.close()
 
     async def test_addition(self):
         response = self.BASE_SRV_RESPONSE[:]
