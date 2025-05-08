@@ -65,8 +65,8 @@ class SrvPollingKnobs:
         async def mock_get_hosts_and_min_ttl(resolver, *args):
             assert self.old_dns_resolver_response is not None
             nodes, ttl = await self.old_dns_resolver_response(resolver)
-            if self.nodelist_callback is not None:
-                nodes = self.nodelist_callback()
+            # if self.nodelist_callback is not None:
+            #     nodes = self.nodelist_callback()
             if self.ttl_time is not None:
                 ttl = self.ttl_time
             return nodes, ttl
