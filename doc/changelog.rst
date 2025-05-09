@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Changes in Version 4.13.0 (2025/05/29)
+Changes in Version 4.13.0 (2025/05/14)
 --------------------------------------
 
 PyMongo 4.13 brings a number of changes including:
