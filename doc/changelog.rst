@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 4.13.0 (2025/05/29)
+--------------------------------------
+
+PyMongo 4.13 brings a number of changes including:
+
+- Fixed a bug where :class:`pymongo.write_concern.WriteConcern` repr was not eval-able
+  when using ``w="majority"``.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.13 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.13 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=42509
 
 Changes in Version 4.12.1 (2025/04/29)
 --------------------------------------
