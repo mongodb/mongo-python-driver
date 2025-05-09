@@ -2723,6 +2723,11 @@ class _ClientConnectionRetryable(Generic[T]):
         self._operation_id = operation_id
         self._attempt_number = 0
 
+    def _bulk_retryable(self) -> bool:
+        if self._bulk is not None:
+            return self._bulk.is_retryable
+        return True
+
     async def run(self) -> T:
         """Runs the supplied func() and attempts a retry
 
@@ -2733,11 +2738,15 @@ class _ClientConnectionRetryable(Generic[T]):
         # Increment the transaction id up front to ensure any retry attempt
         # will use the proper txnNumber, even if server or socket selection
         # fails before the command can be sent.
-        if self._is_session_state_retryable() and self._retryable and not self._is_read:
+        if (
+            self._is_session_state_retryable()
+            and self._retryable
+            and self._bulk_retryable()
+            and not self._is_read
+        ):
             self._session._start_retryable_write()  # type: ignore
             if self._bulk:
                 self._bulk.started_retryable_write = True
-
         while True:
             self._check_last_error(check_csot=True)
             try:
@@ -2767,10 +2776,9 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._attempt_number += 1
                     else:
                         raise
-
                 # Specialized catch on write operation
                 if not self._is_read:
-                    if not self._retryable:
+                    if not self._retryable and not self._bulk_retryable():
                         raise
                     if isinstance(exc, ClientBulkWriteException) and exc.error:
                         retryable_write_error_exc = isinstance(
@@ -2801,11 +2809,15 @@ class _ClientConnectionRetryable(Generic[T]):
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
-        return not self._retryable or (self._is_retrying() and not self._multiple_retries)
+        return (
+            not self._retryable
+            or not self._bulk_retryable()
+            or (self._is_retrying() and not self._multiple_retries)
+        )
 
     def _is_retrying(self) -> bool:
         """Checks if the exchange is currently undergoing a retry"""
-        return self._bulk.retrying if self._bulk else self._retrying
+        return self._bulk.retrying or self._retrying if self._bulk is not None else self._retrying
 
     def _is_session_state_retryable(self) -> bool:
         """Checks if provided session is eligible for retry
@@ -2865,6 +2877,8 @@ class _ClientConnectionRetryable(Generic[T]):
                     # not support sessions raise the last error.
                     self._check_last_error()
                     self._retryable = False
+                    if self._bulk:
+                        self._bulk.is_retryable = False
                 if self._retrying:
                     _debug_log(
                         _COMMAND_LOGGER,
@@ -2875,7 +2889,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     )
                 return await self._func(self._session, conn, self._retryable)  # type: ignore
         except PyMongoError as exc:
-            if not self._retryable:
+            if not self._retryable or not self._bulk_retryable():
                 raise
             # Add the RetryableWriteError label, if applicable.
             _add_retryable_write_error(exc, max_wire_version, is_mongos)
@@ -2892,7 +2906,7 @@ class _ClientConnectionRetryable(Generic[T]):
             conn,
             read_pref,
         ):
-            if self._retrying and not self._retryable:
+            if self._retrying and (not self._retryable or not self._bulk_retryable()):
                 self._check_last_error()
             if self._retrying:
                 _debug_log(
