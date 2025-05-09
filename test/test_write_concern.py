@@ -67,6 +67,19 @@ class TestWriteConcern(unittest.TestCase):
         _fake_type = collections.namedtuple("NotAWriteConcern", ["document"])  # type: ignore
         self.assertNotEqual(WriteConcern(j=True), _fake_type({"j": True}))
 
+    def assertRepr(self, obj):
+        new_obj = eval(repr(obj))
+        self.assertEqual(type(new_obj), type(obj))
+        self.assertEqual(repr(new_obj), repr(obj))
+
+    def test_repr(self):
+        concern = WriteConcern(j=True, wtimeout=3000, w="majority", fsync=False)
+        self.assertRepr(concern)
+        self.assertEqual(
+            repr(concern),
+            "WriteConcern(wtimeout=3000, j=True, fsync=False, w='majority')",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
