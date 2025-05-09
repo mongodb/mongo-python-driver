@@ -983,7 +983,7 @@ class Topology:
         )
 
         return self._settings.pool_class(
-            address, monitor_pool_options, handshake=False, client_id=self._topology_id
+            address, monitor_pool_options, is_sdam=True, client_id=self._topology_id
         )
 
     def _error_message(self, selector: Callable[[Selection], Selection]) -> str:

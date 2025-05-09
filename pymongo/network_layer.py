@@ -357,7 +357,12 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
             except socket.timeout:
                 if conn.cancel_context.cancelled:
                     raise _OperationCancelled("operation cancelled") from None
-                if _PYPY:
+                if (
+                    _PYPY
+                    or not conn.is_sdam
+                    and deadline is not None
+                    and deadline - time.monotonic() < 0
+                ):
                     # We reached the true deadline.
                     raise
                 continue
