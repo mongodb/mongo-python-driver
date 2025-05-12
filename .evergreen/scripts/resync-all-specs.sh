@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Run spec syncing script and create PR
 
-SPEC_DEST="../../test"
+SPEC_DEST="test"
 SRC_URL="https://github.com/mongodb/specifications.git"
 # needs to be set for resunc-specs.sh
-SPEC_SRC="../../../specifications"
-SCRIPT="../resync-specs.sh"
+SPEC_SRC="../specifications"
+SCRIPT=".evergreen/resync-specs.sh"
 BRANCH_NAME="spec-resync-"$(date '+%m-%d-%Y')
 
 # List of directories to skip
@@ -49,9 +49,9 @@ for item in "$SPEC_DEST"/*; do
 
   # Check that item is not a python file
   if [[ $item != *.py ]]; then
-
-    output=$(./$SCRIPT "$item_name" 2>&1)
-
+    echo " doing $item_name"
+#    output=$(./$SCRIPT "$item_name" 2>&1)
+    output=$($SCRIPT "$item_name")
     # Check if the script ran successfully
     if [[ $? -ne 0 ]]; then
       errored_specs+=("$item_name")
@@ -86,10 +86,11 @@ else
 fi
 
 # Output the PR body (optional step for verification)
+echo "$pr_body"
 echo "$pr_body" >> spec_sync.txt
 
 # call scrypt to create PR for us
-./create-pr.sh
+.evergreen/scripts/create-pr.sh spec_sync.txt
 
 rm spec_sync.txt
 #git add $SPEC_DEST

@@ -3,6 +3,7 @@
 set -eu
 PYMONGO=$(dirname "$(cd "$(dirname "$0")"; pwd)")
 SPECS=${MDB_SPECS:-~/Work/specifications}
+echo "$SPECS"
 
 help (){
   echo "Usage: resync_specs.sh [-bcsp] spec"

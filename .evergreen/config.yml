@@ -51,3 +51,12 @@ tasks:
           binary: bash
           args:
             - .evergreen/scripts/resync-all-specs.sh
+          working_dir: src
+
+buildvariants:
+  - name: resync_specs
+    display_name: "Resync Specs"
+    run_on: rhel80-small
+    patchable: true
+    tasks:
+      - name: resync_specs
