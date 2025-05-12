@@ -22,6 +22,7 @@ buildvariants:
       VERSION: latest
       NO_EXT: "1"
       REQUIRE_FIPS: "1"
+    tags: []
   - name: other-hosts-rhel8-zseries-latest
     tasks:
       - name: .test-no-toolchain
@@ -32,6 +33,7 @@ buildvariants:
     expansions:
       VERSION: latest
       NO_EXT: "1"
+    tags: []
   - name: other-hosts-rhel8-power8-latest
     tasks:
       - name: .test-no-toolchain
@@ -42,6 +44,7 @@ buildvariants:
     expansions:
       VERSION: latest
       NO_EXT: "1"
+    tags: []
   - name: other-hosts-rhel8-arm64-latest
     tasks:
       - name: .test-no-toolchain
@@ -52,6 +55,7 @@ buildvariants:
     expansions:
       VERSION: latest
       NO_EXT: "1"
+    tags: []
   - name: other-hosts-amazon2023-latest
     tasks:
       - name: .test-no-toolchain
@@ -62,6 +66,7 @@ buildvariants:
     expansions:
       VERSION: latest
       NO_EXT: "1"
+    tags: [pr]
 
   # Atlas connect tests
   - name: atlas-connect-rhel8
@@ -288,6 +293,7 @@ buildvariants:
       - rhel87-small
     expansions:
       PYTHON_BINARY: /opt/python/3.13t/bin/python3
+    tags: [pr]
   - name: free-threaded-macos-python3.13t
     tasks:
       - name: .free-threading
@@ -296,6 +302,7 @@ buildvariants:
       - macos-14
     expansions:
       PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
+    tags: []
   - name: free-threaded-macos-arm64-python3.13t
     tasks:
       - name: .free-threading
@@ -304,6 +311,7 @@ buildvariants:
       - macos-14-arm64
     expansions:
       PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
+    tags: []
 
   # Green framework tests
   - name: green-eventlet-rhel8
@@ -434,14 +442,14 @@ buildvariants:
     batchtime: 10080
   - name: auth-oidc-macos
     tasks:
-      - name: .auth_oidc !.auth_oidc_remote
+      - name: .auth_oidc !.auth_oidc_remote !.pr
     display_name: Auth OIDC macOS
     run_on:
       - macos-14
     batchtime: 10080
   - name: auth-oidc-win64
     tasks:
-      - name: .auth_oidc !.auth_oidc_remote
+      - name: .auth_oidc !.auth_oidc_remote !.pr
     display_name: Auth OIDC Win64
     run_on:
       - windows-64-vsMulti-small

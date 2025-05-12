@@ -178,6 +178,7 @@ tasks:
         vars:
           TEST_NAME: kms
           SUB_TEST_NAME: gcp
+    tags: []
   - name: test-gcpkms-fail
     commands:
       - func: run server
@@ -185,12 +186,14 @@ tasks:
         vars:
           TEST_NAME: kms
           SUB_TEST_NAME: gcp-fail
+    tags: [pr]
   - name: test-azurekms
     commands:
       - func: run tests
         vars:
           TEST_NAME: kms
           SUB_TEST_NAME: azure
+    tags: []
   - name: test-azurekms-fail
     commands:
       - func: run server
@@ -198,6 +201,7 @@ tasks:
         vars:
           TEST_NAME: kms
           SUB_TEST_NAME: azure-fail
+    tags: [pr]
 
   # Mod wsgi tests
   - name: mod-wsgi-replica-set-python3.9
@@ -2241,7 +2245,7 @@ tasks:
         vars:
           TEST_NAME: auth_oidc
           SUB_TEST_NAME: default
-    tags: [auth_oidc]
+    tags: [auth_oidc, pr]
   - name: test-auth-oidc-azure
     commands:
       - func: run tests

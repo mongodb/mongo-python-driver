@@ -112,10 +112,13 @@ def create_free_threaded_variants() -> list[BuildVariant]:
             # TODO: PYTHON-5027
             continue
         tasks = [".free-threading"]
+        tags = []
+        if host_name == "rhel8":
+            tags.append("pr")
         host = HOSTS[host_name]
         python = "3.13t"
         display_name = get_variant_name("Free-threaded", host, python=python)
-        variant = create_variant(tasks, display_name, python=python, host=host)
+        variant = create_variant(tasks, display_name, tags=tags, python=python, host=host)
         variants.append(variant)
     return variants
 
@@ -372,7 +375,7 @@ def create_oidc_auth_variants():
         if host_name == "ubuntu22":
             tasks = [".auth_oidc"]
         else:
-            tasks = [".auth_oidc !.auth_oidc_remote"]
+            tasks = [".auth_oidc !.auth_oidc_remote !.pr"]
         host = HOSTS[host_name]
         variants.append(
             create_variant(
@@ -512,14 +515,18 @@ def create_alternative_hosts_variants():
         expansions = dict(VERSION="latest")
         handle_c_ext(C_EXTS[0], expansions)
         host = HOSTS[host_name]
+        tags = []
         if "fips" in host_name.lower():
             expansions["REQUIRE_FIPS"] = "1"
+        if "amazon" in host_name.lower():
+            tags.append("pr")
         variants.append(
             create_variant(
                 [".test-no-toolchain"],
                 display_name=get_variant_name("Other hosts", host, version=version),
                 batchtime=batchtime,
                 host=host,
+                tags=tags,
                 expansions=expansions,
             )
         )
@@ -693,16 +700,18 @@ def create_kms_tasks():
         for success in [True, False]:
             name = f"test-{kms_type}kms"
             sub_test_name = kms_type
+            tags = []
             if not success:
                 name += "-fail"
                 sub_test_name += "-fail"
+                tags.append("pr")
             commands = []
             if not success:
                 commands.append(FunctionCall(func="run server"))
             test_vars = dict(TEST_NAME="kms", SUB_TEST_NAME=sub_test_name)
             test_func = FunctionCall(func="run tests", vars=test_vars)
             commands.append(test_func)
-            tasks.append(EvgTask(name=name, commands=commands))
+            tasks.append(EvgTask(name=name, tags=tags, commands=commands))
     return tasks
 
 
@@ -755,6 +764,8 @@ def create_oidc_tasks():
         tags = ["auth_oidc"]
         if sub_test != "default":
             tags.append("auth_oidc_remote")
+        else:
+            tags.append("pr")
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
 
@@ -802,6 +813,8 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         tags = ["ocsp", f"ocsp-{algo}", version]
         if "disableStapling" not in variant:
             tags.append("ocsp-staple")
+        if algo == "valid-cert-server-staples" and version == "latest":
+            tags.append("pr")
 
         task_name = get_task_name(
             f"test-ocsp-{algo}-{base_task_name}", python=python, version=version
