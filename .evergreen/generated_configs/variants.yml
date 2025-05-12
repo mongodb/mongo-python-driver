@@ -450,14 +450,14 @@ buildvariants:
     tags: [pr]
   - name: auth-oidc-macos
     tasks:
-      - name: "!.auth_oidc_remote"
+      - name: "!.auth_oidc_remote .auth_oidc"
     display_name: Auth OIDC macOS
     run_on:
       - macos-14
     batchtime: 10080
   - name: auth-oidc-win64
     tasks:
-      - name: "!.auth_oidc_remote"
+      - name: "!.auth_oidc_remote .auth_oidc"
     display_name: Auth OIDC Win64
     run_on:
       - windows-64-vsMulti-small

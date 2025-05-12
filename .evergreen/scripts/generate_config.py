@@ -375,7 +375,7 @@ def create_oidc_auth_variants():
         if host_name == "ubuntu22":
             tasks = [".auth_oidc_remote"]
         else:
-            tasks = ["!.auth_oidc_remote"]
+            tasks = ["!.auth_oidc_remote .auth_oidc"]
         host = HOSTS[host_name]
         variants.append(
             create_variant(
