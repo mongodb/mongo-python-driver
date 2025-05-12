@@ -387,6 +387,7 @@ def create_oidc_auth_variants():
         )
         # Add a specific local test to run on PRs.
         if host_name == "ubuntu22":
+            tasks = ["!.auth_oidc_remote .auth_oidc"]
             variants.append(
                 create_variant(
                     tasks,

@@ -449,7 +449,7 @@ buildvariants:
     batchtime: 10080
   - name: auth-oidc-local-ubuntu-22
     tasks:
-      - name: .auth_oidc_remote
+      - name: "!.auth_oidc_remote .auth_oidc"
     display_name: Auth OIDC Local Ubuntu-22
     run_on:
       - ubuntu2204-small
