@@ -373,9 +373,9 @@ def create_oidc_auth_variants():
     variants = []
     for host_name in ["ubuntu22", "macos", "win64"]:
         if host_name == "ubuntu22":
-            tasks = [".auth_oidc"]
+            tasks = [".auth_oidc_remote"]
         else:
-            tasks = [".auth_oidc !.auth_oidc_remote !.pr"]
+            tasks = ["!.auth_oidc_remote"]
         host = HOSTS[host_name]
         variants.append(
             create_variant(
@@ -385,6 +385,17 @@ def create_oidc_auth_variants():
                 batchtime=BATCHTIME_WEEK,
             )
         )
+        # Add a specific local test to run on PRs.
+        if host_name == "ubuntu22":
+            variants.append(
+                create_variant(
+                    tasks,
+                    get_variant_name("Auth OIDC Local", host),
+                    tags=["pr"],
+                    host=host,
+                    batchtime=BATCHTIME_WEEK,
+                )
+            )
     return variants
 
 
@@ -764,9 +775,8 @@ def create_oidc_tasks():
         tags = ["auth_oidc"]
         if sub_test != "default":
             tags.append("auth_oidc_remote")
-        else:
-            tags.append("pr")
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
+
     return tasks
 
 

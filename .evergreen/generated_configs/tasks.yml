@@ -2245,7 +2245,7 @@ tasks:
         vars:
           TEST_NAME: auth_oidc
           SUB_TEST_NAME: default
-    tags: [auth_oidc, pr]
+    tags: [auth_oidc]
   - name: test-auth-oidc-azure
     commands:
       - func: run tests

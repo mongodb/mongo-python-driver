@@ -435,21 +435,29 @@ buildvariants:
   # Oidc auth tests
   - name: auth-oidc-ubuntu-22
     tasks:
-      - name: .auth_oidc
+      - name: .auth_oidc_remote
     display_name: Auth OIDC Ubuntu-22
     run_on:
       - ubuntu2204-small
     batchtime: 10080
+  - name: auth-oidc-local-ubuntu-22
+    tasks:
+      - name: .auth_oidc_remote
+    display_name: Auth OIDC Local Ubuntu-22
+    run_on:
+      - ubuntu2204-small
+    batchtime: 10080
+    tags: [pr]
   - name: auth-oidc-macos
     tasks:
-      - name: .auth_oidc !.auth_oidc_remote !.pr
+      - name: "!.auth_oidc_remote"
     display_name: Auth OIDC macOS
     run_on:
       - macos-14
     batchtime: 10080
   - name: auth-oidc-win64
     tasks:
-      - name: .auth_oidc !.auth_oidc_remote !.pr
+      - name: "!.auth_oidc_remote"
     display_name: Auth OIDC Win64
     run_on:
       - windows-64-vsMulti-small
