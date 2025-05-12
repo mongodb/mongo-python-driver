@@ -303,6 +303,7 @@ class EntityMapUtil:
             if uri:
                 kwargs["h"] = uri
             client = await self.test.async_rs_or_single_client(**kwargs)
+            await client.aconnect()
             self[spec["id"]] = client
             return
         elif entity_type == "database":

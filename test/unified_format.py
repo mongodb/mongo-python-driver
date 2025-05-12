@@ -302,6 +302,7 @@ class EntityMapUtil:
             if uri:
                 kwargs["h"] = uri
             client = self.test.rs_or_single_client(**kwargs)
+            client._connect()
             self[spec["id"]] = client
             return
         elif entity_type == "database":

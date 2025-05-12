@@ -3227,11 +3227,18 @@ _cbson_exec(PyObject *m)
         INITERROR;
     }
 
+#if PY_VERSION_HEX >= 0x030D0000
+    if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
+        Py_DECREF(m);
+        INITERROR;
+    }
+# else
     if (PyModule_AddObject(m, "_C_API", c_api_object) < 0) {
         Py_DECREF(c_api_object);
         Py_DECREF(m);
         INITERROR;
     }
+#endif
 
     return 0;
 }
