@@ -75,6 +75,7 @@ buildvariants:
     display_name: Atlas connect RHEL8
     run_on:
       - rhel87-small
+    tags: [pr]
 
   # Atlas data lake tests
   - name: atlas-data-lake-ubuntu-22
@@ -85,6 +86,7 @@ buildvariants:
       - ubuntu2204-small
     expansions:
       TEST_NAME: data_lake
+    tags: [pr]
 
   # Aws auth tests
   - name: auth-aws-ubuntu-20
@@ -93,18 +95,21 @@ buildvariants:
     display_name: Auth AWS Ubuntu-20
     run_on:
       - ubuntu2004-small
+    tags: []
   - name: auth-aws-win64
     tasks:
       - name: .auth-aws !.auth-aws-ecs
     display_name: Auth AWS Win64
     run_on:
       - windows-64-vsMulti-small
+    tags: []
   - name: auth-aws-macos
     tasks:
       - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2
     display_name: Auth AWS macOS
     run_on:
       - macos-14
+    tags: [pr]
 
   # Aws lambda tests
   - name: faas-lambda
@@ -380,6 +385,7 @@ buildvariants:
       - rhel87-small
     expansions:
       TEST_NAME: mockupdb
+    tags: [pr]
 
   # Mod wsgi tests
   - name: mod_wsgi-ubuntu-22
@@ -406,6 +412,7 @@ buildvariants:
     display_name: No server RHEL8
     run_on:
       - rhel87-small
+    tags: [pr]
 
   # Ocsp tests
   - name: ocsp-rhel8

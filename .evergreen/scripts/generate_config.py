@@ -332,7 +332,7 @@ def create_atlas_data_lake_variants():
     tasks = [".test-no-orchestration"]
     expansions = dict(TEST_NAME="data_lake")
     display_name = get_variant_name("Atlas Data Lake", host)
-    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
+    return [create_variant(tasks, display_name, tags=["pr"], host=host, expansions=expansions)]
 
 
 def create_mod_wsgi_variants():
@@ -420,6 +420,7 @@ def create_mockupdb_variants():
             [".test-no-orchestration"],
             get_variant_name("MockupDB", host),
             host=host,
+            tags=["pr"],
             expansions=expansions,
         )
     ]
@@ -444,6 +445,7 @@ def create_atlas_connect_variants():
         create_variant(
             [".test-no-orchestration"],
             get_variant_name("Atlas connect", host),
+            tags=["pr"],
             host=DEFAULT_HOST,
         )
     ]
@@ -483,8 +485,10 @@ def create_aws_auth_variants():
     for host_name in ["ubuntu20", "win64", "macos"]:
         expansions = dict()
         tasks = [".auth-aws"]
+        tags = []
         if host_name == "macos":
             tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2"]
+            tags = ["pr"]
         elif host_name == "win64":
             tasks = [".auth-aws !.auth-aws-ecs"]
         host = HOSTS[host_name]
@@ -492,6 +496,7 @@ def create_aws_auth_variants():
             tasks,
             get_variant_name("Auth AWS", host),
             host=host,
+            tags=tags,
             expansions=expansions,
         )
         variants.append(variant)
@@ -501,7 +506,7 @@ def create_aws_auth_variants():
 def create_no_server_variants():
     host = HOSTS["rhel8"]
     name = get_variant_name("No server", host=host)
-    return [create_variant([".test-no-orchestration"], name, host=host)]
+    return [create_variant([".test-no-orchestration"], name, host=host, tags=["pr"])]
 
 
 def create_alternative_hosts_variants():
