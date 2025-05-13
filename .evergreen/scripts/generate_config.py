@@ -112,10 +112,13 @@ def create_free_threaded_variants() -> list[BuildVariant]:
             # TODO: PYTHON-5027
             continue
         tasks = [".free-threading"]
+        tags = []
+        if host_name == "rhel8":
+            tags.append("pr")
         host = HOSTS[host_name]
         python = "3.13t"
         display_name = get_variant_name("Free-threaded", host, python=python)
-        variant = create_variant(tasks, display_name, python=python, host=host)
+        variant = create_variant(tasks, display_name, tags=tags, python=python, host=host)
         variants.append(variant)
     return variants
 
@@ -329,7 +332,7 @@ def create_atlas_data_lake_variants():
     tasks = [".test-no-orchestration"]
     expansions = dict(TEST_NAME="data_lake")
     display_name = get_variant_name("Atlas Data Lake", host)
-    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
+    return [create_variant(tasks, display_name, tags=["pr"], host=host, expansions=expansions)]
 
 
 def create_mod_wsgi_variants():
@@ -370,9 +373,9 @@ def create_oidc_auth_variants():
     variants = []
     for host_name in ["ubuntu22", "macos", "win64"]:
         if host_name == "ubuntu22":
-            tasks = [".auth_oidc"]
+            tasks = [".auth_oidc_remote"]
         else:
-            tasks = [".auth_oidc !.auth_oidc_remote"]
+            tasks = ["!.auth_oidc_remote .auth_oidc"]
         host = HOSTS[host_name]
         variants.append(
             create_variant(
@@ -382,6 +385,18 @@ def create_oidc_auth_variants():
                 batchtime=BATCHTIME_WEEK,
             )
         )
+        # Add a specific local test to run on PRs.
+        if host_name == "ubuntu22":
+            tasks = ["!.auth_oidc_remote .auth_oidc"]
+            variants.append(
+                create_variant(
+                    tasks,
+                    get_variant_name("Auth OIDC Local", host),
+                    tags=["pr"],
+                    host=host,
+                    batchtime=BATCHTIME_WEEK,
+                )
+            )
     return variants
 
 
@@ -406,6 +421,7 @@ def create_mockupdb_variants():
             [".test-no-orchestration"],
             get_variant_name("MockupDB", host),
             host=host,
+            tags=["pr"],
             expansions=expansions,
         )
     ]
@@ -430,6 +446,7 @@ def create_atlas_connect_variants():
         create_variant(
             [".test-no-orchestration"],
             get_variant_name("Atlas connect", host),
+            tags=["pr"],
             host=DEFAULT_HOST,
         )
     ]
@@ -469,8 +486,10 @@ def create_aws_auth_variants():
     for host_name in ["ubuntu20", "win64", "macos"]:
         expansions = dict()
         tasks = [".auth-aws"]
+        tags = []
         if host_name == "macos":
             tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2"]
+            tags = ["pr"]
         elif host_name == "win64":
             tasks = [".auth-aws !.auth-aws-ecs"]
         host = HOSTS[host_name]
@@ -478,6 +497,7 @@ def create_aws_auth_variants():
             tasks,
             get_variant_name("Auth AWS", host),
             host=host,
+            tags=tags,
             expansions=expansions,
         )
         variants.append(variant)
@@ -487,7 +507,7 @@ def create_aws_auth_variants():
 def create_no_server_variants():
     host = HOSTS["rhel8"]
     name = get_variant_name("No server", host=host)
-    return [create_variant([".test-no-orchestration"], name, host=host)]
+    return [create_variant([".test-no-orchestration"], name, host=host, tags=["pr"])]
 
 
 def create_alternative_hosts_variants():
@@ -512,14 +532,18 @@ def create_alternative_hosts_variants():
         expansions = dict(VERSION="latest")
         handle_c_ext(C_EXTS[0], expansions)
         host = HOSTS[host_name]
+        tags = []
         if "fips" in host_name.lower():
             expansions["REQUIRE_FIPS"] = "1"
+        if "amazon" in host_name.lower():
+            tags.append("pr")
         variants.append(
             create_variant(
                 [".test-no-toolchain"],
                 display_name=get_variant_name("Other hosts", host, version=version),
                 batchtime=batchtime,
                 host=host,
+                tags=tags,
                 expansions=expansions,
             )
         )
@@ -693,16 +717,18 @@ def create_kms_tasks():
         for success in [True, False]:
             name = f"test-{kms_type}kms"
             sub_test_name = kms_type
+            tags = []
             if not success:
                 name += "-fail"
                 sub_test_name += "-fail"
+                tags.append("pr")
             commands = []
             if not success:
                 commands.append(FunctionCall(func="run server"))
             test_vars = dict(TEST_NAME="kms", SUB_TEST_NAME=sub_test_name)
             test_func = FunctionCall(func="run tests", vars=test_vars)
             commands.append(test_func)
-            tasks.append(EvgTask(name=name, commands=commands))
+            tasks.append(EvgTask(name=name, tags=tags, commands=commands))
     return tasks
 
 
@@ -756,6 +782,7 @@ def create_oidc_tasks():
         if sub_test != "default":
             tags.append("auth_oidc_remote")
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
+
     return tasks
 
 
@@ -802,6 +829,8 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         tags = ["ocsp", f"ocsp-{algo}", version]
         if "disableStapling" not in variant:
             tags.append("ocsp-staple")
+        if algo == "valid-cert-server-staples" and version == "latest":
+            tags.append("pr")
 
         task_name = get_task_name(
             f"test-ocsp-{algo}-{base_task_name}", python=python, version=version
