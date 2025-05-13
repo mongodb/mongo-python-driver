@@ -170,12 +170,9 @@ PyMongo supports CPython 3.9+ and PyPy3.10+. See the :doc:`python3` for details.
 
 Does PyMongo support asynchronous frameworks like Gevent, asyncio, Tornado, or Twisted?
 ---------------------------------------------------------------------------------------
-As of PyMongo v4.13, PyMongo fully supports asyncio. See `the official docs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/reference/migration/>`_ for more details.
+As of PyMongo v4.13, PyMongo fully supports asyncio and `Tornado <https://www.tornadoweb.org/>`_. See `the official docs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/reference/migration/>`_ for more details.
 
 PyMongo also fully supports :doc:`Gevent <examples/gevent>`.
-
-PyMongo does not support T`ornado <https://www.tornadoweb.org/>`_.
-`Motor <https://github.com/mongodb/motor>`_ , our older asynchronous driver, does support Tornado, but will be officially deprecated on May 14th, 2026.
 
 For `Twisted <https://twistedmatrix.com/>`_, see `TxMongo
 <https://github.com/twisted/txmongo>`_. Its stated mission is to keep feature
