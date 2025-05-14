@@ -7,8 +7,8 @@ Changes in Version 4.13.0 (2025/05/14)
 PyMongo 4.13 brings a number of changes including:
 
 - The asynchronous API is now stable and no longer in beta.
-  See the `API docs <https://pymongo.readthedocs.io/en/stable/api/pymongo/asynchronous/>`_
-  or `migration guide <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/reference/migration/>`_ for more information.
+  See the :mod:`pymongo.asynchronous` docs
+  or the `migration guide <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/reference/migration/>`_ for more information.
 - Fixed a bug where :class:`pymongo.write_concern.WriteConcern` repr was not eval-able
   when using ``w="majority"``.
 
