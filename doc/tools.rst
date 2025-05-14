@@ -163,6 +163,9 @@ These are alternatives to PyMongo.
 
 * `Motor <https://github.com/mongodb/motor>`_ is a full-featured, non-blocking
   MongoDB driver for Python Tornado applications.
+  As of PyMongo v4.13, Motor's features have been merged into PyMongo via the new AsyncMongoClient API.
+  As a result of this merger, Motor will be officially deprecated on May 14th, 2026.
+  For more information, see `the official PyMongo docs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/reference/migration/>`_.
 * `TxMongo <https://github.com/twisted/txmongo>`_ is an asynchronous Twisted
   Python driver for MongoDB.
 * `MongoMock <https://github.com/mongomock/mongomock>`_ is a small
