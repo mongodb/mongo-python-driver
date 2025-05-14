@@ -131,6 +131,7 @@ class AsyncConnection:
     :param pool: a Pool instance
     :param address: the server's (host, port)
     :param id: the id of this socket in it's pool
+    :param is_sdam: SDAM connections do not call hello on creation
     """
 
     def __init__(
@@ -139,11 +140,13 @@ class AsyncConnection:
         pool: Pool,
         address: tuple[str, int],
         id: int,
+        is_sdam: bool,
     ):
         self.pool_ref = weakref.ref(pool)
         self.conn = conn
         self.address = address
         self.id = id
+        self.is_sdam = is_sdam
         self.closed = False
         self.last_checkin_time = time.monotonic()
         self.performed_handshake = False
@@ -711,13 +714,13 @@ class Pool:
         self,
         address: _Address,
         options: PoolOptions,
-        handshake: bool = True,
+        is_sdam: bool = False,
         client_id: Optional[ObjectId] = None,
     ):
         """
         :param address: a (hostname, port) tuple
         :param options: a PoolOptions instance
-        :param handshake: whether to call hello for each new AsyncConnection
+        :param is_sdam: whether to call hello for each new AsyncConnection
         """
         if options.pause_enabled:
             self.state = PoolState.PAUSED
@@ -746,14 +749,14 @@ class Pool:
         self.pid = os.getpid()
         self.address = address
         self.opts = options
-        self.handshake = handshake
+        self.is_sdam = is_sdam
         # Don't publish events or logs in Monitor pools.
         self.enabled_for_cmap = (
-            self.handshake
+            not self.is_sdam
             and self.opts._event_listeners is not None
             and self.opts._event_listeners.enabled_for_cmap
         )
-        self.enabled_for_logging = self.handshake
+        self.enabled_for_logging = not self.is_sdam
 
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
@@ -1058,14 +1061,14 @@ class Pool:
 
             raise
 
-        conn = AsyncConnection(networking_interface, self, self.address, conn_id)  # type: ignore[arg-type]
+        conn = AsyncConnection(networking_interface, self, self.address, conn_id, self.is_sdam)  # type: ignore[arg-type]
         async with self.lock:
             self.active_contexts.add(conn.cancel_context)
             self.active_contexts.discard(tmp_context)
         if tmp_context.cancelled:
             conn.cancel_context.cancel()
         try:
-            if self.handshake:
+            if not self.is_sdam:
                 await conn.hello()
                 self.is_writable = conn.is_writable
             if handler:

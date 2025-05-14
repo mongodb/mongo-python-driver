@@ -121,7 +121,7 @@ class TestTopologyConfiguration(TopologyTest):
         self.assertEqual(1, monitor._pool.opts.socket_timeout)
 
         # The monitor, not its pool, is responsible for calling hello.
-        self.assertFalse(monitor._pool.handshake)
+        self.assertTrue(monitor._pool.is_sdam)
 
 
 class TestSingleServerTopology(TopologyTest):

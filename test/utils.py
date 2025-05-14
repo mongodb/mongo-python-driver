@@ -157,6 +157,7 @@ class MockConnection:
         self.cancel_context = _CancellationContext()
         self.more_to_come = False
         self.id = random.randint(0, 100)
+        self.is_sdam = False
         self.server_connection_id = random.randint(0, 100)
 
     def close_conn(self, reason):
@@ -170,7 +171,7 @@ class MockConnection:
 
 
 class MockPool:
-    def __init__(self, address, options, handshake=True, client_id=None):
+    def __init__(self, address, options, is_sdam=False, client_id=None):
         self.gen = _PoolGeneration()
         self._lock = _create_lock()
         self.opts = options
