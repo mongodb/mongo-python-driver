@@ -106,9 +106,9 @@ class InsertOne(Generic[_DocumentType]):
         self._doc = document
         self._namespace = namespace
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> bool:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
-        bulkobj.add_insert(self._doc)  # type: ignore[arg-type]
+        return bulkobj.add_insert(self._doc)  # type: ignore[arg-type]
 
     def _add_to_client_bulk(self, bulkobj: _AgnosticClientBulk) -> None:
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
@@ -230,9 +230,9 @@ class DeleteOne(_DeleteOp):
         """
         super().__init__(filter, collation, hint, namespace)
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> bool:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
-        bulkobj.add_delete(
+        return bulkobj.add_delete(
             self._filter,
             1,
             collation=validate_collation_or_none(self._collation),
@@ -291,9 +291,9 @@ class DeleteMany(_DeleteOp):
         """
         super().__init__(filter, collation, hint, namespace)
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> bool:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
-        bulkobj.add_delete(
+        return bulkobj.add_delete(
             self._filter,
             0,
             collation=validate_collation_or_none(self._collation),
@@ -384,9 +384,9 @@ class ReplaceOne(Generic[_DocumentType]):
         self._collation = collation
         self._namespace = namespace
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> bool:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
-        bulkobj.add_replace(
+        return bulkobj.add_replace(
             self._filter,
             self._doc,
             self._upsert,
@@ -606,9 +606,9 @@ class UpdateOne(_UpdateOp):
         """
         super().__init__(filter, update, upsert, collation, array_filters, hint, namespace, sort)
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> bool:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
-        bulkobj.add_update(
+        return bulkobj.add_update(
             self._filter,
             self._doc,
             False,
@@ -687,9 +687,9 @@ class UpdateMany(_UpdateOp):
         """
         super().__init__(filter, update, upsert, collation, array_filters, hint, namespace, None)
 
-    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> None:
+    def _add_to_bulk(self, bulkobj: _AgnosticBulk) -> bool:
         """Add this operation to the _AsyncBulk/_Bulk instance `bulkobj`."""
-        bulkobj.add_update(
+        return bulkobj.add_update(
             self._filter,
             self._doc,
             True,
