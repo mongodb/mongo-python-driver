@@ -384,7 +384,14 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
-## Re-sync Spec Tests
+## Specification Tests
+
+The MongoDB [specifications repository](https://github.com/mongodb/specifications)
+holds in progress and completed specifications for features of MongoDB, drivers,
+and associated products. PyMongo supports the [Unified Test Format](https://jira.mongodb.org/browse/DRIVERS-709)
+for running specification tests to confirm PyMongo behaves as expected.
+
+### Resynchronizing the Specification Tests
 
 If you would like to re-sync the copy of the specification tests in the
 PyMongo repository with that which is inside the [specifications
