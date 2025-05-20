@@ -108,7 +108,8 @@ _Fallback = Callable[[Any], Any]
 
 class TypeRegistry:
     """Encapsulates type codecs used in encoding and / or decoding BSON, as
-    well as the fallback encoder.
+    well as the fallback encoder. Type registries cannot be modified after
+    instantiation.
 
     ``TypeRegistry`` can be initialized with an iterable of type codecs, and
     a callable for the fallback encoder::
