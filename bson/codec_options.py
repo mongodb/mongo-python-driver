@@ -108,8 +108,7 @@ _Fallback = Callable[[Any], Any]
 
 class TypeRegistry:
     """Encapsulates type codecs used in encoding and / or decoding BSON, as
-    well as the fallback encoder. Type registries cannot be modified after
-    instantiation.
+    well as the fallback encoder.
 
     ``TypeRegistry`` can be initialized with an iterable of type codecs, and
     a callable for the fallback encoder::
@@ -159,6 +158,16 @@ class TypeRegistry:
                 raise TypeError(
                     f"Expected an instance of {TypeEncoder.__name__}, {TypeDecoder.__name__}, or {TypeCodec.__name__}, got {codec!r} instead"
                 )
+
+    @property
+    def codecs(self) -> list[TypeEncoder | TypeDecoder | TypeCodec]:
+        """The list of type codecs in this registry."""
+        return self.__type_codecs
+
+    @property
+    def fallback_encoder(self) -> Optional[_Fallback]:
+        """The fallback encoder in this registry."""
+        return self._fallback_encoder
 
     def _validate_type_encoder(self, codec: _Codec) -> None:
         from bson import _BUILT_IN_TYPES
