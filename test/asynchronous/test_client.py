@@ -674,7 +674,7 @@ class TestClient(AsyncIntegrationTest):
             async with server._pool.checkout() as conn:
                 pass
             self.assertEqual(1, len(server._pool.conns))
-            self.assertTrue(conn in server._pool.conns)
+            self.assertIn(conn, server._pool.conns)
 
     async def test_max_idle_time_reaper_removes_stale_minPoolSize(self):
         with client_knobs(kill_cursor_frequency=0.1):
@@ -770,7 +770,7 @@ class TestClient(AsyncIntegrationTest):
                 self.assertNotEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
             self.assertFalse(conn in server._pool.conns)
-            self.assertTrue(new_con in server._pool.conns)
+            self.assertIn(new_con, server._pool.conns)
 
             # Test that connections are reused if maxIdleTimeMS is not set.
             client = await self.async_rs_or_single_client()
@@ -1032,8 +1032,8 @@ class TestClient(AsyncIntegrationTest):
         cmd_names = [doc["name"] for doc in cmd_docs]
 
         db_names = await self.client.list_database_names()
-        self.assertTrue("pymongo_test" in db_names)
-        self.assertTrue("pymongo_test_mike" in db_names)
+        self.assertIn("pymongo_test", db_names)
+        self.assertIn("pymongo_test_mike", db_names)
         self.assertEqual(db_names, cmd_names)
 
     async def test_drop_database(self):
@@ -1257,9 +1257,9 @@ class TestClient(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(uri)
         await client.pymongo_test.test.insert_one({"dummy": "object"})
         dbs = await client.list_database_names()
-        self.assertTrue("pymongo_test" in dbs)
+        self.assertIn("pymongo_test", dbs)
 
-        self.assertTrue(mongodb_socket in repr(client))
+        self.assertIn(mongodb_socket, repr(client))
 
         # Confirm it fails with a missing socket.
         with self.assertRaises(ConnectionFailure):
@@ -1431,8 +1431,8 @@ class TestClient(AsyncIntegrationTest):
         await client.pymongo_test_bernie.test.insert_one({"dummy": "object"})
 
         dbs = await client.list_database_names()
-        self.assertTrue("pymongo_test" in dbs)
-        self.assertTrue("pymongo_test_bernie" in dbs)
+        self.assertIn("pymongo_test", dbs)
+        self.assertIn("pymongo_test_bernie", dbs)
 
     async def test_contextlib(self):
         client = await self.async_rs_or_single_client()

@@ -162,13 +162,13 @@ class TestDatabase(IntegrationTest):
             db.create_collection("coll..ection")  # type: ignore[arg-type]
 
         test = db.create_collection("test")
-        self.assertTrue("test" in db.list_collection_names())
+        self.assertIn("test", db.list_collection_names())
         test.insert_one({"hello": "world"})
         self.assertEqual((db.test.find_one())["hello"], "world")
 
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
-        self.assertTrue("test.foo" in db.list_collection_names())
+        self.assertIn("test.foo", db.list_collection_names())
         with self.assertRaises(CollectionInvalid):
             db.create_collection("test.foo")
 
@@ -178,10 +178,10 @@ class TestDatabase(IntegrationTest):
         db.test.mike.insert_one({"dummy": "object"})
 
         colls = db.list_collection_names()
-        self.assertTrue("test" in colls)
-        self.assertTrue("test.mike" in colls)
+        self.assertIn("test", colls)
+        self.assertIn("test.mike", colls)
         for coll in colls:
-            self.assertTrue("$" not in coll)
+            self.assertNotIn("$", coll)
 
         db.systemcoll.test.insert_one({})
         no_system_collections = db.list_collection_names(
@@ -251,12 +251,12 @@ class TestDatabase(IntegrationTest):
         colls = [result["name"] for result in results]
 
         # All the collections present.
-        self.assertTrue("test" in colls)
-        self.assertTrue("test.mike" in colls)
+        self.assertIn("test", colls)
+        self.assertIn("test.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
-            self.assertTrue("$" not in coll)
+            self.assertNotIn("$", coll)
 
         # Duplicate check.
         coll_cnt: dict = {}
@@ -291,12 +291,12 @@ class TestDatabase(IntegrationTest):
         colls = [result["name"] for result in results]
 
         # Checking only capped collections are present
-        self.assertTrue("test" in colls)
+        self.assertIn("test", colls)
         self.assertFalse("test.mike" in colls)
 
         # No collection containing a '$'.
         for coll in colls:
-            self.assertTrue("$" not in coll)
+            self.assertNotIn("$", coll)
 
         # Duplicate check.
         coll_cnt = {}
@@ -336,22 +336,22 @@ class TestDatabase(IntegrationTest):
             db.drop_collection(None)  # type: ignore[arg-type]
 
         db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in db.list_collection_names())
+        self.assertIn("test", db.list_collection_names())
         db.drop_collection("test")
         self.assertFalse("test" in db.list_collection_names())
 
         db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in db.list_collection_names())
+        self.assertIn("test", db.list_collection_names())
         db.drop_collection("test")
         self.assertFalse("test" in db.list_collection_names())
 
         db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in db.list_collection_names())
+        self.assertIn("test", db.list_collection_names())
         db.drop_collection(db.test)
         self.assertFalse("test" in db.list_collection_names())
 
         db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in db.list_collection_names())
+        self.assertIn("test", db.list_collection_names())
         db.test.drop()
         self.assertFalse("test" in db.list_collection_names())
         db.test.drop()

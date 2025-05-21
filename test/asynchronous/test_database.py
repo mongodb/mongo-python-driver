@@ -163,13 +163,13 @@ class TestDatabase(AsyncIntegrationTest):
             await db.create_collection("coll..ection")  # type: ignore[arg-type]
 
         test = await db.create_collection("test")
-        self.assertTrue("test" in await db.list_collection_names())
+        self.assertIn("test", await db.list_collection_names())
         await test.insert_one({"hello": "world"})
         self.assertEqual((await db.test.find_one())["hello"], "world")
 
         await db.drop_collection("test.foo")
         await db.create_collection("test.foo")
-        self.assertTrue("test.foo" in await db.list_collection_names())
+        self.assertIn("test.foo", await db.list_collection_names())
         with self.assertRaises(CollectionInvalid):
             await db.create_collection("test.foo")
 
@@ -179,10 +179,10 @@ class TestDatabase(AsyncIntegrationTest):
         await db.test.mike.insert_one({"dummy": "object"})
 
         colls = await db.list_collection_names()
-        self.assertTrue("test" in colls)
-        self.assertTrue("test.mike" in colls)
+        self.assertIn("test", colls)
+        self.assertIn("test.mike", colls)
         for coll in colls:
-            self.assertTrue("$" not in coll)
+            self.assertNotIn("$", coll)
 
         await db.systemcoll.test.insert_one({})
         no_system_collections = await db.list_collection_names(
@@ -252,12 +252,12 @@ class TestDatabase(AsyncIntegrationTest):
         colls = [result["name"] async for result in results]
 
         # All the collections present.
-        self.assertTrue("test" in colls)
-        self.assertTrue("test.mike" in colls)
+        self.assertIn("test", colls)
+        self.assertIn("test.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
-            self.assertTrue("$" not in coll)
+            self.assertNotIn("$", coll)
 
         # Duplicate check.
         coll_cnt: dict = {}
@@ -294,12 +294,12 @@ class TestDatabase(AsyncIntegrationTest):
         colls = [result["name"] async for result in results]
 
         # Checking only capped collections are present
-        self.assertTrue("test" in colls)
+        self.assertIn("test", colls)
         self.assertFalse("test.mike" in colls)
 
         # No collection containing a '$'.
         for coll in colls:
-            self.assertTrue("$" not in coll)
+            self.assertNotIn("$", coll)
 
         # Duplicate check.
         coll_cnt = {}
@@ -339,22 +339,22 @@ class TestDatabase(AsyncIntegrationTest):
             await db.drop_collection(None)  # type: ignore[arg-type]
 
         await db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in await db.list_collection_names())
+        self.assertIn("test", await db.list_collection_names())
         await db.drop_collection("test")
         self.assertFalse("test" in await db.list_collection_names())
 
         await db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in await db.list_collection_names())
+        self.assertIn("test", await db.list_collection_names())
         await db.drop_collection("test")
         self.assertFalse("test" in await db.list_collection_names())
 
         await db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in await db.list_collection_names())
+        self.assertIn("test", await db.list_collection_names())
         await db.drop_collection(db.test)
         self.assertFalse("test" in await db.list_collection_names())
 
         await db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in await db.list_collection_names())
+        self.assertIn("test", await db.list_collection_names())
         await db.test.drop()
         self.assertFalse("test" in await db.list_collection_names())
         await db.test.drop()

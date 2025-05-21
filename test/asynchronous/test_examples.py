@@ -479,9 +479,9 @@ class TestSampleShellCommands(AsyncIntegrationTest):
         # End Example 44
 
         async for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
             self.assertFalse("size" in doc)
             self.assertFalse("instock" in doc)
 
@@ -491,8 +491,8 @@ class TestSampleShellCommands(AsyncIntegrationTest):
 
         async for doc in cursor:
             self.assertFalse("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
             self.assertFalse("size" in doc)
             self.assertFalse("instock" in doc)
 
@@ -501,10 +501,10 @@ class TestSampleShellCommands(AsyncIntegrationTest):
         # End Example 46
 
         async for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
             self.assertFalse("status" in doc)
-            self.assertTrue("size" in doc)
+            self.assertIn("size", doc)
             self.assertFalse("instock" in doc)
 
         # Start Example 47
@@ -512,13 +512,13 @@ class TestSampleShellCommands(AsyncIntegrationTest):
         # End Example 47
 
         async for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
-            self.assertTrue("size" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
+            self.assertIn("size", doc)
             self.assertFalse("instock" in doc)
             size = doc["size"]
-            self.assertTrue("uom" in size)
+            self.assertIn("uom", size)
             self.assertFalse("h" in size)
             self.assertFalse("w" in size)
 
@@ -527,29 +527,29 @@ class TestSampleShellCommands(AsyncIntegrationTest):
         # End Example 48
 
         async for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
-            self.assertTrue("size" in doc)
-            self.assertTrue("instock" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
+            self.assertIn("size", doc)
+            self.assertIn("instock", doc)
             size = doc["size"]
             self.assertFalse("uom" in size)
-            self.assertTrue("h" in size)
-            self.assertTrue("w" in size)
+            self.assertIn("h", size)
+            self.assertIn("w", size)
 
         # Start Example 49
         cursor = db.inventory.find({"status": "A"}, {"item": 1, "status": 1, "instock.qty": 1})
         # End Example 49
 
         async for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
             self.assertFalse("size" in doc)
-            self.assertTrue("instock" in doc)
+            self.assertIn("instock", doc)
             for subdoc in doc["instock"]:
                 self.assertFalse("warehouse" in subdoc)
-                self.assertTrue("qty" in subdoc)
+                self.assertIn("qty", subdoc)
 
         # Start Example 50
         cursor = db.inventory.find(
@@ -558,11 +558,11 @@ class TestSampleShellCommands(AsyncIntegrationTest):
         # End Example 50
 
         async for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
             self.assertFalse("size" in doc)
-            self.assertTrue("instock" in doc)
+            self.assertIn("instock", doc)
             self.assertEqual(len(doc["instock"]), 1)
 
     async def test_update_and_replace(self):
@@ -645,7 +645,7 @@ class TestSampleShellCommands(AsyncIntegrationTest):
         async for doc in db.inventory.find({"item": "paper"}):
             self.assertEqual(doc["size"]["uom"], "cm")
             self.assertEqual(doc["status"], "P")
-            self.assertTrue("lastModified" in doc)
+            self.assertIn("lastModified", doc)
 
         # Start Example 53
         await db.inventory.update_many(
@@ -657,7 +657,7 @@ class TestSampleShellCommands(AsyncIntegrationTest):
         async for doc in db.inventory.find({"qty": {"$lt": 50}}):
             self.assertEqual(doc["size"]["uom"], "in")
             self.assertEqual(doc["status"], "P")
-            self.assertTrue("lastModified" in doc)
+            self.assertIn("lastModified", doc)
 
         # Start Example 54
         await db.inventory.replace_one(
@@ -671,8 +671,8 @@ class TestSampleShellCommands(AsyncIntegrationTest):
 
         async for doc in db.inventory.find({"item": "paper"}, {"_id": 0}):
             self.assertEqual(len(doc.keys()), 2)
-            self.assertTrue("item" in doc)
-            self.assertTrue("instock" in doc)
+            self.assertIn("item", doc)
+            self.assertIn("instock", doc)
             self.assertEqual(len(doc["instock"]), 2)
 
     async def test_delete(self):

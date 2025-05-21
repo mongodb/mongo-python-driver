@@ -174,8 +174,8 @@ class TestCursor(AsyncIntegrationTest):
         cursor = coll.find().max_time_ms(999)
         c2 = cursor.clone()
         self.assertEqual(999, c2._max_time_ms)
-        self.assertTrue("$maxTimeMS" in cursor._query_spec())
-        self.assertTrue("$maxTimeMS" in c2._query_spec())
+        self.assertIn("$maxTimeMS", cursor._query_spec())
+        self.assertIn("$maxTimeMS", c2._query_spec())
 
         self.assertTrue(await coll.find_one(max_time_ms=1000))
 
@@ -252,7 +252,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertFalse("maxTimeMS" in listener.started_events[0].command)
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[1].command)
+        self.assertIn("maxTimeMS", listener.started_events[1].command)
         self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
         listener.reset()
 
@@ -263,7 +263,7 @@ class TestCursor(AsyncIntegrationTest):
             await coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertIn("maxTimeMS", listener.started_events[0].command)
         self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
@@ -279,11 +279,11 @@ class TestCursor(AsyncIntegrationTest):
         )
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertIn("maxTimeMS", listener.started_events[0].command)
         self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[1].command)
+        self.assertIn("maxTimeMS", listener.started_events[1].command)
         self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
         listener.reset()
 
@@ -301,7 +301,7 @@ class TestCursor(AsyncIntegrationTest):
         await coll.find(batch_size=1).max_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertIn("maxTimeMS", listener.started_events[0].command)
         self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
@@ -311,7 +311,7 @@ class TestCursor(AsyncIntegrationTest):
         await coll.find(batch_size=1).max_time_ms(99).max_await_time_ms(88).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertIn("maxTimeMS", listener.started_events[0].command)
         self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
@@ -933,7 +933,7 @@ class TestCursor(AsyncIntegrationTest):
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)
         cursor2._projection["cursor2"] = False
-        self.assertTrue(cursor._projection and "cursor2" in cursor._projection)
+        self.assertIn(cursor._projection and "cursor2", cursor._projection)
 
         # Deepcopies and shouldn't mutate
         cursor3 = copy.deepcopy(cursor)
