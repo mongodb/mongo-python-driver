@@ -925,18 +925,19 @@ class TestCursor(IntegrationTest):
         cursor2 = copy.copy(cursor)
         cursor2._projection["cursor2"] = False
         self.assertIsNotNone(cursor._projection)
-        self.assertIn("cursor2", cursor._projection)
+        print(cursor._projection.keys())
+        self.assertIn("cursor2", cursor._projection.keys())
 
         # Deepcopies and shouldn't mutate
         cursor3 = copy.deepcopy(cursor)
         cursor3._projection["cursor3"] = False
         self.assertIsNotNone(cursor._projection)
-        self.assertNotIn("cursor3", cursor._projection)
+        self.assertNotIn("cursor3", cursor._projection.keys())
 
         cursor4 = cursor.clone()
         cursor4._projection["cursor4"] = False
         self.assertIsNotNone(cursor._projection)
-        self.assertNotIn("cursor4", cursor._projection)
+        self.assertNotIn("cursor4", cursor._projection.keys())
 
         # Test memo when deepcopying queries
         query = {"hello": "world"}
