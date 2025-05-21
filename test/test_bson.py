@@ -142,7 +142,7 @@ class TestBSON(unittest.TestCase):
 
         helper({})
         helper({"test": "hello"})
-        self.assertTrue(isinstance(decoder(encoder({"hello": "world"}))["hello"], str))
+        self.assertIsInstance(decoder(encoder({"hello": "world"}))["hello"], str)
         helper({"mike": -10120})
         helper({"long": Int64(10)})
         helper({"really big long": 2147483648})
@@ -557,7 +557,7 @@ class TestBSON(unittest.TestCase):
             try:
                 decode(bs)
             except Exception as exc:
-                self.assertTrue(isinstance(exc, InvalidBSON))
+                self.assertIsInstance(exc, InvalidBSON)
                 self.assertIn(part, str(exc))
             else:
                 self.fail("Failed to raise an exception.")

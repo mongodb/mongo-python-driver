@@ -91,7 +91,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
 
     def test_getattr(self):
         db = self.client.pymongo_test
-        self.assertTrue(isinstance(db["_does_not_exist"], AsyncCollection))
+        self.assertIsInstance(db["_does_not_exist"], AsyncCollection)
 
         with self.assertRaises(AttributeError) as context:
             db._does_not_exist
@@ -428,7 +428,7 @@ class TestDatabase(AsyncIntegrationTest):
 
         result = await db.command("aggregate", "test", pipeline=[], cursor={})
         for doc in result["cursor"]["firstBatch"]:
-            self.assertTrue(isinstance(doc["r"], Regex))
+            self.assertIsInstance(doc["r"], Regex)
 
     async def test_command_bulkWrite(self):
         # Ensure bulk write commands can be run directly via db.command().
@@ -472,7 +472,7 @@ class TestDatabase(AsyncIntegrationTest):
         with self.assertRaises(TypeError):
             auth._password_digest(None)  # type: ignore[arg-type, call-arg]
 
-        self.assertTrue(isinstance(auth._password_digest("mike", "password"), str))
+        self.assertIsInstance(auth._password_digest("mike", "password"), str)
         self.assertEqual(
             auth._password_digest("mike", "password"), "cd7e45b3b2767dc2fa9b6b548457ed00"
         )
@@ -543,7 +543,7 @@ class TestDatabase(AsyncIntegrationTest):
 
         a_doc = SON({"hello": "world"})
         a_key = (await db.test.insert_one(a_doc)).inserted_id
-        self.assertTrue(isinstance(a_doc["_id"], ObjectId))
+        self.assertIsInstance(a_doc["_id"], ObjectId)
         self.assertEqual(a_doc["_id"], a_key)
         self.assertEqual(a_doc, await db.test.find_one({"_id": a_doc["_id"]}))
         self.assertEqual(a_doc, await db.test.find_one(a_key))
