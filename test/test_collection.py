@@ -212,7 +212,7 @@ class TestCollection(IntegrationTest):
 
     def test_drop_nonexistent_collection(self):
         self.db.drop_collection("test")
-        self.assertFalse("test" in self.db.list_collection_names())
+        self.assertNotIn("test", self.db.list_collection_names())
 
         # No exception
         self.db.drop_collection("test")
@@ -539,7 +539,7 @@ class TestCollection(IntegrationTest):
         db.test.create_index([("keya", ASCENDING)])
         db.test.create_index([("keyb", ASCENDING)], background=False)
         db.test.create_index([("keyc", ASCENDING)], background=True)
-        self.assertFalse("background" in (db.test.index_information())["keya_1"])
+        self.assertNotIn("background", (db.test.index_information())["keya_1"])
         self.assertFalse((db.test.index_information())["keyb_1"]["background"])
         self.assertTrue((db.test.index_information())["keyc_1"]["background"])
 
@@ -690,7 +690,7 @@ class TestCollection(IntegrationTest):
 
         doc = next(db.test.find({}, {"_id": False}))
         l = list(doc)
-        self.assertFalse("_id" in l)
+        self.assertNotIn("_id", l)
 
     def test_options(self):
         db = self.db
@@ -1127,13 +1127,13 @@ class TestCollection(IntegrationTest):
         doc = next(db.test.find({}, ["x", "mike"]))
         self.assertIn("mike", doc)
         doc = next(db.test.find({}, ["x", "mike"]))
-        self.assertFalse("extra thing" in doc)
+        self.assertNotIn("extra thing", doc)
         doc = next(db.test.find({}, ["mike"]))
-        self.assertFalse("x" in doc)
+        self.assertNotIn("x", doc)
         doc = next(db.test.find({}, ["mike"]))
         self.assertIn("mike", doc)
         doc = next(db.test.find({}, ["mike"]))
-        self.assertFalse("extra thing" in doc)
+        self.assertNotIn("extra thing", doc)
 
     @no_type_check
     def test_fields_specifier_as_dict(self):

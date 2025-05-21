@@ -212,7 +212,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
     async def test_drop_nonexistent_collection(self):
         await self.db.drop_collection("test")
-        self.assertFalse("test" in await self.db.list_collection_names())
+        self.assertNotIn("test", await self.db.list_collection_names())
 
         # No exception
         await self.db.drop_collection("test")
@@ -549,7 +549,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.create_index([("keya", ASCENDING)])
         await db.test.create_index([("keyb", ASCENDING)], background=False)
         await db.test.create_index([("keyc", ASCENDING)], background=True)
-        self.assertFalse("background" in (await db.test.index_information())["keya_1"])
+        self.assertNotIn("background", (await db.test.index_information())["keya_1"])
         self.assertFalse((await db.test.index_information())["keyb_1"]["background"])
         self.assertTrue((await db.test.index_information())["keyc_1"]["background"])
 
@@ -702,7 +702,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         doc = await anext(db.test.find({}, {"_id": False}))
         l = list(doc)
-        self.assertFalse("_id" in l)
+        self.assertNotIn("_id", l)
 
     async def test_options(self):
         db = self.db
@@ -1141,13 +1141,13 @@ class AsyncTestCollection(AsyncIntegrationTest):
         doc = await anext(db.test.find({}, ["x", "mike"]))
         self.assertIn("mike", doc)
         doc = await anext(db.test.find({}, ["x", "mike"]))
-        self.assertFalse("extra thing" in doc)
+        self.assertNotIn("extra thing", doc)
         doc = await anext(db.test.find({}, ["mike"]))
-        self.assertFalse("x" in doc)
+        self.assertNotIn("x", doc)
         doc = await anext(db.test.find({}, ["mike"]))
         self.assertIn("mike", doc)
         doc = await anext(db.test.find({}, ["mike"]))
-        self.assertFalse("extra thing" in doc)
+        self.assertNotIn("extra thing", doc)
 
     @no_type_check
     async def test_fields_specifier_as_dict(self):

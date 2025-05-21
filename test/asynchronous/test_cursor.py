@@ -240,16 +240,16 @@ class TestCursor(AsyncIntegrationTest):
         # Tailable_await defaults.
         await coll.find(cursor_type=CursorType.TAILABLE_AWAIT).to_list()
         # find
-        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[0].command)
         # getMore
-        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[1].command)
         listener.reset()
 
         # Tailable_await with max_await_time_ms set.
         await coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[0].command)
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
         self.assertIn("maxTimeMS", listener.started_events[1].command)
@@ -267,7 +267,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[1].command)
         listener.reset()
 
         # Tailable_await with both max_time_ms and max_await_time_ms
@@ -291,10 +291,10 @@ class TestCursor(AsyncIntegrationTest):
         await coll.find(batch_size=1).max_await_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[0].command)
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[1].command)
         listener.reset()
 
         # Non tailable_await with max_time_ms
@@ -305,7 +305,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[1].command)
 
         # Non tailable_await with both max_time_ms and max_await_time_ms
         await coll.find(batch_size=1).max_time_ms(99).max_await_time_ms(88).to_list()
@@ -315,7 +315,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[1].command)
 
     @async_client_context.require_test_commands
     @async_client_context.require_no_mongos
@@ -933,16 +933,19 @@ class TestCursor(AsyncIntegrationTest):
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)
         cursor2._projection["cursor2"] = False
-        self.assertIn(cursor._projection and "cursor2", cursor._projection)
+        self.assertIsNotNone(cursor._projection)
+        self.assertIn("cursor2", cursor._projection)
 
         # Deepcopies and shouldn't mutate
         cursor3 = copy.deepcopy(cursor)
         cursor3._projection["cursor3"] = False
-        self.assertFalse(cursor._projection and "cursor3" in cursor._projection)
+        self.assertIsNotNone(cursor._projection)
+        self.assertNotIn("cursor3", cursor._projection)
 
         cursor4 = cursor.clone()
         cursor4._projection["cursor4"] = False
-        self.assertFalse(cursor._projection and "cursor4" in cursor._projection)
+        self.assertIsNotNone(cursor._projection)
+        self.assertNotIn("cursor4", cursor._projection)
 
         # Test memo when deepcopying queries
         query = {"hello": "world"}

@@ -292,7 +292,7 @@ class TestDatabase(IntegrationTest):
 
         # Checking only capped collections are present
         self.assertIn("test", colls)
-        self.assertFalse("test.mike" in colls)
+        self.assertNotIn("test.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
@@ -338,22 +338,22 @@ class TestDatabase(IntegrationTest):
         db.test.insert_one({"dummy": "object"})
         self.assertIn("test", db.list_collection_names())
         db.drop_collection("test")
-        self.assertFalse("test" in db.list_collection_names())
+        self.assertNotIn("test", db.list_collection_names())
 
         db.test.insert_one({"dummy": "object"})
         self.assertIn("test", db.list_collection_names())
         db.drop_collection("test")
-        self.assertFalse("test" in db.list_collection_names())
+        self.assertNotIn("test", db.list_collection_names())
 
         db.test.insert_one({"dummy": "object"})
         self.assertIn("test", db.list_collection_names())
         db.drop_collection(db.test)
-        self.assertFalse("test" in db.list_collection_names())
+        self.assertNotIn("test", db.list_collection_names())
 
         db.test.insert_one({"dummy": "object"})
         self.assertIn("test", db.list_collection_names())
         db.test.drop()
-        self.assertFalse("test" in db.list_collection_names())
+        self.assertNotIn("test", db.list_collection_names())
         db.test.drop()
 
         db.drop_collection(db.test.doesnotexist)

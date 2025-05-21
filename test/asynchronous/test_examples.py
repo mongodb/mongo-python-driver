@@ -482,19 +482,19 @@ class TestSampleShellCommands(AsyncIntegrationTest):
             self.assertIn("_id", doc)
             self.assertIn("item", doc)
             self.assertIn("status", doc)
-            self.assertFalse("size" in doc)
-            self.assertFalse("instock" in doc)
+            self.assertNotIn("size", doc)
+            self.assertNotIn("instock", doc)
 
         # Start Example 45
         cursor = db.inventory.find({"status": "A"}, {"item": 1, "status": 1, "_id": 0})
         # End Example 45
 
         async for doc in cursor:
-            self.assertFalse("_id" in doc)
+            self.assertNotIn("_id", doc)
             self.assertIn("item", doc)
             self.assertIn("status", doc)
-            self.assertFalse("size" in doc)
-            self.assertFalse("instock" in doc)
+            self.assertNotIn("size", doc)
+            self.assertNotIn("instock", doc)
 
         # Start Example 46
         cursor = db.inventory.find({"status": "A"}, {"status": 0, "instock": 0})
@@ -503,9 +503,9 @@ class TestSampleShellCommands(AsyncIntegrationTest):
         async for doc in cursor:
             self.assertIn("_id", doc)
             self.assertIn("item", doc)
-            self.assertFalse("status" in doc)
+            self.assertNotIn("status", doc)
             self.assertIn("size", doc)
-            self.assertFalse("instock" in doc)
+            self.assertNotIn("instock", doc)
 
         # Start Example 47
         cursor = db.inventory.find({"status": "A"}, {"item": 1, "status": 1, "size.uom": 1})
@@ -516,11 +516,11 @@ class TestSampleShellCommands(AsyncIntegrationTest):
             self.assertIn("item", doc)
             self.assertIn("status", doc)
             self.assertIn("size", doc)
-            self.assertFalse("instock" in doc)
+            self.assertNotIn("instock", doc)
             size = doc["size"]
             self.assertIn("uom", size)
-            self.assertFalse("h" in size)
-            self.assertFalse("w" in size)
+            self.assertNotIn("h", size)
+            self.assertNotIn("w", size)
 
         # Start Example 48
         cursor = db.inventory.find({"status": "A"}, {"size.uom": 0})
@@ -533,7 +533,7 @@ class TestSampleShellCommands(AsyncIntegrationTest):
             self.assertIn("size", doc)
             self.assertIn("instock", doc)
             size = doc["size"]
-            self.assertFalse("uom" in size)
+            self.assertNotIn("uom", size)
             self.assertIn("h", size)
             self.assertIn("w", size)
 
@@ -545,10 +545,10 @@ class TestSampleShellCommands(AsyncIntegrationTest):
             self.assertIn("_id", doc)
             self.assertIn("item", doc)
             self.assertIn("status", doc)
-            self.assertFalse("size" in doc)
+            self.assertNotIn("size", doc)
             self.assertIn("instock", doc)
             for subdoc in doc["instock"]:
-                self.assertFalse("warehouse" in subdoc)
+                self.assertNotIn("warehouse", subdoc)
                 self.assertIn("qty", subdoc)
 
         # Start Example 50
@@ -561,7 +561,7 @@ class TestSampleShellCommands(AsyncIntegrationTest):
             self.assertIn("_id", doc)
             self.assertIn("item", doc)
             self.assertIn("status", doc)
-            self.assertFalse("size" in doc)
+            self.assertNotIn("size", doc)
             self.assertIn("instock", doc)
             self.assertEqual(len(doc["instock"]), 1)
 

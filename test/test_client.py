@@ -731,7 +731,7 @@ class TestClient(IntegrationTest):
                 lambda: len(server._pool.conns) == 10,
                 "a closed socket gets replaced from the pool",
             )
-            self.assertFalse(conn in server._pool.conns)
+            self.assertNotIn(conn, server._pool.conns)
 
     def test_max_idle_time_checkout(self):
         # Use high frequency to test _get_socket_no_auth.
@@ -746,7 +746,7 @@ class TestClient(IntegrationTest):
             with server._pool.checkout() as new_con:
                 self.assertNotEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
-            self.assertFalse(conn in server._pool.conns)
+            self.assertNotIn(conn, server._pool.conns)
             self.assertIn(new_con, server._pool.conns)
 
             # Test that connections are reused if maxIdleTimeMS is not set.
