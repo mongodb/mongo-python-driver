@@ -925,7 +925,6 @@ class TestCursor(IntegrationTest):
         cursor2 = copy.copy(cursor)
         cursor2._projection["cursor2"] = False
         self.assertIsNotNone(cursor._projection)
-        print(cursor._projection.keys())
         self.assertIn("cursor2", cursor._projection.keys())
 
         # Deepcopies and shouldn't mutate
