@@ -82,8 +82,8 @@ class TestBinary(unittest.TestCase):
         a_binary = Binary(b"hello world")
         self.assertTrue(a_binary.startswith(b"hello"))
         self.assertTrue(a_binary.endswith(b"world"))
-        self.assertTrue(isinstance(a_binary, Binary))
-        self.assertFalse(isinstance(a_string, Binary))
+        self.assertIsInstance(a_binary, Binary)
+        self.assertNotIsInstance(a_string, Binary)
 
     def test_exceptions(self):
         self.assertRaises(TypeError, Binary, None)

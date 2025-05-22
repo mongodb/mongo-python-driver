@@ -150,7 +150,7 @@ class AsyncTestGridFile(AsyncIntegrationTest):
 
         a = AsyncGridIn(self.db.fs)
 
-        self.assertTrue(isinstance(a._id, ObjectId))
+        self.assertIsInstance(a._id, ObjectId)
         self.assertRaises(AttributeError, setattr, a, "_id", 5)
 
         self.assertEqual(None, a.filename)
@@ -195,7 +195,7 @@ class AsyncTestGridFile(AsyncIntegrationTest):
 
         self.assertEqual(42, a.forty_two)
 
-        self.assertTrue(isinstance(a._id, ObjectId))
+        self.assertIsInstance(a._id, ObjectId)
         self.assertRaises(AttributeError, setattr, a, "_id", 5)
 
         self.assertEqual("my_file", a.filename)
@@ -209,7 +209,7 @@ class AsyncTestGridFile(AsyncIntegrationTest):
         self.assertEqual(255 * 1024, a.chunk_size)
         self.assertRaises(AttributeError, setattr, a, "chunk_size", 5)
 
-        self.assertTrue(isinstance(a.upload_date, datetime.datetime))
+        self.assertIsInstance(a.upload_date, datetime.datetime)
         self.assertRaises(AttributeError, setattr, a, "upload_date", 5)
 
         self.assertEqual(["foo"], a.aliases)
@@ -248,7 +248,7 @@ class AsyncTestGridFile(AsyncIntegrationTest):
         self.assertEqual(None, b.name)
         self.assertEqual(None, b.filename)
         self.assertEqual(255 * 1024, b.chunk_size)
-        self.assertTrue(isinstance(b.upload_date, datetime.datetime))
+        self.assertIsInstance(b.upload_date, datetime.datetime)
         self.assertEqual(None, b.aliases)
         self.assertEqual(None, b.metadata)
         self.assertEqual(None, b.md5)
@@ -309,7 +309,7 @@ class AsyncTestGridFile(AsyncIntegrationTest):
         self.assertEqual(11, two.length)
         self.assertEqual("text/html", two.content_type)
         self.assertEqual(1000, two.chunk_size)
-        self.assertTrue(isinstance(two.upload_date, datetime.datetime))
+        self.assertIsInstance(two.upload_date, datetime.datetime)
         self.assertEqual(["foo"], two.aliases)
         self.assertEqual({"foo": 1, "bar": 2}, two.metadata)
         self.assertEqual(3, two.bar)
