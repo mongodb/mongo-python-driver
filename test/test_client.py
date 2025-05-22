@@ -211,7 +211,7 @@ class ClientUnitTest(UnitTest):
         self.assertRaises(InvalidName, make_db, self.client, "te/t")
         self.assertRaises(InvalidName, make_db, self.client, "te st")
 
-        self.assertTrue(isinstance(self.client.test, Database))
+        self.assertIsInstance(self.client.test, Database)
         self.assertEqual(self.client.test, self.client["test"])
         self.assertEqual(self.client.test, Database(self.client, "test"))
 
@@ -225,7 +225,7 @@ class ClientUnitTest(UnitTest):
         self.assertEqual(write_concern, db.write_concern)
 
     def test_getattr(self):
-        self.assertTrue(isinstance(self.client["_does_not_exist"], Database))
+        self.assertIsInstance(self.client["_does_not_exist"], Database)
 
         with self.assertRaises(AttributeError) as context:
             self.client._does_not_exist
@@ -1237,15 +1237,15 @@ class TestClient(IntegrationTest):
         db.test.insert_one({"x": 1})
 
         self.assertEqual(dict, c.codec_options.document_class)
-        self.assertTrue(isinstance(db.test.find_one(), dict))
-        self.assertFalse(isinstance(db.test.find_one(), SON))
+        self.assertIsInstance(db.test.find_one(), dict)
+        self.assertNotIsInstance(db.test.find_one(), SON)
 
         c = self.rs_or_single_client(document_class=SON)
 
         db = c.pymongo_test
 
         self.assertEqual(SON, c.codec_options.document_class)
-        self.assertTrue(isinstance(db.test.find_one(), SON))
+        self.assertIsInstance(db.test.find_one(), SON)
 
     def test_timeouts(self):
         client = self.rs_or_single_client(

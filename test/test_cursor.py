@@ -953,7 +953,7 @@ class TestCursor(IntegrationTest):
         cursor = self.db.test.find().hint([("z", 1), ("a", 1)])
         cursor2 = copy.deepcopy(cursor)
         # Internal types are now dict rather than SON by default
-        self.assertTrue(isinstance(cursor2._hint, dict))
+        self.assertIsInstance(cursor2._hint, dict)
         self.assertEqual(cursor._hint, cursor2._hint)
 
     @client_context.require_sync

@@ -281,7 +281,7 @@ class TestBulk(BulkTestBase):
         self.assertEqual(1, result.upserted_count)
         assert result.upserted_ids is not None
         self.assertEqual(1, len(result.upserted_ids))
-        self.assertTrue(isinstance(result.upserted_ids.get(0), ObjectId))
+        self.assertIsInstance(result.upserted_ids.get(0), ObjectId)
 
         self.assertEqual(self.coll.count_documents({"foo": "bar"}), 1)
 
@@ -996,7 +996,7 @@ class TestBulkWriteConcern(BulkTestBase):
 
         failed = details["writeConcernErrors"][0]
         self.assertEqual(64, failed["code"])
-        self.assertTrue(isinstance(failed["errmsg"], str))
+        self.assertIsInstance(failed["errmsg"], str)
 
         self.coll.delete_many({})
         self.coll.create_index("a", unique=True)
@@ -1101,12 +1101,12 @@ class TestBulkWriteConcern(BulkTestBase):
         failed = details["writeErrors"][0]
         self.assertEqual(2, failed["index"])
         self.assertEqual(11000, failed["code"])
-        self.assertTrue(isinstance(failed["errmsg"], str))
+        self.assertIsInstance(failed["errmsg"], str)
         self.assertEqual(1, failed["op"]["a"])
 
         failed = details["writeConcernErrors"][0]
         self.assertEqual(64, failed["code"])
-        self.assertTrue(isinstance(failed["errmsg"], str))
+        self.assertIsInstance(failed["errmsg"], str)
 
         upserts = details["upserted"]
         self.assertEqual(1, len(upserts))

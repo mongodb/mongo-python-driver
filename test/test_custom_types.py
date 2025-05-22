@@ -793,7 +793,7 @@ class TestGridFileCustomType(IntegrationTest):
         self.assertEqual(5, two._id)
         self.assertEqual(11, two.length)
         self.assertEqual(1000, two.chunk_size)
-        self.assertTrue(isinstance(two.upload_date, datetime.datetime))
+        self.assertIsInstance(two.upload_date, datetime.datetime)
         self.assertEqual({"foo": "red", "bar": "blue"}, two.metadata)
         self.assertEqual(3, two.bar)
 

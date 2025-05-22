@@ -214,7 +214,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertRaises(InvalidName, make_db, self.client, "te/t")
         self.assertRaises(InvalidName, make_db, self.client, "te st")
 
-        self.assertTrue(isinstance(self.client.test, AsyncDatabase))
+        self.assertIsInstance(self.client.test, AsyncDatabase)
         self.assertEqual(self.client.test, self.client["test"])
         self.assertEqual(self.client.test, AsyncDatabase(self.client, "test"))
 
@@ -228,7 +228,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertEqual(write_concern, db.write_concern)
 
     def test_getattr(self):
-        self.assertTrue(isinstance(self.client["_does_not_exist"], AsyncDatabase))
+        self.assertIsInstance(self.client["_does_not_exist"], AsyncDatabase)
 
         with self.assertRaises(AttributeError) as context:
             self.client._does_not_exist
@@ -1274,15 +1274,15 @@ class TestClient(AsyncIntegrationTest):
         await db.test.insert_one({"x": 1})
 
         self.assertEqual(dict, c.codec_options.document_class)
-        self.assertTrue(isinstance(await db.test.find_one(), dict))
-        self.assertFalse(isinstance(await db.test.find_one(), SON))
+        self.assertIsInstance(await db.test.find_one(), dict)
+        self.assertNotIsInstance(await db.test.find_one(), SON)
 
         c = await self.async_rs_or_single_client(document_class=SON)
 
         db = c.pymongo_test
 
         self.assertEqual(SON, c.codec_options.document_class)
-        self.assertTrue(isinstance(await db.test.find_one(), SON))
+        self.assertIsInstance(await db.test.find_one(), SON)
 
     async def test_timeouts(self):
         client = await self.async_rs_or_single_client(

@@ -111,7 +111,7 @@ class TestCollectionNoConnect(UnitTest):
 
     def test_getattr(self):
         coll = self.db.test
-        self.assertTrue(isinstance(coll["_does_not_exist"], Collection))
+        self.assertIsInstance(coll["_does_not_exist"], Collection)
 
         with self.assertRaises(AttributeError) as context:
             coll._does_not_exist
@@ -176,7 +176,7 @@ class TestCollection(IntegrationTest):
             yield self.db.test
 
     def test_equality(self):
-        self.assertTrue(isinstance(self.db.test, Collection))
+        self.assertIsInstance(self.db.test, Collection)
         self.assertEqual(self.db.test, self.db["test"])
         self.assertEqual(self.db.test, Collection(self.db, "test"))
         self.assertEqual(self.db.test.mike, self.db["test.mike"])
@@ -706,8 +706,8 @@ class TestCollection(IntegrationTest):
 
         document: dict[str, Any] = {"_id": 1000}
         result = db.test.insert_one(document)
-        self.assertTrue(isinstance(result, InsertOneResult))
-        self.assertTrue(isinstance(result.inserted_id, int))
+        self.assertIsInstance(result, InsertOneResult)
+        self.assertIsInstance(result.inserted_id, int)
         self.assertEqual(document["_id"], result.inserted_id)
         self.assertTrue(result.acknowledged)
         self.assertIsNotNone(db.test.find_one({"_id": document["_id"]}))
@@ -715,8 +715,8 @@ class TestCollection(IntegrationTest):
 
         document = {"foo": "bar"}
         result = db.test.insert_one(document)
-        self.assertTrue(isinstance(result, InsertOneResult))
-        self.assertTrue(isinstance(result.inserted_id, ObjectId))
+        self.assertIsInstance(result, InsertOneResult)
+        self.assertIsInstance(result.inserted_id, ObjectId)
         self.assertEqual(document["_id"], result.inserted_id)
         self.assertTrue(result.acknowledged)
         self.assertIsNotNone(db.test.find_one({"_id": document["_id"]}))
@@ -724,8 +724,8 @@ class TestCollection(IntegrationTest):
 
         db = db.client.get_database(db.name, write_concern=WriteConcern(w=0))
         result = db.test.insert_one(document)
-        self.assertTrue(isinstance(result, InsertOneResult))
-        self.assertTrue(isinstance(result.inserted_id, ObjectId))
+        self.assertIsInstance(result, InsertOneResult)
+        self.assertIsInstance(result.inserted_id, ObjectId)
         self.assertEqual(document["_id"], result.inserted_id)
         self.assertFalse(result.acknowledged)
         # The insert failed duplicate key...
@@ -737,7 +737,7 @@ class TestCollection(IntegrationTest):
 
         document = RawBSONDocument(encode({"_id": ObjectId(), "foo": "bar"}))
         result = db.test.insert_one(document)
-        self.assertTrue(isinstance(result, InsertOneResult))
+        self.assertIsInstance(result, InsertOneResult)
         self.assertEqual(result.inserted_id, None)
 
     def test_insert_many(self):
@@ -746,38 +746,38 @@ class TestCollection(IntegrationTest):
 
         docs: list = [{} for _ in range(5)]
         result = db.test.insert_many(docs)
-        self.assertTrue(isinstance(result, InsertManyResult))
-        self.assertTrue(isinstance(result.inserted_ids, list))
+        self.assertIsInstance(result, InsertManyResult)
+        self.assertIsInstance(result.inserted_ids, list)
         self.assertEqual(5, len(result.inserted_ids))
         for doc in docs:
             _id = doc["_id"]
-            self.assertTrue(isinstance(_id, ObjectId))
+            self.assertIsInstance(_id, ObjectId)
             self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, db.test.count_documents({"_id": _id}))
         self.assertTrue(result.acknowledged)
 
         docs = [{"_id": i} for i in range(5)]
         result = db.test.insert_many(docs)
-        self.assertTrue(isinstance(result, InsertManyResult))
-        self.assertTrue(isinstance(result.inserted_ids, list))
+        self.assertIsInstance(result, InsertManyResult)
+        self.assertIsInstance(result.inserted_ids, list)
         self.assertEqual(5, len(result.inserted_ids))
         for doc in docs:
             _id = doc["_id"]
-            self.assertTrue(isinstance(_id, int))
+            self.assertIsInstance(_id, int)
             self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, db.test.count_documents({"_id": _id}))
         self.assertTrue(result.acknowledged)
 
         docs = [RawBSONDocument(encode({"_id": i + 5})) for i in range(5)]
         result = db.test.insert_many(docs)
-        self.assertTrue(isinstance(result, InsertManyResult))
-        self.assertTrue(isinstance(result.inserted_ids, list))
+        self.assertIsInstance(result, InsertManyResult)
+        self.assertIsInstance(result.inserted_ids, list)
         self.assertEqual([], result.inserted_ids)
 
         db = db.client.get_database(db.name, write_concern=WriteConcern(w=0))
         docs: list = [{} for _ in range(5)]
         result = db.test.insert_many(docs)
-        self.assertTrue(isinstance(result, InsertManyResult))
+        self.assertIsInstance(result, InsertManyResult)
         self.assertFalse(result.acknowledged)
         self.assertEqual(20, db.test.count_documents({}))
 
@@ -818,20 +818,20 @@ class TestCollection(IntegrationTest):
         self.db.test.insert_one({"z": 1})
 
         result = self.db.test.delete_one({"x": 1})
-        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertIsInstance(result, DeleteResult)
         self.assertEqual(1, result.deleted_count)
         self.assertTrue(result.acknowledged)
         self.assertEqual(2, self.db.test.count_documents({}))
 
         result = self.db.test.delete_one({"y": 1})
-        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertIsInstance(result, DeleteResult)
         self.assertEqual(1, result.deleted_count)
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, self.db.test.count_documents({}))
 
         db = self.db.client.get_database(self.db.name, write_concern=WriteConcern(w=0))
         result = db.test.delete_one({"z": 1})
-        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertIsInstance(result, DeleteResult)
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
         self.assertFalse(result.acknowledged)
 
@@ -849,14 +849,14 @@ class TestCollection(IntegrationTest):
         self.db.test.insert_one({"y": 1})
 
         result = self.db.test.delete_many({"x": 1})
-        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertIsInstance(result, DeleteResult)
         self.assertEqual(2, result.deleted_count)
         self.assertTrue(result.acknowledged)
         self.assertEqual(0, self.db.test.count_documents({"x": 1}))
 
         db = self.db.client.get_database(self.db.name, write_concern=WriteConcern(w=0))
         result = db.test.delete_many({"y": 1})
-        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertIsInstance(result, DeleteResult)
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
         self.assertFalse(result.acknowledged)
 
@@ -908,10 +908,10 @@ class TestCollection(IntegrationTest):
         with self.assertRaises(OperationFailure):
             db.test.insert_one({"_id": 1, "x": 100})
         result = db.test.insert_one({"_id": 1, "x": 100}, bypass_document_validation=True)
-        self.assertTrue(isinstance(result, InsertOneResult))
+        self.assertIsInstance(result, InsertOneResult)
         self.assertEqual(1, result.inserted_id)
         result = db.test.insert_one({"_id": 2, "a": 0})
-        self.assertTrue(isinstance(result, InsertOneResult))
+        self.assertIsInstance(result, InsertOneResult)
         self.assertEqual(2, result.inserted_id)
 
         db_w0.test.insert_one({"y": 1}, bypass_document_validation=True)
@@ -926,21 +926,21 @@ class TestCollection(IntegrationTest):
         with self.assertRaises(OperationFailure):
             db.test.insert_many(docs)
         result = db.test.insert_many(docs, bypass_document_validation=True)
-        self.assertTrue(isinstance(result, InsertManyResult))
+        self.assertIsInstance(result, InsertManyResult)
         self.assertTrue(97, len(result.inserted_ids))
         for doc in docs:
             _id = doc["_id"]
-            self.assertTrue(isinstance(_id, int))
+            self.assertIsInstance(_id, int)
             self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, db.test.count_documents({"x": doc["x"]}))
         self.assertTrue(result.acknowledged)
         docs = [{"_id": i, "a": 200 - i} for i in range(100, 200)]
         result = db.test.insert_many(docs)
-        self.assertTrue(isinstance(result, InsertManyResult))
+        self.assertIsInstance(result, InsertManyResult)
         self.assertTrue(97, len(result.inserted_ids))
         for doc in docs:
             _id = doc["_id"]
-            self.assertTrue(isinstance(_id, int))
+            self.assertIsInstance(_id, int)
             self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, db.test.count_documents({"a": doc["a"]}))
         self.assertTrue(result.acknowledged)
@@ -1168,7 +1168,7 @@ class TestCollection(IntegrationTest):
         db.test.delete_many({})
         auto_id = {"hello": "world"}
         db.test.insert_one(auto_id)
-        self.assertTrue(isinstance(auto_id["_id"], ObjectId))
+        self.assertIsInstance(auto_id["_id"], ObjectId)
 
         numeric = {"_id": 240, "hello": "world"}
         db.test.insert_one(numeric)
@@ -1332,7 +1332,7 @@ class TestCollection(IntegrationTest):
 
         id1 = (db.test.insert_one({"x": 1})).inserted_id
         result = db.test.replace_one({"x": 1}, {"y": 1})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
         self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
@@ -1343,7 +1343,7 @@ class TestCollection(IntegrationTest):
 
         replacement = RawBSONDocument(encode({"_id": id1, "z": 1}))
         result = db.test.replace_one({"y": 1}, replacement, True)
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
         self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
@@ -1353,16 +1353,16 @@ class TestCollection(IntegrationTest):
         self.assertEqual((db.test.find_one(id1))["z"], 1)  # type: ignore
 
         result = db.test.replace_one({"x": 2}, {"y": 2}, True)
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(0, result.matched_count)
         self.assertIn(result.modified_count, (None, 0))
-        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertIsInstance(result.upserted_id, ObjectId)
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, db.test.count_documents({"y": 2}))
 
         db = db.client.get_database(db.name, write_concern=WriteConcern(w=0))
         result = db.test.replace_one({"x": 0}, {"y": 0})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertRaises(InvalidOperation, lambda: result.matched_count)
         self.assertRaises(InvalidOperation, lambda: result.modified_count)
         self.assertRaises(InvalidOperation, lambda: result.upserted_id)
@@ -1377,7 +1377,7 @@ class TestCollection(IntegrationTest):
 
         id1 = (db.test.insert_one({"x": 5})).inserted_id
         result = db.test.update_one({}, {"$inc": {"x": 1}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
         self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
@@ -1386,7 +1386,7 @@ class TestCollection(IntegrationTest):
 
         id2 = (db.test.insert_one({"x": 1})).inserted_id
         result = db.test.update_one({"x": 6}, {"$inc": {"x": 1}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
         self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
@@ -1395,15 +1395,15 @@ class TestCollection(IntegrationTest):
         self.assertEqual((db.test.find_one(id2))["x"], 1)  # type: ignore
 
         result = db.test.update_one({"x": 2}, {"$set": {"y": 1}}, True)
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(0, result.matched_count)
         self.assertIn(result.modified_count, (None, 0))
-        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertIsInstance(result.upserted_id, ObjectId)
         self.assertTrue(result.acknowledged)
 
         db = db.client.get_database(db.name, write_concern=WriteConcern(w=0))
         result = db.test.update_one({"x": 0}, {"$inc": {"x": 1}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertRaises(InvalidOperation, lambda: result.matched_count)
         self.assertRaises(InvalidOperation, lambda: result.modified_count)
         self.assertRaises(InvalidOperation, lambda: result.upserted_id)
@@ -1434,7 +1434,7 @@ class TestCollection(IntegrationTest):
         db.test.insert_one({"x": 4, "y": 4})
 
         result = db.test.update_many({"x": 4}, {"$set": {"y": 5}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(2, result.matched_count)
         self.assertIn(result.modified_count, (None, 2))
         self.assertIsNone(result.upserted_id)
@@ -1442,7 +1442,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(3, db.test.count_documents({"y": 5}))
 
         result = db.test.update_many({"x": 5}, {"$set": {"y": 6}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
         self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
@@ -1450,15 +1450,15 @@ class TestCollection(IntegrationTest):
         self.assertEqual(1, db.test.count_documents({"y": 6}))
 
         result = db.test.update_many({"x": 2}, {"$set": {"y": 1}}, True)
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(0, result.matched_count)
         self.assertIn(result.modified_count, (None, 0))
-        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertIsInstance(result.upserted_id, ObjectId)
         self.assertTrue(result.acknowledged)
 
         db = db.client.get_database(db.name, write_concern=WriteConcern(w=0))
         result = db.test.update_many({"x": 0}, {"$inc": {"x": 1}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertRaises(InvalidOperation, lambda: result.matched_count)
         self.assertRaises(InvalidOperation, lambda: result.modified_count)
         self.assertRaises(InvalidOperation, lambda: result.upserted_id)
@@ -1538,7 +1538,7 @@ class TestCollection(IntegrationTest):
 
         pipeline = {"$project": {"_id": False, "foo": True}}
         result = db.test.aggregate([pipeline])
-        self.assertTrue(isinstance(result, CommandCursor))
+        self.assertIsInstance(result, CommandCursor)
         self.assertEqual([{"foo": [1, 2]}], result.to_list())
 
         # Test write concern.
@@ -1556,7 +1556,7 @@ class TestCollection(IntegrationTest):
         pipeline = {"$project": {"_id": False, "foo": True}}
         coll = db.get_collection("test", codec_options=CodecOptions(document_class=RawBSONDocument))
         result = coll.aggregate([pipeline])
-        self.assertTrue(isinstance(result, CommandCursor))
+        self.assertIsInstance(result, CommandCursor)
         first_result = next(result)
         self.assertIsInstance(first_result, RawBSONDocument)
         self.assertEqual([1, 2], list(first_result["foo"]))
@@ -1565,7 +1565,7 @@ class TestCollection(IntegrationTest):
         db = self.db
         projection = {"$project": {"_id": "$_id"}}
         cursor = db.test.aggregate([projection], cursor={})
-        self.assertTrue(isinstance(cursor, CommandCursor))
+        self.assertIsInstance(cursor, CommandCursor)
 
     def test_aggregation_cursor(self):
         db = self.db
@@ -2186,9 +2186,9 @@ class TestCollection(IntegrationTest):
         c.drop()
         c.insert_one({"r": re.compile(".*")})
 
-        self.assertTrue(isinstance((c.find_one())["r"], Regex))  # type: ignore
+        self.assertIsInstance((c.find_one())["r"], Regex)  # type: ignore
         for doc in c.find():
-            self.assertTrue(isinstance(doc["r"], Regex))
+            self.assertIsInstance(doc["r"], Regex)
 
     def test_find_command_generation(self):
         cmd = _gen_find_command(

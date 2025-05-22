@@ -136,7 +136,7 @@ class TestGridfs(AsyncIntegrationTest):
         assert raw is not None
         self.assertEqual(0, raw["length"])
         self.assertEqual(oid, raw["_id"])
-        self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
+        self.assertIsInstance(raw["uploadDate"], datetime.datetime)
         self.assertEqual(255 * 1024, raw["chunkSize"])
         self.assertNotIn("md5", raw)
 

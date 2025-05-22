@@ -341,7 +341,7 @@ class TestJsonUtil(unittest.TestCase):
         pat = "a*b"
         json_re = '{"$regex": "%s", "$options": "u"}' % pat
         loaded = json_util.object_hook(json.loads(json_re))
-        self.assertTrue(isinstance(loaded, Regex))
+        self.assertIsInstance(loaded, Regex)
         self.assertEqual(pat, loaded.pattern)
         self.assertEqual(re.U, loaded.flags)
 
