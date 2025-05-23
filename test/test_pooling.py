@@ -545,7 +545,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         joinall(tasks)
         self.assertEqual(ntasks, self.n_passed)
-        self.assertTrue(len(cx_pool.conns) > 1)
+        self.assertGreater(len(cx_pool.conns), 1)
         self.assertEqual(0, cx_pool.requests)
 
     def test_max_pool_size_none(self):
@@ -576,7 +576,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         joinall(tasks)
         self.assertEqual(ntasks, self.n_passed)
-        self.assertTrue(len(cx_pool.conns) > 1)
+        self.assertGreater(len(cx_pool.conns), 1)
         self.assertEqual(cx_pool.max_pool_size, float("inf"))
 
     def test_max_pool_size_zero(self):
