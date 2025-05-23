@@ -331,8 +331,9 @@ class TestPooling(_TestPoolingBase):
                     pass
 
         duration = time.time() - start
-        self.assertTrue(
-            abs(wait_queue_timeout - duration) < 1,
+        self.assertLess(
+            abs(wait_queue_timeout - duration),
+            1,
             f"Waited {duration:.2f} seconds for a socket, expected {wait_queue_timeout:f}",
         )
 
