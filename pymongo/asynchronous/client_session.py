@@ -517,6 +517,7 @@ class AsyncClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
+        self._token = None
 
     async def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -555,6 +556,7 @@ class AsyncClientSession:
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         if self._token:
             _SESSION.reset(self._token)
+            self._token = None
         await self._end_session(lock=True)
 
     @property
