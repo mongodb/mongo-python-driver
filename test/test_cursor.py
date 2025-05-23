@@ -174,8 +174,8 @@ class TestCursor(IntegrationTest):
         cursor = coll.find().max_time_ms(999)
         c2 = cursor.clone()
         self.assertEqual(999, c2._max_time_ms)
-        self.assertTrue("$maxTimeMS" in cursor._query_spec())
-        self.assertTrue("$maxTimeMS" in c2._query_spec())
+        self.assertIn("$maxTimeMS", cursor._query_spec())
+        self.assertIn("$maxTimeMS", c2._query_spec())
 
         self.assertTrue(coll.find_one(max_time_ms=1000))
 
@@ -236,19 +236,19 @@ class TestCursor(IntegrationTest):
         # Tailable_defaults.
         coll.find(cursor_type=CursorType.TAILABLE_AWAIT).to_list()
         # find
-        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[0].command)
         # getMore
-        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[1].command)
         listener.reset()
 
         # Tailable_with max_await_time_ms set.
         coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[0].command)
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[1].command)
+        self.assertIn("maxTimeMS", listener.started_events[1].command)
         self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
         listener.reset()
 
@@ -259,11 +259,11 @@ class TestCursor(IntegrationTest):
             coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertIn("maxTimeMS", listener.started_events[0].command)
         self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[1].command)
         listener.reset()
 
         # Tailable_with both max_time_ms and max_await_time_ms
@@ -275,11 +275,11 @@ class TestCursor(IntegrationTest):
         )
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertIn("maxTimeMS", listener.started_events[0].command)
         self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[1].command)
+        self.assertIn("maxTimeMS", listener.started_events[1].command)
         self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
         listener.reset()
 
@@ -287,31 +287,31 @@ class TestCursor(IntegrationTest):
         coll.find(batch_size=1).max_await_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[0].command)
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[1].command)
         listener.reset()
 
         # Non tailable_await with max_time_ms
         coll.find(batch_size=1).max_time_ms(99).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertIn("maxTimeMS", listener.started_events[0].command)
         self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[1].command)
 
         # Non tailable_await with both max_time_ms and max_await_time_ms
         coll.find(batch_size=1).max_time_ms(99).max_await_time_ms(88).to_list()
         # find
         self.assertEqual("find", listener.started_events[0].command_name)
-        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertIn("maxTimeMS", listener.started_events[0].command)
         self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
-        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        self.assertNotIn("maxTimeMS", listener.started_events[1].command)
 
     @client_context.require_test_commands
     @client_context.require_no_mongos
@@ -924,16 +924,19 @@ class TestCursor(IntegrationTest):
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)
         cursor2._projection["cursor2"] = False
-        self.assertTrue(cursor._projection and "cursor2" in cursor._projection)
+        self.assertIsNotNone(cursor._projection)
+        self.assertIn("cursor2", cursor._projection.keys())
 
         # Deepcopies and shouldn't mutate
         cursor3 = copy.deepcopy(cursor)
         cursor3._projection["cursor3"] = False
-        self.assertFalse(cursor._projection and "cursor3" in cursor._projection)
+        self.assertIsNotNone(cursor._projection)
+        self.assertNotIn("cursor3", cursor._projection.keys())
 
         cursor4 = cursor.clone()
         cursor4._projection["cursor4"] = False
-        self.assertFalse(cursor._projection and "cursor4" in cursor._projection)
+        self.assertIsNotNone(cursor._projection)
+        self.assertNotIn("cursor4", cursor._projection.keys())
 
         # Test memo when deepcopying queries
         query = {"hello": "world"}

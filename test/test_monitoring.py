@@ -1086,8 +1086,8 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(started.command_name, succeeded.command_name)
         self.assertEqual(started.request_id, succeeded.request_id)
         self.assertEqual(started.connection_id, succeeded.connection_id)
-        self.assertTrue("cursor" in succeeded.reply)
-        self.assertTrue("ok" in succeeded.reply)
+        self.assertIn("cursor", succeeded.reply)
+        self.assertIn("ok", succeeded.reply)
 
         self.listener.reset()
 

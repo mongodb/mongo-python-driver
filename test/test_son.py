@@ -148,8 +148,8 @@ class TestSON(unittest.TestCase):
         """has_key and __contains__"""
         test_son = SON([(1, 100), (2, 200), (3, 300)])
         self.assertIn(1, test_son)
-        self.assertTrue(2 in test_son, "in failed")
-        self.assertFalse(22 in test_son, "in succeeded when it shouldn't")
+        self.assertIn(2, test_son, "in failed")
+        self.assertNotIn(22, test_son, "in succeeded when it shouldn't")
         self.assertTrue(test_son.has_key(2), "has_key failed")
         self.assertFalse(test_son.has_key(22), "has_key succeeded when it shouldn't")
 

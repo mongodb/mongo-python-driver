@@ -212,7 +212,7 @@ class TestCollection(IntegrationTest):
 
     def test_drop_nonexistent_collection(self):
         self.db.drop_collection("test")
-        self.assertFalse("test" in self.db.list_collection_names())
+        self.assertNotIn("test", self.db.list_collection_names())
 
         # No exception
         self.db.drop_collection("test")
@@ -248,7 +248,7 @@ class TestCollection(IntegrationTest):
         db.test.drop_indexes()
         self.assertEqual(len(db.test.index_information()), 1)
         db.test.create_indexes([IndexModel("hello")])
-        self.assertTrue("hello_1" in db.test.index_information())
+        self.assertIn("hello_1", db.test.index_information())
 
         db.test.drop_indexes()
         self.assertEqual(len(db.test.index_information()), 1)
@@ -257,7 +257,7 @@ class TestCollection(IntegrationTest):
         )
         info = db.test.index_information()
         for name in names:
-            self.assertTrue(name in info)
+            self.assertIn(name, info)
 
         db.test.drop()
         db.test.insert_one({"a": 1})
@@ -309,16 +309,16 @@ class TestCollection(IntegrationTest):
         db.test.drop_indexes()
         self.assertEqual(len(db.test.index_information()), 1)
         db.test.create_index("hello")
-        self.assertTrue("hello_1" in db.test.index_information())
+        self.assertIn("hello_1", db.test.index_information())
 
         db.test.drop_indexes()
         self.assertEqual(len(db.test.index_information()), 1)
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
-        self.assertTrue("hello_-1_world_1" in db.test.index_information())
+        self.assertIn("hello_-1_world_1", db.test.index_information())
 
         db.test.drop_indexes()
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)], name=None)
-        self.assertTrue("hello_-1_world_1" in db.test.index_information())
+        self.assertIn("hello_-1_world_1", db.test.index_information())
 
         db.test.drop()
         db.test.insert_one({"a": 1})
@@ -347,7 +347,7 @@ class TestCollection(IntegrationTest):
         with self.assertRaises(OperationFailure):
             db.test.drop_index(name)
         self.assertEqual(len(db.test.index_information()), 2)
-        self.assertTrue("hello_1" in db.test.index_information())
+        self.assertIn("hello_1", db.test.index_information())
 
         db.test.drop_indexes()
         db.test.create_index("hello")
@@ -357,7 +357,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(name, "goodbye_1")
         db.test.drop_index([("goodbye", ASCENDING)])
         self.assertEqual(len(db.test.index_information()), 2)
-        self.assertTrue("hello_1" in db.test.index_information())
+        self.assertIn("hello_1", db.test.index_information())
 
         with self.write_concern_collection() as coll:
             coll.drop_index("hello_1")
@@ -389,7 +389,7 @@ class TestCollection(IntegrationTest):
 
         indexes = (db.test.list_indexes()).to_list()
         self.assertEqual(len(indexes), 1)
-        self.assertTrue("_id_" in map_indexes(indexes))
+        self.assertIn("_id_", map_indexes(indexes))
 
         db.test.create_index("hello")
         indexes = (db.test.list_indexes()).to_list()
@@ -418,7 +418,7 @@ class TestCollection(IntegrationTest):
         db.test.drop()
         db.test.insert_one({})  # create collection
         self.assertEqual(len(db.test.index_information()), 1)
-        self.assertTrue("_id_" in db.test.index_information())
+        self.assertIn("_id_", db.test.index_information())
 
         db.test.create_index("hello")
         self.assertEqual(len(db.test.index_information()), 2)
@@ -478,7 +478,7 @@ class TestCollection(IntegrationTest):
         db.test.drop_indexes()
         self.assertEqual("t_text", db.test.create_index([("t", TEXT)]))
         index_info = (db.test.index_information())["t_text"]
-        self.assertTrue("weights" in index_info)
+        self.assertIn("weights", index_info)
 
         db.test.insert_many(
             [{"t": "spam eggs and spam"}, {"t": "spam"}, {"t": "egg sausage and bacon"}]
@@ -539,7 +539,7 @@ class TestCollection(IntegrationTest):
         db.test.create_index([("keya", ASCENDING)])
         db.test.create_index([("keyb", ASCENDING)], background=False)
         db.test.create_index([("keyc", ASCENDING)], background=True)
-        self.assertFalse("background" in (db.test.index_information())["keya_1"])
+        self.assertNotIn("background", (db.test.index_information())["keya_1"])
         self.assertFalse((db.test.index_information())["keyb_1"]["background"])
         self.assertTrue((db.test.index_information())["keyc_1"]["background"])
 
@@ -690,7 +690,7 @@ class TestCollection(IntegrationTest):
 
         doc = next(db.test.find({}, {"_id": False}))
         l = list(doc)
-        self.assertFalse("_id" in l)
+        self.assertNotIn("_id", l)
 
     def test_options(self):
         db = self.db
@@ -752,7 +752,7 @@ class TestCollection(IntegrationTest):
         for doc in docs:
             _id = doc["_id"]
             self.assertIsInstance(_id, ObjectId)
-            self.assertTrue(_id in result.inserted_ids)
+            self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, db.test.count_documents({"_id": _id}))
         self.assertTrue(result.acknowledged)
 
@@ -764,7 +764,7 @@ class TestCollection(IntegrationTest):
         for doc in docs:
             _id = doc["_id"]
             self.assertIsInstance(_id, int)
-            self.assertTrue(_id in result.inserted_ids)
+            self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, db.test.count_documents({"_id": _id}))
         self.assertTrue(result.acknowledged)
 
@@ -931,7 +931,7 @@ class TestCollection(IntegrationTest):
         for doc in docs:
             _id = doc["_id"]
             self.assertIsInstance(_id, int)
-            self.assertTrue(_id in result.inserted_ids)
+            self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, db.test.count_documents({"x": doc["x"]}))
         self.assertTrue(result.acknowledged)
         docs = [{"_id": i, "a": 200 - i} for i in range(100, 200)]
@@ -941,7 +941,7 @@ class TestCollection(IntegrationTest):
         for doc in docs:
             _id = doc["_id"]
             self.assertIsInstance(_id, int)
-            self.assertTrue(_id in result.inserted_ids)
+            self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, db.test.count_documents({"a": doc["a"]}))
         self.assertTrue(result.acknowledged)
 
@@ -1117,23 +1117,23 @@ class TestCollection(IntegrationTest):
         db.test.insert_one({"x": 1, "mike": "awesome", "extra thing": "abcdefghijklmnopqrstuvwxyz"})
         self.assertEqual(1, db.test.count_documents({}))
         doc = next(db.test.find({}))
-        self.assertTrue("x" in doc)
+        self.assertIn("x", doc)
         doc = next(db.test.find({}))
-        self.assertTrue("mike" in doc)
+        self.assertIn("mike", doc)
         doc = next(db.test.find({}))
-        self.assertTrue("extra thing" in doc)
+        self.assertIn("extra thing", doc)
         doc = next(db.test.find({}, ["x", "mike"]))
-        self.assertTrue("x" in doc)
+        self.assertIn("x", doc)
         doc = next(db.test.find({}, ["x", "mike"]))
-        self.assertTrue("mike" in doc)
+        self.assertIn("mike", doc)
         doc = next(db.test.find({}, ["x", "mike"]))
-        self.assertFalse("extra thing" in doc)
+        self.assertNotIn("extra thing", doc)
         doc = next(db.test.find({}, ["mike"]))
-        self.assertFalse("x" in doc)
+        self.assertNotIn("x", doc)
         doc = next(db.test.find({}, ["mike"]))
-        self.assertTrue("mike" in doc)
+        self.assertIn("mike", doc)
         doc = next(db.test.find({}, ["mike"]))
-        self.assertFalse("extra thing" in doc)
+        self.assertNotIn("extra thing", doc)
 
     @no_type_check
     def test_fields_specifier_as_dict(self):
@@ -1144,8 +1144,8 @@ class TestCollection(IntegrationTest):
 
         self.assertEqual([1, 2, 3], (db.test.find_one())["x"])
         self.assertEqual([2, 3], (db.test.find_one(projection={"x": {"$slice": -2}}))["x"])
-        self.assertTrue("x" not in db.test.find_one(projection={"x": 0}))
-        self.assertTrue("mike" in db.test.find_one(projection={"x": 0}))
+        self.assertNotIn("x", db.test.find_one(projection={"x": 0}))
+        self.assertIn("mike", db.test.find_one(projection={"x": 0}))
 
     def test_find_w_regex(self):
         db = self.db
@@ -1180,7 +1180,7 @@ class TestCollection(IntegrationTest):
 
         for x in db.test.find():
             self.assertEqual(x["hello"], "world")
-            self.assertTrue("_id" in x)
+            self.assertIn("_id", x)
 
     def test_unique_index(self):
         db = self.db
@@ -1300,7 +1300,7 @@ class TestCollection(IntegrationTest):
         try:
             self.db.test.update_many({}, {"$thismodifierdoesntexist": 1})
         except OperationFailure as exc:
-            self.assertTrue(exc.code in (9, 10147, 16840, 17009))
+            self.assertIn(exc.code, (9, 10147, 16840, 17009))
             # Just check that we set the error document. Fields
             # vary by MongoDB version.
             self.assertTrue(exc.details is not None)
@@ -1334,7 +1334,7 @@ class TestCollection(IntegrationTest):
         result = db.test.replace_one({"x": 1}, {"y": 1})
         self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, db.test.count_documents({"y": 1}))
@@ -1345,7 +1345,7 @@ class TestCollection(IntegrationTest):
         result = db.test.replace_one({"y": 1}, replacement, True)
         self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, db.test.count_documents({"z": 1}))
@@ -1355,7 +1355,7 @@ class TestCollection(IntegrationTest):
         result = db.test.replace_one({"x": 2}, {"y": 2}, True)
         self.assertIsInstance(result, UpdateResult)
         self.assertEqual(0, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 0))
+        self.assertIn(result.modified_count, (None, 0))
         self.assertIsInstance(result.upserted_id, ObjectId)
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, db.test.count_documents({"y": 2}))
@@ -1379,7 +1379,7 @@ class TestCollection(IntegrationTest):
         result = db.test.update_one({}, {"$inc": {"x": 1}})
         self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual((db.test.find_one(id1))["x"], 6)  # type: ignore
@@ -1388,7 +1388,7 @@ class TestCollection(IntegrationTest):
         result = db.test.update_one({"x": 6}, {"$inc": {"x": 1}})
         self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual((db.test.find_one(id1))["x"], 7)  # type: ignore
@@ -1397,7 +1397,7 @@ class TestCollection(IntegrationTest):
         result = db.test.update_one({"x": 2}, {"$set": {"y": 1}}, True)
         self.assertIsInstance(result, UpdateResult)
         self.assertEqual(0, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 0))
+        self.assertIn(result.modified_count, (None, 0))
         self.assertIsInstance(result.upserted_id, ObjectId)
         self.assertTrue(result.acknowledged)
 
@@ -1436,7 +1436,7 @@ class TestCollection(IntegrationTest):
         result = db.test.update_many({"x": 4}, {"$set": {"y": 5}})
         self.assertIsInstance(result, UpdateResult)
         self.assertEqual(2, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 2))
+        self.assertIn(result.modified_count, (None, 2))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual(3, db.test.count_documents({"y": 5}))
@@ -1444,7 +1444,7 @@ class TestCollection(IntegrationTest):
         result = db.test.update_many({"x": 5}, {"$set": {"y": 6}})
         self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, db.test.count_documents({"y": 6}))
@@ -1452,7 +1452,7 @@ class TestCollection(IntegrationTest):
         result = db.test.update_many({"x": 2}, {"$set": {"y": 1}}, True)
         self.assertIsInstance(result, UpdateResult)
         self.assertEqual(0, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 0))
+        self.assertIn(result.modified_count, (None, 0))
         self.assertIsInstance(result.upserted_id, ObjectId)
         self.assertTrue(result.acknowledged)
 
@@ -1707,21 +1707,21 @@ class TestCollection(IntegrationTest):
         self.assertEqual(db.test.find_one({}), db.test.find_one())
         self.assertEqual(db.test.find_one({"hello": "world"}), db.test.find_one())
 
-        self.assertTrue("hello" in db.test.find_one(projection=["hello"]))
-        self.assertTrue("hello" not in db.test.find_one(projection=["foo"]))
+        self.assertIn("hello", db.test.find_one(projection=["hello"]))
+        self.assertNotIn("hello", db.test.find_one(projection=["foo"]))
 
-        self.assertTrue("hello" in db.test.find_one(projection=("hello",)))
-        self.assertTrue("hello" not in db.test.find_one(projection=("foo",)))
+        self.assertIn("hello", db.test.find_one(projection=("hello",)))
+        self.assertNotIn("hello", db.test.find_one(projection=("foo",)))
 
-        self.assertTrue("hello" in db.test.find_one(projection={"hello"}))
-        self.assertTrue("hello" not in db.test.find_one(projection={"foo"}))
+        self.assertIn("hello", db.test.find_one(projection={"hello"}))
+        self.assertNotIn("hello", db.test.find_one(projection={"foo"}))
 
-        self.assertTrue("hello" in db.test.find_one(projection=frozenset(["hello"])))
-        self.assertTrue("hello" not in db.test.find_one(projection=frozenset(["foo"])))
+        self.assertIn("hello", db.test.find_one(projection=frozenset(["hello"])))
+        self.assertNotIn("hello", db.test.find_one(projection=frozenset(["foo"])))
 
         self.assertEqual(["_id"], list(db.test.find_one(projection={"_id": True})))
-        self.assertTrue("hello" in list(db.test.find_one(projection={})))
-        self.assertTrue("hello" in list(db.test.find_one(projection=[])))
+        self.assertIn("hello", list(db.test.find_one(projection={})))
+        self.assertIn("hello", list(db.test.find_one(projection=[])))
 
         self.assertEqual(None, db.test.find_one({"hello": "foo"}))
         self.assertEqual(None, db.test.find_one(ObjectId()))

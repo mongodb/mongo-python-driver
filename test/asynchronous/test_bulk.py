@@ -94,7 +94,7 @@ class AsyncBulkTestBase(AsyncIntegrationTest):
         self.assertEqual(expected["index"], actual["index"])
         if expected["_id"] == "...":
             # Unspecified value.
-            self.assertTrue("_id" in actual)
+            self.assertIn("_id", actual)
         else:
             self.assertEqual(expected["_id"], actual["_id"])
 
@@ -107,7 +107,7 @@ class AsyncBulkTestBase(AsyncIntegrationTest):
         self.assertEqual(expected["code"], actual["code"])
         if expected["errmsg"] == "...":
             # Unspecified value.
-            self.assertTrue("errmsg" in actual)
+            self.assertIn("errmsg", actual)
         else:
             self.assertEqual(expected["errmsg"], actual["errmsg"])
 
@@ -115,7 +115,7 @@ class AsyncBulkTestBase(AsyncIntegrationTest):
         actual_op = actual["op"].copy()
         if expected_op.get("_id") == "...":
             # Unspecified _id.
-            self.assertTrue("_id" in actual_op)
+            self.assertIn("_id", actual_op)
             actual_op.pop("_id")
             expected_op.pop("_id")
 
@@ -160,7 +160,7 @@ class AsyncTestBulk(AsyncBulkTestBase):
         result = await self.coll.bulk_write([UpdateMany({}, update)])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(2, result.matched_count)
-        self.assertTrue(result.modified_count in (2, None))
+        self.assertIn(result.modified_count, (2, None))
 
     async def test_update_many(self):
         await self._test_update_many({"$set": {"foo": "bar"}})
@@ -201,7 +201,7 @@ class AsyncTestBulk(AsyncBulkTestBase):
         result = await self.coll.bulk_write([UpdateOne({}, update)])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (1, None))
+        self.assertIn(result.modified_count, (1, None))
 
     async def test_update_one(self):
         await self._test_update_one({"$set": {"foo": "bar"}})
@@ -227,7 +227,7 @@ class AsyncTestBulk(AsyncBulkTestBase):
         result = await self.coll.bulk_write([ReplaceOne({}, {"foo": "bar"})])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (1, None))
+        self.assertIn(result.modified_count, (1, None))
 
     async def test_remove(self):
         # Test removing all documents, ordered.
@@ -1037,7 +1037,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
 
         self.assertTrue(len(details["writeConcernErrors"]) > 1)
         failed = details["writeErrors"][0]
-        self.assertTrue("duplicate" in failed["errmsg"])
+        self.assertIn("duplicate", failed["errmsg"])
 
     @async_client_context.require_version_max(7, 1)  # PYTHON-4560
     @async_client_context.require_replica_set
