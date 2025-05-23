@@ -130,7 +130,7 @@ if "--no_ext" in sys.argv or os.environ.get("NO_EXT"):
     except ValueError:
         pass
     ext_modules = []
-elif sys.platform.startswith("java") or sys.platform == "cli" or sys.implementation.name in ('pypy', 'graalpy'):
+elif sys.platform.startswith("java") or sys.platform == "cli" or sys.implementation.name in ("pypy", "graalpy"):
     sys.stdout.write(
         """
 *****************************************************\n
