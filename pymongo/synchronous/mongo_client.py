@@ -107,7 +107,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous import client_session, database, uri_parser
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
-from pymongo.synchronous.client_session import _SESSION, _EmptyServerSession
+from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
@@ -1353,11 +1353,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _start_session(self, implicit: bool, **kwargs: Any) -> ClientSession:
         server_session = _EmptyServerSession()
         opts = client_session.SessionOptions(**kwargs)
-        bind = opts._bind
-        session = client_session.ClientSession(self, server_session, opts, implicit)
-        if bind:
-            _SESSION.set(session)
-        return session
+        return client_session.ClientSession(self, server_session, opts, implicit)
 
     def start_session(
         self,
