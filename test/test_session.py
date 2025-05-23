@@ -396,6 +396,23 @@ class TestSession(IntegrationTest):
         cursor.close()
         clone.close()
 
+    def test_bind_session(self):
+        coll = self.client.pymongo_test.collection
+
+        # Explicit session via context variable.
+        with self.client.start_session(bind=True) as s:
+            cursor = coll.find()
+            self.assertTrue(cursor.session is s)
+
+        # Nested sessions.
+        session1 = self.client.start_session(bind=True)
+        with session1:
+            session2 = self.client.start_session(bind=True)
+            with session2:
+                coll.find_one()  # uses session2
+            coll.find_one()  # uses session1
+        coll.find_one()  # uses implicit session
+
     def test_cursor(self):
         listener = self.listener
         client = self.client
