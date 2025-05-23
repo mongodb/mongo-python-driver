@@ -548,7 +548,8 @@ class AsyncClientSession:
             raise InvalidOperation("Cannot use ended session")
 
     async def __aenter__(self) -> AsyncClientSession:
-        self._token = _SESSION.set(self)
+        if self._options._bind:
+            self._token = _SESSION.set(self)
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
