@@ -51,6 +51,8 @@ from pymongo.synchronous.auth_oidc import (
 )
 from pymongo.synchronous.uri_parser import parse_uri
 
+_IS_SYNC = True
+
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
 ENVIRON = os.environ.get("OIDC_ENV", "test")
@@ -86,7 +88,7 @@ class OIDCTestBase(PyMongoTestCase):
                 token_file = TOKEN_FILE
             else:
                 token_file = os.path.join(TOKEN_DIR, username)
-            with open(token_file) as fid:
+            with open(token_file) as fid:  # noqa: ASYNC101,RUF100
                 return fid.read()
         elif ENVIRON == "azure":
             opts = parse_uri(self.uri_single)["options"]
@@ -183,7 +185,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = self.create_client(username="test_user1")
         # Perform a find operation that succeeds.
         client.test.test.find_one()
-        # Close the client..
+        # Close the client.
         client.close()
 
     def test_1_3_multiple_principal_user_1(self):
@@ -255,7 +257,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         with self.assertRaises(ConfigurationError), warnings.catch_warnings():
             warnings.simplefilter("ignore")
             _ = MongoClient(
-                uri, authmechanismproperties=dict(OIDC_HUMAN_CALLBACK=self.create_request_cb())
+                uri,
+                authmechanismproperties=dict(OIDC_HUMAN_CALLBACK=self.create_request_cb()),
             )
 
     def test_1_8_machine_idp_human_callback(self):
@@ -634,7 +637,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         ):
             # Perform a bulk read operation.
             cursor = client.test.test.find_raw_batches({})
-            list(cursor)
+            cursor.to_list()
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -658,7 +661,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         ):
             # Perform a find operation.
             cursor = client.test.test.find({"a": 1})
-            self.assertGreaterEqual(len(list(cursor)), 1)
+            self.assertGreaterEqual(len(cursor.to_list()), 1)
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -682,7 +685,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         ):
             # Perform a find operation.
             cursor = client.test.test.find({"a": 1}, batch_size=1)
-            self.assertGreaterEqual(len(list(cursor)), 1)
+            self.assertGreaterEqual(len(cursor.to_list()), 1)
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -712,7 +715,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         ):
             # Perform a find operation.
             cursor = client.test.test.find({"a": 1}, batch_size=1, cursor_type=CursorType.EXHAUST)
-            self.assertGreaterEqual(len(list(cursor)), 1)
+            self.assertGreaterEqual(len(cursor.to_list()), 1)
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -737,7 +740,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             # Perform a count operation.
             cursor = client.test.command({"count": "test"})
 
-        self.assertGreaterEqual(len(list(cursor)), 1)
+        self.assertGreaterEqual(len(cursor), 1)
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -786,6 +789,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Assert that the callback was called 1 time.
         self.assertEqual(self.request_called, 1)
 
+    # TODO REPLACE THREADS WITH TASKS
     def test_1_2_callback_is_called_once_for_multiple_connections(self):
         # Create a ``MongoClient`` configured with a custom OIDC callback that
         # implements the provider logic.
