@@ -90,7 +90,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
 
     def test_getattr(self):
         db = self.client.pymongo_test
-        self.assertTrue(isinstance(db["_does_not_exist"], Collection))
+        self.assertIsInstance(db["_does_not_exist"], Collection)
 
         with self.assertRaises(AttributeError) as context:
             db._does_not_exist
@@ -162,13 +162,13 @@ class TestDatabase(IntegrationTest):
             db.create_collection("coll..ection")  # type: ignore[arg-type]
 
         test = db.create_collection("test")
-        self.assertTrue("test" in db.list_collection_names())
+        self.assertIn("test", db.list_collection_names())
         test.insert_one({"hello": "world"})
         self.assertEqual((db.test.find_one())["hello"], "world")
 
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
-        self.assertTrue("test.foo" in db.list_collection_names())
+        self.assertIn("test.foo", db.list_collection_names())
         with self.assertRaises(CollectionInvalid):
             db.create_collection("test.foo")
 
@@ -178,10 +178,10 @@ class TestDatabase(IntegrationTest):
         db.test.mike.insert_one({"dummy": "object"})
 
         colls = db.list_collection_names()
-        self.assertTrue("test" in colls)
-        self.assertTrue("test.mike" in colls)
+        self.assertIn("test", colls)
+        self.assertIn("test.mike", colls)
         for coll in colls:
-            self.assertTrue("$" not in coll)
+            self.assertNotIn("$", coll)
 
         db.systemcoll.test.insert_one({})
         no_system_collections = db.list_collection_names(
@@ -251,12 +251,12 @@ class TestDatabase(IntegrationTest):
         colls = [result["name"] for result in results]
 
         # All the collections present.
-        self.assertTrue("test" in colls)
-        self.assertTrue("test.mike" in colls)
+        self.assertIn("test", colls)
+        self.assertIn("test.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
-            self.assertTrue("$" not in coll)
+            self.assertNotIn("$", coll)
 
         # Duplicate check.
         coll_cnt: dict = {}
@@ -291,12 +291,12 @@ class TestDatabase(IntegrationTest):
         colls = [result["name"] for result in results]
 
         # Checking only capped collections are present
-        self.assertTrue("test" in colls)
-        self.assertFalse("test.mike" in colls)
+        self.assertIn("test", colls)
+        self.assertNotIn("test.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
-            self.assertTrue("$" not in coll)
+            self.assertNotIn("$", coll)
 
         # Duplicate check.
         coll_cnt = {}
@@ -336,24 +336,24 @@ class TestDatabase(IntegrationTest):
             db.drop_collection(None)  # type: ignore[arg-type]
 
         db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in db.list_collection_names())
+        self.assertIn("test", db.list_collection_names())
         db.drop_collection("test")
-        self.assertFalse("test" in db.list_collection_names())
+        self.assertNotIn("test", db.list_collection_names())
 
         db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in db.list_collection_names())
+        self.assertIn("test", db.list_collection_names())
         db.drop_collection("test")
-        self.assertFalse("test" in db.list_collection_names())
+        self.assertNotIn("test", db.list_collection_names())
 
         db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in db.list_collection_names())
+        self.assertIn("test", db.list_collection_names())
         db.drop_collection(db.test)
-        self.assertFalse("test" in db.list_collection_names())
+        self.assertNotIn("test", db.list_collection_names())
 
         db.test.insert_one({"dummy": "object"})
-        self.assertTrue("test" in db.list_collection_names())
+        self.assertIn("test", db.list_collection_names())
         db.test.drop()
-        self.assertFalse("test" in db.list_collection_names())
+        self.assertNotIn("test", db.list_collection_names())
         db.test.drop()
 
         db.drop_collection(db.test.doesnotexist)
@@ -423,7 +423,7 @@ class TestDatabase(IntegrationTest):
 
         result = db.command("aggregate", "test", pipeline=[], cursor={})
         for doc in result["cursor"]["firstBatch"]:
-            self.assertTrue(isinstance(doc["r"], Regex))
+            self.assertIsInstance(doc["r"], Regex)
 
     def test_command_bulkWrite(self):
         # Ensure bulk write commands can be run directly via db.command().
@@ -467,7 +467,7 @@ class TestDatabase(IntegrationTest):
         with self.assertRaises(TypeError):
             auth._password_digest(None)  # type: ignore[arg-type, call-arg]
 
-        self.assertTrue(isinstance(auth._password_digest("mike", "password"), str))
+        self.assertIsInstance(auth._password_digest("mike", "password"), str)
         self.assertEqual(
             auth._password_digest("mike", "password"), "cd7e45b3b2767dc2fa9b6b548457ed00"
         )
@@ -538,7 +538,7 @@ class TestDatabase(IntegrationTest):
 
         a_doc = SON({"hello": "world"})
         a_key = (db.test.insert_one(a_doc)).inserted_id
-        self.assertTrue(isinstance(a_doc["_id"], ObjectId))
+        self.assertIsInstance(a_doc["_id"], ObjectId)
         self.assertEqual(a_doc["_id"], a_key)
         self.assertEqual(a_doc, db.test.find_one({"_id": a_doc["_id"]}))
         self.assertEqual(a_doc, db.test.find_one(a_key))

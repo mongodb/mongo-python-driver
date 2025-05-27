@@ -134,8 +134,9 @@ class TestSession(AsyncIntegrationTest):
                 await f(*args, **kw)
                 self.assertGreaterEqual(len(listener.started_events), 1)
                 for event in listener.started_events:
-                    self.assertTrue(
-                        "lsid" in event.command,
+                    self.assertIn(
+                        "lsid",
+                        event.command,
                         f"{f.__name__} sent no lsid with {event.command_name}",
                     )
 
@@ -170,8 +171,9 @@ class TestSession(AsyncIntegrationTest):
             self.assertGreaterEqual(len(listener.started_events), 1)
             lsids = []
             for event in listener.started_events:
-                self.assertTrue(
-                    "lsid" in event.command,
+                self.assertIn(
+                    "lsid",
+                    event.command,
                     f"{f.__name__} sent no lsid with {event.command_name}",
                 )
 
@@ -422,8 +424,9 @@ class TestSession(AsyncIntegrationTest):
                 await f(session=s)
                 self.assertGreaterEqual(len(listener.started_events), 1)
                 for event in listener.started_events:
-                    self.assertTrue(
-                        "lsid" in event.command,
+                    self.assertIn(
+                        "lsid",
+                        event.command,
                         f"{name} sent no lsid with {event.command_name}",
                     )
 
@@ -441,15 +444,13 @@ class TestSession(AsyncIntegrationTest):
             listener.reset()
             await f(session=None)
             event0 = listener.first_command_started()
-            self.assertTrue(
-                "lsid" in event0.command, f"{name} sent no lsid with {event0.command_name}"
-            )
+            self.assertIn("lsid", event0.command, f"{name} sent no lsid with {event0.command_name}")
 
             lsid = event0.command["lsid"]
 
             for event in listener.started_events[1:]:
-                self.assertTrue(
-                    "lsid" in event.command, f"{name} sent no lsid with {event.command_name}"
+                self.assertIn(
+                    "lsid", event.command, f"{name} sent no lsid with {event.command_name}"
                 )
 
                 self.assertEqual(
@@ -1201,15 +1202,17 @@ class TestClusterTime(AsyncIntegrationTest):
 
             self.assertGreaterEqual(len(listener.started_events), 1)
             for i, event in enumerate(listener.started_events):
-                self.assertTrue(
-                    "$clusterTime" in event.command,
+                self.assertIn(
+                    "$clusterTime",
+                    event.command,
                     f"{f.__name__} sent no $clusterTime with {event.command_name}",
                 )
 
                 if i > 0:
                     succeeded = listener.succeeded_events[i - 1]
-                    self.assertTrue(
-                        "$clusterTime" in succeeded.reply,
+                    self.assertIn(
+                        "$clusterTime",
+                        succeeded.reply,
                         f"{f.__name__} received no $clusterTime with {succeeded.command_name}",
                     )
 

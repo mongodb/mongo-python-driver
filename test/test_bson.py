@@ -142,7 +142,7 @@ class TestBSON(unittest.TestCase):
 
         helper({})
         helper({"test": "hello"})
-        self.assertTrue(isinstance(decoder(encoder({"hello": "world"}))["hello"], str))
+        self.assertIsInstance(decoder(encoder({"hello": "world"}))["hello"], str)
         helper({"mike": -10120})
         helper({"long": Int64(10)})
         helper({"really big long": 2147483648})
@@ -557,7 +557,7 @@ class TestBSON(unittest.TestCase):
             try:
                 decode(bs)
             except Exception as exc:
-                self.assertTrue(isinstance(exc, InvalidBSON))
+                self.assertIsInstance(exc, InvalidBSON)
                 self.assertIn(part, str(exc))
             else:
                 self.fail("Failed to raise an exception.")
@@ -722,7 +722,7 @@ class TestBSON(unittest.TestCase):
 
         opts = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
         transformed_id = decode(encode({"id": id}, codec_options=opts), codec_options=opts)["id"]
-        self.assertTrue(isinstance(transformed_id, uuid.UUID))
+        self.assertIsInstance(transformed_id, uuid.UUID)
         self.assertEqual(id, transformed_id)
         self.assertNotEqual(uuid.uuid4(), transformed_id)
 
@@ -731,7 +731,7 @@ class TestBSON(unittest.TestCase):
         legacy = Binary.from_uuid(id, UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(3, legacy.subtype)
         bin = decode(encode({"uuid": legacy}))["uuid"]
-        self.assertTrue(isinstance(bin, Binary))
+        self.assertIsInstance(bin, Binary)
         transformed = bin.as_uuid(UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(id, transformed)
 
@@ -787,7 +787,7 @@ class TestBSON(unittest.TestCase):
             try:
                 Binary.from_vector([x], BinaryVectorDtype.PACKED_BIT)
             except Exception as exc:
-                self.assertTrue(isinstance(exc, struct.error))
+                self.assertIsInstance(exc, struct.error)
             else:
                 self.fail("Failed to raise an exception.")
 
@@ -886,7 +886,7 @@ class TestBSON(unittest.TestCase):
         y = {"hello": iso8859_bytes}
         # Stored as BSON binary subtype 0.
         out = decode(encode(y))
-        self.assertTrue(isinstance(out["hello"], bytes))
+        self.assertIsInstance(out["hello"], bytes)
         self.assertEqual(out["hello"], iso8859_bytes)
 
     def test_null_character(self):

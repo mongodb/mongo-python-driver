@@ -160,6 +160,16 @@ class TypeRegistry:
                     f"Expected an instance of {TypeEncoder.__name__}, {TypeDecoder.__name__}, or {TypeCodec.__name__}, got {codec!r} instead"
                 )
 
+    @property
+    def codecs(self) -> list[TypeEncoder | TypeDecoder | TypeCodec]:
+        """The list of type codecs in this registry."""
+        return self.__type_codecs
+
+    @property
+    def fallback_encoder(self) -> Optional[_Fallback]:
+        """The fallback encoder in this registry."""
+        return self._fallback_encoder
+
     def _validate_type_encoder(self, codec: _Codec) -> None:
         from bson import _BUILT_IN_TYPES
 

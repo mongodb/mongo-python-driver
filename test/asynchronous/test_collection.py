@@ -111,7 +111,7 @@ class TestCollectionNoConnect(AsyncUnitTest):
 
     def test_getattr(self):
         coll = self.db.test
-        self.assertTrue(isinstance(coll["_does_not_exist"], AsyncCollection))
+        self.assertIsInstance(coll["_does_not_exist"], AsyncCollection)
 
         with self.assertRaises(AttributeError) as context:
             coll._does_not_exist
@@ -176,7 +176,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
             yield self.db.test
 
     async def test_equality(self):
-        self.assertTrue(isinstance(self.db.test, AsyncCollection))
+        self.assertIsInstance(self.db.test, AsyncCollection)
         self.assertEqual(self.db.test, self.db["test"])
         self.assertEqual(self.db.test, AsyncCollection(self.db, "test"))
         self.assertEqual(self.db.test.mike, self.db["test.mike"])
@@ -212,7 +212,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
     async def test_drop_nonexistent_collection(self):
         await self.db.drop_collection("test")
-        self.assertFalse("test" in await self.db.list_collection_names())
+        self.assertNotIn("test", await self.db.list_collection_names())
 
         # No exception
         await self.db.drop_collection("test")
@@ -248,7 +248,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.drop_indexes()
         self.assertEqual(len(await db.test.index_information()), 1)
         await db.test.create_indexes([IndexModel("hello")])
-        self.assertTrue("hello_1" in await db.test.index_information())
+        self.assertIn("hello_1", await db.test.index_information())
 
         await db.test.drop_indexes()
         self.assertEqual(len(await db.test.index_information()), 1)
@@ -257,7 +257,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         )
         info = await db.test.index_information()
         for name in names:
-            self.assertTrue(name in info)
+            self.assertIn(name, info)
 
         await db.test.drop()
         await db.test.insert_one({"a": 1})
@@ -311,16 +311,16 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.drop_indexes()
         self.assertEqual(len(await db.test.index_information()), 1)
         await db.test.create_index("hello")
-        self.assertTrue("hello_1" in await db.test.index_information())
+        self.assertIn("hello_1", await db.test.index_information())
 
         await db.test.drop_indexes()
         self.assertEqual(len(await db.test.index_information()), 1)
         await db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
-        self.assertTrue("hello_-1_world_1" in await db.test.index_information())
+        self.assertIn("hello_-1_world_1", await db.test.index_information())
 
         await db.test.drop_indexes()
         await db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)], name=None)
-        self.assertTrue("hello_-1_world_1" in await db.test.index_information())
+        self.assertIn("hello_-1_world_1", await db.test.index_information())
 
         await db.test.drop()
         await db.test.insert_one({"a": 1})
@@ -349,7 +349,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         with self.assertRaises(OperationFailure):
             await db.test.drop_index(name)
         self.assertEqual(len(await db.test.index_information()), 2)
-        self.assertTrue("hello_1" in await db.test.index_information())
+        self.assertIn("hello_1", await db.test.index_information())
 
         await db.test.drop_indexes()
         await db.test.create_index("hello")
@@ -359,7 +359,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertEqual(name, "goodbye_1")
         await db.test.drop_index([("goodbye", ASCENDING)])
         self.assertEqual(len(await db.test.index_information()), 2)
-        self.assertTrue("hello_1" in await db.test.index_information())
+        self.assertIn("hello_1", await db.test.index_information())
 
         with self.write_concern_collection() as coll:
             await coll.drop_index("hello_1")
@@ -395,7 +395,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         indexes = await (await db.test.list_indexes()).to_list()
         self.assertEqual(len(indexes), 1)
-        self.assertTrue("_id_" in map_indexes(indexes))
+        self.assertIn("_id_", map_indexes(indexes))
 
         await db.test.create_index("hello")
         indexes = await (await db.test.list_indexes()).to_list()
@@ -424,7 +424,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.drop()
         await db.test.insert_one({})  # create collection
         self.assertEqual(len(await db.test.index_information()), 1)
-        self.assertTrue("_id_" in await db.test.index_information())
+        self.assertIn("_id_", await db.test.index_information())
 
         await db.test.create_index("hello")
         self.assertEqual(len(await db.test.index_information()), 2)
@@ -488,7 +488,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.drop_indexes()
         self.assertEqual("t_text", await db.test.create_index([("t", TEXT)]))
         index_info = (await db.test.index_information())["t_text"]
-        self.assertTrue("weights" in index_info)
+        self.assertIn("weights", index_info)
 
         await db.test.insert_many(
             [{"t": "spam eggs and spam"}, {"t": "spam"}, {"t": "egg sausage and bacon"}]
@@ -549,7 +549,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.create_index([("keya", ASCENDING)])
         await db.test.create_index([("keyb", ASCENDING)], background=False)
         await db.test.create_index([("keyc", ASCENDING)], background=True)
-        self.assertFalse("background" in (await db.test.index_information())["keya_1"])
+        self.assertNotIn("background", (await db.test.index_information())["keya_1"])
         self.assertFalse((await db.test.index_information())["keyb_1"]["background"])
         self.assertTrue((await db.test.index_information())["keyc_1"]["background"])
 
@@ -702,7 +702,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         doc = await anext(db.test.find({}, {"_id": False}))
         l = list(doc)
-        self.assertFalse("_id" in l)
+        self.assertNotIn("_id", l)
 
     async def test_options(self):
         db = self.db
@@ -718,8 +718,8 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         document: dict[str, Any] = {"_id": 1000}
         result = await db.test.insert_one(document)
-        self.assertTrue(isinstance(result, InsertOneResult))
-        self.assertTrue(isinstance(result.inserted_id, int))
+        self.assertIsInstance(result, InsertOneResult)
+        self.assertIsInstance(result.inserted_id, int)
         self.assertEqual(document["_id"], result.inserted_id)
         self.assertTrue(result.acknowledged)
         self.assertIsNotNone(await db.test.find_one({"_id": document["_id"]}))
@@ -727,8 +727,8 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         document = {"foo": "bar"}
         result = await db.test.insert_one(document)
-        self.assertTrue(isinstance(result, InsertOneResult))
-        self.assertTrue(isinstance(result.inserted_id, ObjectId))
+        self.assertIsInstance(result, InsertOneResult)
+        self.assertIsInstance(result.inserted_id, ObjectId)
         self.assertEqual(document["_id"], result.inserted_id)
         self.assertTrue(result.acknowledged)
         self.assertIsNotNone(await db.test.find_one({"_id": document["_id"]}))
@@ -736,8 +736,8 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         db = db.client.get_database(db.name, write_concern=WriteConcern(w=0))
         result = await db.test.insert_one(document)
-        self.assertTrue(isinstance(result, InsertOneResult))
-        self.assertTrue(isinstance(result.inserted_id, ObjectId))
+        self.assertIsInstance(result, InsertOneResult)
+        self.assertIsInstance(result.inserted_id, ObjectId)
         self.assertEqual(document["_id"], result.inserted_id)
         self.assertFalse(result.acknowledged)
         # The insert failed duplicate key...
@@ -749,7 +749,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         document = RawBSONDocument(encode({"_id": ObjectId(), "foo": "bar"}))
         result = await db.test.insert_one(document)
-        self.assertTrue(isinstance(result, InsertOneResult))
+        self.assertIsInstance(result, InsertOneResult)
         self.assertEqual(result.inserted_id, None)
 
     async def test_insert_many(self):
@@ -758,38 +758,38 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         docs: list = [{} for _ in range(5)]
         result = await db.test.insert_many(docs)
-        self.assertTrue(isinstance(result, InsertManyResult))
-        self.assertTrue(isinstance(result.inserted_ids, list))
+        self.assertIsInstance(result, InsertManyResult)
+        self.assertIsInstance(result.inserted_ids, list)
         self.assertEqual(5, len(result.inserted_ids))
         for doc in docs:
             _id = doc["_id"]
-            self.assertTrue(isinstance(_id, ObjectId))
-            self.assertTrue(_id in result.inserted_ids)
+            self.assertIsInstance(_id, ObjectId)
+            self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, await db.test.count_documents({"_id": _id}))
         self.assertTrue(result.acknowledged)
 
         docs = [{"_id": i} for i in range(5)]
         result = await db.test.insert_many(docs)
-        self.assertTrue(isinstance(result, InsertManyResult))
-        self.assertTrue(isinstance(result.inserted_ids, list))
+        self.assertIsInstance(result, InsertManyResult)
+        self.assertIsInstance(result.inserted_ids, list)
         self.assertEqual(5, len(result.inserted_ids))
         for doc in docs:
             _id = doc["_id"]
-            self.assertTrue(isinstance(_id, int))
-            self.assertTrue(_id in result.inserted_ids)
+            self.assertIsInstance(_id, int)
+            self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, await db.test.count_documents({"_id": _id}))
         self.assertTrue(result.acknowledged)
 
         docs = [RawBSONDocument(encode({"_id": i + 5})) for i in range(5)]
         result = await db.test.insert_many(docs)
-        self.assertTrue(isinstance(result, InsertManyResult))
-        self.assertTrue(isinstance(result.inserted_ids, list))
+        self.assertIsInstance(result, InsertManyResult)
+        self.assertIsInstance(result.inserted_ids, list)
         self.assertEqual([], result.inserted_ids)
 
         db = db.client.get_database(db.name, write_concern=WriteConcern(w=0))
         docs: list = [{} for _ in range(5)]
         result = await db.test.insert_many(docs)
-        self.assertTrue(isinstance(result, InsertManyResult))
+        self.assertIsInstance(result, InsertManyResult)
         self.assertFalse(result.acknowledged)
         self.assertEqual(20, await db.test.count_documents({}))
 
@@ -830,20 +830,20 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await self.db.test.insert_one({"z": 1})
 
         result = await self.db.test.delete_one({"x": 1})
-        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertIsInstance(result, DeleteResult)
         self.assertEqual(1, result.deleted_count)
         self.assertTrue(result.acknowledged)
         self.assertEqual(2, await self.db.test.count_documents({}))
 
         result = await self.db.test.delete_one({"y": 1})
-        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertIsInstance(result, DeleteResult)
         self.assertEqual(1, result.deleted_count)
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, await self.db.test.count_documents({}))
 
         db = self.db.client.get_database(self.db.name, write_concern=WriteConcern(w=0))
         result = await db.test.delete_one({"z": 1})
-        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertIsInstance(result, DeleteResult)
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
         self.assertFalse(result.acknowledged)
 
@@ -861,14 +861,14 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await self.db.test.insert_one({"y": 1})
 
         result = await self.db.test.delete_many({"x": 1})
-        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertIsInstance(result, DeleteResult)
         self.assertEqual(2, result.deleted_count)
         self.assertTrue(result.acknowledged)
         self.assertEqual(0, await self.db.test.count_documents({"x": 1}))
 
         db = self.db.client.get_database(self.db.name, write_concern=WriteConcern(w=0))
         result = await db.test.delete_many({"y": 1})
-        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertIsInstance(result, DeleteResult)
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
         self.assertFalse(result.acknowledged)
 
@@ -920,10 +920,10 @@ class AsyncTestCollection(AsyncIntegrationTest):
         with self.assertRaises(OperationFailure):
             await db.test.insert_one({"_id": 1, "x": 100})
         result = await db.test.insert_one({"_id": 1, "x": 100}, bypass_document_validation=True)
-        self.assertTrue(isinstance(result, InsertOneResult))
+        self.assertIsInstance(result, InsertOneResult)
         self.assertEqual(1, result.inserted_id)
         result = await db.test.insert_one({"_id": 2, "a": 0})
-        self.assertTrue(isinstance(result, InsertOneResult))
+        self.assertIsInstance(result, InsertOneResult)
         self.assertEqual(2, result.inserted_id)
 
         await db_w0.test.insert_one({"y": 1}, bypass_document_validation=True)
@@ -938,22 +938,22 @@ class AsyncTestCollection(AsyncIntegrationTest):
         with self.assertRaises(OperationFailure):
             await db.test.insert_many(docs)
         result = await db.test.insert_many(docs, bypass_document_validation=True)
-        self.assertTrue(isinstance(result, InsertManyResult))
+        self.assertIsInstance(result, InsertManyResult)
         self.assertTrue(97, len(result.inserted_ids))
         for doc in docs:
             _id = doc["_id"]
-            self.assertTrue(isinstance(_id, int))
-            self.assertTrue(_id in result.inserted_ids)
+            self.assertIsInstance(_id, int)
+            self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, await db.test.count_documents({"x": doc["x"]}))
         self.assertTrue(result.acknowledged)
         docs = [{"_id": i, "a": 200 - i} for i in range(100, 200)]
         result = await db.test.insert_many(docs)
-        self.assertTrue(isinstance(result, InsertManyResult))
+        self.assertIsInstance(result, InsertManyResult)
         self.assertTrue(97, len(result.inserted_ids))
         for doc in docs:
             _id = doc["_id"]
-            self.assertTrue(isinstance(_id, int))
-            self.assertTrue(_id in result.inserted_ids)
+            self.assertIsInstance(_id, int)
+            self.assertIn(_id, result.inserted_ids)
             self.assertEqual(1, await db.test.count_documents({"a": doc["a"]}))
         self.assertTrue(result.acknowledged)
 
@@ -1131,23 +1131,23 @@ class AsyncTestCollection(AsyncIntegrationTest):
         )
         self.assertEqual(1, await db.test.count_documents({}))
         doc = await anext(db.test.find({}))
-        self.assertTrue("x" in doc)
+        self.assertIn("x", doc)
         doc = await anext(db.test.find({}))
-        self.assertTrue("mike" in doc)
+        self.assertIn("mike", doc)
         doc = await anext(db.test.find({}))
-        self.assertTrue("extra thing" in doc)
+        self.assertIn("extra thing", doc)
         doc = await anext(db.test.find({}, ["x", "mike"]))
-        self.assertTrue("x" in doc)
+        self.assertIn("x", doc)
         doc = await anext(db.test.find({}, ["x", "mike"]))
-        self.assertTrue("mike" in doc)
+        self.assertIn("mike", doc)
         doc = await anext(db.test.find({}, ["x", "mike"]))
-        self.assertFalse("extra thing" in doc)
+        self.assertNotIn("extra thing", doc)
         doc = await anext(db.test.find({}, ["mike"]))
-        self.assertFalse("x" in doc)
+        self.assertNotIn("x", doc)
         doc = await anext(db.test.find({}, ["mike"]))
-        self.assertTrue("mike" in doc)
+        self.assertIn("mike", doc)
         doc = await anext(db.test.find({}, ["mike"]))
-        self.assertFalse("extra thing" in doc)
+        self.assertNotIn("extra thing", doc)
 
     @no_type_check
     async def test_fields_specifier_as_dict(self):
@@ -1158,8 +1158,8 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         self.assertEqual([1, 2, 3], (await db.test.find_one())["x"])
         self.assertEqual([2, 3], (await db.test.find_one(projection={"x": {"$slice": -2}}))["x"])
-        self.assertTrue("x" not in await db.test.find_one(projection={"x": 0}))
-        self.assertTrue("mike" in await db.test.find_one(projection={"x": 0}))
+        self.assertNotIn("x", await db.test.find_one(projection={"x": 0}))
+        self.assertIn("mike", await db.test.find_one(projection={"x": 0}))
 
     async def test_find_w_regex(self):
         db = self.db
@@ -1182,7 +1182,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.delete_many({})
         auto_id = {"hello": "world"}
         await db.test.insert_one(auto_id)
-        self.assertTrue(isinstance(auto_id["_id"], ObjectId))
+        self.assertIsInstance(auto_id["_id"], ObjectId)
 
         numeric = {"_id": 240, "hello": "world"}
         await db.test.insert_one(numeric)
@@ -1194,7 +1194,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         async for x in db.test.find():
             self.assertEqual(x["hello"], "world")
-            self.assertTrue("_id" in x)
+            self.assertIn("_id", x)
 
     async def test_unique_index(self):
         db = self.db
@@ -1314,7 +1314,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         try:
             await self.db.test.update_many({}, {"$thismodifierdoesntexist": 1})
         except OperationFailure as exc:
-            self.assertTrue(exc.code in (9, 10147, 16840, 17009))
+            self.assertIn(exc.code, (9, 10147, 16840, 17009))
             # Just check that we set the error document. Fields
             # vary by MongoDB version.
             self.assertTrue(exc.details is not None)
@@ -1346,9 +1346,9 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         id1 = (await db.test.insert_one({"x": 1})).inserted_id
         result = await db.test.replace_one({"x": 1}, {"y": 1})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, await db.test.count_documents({"y": 1}))
@@ -1357,9 +1357,9 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         replacement = RawBSONDocument(encode({"_id": id1, "z": 1}))
         result = await db.test.replace_one({"y": 1}, replacement, True)
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, await db.test.count_documents({"z": 1}))
@@ -1367,16 +1367,16 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertEqual((await db.test.find_one(id1))["z"], 1)  # type: ignore
 
         result = await db.test.replace_one({"x": 2}, {"y": 2}, True)
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(0, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 0))
-        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertIn(result.modified_count, (None, 0))
+        self.assertIsInstance(result.upserted_id, ObjectId)
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, await db.test.count_documents({"y": 2}))
 
         db = db.client.get_database(db.name, write_concern=WriteConcern(w=0))
         result = await db.test.replace_one({"x": 0}, {"y": 0})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertRaises(InvalidOperation, lambda: result.matched_count)
         self.assertRaises(InvalidOperation, lambda: result.modified_count)
         self.assertRaises(InvalidOperation, lambda: result.upserted_id)
@@ -1391,33 +1391,33 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         id1 = (await db.test.insert_one({"x": 5})).inserted_id
         result = await db.test.update_one({}, {"$inc": {"x": 1}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual((await db.test.find_one(id1))["x"], 6)  # type: ignore
 
         id2 = (await db.test.insert_one({"x": 1})).inserted_id
         result = await db.test.update_one({"x": 6}, {"$inc": {"x": 1}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual((await db.test.find_one(id1))["x"], 7)  # type: ignore
         self.assertEqual((await db.test.find_one(id2))["x"], 1)  # type: ignore
 
         result = await db.test.update_one({"x": 2}, {"$set": {"y": 1}}, True)
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(0, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 0))
-        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertIn(result.modified_count, (None, 0))
+        self.assertIsInstance(result.upserted_id, ObjectId)
         self.assertTrue(result.acknowledged)
 
         db = db.client.get_database(db.name, write_concern=WriteConcern(w=0))
         result = await db.test.update_one({"x": 0}, {"$inc": {"x": 1}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertRaises(InvalidOperation, lambda: result.matched_count)
         self.assertRaises(InvalidOperation, lambda: result.modified_count)
         self.assertRaises(InvalidOperation, lambda: result.upserted_id)
@@ -1448,31 +1448,31 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.insert_one({"x": 4, "y": 4})
 
         result = await db.test.update_many({"x": 4}, {"$set": {"y": 5}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(2, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 2))
+        self.assertIn(result.modified_count, (None, 2))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual(3, await db.test.count_documents({"y": 5}))
 
         result = await db.test.update_many({"x": 5}, {"$set": {"y": 6}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(1, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIn(result.modified_count, (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, await db.test.count_documents({"y": 6}))
 
         result = await db.test.update_many({"x": 2}, {"$set": {"y": 1}}, True)
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertEqual(0, result.matched_count)
-        self.assertTrue(result.modified_count in (None, 0))
-        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertIn(result.modified_count, (None, 0))
+        self.assertIsInstance(result.upserted_id, ObjectId)
         self.assertTrue(result.acknowledged)
 
         db = db.client.get_database(db.name, write_concern=WriteConcern(w=0))
         result = await db.test.update_many({"x": 0}, {"$inc": {"x": 1}})
-        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertIsInstance(result, UpdateResult)
         self.assertRaises(InvalidOperation, lambda: result.matched_count)
         self.assertRaises(InvalidOperation, lambda: result.modified_count)
         self.assertRaises(InvalidOperation, lambda: result.upserted_id)
@@ -1556,7 +1556,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
         pipeline = {"$project": {"_id": False, "foo": True}}
         result = await db.test.aggregate([pipeline])
-        self.assertTrue(isinstance(result, AsyncCommandCursor))
+        self.assertIsInstance(result, AsyncCommandCursor)
         self.assertEqual([{"foo": [1, 2]}], await result.to_list())
 
         # Test write concern.
@@ -1574,7 +1574,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         pipeline = {"$project": {"_id": False, "foo": True}}
         coll = db.get_collection("test", codec_options=CodecOptions(document_class=RawBSONDocument))
         result = await coll.aggregate([pipeline])
-        self.assertTrue(isinstance(result, AsyncCommandCursor))
+        self.assertIsInstance(result, AsyncCommandCursor)
         first_result = await anext(result)
         self.assertIsInstance(first_result, RawBSONDocument)
         self.assertEqual([1, 2], list(first_result["foo"]))
@@ -1583,7 +1583,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         db = self.db
         projection = {"$project": {"_id": "$_id"}}
         cursor = await db.test.aggregate([projection], cursor={})
-        self.assertTrue(isinstance(cursor, AsyncCommandCursor))
+        self.assertIsInstance(cursor, AsyncCommandCursor)
 
     async def test_aggregation_cursor(self):
         db = self.db
@@ -1725,21 +1725,21 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertEqual(await db.test.find_one({}), await db.test.find_one())
         self.assertEqual(await db.test.find_one({"hello": "world"}), await db.test.find_one())
 
-        self.assertTrue("hello" in await db.test.find_one(projection=["hello"]))
-        self.assertTrue("hello" not in await db.test.find_one(projection=["foo"]))
+        self.assertIn("hello", await db.test.find_one(projection=["hello"]))
+        self.assertNotIn("hello", await db.test.find_one(projection=["foo"]))
 
-        self.assertTrue("hello" in await db.test.find_one(projection=("hello",)))
-        self.assertTrue("hello" not in await db.test.find_one(projection=("foo",)))
+        self.assertIn("hello", await db.test.find_one(projection=("hello",)))
+        self.assertNotIn("hello", await db.test.find_one(projection=("foo",)))
 
-        self.assertTrue("hello" in await db.test.find_one(projection={"hello"}))
-        self.assertTrue("hello" not in await db.test.find_one(projection={"foo"}))
+        self.assertIn("hello", await db.test.find_one(projection={"hello"}))
+        self.assertNotIn("hello", await db.test.find_one(projection={"foo"}))
 
-        self.assertTrue("hello" in await db.test.find_one(projection=frozenset(["hello"])))
-        self.assertTrue("hello" not in await db.test.find_one(projection=frozenset(["foo"])))
+        self.assertIn("hello", await db.test.find_one(projection=frozenset(["hello"])))
+        self.assertNotIn("hello", await db.test.find_one(projection=frozenset(["foo"])))
 
         self.assertEqual(["_id"], list(await db.test.find_one(projection={"_id": True})))
-        self.assertTrue("hello" in list(await db.test.find_one(projection={})))
-        self.assertTrue("hello" in list(await db.test.find_one(projection=[])))
+        self.assertIn("hello", list(await db.test.find_one(projection={})))
+        self.assertIn("hello", list(await db.test.find_one(projection=[])))
 
         self.assertEqual(None, await db.test.find_one({"hello": "foo"}))
         self.assertEqual(None, await db.test.find_one(ObjectId()))
@@ -2208,9 +2208,9 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await c.drop()
         await c.insert_one({"r": re.compile(".*")})
 
-        self.assertTrue(isinstance((await c.find_one())["r"], Regex))  # type: ignore
+        self.assertIsInstance((await c.find_one())["r"], Regex)  # type: ignore
         async for doc in c.find():
-            self.assertTrue(isinstance(doc["r"], Regex))
+            self.assertIsInstance(doc["r"], Regex)
 
     def test_find_command_generation(self):
         cmd = _gen_find_command(

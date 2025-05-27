@@ -579,6 +579,15 @@ class TestTypeRegistry(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, err_msg):
             TypeRegistry(fallback_encoder="hello")  # type: ignore[arg-type]
 
+    def test_type_registry_codecs(self):
+        codec_instances = [codec() for codec in self.codecs]
+        type_registry = TypeRegistry(codec_instances)
+        self.assertEqual(type_registry.codecs, codec_instances)
+
+    def test_type_registry_fallback(self):
+        type_registry = TypeRegistry(fallback_encoder=self.fallback_encoder)
+        self.assertEqual(type_registry.fallback_encoder, self.fallback_encoder)
+
     def test_type_registry_repr(self):
         codec_instances = [codec() for codec in self.codecs]
         type_registry = TypeRegistry(codec_instances)
@@ -784,7 +793,7 @@ class TestGridFileCustomType(IntegrationTest):
         self.assertEqual(5, two._id)
         self.assertEqual(11, two.length)
         self.assertEqual(1000, two.chunk_size)
-        self.assertTrue(isinstance(two.upload_date, datetime.datetime))
+        self.assertIsInstance(two.upload_date, datetime.datetime)
         self.assertEqual({"foo": "red", "bar": "blue"}, two.metadata)
         self.assertEqual(3, two.bar)
 

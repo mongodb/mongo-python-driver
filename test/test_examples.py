@@ -479,77 +479,77 @@ class TestSampleShellCommands(IntegrationTest):
         # End Example 44
 
         for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
-            self.assertFalse("size" in doc)
-            self.assertFalse("instock" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
+            self.assertNotIn("size", doc)
+            self.assertNotIn("instock", doc)
 
         # Start Example 45
         cursor = db.inventory.find({"status": "A"}, {"item": 1, "status": 1, "_id": 0})
         # End Example 45
 
         for doc in cursor:
-            self.assertFalse("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
-            self.assertFalse("size" in doc)
-            self.assertFalse("instock" in doc)
+            self.assertNotIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
+            self.assertNotIn("size", doc)
+            self.assertNotIn("instock", doc)
 
         # Start Example 46
         cursor = db.inventory.find({"status": "A"}, {"status": 0, "instock": 0})
         # End Example 46
 
         for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertFalse("status" in doc)
-            self.assertTrue("size" in doc)
-            self.assertFalse("instock" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertNotIn("status", doc)
+            self.assertIn("size", doc)
+            self.assertNotIn("instock", doc)
 
         # Start Example 47
         cursor = db.inventory.find({"status": "A"}, {"item": 1, "status": 1, "size.uom": 1})
         # End Example 47
 
         for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
-            self.assertTrue("size" in doc)
-            self.assertFalse("instock" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
+            self.assertIn("size", doc)
+            self.assertNotIn("instock", doc)
             size = doc["size"]
-            self.assertTrue("uom" in size)
-            self.assertFalse("h" in size)
-            self.assertFalse("w" in size)
+            self.assertIn("uom", size)
+            self.assertNotIn("h", size)
+            self.assertNotIn("w", size)
 
         # Start Example 48
         cursor = db.inventory.find({"status": "A"}, {"size.uom": 0})
         # End Example 48
 
         for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
-            self.assertTrue("size" in doc)
-            self.assertTrue("instock" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
+            self.assertIn("size", doc)
+            self.assertIn("instock", doc)
             size = doc["size"]
-            self.assertFalse("uom" in size)
-            self.assertTrue("h" in size)
-            self.assertTrue("w" in size)
+            self.assertNotIn("uom", size)
+            self.assertIn("h", size)
+            self.assertIn("w", size)
 
         # Start Example 49
         cursor = db.inventory.find({"status": "A"}, {"item": 1, "status": 1, "instock.qty": 1})
         # End Example 49
 
         for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
-            self.assertFalse("size" in doc)
-            self.assertTrue("instock" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
+            self.assertNotIn("size", doc)
+            self.assertIn("instock", doc)
             for subdoc in doc["instock"]:
-                self.assertFalse("warehouse" in subdoc)
-                self.assertTrue("qty" in subdoc)
+                self.assertNotIn("warehouse", subdoc)
+                self.assertIn("qty", subdoc)
 
         # Start Example 50
         cursor = db.inventory.find(
@@ -558,11 +558,11 @@ class TestSampleShellCommands(IntegrationTest):
         # End Example 50
 
         for doc in cursor:
-            self.assertTrue("_id" in doc)
-            self.assertTrue("item" in doc)
-            self.assertTrue("status" in doc)
-            self.assertFalse("size" in doc)
-            self.assertTrue("instock" in doc)
+            self.assertIn("_id", doc)
+            self.assertIn("item", doc)
+            self.assertIn("status", doc)
+            self.assertNotIn("size", doc)
+            self.assertIn("instock", doc)
             self.assertEqual(len(doc["instock"]), 1)
 
     def test_update_and_replace(self):
@@ -645,7 +645,7 @@ class TestSampleShellCommands(IntegrationTest):
         for doc in db.inventory.find({"item": "paper"}):
             self.assertEqual(doc["size"]["uom"], "cm")
             self.assertEqual(doc["status"], "P")
-            self.assertTrue("lastModified" in doc)
+            self.assertIn("lastModified", doc)
 
         # Start Example 53
         db.inventory.update_many(
@@ -657,7 +657,7 @@ class TestSampleShellCommands(IntegrationTest):
         for doc in db.inventory.find({"qty": {"$lt": 50}}):
             self.assertEqual(doc["size"]["uom"], "in")
             self.assertEqual(doc["status"], "P")
-            self.assertTrue("lastModified" in doc)
+            self.assertIn("lastModified", doc)
 
         # Start Example 54
         db.inventory.replace_one(
@@ -671,8 +671,8 @@ class TestSampleShellCommands(IntegrationTest):
 
         for doc in db.inventory.find({"item": "paper"}, {"_id": 0}):
             self.assertEqual(len(doc.keys()), 2)
-            self.assertTrue("item" in doc)
-            self.assertTrue("instock" in doc)
+            self.assertIn("item", doc)
+            self.assertIn("instock", doc)
             self.assertEqual(len(doc["instock"]), 2)
 
     def test_delete(self):
