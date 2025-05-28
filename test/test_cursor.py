@@ -1181,15 +1181,6 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(["b", "c"], distinct)
 
-    @client_context.require_version_max(4, 1, 0, -1)
-    def test_max_scan(self):
-        self.db.drop_collection("test")
-        self.db.test.insert_many([{} for _ in range(100)])
-
-        self.assertEqual(100, len(self.db.test.find().to_list()))
-        self.assertEqual(50, len(self.db.test.find().max_scan(50).to_list()))
-        self.assertEqual(50, len(self.db.test.find().max_scan(90).max_scan(50).to_list()))
-
     def test_with_statement(self):
         self.db.drop_collection("test")
         self.db.test.insert_many([{} for _ in range(100)])

@@ -1190,15 +1190,6 @@ class TestCursor(AsyncIntegrationTest):
 
         self.assertEqual(["b", "c"], distinct)
 
-    @async_client_context.require_version_max(4, 1, 0, -1)
-    async def test_max_scan(self):
-        await self.db.drop_collection("test")
-        await self.db.test.insert_many([{} for _ in range(100)])
-
-        self.assertEqual(100, len(await self.db.test.find().to_list()))
-        self.assertEqual(50, len(await self.db.test.find().max_scan(50).to_list()))
-        self.assertEqual(50, len(await self.db.test.find().max_scan(90).max_scan(50).to_list()))
-
     async def test_with_statement(self):
         await self.db.drop_collection("test")
         await self.db.test.insert_many([{} for _ in range(100)])
