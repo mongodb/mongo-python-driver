@@ -1128,7 +1128,6 @@ class Cursor(Generic[_DocumentType]):
         except BaseException:
             self.close()
             raise
-
         self._address = response.address
         if isinstance(response, PinnedResponse):
             if not self._sock_mgr:

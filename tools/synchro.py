@@ -203,6 +203,7 @@ converted_tests = [
     "utils_spec_runner.py",
     "qcheck.py",
     "test_auth.py",
+    "test_auth_oidc.py",
     "test_auth_spec.py",
     "test_bulk.py",
     "test_change_stream.py",
