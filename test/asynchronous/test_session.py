@@ -1095,7 +1095,6 @@ class TestCausalConsistency(AsyncUnitTest):
             self.assertIsNone(act)
 
     @async_client_context.require_no_standalone
-    @async_client_context.require_no_mmap
     async def test_read_concern(self):
         async with self.client.start_session(causal_consistency=True) as s:
             coll = self.client.pymongo_test.test

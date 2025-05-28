@@ -1081,7 +1081,6 @@ class TestCausalConsistency(UnitTest):
             self.assertIsNone(act)
 
     @client_context.require_no_standalone
-    @client_context.require_no_mmap
     def test_read_concern(self):
         with self.client.start_session(causal_consistency=True) as s:
             coll = self.client.pymongo_test.test

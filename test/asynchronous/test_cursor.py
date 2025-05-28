@@ -1600,7 +1600,6 @@ class TestRawBatchCursor(AsyncIntegrationTest):
     async def test_collation(self):
         await anext(self.db.test.find_raw_batches(collation=Collation("en_US")))
 
-    @async_client_context.require_no_mmap  # MMAPv1 does not support read concern
     async def test_read_concern(self):
         await self.db.get_collection("test", write_concern=WriteConcern(w="majority")).insert_one(
             {}

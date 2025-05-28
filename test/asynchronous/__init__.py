@@ -263,9 +263,6 @@ class AsyncClientContext:
                 self.server_status = {}
             else:
                 self.server_status = await self.client.admin.command("serverStatus")
-                if self.storage_engine == "mmapv1":
-                    # MMAPv1 does not support retryWrites=True.
-                    self.default_client_options["retryWrites"] = False
 
             hello = await self.hello
             self.sessions_enabled = "logicalSessionTimeoutMinutes" in hello
@@ -527,19 +524,6 @@ class AsyncClientContext:
             func=func,
         )
 
-    def require_no_mmap(self, func):
-        """Run a test only if the server is not using the MMAPv1 storage
-        engine. Only works for standalone and replica sets; tests are
-        run regardless of storage engine on sharded clusters.
-        """
-
-        def is_not_mmap():
-            if self.is_mongos:
-                return True
-            return self.storage_engine != "mmapv1"
-
-        return self._require(is_not_mmap, "Storage engine must not be MMAPv1", func=func)
-
     def require_version_min(self, *ver):
         """Run a test only if the server version is at least ``version``."""
         other_version = Version(*ver)
@@ -676,7 +660,7 @@ class AsyncClientContext:
 
     def require_change_streams(self, func):
         """Run a test only if the server supports change streams."""
-        return self.require_no_mmap(self.require_no_standalone(self.require_no_serverless(func)))
+        return self.require_no_standalone(self.require_no_serverless(func))
 
     async def is_topology_type(self, topologies):
         unknown = set(topologies) - {
@@ -779,8 +763,6 @@ class AsyncClientContext:
         return self._require(lambda: self.sessions_enabled, "Sessions not supported", func=func)
 
     def supports_retryable_writes(self):
-        if self.storage_engine == "mmapv1":
-            return False
         if not self.sessions_enabled:
             return False
         return self.is_mongos or self.is_rs
@@ -794,9 +776,6 @@ class AsyncClientContext:
         )
 
     def supports_transactions(self):
-        if self.storage_engine == "mmapv1":
-            return False
-
         if self.version.at_least(4, 1, 8):
             return self.is_mongos or self.is_rs
 

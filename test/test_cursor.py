@@ -1591,7 +1591,6 @@ class TestRawBatchCursor(IntegrationTest):
     def test_collation(self):
         next(self.db.test.find_raw_batches(collation=Collation("en_US")))
 
-    @client_context.require_no_mmap  # MMAPv1 does not support read concern
     def test_read_concern(self):
         self.db.get_collection("test", write_concern=WriteConcern(w="majority")).insert_one({})
         c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
