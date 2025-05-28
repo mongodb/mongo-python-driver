@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import os
 import sys
-import threading
 import time
 import unittest
 import warnings
@@ -799,7 +798,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client = await self.create_client()
         await client.aconnect()
 
-        # Start 10 threads and run 100 find operations in each thread that all succeed.
+        # Start 10 tasks and run 100 find operations that all succeed in each task.
         async def target():
             for _ in range(100):
                 await client.test.test.find_one()
