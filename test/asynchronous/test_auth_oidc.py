@@ -24,13 +24,14 @@ import warnings
 from contextlib import asynccontextmanager
 from pathlib import Path
 from test.asynchronous import AsyncPyMongoTestCase
+from test.asynchronous.helpers import ConcurrentRunner
 from typing import Dict
 
 import pytest
 
 sys.path[0:0] = [""]
 
-from test.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes
 from test.utils_shared import EventListener, OvertCommandListener
 
 from bson import SON
@@ -258,10 +259,11 @@ class TestAuthOIDCHuman(OIDCTestBase):
         uri = "mongodb+srv://example.com?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D"
         with self.assertRaises(ConfigurationError), warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            _ = AsyncMongoClient(
+            c = AsyncMongoClient(
                 uri,
                 authmechanismproperties=dict(OIDC_HUMAN_CALLBACK=self.create_request_cb()),
             )
+            await c.aconnect()
 
     async def test_1_8_machine_idp_human_callback(self):
         if not os.environ.get("OIDC_IS_LOCAL"):
@@ -752,7 +754,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 class TestAuthOIDCMachine(OIDCTestBase):
     uri: str
 
-    def asyncSetUp(self):
+    async def asyncSetUp(self):
         self.request_called = 0
 
     def create_request_cb(self, username=None, sleep=0):
@@ -791,24 +793,24 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Assert that the callback was called 1 time.
         self.assertEqual(self.request_called, 1)
 
-    # TODO REPLACE THREADS WITH TASKS
     async def test_1_2_callback_is_called_once_for_multiple_connections(self):
         # Create a ``AsyncMongoClient`` configured with a custom OIDC callback that
         # implements the provider logic.
         client = await self.create_client()
+        await client.aconnect()
 
         # Start 10 threads and run 100 find operations in each thread that all succeed.
         async def target():
             for _ in range(100):
                 await client.test.test.find_one()
 
-        threads = []
-        for _ in range(10):
-            thread = threading.Thread(target=target)
-            thread.start()
-            threads.append(thread)
-        for thread in threads:
-            thread.join()
+        tasks = []
+        for i in range(10):
+            tasks.append(ConcurrentRunner(target=target))
+        for t in tasks:
+            await t.start()
+        for t in tasks:
+            await t.join()
         # Assert that the callback was called 1 time.
         self.assertEqual(self.request_called, 1)
 
@@ -1043,6 +1045,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Create an OIDC configured client that can listen for `SaslStart` commands.
         listener = EventListener()
         client = await self.create_client(event_listeners=[listener])
+        await client.aconnect()
 
         # Preload the *Client Cache* with a valid access token to enforce Speculative Authentication.
         client2 = await self.create_client()
@@ -1107,6 +1110,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client1 = await self.create_client()
         await client1.test.test.find_one()
         client2 = await self.create_client()
+        await client2.aconnect()
 
         # Prime the cache of the second client.
         client2.options.pool_options._credentials.cache.data = (

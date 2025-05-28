@@ -24,6 +24,7 @@ import warnings
 from contextlib import contextmanager
 from pathlib import Path
 from test import PyMongoTestCase
+from test.helpers import ConcurrentRunner
 from typing import Dict
 
 import pytest
@@ -256,10 +257,11 @@ class TestAuthOIDCHuman(OIDCTestBase):
         uri = "mongodb+srv://example.com?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D"
         with self.assertRaises(ConfigurationError), warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            _ = MongoClient(
+            c = MongoClient(
                 uri,
                 authmechanismproperties=dict(OIDC_HUMAN_CALLBACK=self.create_request_cb()),
             )
+            c._connect()
 
     def test_1_8_machine_idp_human_callback(self):
         if not os.environ.get("OIDC_IS_LOCAL"):
@@ -789,24 +791,24 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Assert that the callback was called 1 time.
         self.assertEqual(self.request_called, 1)
 
-    # TODO REPLACE THREADS WITH TASKS
     def test_1_2_callback_is_called_once_for_multiple_connections(self):
         # Create a ``MongoClient`` configured with a custom OIDC callback that
         # implements the provider logic.
         client = self.create_client()
+        client._connect()
 
         # Start 10 threads and run 100 find operations in each thread that all succeed.
         def target():
             for _ in range(100):
                 client.test.test.find_one()
 
-        threads = []
-        for _ in range(10):
-            thread = threading.Thread(target=target)
-            thread.start()
-            threads.append(thread)
-        for thread in threads:
-            thread.join()
+        tasks = []
+        for i in range(10):
+            tasks.append(ConcurrentRunner(target=target))
+        for t in tasks:
+            t.start()
+        for t in tasks:
+            t.join()
         # Assert that the callback was called 1 time.
         self.assertEqual(self.request_called, 1)
 
@@ -1041,6 +1043,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Create an OIDC configured client that can listen for `SaslStart` commands.
         listener = EventListener()
         client = self.create_client(event_listeners=[listener])
+        client._connect()
 
         # Preload the *Client Cache* with a valid access token to enforce Speculative Authentication.
         client2 = self.create_client()
@@ -1105,6 +1108,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client1 = self.create_client()
         client1.test.test.find_one()
         client2 = self.create_client()
+        client2._connect()
 
         # Prime the cache of the second client.
         client2.options.pool_options._credentials.cache.data = (

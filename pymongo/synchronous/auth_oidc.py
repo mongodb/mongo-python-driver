@@ -15,7 +15,7 @@
 """MONGODB-OIDC Authentication helpers."""
 from __future__ import annotations
 
-import threading
+import asyncio
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Optional, Union
@@ -36,6 +36,7 @@ from pymongo.auth_oidc_shared import (
 )
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.helpers_shared import _AUTHENTICATION_FAILURE_CODE
+from pymongo.lock import Lock, _create_lock
 
 if TYPE_CHECKING:
     from pymongo.auth_shared import MongoCredential
@@ -81,7 +82,7 @@ class _OIDCAuthenticator:
     access_token: Optional[str] = field(default=None)
     idp_info: Optional[OIDCIdPInfo] = field(default=None)
     token_gen_id: int = field(default=0)
-    lock: threading.Lock = field(default_factory=threading.Lock)
+    lock: Lock = field(default_factory=_create_lock)
     last_call_time: float = field(default=0)
 
     def reauthenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
@@ -211,7 +212,10 @@ class _OIDCAuthenticator:
                     idp_info=self.idp_info,
                     username=self.properties.username,
                 )
-                resp = cb.fetch(context)
+                if not _IS_SYNC:
+                    resp = asyncio.get_running_loop().run_in_executor(None, cb.fetch, context)
+                else:
+                    resp = cb.fetch(context)
                 if not isinstance(resp, OIDCCallbackResult):
                     raise ValueError(
                         f"Callback result must be of type OIDCCallbackResult, not {type(resp)}"
