@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Optional, Union
@@ -82,7 +83,11 @@ class _OIDCAuthenticator:
     access_token: Optional[str] = field(default=None)
     idp_info: Optional[OIDCIdPInfo] = field(default=None)
     token_gen_id: int = field(default=0)
-    lock: Lock = field(default_factory=_async_create_lock)
+    if not _IS_SYNC:
+        lock: Lock = field(default_factory=_async_create_lock)  # type: ignore[assignment]
+    else:
+        lock: threading.Lock = field(default_factory=_async_create_lock)  # type: ignore[assignment, no-redef]
+
     last_call_time: float = field(default=0)
 
     async def reauthenticate(self, conn: AsyncConnection) -> Optional[Mapping[str, Any]]:
@@ -187,7 +192,7 @@ class _OIDCAuthenticator:
             return None
 
         if not prev_token and cb is not None:
-            async with self.lock:
+            async with self.lock:  # type: ignore[attr-defined]
                 # See if the token was changed while we were waiting for the
                 # lock.
                 new_token = self.access_token
@@ -213,7 +218,7 @@ class _OIDCAuthenticator:
                     username=self.properties.username,
                 )
                 if not _IS_SYNC:
-                    resp = await asyncio.get_running_loop().run_in_executor(None, cb.fetch, context)
+                    resp = await asyncio.get_running_loop().run_in_executor(None, cb.fetch, context)  # type: ignore[assignment]
                 else:
                     resp = cb.fetch(context)
                 if not isinstance(resp, OIDCCallbackResult):
