@@ -1089,7 +1089,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
             # Start a new session.
             with client.start_session() as session:
                 # In the started session perform a `find` operation that succeeds.
-                client.test.test.find({}, session=session)
+                client.test.test.find_one({}, session=session)
 
         # Assert that the callback was called 2 times (once during the connection handshake, and again during reauthentication).
         self.assertEqual(self.request_called, 2)
