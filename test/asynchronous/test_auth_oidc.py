@@ -887,6 +887,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
     async def test_3_1_authentication_failure_with_cached_tokens_fetch_a_new_token_and_retry(self):
         # Create a AsyncMongoClient and an OIDC callback that implements the provider logic.
         client = await self.create_client()
+        await client.aconnect()
         # Poison the cache with an invalid access token.
         # Set a fail point for ``find`` command.
         async with self.fail_point(
@@ -953,6 +954,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Create a ``AsyncMongoClient`` configured with a custom OIDC callback that
         # implements the provider logic.
         client = await self.create_client()
+        await client.aconnect()
 
         # Set a fail point for the find command.
         async with self.fail_point(

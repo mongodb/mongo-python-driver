@@ -885,6 +885,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
     def test_3_1_authentication_failure_with_cached_tokens_fetch_a_new_token_and_retry(self):
         # Create a MongoClient and an OIDC callback that implements the provider logic.
         client = self.create_client()
+        client._connect()
         # Poison the cache with an invalid access token.
         # Set a fail point for ``find`` command.
         with self.fail_point(
@@ -951,6 +952,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Create a ``MongoClient`` configured with a custom OIDC callback that
         # implements the provider logic.
         client = self.create_client()
+        client._connect()
 
         # Set a fail point for the find command.
         with self.fail_point(
