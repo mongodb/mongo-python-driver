@@ -1085,6 +1085,25 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Assert there were `SaslStart` commands executed.
         assert any(event.command_name.lower() == "saslstart" for event in listener.started_events)
 
+    async def test_4_5_reauthentication_succeeds_when_a_session_is_involved(self):
+        # Create an OIDC configured client.
+        client = await self.create_client()
+
+        # Set a fail point for `find` commands of the form:
+        async with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Start a new session.
+            async with client.start_session() as session:
+                # In the started session perform a `find` operation that succeeds.
+                await client.test.test.find_one({}, session=session)
+
+        # Assert that the callback was called 2 times (once during the connection handshake, and again during reauthentication).
+        self.assertEqual(self.request_called, 2)
+
     async def test_5_1_azure_with_no_username(self):
         if ENVIRON != "azure":
             raise unittest.SkipTest("Test is only supported on Azure")
