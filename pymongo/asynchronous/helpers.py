@@ -64,7 +64,7 @@ def _handle_reauth(func: F) -> F:
                     await conn.authenticate(reauthenticate=True)
                 else:
                     raise
-                return func(*args, **kwargs)
+                return await func(*args, **kwargs)
             raise
 
     return cast(F, inner)
