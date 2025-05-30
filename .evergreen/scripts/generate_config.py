@@ -762,17 +762,16 @@ def create_aws_tasks():
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     for test_type in ["eks", "ecs"]:
-        tags = ["auth-aws", f"auth-aws-{test_type}"]
+        tags = ["auth-aws", f"auth-aws-{test_type}-latest"]
         base_name = f"test-auth-aws-{test_type}"
+        name = get_task_name(base_name)
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [assume_func, test_func]
         if test_type == "ecs":
-            server_vars = dict(AUTH_AWS="1", VERSION=version)
+            server_vars = dict(AUTH_AWS="1")
             server_func = FunctionCall(func="run server", vars=server_vars)
-            base_name += "-latest"
             funcs = [assume_func, server_func, test_func]
-        name = get_task_name(base_name)
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     return tasks

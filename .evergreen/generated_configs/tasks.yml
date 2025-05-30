@@ -108,19 +108,18 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: eks
-    tags: [auth-aws, auth-aws-eks]
-  - name: test-auth-aws-ecs-latest
+    tags: [auth-aws, auth-aws-eks-latest]
+  - name: test-auth-aws-ecs
     commands:
       - func: assume ec2 role
       - func: run server
         vars:
           AUTH_AWS: "1"
-          VERSION: latest
       - func: run tests
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
-    tags: [auth-aws, auth-aws-ecs]
+    tags: [auth-aws, auth-aws-ecs-latest]
 
   # Backport pr tests
   - name: backport-pr
