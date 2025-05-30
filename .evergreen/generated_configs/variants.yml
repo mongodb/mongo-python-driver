@@ -89,12 +89,12 @@ buildvariants:
     tags: [pr]
 
   # Aws auth tests
-  - name: auth-aws-ubuntu-22
+  - name: auth-aws-ubuntu-20
     tasks:
       - name: .auth-aws
-    display_name: Auth AWS Ubuntu-22
+    display_name: Auth AWS Ubuntu-20
     run_on:
-      - ubuntu2204-small
+      - ubuntu2004-small
     tags: []
   - name: auth-aws-win64
     tasks:
