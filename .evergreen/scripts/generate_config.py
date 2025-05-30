@@ -753,10 +753,14 @@ def create_aws_tasks():
         server_func = FunctionCall(func="run server", vars=server_vars)
         assume_func = FunctionCall(func="assume ec2 role")
         tags = [*base_tags, f"auth-aws-{test_type}"]
+        if test_type in ["eks", "ecs"]:
+            python = None  # noqa:PLW2901
         name = get_task_name(f"{base_name}-{test_type}", python=python)
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [server_func, assume_func, test_func]
+        if test_type == "eks":
+            funcs = [assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
         if test_type == "web-identity":
