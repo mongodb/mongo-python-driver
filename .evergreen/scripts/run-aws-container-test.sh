@@ -21,6 +21,8 @@ set -o xtrace
 
 # Install python with pip.
 PYTHON_VER="python3.11"
+apt-get -qq update  < /dev/null > /dev/null
+apt-get -qq install software-properties-common -y  # needed for apt-add-repository
 add-apt-repository -qq ppa:deadsnakes/ppa -y
 apt-get -qq update  < /dev/null > /dev/null
 apt-get -qq install $PYTHON_VER $PYTHON_VER-venv build-essential $PYTHON_VER-dev -y  < /dev/null > /dev/null
