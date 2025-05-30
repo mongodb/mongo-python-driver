@@ -755,6 +755,7 @@ def create_aws_tasks():
         tags = [*base_tags, f"auth-aws-{test_type}"]
         if test_type in ["eks", "ecs"]:
             python = None  # noqa:PLW2901
+            base_name = "test-auth-aws"
         name = get_task_name(f"{base_name}-{test_type}", python=python)
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
