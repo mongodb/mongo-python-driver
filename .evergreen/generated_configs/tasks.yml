@@ -21,7 +21,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
           PYTHON_VERSION: "3.9"
-    tags: [auth-aws, auth-aws-regular, server-4.4]
+    tags: [auth-aws, auth-aws-regular]
   - name: test-auth-aws-5.0-assume-role-python3.10
     commands:
       - func: run server
@@ -34,7 +34,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
           PYTHON_VERSION: "3.10"
-    tags: [auth-aws, auth-aws-assume-role, server-5.0]
+    tags: [auth-aws, auth-aws-assume-role]
   - name: test-auth-aws-6.0-ec2-python3.11
     commands:
       - func: run server
@@ -47,7 +47,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
           PYTHON_VERSION: "3.11"
-    tags: [auth-aws, auth-aws-ec2, server-6.0]
+    tags: [auth-aws, auth-aws-ec2]
   - name: test-auth-aws-7.0-env-creds-python3.12
     commands:
       - func: run server
@@ -60,7 +60,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
           PYTHON_VERSION: "3.12"
-    tags: [auth-aws, auth-aws-env-creds, server-7.0]
+    tags: [auth-aws, auth-aws-env-creds]
   - name: test-auth-aws-8.0-session-creds-python3.13
     commands:
       - func: run server
@@ -73,7 +73,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
           PYTHON_VERSION: "3.13"
-    tags: [auth-aws, auth-aws-session-creds, server-8.0]
+    tags: [auth-aws, auth-aws-session-creds]
   - name: test-auth-aws-rapid-web-identity-python3.9
     commands:
       - func: run server
@@ -86,7 +86,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           PYTHON_VERSION: "3.9"
-    tags: [auth-aws, auth-aws-web-identity, server-rapid]
+    tags: [auth-aws, auth-aws-web-identity]
   - name: test-auth-aws-latest-web-identity-session-name-python3.10
     commands:
       - func: run server
@@ -100,7 +100,7 @@ tasks:
           SUB_TEST_NAME: web-identity
           PYTHON_VERSION: "3.10"
           AWS_ROLE_SESSION_NAME: test
-    tags: [auth-aws, auth-aws-web-identity, server-latest]
+    tags: [auth-aws, auth-aws-web-identity]
   - name: test-auth-aws-eks
     commands:
       - func: assume ec2 role

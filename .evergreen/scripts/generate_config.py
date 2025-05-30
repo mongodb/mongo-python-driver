@@ -755,7 +755,7 @@ def create_aws_tasks():
         orig_test_type = test_type
         if test_type == "web-identity-session-name":
             test_type = "web-identity"  # noqa:PLW2901
-        tags = [*base_tags, f"auth-aws-{test_type}", f"server-{version}"]
+        tags = [*base_tags, f"auth-aws-{test_type}"]
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
         if orig_test_type == "web-identity-session-name":
             test_vars["AWS_ROLE_SESSION_NAME"] = "test"
