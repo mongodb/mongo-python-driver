@@ -744,7 +744,6 @@ def create_aws_tasks():
         "session-creds",
         "web-identity",
         "web-identity-session-name",
-        "ecs",
     ]
     assume_func = FunctionCall(func="assume ec2 role")
     for version, test_type, python in zip_cycle(get_versions_from("4.4"), aws_test_types, CPYTHONS):
@@ -752,8 +751,6 @@ def create_aws_tasks():
         base_tags = ["auth-aws"]
         server_vars = dict(AUTH_AWS="1", VERSION=version)
         server_func = FunctionCall(func="run server", vars=server_vars)
-        if test_type == "ecs":
-            python = None  # noqa:PLW2901
         name = get_task_name(f"{base_name}-{test_type}", python=python)
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
         if test_type == "web-identity-session-name":
@@ -764,13 +761,19 @@ def create_aws_tasks():
         funcs = [server_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
-    # The EKS test does not start a server
-    tags = ["auth-aws", "auth-aws-eks"]
-    name = get_task_name("test-auth-aws-eks")
-    test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME="eks")
-    test_func = FunctionCall(func="run tests", vars=test_vars)
-    funcs = [assume_func, test_func]
-    tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
+    for test_type in ["eks", "ecs"]:
+        tags = ["auth-aws", f"auth-aws-{test_type}"]
+        base_name = f"test-auth-aws-{test_type}"
+        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type)
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        funcs = [assume_func, test_func]
+        if test_type == "ecs":
+            server_vars = dict(AUTH_AWS="1", VERSION=version)
+            server_func = FunctionCall(func="run server", vars=server_vars)
+            base_name += "-latest"
+            funcs = [assume_func, server_func, test_func]
+        name = get_task_name(base_name)
+        tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     return tasks
 

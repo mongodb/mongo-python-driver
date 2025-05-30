@@ -101,19 +101,6 @@ tasks:
           PYTHON_VERSION: "3.10"
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-4.4-ecs
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: "4.4"
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
-          PYTHON_VERSION: null
-    tags: [auth-aws, auth-aws-ecs]
   - name: test-auth-aws-eks
     commands:
       - func: assume ec2 role
@@ -122,6 +109,18 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: eks
     tags: [auth-aws, auth-aws-eks]
+  - name: test-auth-aws-ecs-latest
+    commands:
+      - func: assume ec2 role
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: latest
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ecs
+    tags: [auth-aws, auth-aws-ecs]
 
   # Backport pr tests
   - name: backport-pr
