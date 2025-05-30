@@ -62,6 +62,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo.client_options import ClientOptions
+from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -1039,6 +1040,20 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self_ref: Any = weakref.ref(self, executor.close)
         self._kill_cursors_executor = executor
         self._opened = False
+
+    def _append_metadata(self, driver_info: DriverInfo) -> None:
+        metadata = self._options.pool_options.metadata
+        for k, v in driver_info._asdict().items():
+            if v is None:
+                continue
+            if k in metadata:
+                metadata[k] = f"{metadata[k]}|{v}"
+            elif k in metadata["driver"]:
+                metadata["driver"][k] = "{}|{}".format(
+                    metadata["driver"][k],
+                    v,
+                )
+        self._options.pool_options._set_metadata(metadata)
 
     def _should_pin_cursor(self, session: Optional[ClientSession]) -> Optional[bool]:
         return self._options.load_balanced and not (session and session.in_transaction)
