@@ -163,6 +163,8 @@ def run() -> None:
     if TEST_NAME == "auth_aws" and SUB_TEST_NAME in ["ecs", "eks"]:
         target = f"run-mongodb-aws-{SUB_TEST_NAME}-test.sh"
         text = (HERE / "run-aws-container-test.sh").read_text()
+        if SUB_TEST_NAME == "eks":
+            text = text.replace("python3.9", "python3.10")
         (HERE.parent / target).write_text(text)
         run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh {SUB_TEST_NAME}")
         return
