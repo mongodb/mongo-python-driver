@@ -743,19 +743,18 @@ def create_aws_tasks():
         "env-creds",
         "session-creds",
         "web-identity",
-        "ecs",
-        "eks",
     ]
+    base_tags = ["auth-aws"]
+    assume_func = FunctionCall(func="assume ec2 role")
+
     for version, test_type, python in zip_cycle(get_versions_from("4.4"), aws_test_types, CPYTHONS):
         base_name = f"test-auth-aws-{version}"
-        base_tags = ["auth-aws"]
-        server_vars = dict(AUTH_AWS="1", VERSION=version)
-        server_func = FunctionCall(func="run server", vars=server_vars)
-        assume_func = FunctionCall(func="assume ec2 role")
         tags = [*base_tags, f"auth-aws-{test_type}"]
         name = get_task_name(f"{base_name}-{test_type}", python=python)
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
+        server_vars = dict(AUTH_AWS="1", VERSION=version)
+        server_func = FunctionCall(func="run server", vars=server_vars)
         funcs = [server_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
@@ -771,6 +770,14 @@ def create_aws_tasks():
             test_func = FunctionCall(func="run tests", vars=test_vars)
             funcs = [server_func, assume_func, test_func]
             tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
+
+    for test_type in ["eks", "ecs"]:
+        name = get_task_name(f"test-auth-aws-{test_type}")
+        tags = [*base_tags, f"auth-aws-{test_type}"]
+        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type)
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        funcs = [assume_func, test_func]
+        tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     return tasks
 
