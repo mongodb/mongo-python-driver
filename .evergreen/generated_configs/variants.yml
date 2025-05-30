@@ -89,16 +89,9 @@ buildvariants:
     tags: [pr]
 
   # Aws auth tests
-  - name: auth-aws-ubuntu-20
-    tasks:
-      - name: .auth-aws !.auth-aws-ecs !.auth-aws-eks
-    display_name: Auth AWS Ubuntu-20
-    run_on:
-      - ubuntu2004-small
-    tags: []
   - name: auth-aws-ubuntu-22
     tasks:
-      - name: .auth-aws !.server-4.4 !.server-5.0
+      - name: .auth-aws
     display_name: Auth AWS Ubuntu-22
     run_on:
       - ubuntu2204-small
