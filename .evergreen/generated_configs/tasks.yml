@@ -101,7 +101,7 @@ tasks:
           PYTHON_VERSION: "3.10"
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-eks-latest
+  - name: test-auth-aws-latest-eks-python3.11
     commands:
       - func: assume ec2 role
       - func: run tests
@@ -109,7 +109,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: eks
     tags: [auth-aws, auth-aws-eks]
-  - name: test-auth-aws-ecs-latest
+  - name: test-auth-aws-latest-ecs-python3.11
     commands:
       - func: assume ec2 role
       - func: run server
