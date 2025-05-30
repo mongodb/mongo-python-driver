@@ -97,7 +97,7 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity-session-name
+          SUB_TEST_NAME: web-identity
           PYTHON_VERSION: "3.10"
           AWS_ROLE_SESSION_NAME: test
     tags: [auth-aws, auth-aws-web-identity]
