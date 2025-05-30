@@ -761,6 +761,7 @@ def create_aws_tasks():
         funcs = [server_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
+    # These test types use a fixed Python version and the latest server.
     for test_type in ["eks", "ecs"]:
         tags = ["auth-aws", f"auth-aws-{test_type}"]
         base_name = f"test-auth-aws-latest-{test_type}"
