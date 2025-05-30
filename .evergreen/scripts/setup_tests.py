@@ -427,6 +427,11 @@ def handle_test_env() -> None:
                 write_env(name, value)
         else:
             run_command(f"bash {auth_aws_dir}/setup-secrets.sh")
+        if sub_test_name == "eks":
+            # Store AWS creds if they were given.
+            for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+                if key in os.environ:
+                    write_env(key, os.environ[key])
 
     if test_name == "atlas_connect":
         get_secrets("drivers/atlas_connect")
