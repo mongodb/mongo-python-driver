@@ -30,7 +30,7 @@ from test import unittest
 from test.unified_format import generate_test_classes
 
 from pymongo import MongoClient
-from pymongo.synchronous.auth_oidc import OIDCCallback
+from pymongo.auth_oidc_shared import OIDCCallback
 
 pytestmark = pytest.mark.auth
 
