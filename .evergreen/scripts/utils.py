@@ -143,8 +143,8 @@ def get_test_options(
         raise ValueError(f"Test '{test_name}' requires a sub_test_name")
     if "auth" in test_name or os.environ.get("AUTH") == "auth":
         opts.auth = True
-        # 'auth_aws ecs' shouldn't have extra auth set.
-        if test_name == "auth_aws" and sub_test_name == "ecs":
+        # auth_aws ecs or eks shouldn't have extra auth set.
+        if test_name == "auth_aws" and sub_test_name in ["ecs", "eks"]:
             opts.auth = False
     if os.environ.get("SSL") == "ssl":
         opts.ssl = True

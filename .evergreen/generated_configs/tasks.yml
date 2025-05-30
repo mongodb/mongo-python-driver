@@ -114,6 +114,19 @@ tasks:
           SUB_TEST_NAME: ecs
           PYTHON_VERSION: "3.10"
     tags: [auth-aws, auth-aws-ecs]
+  - name: test-auth-aws-4.4-eks-python3.11
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "4.4"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: eks
+          PYTHON_VERSION: "3.11"
+    tags: [auth-aws, auth-aws-eks]
 
   # Backport pr tests
   - name: backport-pr

@@ -30,6 +30,8 @@ expansion.yml
 .evergreen/scripts/test-env.sh
 specifications/
 results.json
+.evergreen/run-mongodb-aws-eks-test.sh
+.evergreen/run-mongodb-aws-ecs-test.sh
 
 # Lambda temp files
 test/lambda/.aws-sam

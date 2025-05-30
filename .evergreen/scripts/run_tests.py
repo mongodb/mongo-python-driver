@@ -11,7 +11,7 @@ from pathlib import Path
 from shutil import which
 
 import pytest
-from utils import DRIVERS_TOOLS, LOGGER, ROOT, run_command
+from utils import DRIVERS_TOOLS, HERE, LOGGER, ROOT, run_command
 
 AUTH = os.environ.get("AUTH", "noauth")
 SSL = os.environ.get("SSL", "nossl")
@@ -159,9 +159,12 @@ def run() -> None:
         result = main("-E -b doctest doc ./doc/_build/doctest".split())
         sys.exit(result)
 
-    # Send ecs tests to run remotely.
-    if TEST_NAME == "auth_aws" and SUB_TEST_NAME == "ecs":
-        run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh ecs")
+    # Send ecs and eks tests to run remotely.
+    if TEST_NAME == "auth_aws" and SUB_TEST_NAME in ["ecs", "eks"]:
+        target = f"run-mongodb-aws-{SUB_TEST_NAME}-test.sh"
+        text = (HERE / "run-aws-container-test.sh").read_text()
+        (HERE.parent / target).write_text(text)
+        run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh {SUB_TEST_NAME}")
         return
 
     # Send OIDC tests to run remotely.

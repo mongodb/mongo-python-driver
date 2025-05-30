@@ -488,10 +488,12 @@ def create_aws_auth_variants():
         tasks = [".auth-aws"]
         tags = []
         if host_name == "macos":
-            tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2"]
+            tasks = [
+                ".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2 !.auth-aws-eks"
+            ]
             tags = ["pr"]
         elif host_name == "win64":
-            tasks = [".auth-aws !.auth-aws-ecs"]
+            tasks = [".auth-aws !.auth-aws-ecs !.auth-aws-eks"]
         host = HOSTS[host_name]
         variant = create_variant(
             tasks,
@@ -742,6 +744,7 @@ def create_aws_tasks():
         "session-creds",
         "web-identity",
         "ecs",
+        "eks",
     ]
     for version, test_type, python in zip_cycle(get_versions_from("4.4"), aws_test_types, CPYTHONS):
         base_name = f"test-auth-aws-{version}"
