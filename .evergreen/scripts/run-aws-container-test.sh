@@ -11,8 +11,6 @@ if [[ -z "$1" ]]; then
     exit 1
 fi
 export MONGODB_URI="$1"
-echo "MONGODB_URI=$MONGODB_URI"
-exit 1
 
 if echo "$MONGODB_URI" | grep -q "@"; then
   echo "MONGODB_URI unexpectedly contains user credentials in container test!";
