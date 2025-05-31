@@ -108,6 +108,7 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: eks
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-eks]
   - name: test-auth-aws-latest-ecs-python3.11
     commands:
@@ -119,6 +120,7 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-ecs]
 
   # Backport pr tests

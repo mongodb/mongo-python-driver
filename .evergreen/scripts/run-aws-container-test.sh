@@ -20,8 +20,7 @@ fi
 set -o xtrace
 
 # Install python with pip.
-# Keep this version in sync with the one in "generate_config.py".
-PYTHON_VER="python3.11"
+PYTHON_VER="python3.xx"
 apt-get -qq update  < /dev/null > /dev/null
 apt-get -qq install software-properties-common -y < /dev/null > /dev/null  # needed for apt-add-repository
 add-apt-repository ppa:deadsnakes/ppa -y || true  # this will fail on debian

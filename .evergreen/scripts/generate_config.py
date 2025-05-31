@@ -765,9 +765,9 @@ def create_aws_tasks():
     for test_type in ["eks", "ecs"]:
         tags = ["auth-aws", f"auth-aws-{test_type}"]
         base_name = f"test-auth-aws-latest-{test_type}"
-        # Keep this version in sync with the one in "run-aws-container-test.sh".
-        name = get_task_name(base_name, python="3.11")
-        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type)
+        python = "3.11"
+        name = get_task_name(base_name, python=python)
+        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [assume_func, test_func]
         if test_type == "ecs":
