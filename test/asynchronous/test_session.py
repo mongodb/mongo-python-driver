@@ -403,13 +403,20 @@ class TestSession(AsyncIntegrationTest):
             self.assertTrue(cursor.session is s)
 
         # Nested sessions.
+
+        async def get_cursor(collection):
+            return collection.find()
+
         session1 = self.client.start_session(bind=True)
         async with session1:
             session2 = self.client.start_session(bind=True)
             async with session2:
-                await coll.find_one()  # uses session2
-            await coll.find_one()  # uses session1
-        await coll.find_one()  # uses implicit session
+                cursor = await get_cursor(coll)  # uses session2
+                self.assertEqual(cursor.session, session2)
+            cursor = await get_cursor(coll)  # uses session1
+            self.assertEqual(cursor.session, session1)
+        cursor = await get_cursor(coll)  # uses implicit session
+        self.assertEqual(cursor.session, None)
 
     async def test_cursor(self):
         listener = self.listener

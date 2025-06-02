@@ -403,13 +403,20 @@ class TestSession(IntegrationTest):
             self.assertTrue(cursor.session is s)
 
         # Nested sessions.
+
+        def get_cursor(collection):
+            return collection.find()
+
         session1 = self.client.start_session(bind=True)
         with session1:
             session2 = self.client.start_session(bind=True)
             with session2:
-                coll.find_one()  # uses session2
-            coll.find_one()  # uses session1
-        coll.find_one()  # uses implicit session
+                cursor = get_cursor(coll)  # uses session2
+                self.assertEqual(cursor.session, session2)
+            cursor = get_cursor(coll)  # uses session1
+            self.assertEqual(cursor.session, session1)
+        cursor = get_cursor(coll)  # uses implicit session
+        self.assertEqual(cursor.session, None)
 
     def test_cursor(self):
         listener = self.listener
