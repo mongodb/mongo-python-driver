@@ -13,22 +13,25 @@
 # limitations under the License.
 from __future__ import annotations
 
-import asyncio
 import time
 import unittest
 from test.utils_shared import CMAPListener
 from typing import Optional
 
 import pytest
-from mockupdb import MockupDB, OpMsgReply
 
 from pymongo import MongoClient
 from pymongo.driver_info import DriverInfo
 from pymongo.monitoring import ConnectionClosedEvent
 
-pytestmark = pytest.mark.mockupdb
+try:
+    from mockupdb import MockupDB, OpMsgReply
 
-_IS_SYNC = True
+    _HAVE_MOCKUPDB = True
+except ImportError:
+    _HAVE_MOCKUPDB = False
+
+pytestmark = pytest.mark.mockupdb
 
 
 def _get_handshake_driver_info(request):
@@ -39,12 +42,17 @@ def _get_handshake_driver_info(request):
 class TestClientMetadataProse(unittest.TestCase):
     def setUp(self):
         self.server = MockupDB()
+        # there are two handshake requests, i believe one is from the monitor, and the other is from the client
+        self.monitor_handshake = False
         self.handshake_req = None
 
         def respond(r):
             # Only save the very first request from the driver.
             if self.handshake_req is None:
-                self.handshake_req = r
+                if not self.monitor_handshake:
+                    self.monitor_handshake = True
+                else:
+                    self.handshake_req = r
             return r.reply(OpMsgReply(minWireVersion=0, maxWireVersion=13))
 
         self.server.autoresponds(respond)
@@ -73,11 +81,11 @@ class TestClientMetadataProse(unittest.TestCase):
 
         # add data
         client._append_metadata(DriverInfo(add_name, add_version, add_platform))
-        # reset
+        # make sure new metadata is being sent
         self.handshake_req = None
         client.admin.command("ping")
         new_metadata = _get_handshake_driver_info(self.handshake_req)
-        # compare
+
         self.assertEqual(
             new_metadata["driver"]["name"], f"{name}|{add_name}" if add_name is not None else name
         )
@@ -128,7 +136,6 @@ class TestClientMetadataProse(unittest.TestCase):
             driver_metadata["version"],
             metadata["platform"],
         )
-        # feels like i should do something to check that it is initially sent
         self.assertIsNotNone(name)
         self.assertIsNotNone(version)
         self.assertIsNotNone(platform)
@@ -139,23 +146,11 @@ class TestClientMetadataProse(unittest.TestCase):
         # check new data isn't sent
         self.handshake_req = None
         client.admin.command("ping")
-        # if it was an actual handshake request, client data would be in the ping request which would start the handshake i think
         self.assertNotIn("client", self.handshake_req)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 0)
 
         client.close()
 
-
-# THESE ARE MY NOTES TO SELF, PLAESE IGNORE
-# two options
-# emit events with a flag, so when testing (like now), we can emit more stuff
-# or we can mock it? but not sure if that ruins the spirit of the test -> this would be easier tho..
-# we'd send, mock server would receive and send back to us?
-# use mockup DB!
-# usually, create mockupDB instance and then tell it to automatically respond to automatic responses, i'll need to change that for this but i also don't want to mess up SDAM stuff?
-# i can get logs from server (in mongo orchestration) if mockup DB is too annoying (maybe get log?)
-# ask the team generally but jib thinks we should emit events with a flag
-# make sure to state pros and cons for each ticket
 
 if __name__ == "__main__":
     unittest.main()
