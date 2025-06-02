@@ -44,7 +44,7 @@ class TestClientMetadataProse(unittest.TestCase):
         self.server = MockupDB()
         # there are two handshake requests, i believe one is from the monitor, and the other is from the client
         self.monitor_handshake = False
-        self.handshake_req = None
+        self.handshake_req: Optional[dict] = None
 
         def respond(r):
             # Only save the very first request from the driver.
@@ -60,7 +60,7 @@ class TestClientMetadataProse(unittest.TestCase):
         self.addCleanup(self.server.stop)
 
     def check_metadata_added(
-        self, add_name: Optional[str], add_version: Optional[str], add_platform: Optional[str]
+        self, add_name: str, add_version: Optional[str], add_platform: Optional[str]
     ) -> None:
         client = MongoClient(
             "mongodb://" + self.server.address_string,
@@ -84,6 +84,7 @@ class TestClientMetadataProse(unittest.TestCase):
         # make sure new metadata is being sent
         self.handshake_req = None
         client.admin.command("ping")
+        # self.assertIsNotNone(self.handshake_req)
         new_metadata = _get_handshake_driver_info(self.handshake_req)
 
         self.assertEqual(
@@ -144,8 +145,10 @@ class TestClientMetadataProse(unittest.TestCase):
         add_name, add_version, add_platform = "framework", "2.0", "Framework Platform"
         client._append_metadata(DriverInfo(add_name, add_version, add_platform))
         # check new data isn't sent
-        self.handshake_req = None
+        self.handshake_req: Optional[dict] = None
         client.admin.command("ping")
+        self.assertIsNotNone(self.handshake_req)
+        assert self.handshake_req is not None  # so mypy knows that it's not None
         self.assertNotIn("client", self.handshake_req)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 0)
 
