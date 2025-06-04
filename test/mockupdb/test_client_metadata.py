@@ -84,7 +84,7 @@ class TestClientMetadataProse(unittest.TestCase):
         # make sure new metadata is being sent
         self.handshake_req = None
         client.admin.command("ping")
-        # self.assertIsNotNone(self.handshake_req)
+        assert self.handshake_req is not None
         new_metadata = _get_handshake_driver_info(self.handshake_req)
 
         self.assertEqual(
@@ -151,6 +151,80 @@ class TestClientMetadataProse(unittest.TestCase):
         assert self.handshake_req is not None  # so mypy knows that it's not None
         self.assertNotIn("client", self.handshake_req)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 0)
+
+        client.close()
+
+    def test_append_metadata_multiple_times(self):
+        client = MongoClient(
+            "mongodb://" + self.server.address_string,
+            maxIdleTimeMS=1,
+            driver=DriverInfo("library", "1.2", "Library Platform"),
+        )
+
+        # send initial metadata
+        client.admin.command("ping")
+        metadata = _get_handshake_driver_info(self.handshake_req)
+        driver_metadata = metadata["driver"]
+        name, version, platform = (
+            driver_metadata["name"],
+            driver_metadata["version"],
+            metadata["platform"],
+        )
+        time.sleep(0.005)
+
+        # add data
+        add_name, add_version, add_platform = "framework", "2.0", "Framework Platform"
+        client._append_metadata(DriverInfo(add_name, add_version, add_platform))
+        # make sure new metadata is being sent
+        self.handshake_req = None
+        client.admin.command("ping")
+        assert self.handshake_req is not None
+        new_metadata = _get_handshake_driver_info(self.handshake_req)
+
+        self.assertEqual(
+            new_metadata["driver"]["name"], f"{name}|{add_name}" if add_name is not None else name
+        )
+        self.assertEqual(
+            new_metadata["driver"]["version"],
+            f"{version}|{add_version}" if add_version is not None else version,
+        )
+        self.assertEqual(
+            new_metadata["platform"],
+            f"{platform}|{add_platform}" if add_platform is not None else platform,
+        )
+
+        metadata.pop("driver")
+        metadata.pop("platform")
+        new_metadata.pop("driver")
+        new_metadata.pop("platform")
+        self.assertEqual(metadata, new_metadata)
+        time.sleep(0.005)
+
+        # add data again
+        add_name2, add_version2, add_platform2 = "framework2", "3.0", "Framework Platform2"
+        client._append_metadata(DriverInfo(add_name2, add_version2, add_platform2))
+        # make sure new metadata is being sent
+        self.handshake_req = None
+        client.admin.command("ping")
+        assert self.handshake_req is not None
+        new_metadata2 = _get_handshake_driver_info(self.handshake_req)
+
+        self.assertEqual(
+            new_metadata2["driver"]["name"],
+            f"{name}|{add_name}|{add_name2}" if add_name2 is not None else name,
+        )
+        self.assertEqual(
+            new_metadata2["driver"]["version"],
+            f"{version}|{add_version}|{add_version2}" if add_version2 is not None else version,
+        )
+        self.assertEqual(
+            new_metadata2["platform"],
+            f"{platform}|{add_platform}|{add_platform2}" if add_platform2 is not None else platform,
+        )
+
+        new_metadata2.pop("driver")
+        new_metadata2.pop("platform")
+        self.assertEqual(metadata, new_metadata2)
 
         client.close()
 
