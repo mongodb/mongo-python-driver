@@ -43,6 +43,7 @@ class _Task(asyncio.Task):
         return self._cancel_requests
 
 
+# We can directly pass an empty Context() object to create_task in Python >= 3.11
 def create_task(coro: Coroutine[Any, Any, Any], *, name: Optional[str] = None) -> asyncio.Task:
     if sys.version_info >= (3, 11):
         return asyncio.create_task(coro, name=name)
