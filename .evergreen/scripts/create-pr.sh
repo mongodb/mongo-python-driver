@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
 
-# clone drivers-evergreen-tools to get this get-access-token script...
 tools="../drivers-evergreen-tools"
 git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $tools
 body="$(cat "$1")"
 
 pushd $tools/.evergreen/github_app
 
-# Get a github access token for the git checkout.
-echo "Getting github token..."
-
 owner="mongodb"
 repo="mongo-python-driver"
 
-./setup-secrets.sh
-echo "finish setting up secrets"
+echo "bootstrapping?"
+# Bootstrap the app.
+source utils.sh
+bootstrap drivers/release-bot
+
+# Run the app.
+
+# Get a github access token for the git checkout.
+echo "Getting github token..."
 token=$(bash ./get-access-token.sh $repo $owner)
 if [ -z "${token}" ]; then
     echo "Failed to get github access token!"
@@ -31,7 +34,7 @@ git config user.email "167856002+mongodb-dbx-release-bot[bot]@users.noreply.gith
 git config user.name "mongodb-dbx-release-bot[bot]"
 git remote set-url origin https://x-access-token:${token}@github.com/$owner/$repo.git
 git checkout -b $branch "origin/master"
-git add
+git add ./test
 echo "Creating the git checkout... done."
 
 git push origin $branch
