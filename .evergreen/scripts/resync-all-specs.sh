@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Run spec syncing script and create PR
 
-SPEC_DEST="test"
+SPEC_DEST="$(realpath -s "./test")"
 SRC_URL="https://github.com/mongodb/specifications.git"
 # needs to be set for resunc-specs.sh
-SPEC_SRC="../specifications"
-SCRIPT=".evergreen/resync-specs.sh"
+SPEC_SRC="$(realpath -s "../specifications")"
+SCRIPT="$(realpath -s ".evergreen/resync-specs.sh")"
 BRANCH_NAME="spec-resync-"$(date '+%m-%d-%Y')
 
 # List of directories to skip
@@ -27,6 +27,7 @@ fi
 
 # Set environment variable to the cloned repo for resync-specs.sh
 export MDB_SPECS="$SPEC_SRC"
+echo "$SPEC_SRC"
 
 # Check that resync script exists and is executable
 if [[ ! -x $SCRIPT ]]; then
@@ -51,13 +52,15 @@ for item in "$SPEC_DEST"/*; do
   if [[ $item != *.py ]]; then
     echo " doing $item_name"
 #    output=$(./$SCRIPT "$item_name" 2>&1)
-    output=$($SCRIPT "$item_name")
+    $SCRIPT "$item_name"
     # Check if the script ran successfully
     if [[ $? -ne 0 ]]; then
+      echo "an error occurred"
       errored_specs+=("$item_name")
     else
       # if script had output, then changes were made
       if [[ -n "$output" ]]; then
+        echo "success"
         changed_specs+=("$item_name")
       fi
     fi
@@ -86,8 +89,10 @@ else
 fi
 
 # Output the PR body (optional step for verification)
-echo "$pr_body"
+echo -e "$pr_body"
 echo "$pr_body" >> spec_sync.txt
+
+git diff
 
 # call scrypt to create PR for us
 .evergreen/scripts/create-pr.sh spec_sync.txt
