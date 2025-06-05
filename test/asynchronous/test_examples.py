@@ -1162,7 +1162,6 @@ class TestTransactionExamples(AsyncIntegrationTest):
 
 class TestCausalConsistencyExamples(AsyncIntegrationTest):
     @async_client_context.require_secondaries_count(1)
-    @async_client_context.require_no_mmap
     async def test_causal_consistency(self):
         # Causal consistency examples
         client = self.client

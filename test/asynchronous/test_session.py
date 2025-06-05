@@ -1046,14 +1046,6 @@ class TestCausalConsistency(AsyncUnitTest):
         )
 
     @async_client_context.require_no_standalone
-    @async_client_context.require_version_max(4, 1, 0)
-    async def test_aggregate_out_does_not_include_read_concern(self):
-        async def alambda(coll, session):
-            await (await coll.aggregate([{"$out": "aggout"}], session=session)).to_list()
-
-        await self._test_no_read_concern(alambda)
-
-    @async_client_context.require_no_standalone
     async def test_get_more_does_not_include_read_concern(self):
         coll = self.client.pymongo_test.test
         async with self.client.start_session() as sess:
@@ -1095,7 +1087,6 @@ class TestCausalConsistency(AsyncUnitTest):
             self.assertIsNone(act)
 
     @async_client_context.require_no_standalone
-    @async_client_context.require_no_mmap
     async def test_read_concern(self):
         async with self.client.start_session(causal_consistency=True) as s:
             coll = self.client.pymongo_test.test

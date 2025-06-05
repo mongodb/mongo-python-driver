@@ -671,12 +671,6 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         server_listener = ServerAndTopologyEventListener()
         # Create a new client, to avoid interference from pooled sessions.
         client_options = self.parse_client_options(test["clientOptions"])
-        # MMAPv1 does not support retryable writes.
-        if (
-            client_options.get("retryWrites") is True
-            and async_client_context.storage_engine == "mmapv1"
-        ):
-            self.skipTest("MMAPv1 does not support retryWrites=True")
         use_multi_mongos = test["useMultipleMongoses"]
         host = None
         if use_multi_mongos:
