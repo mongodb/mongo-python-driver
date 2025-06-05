@@ -1041,7 +1041,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._kill_cursors_executor = executor
         self._opened = False
 
-    def _append_metadata(self, driver_info: DriverInfo) -> None:
+    def append_metadata(self, driver_info: DriverInfo) -> None:
+        """
+        Appends the given metadata to existing driver metadata.
+        """
         metadata = self._options.pool_options.metadata
         for k, v in driver_info._asdict().items():
             if v is None:

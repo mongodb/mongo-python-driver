@@ -83,7 +83,7 @@ class TestClientMetadataProse(unittest.TestCase):
         time.sleep(0.005)
 
         # add new metadata
-        client._append_metadata(DriverInfo(add_name, add_version, add_platform))
+        client.append_metadata(DriverInfo(add_name, add_version, add_platform))
         new_name, new_version, new_platform, new_metadata = self.send_ping_and_get_metadata(
             client, True
         )
@@ -148,7 +148,7 @@ class TestClientMetadataProse(unittest.TestCase):
         client = MongoClient(
             "mongodb://" + self.server.address_string, maxIdleTimeMS=1, connect=False
         )
-        client._append_metadata(DriverInfo("library", "1.2", "Library Platform"))
+        client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         self.check_metadata_added(client, "framework", "2.0", "Framework Platform")
         client.close()
 
@@ -157,7 +157,7 @@ class TestClientMetadataProse(unittest.TestCase):
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
         )
-        client._append_metadata(DriverInfo("library", "1.2", "Library Platform"))
+        client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         self.check_metadata_added(client, "framework", "2.0", None)
         client.close()
 
@@ -166,7 +166,7 @@ class TestClientMetadataProse(unittest.TestCase):
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
         )
-        client._append_metadata(DriverInfo("library", "1.2", "Library Platform"))
+        client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         self.check_metadata_added(client, "framework", None, "Framework Platform")
         client.close()
 
@@ -175,7 +175,7 @@ class TestClientMetadataProse(unittest.TestCase):
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
         )
-        client._append_metadata(DriverInfo("library", "1.2", "Library Platform"))
+        client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         self.check_metadata_added(client, "framework", None, None)
         client.close()
 
@@ -196,7 +196,7 @@ class TestClientMetadataProse(unittest.TestCase):
 
         # add data
         add_name, add_version, add_platform = "framework", "2.0", "Framework Platform"
-        client._append_metadata(DriverInfo(add_name, add_version, add_platform))
+        client.append_metadata(DriverInfo(add_name, add_version, add_platform))
         # check new data isn't sent
         self.handshake_req: Optional[dict] = None
         client.admin.command("ping")
