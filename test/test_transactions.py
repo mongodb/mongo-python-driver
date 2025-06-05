@@ -73,8 +73,6 @@ class TransactionsBase(SpecRunner):
 
 
 class TestTransactions(TransactionsBase):
-    RUN_ON_SERVERLESS = True
-
     @client_context.require_transactions
     def test_transaction_options_validation(self):
         default_options = TransactionOptions()

@@ -73,8 +73,6 @@ class AsyncTransactionsBase(AsyncSpecRunner):
 
 
 class TestTransactions(AsyncTransactionsBase):
-    RUN_ON_SERVERLESS = True
-
     @async_client_context.require_transactions
     def test_transaction_options_validation(self):
         default_options = TransactionOptions()

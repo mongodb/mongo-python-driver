@@ -42,7 +42,6 @@ globals().update(
         expected_failures=[
             "Client side error in command starting transaction",  # PYTHON-1894
         ],
-        RUN_ON_SERVERLESS=False,
     )
 )
 
@@ -56,7 +55,6 @@ globals().update(
         expected_failures=[
             ".*",  # All tests expected to fail
         ],
-        RUN_ON_SERVERLESS=False,
     )
 )
 

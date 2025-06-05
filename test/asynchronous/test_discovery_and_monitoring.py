@@ -445,7 +445,6 @@ class TestPoolManagement(AsyncIntegrationTest):
 
 
 class TestServerMonitoringMode(AsyncIntegrationTest):
-    @async_client_context.require_no_serverless
     @async_client_context.require_no_load_balancer
     async def asyncSetUp(self):
         await super().asyncSetUp()

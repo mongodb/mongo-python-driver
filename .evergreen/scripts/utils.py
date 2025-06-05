@@ -45,7 +45,6 @@ TEST_SUITE_MAP = {
     "mockupdb": "mockupdb",
     "ocsp": "ocsp",
     "perf": "perf",
-    "serverless": "",
 }
 
 # Tests that require a sub test suite.
@@ -60,7 +59,6 @@ NO_RUN_ORCHESTRATION = [
     "aws_lambda",
     "data_lake",
     "mockupdb",
-    "serverless",
     "ocsp",
 ]
 

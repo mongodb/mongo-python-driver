@@ -131,14 +131,6 @@ async def is_run_on_requirement_satisfied(requirement):
     if req_max_server_version:
         max_version_satisfied = Version.from_string(req_max_server_version) >= server_version
 
-    serverless = requirement.get("serverless")
-    if serverless == "require":
-        serverless_satisfied = async_client_context.serverless
-    elif serverless == "forbid":
-        serverless_satisfied = not async_client_context.serverless
-    else:  # unset or "allow"
-        serverless_satisfied = True
-
     params_satisfied = True
     params = requirement.get("serverParameters")
     if params:
@@ -168,7 +160,6 @@ async def is_run_on_requirement_satisfied(requirement):
         topology_satisfied
         and min_version_satisfied
         and max_version_satisfied
-        and serverless_satisfied
         and params_satisfied
         and auth_satisfied
         and csfle_satisfied
@@ -284,7 +275,7 @@ class EntityMapUtil:
             self._listeners[spec["id"]] = listener
             kwargs["event_listeners"] = [listener]
             if spec.get("useMultipleMongoses"):
-                if async_client_context.load_balancer or async_client_context.serverless:
+                if async_client_context.load_balancer:
                     kwargs["h"] = async_client_context.MULTI_MONGOS_LB_URI
                 elif async_client_context.is_mongos:
                     kwargs["h"] = async_client_context.mongos_seeds()
@@ -440,7 +431,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
     SCHEMA_VERSION = Version.from_string("1.22")
     RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes
     mongos_clients: list[AsyncMongoClient] = []
@@ -511,11 +501,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
         # Handle mongos_clients for transactions tests.
         self.mongos_clients = []
-        if (
-            async_client_context.supports_transactions()
-            and not async_client_context.load_balancer
-            and not async_client_context.serverless
-        ):
+        if async_client_context.supports_transactions() and not async_client_context.load_balancer:
             for address in async_client_context.mongoses:
                 self.mongos_clients.append(await self.async_single_client("{}:{}".format(*address)))
 
@@ -552,12 +538,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             self.skipTest("PYTHON-5170 tests are flakey")
         if "Driver extends timeout while streaming" in spec["description"] and not _IS_SYNC:
             self.skipTest("PYTHON-5174 tests are flakey")
-        if (
-            "inserting _id with type null via clientBulkWrite" in spec["description"]
-            or "commitTransaction fails after Interrupted" in spec["description"]
-            or "commit is not retried after MaxTimeMSExpired error" in spec["description"]
-        ) and async_client_context.serverless:
-            self.skipTest("PYTHON-5326 known serverless failures")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
