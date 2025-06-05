@@ -3060,16 +3060,6 @@ tasks:
       - sharded_cluster-auth-ssl
       - sync
 
-  # Serverless tests
-  - name: test-serverless
-    commands:
-      - func: run tests
-        vars:
-          TEST_NAME: serverless
-          AUTH: auth
-          SSL: ssl
-    tags: [serverless]
-
   # Standard tests
   - name: test-standard-v4.0-python3.9-sync-noauth-nossl-standalone
     commands:

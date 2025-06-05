@@ -586,26 +586,6 @@ buildvariants:
       - rhel87-small
     tags: [coverage_tag]
 
-  # Serverless tests
-  - name: serverless-rhel8-python3.9
-    tasks:
-      - name: .serverless
-    display_name: Serverless RHEL8 Python3.9
-    run_on:
-      - rhel87-small
-    batchtime: 10080
-    expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: serverless-rhel8-python3.13
-    tasks:
-      - name: .serverless
-    display_name: Serverless RHEL8 Python3.13
-    run_on:
-      - rhel87-small
-    batchtime: 10080
-    expansions:
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
-
   # Stable api tests
   - name: stable-api-require-v1-rhel8-auth
     tasks:
