@@ -36,10 +36,6 @@ elif TEST_NAME == "auth_oidc":
 elif TEST_NAME == "ocsp":
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh")
 
-# Tear down serverless if applicable.
-elif TEST_NAME == "serverless":
-    run_command(f"bash {DRIVERS_TOOLS}/.evergreen/serverless/teardown.sh")
-
 # Tear down atlas cluster if applicable.
 if TEST_NAME in ["aws_lambda", "search_index"]:
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh")

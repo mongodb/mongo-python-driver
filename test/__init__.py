@@ -64,7 +64,6 @@ from test.helpers import (
     MONGODB_API_VERSION,
     MULTI_MONGOS_LB_URI,
     TEST_LOADBALANCER,
-    TEST_SERVERLESS,
     TLS_OPTIONS,
     SystemCertsPatcher,
     client_knobs,
@@ -123,9 +122,8 @@ class ClientContext:
         self.conn_lock = threading.Lock()
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
-        self.serverless = TEST_SERVERLESS
         self._fips_enabled = None
-        if self.load_balancer or self.serverless:
+        if self.load_balancer:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
@@ -167,7 +165,7 @@ class ClientContext:
     @property
     def hello(self):
         if not self._hello:
-            if self.serverless or self.load_balancer:
+            if self.load_balancer:
                 self._hello = self.client.admin.command(HelloCompat.CMD)
             else:
                 self._hello = self.client.admin.command(HelloCompat.LEGACY_CMD)
@@ -222,24 +220,21 @@ class ClientContext:
         if self.client:
             self.connected = True
 
-            if self.serverless:
-                self.auth_enabled = True
-            else:
-                try:
-                    self.cmd_line = self.client.admin.command("getCmdLineOpts")
-                except pymongo.errors.OperationFailure as e:
-                    assert e.details is not None
-                    msg = e.details.get("errmsg", "")
-                    if e.code == 13 or "unauthorized" in msg or "login" in msg:
-                        # Unauthorized.
-                        self.auth_enabled = True
-                    else:
-                        raise
+            try:
+                self.cmd_line = self.client.admin.command("getCmdLineOpts")
+            except pymongo.errors.OperationFailure as e:
+                assert e.details is not None
+                msg = e.details.get("errmsg", "")
+                if e.code == 13 or "unauthorized" in msg or "login" in msg:
+                    # Unauthorized.
+                    self.auth_enabled = True
                 else:
-                    self.auth_enabled = self._server_started_with_auth()
+                    raise
+            else:
+                self.auth_enabled = self._server_started_with_auth()
 
             if self.auth_enabled:
-                if not self.serverless and not IS_SRV:
+                if not IS_SRV:
                     # See if db_user already exists.
                     if not self._check_user_provided():
                         _create_user(self.client.admin, db_user, db_pwd)
@@ -259,13 +254,10 @@ class ClientContext:
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command("getCmdLineOpts")
 
-            if self.serverless:
-                self.server_status = {}
-            else:
-                self.server_status = self.client.admin.command("serverStatus")
-                if self.storage_engine == "mmapv1":
-                    # MMAPv1 does not support retryWrites=True.
-                    self.default_client_options["retryWrites"] = False
+            self.server_status = self.client.admin.command("serverStatus")
+            if self.storage_engine == "mmapv1":
+                # MMAPv1 does not support retryWrites=True.
+                self.default_client_options["retryWrites"] = False
 
             hello = self.hello
             self.sessions_enabled = "logicalSessionTimeoutMinutes" in hello
@@ -302,42 +294,33 @@ class ClientContext:
             self.w = len(hello.get("hosts", [])) or 1
             self.version = Version.from_client(self.client)
 
-            if self.serverless:
-                self.server_parameters = {
-                    "requireApiVersion": False,
-                    "enableTestCommands": True,
-                }
+            self.server_parameters = self.client.admin.command("getParameter", "*")
+            assert self.cmd_line is not None
+            if self.server_parameters["enableTestCommands"]:
                 self.test_commands_enabled = True
-                self.has_ipv6 = False
-            else:
-                self.server_parameters = self.client.admin.command("getParameter", "*")
-                assert self.cmd_line is not None
-                if self.server_parameters["enableTestCommands"]:
+            elif "parsed" in self.cmd_line:
+                params = self.cmd_line["parsed"].get("setParameter", [])
+                if "enableTestCommands=1" in params:
                     self.test_commands_enabled = True
-                elif "parsed" in self.cmd_line:
-                    params = self.cmd_line["parsed"].get("setParameter", [])
-                    if "enableTestCommands=1" in params:
+                else:
+                    params = self.cmd_line["parsed"].get("setParameter", {})
+                    if params.get("enableTestCommands") == "1":
                         self.test_commands_enabled = True
-                    else:
-                        params = self.cmd_line["parsed"].get("setParameter", {})
-                        if params.get("enableTestCommands") == "1":
-                            self.test_commands_enabled = True
-                self.has_ipv6 = self._server_started_with_ipv6()
+            self.has_ipv6 = self._server_started_with_ipv6()
 
             self.is_mongos = (self.hello).get("msg") == "isdbgrid"
             if self.is_mongos:
                 address = self.client.address
                 self.mongoses.append(address)
-                if not self.serverless:
-                    # Check for another mongos on the next port.
-                    assert address is not None
-                    next_address = address[0], address[1] + 1
-                    mongos_client = self._connect(*next_address, **self.default_client_options)
-                    if mongos_client:
-                        hello = mongos_client.admin.command(HelloCompat.LEGACY_CMD)
-                        if hello.get("msg") == "isdbgrid":
-                            self.mongoses.append(next_address)
-                        mongos_client.close()
+                # Check for another mongos on the next port.
+                assert address is not None
+                next_address = address[0], address[1] + 1
+                mongos_client = self._connect(*next_address, **self.default_client_options)
+                if mongos_client:
+                    hello = mongos_client.admin.command(HelloCompat.LEGACY_CMD)
+                    if hello.get("msg") == "isdbgrid":
+                        self.mongoses.append(next_address)
+                    mongos_client.close()
 
     def init(self):
         with self.conn_lock:
@@ -666,15 +649,9 @@ class ClientContext:
             lambda: not self.load_balancer, "Must not be connected to a load balancer", func=func
         )
 
-    def require_no_serverless(self, func):
-        """Run a test only if the client is not connected to serverless."""
-        return self._require(
-            lambda: not self.serverless, "Must not be connected to serverless", func=func
-        )
-
     def require_change_streams(self, func):
         """Run a test only if the server supports change streams."""
-        return self.require_no_mmap(self.require_no_standalone(self.require_no_serverless(func)))
+        return self.require_no_mmap(self.require_no_standalone(func))
 
     def is_topology_type(self, topologies):
         unknown = set(topologies) - {
@@ -1195,8 +1172,6 @@ class IntegrationTest(PyMongoTestCase):
     def setUp(self) -> None:
         if client_context.load_balancer and not getattr(self, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")
-        if client_context.serverless and not getattr(self, "RUN_ON_SERVERLESS", False):
-            raise SkipTest("this test does not support serverless")
         self.client = client_context.client
         self.db = self.client.pymongo_test
         if client_context.auth_enabled:

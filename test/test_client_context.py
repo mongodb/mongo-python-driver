@@ -36,16 +36,6 @@ class TestClientContext(UnitTest):
             ),
         )
 
-    def test_serverless(self):
-        if not os.environ.get("TEST_SERVERLESS"):
-            raise SkipTest("TEST_SERVERLESS is not set")
-
-        self.assertTrue(
-            client_context.connected and client_context.serverless,
-            "client context must be connected to serverless when "
-            f"TEST_SERVERLESS is set. Failed attempts:\n{client_context.connection_attempt_info()}",
-        )
-
     def test_enableTestCommands_is_disabled(self):
         if not os.environ.get("DISABLE_TEST_COMMANDS"):
             raise SkipTest("DISABLE_TEST_COMMANDS is not set")
