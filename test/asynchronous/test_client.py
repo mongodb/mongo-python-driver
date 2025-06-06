@@ -1005,7 +1005,7 @@ class TestClient(AsyncIntegrationTest):
         cursor = await self.client.list_databases()
         self.assertIsInstance(cursor, AsyncCommandCursor)
         helper_docs = await cursor.to_list()
-        self.assertTrue(len(helper_docs) > 0)
+        self.assertGreater(len(helper_docs), 0)
         self.assertEqual(len(helper_docs), len(cmd_docs))
         # PYTHON-3529 Some fields may change between calls, just compare names.
         for helper_doc, cmd_doc in zip(helper_docs, cmd_docs):
