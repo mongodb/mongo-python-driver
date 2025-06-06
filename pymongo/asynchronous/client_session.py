@@ -139,6 +139,7 @@ import collections
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
+from contextvars import ContextVar
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -204,6 +205,7 @@ class SessionOptions:
         causal_consistency: Optional[bool] = None,
         default_transaction_options: Optional[TransactionOptions] = None,
         snapshot: Optional[bool] = False,
+        bind: Optional[bool] = False,
     ) -> None:
         if snapshot:
             if causal_consistency:
@@ -222,6 +224,7 @@ class SessionOptions:
                 )
         self._default_transaction_options = default_transaction_options
         self._snapshot = snapshot
+        self._bind = bind
 
     @property
     def causal_consistency(self) -> bool:
@@ -514,6 +517,7 @@ class AsyncClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
+        self._token = None
 
     async def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -545,9 +549,14 @@ class AsyncClientSession:
             raise InvalidOperation("Cannot use ended session")
 
     async def __aenter__(self) -> AsyncClientSession:
+        if self._options._bind:
+            self._token = _SESSION.set(self)
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if self._token:
+            _SESSION.reset(self._token)
+            self._token = None
         await self._end_session(lock=True)
 
     @property
@@ -1063,6 +1072,9 @@ class AsyncClientSession:
 
     def __copy__(self) -> NoReturn:
         raise TypeError("A AsyncClientSession cannot be copied, create a new session instead")
+
+
+_SESSION: ContextVar[Optional[AsyncClientSession]] = ContextVar("SESSION", default=None)
 
 
 class _EmptyServerSession:
