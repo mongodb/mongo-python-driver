@@ -23,6 +23,7 @@ import time
 import weakref
 from typing import Any, Optional
 
+from pymongo import _csot
 from pymongo._asyncio_task import create_task
 from pymongo.lock import _create_lock
 
@@ -93,6 +94,8 @@ class AsyncPeriodicExecutor:
         self._skip_sleep = True
 
     async def _run(self) -> None:
+        # The CSOT contextvars must be cleared inside the executor task before execution begins
+        _csot.reset_all()
         while not self._stopped:
             if self._task and self._task.cancelling():  # type: ignore[unused-ignore, attr-defined]
                 raise asyncio.CancelledError
