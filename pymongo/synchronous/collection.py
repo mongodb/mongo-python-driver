@@ -698,7 +698,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def bulk_write(
         self,
-        requests: Sequence[_WriteOp[_DocumentType]],
+        requests: Iterable[_WriteOp],
         ordered: bool = True,
         bypass_document_validation: Optional[bool] = None,
         session: Optional[ClientSession] = None,
@@ -778,17 +778,21 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.0
         """
-        common.validate_list("requests", requests)
+        common.validate_list_or_generator("requests", requests)
 
         blk = _Bulk(self, ordered, bypass_document_validation, comment=comment, let=let)
-        for request in requests:
+
+        write_concern = self._write_concern_for(session)
+
+        def process_for_bulk(request: _WriteOp) -> bool:
             try:
-                request._add_to_bulk(blk)
+                return request._add_to_bulk(blk)
             except AttributeError:
                 raise TypeError(f"{request!r} is not a valid request") from None
 
-        write_concern = self._write_concern_for(session)
-        bulk_api_result = blk.execute(write_concern, session, _Op.INSERT)
+        bulk_api_result = blk.execute(
+            requests, process_for_bulk, write_concern, session, _Op.INSERT
+        )
         if bulk_api_result is not None:
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
@@ -959,20 +963,19 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise TypeError("documents must be a non-empty list")
         inserted_ids: list[ObjectId] = []
 
-        def gen() -> Iterator[tuple[int, Mapping[str, Any]]]:
+        def process_for_bulk(document: Union[_DocumentType, RawBSONDocument]) -> bool:
             """A generator that validates documents and handles _ids."""
-            for document in documents:
-                common.validate_is_document_type("document", document)
-                if not isinstance(document, RawBSONDocument):
-                    if "_id" not in document:
-                        document["_id"] = ObjectId()  # type: ignore[index]
-                    inserted_ids.append(document["_id"])
-                yield (message._INSERT, document)
+            common.validate_is_document_type("document", document)
+            if not isinstance(document, RawBSONDocument):
+                if "_id" not in document:
+                    document["_id"] = ObjectId()  # type: ignore[index]
+                inserted_ids.append(document["_id"])
+            blk.ops.append((message._INSERT, document))
+            return True
 
         write_concern = self._write_concern_for(session)
         blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
-        blk.ops = list(gen())
-        blk.execute(write_concern, session, _Op.INSERT)
+        blk.execute(documents, process_for_bulk, write_concern, session, _Op.INSERT)
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
     def _update(
