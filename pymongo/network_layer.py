@@ -18,7 +18,6 @@ from __future__ import annotations
 import asyncio
 import collections
 import errno
-import os
 import socket
 import struct
 import sys
@@ -287,7 +286,7 @@ async def _async_socket_receive(
 
 
 _PYPY = "PyPy" in sys.version
-_WINDOWS = os.name == "nt"
+_WINDOWS = sys.platform == "win32"
 
 
 def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
