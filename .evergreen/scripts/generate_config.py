@@ -488,10 +488,12 @@ def create_aws_auth_variants():
         tasks = [".auth-aws"]
         tags = []
         if host_name == "macos":
-            tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2"]
+            tasks = [
+                ".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2 !.auth-aws-eks"
+            ]
             tags = ["pr"]
         elif host_name == "win64":
-            tasks = [".auth-aws !.auth-aws-ecs"]
+            tasks = [".auth-aws !.auth-aws-ecs !.auth-aws-eks"]
         host = HOSTS[host_name]
         variant = create_variant(
             tasks,
@@ -741,33 +743,38 @@ def create_aws_tasks():
         "env-creds",
         "session-creds",
         "web-identity",
-        "ecs",
+        "web-identity-session-name",
     ]
+    assume_func = FunctionCall(func="assume ec2 role")
     for version, test_type, python in zip_cycle(get_versions_from("4.4"), aws_test_types, CPYTHONS):
         base_name = f"test-auth-aws-{version}"
         base_tags = ["auth-aws"]
         server_vars = dict(AUTH_AWS="1", VERSION=version)
         server_func = FunctionCall(func="run server", vars=server_vars)
-        assume_func = FunctionCall(func="assume ec2 role")
-        tags = [*base_tags, f"auth-aws-{test_type}"]
         name = get_task_name(f"{base_name}-{test_type}", python=python)
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
+        if test_type == "web-identity-session-name":
+            test_type = test_vars["SUB_TEST_NAME"] = "web-identity"  # noqa:PLW2901
+            test_vars["AWS_ROLE_SESSION_NAME"] = "test"
+        tags = [*base_tags, f"auth-aws-{test_type}"]
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [server_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
-        if test_type == "web-identity":
-            tags = [*base_tags, "auth-aws-web-identity"]
-            name = get_task_name(f"{base_name}-web-identity-session-name", python=python)
-            test_vars = dict(
-                TEST_NAME="auth_aws",
-                SUB_TEST_NAME="web-identity",
-                AWS_ROLE_SESSION_NAME="test",
-                PYTHON_VERSION=python,
-            )
-            test_func = FunctionCall(func="run tests", vars=test_vars)
-            funcs = [server_func, assume_func, test_func]
-            tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
+    # These test types use a fixed Python version and the latest server.
+    for test_type in ["eks", "ecs"]:
+        tags = ["auth-aws", f"auth-aws-{test_type}"]
+        base_name = f"test-auth-aws-latest-{test_type}"
+        python = "3.11"
+        name = get_task_name(base_name, python=python)
+        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        funcs = [assume_func, test_func]
+        if test_type == "ecs":
+            server_vars = dict(AUTH_AWS="1")
+            server_func = FunctionCall(func="run server", vars=server_vars)
+            funcs = [assume_func, server_func, test_func]
+        tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     return tasks
 

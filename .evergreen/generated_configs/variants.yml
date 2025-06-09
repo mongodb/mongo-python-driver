@@ -98,14 +98,14 @@ buildvariants:
     tags: []
   - name: auth-aws-win64
     tasks:
-      - name: .auth-aws !.auth-aws-ecs
+      - name: .auth-aws !.auth-aws-ecs !.auth-aws-eks
     display_name: Auth AWS Win64
     run_on:
       - windows-64-vsMulti-small
     tags: []
   - name: auth-aws-macos
     tasks:
-      - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2
+      - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2 !.auth-aws-eks
     display_name: Auth AWS macOS
     run_on:
       - macos-14

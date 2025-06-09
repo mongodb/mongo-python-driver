@@ -87,21 +87,7 @@ tasks:
           SUB_TEST_NAME: web-identity
           PYTHON_VERSION: "3.9"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-rapid-web-identity-session-name-python3.9
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: rapid
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: web-identity
-          AWS_ROLE_SESSION_NAME: test
-          PYTHON_VERSION: "3.9"
-    tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-latest-ecs-python3.10
+  - name: test-auth-aws-latest-web-identity-session-name-python3.10
     commands:
       - func: run server
         vars:
@@ -111,8 +97,30 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
+          SUB_TEST_NAME: web-identity
           PYTHON_VERSION: "3.10"
+          AWS_ROLE_SESSION_NAME: test
+    tags: [auth-aws, auth-aws-web-identity]
+  - name: test-auth-aws-latest-eks-python3.11
+    commands:
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: eks
+          PYTHON_VERSION: "3.11"
+    tags: [auth-aws, auth-aws-eks]
+  - name: test-auth-aws-latest-ecs-python3.11
+    commands:
+      - func: assume ec2 role
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ecs
+          PYTHON_VERSION: "3.11"
     tags: [auth-aws, auth-aws-ecs]
 
   # Backport pr tests
