@@ -27,7 +27,6 @@ from test.asynchronous.unified_format import generate_test_classes
 _IS_SYNC = False
 
 
-@client_context.require_no_mmap
 def setUpModule():
     pass
 
