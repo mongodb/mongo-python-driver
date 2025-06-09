@@ -43,6 +43,8 @@ jobs:
           aws_region_name: ${{ vars.AWS_REGION_NAME }}
           aws_secret_id: ${{ secrets.AWS_SECRET_ID }}
           artifactory_username: ${{ vars.ARTIFACTORY_USERNAME }}
+      - name: Get hatch
+        run: pip install hatch
       - uses: mongodb-labs/drivers-github-tools/create-branch@v2
         id: create-branch
         with:
