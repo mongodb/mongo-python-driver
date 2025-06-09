@@ -20,7 +20,7 @@ env:
   # Changes per repo
   PRODUCT_NAME: PyMongo
   # Changes per branch
-  EVERGREEN_PROJECT: mongo-python-driver
+  EVERGREEN_PROJECT: mongo-python-driver-prev-rel
   # Constant
   # inputs will be empty on a scheduled run.  so, we only set dry_run
   # to 'false' when the input is set to 'false'.
