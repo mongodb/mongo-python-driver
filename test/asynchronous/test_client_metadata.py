@@ -21,11 +21,17 @@ from test.utils_shared import CMAPListener
 from typing import Any, Optional
 
 import pytest
-from mockupdb import MockupDB, OpMsgReply
 
 from pymongo import AsyncMongoClient, MongoClient
 from pymongo.driver_info import DriverInfo
 from pymongo.monitoring import ConnectionClosedEvent
+
+try:
+    from mockupdb import MockupDB, OpMsgReply
+
+    _HAVE_MOCKUPDB = True
+except ImportError:
+    _HAVE_MOCKUPDB = False
 
 pytestmark = pytest.mark.mockupdb
 
