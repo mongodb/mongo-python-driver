@@ -13,25 +13,23 @@
 # limitations under the License.
 from __future__ import annotations
 
+import asyncio
 import time
 import unittest
+from test import IntegrationTest
 from test.utils_shared import CMAPListener
 from typing import Any, Optional
 
 import pytest
+from mockupdb import MockupDB, OpMsgReply
 
 from pymongo import MongoClient
 from pymongo.driver_info import DriverInfo
 from pymongo.monitoring import ConnectionClosedEvent
 
-try:
-    from mockupdb import MockupDB, OpMsgReply
-
-    _HAVE_MOCKUPDB = True
-except ImportError:
-    _HAVE_MOCKUPDB = False
-
 pytestmark = pytest.mark.mockupdb
+
+_IS_SYNC = True
 
 
 def _get_handshake_driver_info(request):
@@ -39,11 +37,11 @@ def _get_handshake_driver_info(request):
     return request["client"]
 
 
-class TestClientMetadataProse(unittest.TestCase):
+class TestClientMetadataProse(IntegrationTest):
     def setUp(self):
+        super().setUp()
         self.server = MockupDB()
-        # there are two handshake requests, i believe one is from the monitor, and the other is from the client
-        self.handshake_req: Optional[dict] = None
+        self.handshake_req = None
 
         def respond(r):
             if "ismaster" in r:
@@ -58,9 +56,10 @@ class TestClientMetadataProse(unittest.TestCase):
     def send_ping_and_get_metadata(
         self, client: MongoClient, is_handshake: bool
     ) -> tuple[str, Optional[str], Optional[str], dict[str, Any]]:
-        # reset
+        # reset if handshake request
         if is_handshake:
             self.handshake_req: Optional[dict] = None
+
         client.admin.command("ping")
         metadata = _get_handshake_driver_info(self.handshake_req)
         driver_metadata = metadata["driver"]
@@ -87,11 +86,6 @@ class TestClientMetadataProse(unittest.TestCase):
         new_name, new_version, new_platform, new_metadata = self.send_ping_and_get_metadata(
             client, True
         )
-        print("IN SEND PING AND GET METADATA")
-        print(name, version, platform)
-        print(metadata)
-        print(new_name, new_version, new_platform)
-        print(new_metadata)
         self.assertEqual(new_name, f"{name}|{add_name}" if add_name is not None else name)
         self.assertEqual(
             new_version,
