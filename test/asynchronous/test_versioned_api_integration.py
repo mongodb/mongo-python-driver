@@ -40,7 +40,6 @@ globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 class TestServerApiIntegration(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
 
     def assertServerApi(self, event):
         self.assertIn("apiVersion", event.command)

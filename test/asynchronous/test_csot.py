@@ -41,7 +41,6 @@ globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 
 class TestCSOT(AsyncIntegrationTest):
-    RUN_ON_SERVERLESS = True
     RUN_ON_LOAD_BALANCER = True
 
     async def test_timeout_nested(self):

@@ -54,7 +54,6 @@ globals().update(generate_test_classes(_TEST_PATH, module=__name__))
 
 class TestLB(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
 
     async def test_connections_are_only_returned_once(self):
         if "PyPy" in sys.version:
@@ -142,10 +141,8 @@ class TestLB(AsyncIntegrationTest):
         session = client.start_session()
         await session.start_transaction()
         await client.test_session_gc.test.find_one({}, session=session)
-        # Cleanup the transaction left open on the server unless we're
-        # testing serverless which does not support killSessions.
-        if not async_client_context.serverless:
-            self.addAsyncCleanup(self.client.admin.command, "killSessions", [session.session_id])
+        # Cleanup the transaction left open on the server
+        self.addAsyncCleanup(self.client.admin.command, "killSessions", [session.session_id])
         if async_client_context.load_balancer:
             self.assertEqual(pool.active_sockets, 1)  # Pinned.
 
