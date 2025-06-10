@@ -1360,6 +1360,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         causal_consistency: Optional[bool] = None,
         default_transaction_options: Optional[client_session.TransactionOptions] = None,
         snapshot: Optional[bool] = False,
+        bind: Optional[bool] = False,
     ) -> client_session.AsyncClientSession:
         """Start a logical session.
 
@@ -1382,6 +1383,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             causal_consistency=causal_consistency,
             default_transaction_options=default_transaction_options,
             snapshot=snapshot,
+            bind=bind,
         )
 
     def _ensure_session(

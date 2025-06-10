@@ -136,8 +136,15 @@ class AsyncCursor(Generic[_DocumentType]):
         self._killed = False
         self._session: Optional[AsyncClientSession]
 
+        from .client_session import _SESSION
+
+        bound_session = _SESSION.get()
+
         if session:
             self._session = session
+            self._explicit_session = True
+        elif bound_session:
+            self._session = bound_session
             self._explicit_session = True
         else:
             self._session = None
