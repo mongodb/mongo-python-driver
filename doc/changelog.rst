@@ -1,6 +1,22 @@
 Changelog
 =========
 
+Changes in Version 4.13.1 (2025/06/10)
+--------------------------------------
+
+Version 4.13.1 is a bug fix release.
+
+- Fixed a bug that could raise ``ServerSelectionTimeoutError`` when using timeouts with ``AsyncMongoClient``.
+- Fixed a bug that could raise ``NetworkTimeout`` errors on Windows.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.13.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.13.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=43924
+
 Changes in Version 4.13.0 (2025/05/14)
 --------------------------------------
 
