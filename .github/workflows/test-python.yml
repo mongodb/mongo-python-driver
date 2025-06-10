@@ -125,8 +125,6 @@ jobs:
   linkcheck:
     name: Link Check
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -141,8 +139,6 @@ jobs:
       - name: Install dependencies
         run: just install
       - name: Build docs
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: just docs-linkcheck
 
   typing:

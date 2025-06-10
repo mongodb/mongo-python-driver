@@ -4,7 +4,6 @@
 # This file is execfile()d with the current directory set to its containing dir.
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -83,7 +82,7 @@ pygments_style = "sphinx"
 # Options for link checking
 # The anchors on the rendered markdown page are created after the fact,
 # so those link results in a 404.
-# wiki.centos.org has been flakey.
+# wiki.centos.org has been flaky.
 # sourceforge.net is giving a 403 error, but is still accessible from the browser.
 linkcheck_ignore = [
     "https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.md#requesting-an-immediate-check",
@@ -92,13 +91,8 @@ linkcheck_ignore = [
     r"https://sourceforge.net/",
 ]
 
-# Add GitHub auth if available to avoid rate limiting.
-if "GH_TOKEN" in os.environ:
-    token = os.environ["GH_TOKEN"]
-    linkcheck_request_headers = {r"https://github\.com/.+": {"authorization": f"Bearer ${token}"}}
-
-# Allow for flakey links.
-linkcheck_retries = 2
+# Allow for flaky links.
+linkcheck_retries = 3
 
 # -- Options for extensions ----------------------------------------------------
 autoclass_content = "init"
