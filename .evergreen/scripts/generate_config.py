@@ -903,7 +903,8 @@ def create_backport_pr_tasks():
         "${github_commit}",
     ]
     cmd = get_subprocess_exec(args=args)
-    return [EvgTask(name=name, commands=[cmd], allowed_requesters=["commit"])]
+    assume_func = FunctionCall(func="assume ec2 role")
+    return [EvgTask(name=name, commands=[assume_func, cmd], allowed_requesters=["commit"])]
 
 
 def create_ocsp_tasks():
