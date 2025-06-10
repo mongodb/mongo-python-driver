@@ -80,7 +80,6 @@ class FindThread(threading.Thread):
 class TestPoolPausedError(AsyncIntegrationTest):
     # Pools don't get paused in load balanced mode.
     RUN_ON_LOAD_BALANCER = False
-    RUN_ON_SERVERLESS = False
 
     @async_client_context.require_sync
     @async_client_context.require_failCommand_blockConnection

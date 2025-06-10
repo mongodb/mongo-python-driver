@@ -54,7 +54,6 @@ globals().update(generate_test_classes(_TEST_PATH, module=__name__))
 
 class TestLB(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
 
     def test_connections_are_only_returned_once(self):
         if "PyPy" in sys.version:
@@ -142,10 +141,8 @@ class TestLB(IntegrationTest):
         session = client.start_session()
         session.start_transaction()
         client.test_session_gc.test.find_one({}, session=session)
-        # Cleanup the transaction left open on the server unless we're
-        # testing serverless which does not support killSessions.
-        if not client_context.serverless:
-            self.addCleanup(self.client.admin.command, "killSessions", [session.session_id])
+        # Cleanup the transaction left open on the server
+        self.addCleanup(self.client.admin.command, "killSessions", [session.session_id])
         if client_context.load_balancer:
             self.assertEqual(pool.active_sockets, 1)  # Pinned.
 
