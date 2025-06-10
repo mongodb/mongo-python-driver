@@ -4,6 +4,7 @@
 # This file is execfile()d with the current directory set to its containing dir.
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -90,6 +91,14 @@ linkcheck_ignore = [
     r"https://wiki.centos.org/[\w/]*",
     r"https://sourceforge.net/",
 ]
+
+# Add GitHub auth if available to avoid rate limiting.
+if "GH_TOKEN" in os.environ:
+    token = os.environ["GH_TOKEN"]
+    linkcheck_request_headers = {r"https://github.\.com/.+": {"authorization": f"Bearer ${token}"}}
+
+# Allow for flakey links.
+linkcheck_retries = 2
 
 # -- Options for extensions ----------------------------------------------------
 autoclass_content = "init"
