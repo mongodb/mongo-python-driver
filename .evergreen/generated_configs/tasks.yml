@@ -118,6 +118,7 @@ tasks:
   # Backport pr tests
   - name: backport-pr
     commands:
+      - func: assume ec2 role
       - command: subprocess.exec
         params:
           binary: bash
