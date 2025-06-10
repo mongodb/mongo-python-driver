@@ -95,7 +95,7 @@ linkcheck_ignore = [
 # Add GitHub auth if available to avoid rate limiting.
 if "GH_TOKEN" in os.environ:
     token = os.environ["GH_TOKEN"]
-    linkcheck_request_headers = {r"https://github.\.com/.+": {"authorization": f"Bearer ${token}"}}
+    linkcheck_request_headers = {r"https://github\.com/.+": {"authorization": f"Bearer ${token}"}}
 
 # Allow for flakey links.
 linkcheck_retries = 2
