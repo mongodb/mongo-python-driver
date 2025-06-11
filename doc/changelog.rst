@@ -1700,8 +1700,7 @@ Changes in Version 3.8.0 (2019/04/22)
 -------------------------------------
 
 .. warning:: PyMongo no longer supports Python 2.6. RHEL 6 users should install
-  Python 2.7 or newer from `Red Hat Software Collections
-  <https://developers.redhat.com/products/softwarecollections/overview>`_.
+  Python 2.7 or newer from Red Hat Software Collections.
   CentOS 6 users should install Python 2.7 or newer from `SCL
   <https://wiki.centos.org/AdditionalResources/Repositories/SCL>`_
 
