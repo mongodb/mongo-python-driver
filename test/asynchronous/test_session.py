@@ -196,7 +196,7 @@ class TestSession(AsyncIntegrationTest):
         lsid_set = set()
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
-        # Retry up to 10 times because there is a known race that can cause multiple
+        # Retry up to 10 times because there is a known race condition that can cause multiple
         # sessions to be used: connection check in happens before session check in
         for _ in range(10):
             cursor = client.db.test.find({})
