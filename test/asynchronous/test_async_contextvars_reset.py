@@ -27,8 +27,8 @@ from test.asynchronous import AsyncIntegrationTest
 
 class TestAsyncContextVarsReset(AsyncIntegrationTest):
     async def test_context_vars_are_reset_in_executor(self):
-        if sys.version_info < (3, 11):
-            self.skipTest("Test requires asyncio.Task.get_context (added in Python 3.11)")
+        if sys.version_info < (3, 12):
+            self.skipTest("Test requires asyncio.Task.get_context (added in Python 3.12)")
 
         await self.client.db.test.insert_one({"x": 1})
         for server in self.client._topology._servers.values():
