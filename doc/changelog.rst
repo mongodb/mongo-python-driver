@@ -8,6 +8,22 @@ PyMongo 4.14 brings a number of changes including:
 - Added :attr:`bson.codec_options.TypeRegistry.codecs` and :attr:`bson.codec_options.TypeRegistry.fallback_encoder` properties
   to allow users to directly access the type codecs and fallback encoder for a given :class:`bson.codec_options.TypeRegistry`.
 
+Changes in Version 4.13.1 (2025/06/10)
+--------------------------------------
+
+Version 4.13.1 is a bug fix release.
+
+- Fixed a bug that could raise ``ServerSelectionTimeoutError`` when using timeouts with ``AsyncMongoClient``.
+- Fixed a bug that could raise ``NetworkTimeout`` errors on Windows.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.13.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.13.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=43924
+
 Changes in Version 4.13.0 (2025/05/14)
 --------------------------------------
 
@@ -1700,8 +1716,7 @@ Changes in Version 3.8.0 (2019/04/22)
 -------------------------------------
 
 .. warning:: PyMongo no longer supports Python 2.6. RHEL 6 users should install
-  Python 2.7 or newer from `Red Hat Software Collections
-  <https://developers.redhat.com/products/softwarecollections/overview>`_.
+  Python 2.7 or newer from Red Hat Software Collections.
   CentOS 6 users should install Python 2.7 or newer from `SCL
   <https://wiki.centos.org/AdditionalResources/Repositories/SCL>`_
 
