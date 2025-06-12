@@ -242,13 +242,14 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
                 timeout = options.connect_timeout
             elif timeout <= 0:
                 raise socket.timeout("timed out")
-            sock.settimeout(timeout)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
             sock.setblocking(False)
-            await asyncio.get_running_loop().sock_connect(sock, sa)
+            await asyncio.wait_for(
+                asyncio.get_running_loop().sock_connect(sock, sa), timeout=timeout
+            )
             return sock
-        except OSError as e:
+        except (OSError, asyncio.TimeoutError) as e:
             err = e
             sock.close()
 
