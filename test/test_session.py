@@ -235,7 +235,6 @@ class TestSession(IntegrationTest):
             for t in tasks:
                 t.join()
                 self.assertIsNone(t.exc)
-            client.close()
             lsid_set.clear()
             for i in listener.started_events:
                 if i.command.get("lsid"):
