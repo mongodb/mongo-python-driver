@@ -244,7 +244,8 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
             sock.settimeout(timeout)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
-            sock.connect(sa)
+            sock.setblocking(False)
+            await asyncio.get_running_loop().sock_connect(sock, sa)
             return sock
         except OSError as e:
             err = e
