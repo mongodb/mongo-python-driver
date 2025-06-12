@@ -420,9 +420,9 @@ class SSLContext:
                         pyopenssl.verify_ip_address(ssl_conn, server_hostname)
                     else:
                         pyopenssl.verify_hostname(ssl_conn, server_hostname)
-                except (  # type:ignore[misc]
-                    service_identity.SICertificateError,
-                    service_identity.SIVerificationError,
+                except (
+                    service_identity.CertificateError,
+                    service_identity.VerificationError,
                 ) as exc:
                     raise _CertificateError(str(exc)) from None
         return ssl_conn
