@@ -206,7 +206,8 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
         # SOCK_CLOEXEC not supported for Unix sockets.
         _set_non_inheritable_non_atomic(sock.fileno())
         try:
-            sock.connect(host)
+            sock.setblocking(False)
+            await asyncio.get_running_loop().sock_connect(sock, host)
             return sock
         except OSError:
             sock.close()
