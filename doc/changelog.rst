@@ -1,13 +1,6 @@
 Changelog
 =========
 
-Changes in Version 4.14.0 (XXXX/XX/XX)
---------------------------------------
-PyMongo 4.14 brings a number of changes including:
-
-- Added :attr:`bson.codec_options.TypeRegistry.codecs` and :attr:`bson.codec_options.TypeRegistry.fallback_encoder` properties
-  to allow users to directly access the type codecs and fallback encoder for a given :class:`bson.codec_options.TypeRegistry`.
-
 Changes in Version 4.13.2 (2025/06/17)
 --------------------------------------
 
