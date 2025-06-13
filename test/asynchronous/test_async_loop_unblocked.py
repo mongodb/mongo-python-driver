@@ -33,12 +33,13 @@ class TestClientLoopUnblocked(AsyncIntegrationTest):
             last_run = None
             try:
                 while True:
-                    if last_run:
+                    if last_run is not None:
                         latencies.append(time.monotonic() - last_run)
                     last_run = time.monotonic()
                     await asyncio.sleep(0.1)
             except asyncio.CancelledError:
-                latencies.append(time.monotonic() - last_run)
+                if last_run is not None:
+                    latencies.append(time.monotonic() - last_run)
                 raise
 
         t = asyncio.create_task(background_task())
