@@ -1,6 +1,22 @@
 Changelog
 =========
 
+Changes in Version 4.13.2 (2025/06/17)
+--------------------------------------
+
+Version 4.13.2 is a bug fix release.
+
+- Fixed a bug where ``AsyncMongoClient`` would block the event loop while creating new connections,
+  potentially significantly increasing latency for ongoing operations.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.13.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.13.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=43937
+
 Changes in Version 4.13.1 (2025/06/10)
 --------------------------------------
 

@@ -206,7 +206,8 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
         # SOCK_CLOEXEC not supported for Unix sockets.
         _set_non_inheritable_non_atomic(sock.fileno())
         try:
-            sock.connect(host)
+            sock.setblocking(False)
+            await asyncio.get_running_loop().sock_connect(sock, host)
             return sock
         except OSError:
             sock.close()
@@ -241,14 +242,22 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
                 timeout = options.connect_timeout
             elif timeout <= 0:
                 raise socket.timeout("timed out")
-            sock.settimeout(timeout)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
-            sock.connect(sa)
+            # Socket needs to be non-blocking during connection to not block the event loop
+            sock.setblocking(False)
+            await asyncio.wait_for(
+                asyncio.get_running_loop().sock_connect(sock, sa), timeout=timeout
+            )
+            sock.settimeout(timeout)
             return sock
-        except OSError as e:
-            err = e
+        except asyncio.TimeoutError as e:
             sock.close()
+            err = socket.timeout("timed out")
+            err.__cause__ = e
+        except OSError as e:
+            sock.close()
+            err = e  # type: ignore[assignment]
 
     if err is not None:
         raise err
