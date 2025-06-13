@@ -4,7 +4,7 @@ Changelog
 Changes in Version 4.13.2 (2025/06/17)
 --------------------------------------
 
-Version 4.13.1 is a bug fix release.
+Version 4.13.2 is a bug fix release.
 
 - Fixed a bug that resulted in confusing error messages after hostname verification errors when using PyOpenSSL.
 
