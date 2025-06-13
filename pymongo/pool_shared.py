@@ -253,10 +253,11 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
             return sock
         except asyncio.TimeoutError as e:
             sock.close()
-            raise socket.timeout("timed out") from e
+            err = socket.timeout("timed out")
+            err.__cause__ = e
         except OSError as e:
             sock.close()
-            err = e
+            err = e  # type: ignore[assignment]
 
     if err is not None:
         raise err

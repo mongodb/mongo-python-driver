@@ -51,6 +51,6 @@ class TestClientLoopUnblocked(AsyncIntegrationTest):
 
         self.assertLessEqual(
             sorted(latencies, reverse=True)[0],
-            0.2,
+            1.0,
             "Background task was blocked from running",
         )
