@@ -30,16 +30,14 @@ class TestClientLoopUnblocked(AsyncIntegrationTest):
 
         # If the loop is being blocked, at least one iteration will have a latency much more than 0.1 seconds
         async def background_task():
-            last_run = None
+            start = time.monotonic()
             try:
                 while True:
-                    if last_run is not None:
-                        latencies.append(time.monotonic() - last_run)
-                    last_run = time.monotonic()
+                    start = time.monotonic()
                     await asyncio.sleep(0.1)
+                    latencies.append(time.monotonic() - start)
             except asyncio.CancelledError:
-                if last_run is not None:
-                    latencies.append(time.monotonic() - last_run)
+                latencies.append(time.monotonic() - start)
                 raise
 
         t = asyncio.create_task(background_task())
@@ -54,5 +52,5 @@ class TestClientLoopUnblocked(AsyncIntegrationTest):
         self.assertLessEqual(
             sorted(latencies, reverse=True)[0],
             0.2,
-            "Task took longer than twice its sleep time to run again",
+            "Background task was blocked from running",
         )
