@@ -8,6 +8,7 @@ Version 4.13.2 is a bug fix release.
 
 - Fixed a bug where ``AsyncMongoClient`` would block the event loop while creating new connections,
   potentially significantly increasing latency for ongoing operations.
+- Fixed a bug that resulted in confusing error messages after hostname verification errors when using PyOpenSSL.
 
 Issues Resolved
 ...............
