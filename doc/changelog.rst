@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 4.13.2 (2025/06/17)
+--------------------------------------
+
+Version 4.13.1 is a bug fix release.
+
+- Fixed a bug that resulted in confusing error messages after hostname verification errors when using PyOpenSSL.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.13.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.13.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=43937
+
 Changes in Version 4.13.1 (2025/06/10)
 --------------------------------------
 
