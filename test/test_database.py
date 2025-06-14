@@ -238,7 +238,7 @@ class TestDatabase(IntegrationTest):
         listener.reset()
         db.drop_collection("unique")
         db.create_collection("unique", check_exists=False)
-        self.assertTrue(len(listener.started_events) > 0)
+        self.assertGreater(len(listener.started_events), 0)
         self.assertNotIn("listCollections", listener.started_command_names())
 
     def test_list_collections(self):

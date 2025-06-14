@@ -490,7 +490,7 @@ class TestCollection(IntegrationTest):
         # Sort by 'score' field.
         cursor.sort([("score", {"$meta": "textScore"})])
         results = cursor.to_list()
-        self.assertTrue(results[0]["score"] >= results[1]["score"])
+        self.assertGreaterEqual(results[0]["score"], results[1]["score"])
 
         db.test.drop_indexes()
 
