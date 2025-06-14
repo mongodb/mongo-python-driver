@@ -522,3 +522,6 @@ class PoolOptions:
     def load_balanced(self) -> Optional[bool]:
         """True if this Pool is configured in load balanced mode."""
         return self.__load_balanced
+
+    def _set_metadata(self, new_data: dict[str, Any]) -> None:
+        self.__metadata = new_data
