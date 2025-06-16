@@ -196,7 +196,7 @@ class TestSession(IntegrationTest):
         lsid_set = set()
         listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
-        # Retry up to 10 times because there is a known race that can cause multiple
+        # Retry up to 10 times because there is a known race condition that can cause multiple
         # sessions to be used: connection check in happens before session check in
         for _ in range(10):
             cursor = client.db.test.find({})
@@ -235,7 +235,6 @@ class TestSession(IntegrationTest):
             for t in tasks:
                 t.join()
                 self.assertIsNone(t.exc)
-            client.close()
             lsid_set.clear()
             for i in listener.started_events:
                 if i.command.get("lsid"):
