@@ -190,13 +190,15 @@ just docs-serve
 Browse to the link provided, and then as you make changes to docstrings or narrative docs,
 the pages will re-render and the browser will automatically refresh.
 
-
 ## Running Tests Locally
 
--   Ensure you have started the appropriate Mongo Server(s).
 -   Run `just install` to set a local virtual environment, or you can manually
     create a virtual environment and run `pytest` directly.  If you want to use a specific
     version of Python, remove the `.venv` folder and set `PYTHON_BINARY` before running `just install`.
+-   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
+    to set up the server.  All given options will be passed to
+    `run-orchestration.sh` in `$DRIVERS_TOOLS`.  See `$DRIVERS_TOOLS/evergreen/run-orchestration.sh -h`
+    for a full list of options.
 -   Run `just test` or `pytest` to run all of the tests.
 -   Append `test/<mod_name>.py::<class_name>::<test_name>` to run
     specific tests. You can omit the `<test_name>` to test a full class
@@ -213,17 +215,34 @@ the pages will re-render and the browser will automatically refresh.
     `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
 - Run `export DRIVERS_TOOLS=$PWD/drivers-evergreen-tools`.  This can be put into a `.bashrc` file
   for convenience.
-- Set up access to [Drivers test secrets](https://github.com/mongodb-labs/drivers-evergreen-tools/tree/master/.evergreen/secrets_handling#secrets-handling).
+- Some tests require access to [Drivers test secrets](https://github.com/mongodb-labs/drivers-evergreen-tools/tree/master/.evergreen/secrets_handling#secrets-handling).
 
 ### Usage
 
-- Run `just run-server` with optional args to set up the server.  All given options will be passed to
-  `run-orchestration.sh` in `$DRIVERS_TOOLS`.  See `$DRIVERS_TOOLS/evergreen/run-orchestration.sh -h`
-  for a full list of options.
+- Run `just run-server` with optional args to set up the server.
 - Run `just setup-tests` with optional args to set up the test environment, secrets, etc.
   See `just setup-tests -h` for a full list of available options.
 - Run `just run-tests` to run the tests in an appropriate Python environment.
 - When done, run `just teardown-tests` to clean up and `just stop-server` to stop the server.
+
+### SSL tests
+
+- Run `just run-server --ssl` to start the server with TLS enabled.
+- Run `just setup-tests --ssl`.
+- Run `just run-tests`
+
+Note: for general testing purposes with an TLS-enabled server, you can use the following:
+
+```python
+from pymongo import MongoClient
+
+client = MongoClient(
+    "mongodb://localhost:27017?tls=true&tlsAllowInvalidCertificates=true"
+)
+```
+
+If you want to use the actual certificate file then set `tlsCertificateKeyFile` to the local path
+to `<repo_roo>/test/certificates/client.pem` and `tlsCAFile` to the local path to `<repo_roo>/test/certificates/ca.pem`.
 
 ### Encryption tests
 
@@ -434,6 +453,7 @@ run `pre-commit run --all-files --hook-stage manual ruff` and fix all reported e
 hook again.
 
 ## Converting a test to async
+
 The `tools/convert_test_to_async.py` script takes in an existing synchronous test file and outputs a
 partially-converted asynchronous version of the same name to the `test/asynchronous` directory.
 Use this generated file as a starting point for the completed conversion.
