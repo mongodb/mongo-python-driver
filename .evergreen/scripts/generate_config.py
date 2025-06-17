@@ -352,23 +352,6 @@ def create_disable_test_commands_variants():
     return [create_variant(tasks, display_name, host=host, python=python, expansions=expansions)]
 
 
-def create_serverless_variants():
-    host = DEFAULT_HOST
-    batchtime = BATCHTIME_WEEK
-    tasks = [".serverless"]
-    base_name = "Serverless"
-    return [
-        create_variant(
-            tasks,
-            get_variant_name(base_name, host, python=python),
-            host=host,
-            python=python,
-            batchtime=batchtime,
-        )
-        for python in MIN_MAX_PYTHON
-    ]
-
-
 def create_oidc_auth_variants():
     variants = []
     for host_name in ["ubuntu22", "macos", "win64"]:
@@ -920,7 +903,8 @@ def create_backport_pr_tasks():
         "${github_commit}",
     ]
     cmd = get_subprocess_exec(args=args)
-    return [EvgTask(name=name, commands=[cmd], allowed_requesters=["commit"])]
+    assume_func = FunctionCall(func="assume ec2 role")
+    return [EvgTask(name=name, commands=[assume_func, cmd], allowed_requesters=["commit"])]
 
 
 def create_ocsp_tasks():
@@ -966,14 +950,6 @@ def create_free_threading_tasks():
     task_name = "test-free-threading"
     tags = ["free-threading"]
     return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
-
-
-def create_serverless_tasks():
-    vars = dict(TEST_NAME="serverless", AUTH="auth", SSL="ssl")
-    test_func = FunctionCall(func="run tests", vars=vars)
-    tags = ["serverless"]
-    task_name = "test-serverless"
-    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
 
 
 ##############

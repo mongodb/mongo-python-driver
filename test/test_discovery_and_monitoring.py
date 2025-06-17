@@ -443,7 +443,6 @@ class TestPoolManagement(IntegrationTest):
 
 
 class TestServerMonitoringMode(IntegrationTest):
-    @client_context.require_no_serverless
     @client_context.require_no_load_balancer
     def setUp(self):
         super().setUp()

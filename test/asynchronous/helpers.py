@@ -82,7 +82,6 @@ if CA_PEM:
 COMPRESSORS = os.environ.get("COMPRESSORS")
 MONGODB_API_VERSION = os.environ.get("MONGODB_API_VERSION")
 TEST_LOADBALANCER = bool(os.environ.get("TEST_LOAD_BALANCER"))
-TEST_SERVERLESS = bool(os.environ.get("TEST_SERVERLESS"))
 SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
 MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
 
@@ -91,15 +90,6 @@ if TEST_LOADBALANCER:
     host, port = res["nodelist"][0]
     db_user = res["username"] or db_user
     db_pwd = res["password"] or db_pwd
-elif TEST_SERVERLESS:
-    TEST_LOADBALANCER = True
-    res = parse_uri(SINGLE_MONGOS_LB_URI or "")
-    host, port = res["nodelist"][0]
-    db_user = res["username"] or db_user
-    db_pwd = res["password"] or db_pwd
-    TLS_OPTIONS = {"tls": True}
-    # Spec says serverless tests must be run with compression.
-    COMPRESSORS = COMPRESSORS or "zlib"
 
 
 # Shared KMS data.

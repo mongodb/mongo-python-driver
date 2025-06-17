@@ -194,10 +194,11 @@ class TestSession(IntegrationTest):
         # successful connection checkout" test from Driver Sessions Spec.
         succeeded = False
         lsid_set = set()
-        failures = 0
-        for _ in range(5):
-            listener = OvertCommandListener()
-            client = self.rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
+        listener = OvertCommandListener()
+        client = self.rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
+        # Retry up to 10 times because there is a known race condition that can cause multiple
+        # sessions to be used: connection check in happens before session check in
+        for _ in range(10):
             cursor = client.db.test.find({})
             ops: List[Tuple[Callable, List[Any]]] = [
                 (client.db.test.find_one, [{"_id": 1}]),
@@ -234,15 +235,14 @@ class TestSession(IntegrationTest):
             for t in tasks:
                 t.join()
                 self.assertIsNone(t.exc)
-            client.close()
             lsid_set.clear()
             for i in listener.started_events:
                 if i.command.get("lsid"):
                     lsid_set.add(i.command.get("lsid")["id"])
             if len(lsid_set) == 1:
+                # Break on first success.
                 succeeded = True
-            else:
-                failures += 1
+                break
         self.assertTrue(succeeded, lsid_set)
 
     def test_pool_lifo(self):

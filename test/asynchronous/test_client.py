@@ -2006,7 +2006,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
 
     @unittest.skipIf(
-        async_client_context.load_balancer or async_client_context.serverless,
+        async_client_context.load_balancer,
         "loadBalanced clients do not run SDAM",
     )
     @unittest.skipIf(sys.platform == "win32", "Windows does not support SIGSTOP")
