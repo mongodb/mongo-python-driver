@@ -1369,7 +1369,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         await self.kill_all_sessions()
 
         # Handle flaky tests.
-        func = functools.partial(self._run_scenario, spec, uri)
         flaky_tests = [
             # PYTHON-5170
             ".*test_discovery_and_monitoring.TestUnifiedInterruptInUsePoolClear.*",
@@ -1379,10 +1378,14 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         ]
         for flaky_test in flaky_tests:
             if re.match(flaky_test, self.id()) is not None:
-                decorator = flaky(reset_func=self.asyncSetUp, func_name=self.id())
-                await decorator(func)()
+                func_name = self.id()
+                options = dict(reset_func=self.asyncSetUp, func_name=func_name)
+                if "csot" in func_name:
+                    options["max_runs"] = 3
+                decorator = flaky(**options)
+                await decorator(self._run_scenario)(spec, uri)
                 return
-        await func()
+        await self._run_scenario(spec, uri)
 
     async def _run_scenario(self, spec, uri=None):
         # maybe skip test manually
