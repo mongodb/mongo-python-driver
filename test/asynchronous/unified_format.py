@@ -1380,7 +1380,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         for flaky_test in flaky_tests:
             if re.match(flaky_test, self.id()) is not None:
                 decorator = flaky(reset_func=self.asyncSetUp, func_name=self.id())
-                await decorator(func)
+                await decorator(func)()
                 return
         await func()
 
