@@ -14,9 +14,12 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import pathlib
 import time
 import unittest
 from test import IntegrationTest
+from test.unified_format import generate_test_classes
 from test.utils_shared import CMAPListener
 from typing import Any, Optional
 
@@ -36,6 +39,17 @@ except ImportError:
 pytestmark = pytest.mark.mockupdb
 
 _IS_SYNC = True
+
+# Location of JSON test specifications.
+if _IS_SYNC:
+    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "handshake", "unified")
+else:
+    _TEST_PATH = os.path.join(
+        pathlib.Path(__file__).resolve().parent.parent, "handshake", "unified"
+    )
+
+# Generate unified tests.
+globals().update(generate_test_classes(_TEST_PATH, module=__name__, RUN_ON_SERVERLESS=True))
 
 
 def _get_handshake_driver_info(request):

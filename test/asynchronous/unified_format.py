@@ -75,6 +75,7 @@ from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.encryption import AsyncClientEncryption
 from pymongo.asynchronous.helpers import anext
+from pymongo.driver_info import DriverInfo
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     AutoReconnect,
@@ -703,6 +704,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     async def _databaseOperation_runCommand(self, target, **kwargs):
         self.__raise_if_unsupported("runCommand", target, AsyncDatabase)
         # Ensure the first key is the command name.
+        print(kwargs)
         ordered_command = SON([(kwargs.pop("command_name"), 1)])
         ordered_command.update(kwargs["command"])
         kwargs["command"] = ordered_command
@@ -840,6 +842,13 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         self.__raise_if_unsupported("close", target, NonLazyCursor, AsyncCommandCursor)
         return await target.close()
 
+    async def _clientOperation_appendMetadata(self, target, *args, **kwargs):
+        print("IN MY FUNC")
+        print(kwargs)
+        info_opts = kwargs["driver_info_options"]
+        driver_info = DriverInfo(info_opts["name"], info_opts["version"], info_opts["platform"])
+        target.append_metadata(driver_info)
+
     async def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
             kwargs.update(camel_to_snake_args(kwargs.pop("opts")))
@@ -925,11 +934,11 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             )
         else:
             arguments = {}
-
         if isinstance(target, AsyncMongoClient):
             method_name = f"_clientOperation_{opname}"
         elif isinstance(target, AsyncDatabase):
             method_name = f"_databaseOperation_{opname}"
+            print(f"{method_name=}")
         elif isinstance(target, AsyncCollection):
             method_name = f"_collectionOperation_{opname}"
             # contentType is always stored in metadata in pymongo.
@@ -976,6 +985,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 with pymongo.timeout(timeout):
                     result = await cmd(**dict(arguments))
             else:
+                print(f"{cmd=} {dict=} {arguments=}")
                 result = await cmd(**dict(arguments))
         except Exception as exc:
             # Ignore all operation errors but to avoid masking bugs don't
@@ -1238,6 +1248,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
     async def run_operations(self, spec):
         for op in spec:
+            print(f"{op=}")
             if op["object"] == "testRunner":
                 await self.run_special_operation(op)
             else:
@@ -1440,6 +1451,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             await self.check_log_messages(spec["operations"], expect_log_messages)
         else:
             # process operations
+            print(f"{spec['operations']=}")
             await self.run_operations(spec["operations"])
 
         # process expectEvents
