@@ -1367,8 +1367,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         for flaky_test in flaky_tests:
             if re.match(flaky_test, self.id()) is not None:
                 decorator = flaky(reset_func=self.setUp, func_name=self.id())
-                func = decorator(func)
-                break
+                decorator(func)
+                return
         func()
 
     def _run_scenario(self, spec, uri=None):

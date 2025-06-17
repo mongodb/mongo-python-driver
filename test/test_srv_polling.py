@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
+from test.utils import flaky
 from test.utils_shared import FunctionCallRecorder
 from typing import Any
 
@@ -254,6 +255,7 @@ class TestSrvPolling(PyMongoTestCase):
             # Nodelist should reflect new valid DNS resolver response.
             self.assert_nodelist_change(response_final, client)
 
+    @flaky  # PYTHON-5315
     def test_recover_from_initially_empty_seedlist(self):
         def empty_seedlist():
             return []
