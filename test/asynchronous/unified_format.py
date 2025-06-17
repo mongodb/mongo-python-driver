@@ -35,7 +35,7 @@ from test.asynchronous import (
     client_knobs,
     unittest,
 )
-from test.asynchronous.utils import async_get_pool
+from test.asynchronous.utils import async_get_pool, flaky
 from test.asynchronous.utils_spec_runner import SpecRunnerTask
 from test.unified_format_shared import (
     KMS_TLS_OPTS,
@@ -529,20 +529,10 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
-        if (
-            "Error returned from connection pool clear with interruptInUseConnections=true is retryable"
-            in spec["description"]
-            and not _IS_SYNC
-        ):
-            self.skipTest("PYTHON-5170 tests are flakey")
-        if "Driver extends timeout while streaming" in spec["description"] and not _IS_SYNC:
-            self.skipTest("PYTHON-5174 tests are flakey")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
-            if "gridfs" in class_name and sys.platform == "win32":
-                self.skipTest("PYTHON-3522 CSOT GridFS tests are flaky on Windows")
             if async_client_context.storage_engine == "mmapv1":
                 self.skipTest(
                     "MMAPv1 does not support retryable writes which is required for CSOT tests"
@@ -1378,30 +1368,21 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         # operations during test set up and tear down.
         await self.kill_all_sessions()
 
-        if "csot" in self.id().lower():
-            # Retry CSOT tests up to 2 times to deal with flakey tests.
-            attempts = 3
-            for i in range(attempts):
-                try:
-                    return await self._run_scenario(spec, uri)
-                except (AssertionError, OperationFailure) as exc:
-                    if isinstance(exc, OperationFailure) and (
-                        _IS_SYNC or "failpoint" not in exc._message
-                    ):
-                        raise
-                    if i < attempts - 1:
-                        print(
-                            f"Retrying after attempt {i+1} of {self.id()} failed with:\n"
-                            f"{traceback.format_exc()}",
-                            file=sys.stderr,
-                        )
-                        await self.asyncSetUp()
-                        continue
-                    raise
-            return None
-        else:
-            await self._run_scenario(spec, uri)
-            return None
+        # Handle flaky tests.
+        func = functools.partial(self._run_scenario, spec, uri)
+        flaky_tests = [
+            # PYTHON-5170
+            ".*test_discovery_and_monitoring.TestUnifiedInterruptInUsePoolClear.*",
+            # PYTHON-5174
+            ".*Driver_extends_timeout_while_streaming",
+            ".*csot.*",
+        ]
+        for flaky_test in flaky_tests:
+            if re.match(flaky_test, self.id()) is not None:
+                decorator = flaky(reset_func=self.asyncSetUp, func_name=self.id())
+                func = decorator(func)
+                break
+        await func()
 
     async def _run_scenario(self, spec, uri=None):
         # maybe skip test manually

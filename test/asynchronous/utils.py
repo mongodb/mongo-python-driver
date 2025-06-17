@@ -21,6 +21,7 @@ import random
 import sys
 import threading  # Used in the synchronized version of this file
 import time
+import traceback
 from asyncio import iscoroutinefunction
 from functools import wraps
 
@@ -156,7 +157,16 @@ async def async_joinall(tasks):
         await asyncio.wait([t.task for t in tasks if t is not None], timeout=300)
 
 
-def flaky(func=None, *, max_runs=2, min_passes=1, delay=1, affects_cpython_linux=False):
+def flaky(
+    func=None,
+    *,
+    max_runs=2,
+    min_passes=1,
+    delay=1,
+    affects_cpython_linux=False,
+    func_name=None,
+    reset_func=None,
+):
     is_cpython_linux = sys.platform == "linux" and sys.implementation.name == "cpython"
     if is_cpython_linux and not affects_cpython_linux:
         max_runs = 1
@@ -177,7 +187,13 @@ def flaky(func=None, *, max_runs=2, min_passes=1, delay=1, affects_cpython_linux
                     failure = e
                     await asyncio.sleep(delay)
                 if failure is not None and i < max_runs - 1:
-                    print("Flaky failure:", failure)
+                    print(
+                        f"Retrying after attempt {i+1} of {func_name or target_func.__name__} failed with:\n"
+                        f"{traceback.format_exc()}",
+                        file=sys.stderr,
+                    )
+                    if reset_func:
+                        await reset_func()
             if failure:
                 raise failure
             raise RuntimeError(f"Only passed {passes} of {min_passes} times")
