@@ -1388,6 +1388,8 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             if re.match(flaky_test, self.id()) is not None:
                 func_name = self.id()
                 options = dict(reset_func=self.asyncSetUp, func_name=func_name)
+                if "csot" in func_name:
+                    options["max_runs"] = 3
                 decorator = flaky(**options)
                 await decorator(self._run_scenario)(spec, uri)
                 return
