@@ -131,6 +131,9 @@ do
     gridfs)
       cpjson gridfs/tests gridfs
       ;;
+    handshake)
+      cpjson mongodb-handshake/tests handshake
+      ;;
     index|index-management)
       cpjson index-management/tests index_management
       ;;
