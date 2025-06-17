@@ -38,7 +38,6 @@ from test import (
 from test.unified_format_shared import (
     KMS_TLS_OPTS,
     PLACEHOLDER_MAP,
-    SKIP_CSOT_TESTS,
     EventListenerUtil,
     MatchEvaluatorUtil,
     coerce_result,
@@ -1361,9 +1360,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
-        if "csot" in self.id().lower() and SKIP_CSOT_TESTS:
-            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
-
         # Kill all sessions before and after each test to prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.

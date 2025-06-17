@@ -18,9 +18,11 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import random
+import sys
 import threading  # Used in the synchronized version of this file
 import time
 from asyncio import iscoroutinefunction
+from functools import wraps
 
 from bson.son import SON
 from pymongo import AsyncMongoClient
@@ -152,6 +154,42 @@ async def async_joinall(tasks):
             assert not t.is_alive(), "Thread %s hung" % t
     else:
         await asyncio.wait([t.task for t in tasks if t is not None], timeout=300)
+
+
+def flaky(func=None, *, max_runs=2, min_passes=1, delay=1, affects_cpython_linux=False):
+    is_cpython_linux = sys.platform == "linux" and sys.implementation.name == "cpython"
+    if is_cpython_linux and not affects_cpython_linux:
+        max_runs = 1
+        min_passes = 1
+
+    def decorator(target_func):
+        @wraps(target_func)
+        async def wrapper(*args, **kwargs):
+            passes = 0
+            failure = None
+            for i in range(max_runs):
+                try:
+                    result = await target_func(*args, **kwargs)
+                    passes += 1
+                    if passes == min_passes:
+                        return result
+                except Exception as e:
+                    failure = e
+                    await asyncio.sleep(delay)
+                if failure is not None and i < max_runs - 1:
+                    print("Flaky failure:", failure)
+            if failure:
+                raise failure
+            raise RuntimeError(f"Only passed {passes} of {min_passes} times")
+
+        return wrapper
+
+    # If `func` is callable, the decorator was used without arguments (`@flaky`)
+    if callable(func):
+        return decorator(func)
+
+    # Otherwise, return the decorator function, allowing arguments (`@flaky(max_runs=...)`)
+    return decorator
 
 
 class AsyncMockConnection:

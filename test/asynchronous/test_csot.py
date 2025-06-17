@@ -23,6 +23,7 @@ sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.utils import flaky
 
 import pymongo
 from pymongo import _csot
@@ -43,9 +44,8 @@ globals().update(generate_test_classes(TEST_PATH, module=__name__))
 class TestCSOT(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
+    @flaky
     async def test_timeout_nested(self):
-        if os.environ.get("SKIP_CSOT_TESTS", ""):
-            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         coll = self.db.coll
         self.assertEqual(_csot.get_timeout(), None)
         self.assertEqual(_csot.get_deadline(), float("inf"))
@@ -82,9 +82,8 @@ class TestCSOT(AsyncIntegrationTest):
         self.assertEqual(_csot.get_rtt(), 0.0)
 
     @async_client_context.require_change_streams
+    @flaky
     async def test_change_stream_can_resume_after_timeouts(self):
-        if os.environ.get("SKIP_CSOT_TESTS", ""):
-            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         coll = self.db.test
         await coll.insert_one({})
         async with await coll.watch() as stream:

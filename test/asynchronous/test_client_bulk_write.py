@@ -25,6 +25,7 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
+from test.asynchronous.utils import flaky
 from test.utils_shared import (
     OvertCommandListener,
 )
@@ -619,8 +620,6 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#11-multi-batch-bulkwrites
 class TestClientBulkWriteCSOT(AsyncIntegrationTest):
     async def asyncSetUp(self):
-        if os.environ.get("SKIP_CSOT_TESTS", ""):
-            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         await super().asyncSetUp()
         self.max_write_batch_size = await async_client_context.max_write_batch_size
         self.max_bson_object_size = await async_client_context.max_bson_size
@@ -628,6 +627,7 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
 
     @async_client_context.require_version_min(8, 0, 0, -24)
     @async_client_context.require_failCommand_fail_point
+    @flaky
     async def test_timeout_in_multi_batch_bulk_write(self):
         _OVERHEAD = 500
 

@@ -25,6 +25,7 @@ from test import (
     client_context,
     unittest,
 )
+from test.utils import flaky
 from test.utils_shared import (
     OvertCommandListener,
 )
@@ -615,8 +616,6 @@ class TestClientBulkWriteCRUD(IntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-operations-timeout/tests/README.md#11-multi-batch-bulkwrites
 class TestClientBulkWriteCSOT(IntegrationTest):
     def setUp(self):
-        if os.environ.get("SKIP_CSOT_TESTS", ""):
-            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         super().setUp()
         self.max_write_batch_size = client_context.max_write_batch_size
         self.max_bson_object_size = client_context.max_bson_size
@@ -624,6 +623,7 @@ class TestClientBulkWriteCSOT(IntegrationTest):
 
     @client_context.require_version_min(8, 0, 0, -24)
     @client_context.require_failCommand_fail_point
+    @flaky
     def test_timeout_in_multi_batch_bulk_write(self):
         _OVERHEAD = 500
 
