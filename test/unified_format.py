@@ -532,6 +532,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
+            if "gridfs" in class_name and sys.platform == "win32":
+                self.skipTest("PYTHON-3522 CSOT GridFS tests are flaky on Windows")
+            if (
+                "Non-tailable cursor lifetime remaining timeoutMS applied to getMore if timeoutMode is unset"
+                in description
+                and sys.platform != "linux"
+            ):
+                self.skipTest("PYTHON-3522 CSOT test is flaky on Windows and MacOS")
             if client_context.storage_engine == "mmapv1":
                 self.skipTest(
                     "MMAPv1 does not support retryable writes which is required for CSOT tests"
@@ -1367,8 +1375,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if re.match(flaky_test, self.id()) is not None:
                 func_name = self.id()
                 options = dict(reset_func=self.setUp, func_name=func_name)
-                if "csot" in func_name:
-                    options["max_runs"] = 3
                 decorator = flaky(**options)
                 decorator(self._run_scenario)(spec, uri)
                 return

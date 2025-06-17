@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 import random
 import sys
 import threading  # Used in the synchronized version of this file
@@ -168,7 +169,8 @@ def flaky(
     reset_func=None,
 ):
     is_cpython_linux = sys.platform == "linux" and sys.implementation.name == "cpython"
-    if is_cpython_linux and not affects_cpython_linux:
+    disable_flaky = "DISABLE_FLAKY" in os.environ
+    if disable_flaky or (is_cpython_linux and not affects_cpython_linux):
         max_runs = 1
         min_passes = 1
 
@@ -176,7 +178,6 @@ def flaky(
         @wraps(target_func)
         async def wrapper(*args, **kwargs):
             passes = 0
-            failure = None
             for i in range(max_runs):
                 try:
                     result = await target_func(*args, **kwargs)
@@ -184,27 +185,24 @@ def flaky(
                     if passes == min_passes:
                         return result
                 except Exception as e:
-                    failure = e
-                    await asyncio.sleep(delay)
-                if failure is not None and i < max_runs - 1:
+                    if i == max_runs - 1:
+                        raise e
                     print(
                         f"Retrying after attempt {i+1} of {func_name or target_func.__name__} failed with:\n"
                         f"{traceback.format_exc()}",
                         file=sys.stderr,
                     )
+                    await asyncio.sleep(delay)
                     if reset_func:
                         await reset_func()
-            if failure:
-                raise failure
-            raise RuntimeError(f"Only passed {passes} of {min_passes} times")
 
         return wrapper
 
-    # If `func` is callable, the decorator was used without arguments (`@flaky`)
+    # If `func` is callable, the decorator was used without arguments (`@flaky`).
     if callable(func):
         return decorator(func)
 
-    # Otherwise, return the decorator function, allowing arguments (`@flaky(max_runs=...)`)
+    # Otherwise, return the decorator function, allowing arguments (`@flaky(max_runs=...)`).
     return decorator
 
 
