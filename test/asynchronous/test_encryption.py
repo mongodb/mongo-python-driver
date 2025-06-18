@@ -3481,6 +3481,7 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
     mongocryptd_client: AsyncMongoClient
     MONGOCRYPTD_PORT = 27020
 
+    @flaky  # PYTHON-4982
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         start_mongocryptd(self.MONGOCRYPTD_PORT)
@@ -3493,8 +3494,6 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
         hello = await self.mongocryptd_client.db.command("hello")
         self.assertNotIn("logicalSessionTimeoutMinutes", hello)
 
-    # PYTHON-4982
-    @flaky
     async def test_implicit_session_ignored_when_unsupported(self):
         self.listener.reset()
         with self.assertRaises(OperationFailure):

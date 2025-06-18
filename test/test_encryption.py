@@ -3463,6 +3463,7 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
     mongocryptd_client: MongoClient
     MONGOCRYPTD_PORT = 27020
 
+    @flaky  # PYTHON-4982
     def setUp(self) -> None:
         super().setUp()
         start_mongocryptd(self.MONGOCRYPTD_PORT)
@@ -3475,8 +3476,6 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
         hello = self.mongocryptd_client.db.command("hello")
         self.assertNotIn("logicalSessionTimeoutMinutes", hello)
 
-    # PYTHON-4982
-    @flaky
     def test_implicit_session_ignored_when_unsupported(self):
         self.listener.reset()
         with self.assertRaises(OperationFailure):
