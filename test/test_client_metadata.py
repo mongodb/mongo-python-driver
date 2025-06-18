@@ -99,6 +99,7 @@ class TestClientMetadataProse(IntegrationTest):
     ) -> None:
         # send initial metadata
         name, version, platform, metadata = self.send_ping_and_get_metadata(client, True)
+        # wait for connection to become idle
         time.sleep(0.005)
 
         # add new metadata

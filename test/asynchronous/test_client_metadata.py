@@ -99,6 +99,7 @@ class TestClientMetadataProse(AsyncIntegrationTest):
     ) -> None:
         # send initial metadata
         name, version, platform, metadata = await self.send_ping_and_get_metadata(client, True)
+        # wait for connection to become idle
         await asyncio.sleep(0.005)
 
         # add new metadata
