@@ -533,16 +533,17 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
+            # Skip tests that are too slow to run on a given platform.
             slow_win32 = [
-                "maxTimeMS value in the command is less than timeoutMS",
-                "Non-tailable cursor lifetime remaining timeoutMS applied to getMore if timeoutMode is unset",
-                "timeoutMS applied to update during a rename",
-                "timeoutMS applied to find to get chunks",
-                "test timeoutMS applied to find to get files document",
-                "test timeoutMS applied to find command",
+                "maxtimems value in the command is less than maxtimems",
+                "non-tailable cursor lifetime remaining maxtimems applied to getmore if timeoutmode is unset",
+                "maxtimems applied to update during a rename",
+                "maxtimems applied to find to get chunks",
+                "maxtimems applied to find to get files document",
+                "maxtimems applied to find command",
             ]
             slow_macos = [
-                "Non-tailable cursor lifetime remaining timeoutMS applied to getMore if timeoutMode is unset"
+                "non-tailable cursor lifetime remaining maxtimems applied to getmore if timeoutmode is unset"
             ]
             if sys.platform == "win32" and description in slow_win32:
                 self.skipTest("PYTHON-3522 CSOT test run too slow on Windows")
