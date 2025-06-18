@@ -3481,7 +3481,6 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
     mongocryptd_client: AsyncMongoClient
     MONGOCRYPTD_PORT = 27020
 
-    @flaky  # PYTHON-4982
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         start_mongocryptd(self.MONGOCRYPTD_PORT)
@@ -3494,7 +3493,6 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
         hello = await self.mongocryptd_client.db.command("hello")
         self.assertNotIn("logicalSessionTimeoutMinutes", hello)
 
-    @flaky  # PYTHON-4982
     async def test_implicit_session_ignored_when_unsupported(self):
         self.listener.reset()
         with self.assertRaises(OperationFailure):
@@ -3507,6 +3505,8 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
 
         self.assertNotIn("lsid", self.listener.started_events[1].command)
 
+        await self.mongocryptd_client.close()
+
     async def test_explicit_session_errors_when_unsupported(self):
         self.listener.reset()
         async with self.mongocryptd_client.start_session() as s:
@@ -3518,6 +3518,8 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
                 ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
             ):
                 await self.mongocryptd_client.db.test.insert_one({"x": 1}, session=s)
+
+        await self.mongocryptd_client.close()
 
 
 if __name__ == "__main__":

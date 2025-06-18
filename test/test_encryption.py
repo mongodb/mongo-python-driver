@@ -3463,7 +3463,6 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
     mongocryptd_client: MongoClient
     MONGOCRYPTD_PORT = 27020
 
-    @flaky  # PYTHON-4982
     def setUp(self) -> None:
         super().setUp()
         start_mongocryptd(self.MONGOCRYPTD_PORT)
@@ -3476,7 +3475,6 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
         hello = self.mongocryptd_client.db.command("hello")
         self.assertNotIn("logicalSessionTimeoutMinutes", hello)
 
-    @flaky  # PYTHON-4982
     def test_implicit_session_ignored_when_unsupported(self):
         self.listener.reset()
         with self.assertRaises(OperationFailure):
@@ -3489,6 +3487,8 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
 
         self.assertNotIn("lsid", self.listener.started_events[1].command)
 
+        self.mongocryptd_client.close()
+
     def test_explicit_session_errors_when_unsupported(self):
         self.listener.reset()
         with self.mongocryptd_client.start_session() as s:
@@ -3500,6 +3500,8 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
                 ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
             ):
                 self.mongocryptd_client.db.test.insert_one({"x": 1}, session=s)
+
+        self.mongocryptd_client.close()
 
 
 if __name__ == "__main__":
