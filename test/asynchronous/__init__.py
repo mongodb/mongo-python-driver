@@ -33,6 +33,7 @@ import warnings
 from asyncio import iscoroutinefunction
 
 from pymongo.asynchronous.uri_parser import parse_uri
+from pymongo.errors import AutoReconnect
 
 try:
     import ipaddress
@@ -1253,12 +1254,17 @@ async def async_teardown():
     c = async_client_context.client
     if c:
         if not async_client_context.is_data_lake:
-            await c.drop_database("pymongo-pooling-tests")
-            await c.drop_database("pymongo_test")
-            await c.drop_database("pymongo_test1")
-            await c.drop_database("pymongo_test2")
-            await c.drop_database("pymongo_test_mike")
-            await c.drop_database("pymongo_test_bernie")
+            try:
+                await c.drop_database("pymongo-pooling-tests")
+                await c.drop_database("pymongo_test")
+                await c.drop_database("pymongo_test1")
+                await c.drop_database("pymongo_test2")
+                await c.drop_database("pymongo_test_mike")
+                await c.drop_database("pymongo_test_bernie")
+            except AutoReconnect:
+                # PYTHON-4982
+                if sys.implementation.name.lower() != "pypy":
+                    raise
         await c.close()
     print_running_clients()
 
