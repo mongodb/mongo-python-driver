@@ -3482,8 +3482,6 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
     MONGOCRYPTD_PORT = 27020
 
     async def asyncSetUp(self) -> None:
-        if sys.implementation.name.lower() == "pypy":
-            raise self.skipTest("PYTHON-4982 Skipping test on pypy")
         await super().asyncSetUp()
         start_mongocryptd(self.MONGOCRYPTD_PORT)
 
@@ -3496,6 +3494,8 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
         self.assertNotIn("logicalSessionTimeoutMinutes", hello)
 
     async def test_implicit_session_ignored_when_unsupported(self):
+        if sys.implementation.name.lower() == "pypy":
+            raise self.skipTest("PYTHON-4982 Skipping test on pypy")
         self.listener.reset()
         with self.assertRaises(OperationFailure):
             await self.mongocryptd_client.db.test.find_one()
@@ -3510,6 +3510,8 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
         await self.mongocryptd_client.close()
 
     async def test_explicit_session_errors_when_unsupported(self):
+        if sys.implementation.name.lower() == "pypy":
+            raise self.skipTest("PYTHON-4982 Skipping test on pypy")
         self.listener.reset()
         async with self.mongocryptd_client.start_session() as s:
             with self.assertRaisesRegex(
