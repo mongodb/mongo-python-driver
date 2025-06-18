@@ -3476,6 +3476,7 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
         hello = self.mongocryptd_client.db.command("hello")
         self.assertNotIn("logicalSessionTimeoutMinutes", hello)
 
+    @flaky  # PYTHON-4982
     def test_implicit_session_ignored_when_unsupported(self):
         self.listener.reset()
         with self.assertRaises(OperationFailure):
