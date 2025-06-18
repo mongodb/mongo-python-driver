@@ -49,7 +49,7 @@ else:
     )
 
 # Generate unified tests.
-globals().update(generate_test_classes(_TEST_PATH, module=__name__, RUN_ON_SERVERLESS=True))
+globals().update(generate_test_classes(_TEST_PATH, module=__name__))
 
 
 def _get_handshake_driver_info(request):

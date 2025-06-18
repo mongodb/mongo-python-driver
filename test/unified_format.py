@@ -701,7 +701,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _databaseOperation_runCommand(self, target, **kwargs):
         self.__raise_if_unsupported("runCommand", target, Database)
         # Ensure the first key is the command name.
-        print(kwargs)
         ordered_command = SON([(kwargs.pop("command_name"), 1)])
         ordered_command.update(kwargs["command"])
         kwargs["command"] = ordered_command
@@ -840,8 +839,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return target.close()
 
     def _clientOperation_appendMetadata(self, target, *args, **kwargs):
-        print("IN MY FUNC")
-        print(kwargs)
         info_opts = kwargs["driver_info_options"]
         driver_info = DriverInfo(info_opts["name"], info_opts["version"], info_opts["platform"])
         target.append_metadata(driver_info)
@@ -929,7 +926,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             method_name = f"_clientOperation_{opname}"
         elif isinstance(target, Database):
             method_name = f"_databaseOperation_{opname}"
-            print(f"{method_name=}")
         elif isinstance(target, Collection):
             method_name = f"_collectionOperation_{opname}"
             # contentType is always stored in metadata in pymongo.
@@ -976,7 +972,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 with pymongo.timeout(timeout):
                     result = cmd(**dict(arguments))
             else:
-                print(f"{cmd=} {dict=} {arguments=}")
                 result = cmd(**dict(arguments))
         except Exception as exc:
             # Ignore all operation errors but to avoid masking bugs don't
@@ -1235,7 +1230,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def run_operations(self, spec):
         for op in spec:
-            print(f"{op=}")
             if op["object"] == "testRunner":
                 self.run_special_operation(op)
             else:
@@ -1436,7 +1430,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.check_log_messages(spec["operations"], expect_log_messages)
         else:
             # process operations
-            print(f"{spec['operations']=}")
             self.run_operations(spec["operations"])
 
         # process expectEvents
