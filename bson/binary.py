@@ -490,6 +490,11 @@ class Binary(bytes):
         dtype = BinaryVectorDtype(dtype)
         n_values = len(self) - position
 
+        if padding and dtype != BinaryVectorDtype.PACKED_BIT:
+            raise ValueError(
+                f"Corrupt data. Padding ({padding}) must be 0 for all but PACKED_BIT dtypes. ({dtype=})"
+            )
+
         if dtype == BinaryVectorDtype.INT8:
             dtype_format = "b"
             format_string = f"<{n_values}{dtype_format}"
@@ -510,6 +515,10 @@ class Binary(bytes):
 
         elif dtype == BinaryVectorDtype.PACKED_BIT:
             # data packed as uint8
+            if padding and not n_values:
+                raise ValueError("Corrupt data. Vector has a padding P, but no data.")
+            if padding > 7 or padding < 0:
+                raise ValueError(f"Corrupt data. Padding ({padding}) must be between 0 and 7.")
             dtype_format = "B"
             format_string = f"<{n_values}{dtype_format}"
             unpacked_uint8s = list(struct.unpack_from(format_string, self, position))
