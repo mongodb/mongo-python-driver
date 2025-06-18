@@ -623,6 +623,7 @@ class TestClientBulkWriteCSOT(IntegrationTest):
 
     @client_context.require_version_min(8, 0, 0, -24)
     @client_context.require_failCommand_fail_point
+    # PYTHON-5290
     @flaky(max_runs=3 if sys.platform == "linux" else 5, affects_cpython_linux=True)
     def test_timeout_in_multi_batch_bulk_write(self):
         _OVERHEAD = 500
