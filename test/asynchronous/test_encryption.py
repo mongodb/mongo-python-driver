@@ -3482,6 +3482,8 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
     MONGOCRYPTD_PORT = 27020
 
     async def asyncSetUp(self) -> None:
+        if sys.implementation.name.lower() == "pypy":
+            return
         await super().asyncSetUp()
         start_mongocryptd(self.MONGOCRYPTD_PORT)
 
