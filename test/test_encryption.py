@@ -3244,6 +3244,7 @@ class TestKmsRetryProse(EncryptionIntegrationTest):
 class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(7, 0, -1)
+    @flaky  # PYTHON-4982
     def setUp(self):
         super().setUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
@@ -3258,8 +3259,6 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             OPTS,
         )
 
-    # PYTHON-4982
-    @flaky
     def test_01_simple_create(self):
         coll, _ = self.client_encryption.create_encrypted_collection(
             database=self.db,
