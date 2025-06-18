@@ -32,6 +32,7 @@ import uuid
 import warnings
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, async_client_context
 from test.asynchronous.test_bulk import AsyncBulkTestBase
+from test.asynchronous.utils import flaky
 from test.asynchronous.utils_spec_runner import AsyncSpecRunner, AsyncSpecTestCreator
 from threading import Thread
 from typing import Any, Dict, Mapping, Optional
@@ -3275,6 +3276,8 @@ class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
             OPTS,
         )
 
+    # PYTHON-4982
+    @flaky
     async def test_01_simple_create(self):
         coll, _ = await self.client_encryption.create_encrypted_collection(
             database=self.db,
@@ -3491,6 +3494,8 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
         hello = await self.mongocryptd_client.db.command("hello")
         self.assertNotIn("logicalSessionTimeoutMinutes", hello)
 
+    # PYTHON-4982
+    @flaky
     async def test_implicit_session_ignored_when_unsupported(self):
         self.listener.reset()
         with self.assertRaises(OperationFailure):

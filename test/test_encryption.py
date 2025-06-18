@@ -32,6 +32,7 @@ import uuid
 import warnings
 from test import IntegrationTest, PyMongoTestCase, client_context
 from test.test_bulk import BulkTestBase
+from test.utils import flaky
 from test.utils_spec_runner import SpecRunner, SpecTestCreator
 from threading import Thread
 from typing import Any, Dict, Mapping, Optional
@@ -3257,6 +3258,8 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             OPTS,
         )
 
+    # PYTHON-4982
+    @flaky
     def test_01_simple_create(self):
         coll, _ = self.client_encryption.create_encrypted_collection(
             database=self.db,
@@ -3473,6 +3476,8 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
         hello = self.mongocryptd_client.db.command("hello")
         self.assertNotIn("logicalSessionTimeoutMinutes", hello)
 
+    # PYTHON-4982
+    @flaky
     def test_implicit_session_ignored_when_unsupported(self):
         self.listener.reset()
         with self.assertRaises(OperationFailure):

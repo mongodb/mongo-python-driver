@@ -537,16 +537,12 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             slow_win32 = [
                 "maxtimems value in the command is less than timeoutms",
                 "non-tailable cursor lifetime remaining timeoutms applied to getmore if timeoutmode is unset",
-                "maxtimems applied to update during a rename",
-                "maxtimems applied to find to get chunks",
-                "maxtimems applied to find to get files document",
-                "maxtimems applied to find command",
             ]
             slow_macos = [
                 "non-tailable cursor lifetime remaining timeoutms applied to getmore if timeoutmode is unset"
             ]
-            if sys.platform == "win32" and description in slow_win32:
-                self.skipTest("PYTHON-3522 CSOT test run too slow on Windows")
+            if sys.platform == "win32" and description in slow_win32 or "gridfs" in class_name:
+                self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows")
             if sys.platform == "darwin" and description in slow_macos:
                 self.skipTest("PYTHON-3522 CSOT test runs too slow on MacOS")
             if async_client_context.storage_engine == "mmapv1":
@@ -1390,6 +1386,13 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             ".*test_discovery_and_monitoring.TestUnifiedInterruptInUsePoolClear.*",
             # PYTHON-5174
             ".*Driver_extends_timeout_while_streaming",
+            # PYTHON-5315
+            ".*TestSrvPolling.test_recover_from_initially_.*",
+            # PYTHON-4987
+            ".*UnknownTransactionCommitResult_labels_to_connection_errors",
+            # PYTHON-3689
+            ".*TestProse.test_load_balancing",
+            # PYTHON-3522
             ".*csot.*",
         ]
         for flaky_test in flaky_tests:
@@ -1398,6 +1401,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 options = dict(reset_func=self.asyncSetUp, func_name=func_name)
                 if "csot" in func_name:
                     options["max_runs"] = 3
+                    options["affects_cpython_linux"] = True
                 decorator = flaky(**options)
                 await decorator(self._run_scenario)(spec, uri)
                 return

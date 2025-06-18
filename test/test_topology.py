@@ -23,7 +23,7 @@ sys.path[0:0] = [""]
 
 from test import client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
-from test.utils import MockPool
+from test.utils import MockPool, flaky
 from test.utils_shared import wait_until
 
 from bson.objectid import ObjectId
@@ -750,6 +750,8 @@ def wait_for_primary(topology):
 class TestTopologyErrors(TopologyTest):
     # Errors when calling hello.
 
+    # PYTHON-5366
+    @flaky
     def test_pool_reset(self):
         # hello succeeds at first, then always raises socket error.
         hello_count = [0]
