@@ -1,0 +1,2107 @@
+diff --git a/test/bson_corpus/datetime.json b/test/bson_corpus/datetime.json
+index f857afdc..1554341d 100644
+--- a/test/bson_corpus/datetime.json
++++ b/test/bson_corpus/datetime.json
+@@ -24,6 +24,7 @@
+         {
+             "description" : "Y10K",
+             "canonical_bson" : "1000000009610000DC1FD277E6000000",
++            "relaxed_extjson" : "{\"a\":{\"$date\":{\"$numberLong\":\"253402300800000\"}}}",
+             "canonical_extjson" : "{\"a\":{\"$date\":{\"$numberLong\":\"253402300800000\"}}}"
+         },
+         {
+diff --git a/test/bson_corpus/decimal128-1.json b/test/bson_corpus/decimal128-1.json
+index 7eefec6b..8e7fbc93 100644
+--- a/test/bson_corpus/decimal128-1.json
++++ b/test/bson_corpus/decimal128-1.json
+@@ -312,6 +312,30 @@
+            "canonical_bson": "18000000136400000000000a5bc138938d44c64d31cc3700",
+            "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\"}}",
+            "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"1.000000000000000000000000000000000E+999\"}}"
++        },
++        {
++            "description": "Clamped zeros with a large positive exponent",
++            "canonical_bson": "180000001364000000000000000000000000000000FE5F00",
++            "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"0E+2147483647\"}}",
++            "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"0E+6111\"}}"
++        },
++        {
++            "description": "Clamped zeros with a large negative exponent",
++            "canonical_bson": "180000001364000000000000000000000000000000000000",
++            "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"0E-2147483647\"}}",
++            "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"0E-6176\"}}"
++        },
++        {
++            "description": "Clamped negative zeros with a large positive exponent",
++            "canonical_bson": "180000001364000000000000000000000000000000FEDF00",
++            "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"-0E+2147483647\"}}",
++            "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"-0E+6111\"}}"
++        },
++        {
++            "description": "Clamped negative zeros with a large negative exponent",
++            "canonical_bson": "180000001364000000000000000000000000000000008000",
++            "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"-0E-2147483647\"}}",
++            "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"-0E-6176\"}}"
+         }
+     ]
+ }
+diff --git a/test/collection_management/timeseries-collection.json b/test/collection_management/timeseries-collection.json
+index 8525056f..2ee52eac 100644
+--- a/test/collection_management/timeseries-collection.json
++++ b/test/collection_management/timeseries-collection.json
+@@ -255,7 +255,7 @@
+       "description": "createCollection with bucketing options",
+       "runOnRequirements": [
+         {
+-          "minServerVersion": "7.0"
++          "minServerVersion": "6.3"
+         }
+       ],
+       "operations": [
+diff --git a/test/connection_logging/connection-logging.json b/test/connection_logging/connection-logging.json
+index bfbdbe86..72103b3c 100644
+--- a/test/connection_logging/connection-logging.json
++++ b/test/connection_logging/connection-logging.json
+@@ -446,6 +446,22 @@
+                 }
+               }
+             },
++            {
++              "level": "debug",
++              "component": "connection",
++              "data": {
++                "message": "Connection pool cleared",
++                "serverHost": {
++                  "$$type": "string"
++                },
++                "serverPort": {
++                  "$$type": [
++                    "int",
++                    "long"
++                  ]
++                }
++              }
++            },
+             {
+               "level": "debug",
+               "component": "connection",
+@@ -498,26 +514,10 @@
+                   ]
+                 }
+               }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "connection",
+-              "data": {
+-                "message": "Connection pool cleared",
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+             }
+           ]
+         }
+       ]
+     }
+   ]
+-}
+\ No newline at end of file
++}
+diff --git a/test/connection_monitoring/pool-checkout-returned-connection-maxConnecting.json b/test/connection_monitoring/pool-checkout-returned-connection-maxConnecting.json
+index 965d56f6..10b526e0 100644
+--- a/test/connection_monitoring/pool-checkout-returned-connection-maxConnecting.json
++++ b/test/connection_monitoring/pool-checkout-returned-connection-maxConnecting.json
+@@ -23,6 +23,7 @@
+     }
+   },
+   "poolOptions": {
++    "maxConnecting": 2,
+     "maxPoolSize": 10,
+     "waitQueueTimeoutMS": 5000
+   },
+@@ -72,9 +73,8 @@
+       "connection": "conn0"
+     },
+     {
+-      "name": "waitForEvent",
+-      "event": "ConnectionCheckedOut",
+-      "count": 4
++      "name": "wait",
++      "ms": 100
+     }
+   ],
+   "events": [
+@@ -104,14 +104,6 @@
+       "type": "ConnectionCheckedOut",
+       "connectionId": 1,
+       "address": 42
+-    },
+-    {
+-      "type": "ConnectionCheckedOut",
+-      "address": 42
+-    },
+-    {
+-      "type": "ConnectionCheckedOut",
+-      "address": 42
+     }
+   ],
+   "ignore": [
+diff --git a/test/connection_monitoring/pool-create-min-size-error.json b/test/connection_monitoring/pool-create-min-size-error.json
+index 1c744b85..509b2a23 100644
+--- a/test/connection_monitoring/pool-create-min-size-error.json
++++ b/test/connection_monitoring/pool-create-min-size-error.json
+@@ -49,15 +49,15 @@
+       "type": "ConnectionCreated",
+       "address": 42
+     },
++    {
++      "type": "ConnectionPoolCleared",
++      "address": 42
++    },
+     {
+       "type": "ConnectionClosed",
+       "address": 42,
+       "connectionId": 42,
+       "reason": "error"
+-    },
+-    {
+-      "type": "ConnectionPoolCleared",
+-      "address": 42
+     }
+   ],
+   "ignore": [
+diff --git a/test/connection_string/test/valid-options.json b/test/connection_string/test/valid-options.json
+index e094bcf6..fce53873 100644
+--- a/test/connection_string/test/valid-options.json
++++ b/test/connection_string/test/valid-options.json
+@@ -59,4 +59,4 @@
+       }
+     }
+   ]
+-}
+\ No newline at end of file
++}
+diff --git a/test/connection_string/test/valid-warnings.json b/test/connection_string/test/valid-warnings.json
+index c46a8311..e11757eb 100644
+--- a/test/connection_string/test/valid-warnings.json
++++ b/test/connection_string/test/valid-warnings.json
+@@ -112,4 +112,4 @@
+       }
+     }
+   ]
+-}
+\ No newline at end of file
++}
+diff --git a/test/crud/unified/client-bulkWrite-replaceOne-sort.json b/test/crud/unified/client-bulkWrite-replaceOne-sort.json
+index b86bc5f9..fc66ec01 100644
+--- a/test/crud/unified/client-bulkWrite-replaceOne-sort.json
++++ b/test/crud/unified/client-bulkWrite-replaceOne-sort.json
+@@ -1,5 +1,5 @@
+ {
+-  "description": "client bulkWrite updateOne-sort",
++  "description": "client bulkWrite replaceOne-sort",
+   "schemaVersion": "1.4",
+   "runOnRequirements": [
+     {
+diff --git a/test/discovery_and_monitoring/rs/null_election_id-pre-6.0.json b/test/discovery_and_monitoring/rs/null_election_id-pre-6.0.json
+index 7261fbfc..8a77f31c 100644
+--- a/test/discovery_and_monitoring/rs/null_election_id-pre-6.0.json
++++ b/test/discovery_and_monitoring/rs/null_election_id-pre-6.0.json
+@@ -18,7 +18,7 @@
+             "setVersion": 1,
+             "setName": "rs",
+             "minWireVersion": 0,
+-            "maxWireVersion": 7
++            "maxWireVersion": 16
+           }
+         ]
+       ],
+@@ -66,7 +66,7 @@
+               "$oid": "000000000000000000000002"
+             },
+             "minWireVersion": 0,
+-            "maxWireVersion": 7
++            "maxWireVersion": 16
+           }
+         ]
+       ],
+@@ -116,7 +116,7 @@
+             "setVersion": 1,
+             "setName": "rs",
+             "minWireVersion": 0,
+-            "maxWireVersion": 7
++            "maxWireVersion": 16
+           }
+         ]
+       ],
+@@ -167,7 +167,7 @@
+               "$oid": "000000000000000000000001"
+             },
+             "minWireVersion": 0,
+-            "maxWireVersion": 7
++            "maxWireVersion": 16
+           }
+         ]
+       ],
+diff --git a/test/discovery_and_monitoring/rs/primary_mismatched_me_not_removed.json b/test/discovery_and_monitoring/rs/primary_mismatched_me_not_removed.json
+index 4c400936..a55dcfc6 100644
+--- a/test/discovery_and_monitoring/rs/primary_mismatched_me_not_removed.json
++++ b/test/discovery_and_monitoring/rs/primary_mismatched_me_not_removed.json
+@@ -18,7 +18,7 @@
+             "primary": "localhost:27017",
+             "me": "a:27017",
+             "minWireVersion": 0,
+-            "maxWireVersion": 7
++            "maxWireVersion": 25
+           }
+         ]
+       ],
+@@ -55,7 +55,7 @@
+             "primary": "localhost:27017",
+             "me": "localhost:27018",
+             "minWireVersion": 0,
+-            "maxWireVersion": 7
++            "maxWireVersion": 25
+           }
+         ]
+       ],
+diff --git a/test/discovery_and_monitoring/rs/setversion_without_electionid-pre-6.0.json b/test/discovery_and_monitoring/rs/setversion_without_electionid-pre-6.0.json
+index 87029e57..9a1ee613 100644
+--- a/test/discovery_and_monitoring/rs/setversion_without_electionid-pre-6.0.json
++++ b/test/discovery_and_monitoring/rs/setversion_without_electionid-pre-6.0.json
+@@ -17,7 +17,7 @@
+             "setName": "rs",
+             "setVersion": 2,
+             "minWireVersion": 0,
+-            "maxWireVersion": 7
++            "maxWireVersion": 16
+           }
+         ]
+       ],
+@@ -56,7 +56,7 @@
+             "setName": "rs",
+             "setVersion": 1,
+             "minWireVersion": 0,
+-            "maxWireVersion": 7
++            "maxWireVersion": 16
+           }
+         ]
+       ],
+diff --git a/test/discovery_and_monitoring/rs/use_setversion_without_electionid-pre-6.0.json b/test/discovery_and_monitoring/rs/use_setversion_without_electionid-pre-6.0.json
+index a63efeac..03195aac 100644
+--- a/test/discovery_and_monitoring/rs/use_setversion_without_electionid-pre-6.0.json
++++ b/test/discovery_and_monitoring/rs/use_setversion_without_electionid-pre-6.0.json
+@@ -20,7 +20,7 @@
+               "$oid": "000000000000000000000001"
+             },
+             "minWireVersion": 0,
+-            "maxWireVersion": 7
++            "maxWireVersion": 16
+           }
+         ]
+       ],
+@@ -64,7 +64,7 @@
+             "setName": "rs",
+             "setVersion": 2,
+             "minWireVersion": 0,
+-            "maxWireVersion": 7
++            "maxWireVersion": 16
+           }
+         ]
+       ],
+@@ -109,7 +109,7 @@
+               "$oid": "000000000000000000000002"
+             },
+             "minWireVersion": 0,
+-            "maxWireVersion": 7
++            "maxWireVersion": 16
+           }
+         ]
+       ],
+diff --git a/test/discovery_and_monitoring/unified/serverMonitoringMode.json b/test/discovery_and_monitoring/unified/serverMonitoringMode.json
+index e44fad1b..4b492f7d 100644
+--- a/test/discovery_and_monitoring/unified/serverMonitoringMode.json
++++ b/test/discovery_and_monitoring/unified/serverMonitoringMode.json
+@@ -5,7 +5,8 @@
+     {
+       "topologies": [
+         "single",
+-        "sharded"
++        "sharded",
++        "sharded-replicaset"
+       ],
+       "serverless": "forbid"
+     }
+diff --git a/test/gridfs/delete.json b/test/gridfs/delete.json
+index 277b9ed7..9a9b22fc 100644
+--- a/test/gridfs/delete.json
++++ b/test/gridfs/delete.json
+@@ -497,7 +497,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ],
+@@ -650,7 +650,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ],
+diff --git a/test/gridfs/download.json b/test/gridfs/download.json
+index f0cb8517..67658ac5 100644
+--- a/test/gridfs/download.json
++++ b/test/gridfs/download.json
+@@ -338,7 +338,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+@@ -370,7 +370,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+@@ -402,7 +402,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+@@ -471,7 +471,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+@@ -514,7 +514,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+diff --git a/test/gridfs/downloadByName.json b/test/gridfs/downloadByName.json
+index 7b20933c..45abaf7b 100644
+--- a/test/gridfs/downloadByName.json
++++ b/test/gridfs/downloadByName.json
+@@ -290,7 +290,7 @@
+             "filename": "xyz"
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+@@ -306,7 +306,7 @@
+             "revision": 999
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+diff --git a/test/load_balancer/cursors.json b/test/load_balancer/cursors.json
+index 27aaddd5..b11bf2c6 100644
+--- a/test/load_balancer/cursors.json
++++ b/test/load_balancer/cursors.json
+@@ -385,7 +385,7 @@
+       ]
+     },
+     {
+-      "description": "pinned connections are returned after an network error during getMore",
++      "description": "pinned connections are not returned after an network error during getMore",
+       "operations": [
+         {
+           "name": "failPoint",
+@@ -449,7 +449,7 @@
+           "object": "testRunner",
+           "arguments": {
+             "client": "client0",
+-            "connections": 0
++            "connections": 1
+           }
+         },
+         {
+@@ -677,7 +677,7 @@
+       ]
+     },
+     {
+-      "description": "pinned connections are returned to the pool after a non-network error on getMore",
++      "description": "pinned connections are not returned to the pool after a non-network error on getMore",
+       "operations": [
+         {
+           "name": "failPoint",
+@@ -733,7 +733,7 @@
+           "object": "testRunner",
+           "arguments": {
+             "client": "client0",
+-            "connections": 0
++            "connections": 1
+           }
+         },
+         {
+diff --git a/test/load_balancer/sdam-error-handling.json b/test/load_balancer/sdam-error-handling.json
+index 5892dcac..47323fae 100644
+--- a/test/load_balancer/sdam-error-handling.json
++++ b/test/load_balancer/sdam-error-handling.json
+@@ -372,6 +372,9 @@
+             {
+               "connectionCreatedEvent": {}
+             },
++            {
++              "poolClearedEvent": {}
++            },
+             {
+               "connectionClosedEvent": {
+                 "reason": "error"
+@@ -381,9 +384,6 @@
+               "connectionCheckOutFailedEvent": {
+                 "reason": "connectionError"
+               }
+-            },
+-            {
+-              "poolClearedEvent": {}
+             }
+           ]
+         }
+diff --git a/test/sdam_monitoring/discovered_standalone.json b/test/sdam_monitoring/discovered_standalone.json
+index dd8f7fc5..09720369 100644
+--- a/test/sdam_monitoring/discovered_standalone.json
++++ b/test/sdam_monitoring/discovered_standalone.json
+@@ -11,7 +11,7 @@
+             "helloOk": true,
+             "isWritablePrimary": true,
+             "minWireVersion": 0,
+-            "maxWireVersion": 6
++            "maxWireVersion": 21
+           }
+         ]
+       ],
+diff --git a/test/sdam_monitoring/replica_set_with_no_primary.json b/test/sdam_monitoring/replica_set_with_no_primary.json
+index 950e32ef..41d04872 100644
+--- a/test/sdam_monitoring/replica_set_with_no_primary.json
++++ b/test/sdam_monitoring/replica_set_with_no_primary.json
+@@ -19,7 +19,7 @@
+               "b:27017"
+             ],
+             "minWireVersion": 0,
+-            "maxWireVersion": 6
++            "maxWireVersion": 21
+           }
+         ]
+       ],
+diff --git a/test/sdam_monitoring/replica_set_with_primary.json b/test/sdam_monitoring/replica_set_with_primary.json
+index 2ad94d6e..3ccc127d 100644
+--- a/test/sdam_monitoring/replica_set_with_primary.json
++++ b/test/sdam_monitoring/replica_set_with_primary.json
+@@ -18,7 +18,7 @@
+               "b:27017"
+             ],
+             "minWireVersion": 0,
+-            "maxWireVersion": 6
++            "maxWireVersion": 21
+           }
+         ]
+       ],
+diff --git a/test/sdam_monitoring/replica_set_with_removal.json b/test/sdam_monitoring/replica_set_with_removal.json
+index ae28faa3..dc6fbe7e 100644
+--- a/test/sdam_monitoring/replica_set_with_removal.json
++++ b/test/sdam_monitoring/replica_set_with_removal.json
+@@ -69,7 +69,7 @@
+               "a:27017"
+             ],
+             "minWireVersion": 0,
+-            "maxWireVersion": 6
++            "maxWireVersion": 21
+           }
+         ],
+         [
+diff --git a/test/sdam_monitoring/required_replica_set.json b/test/sdam_monitoring/required_replica_set.json
+index 401c5d99..1f4e5c1d 100644
+--- a/test/sdam_monitoring/required_replica_set.json
++++ b/test/sdam_monitoring/required_replica_set.json
+@@ -18,7 +18,7 @@
+               "b:27017"
+             ],
+             "minWireVersion": 0,
+-            "maxWireVersion": 6
++            "maxWireVersion": 21
+           }
+         ]
+       ],
+diff --git a/test/sdam_monitoring/standalone.json b/test/sdam_monitoring/standalone.json
+index 821a1525..f375a383 100644
+--- a/test/sdam_monitoring/standalone.json
++++ b/test/sdam_monitoring/standalone.json
+@@ -11,7 +11,7 @@
+             "helloOk": true,
+             "isWritablePrimary": true,
+             "minWireVersion": 0,
+-            "maxWireVersion": 6
++            "maxWireVersion": 21
+           }
+         ]
+       ],
+diff --git a/test/sdam_monitoring/standalone_suppress_equal_description_changes.json b/test/sdam_monitoring/standalone_suppress_equal_description_changes.json
+index 5958e2d2..4d046ff8 100644
+--- a/test/sdam_monitoring/standalone_suppress_equal_description_changes.json
++++ b/test/sdam_monitoring/standalone_suppress_equal_description_changes.json
+@@ -11,7 +11,7 @@
+             "helloOk": true,
+             "isWritablePrimary": true,
+             "minWireVersion": 0,
+-            "maxWireVersion": 6
++            "maxWireVersion": 21
+           }
+         ],
+         [
+@@ -21,7 +21,7 @@
+             "helloOk": true,
+             "isWritablePrimary": true,
+             "minWireVersion": 0,
+-            "maxWireVersion": 6
++            "maxWireVersion": 21
+           }
+         ]
+       ],
+diff --git a/test/server_selection_logging/operation-id.json b/test/server_selection_logging/operation-id.json
+index ccc26231..72ebff60 100644
+--- a/test/server_selection_logging/operation-id.json
++++ b/test/server_selection_logging/operation-id.json
+@@ -197,7 +197,7 @@
+               }
+             },
+             {
+-              "level": "debug",
++              "level": "info",
+               "component": "serverSelection",
+               "data": {
+                 "message": "Waiting for suitable server to become available",
+@@ -383,7 +383,7 @@
+               }
+             },
+             {
+-              "level": "debug",
++              "level": "info",
+               "component": "serverSelection",
+               "data": {
+                 "message": "Waiting for suitable server to become available",
+diff --git a/test/server_selection_logging/replica-set.json b/test/server_selection_logging/replica-set.json
+index 830b1ea5..5eba784b 100644
+--- a/test/server_selection_logging/replica-set.json
++++ b/test/server_selection_logging/replica-set.json
+@@ -184,7 +184,7 @@
+               }
+             },
+             {
+-              "level": "debug",
++              "level": "info",
+               "component": "serverSelection",
+               "data": {
+                 "message": "Waiting for suitable server to become available",
+diff --git a/test/server_selection_logging/sharded.json b/test/server_selection_logging/sharded.json
+index 346c050f..d42fba91 100644
+--- a/test/server_selection_logging/sharded.json
++++ b/test/server_selection_logging/sharded.json
+@@ -193,7 +193,7 @@
+               }
+             },
+             {
+-              "level": "debug",
++              "level": "info",
+               "component": "serverSelection",
+               "data": {
+                 "message": "Waiting for suitable server to become available",
+diff --git a/test/server_selection_logging/standalone.json b/test/server_selection_logging/standalone.json
+index 3152d0bb..3b3eddd8 100644
+--- a/test/server_selection_logging/standalone.json
++++ b/test/server_selection_logging/standalone.json
+@@ -47,29 +47,9 @@
+       }
+     }
+   ],
+-  "initialData": [
+-    {
+-      "collectionName": "server-selection",
+-      "databaseName": "logging-tests",
+-      "documents": [
+-        {
+-          "_id": 1,
+-          "x": 11
+-        },
+-        {
+-          "_id": 2,
+-          "x": 22
+-        },
+-        {
+-          "_id": 3,
+-          "x": 33
+-        }
+-      ]
+-    }
+-  ],
+   "tests": [
+     {
+-      "description": "A successful insert operation",
++      "description": "A successful operation",
+       "operations": [
+         {
+           "name": "waitForEvent",
+@@ -211,7 +191,7 @@
+               }
+             },
+             {
+-              "level": "debug",
++              "level": "info",
+               "component": "serverSelection",
+               "data": {
+                 "message": "Waiting for suitable server to become available",
+@@ -250,912 +230,6 @@
+           ]
+         }
+       ]
+-    },
+-    {
+-      "description": "A successful find operation",
+-      "operations": [
+-        {
+-          "name": "waitForEvent",
+-          "object": "testRunner",
+-          "arguments": {
+-            "client": "client",
+-            "event": {
+-              "topologyDescriptionChangedEvent": {}
+-            },
+-            "count": 2
+-          }
+-        },
+-        {
+-          "name": "findOne",
+-          "object": "collection",
+-          "arguments": {
+-            "filter": {
+-              "x": 1
+-            }
+-          }
+-        }
+-
+-      ],
+-      "expectLogMessages": [
+-        {
+-          "client": "client",
+-          "messages": [
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "find",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "find",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            }
+-          ]
+-        }
+-      ]
+-    },
+-    {
+-      "description": "A successful findAndModify operation",
+-      "operations": [
+-        {
+-          "name": "waitForEvent",
+-          "object": "testRunner",
+-          "arguments": {
+-            "client": "client",
+-            "event": {
+-              "topologyDescriptionChangedEvent": {}
+-            },
+-            "count": 2
+-          }
+-        },
+-        {
+-          "name": "findOneAndReplace",
+-          "object": "collection",
+-          "arguments": {
+-            "filter": {
+-              "x": 1
+-            },
+-            "replacement": {
+-              "x": 11
+-            }
+-          }
+-        }
+-      ],
+-      "expectLogMessages": [
+-        {
+-          "client": "client",
+-          "messages": [
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "findAndModify",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "findAndModify",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            }
+-          ]
+-        }
+-      ]
+-    },
+-    {
+-      "description": "A successful find and getMore operation",
+-      "operations": [
+-        {
+-          "name": "waitForEvent",
+-          "object": "testRunner",
+-          "arguments": {
+-            "client": "client",
+-            "event": {
+-              "topologyDescriptionChangedEvent": {}
+-            },
+-            "count": 2
+-          }
+-        },
+-        {
+-          "name": "find",
+-          "object": "collection",
+-          "arguments": {
+-            "batchSize": 3
+-          }
+-        }
+-      ],
+-      "expectLogMessages": [
+-        {
+-          "client": "client",
+-          "messages": [
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "find",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "find",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "getMore",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "getMore",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            }
+-          ]
+-        }
+-      ]
+-    },
+-    {
+-      "description": "A successful aggregate operation",
+-      "operations": [
+-        {
+-          "name": "waitForEvent",
+-          "object": "testRunner",
+-          "arguments": {
+-            "client": "client",
+-            "event": {
+-              "topologyDescriptionChangedEvent": {}
+-            },
+-            "count": 2
+-          }
+-        },
+-        {
+-          "name": "aggregate",
+-          "object": "collection",
+-          "arguments": {
+-            "pipeline": [
+-              {
+-                "$match": {
+-                  "_id": {
+-                    "$gt": 1
+-                  }
+-                }
+-              }
+-            ]
+-          }
+-        }
+-      ],
+-      "expectLogMessages": [
+-        {
+-          "client": "client",
+-          "messages": [
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "aggregate",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "aggregate",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            }
+-          ]
+-        }
+-      ]
+-    },
+-    {
+-      "description": "A successful count operation",
+-      "operations": [
+-        {
+-          "name": "waitForEvent",
+-          "object": "testRunner",
+-          "arguments": {
+-            "client": "client",
+-            "event": {
+-              "topologyDescriptionChangedEvent": {}
+-            },
+-            "count": 2
+-          }
+-        },
+-        {
+-          "name": "countDocuments",
+-          "object": "collection",
+-          "arguments": {
+-            "filter":  {}
+-          }
+-        }
+-      ],
+-      "expectLogMessages": [
+-        {
+-          "client": "client",
+-          "messages": [
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "count",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "count",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            }
+-          ]
+-        }
+-      ]
+-    },
+-    {
+-      "description": "A successful distinct operation",
+-      "operations": [
+-        {
+-          "name": "waitForEvent",
+-          "object": "testRunner",
+-          "arguments": {
+-            "client": "client",
+-            "event": {
+-              "topologyDescriptionChangedEvent": {}
+-            },
+-            "count": 2
+-          }
+-        },
+-        {
+-          "name": "distinct",
+-          "object": "collection",
+-          "arguments": {
+-            "fieldName": "x",
+-            "filter": {}
+-          }
+-        }
+-      ],
+-      "expectLogMessages": [
+-        {
+-          "client": "client",
+-          "messages": [
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "distinct",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "distinct",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            }
+-          ]
+-        }
+-      ]
+-    },
+-    {
+-      "description": "Successful collection management operations",
+-      "operations": [
+-        {
+-          "name": "waitForEvent",
+-          "object": "testRunner",
+-          "arguments": {
+-            "client": "client",
+-            "event": {
+-              "topologyDescriptionChangedEvent": {}
+-            },
+-            "count": 2
+-          }
+-        },
+-        {
+-          "name": "createCollection",
+-          "object": "database",
+-          "arguments": {
+-            "collection": "foo"
+-          }
+-        },
+-        {
+-          "name": "listCollections",
+-          "object": "database"
+-        },
+-        {
+-          "name": "dropCollection",
+-          "object": "database",
+-            "arguments": {
+-            "collection": "foo"
+-          }
+-        }
+-      ],
+-      "expectLogMessages": [
+-        {
+-          "client": "client",
+-          "messages": [
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "create",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "create",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "listCollections",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "listCollections",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "drop",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "drop",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            }
+-          ]
+-        }
+-      ]
+-    },
+-    {
+-      "description": "Successful index operations",
+-      "operations": [
+-        {
+-          "name": "waitForEvent",
+-          "object": "testRunner",
+-          "arguments": {
+-            "client": "client",
+-            "event": {
+-              "topologyDescriptionChangedEvent": {}
+-            },
+-            "count": 2
+-          }
+-        },
+-        {
+-          "name": "createIndex",
+-          "object": "collection",
+-          "arguments": {
+-            "keys": {
+-              "x": 1
+-            },
+-            "name": "x_1"
+-          }
+-        },
+-        {
+-          "name": "listIndexes",
+-          "object": "collection"
+-        },
+-        {
+-          "name": "dropIndex",
+-          "object": "collection",
+-          "arguments": {
+-            "name": "x_1"
+-          }
+-        }
+-      ],
+-      "expectLogMessages": [
+-        {
+-          "client": "client",
+-          "messages": [
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "createIndexes",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "createIndexes",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "listIndexes",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "listIndexes",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "dropIndexes",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "dropIndexes",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            }
+-          ]
+-        }
+-      ]
+-    },
+-    {
+-      "description": "A successful update operation",
+-      "operations": [
+-        {
+-          "name": "waitForEvent",
+-          "object": "testRunner",
+-          "arguments": {
+-            "client": "client",
+-            "event": {
+-              "topologyDescriptionChangedEvent": {}
+-            },
+-            "count": 2
+-          }
+-        },
+-        {
+-          "name": "updateOne",
+-          "object": "collection",
+-          "arguments": {
+-            "filter": {
+-              "x": 1
+-            },
+-            "update": {
+-              "$inc": {
+-                "x": 1
+-              }
+-            }
+-          }
+-        }
+-      ],
+-      "expectLogMessages": [
+-        {
+-          "client": "client",
+-          "messages": [
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "update",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "update",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            }
+-          ]
+-        }
+-      ]
+-    },
+-    {
+-      "description": "A successful delete operation",
+-      "operations": [
+-        {
+-          "name": "waitForEvent",
+-          "object": "testRunner",
+-          "arguments": {
+-            "client": "client",
+-            "event": {
+-              "topologyDescriptionChangedEvent": {}
+-            },
+-            "count": 2
+-          }
+-        },
+-        {
+-          "name": "deleteOne",
+-          "object": "collection",
+-          "arguments": {
+-            "filter": {
+-              "x": 1
+-            }
+-          }
+-        }
+-      ],
+-      "expectLogMessages": [
+-        {
+-          "client": "client",
+-          "messages": [
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection started",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "delete",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                }
+-              }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "serverSelection",
+-              "data": {
+-                "message": "Server selection succeeded",
+-                "selector": {
+-                  "$$exists": true
+-                },
+-                "operation": "delete",
+-                "topologyDescription": {
+-                  "$$exists": true
+-                },
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            }
+-          ]
+-        }
+-      ]
+     }
+   ]
+ }
+diff --git a/test/sessions/driver-sessions-dirty-session-errors.json b/test/sessions/driver-sessions-dirty-session-errors.json
+index 6aa1da1d..d7a1c6ab 100644
+--- a/test/sessions/driver-sessions-dirty-session-errors.json
++++ b/test/sessions/driver-sessions-dirty-session-errors.json
+@@ -347,7 +347,9 @@
+                       "x": 1
+                     }
+                   },
+-                  "new": false,
++                  "new": {
++                    "$$unsetOrMatches": false
++                  },
+                   "lsid": {
+                     "$$sessionLsid": "session0"
+                   },
+@@ -375,7 +377,9 @@
+                       "x": 1
+                     }
+                   },
+-                  "new": false,
++                  "new": {
++                    "$$unsetOrMatches": false
++                  },
+                   "lsid": {
+                     "$$sessionLsid": "session0"
+                   },
+@@ -627,7 +631,9 @@
+                       "x": 1
+                     }
+                   },
+-                  "new": false,
++                  "new": {
++                    "$$unsetOrMatches": false
++                  },
+                   "lsid": {
+                     "$$type": "object"
+                   },
+@@ -655,7 +661,9 @@
+                       "x": 1
+                     }
+                   },
+-                  "new": false,
++                  "new": {
++                    "$$unsetOrMatches": false
++                  },
+                   "lsid": {
+                     "$$type": "object"
+                   },
+diff --git a/test/unified-test-format/invalid/entity-client-storeEventsAsEntities-minItems.json b/test/unified-test-format/invalid/entity-client-storeEventsAsEntities-minItems.json
+deleted file mode 100644
+index d94863ed..00000000
+--- a/test/unified-test-format/invalid/entity-client-storeEventsAsEntities-minItems.json
++++ /dev/null
+@@ -1,18 +0,0 @@
+-{
+-  "description": "entity-client-storeEventsAsEntities-minItems",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": []
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/invalid/entity-client-storeEventsAsEntities-type.json b/test/unified-test-format/invalid/entity-client-storeEventsAsEntities-type.json
+deleted file mode 100644
+index 79f6b85e..00000000
+--- a/test/unified-test-format/invalid/entity-client-storeEventsAsEntities-type.json
++++ /dev/null
+@@ -1,18 +0,0 @@
+-{
+-  "description": "entity-client-storeEventsAsEntities-type",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": 0
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/invalid/storeEventsAsEntity-additionalProperties.json b/test/unified-test-format/invalid/storeEventsAsEntity-additionalProperties.json
+deleted file mode 100644
+index 5357da8d..00000000
+--- a/test/unified-test-format/invalid/storeEventsAsEntity-additionalProperties.json
++++ /dev/null
+@@ -1,26 +0,0 @@
+-{
+-  "description": "storeEventsAsEntity-additionalProperties",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": [
+-          {
+-            "id": "client0_events",
+-            "events": [
+-              "CommandStartedEvent"
+-            ],
+-            "foo": 0
+-          }
+-        ]
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/invalid/storeEventsAsEntity-events-enum.json b/test/unified-test-format/invalid/storeEventsAsEntity-events-enum.json
+deleted file mode 100644
+index ee99a553..00000000
+--- a/test/unified-test-format/invalid/storeEventsAsEntity-events-enum.json
++++ /dev/null
+@@ -1,25 +0,0 @@
+-{
+-  "description": "storeEventsAsEntity-events-enum",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": [
+-          {
+-            "id": "client0_events",
+-            "events": [
+-              "foo"
+-            ]
+-          }
+-        ]
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/invalid/storeEventsAsEntity-events-minItems.json b/test/unified-test-format/invalid/storeEventsAsEntity-events-minItems.json
+deleted file mode 100644
+index ddab042b..00000000
+--- a/test/unified-test-format/invalid/storeEventsAsEntity-events-minItems.json
++++ /dev/null
+@@ -1,23 +0,0 @@
+-{
+-  "description": "storeEventsAsEntity-events-minItems",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": [
+-          {
+-            "id": "client0_events",
+-            "events": []
+-          }
+-        ]
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/invalid/storeEventsAsEntity-events-required.json b/test/unified-test-format/invalid/storeEventsAsEntity-events-required.json
+deleted file mode 100644
+index 90b45918..00000000
+--- a/test/unified-test-format/invalid/storeEventsAsEntity-events-required.json
++++ /dev/null
+@@ -1,22 +0,0 @@
+-{
+-  "description": "storeEventsAsEntity-events-required",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": [
+-          {
+-            "id": "client0_events"
+-          }
+-        ]
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/invalid/storeEventsAsEntity-events-type.json b/test/unified-test-format/invalid/storeEventsAsEntity-events-type.json
+deleted file mode 100644
+index 1b920ebd..00000000
+--- a/test/unified-test-format/invalid/storeEventsAsEntity-events-type.json
++++ /dev/null
+@@ -1,23 +0,0 @@
+-{
+-  "description": "storeEventsAsEntity-events-type",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": [
+-          {
+-            "id": "client0_events",
+-            "events": 0
+-          }
+-        ]
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/invalid/storeEventsAsEntity-id-required.json b/test/unified-test-format/invalid/storeEventsAsEntity-id-required.json
+deleted file mode 100644
+index 71387c53..00000000
+--- a/test/unified-test-format/invalid/storeEventsAsEntity-id-required.json
++++ /dev/null
+@@ -1,24 +0,0 @@
+-{
+-  "description": "storeEventsAsEntity-id-required",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": [
+-          {
+-            "events": [
+-              "CommandStartedEvent"
+-            ]
+-          }
+-        ]
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/invalid/storeEventsAsEntity-id-type.json b/test/unified-test-format/invalid/storeEventsAsEntity-id-type.json
+deleted file mode 100644
+index 4f52dc25..00000000
+--- a/test/unified-test-format/invalid/storeEventsAsEntity-id-type.json
++++ /dev/null
+@@ -1,25 +0,0 @@
+-{
+-  "description": "storeEventsAsEntity-id-type",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": [
+-          {
+-            "id": 0,
+-            "events": [
+-              "CommandStartedEvent"
+-            ]
+-          }
+-        ]
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/valid-fail/entity-client-storeEventsAsEntities-conflict_with_client_id.json b/test/unified-test-format/valid-fail/entity-client-storeEventsAsEntities-conflict_with_client_id.json
+deleted file mode 100644
+index 8c0c4d20..00000000
+--- a/test/unified-test-format/valid-fail/entity-client-storeEventsAsEntities-conflict_with_client_id.json
++++ /dev/null
+@@ -1,28 +0,0 @@
+-{
+-  "description": "entity-client-storeEventsAsEntities-conflict_with_client_id",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": [
+-          {
+-            "id": "client0",
+-            "events": [
+-              "PoolCreatedEvent",
+-              "PoolReadyEvent",
+-              "PoolClearedEvent",
+-              "PoolClosedEvent"
+-            ]
+-          }
+-        ]
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/valid-fail/entity-client-storeEventsAsEntities-conflict_within_different_array.json b/test/unified-test-format/valid-fail/entity-client-storeEventsAsEntities-conflict_within_different_array.json
+deleted file mode 100644
+index 77bc4abf..00000000
+--- a/test/unified-test-format/valid-fail/entity-client-storeEventsAsEntities-conflict_within_different_array.json
++++ /dev/null
+@@ -1,43 +0,0 @@
+-{
+-  "description": "entity-client-storeEventsAsEntities-conflict_within_different_array",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": [
+-          {
+-            "id": "events",
+-            "events": [
+-              "PoolCreatedEvent",
+-              "PoolReadyEvent",
+-              "PoolClearedEvent",
+-              "PoolClosedEvent"
+-            ]
+-          }
+-        ]
+-      }
+-    },
+-    {
+-      "client": {
+-        "id": "client1",
+-        "storeEventsAsEntities": [
+-          {
+-            "id": "events",
+-            "events": [
+-              "CommandStartedEvent",
+-              "CommandSucceededEvent",
+-              "CommandFailedEvent"
+-            ]
+-          }
+-        ]
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/valid-fail/entity-client-storeEventsAsEntities-conflict_within_same_array.json b/test/unified-test-format/valid-fail/entity-client-storeEventsAsEntities-conflict_within_same_array.json
+deleted file mode 100644
+index e1a94998..00000000
+--- a/test/unified-test-format/valid-fail/entity-client-storeEventsAsEntities-conflict_within_same_array.json
++++ /dev/null
+@@ -1,36 +0,0 @@
+-{
+-  "description": "entity-client-storeEventsAsEntities-conflict_within_same_array",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": [
+-          {
+-            "id": "events",
+-            "events": [
+-              "PoolCreatedEvent",
+-              "PoolReadyEvent",
+-              "PoolClearedEvent",
+-              "PoolClosedEvent"
+-            ]
+-          },
+-          {
+-            "id": "events",
+-            "events": [
+-              "CommandStartedEvent",
+-              "CommandSucceededEvent",
+-              "CommandFailedEvent"
+-            ]
+-          }
+-        ]
+-      }
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "foo",
+-      "operations": []
+-    }
+-  ]
+-}
+diff --git a/test/unified-test-format/valid-pass/entity-client-storeEventsAsEntities.json b/test/unified-test-format/valid-pass/entity-client-storeEventsAsEntities.json
+deleted file mode 100644
+index e37e5a1a..00000000
+--- a/test/unified-test-format/valid-pass/entity-client-storeEventsAsEntities.json
++++ /dev/null
+@@ -1,67 +0,0 @@
+-{
+-  "description": "entity-client-storeEventsAsEntities",
+-  "schemaVersion": "1.2",
+-  "createEntities": [
+-    {
+-      "client": {
+-        "id": "client0",
+-        "storeEventsAsEntities": [
+-          {
+-            "id": "client0_events",
+-            "events": [
+-              "CommandStartedEvent",
+-              "CommandSucceededEvent",
+-              "CommandFailedEvent"
+-            ]
+-          }
+-        ]
+-      }
+-    },
+-    {
+-      "database": {
+-        "id": "database0",
+-        "client": "client0",
+-        "databaseName": "test"
+-      }
+-    },
+-    {
+-      "collection": {
+-        "id": "collection0",
+-        "database": "database0",
+-        "collectionName": "coll0"
+-      }
+-    }
+-  ],
+-  "initialData": [
+-    {
+-      "collectionName": "coll0",
+-      "databaseName": "test",
+-      "documents": [
+-        {
+-          "_id": 1,
+-          "x": 11
+-        }
+-      ]
+-    }
+-  ],
+-  "tests": [
+-    {
+-      "description": "storeEventsAsEntities captures events",
+-      "operations": [
+-        {
+-          "name": "find",
+-          "object": "collection0",
+-          "arguments": {
+-            "filter": {}
+-          },
+-          "expectResult": [
+-            {
+-              "_id": 1,
+-              "x": 11
+-            }
+-          ]
+-        }
+-      ]
+-    }
+-  ]
+-}
