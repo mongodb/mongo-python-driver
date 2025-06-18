@@ -532,14 +532,21 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
-            if "gridfs" in class_name and sys.platform == "win32":
-                self.skipTest("PYTHON-3522 CSOT GridFS tests are flaky on Windows")
-            if (
+            slow_win32 = [
+                "maxTimeMS value in the command is less than timeoutMS",
+                "Non-tailable cursor lifetime remaining timeoutMS applied to getMore if timeoutMode is unset",
+                "timeoutMS applied to update during a rename",
+                "timeoutMS applied to find to get chunks",
+                "test timeoutMS applied to find to get files document",
+                "test timeoutMS applied to find command",
+            ]
+            slow_macos = [
                 "Non-tailable cursor lifetime remaining timeoutMS applied to getMore if timeoutMode is unset"
-                in description
-                and sys.platform != "linux"
-            ):
-                self.skipTest("PYTHON-3522 CSOT test is flaky on Windows and MacOS")
+            ]
+            if sys.platform == "win32" and description in slow_win32:
+                self.skipTest("PYTHON-3522 CSOT test run too slow on Windows")
+            if sys.platform == "darwin" and description in slow_macos:
+                self.skipTest("PYTHON-3522 CSOT test runs too slow on MacOS")
             if client_context.storage_engine == "mmapv1":
                 self.skipTest(
                     "MMAPv1 does not support retryable writes which is required for CSOT tests"
