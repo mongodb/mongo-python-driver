@@ -3482,7 +3482,7 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
     MONGOCRYPTD_PORT = 27020
 
     async def asyncSetUp(self) -> None:
-        if sys.implementation.lower() == "pypy":
+        if sys.implementation.name.lower() == "pypy":
             raise self.skipTest("PYTHON-4982 Skipping test on pypy")
         await super().asyncSetUp()
         start_mongocryptd(self.MONGOCRYPTD_PORT)
