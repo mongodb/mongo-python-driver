@@ -3464,6 +3464,8 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
     MONGOCRYPTD_PORT = 27020
 
     def setUp(self) -> None:
+        if sys.implementation.lower() == "pypy":
+            raise self.skipTest("PYTHON-4982 Skipping test on pypy")
         super().setUp()
         start_mongocryptd(self.MONGOCRYPTD_PORT)
 
