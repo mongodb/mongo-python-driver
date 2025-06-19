@@ -21,9 +21,9 @@ import threading
 from pathlib import Path
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.helpers import ConcurrentRunner
+from test.asynchronous.utils import flaky
 from test.asynchronous.utils_selection_tests import create_topology
 from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator
-from test.utils import flaky
 from test.utils_shared import (
     CMAPListener,
     OvertCommandListener,
