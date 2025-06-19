@@ -23,6 +23,7 @@ from test.asynchronous import AsyncIntegrationTest, async_client_context, unitte
 from test.asynchronous.helpers import ConcurrentRunner
 from test.asynchronous.utils_selection_tests import create_topology
 from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator
+from test.utils import flaky
 from test.utils_shared import (
     CMAPListener,
     OvertCommandListener,
@@ -137,6 +138,7 @@ class TestProse(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_appName
     @async_client_context.require_multiple_mongoses
+    @flaky  # PYTHON-3689
     async def test_load_balancing(self):
         listener = OvertCommandListener()
         cmap_listener = CMAPListener()
