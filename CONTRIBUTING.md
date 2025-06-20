@@ -404,6 +404,13 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
+## Handling flaky tests
+
+We have a custom ``flaky`` decorator in [test/asynchronous/utils.py](test/asynchronous/utils.py) that can be used for
+tests that are ``flaky``.  By default the decorator only applies when not running on CPython on Linux, since other
+runtimes tend to have more variation.  When using the ``flaky`` decorator, open a corresponding ticket and
+a comment with the ticket number.
+
 ## Specification Tests
 
 The MongoDB [specifications repository](https://github.com/mongodb/specifications)

@@ -533,17 +533,25 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         description = spec["description"].lower()
         if "csot" in class_name:
             # Skip tests that are too slow to run on a given platform.
-            slow_win32 = [
-                "maxtimems value in the command is less than timeoutms",
-                "non-tailable cursor lifetime remaining timeoutms applied to getmore if timeoutmode is unset",
-            ]
             slow_macos = [
-                "non-tailable cursor lifetime remaining timeoutms applied to getmore if timeoutmode is unset"
+                "operation fails after two consecutive socket timeouts.*",
+                "operation succeeds after one socket timeout.*",
+                "Non-tailable cursor lifetime remaining timeoutMS applied to getMore if timeoutMode is unset",
             ]
-            if sys.platform == "win32" and description in slow_win32 or "gridfs" in class_name:
-                self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows")
-            if sys.platform == "darwin" and description in slow_macos:
-                self.skipTest("PYTHON-3522 CSOT test runs too slow on MacOS")
+            slow_win32 = [
+                *slow_macos,
+                "maxTimeMS value in the command is less than timeoutMS",
+            ]
+            if sys.platform == "win32" and "gridfs" in class_name:
+                self.skipTest("PYTHON-3522 CSOT GridFS test runs too slow on Windows")
+            if sys.platform == "win32":
+                for pat in slow_win32:
+                    if re.match(pat, description.lower()):
+                        self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows")
+            if sys.platform == "darwin":
+                for pat in slow_macos:
+                    if re.match(pat, description.lower()):
+                        self.skipTest("PYTHON-3522 CSOT test runs too slow on MacOS")
             if client_context.storage_engine == "mmapv1":
                 self.skipTest(
                     "MMAPv1 does not support retryable writes which is required for CSOT tests"

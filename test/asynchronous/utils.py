@@ -168,6 +168,16 @@ def flaky(
     func_name=None,
     reset_func=None,
 ):
+    """Decorate a test as flaky.
+
+    :param max_runs: the maximum number of runs before raising an error
+    :param min_passes: the minimum number of passing runs
+    :param delay: the delay in seconds between retries
+    :param affects_cpython_links: whether the test is flaky on CPython on Linux
+    :param func_name: the name of the function, used for the rety message
+    :param reset_func: a function to call before retrying
+
+    """
     is_cpython_linux = sys.platform == "linux" and sys.implementation.name == "cpython"
     disable_flaky = "DISABLE_FLAKY" in os.environ
     if disable_flaky or (is_cpython_linux and not affects_cpython_linux):
