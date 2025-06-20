@@ -547,11 +547,11 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 self.skipTest("PYTHON-3522 CSOT GridFS test runs too slow on Windows")
             if sys.platform == "win32":
                 for pat in slow_win32:
-                    if re.match(pat, description.lower()):
+                    if re.match(pat.lower(), description):
                         self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows")
             if sys.platform == "darwin":
                 for pat in slow_macos:
-                    if re.match(pat, description.lower()):
+                    if re.match(pat.lower(), description):
                         self.skipTest("PYTHON-3522 CSOT test runs too slow on MacOS")
             if async_client_context.storage_engine == "mmapv1":
                 self.skipTest(
