@@ -33,7 +33,7 @@ else:
     _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "crud", "unified")
 
 # Generate unified tests.
-globals().update(generate_test_classes(_TEST_PATH, module=__name__, RUN_ON_SERVERLESS=True))
+globals().update(generate_test_classes(_TEST_PATH, module=__name__))
 
 if __name__ == "__main__":
     unittest.main()

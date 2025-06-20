@@ -129,7 +129,6 @@ def non_retryable_single_statement_ops(coll):
 
 class IgnoreDeprecationsTest(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
     deprecation_filter: DeprecationFilter
 
     async def asyncSetUp(self) -> None:
@@ -393,7 +392,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
 class TestWriteConcernError(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
     fail_insert: dict
 
     @async_client_context.require_replica_set
@@ -463,7 +461,6 @@ class InsertThread(threading.Thread):
 class TestPoolPausedError(AsyncIntegrationTest):
     # Pools don't get paused in load balanced mode.
     RUN_ON_LOAD_BALANCER = False
-    RUN_ON_SERVERLESS = False
 
     @async_client_context.require_sync
     @async_client_context.require_failCommand_blockConnection

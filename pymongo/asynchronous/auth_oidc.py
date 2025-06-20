@@ -15,6 +15,7 @@
 """MONGODB-OIDC Authentication helpers."""
 from __future__ import annotations
 
+import asyncio
 import threading
 import time
 from dataclasses import dataclass, field
@@ -36,6 +37,7 @@ from pymongo.auth_oidc_shared import (
 )
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.helpers_shared import _AUTHENTICATION_FAILURE_CODE
+from pymongo.lock import Lock, _async_create_lock
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.pool import AsyncConnection
@@ -81,7 +83,11 @@ class _OIDCAuthenticator:
     access_token: Optional[str] = field(default=None)
     idp_info: Optional[OIDCIdPInfo] = field(default=None)
     token_gen_id: int = field(default=0)
-    lock: threading.Lock = field(default_factory=threading.Lock)
+    if not _IS_SYNC:
+        lock: Lock = field(default_factory=_async_create_lock)  # type: ignore[assignment]
+    else:
+        lock: threading.Lock = field(default_factory=_async_create_lock)  # type: ignore[assignment, no-redef]
+
     last_call_time: float = field(default=0)
 
     async def reauthenticate(self, conn: AsyncConnection) -> Optional[Mapping[str, Any]]:
@@ -164,7 +170,7 @@ class _OIDCAuthenticator:
         # Attempt to authenticate with a JwtStepRequest.
         return await self._sasl_continue_jwt(conn, start_resp)
 
-    def _get_access_token(self) -> Optional[str]:
+    async def _get_access_token(self) -> Optional[str]:
         properties = self.properties
         cb: Union[None, OIDCCallback]
         resp: OIDCCallbackResult
@@ -186,7 +192,7 @@ class _OIDCAuthenticator:
             return None
 
         if not prev_token and cb is not None:
-            with self.lock:
+            async with self.lock:  # type: ignore[attr-defined]
                 # See if the token was changed while we were waiting for the
                 # lock.
                 new_token = self.access_token
@@ -196,7 +202,7 @@ class _OIDCAuthenticator:
                 # Ensure that we are waiting a min time between callback invocations.
                 delta = time.time() - self.last_call_time
                 if delta < TIME_BETWEEN_CALLS_SECONDS:
-                    time.sleep(TIME_BETWEEN_CALLS_SECONDS - delta)
+                    await asyncio.sleep(TIME_BETWEEN_CALLS_SECONDS - delta)
                 self.last_call_time = time.time()
 
                 if is_human:
@@ -211,7 +217,10 @@ class _OIDCAuthenticator:
                     idp_info=self.idp_info,
                     username=self.properties.username,
                 )
-                resp = cb.fetch(context)
+                if not _IS_SYNC:
+                    resp = await asyncio.get_running_loop().run_in_executor(None, cb.fetch, context)  # type: ignore[assignment]
+                else:
+                    resp = cb.fetch(context)
                 if not isinstance(resp, OIDCCallbackResult):
                     raise ValueError(
                         f"Callback result must be of type OIDCCallbackResult, not {type(resp)}"
@@ -253,13 +262,13 @@ class _OIDCAuthenticator:
         start_payload: dict = bson.decode(start_resp["payload"])
         if "issuer" in start_payload:
             self.idp_info = OIDCIdPInfo(**start_payload)
-        access_token = self._get_access_token()
+        access_token = await self._get_access_token()
         conn.oidc_token_gen_id = self.token_gen_id
         cmd = self._get_continue_command({"jwt": access_token}, start_resp)
         return await self._run_command(conn, cmd)
 
     async def _sasl_start_jwt(self, conn: AsyncConnection) -> Mapping[str, Any]:
-        access_token = self._get_access_token()
+        access_token = await self._get_access_token()
         conn.oidc_token_gen_id = self.token_gen_id
         cmd = self._get_start_command({"jwt": access_token})
         return await self._run_command(conn, cmd)

@@ -118,6 +118,7 @@ tasks:
   # Backport pr tests
   - name: backport-pr
     commands:
+      - func: assume ec2 role
       - command: subprocess.exec
         params:
           binary: bash
@@ -3059,16 +3060,6 @@ tasks:
       - python-pypy3.10
       - sharded_cluster-auth-ssl
       - sync
-
-  # Serverless tests
-  - name: test-serverless
-    commands:
-      - func: run tests
-        vars:
-          TEST_NAME: serverless
-          AUTH: auth
-          SSL: ssl
-    tags: [serverless]
 
   # Standard tests
   - name: test-standard-v4.2-python3.9-sync-noauth-nossl-standalone
