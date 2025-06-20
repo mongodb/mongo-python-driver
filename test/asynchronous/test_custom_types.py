@@ -953,7 +953,7 @@ class TestCollectionChangeStreamsWCustomTypes(
 class TestDatabaseChangeStreamsWCustomTypes(
     AsyncIntegrationTest, ChangeStreamsWCustomTypesTestMixin
 ):
-    @async_client_context.require_version_min(4, 0, 0)
+    @async_client_context.require_version_min(4, 2, 0)
     @async_client_context.require_change_streams
     async def asyncSetUp(self):
         await super().asyncSetUp()
@@ -973,7 +973,7 @@ class TestDatabaseChangeStreamsWCustomTypes(
 class TestClusterChangeStreamsWCustomTypes(
     AsyncIntegrationTest, ChangeStreamsWCustomTypesTestMixin
 ):
-    @async_client_context.require_version_min(4, 0, 0)
+    @async_client_context.require_version_min(4, 2, 0)
     @async_client_context.require_change_streams
     async def asyncSetUp(self):
         await super().asyncSetUp()

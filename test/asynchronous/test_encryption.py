@@ -452,20 +452,6 @@ class TestClientMaxWireVersion(AsyncIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
 
-    @async_client_context.require_version_max(4, 0, 99)
-    async def test_raise_max_wire_version_error(self):
-        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
-        client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
-        msg = "Auto-encryption requires a minimum MongoDB version of 4.2"
-        with self.assertRaisesRegex(ConfigurationError, msg):
-            await client.test.test.insert_one({})
-        with self.assertRaisesRegex(ConfigurationError, msg):
-            await client.admin.command("ping")
-        with self.assertRaisesRegex(ConfigurationError, msg):
-            await client.test.test.find_one({})
-        with self.assertRaisesRegex(ConfigurationError, msg):
-            await client.test.test.bulk_write([InsertOne({})])
-
     async def test_raise_unsupported_error(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = await self.async_rs_or_single_client(auto_encryption_opts=opts)

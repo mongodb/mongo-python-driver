@@ -1182,15 +1182,6 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(["b", "c"], distinct)
 
-    @client_context.require_version_max(4, 1, 0, -1)
-    def test_max_scan(self):
-        self.db.drop_collection("test")
-        self.db.test.insert_many([{} for _ in range(100)])
-
-        self.assertEqual(100, len(self.db.test.find().to_list()))
-        self.assertEqual(50, len(self.db.test.find().max_scan(50).to_list()))
-        self.assertEqual(50, len(self.db.test.find().max_scan(90).max_scan(50).to_list()))
-
     def test_with_statement(self):
         self.db.drop_collection("test")
         self.db.test.insert_many([{} for _ in range(100)])
@@ -1590,7 +1581,6 @@ class TestRawBatchCursor(IntegrationTest):
     def test_collation(self):
         next(self.db.test.find_raw_batches(collation=Collation("en_US")))
 
-    @client_context.require_no_mmap  # MMAPv1 does not support read concern
     def test_read_concern(self):
         self.db.get_collection("test", write_concern=WriteConcern(w="majority")).insert_one({})
         c = self.db.get_collection("test", read_concern=ReadConcern("majority"))

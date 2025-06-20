@@ -140,40 +140,10 @@ class IgnoreDeprecationsTest(AsyncIntegrationTest):
         self.deprecation_filter.stop()
 
 
-class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
-    knobs: client_knobs
-
-    async def asyncSetUp(self) -> None:
-        await super().asyncSetUp()
-        # Speed up the tests by decreasing the heartbeat frequency.
-        self.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
-        self.knobs.enable()
-        self.client = await self.async_rs_or_single_client(retryWrites=True)
-        self.db = self.client.pymongo_test
-
-    async def asyncTearDown(self) -> None:
-        self.knobs.disable()
-
-    @async_client_context.require_no_standalone
-    async def test_actionable_error_message(self):
-        if async_client_context.storage_engine != "mmapv1":
-            raise SkipTest("This cluster is not running MMAPv1")
-
-        expected_msg = (
-            "This MongoDB deployment does not support retryable "
-            "writes. Please add retryWrites=false to your "
-            "connection string."
-        )
-        for method, args, kwargs in retryable_single_statement_ops(self.db.retryable_write_test):
-            with self.assertRaisesRegex(OperationFailure, expected_msg):
-                await method(*args, **kwargs)
-
-
 class TestRetryableWrites(IgnoreDeprecationsTest):
     listener: OvertCommandListener
     knobs: client_knobs
 
-    @async_client_context.require_no_mmap
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         # Speed up the tests by decreasing the heartbeat frequency.
@@ -425,7 +395,6 @@ class TestWriteConcernError(AsyncIntegrationTest):
     fail_insert: dict
 
     @async_client_context.require_replica_set
-    @async_client_context.require_no_mmap
     @async_client_context.require_failCommand_fail_point
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
@@ -597,7 +566,6 @@ class TestPoolPausedError(AsyncIntegrationTest):
 # TODO: Make this a real integration test where we stepdown the primary.
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
     @async_client_context.require_replica_set
-    @async_client_context.require_no_mmap
     async def test_increment_transaction_id_without_sending_command(self):
         """Test that the txnNumber field is properly incremented, even when
         the first attempt fails before sending the command.

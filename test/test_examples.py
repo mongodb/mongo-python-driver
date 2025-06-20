@@ -1160,7 +1160,6 @@ class TestTransactionExamples(IntegrationTest):
 
 class TestCausalConsistencyExamples(IntegrationTest):
     @client_context.require_secondaries_count(1)
-    @client_context.require_no_mmap
     def test_causal_consistency(self):
         # Causal consistency examples
         client = self.client

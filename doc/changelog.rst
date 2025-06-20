@@ -8,6 +8,9 @@ PyMongo 4.14 brings a number of changes including:
 - Added :attr:`bson.codec_options.TypeRegistry.codecs` and :attr:`bson.codec_options.TypeRegistry.fallback_encoder` properties
   to allow users to directly access the type codecs and fallback encoder for a given :class:`bson.codec_options.TypeRegistry`.
 
+- Introduces a minor breaking change. When encoding :class:`bson.binary.BinaryVector`, a ``ValueError`` will be raised
+  if the 'padding' metadata field is < 0 or > 7, or non-zero for any type other than PACKED_BIT.
+
 Changes in Version 4.13.2 (2025/06/17)
 --------------------------------------
 
