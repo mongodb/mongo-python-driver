@@ -626,8 +626,8 @@ class TestClientBulkWriteCSOT(IntegrationTest):
     # PYTHON-5290
     @flaky(max_runs=3, affects_cpython_linux=True)
     def test_timeout_in_multi_batch_bulk_write(self):
-        if sys.platform == "win32":
-            self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows")
+        if sys.platform != "linux":
+            self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows and MacOS")
         _OVERHEAD = 500
 
         internal_client = self.rs_or_single_client(timeoutMS=None)

@@ -532,16 +532,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
-            # Skip tests that are too slow to run on a given platform.
-            slow_win32 = [
-                "maxtimems value in the command is less than timeoutms",
-                "non-tailable cursor lifetime remaining timeoutms applied to getmore if timeoutmode is unset",
-            ]
+            if sys.platform == "win32":
+                self.skipTest("PYTHON-3522 CSOT tests run too slow on Windows")
             slow_macos = [
                 "non-tailable cursor lifetime remaining timeoutms applied to getmore if timeoutmode is unset"
             ]
-            if sys.platform == "win32" and description in slow_win32 or "gridfs" in class_name:
-                self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows")
             if sys.platform == "darwin" and description in slow_macos:
                 self.skipTest("PYTHON-3522 CSOT test runs too slow on MacOS")
             if client_context.storage_engine == "mmapv1":
