@@ -1032,14 +1032,6 @@ class TestCausalConsistency(UnitTest):
         self._test_no_read_concern(lambda coll, session: coll.find({}, session=session).explain())
 
     @client_context.require_no_standalone
-    @client_context.require_version_max(4, 1, 0)
-    def test_aggregate_out_does_not_include_read_concern(self):
-        def alambda(coll, session):
-            (coll.aggregate([{"$out": "aggout"}], session=session)).to_list()
-
-        self._test_no_read_concern(alambda)
-
-    @client_context.require_no_standalone
     def test_get_more_does_not_include_read_concern(self):
         coll = self.client.pymongo_test.test
         with self.client.start_session() as sess:
@@ -1081,7 +1073,6 @@ class TestCausalConsistency(UnitTest):
             self.assertIsNone(act)
 
     @client_context.require_no_standalone
-    @client_context.require_no_mmap
     def test_read_concern(self):
         with self.client.start_session(causal_consistency=True) as s:
             coll = self.client.pymongo_test.test

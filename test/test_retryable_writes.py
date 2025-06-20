@@ -140,40 +140,10 @@ class IgnoreDeprecationsTest(IntegrationTest):
         self.deprecation_filter.stop()
 
 
-class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
-    knobs: client_knobs
-
-    def setUp(self) -> None:
-        super().setUp()
-        # Speed up the tests by decreasing the heartbeat frequency.
-        self.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
-        self.knobs.enable()
-        self.client = self.rs_or_single_client(retryWrites=True)
-        self.db = self.client.pymongo_test
-
-    def tearDown(self) -> None:
-        self.knobs.disable()
-
-    @client_context.require_no_standalone
-    def test_actionable_error_message(self):
-        if client_context.storage_engine != "mmapv1":
-            raise SkipTest("This cluster is not running MMAPv1")
-
-        expected_msg = (
-            "This MongoDB deployment does not support retryable "
-            "writes. Please add retryWrites=false to your "
-            "connection string."
-        )
-        for method, args, kwargs in retryable_single_statement_ops(self.db.retryable_write_test):
-            with self.assertRaisesRegex(OperationFailure, expected_msg):
-                method(*args, **kwargs)
-
-
 class TestRetryableWrites(IgnoreDeprecationsTest):
     listener: OvertCommandListener
     knobs: client_knobs
 
-    @client_context.require_no_mmap
     def setUp(self) -> None:
         super().setUp()
         # Speed up the tests by decreasing the heartbeat frequency.
@@ -423,7 +393,6 @@ class TestWriteConcernError(IntegrationTest):
     fail_insert: dict
 
     @client_context.require_replica_set
-    @client_context.require_no_mmap
     @client_context.require_failCommand_fail_point
     def setUp(self) -> None:
         super().setUp()
@@ -592,7 +561,6 @@ class TestPoolPausedError(IntegrationTest):
 # TODO: Make this a real integration test where we stepdown the primary.
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
     @client_context.require_replica_set
-    @client_context.require_no_mmap
     def test_increment_transaction_id_without_sending_command(self):
         """Test that the txnNumber field is properly incremented, even when
         the first attempt fails before sending the command.
