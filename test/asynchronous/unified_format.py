@@ -533,11 +533,16 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
-            if sys.platform == "win32":
-                self.skipTest("PYTHON-3522 CSOT tests run too slow on Windows")
+            # Skip tests that are too slow to run on a given platform.
+            slow_win32 = [
+                "maxtimems value in the command is less than timeoutms",
+                "non-tailable cursor lifetime remaining timeoutms applied to getmore if timeoutmode is unset",
+            ]
             slow_macos = [
                 "non-tailable cursor lifetime remaining timeoutms applied to getmore if timeoutmode is unset"
             ]
+            if sys.platform == "win32" and description in slow_win32 or "gridfs" in class_name:
+                self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows")
             if sys.platform == "darwin" and description in slow_macos:
                 self.skipTest("PYTHON-3522 CSOT test runs too slow on MacOS")
             if async_client_context.storage_engine == "mmapv1":
@@ -1378,7 +1383,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         # Handle flaky tests.
         flaky_tests = [
             # PYTHON-5170
-            ".*test_discovery_and_monitoring.TestUnifiedInterruptInUsePoolClear.*",
+            ".*test_discovery_and_monitoring.*",
             # PYTHON-5174
             ".*Driver_extends_timeout_while_streaming",
             # PYTHON-5315
@@ -1394,7 +1399,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             if re.match(flaky_test, self.id()) is not None:
                 func_name = self.id()
                 options = dict(reset_func=self.asyncSetUp, func_name=func_name)
-                if "csot" in func_name:
+                if "csot" in func_name.lower():
                     options["max_runs"] = 3
                     options["affects_cpython_linux"] = True
                 decorator = flaky(**options)
