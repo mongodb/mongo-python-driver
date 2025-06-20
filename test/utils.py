@@ -157,8 +157,8 @@ def joinall(tasks):
 
 
 def flaky(
-    func=None,
     *,
+    reason=None,
     max_runs=2,
     min_passes=1,
     delay=1,
@@ -168,6 +168,7 @@ def flaky(
 ):
     """Decorate a test as flaky.
 
+    :param reason: the reason why the test is flaky
     :param max_runs: the maximum number of runs before raising an error
     :param min_passes: the minimum number of passing runs
     :param delay: the delay in seconds between retries
@@ -176,6 +177,8 @@ def flaky(
     :param reset_func: a function to call before retrying
 
     """
+    if reason is None:
+        raise ValueError("flaky requires a reason input")
     is_cpython_linux = sys.platform == "linux" and sys.implementation.name == "cpython"
     disable_flaky = "DISABLE_FLAKY" in os.environ
     if disable_flaky or (is_cpython_linux and not affects_cpython_linux):
@@ -196,7 +199,7 @@ def flaky(
                     if i == max_runs - 1:
                         raise e
                     print(
-                        f"Retrying after attempt {i+1} of {func_name or target_func.__name__} failed with:\n"
+                        f"Retrying after attempt {i+1} of {func_name or target_func.__name__} failed with ({reason})):\n"
                         f"{traceback.format_exc()}",
                         file=sys.stderr,
                     )
@@ -206,11 +209,6 @@ def flaky(
 
         return wrapper
 
-    # If `func` is callable, the decorator was used without arguments (`@flaky`).
-    if callable(func):
-        return decorator(func)
-
-    # Otherwise, return the decorator function, allowing arguments (`@flaky(max_runs=...)`).
     return decorator
 
 

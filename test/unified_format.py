@@ -1377,23 +1377,17 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         # Handle flaky tests.
         flaky_tests = [
-            # PYTHON-5170
-            ".*test_discovery_and_monitoring.*",
-            # PYTHON-5174
-            ".*Driver_extends_timeout_while_streaming",
-            # PYTHON-5315
-            ".*TestSrvPolling.test_recover_from_initially_.*",
-            # PYTHON-4987
-            ".*UnknownTransactionCommitResult_labels_to_connection_errors",
-            # PYTHON-3689
-            ".*TestProse.test_load_balancing",
-            # PYTHON-3522
-            ".*csot.*",
+            ("PYTHON-5170", ".*test_discovery_and_monitoring.*"),
+            ("PYTHON-5174", ".*Driver_extends_timeout_while_streaming"),
+            ("PYTHON-5315", ".*TestSrvPolling.test_recover_from_initially_.*"),
+            ("PYTHON-4987", ".*UnknownTransactionCommitResult_labels_to_connection_errors"),
+            ("PYTHON-3689", ".*TestProse.test_load_balancing"),
+            ("PYTHON-3522", ".*csot.*"),
         ]
-        for flaky_test in flaky_tests:
+        for reason, flaky_test in flaky_tests:
             if re.match(flaky_test, self.id()) is not None:
                 func_name = self.id()
-                options = dict(reset_func=self.setUp, func_name=func_name)
+                options = dict(reason=reason, reset_func=self.setUp, func_name=func_name)
                 if "csot" in func_name.lower():
                     options["max_runs"] = 3
                     options["affects_cpython_linux"] = True

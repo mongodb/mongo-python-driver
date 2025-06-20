@@ -138,7 +138,7 @@ class TestProse(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_appName
     @async_client_context.require_multiple_mongoses
-    @flaky  # PYTHON-3689
+    @flaky(reason="PYTHON-3689")
     async def test_load_balancing(self):
         listener = OvertCommandListener()
         cmap_listener = CMAPListener()

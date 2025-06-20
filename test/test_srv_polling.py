@@ -255,7 +255,7 @@ class TestSrvPolling(PyMongoTestCase):
             # Nodelist should reflect new valid DNS resolver response.
             self.assert_nodelist_change(response_final, client)
 
-    @flaky  # PYTHON-5315
+    @flaky(reason="PYTHON-5315")
     def test_recover_from_initially_empty_seedlist(self):
         def empty_seedlist():
             return []

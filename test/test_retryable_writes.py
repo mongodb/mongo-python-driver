@@ -495,7 +495,7 @@ class TestPoolPausedError(IntegrationTest):
     @client_context.require_failCommand_blockConnection
     @client_context.require_retryable_writes
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
-    @flaky  # PYTHON-5291
+    @flaky(reason="PYTHON-5291")
     def test_pool_paused_error_is_retryable(self):
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()

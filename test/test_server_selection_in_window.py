@@ -138,7 +138,7 @@ class TestProse(IntegrationTest):
 
     @client_context.require_failCommand_appName
     @client_context.require_multiple_mongoses
-    @flaky  # PYTHON-3689
+    @flaky(reason="PYTHON-3689")
     def test_load_balancing(self):
         listener = OvertCommandListener()
         cmap_listener = CMAPListener()

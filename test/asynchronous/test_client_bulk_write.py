@@ -627,8 +627,7 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
 
     @async_client_context.require_version_min(8, 0, 0, -24)
     @async_client_context.require_failCommand_fail_point
-    # PYTHON-5290
-    @flaky(max_runs=3, affects_cpython_linux=True)
+    @flaky(reason="PYTHON-5290", max_runs=3, affects_cpython_linux=True)
     async def test_timeout_in_multi_batch_bulk_write(self):
         if sys.platform != "linux":
             self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows and MacOS")

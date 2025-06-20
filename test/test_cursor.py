@@ -1407,7 +1407,7 @@ class TestCursor(IntegrationTest):
         docs = c.to_list(3)
         self.assertEqual(len(docs), 2)
 
-    @flaky  # PYTHON-3522
+    @flaky(reason="PYTHON-3522")
     def test_to_list_csot_applied(self):
         client = self.single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
@@ -1449,7 +1449,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(len(result.to_list(1)), 1)
 
     @client_context.require_failCommand_blockConnection
-    @flaky  # PYTHON-3522
+    @flaky(reason="PYTHON-3522")
     def test_command_cursor_to_list_csot_applied(self):
         client = self.single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test

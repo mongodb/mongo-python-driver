@@ -406,10 +406,10 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 
 ## Handling flaky tests
 
-We have a custom ``flaky`` decorator in [test/asynchronous/utils.py](test/asynchronous/utils.py) that can be used for
-tests that are ``flaky``.  By default the decorator only applies when not running on CPython on Linux, since other
-runtimes tend to have more variation.  When using the ``flaky`` decorator, open a corresponding ticket and
-a comment with the ticket number.
+We have a custom `flaky` decorator in [test/asynchronous/utils.py](test/asynchronous/utils.py) that can be used for
+tests that are `flaky`.  By default the decorator only applies when not running on CPython on Linux, since other
+runtimes tend to have more variation.  When using the `flaky` decorator, open a corresponding ticket and
+a use the ticket number as the "reason" parameter to the decorator, e.g. `@flaky(reason="PYTHON-1234")`.
 
 ## Specification Tests
 

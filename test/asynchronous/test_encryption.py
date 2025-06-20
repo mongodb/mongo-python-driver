@@ -3262,7 +3262,7 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
 class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
     @async_client_context.require_no_standalone
     @async_client_context.require_version_min(7, 0, -1)
-    @flaky  # PYTHON-4982
+    @flaky(reason="PYTHON-4982")
     async def asyncSetUp(self):
         await super().asyncSetUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
