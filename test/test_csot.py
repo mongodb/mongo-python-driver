@@ -44,7 +44,7 @@ globals().update(generate_test_classes(TEST_PATH, module=__name__))
 class TestCSOT(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
-    @flaky
+    @flaky  # PYTHON-3522
     def test_timeout_nested(self):
         coll = self.db.coll
         self.assertEqual(_csot.get_timeout(), None)
@@ -82,7 +82,7 @@ class TestCSOT(IntegrationTest):
         self.assertEqual(_csot.get_rtt(), 0.0)
 
     @client_context.require_change_streams
-    @flaky
+    @flaky  # PYTHON-3522
     def test_change_stream_can_resume_after_timeouts(self):
         coll = self.db.test
         coll.insert_one({})

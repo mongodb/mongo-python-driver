@@ -1416,7 +1416,7 @@ class TestCursor(AsyncIntegrationTest):
         docs = await c.to_list(3)
         self.assertEqual(len(docs), 2)
 
-    @flaky
+    @flaky  # PYTHON-3522
     async def test_to_list_csot_applied(self):
         client = await self.async_single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
@@ -1458,7 +1458,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(len(await result.to_list(1)), 1)
 
     @async_client_context.require_failCommand_blockConnection
-    @flaky
+    @flaky  # PYTHON-3522
     async def test_command_cursor_to_list_csot_applied(self):
         client = await self.async_single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
