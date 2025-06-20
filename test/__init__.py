@@ -638,6 +638,7 @@ class ClientContext:
 
     def require_change_streams(self, func):
         """Run a test only if the server supports change streams."""
+        return self.require_no_standalone(func)
 
     def is_topology_type(self, topologies):
         unknown = set(topologies) - {
