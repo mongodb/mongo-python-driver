@@ -750,7 +750,7 @@ def wait_for_primary(topology):
 class TestTopologyErrors(TopologyTest):
     # Errors when calling hello.
 
-    @flaky  # PYTHON-5366
+    @flaky(reason="PYTHON-5366")
     def test_pool_reset(self):
         # hello succeeds at first, then always raises socket error.
         hello_count = [0]
