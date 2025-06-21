@@ -32,6 +32,7 @@ import uuid
 import warnings
 from test import IntegrationTest, PyMongoTestCase, client_context
 from test.test_bulk import BulkTestBase
+from test.utils import flaky
 from test.utils_spec_runner import SpecRunner, SpecTestCreator
 from threading import Thread
 from typing import Any, Dict, Mapping, Optional
@@ -3229,6 +3230,7 @@ class TestKmsRetryProse(EncryptionIntegrationTest):
 class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(7, 0, -1)
+    @flaky(reason="PYTHON-4982")
     def setUp(self):
         super().setUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
@@ -3471,6 +3473,8 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
 
         self.assertNotIn("lsid", self.listener.started_events[1].command)
 
+        self.mongocryptd_client.close()
+
     def test_explicit_session_errors_when_unsupported(self):
         self.listener.reset()
         with self.mongocryptd_client.start_session() as s:
@@ -3482,6 +3486,8 @@ class TestNoSessionsSupport(EncryptionIntegrationTest):
                 ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
             ):
                 self.mongocryptd_client.db.test.insert_one({"x": 1}, session=s)
+
+        self.mongocryptd_client.close()
 
 
 if __name__ == "__main__":

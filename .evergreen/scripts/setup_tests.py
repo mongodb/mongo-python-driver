@@ -162,10 +162,6 @@ def handle_test_env() -> None:
     write_env("PIP_PREFER_BINARY")  # Prefer binary dists by default.
     write_env("UV_FROZEN")  # Do not modify lock files.
 
-    # Skip CSOT tests on non-linux platforms.
-    if PLATFORM != "linux":
-        write_env("SKIP_CSOT_TESTS")
-
     # Set an environment variable for the test name and sub test name.
     write_env(f"TEST_{test_name.upper()}")
     write_env("TEST_NAME", test_name)
