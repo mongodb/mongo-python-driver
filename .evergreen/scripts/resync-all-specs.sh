@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # Run spec syncing script and create PR
-
 SPEC_DEST="$(realpath -s "./test")"
 SRC_URL="https://github.com/mongodb/specifications.git"
 # needs to be set for resunc-specs.sh
 SPEC_SRC="$(realpath -s "../specifications")"
-SCRIPT="$(realpath -s ".evergreen/resync-specs.sh")"
+SCRIPT="$(realpath -s "./.evergreen/resync-specs.sh")"
 BRANCH_NAME="spec-resync-"$(date '+%m-%d-%Y')
 
 # List of directories to skip
@@ -27,13 +26,15 @@ fi
 
 # Set environment variable to the cloned repo for resync-specs.sh
 export MDB_SPECS="$SPEC_SRC"
-echo "$SPEC_SRC"
+
 
 # Check that resync script exists and is executable
 if [[ ! -x $SCRIPT ]]; then
   echo "Error: $SCRIPT not found or is not executable."
   exit 1
 fi
+
+git pull
 
 # List to store names of specs that were changed or errored during change
 changed_specs=()
@@ -51,48 +52,45 @@ for item in "$SPEC_DEST"/*; do
   # Check that item is not a python file
   if [[ $item != *.py ]]; then
     echo " doing $item_name"
-#    output=$(./$SCRIPT "$item_name" 2>&1)
-    $SCRIPT "$item_name"
+    output=$($SCRIPT "$item_name" 2>&1)
     # Check if the script ran successfully
     if [[ $? -ne 0 ]]; then
       echo "an error occurred"
-      errored_specs+=("$item_name")
-    else
-      # if script had output, then changes were made
-      if [[ -n "$output" ]]; then
-        echo "success"
-        changed_specs+=("$item_name")
-      fi
+      errored_specs+=($"$item_name\n\`\`\`$output\`\`\`\n\n")
     fi
   fi
 done
 
-pr_body="Spec sync results:\n\n"
 # Output the list of changed specs
-if [[ ${#changed_specs[@]} -gt 0 ]]; then
-  pr_body+="The following specs were changed:\n"
-  for spec in "${changed_specs[@]}"; do
-    pr_body+=" - $spec\n"
-  done
-else
-  pr_body+="No changes detected in any specs.\n"
+if git diff --quiet && [[ ${#errored_specs[@]} -eq 0 ]]; then
+  # no changes made and no errors
+  exit 0
+fi
+
+pr_body=$'Spec sync results:\n\n'
+if ! git diff --quiet; then
+  pr_body+=$'The following specs were changed:\n'
+  pr_body+="$(git diff --name-only | awk -F'/' '{print $2}' | sort | uniq)"
 fi
 
 # Output the list of errored specs
 if [[ ${#errored_specs[@]} -gt 0 ]]; then
-  pr_body+="\nThe following spec syncs encountered errors:\n"
+  pr_body+=$"\n\nThe following spec syncs encountered errors:\n"
   for spec in "${errored_specs[@]}"; do
     pr_body+=" - $spec\n"
   done
 else
-  pr_body+="\nNo errors were encountered in any specs syncs.\n"
+  pr_body+=$"\nNo errors were encountered in any specs syncs.\n"
 fi
 
 # Output the PR body (optional step for verification)
-echo -e "$pr_body"
+echo "PR body"
+echo "$pr_body"
 echo "$pr_body" >> spec_sync.txt
 
+echo "BEGINNING OF DIFF"
 git diff
+echo "END OF DIFF"
 
 # call scrypt to create PR for us
 .evergreen/scripts/create-pr.sh spec_sync.txt

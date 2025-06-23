@@ -49,6 +49,7 @@ tasks:
       - command: subprocess.exec
         params:
           binary: bash
+          include_expansions_in_env: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN]
           args:
             - .evergreen/scripts/resync-all-specs.sh
           working_dir: src
