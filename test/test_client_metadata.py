@@ -67,7 +67,7 @@ class TestClientMetadataProse(IntegrationTest):
             if "ismaster" in r:
                 # then this is a handshake request
                 self.handshake_req = r
-            return r.reply(OpMsgReply(minWireVersion=0, maxWireVersion=13))
+            return r.reply(OpMsgReply(maxWireVersion=13))
 
         self.server.autoresponds(respond)
         self.server.run()
@@ -124,79 +124,71 @@ class TestClientMetadataProse(IntegrationTest):
         self.assertEqual(metadata, new_metadata)
 
     def test_append_metadata(self):
-        client = MongoClient(
+        client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
             driver=DriverInfo("library", "1.2", "Library Platform"),
         )
         self.check_metadata_added(client, "framework", "2.0", "Framework Platform")
-        client.close()
 
     def test_append_metadata_platform_none(self):
-        client = MongoClient(
+        client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
             driver=DriverInfo("library", "1.2", "Library Platform"),
         )
         self.check_metadata_added(client, "framework", "2.0", None)
-        client.close()
 
     def test_append_metadata_version_none(self):
-        client = MongoClient(
+        client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
             driver=DriverInfo("library", "1.2", "Library Platform"),
         )
         self.check_metadata_added(client, "framework", None, "Framework Platform")
-        client.close()
 
     def test_append_metadata_platform_version_none(self):
-        client = MongoClient(
+        client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
             driver=DriverInfo("library", "1.2", "Library Platform"),
         )
         self.check_metadata_added(client, "framework", None, None)
-        client.close()
 
     def test_multiple_successive_metadata_updates(self):
-        client = MongoClient(
+        client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string, maxIdleTimeMS=1, connect=False
         )
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         self.check_metadata_added(client, "framework", "2.0", "Framework Platform")
-        client.close()
 
     def test_multiple_successive_metadata_updates_platform_none(self):
-        client = MongoClient(
+        client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
         )
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         self.check_metadata_added(client, "framework", "2.0", None)
-        client.close()
 
     def test_multiple_successive_metadata_updates_version_none(self):
-        client = MongoClient(
+        client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
         )
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         self.check_metadata_added(client, "framework", None, "Framework Platform")
-        client.close()
 
     def test_multiple_successive_metadata_updates_platform_version_none(self):
-        client = MongoClient(
+        client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
         )
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         self.check_metadata_added(client, "framework", None, None)
-        client.close()
 
     def test_doesnt_update_established_connections(self):
         listener = CMAPListener()
-        client = MongoClient(
+        client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
             driver=DriverInfo("library", "1.2", "Library Platform"),
@@ -217,8 +209,6 @@ class TestClientMetadataProse(IntegrationTest):
         client.admin.command("ping")
         self.assertIsNone(self.handshake_req)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 0)
-
-        client.close()
 
 
 if __name__ == "__main__":

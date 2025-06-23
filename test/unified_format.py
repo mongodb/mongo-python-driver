@@ -922,6 +922,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             )
         else:
             arguments = {}
+
         if isinstance(target, MongoClient):
             method_name = f"_clientOperation_{opname}"
         elif isinstance(target, Database):

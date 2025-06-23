@@ -25,7 +25,7 @@ from typing import Any, Optional
 
 import pytest
 
-from pymongo import AsyncMongoClient, MongoClient
+from pymongo import AsyncMongoClient
 from pymongo.driver_info import DriverInfo
 from pymongo.monitoring import ConnectionClosedEvent
 
@@ -67,7 +67,7 @@ class TestClientMetadataProse(AsyncIntegrationTest):
             if "ismaster" in r:
                 # then this is a handshake request
                 self.handshake_req = r
-            return r.reply(OpMsgReply(minWireVersion=0, maxWireVersion=13))
+            return r.reply(OpMsgReply(maxWireVersion=13))
 
         self.server.autoresponds(respond)
         self.server.run()
@@ -124,79 +124,71 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         self.assertEqual(metadata, new_metadata)
 
     async def test_append_metadata(self):
-        client = AsyncMongoClient(
+        client = await self.async_rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
             driver=DriverInfo("library", "1.2", "Library Platform"),
         )
         await self.check_metadata_added(client, "framework", "2.0", "Framework Platform")
-        await client.close()
 
     async def test_append_metadata_platform_none(self):
-        client = AsyncMongoClient(
+        client = await self.async_rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
             driver=DriverInfo("library", "1.2", "Library Platform"),
         )
         await self.check_metadata_added(client, "framework", "2.0", None)
-        await client.close()
 
     async def test_append_metadata_version_none(self):
-        client = AsyncMongoClient(
+        client = await self.async_rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
             driver=DriverInfo("library", "1.2", "Library Platform"),
         )
         await self.check_metadata_added(client, "framework", None, "Framework Platform")
-        await client.close()
 
     async def test_append_metadata_platform_version_none(self):
-        client = AsyncMongoClient(
+        client = await self.async_rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
             driver=DriverInfo("library", "1.2", "Library Platform"),
         )
         await self.check_metadata_added(client, "framework", None, None)
-        await client.close()
 
     async def test_multiple_successive_metadata_updates(self):
-        client = AsyncMongoClient(
+        client = await self.async_rs_or_single_client(
             "mongodb://" + self.server.address_string, maxIdleTimeMS=1, connect=False
         )
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         await self.check_metadata_added(client, "framework", "2.0", "Framework Platform")
-        await client.close()
 
     async def test_multiple_successive_metadata_updates_platform_none(self):
-        client = AsyncMongoClient(
+        client = await self.async_rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
         )
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         await self.check_metadata_added(client, "framework", "2.0", None)
-        await client.close()
 
     async def test_multiple_successive_metadata_updates_version_none(self):
-        client = AsyncMongoClient(
+        client = await self.async_rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
         )
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         await self.check_metadata_added(client, "framework", None, "Framework Platform")
-        await client.close()
 
     async def test_multiple_successive_metadata_updates_platform_version_none(self):
-        client = AsyncMongoClient(
+        client = await self.async_rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
         )
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         await self.check_metadata_added(client, "framework", None, None)
-        await client.close()
 
     async def test_doesnt_update_established_connections(self):
         listener = CMAPListener()
-        client = AsyncMongoClient(
+        client = await self.async_rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
             driver=DriverInfo("library", "1.2", "Library Platform"),
@@ -217,8 +209,6 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         await client.admin.command("ping")
         self.assertIsNone(self.handshake_req)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 0)
-
-        await client.close()
 
 
 if __name__ == "__main__":

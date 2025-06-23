@@ -931,6 +931,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             )
         else:
             arguments = {}
+
         if isinstance(target, AsyncMongoClient):
             method_name = f"_clientOperation_{opname}"
         elif isinstance(target, AsyncDatabase):
