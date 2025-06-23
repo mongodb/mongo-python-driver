@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import struct
+import warnings
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Type, Union, overload
 from uuid import UUID
@@ -471,6 +472,10 @@ class Binary(bytes):
 
         metadata = struct.pack("<sB", dtype.value, padding)
         data = struct.pack(f"<{len(vector)}{format_str}", *vector)  # type: ignore
+        if padding and len(vector) and not (data[-1] & ((1 << padding) - 1)) == 0:
+            raise ValueError(
+                "Vector has a padding P, but bits in the final byte lower than P are non-zero. They must be zero."
+            )
         return cls(metadata + data, subtype=VECTOR_SUBTYPE)
 
     def as_vector(self) -> BinaryVector:
@@ -522,6 +527,12 @@ class Binary(bytes):
             dtype_format = "B"
             format_string = f"<{n_values}{dtype_format}"
             unpacked_uint8s = list(struct.unpack_from(format_string, self, position))
+            if padding and n_values and unpacked_uint8s[-1] & (1 << padding) - 1 != 0:
+                warnings.warn(
+                    "Vector has a padding P, but bits in the final byte lower than P are non-zero. In the next major version, they must be zero.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
             return BinaryVector(unpacked_uint8s, dtype, padding)
 
         else:

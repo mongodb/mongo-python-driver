@@ -739,7 +739,7 @@ class TestBSON(unittest.TestCase):
         """Tests of subtype 9"""
         # We start with valid cases, across the 3 dtypes implemented.
         # Work with a simple vector that can be interpreted as int8, float32, or ubyte
-        list_vector = [127, 7]
+        list_vector = [127, 8]
         # As INT8, vector has length 2
         binary_vector = Binary.from_vector(list_vector, BinaryVectorDtype.INT8)
         vector = binary_vector.as_vector()
@@ -764,18 +764,18 @@ class TestBSON(unittest.TestCase):
         uncompressed = ""
         for val in list_vector:
             uncompressed += format(val, "08b")
-        assert uncompressed[:-padding] == "0111111100000"
+        assert uncompressed[:-padding] == "0111111100001"
 
         # It is worthwhile explicitly showing the values encoded to BSON
         padded_doc = {"padded_vec": padded_vec}
         assert (
             encode(padded_doc)
-            == b"\x1a\x00\x00\x00\x05padded_vec\x00\x04\x00\x00\x00\t\x10\x03\x7f\x07\x00"
+            == b"\x1a\x00\x00\x00\x05padded_vec\x00\x04\x00\x00\x00\t\x10\x03\x7f\x08\x00"
         )
         # and dumped to json
         assert (
             json_util.dumps(padded_doc)
-            == '{"padded_vec": {"$binary": {"base64": "EAN/Bw==", "subType": "09"}}}'
+            == '{"padded_vec": {"$binary": {"base64": "EAN/CA==", "subType": "09"}}}'
         )
 
         # FLOAT32 is also implemented
@@ -791,8 +791,15 @@ class TestBSON(unittest.TestCase):
             else:
                 self.fail("Failed to raise an exception.")
 
-        # Test form of Binary.from_vector(BinaryVector)
+        # Test one must pass zeros for all ignored bits
+        try:
+            Binary.from_vector([255], BinaryVectorDtype.PACKED_BIT, padding=7)
+        except Exception as exc:
+            self.assertIsInstance(exc, ValueError)
+        else:
+            self.fail("Failed to raise an exception.")
 
+        # Test form of Binary.from_vector(BinaryVector)
         assert padded_vec == Binary.from_vector(
             BinaryVector(list_vector, BinaryVectorDtype.PACKED_BIT, padding)
         )
