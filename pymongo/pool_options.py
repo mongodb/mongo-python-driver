@@ -386,20 +386,22 @@ class PoolOptions:
 
     def _update_metadata(self, driver: DriverInfo):
         """Updates the client's metadata"""
+
+        metadata = copy.deepcopy(self.__metadata)
         if driver.name:
-            self.__metadata["driver"]["name"] = "{}|{}".format(
-                self.__metadata["driver"]["name"],
+            metadata["driver"]["name"] = "{}|{}".format(
+                metadata["driver"]["name"],
                 driver.name,
             )
         if driver.version:
-            self.__metadata["driver"]["version"] = "{}|{}".format(
-                self.__metadata["driver"]["version"],
+            metadata["driver"]["version"] = "{}|{}".format(
+                metadata["driver"]["version"],
                 driver.version,
             )
         if driver.platform:
-            self.__metadata["platform"] = "{}|{}".format(
-                self.__metadata["platform"], driver.platform
-            )
+            metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+
+        self.__metadata = metadata
 
     @property
     def _credentials(self) -> Optional[MongoCredential]:
