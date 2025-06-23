@@ -7,6 +7,9 @@ PyMongo 4.14 brings a number of changes including:
 
 - Added :attr:`bson.codec_options.TypeRegistry.codecs` and :attr:`bson.codec_options.TypeRegistry.fallback_encoder` properties
   to allow users to directly access the type codecs and fallback encoder for a given :class:`bson.codec_options.TypeRegistry`.
+- Added :meth:`pymongo.asynchronous.mongo_client.AsyncMongoClient.append_metadata` and
+  :meth:`pymongo.mongo_client.MongoClient.append_metadata` to allow instantiated MongoClients to send client metadata
+  on-demand
 
 Changes in Version 4.13.2 (2025/06/17)
 --------------------------------------
