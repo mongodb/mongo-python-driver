@@ -27,14 +27,11 @@ fi
 # Set environment variable to the cloned repo for resync-specs.sh
 export MDB_SPECS="$SPEC_SRC"
 
-
 # Check that resync script exists and is executable
 if [[ ! -x $SCRIPT ]]; then
   echo "Error: $SCRIPT not found or is not executable."
   exit 1
 fi
-
-git pull
 
 # List to store names of specs that were changed or errored during change
 changed_specs=()
