@@ -376,24 +376,30 @@ class PoolOptions:
                 "async",
             )
         if driver:
-            if driver.name:
-                self.__metadata["driver"]["name"] = "{}|{}".format(
-                    self.__metadata["driver"]["name"],
-                    driver.name,
-                )
-            if driver.version:
-                self.__metadata["driver"]["version"] = "{}|{}".format(
-                    _METADATA["driver"]["version"],
-                    driver.version,
-                )
-            if driver.platform:
-                self.__metadata["platform"] = "{}|{}".format(_METADATA["platform"], driver.platform)
+            self._update_metadata(driver)
 
         env = _metadata_env()
         if env:
             self.__metadata["env"] = env
 
         _truncate_metadata(self.__metadata)
+
+    def _update_metadata(self, driver: DriverInfo):
+        """Updates the client's metadata"""
+        if driver.name:
+            self.__metadata["driver"]["name"] = "{}|{}".format(
+                self.__metadata["driver"]["name"],
+                driver.name,
+            )
+        if driver.version:
+            self.__metadata["driver"]["version"] = "{}|{}".format(
+                self.__metadata["driver"]["version"],
+                driver.version,
+            )
+        if driver.platform:
+            self.__metadata["platform"] = "{}|{}".format(
+                self.__metadata["platform"], driver.platform
+            )
 
     @property
     def _credentials(self) -> Optional[MongoCredential]:
@@ -522,6 +528,3 @@ class PoolOptions:
     def load_balanced(self) -> Optional[bool]:
         """True if this Pool is configured in load balanced mode."""
         return self.__load_balanced
-
-    def _set_metadata(self, new_data: dict[str, Any]) -> None:
-        self.__metadata = new_data
