@@ -51,6 +51,9 @@ PyMongo 4.13 brings a number of changes including:
   or the `migration guide <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/reference/migration/>`_ for more information.
 - Fixed a bug where :class:`pymongo.write_concern.WriteConcern` repr was not eval-able
   when using ``w="majority"``.
+- Ignored bits in a BSON BinaryVector of PACKED_BIT dtype should be set to zero.
+  On writes, this is enforced and is a breaking change.
+  Reads from the database will not fail, however a warning will be triggered.
 
 Issues Resolved
 ...............
