@@ -384,7 +384,7 @@ class PoolOptions:
 
         _truncate_metadata(self.__metadata)
 
-    def _update_metadata(self, driver: DriverInfo):
+    def _update_metadata(self, driver: DriverInfo) -> None:
         """Updates the client's metadata"""
 
         metadata = copy.deepcopy(self.__metadata)
