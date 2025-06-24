@@ -256,6 +256,9 @@ class BinaryVector:
             self.dtype == other.dtype and self.padding == other.padding and self.data == other.data
         )
 
+    def __len__(self) -> int:
+        return len(self.data)
+
 
 class Binary(bytes):
     """Representation of BSON binary data.
