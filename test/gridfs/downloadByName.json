@@ -290,7 +290,7 @@
             "filename": "xyz"
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ]
@@ -306,7 +306,7 @@
             "revision": 999
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ]
