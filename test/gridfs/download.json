@@ -338,7 +338,7 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ]
@@ -370,7 +370,7 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ]
@@ -402,7 +402,7 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ]
@@ -471,7 +471,7 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ]
@@ -514,7 +514,7 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ]
