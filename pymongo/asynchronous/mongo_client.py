@@ -70,6 +70,7 @@ from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
 from pymongo.client_options import ClientOptions
+from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -1039,6 +1040,20 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self_ref: Any = weakref.ref(self, executor.close)
         self._kill_cursors_executor = executor
         self._opened = False
+
+    def append_metadata(self, driver_info: DriverInfo) -> None:
+        """Appends the given metadata to existing driver metadata.
+
+        :param driver_info: a :class:`~pymongo.driver_info.DriverInfo`
+
+        .. versionadded:: 4.14
+        """
+
+        if not isinstance(driver_info, DriverInfo):
+            raise TypeError(
+                f"driver_info must be an instance of DriverInfo, not {type(driver_info)}"
+            )
+        self._options.pool_options._update_metadata(driver_info)
 
     def _should_pin_cursor(self, session: Optional[AsyncClientSession]) -> Optional[bool]:
         return self._options.load_balanced and not (session and session.in_transaction)
