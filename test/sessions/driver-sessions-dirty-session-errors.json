@@ -347,7 +347,9 @@
                       "x": 1
                     }
                   },
-                  "new": false,
+                  "new": {
+                    "$$unsetOrMatches": false
+                  },
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -375,7 +377,9 @@
                       "x": 1
                     }
                   },
-                  "new": false,
+                  "new": {
+                    "$$unsetOrMatches": false
+                  },
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -627,7 +631,9 @@
                       "x": 1
                     }
                   },
-                  "new": false,
+                  "new": {
+                    "$$unsetOrMatches": false
+                  },
                   "lsid": {
                     "$$type": "object"
                   },
@@ -655,7 +661,9 @@
                       "x": 1
                     }
                   },
-                  "new": false,
+                  "new": {
+                    "$$unsetOrMatches": false
+                  },
                   "lsid": {
                     "$$type": "object"
                   },

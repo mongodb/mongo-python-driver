@@ -45,9 +45,12 @@ then
 fi
 
 # Ensure the JSON files are up to date.
-cd $SPECS/source
-make
-cd -
+if ! [ -n "${CI:-}" ]
+then
+  cd $SPECS/source
+  make
+  cd -
+fi
 # cpjson unified-test-format/tests/invalid unified-test-format/invalid
 # * param1: Path to spec tests dir in specifications repo
 # * param2: Path to where the corresponding tests live in Python.
