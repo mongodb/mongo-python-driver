@@ -33,8 +33,6 @@ popd
 echo "Creating the git checkout..."
 branch="spec-resync-"$(date '+%m-%d-%Y')
 
-#git config user.email "167856002+mongodb-dbx-release-bot[bot]@users.noreply.github.com"
-#git config user.name "mongodb-dbx-release-bot[bot]"
 git remote set-url origin https://x-access-token:${token}@github.com/$owner/$repo.git
 git checkout -b $branch "origin/master"
 git add ./test
