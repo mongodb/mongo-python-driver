@@ -68,6 +68,9 @@ setup-tests *args="":
 teardown-tests:
     bash .evergreen/scripts/teardown-tests.sh
 
+flamegraph *args:
+    bash tools/generate_flamegraph.sh {{args}}
+
 [group('server')]
 run-server *args="":
     bash .evergreen/scripts/run-server.sh {{args}}

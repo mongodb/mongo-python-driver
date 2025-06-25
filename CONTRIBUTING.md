@@ -460,3 +460,17 @@ partially-converted asynchronous version of the same name to the `test/asynchron
 Use this generated file as a starting point for the completed conversion.
 
 The script is used like so: `python tools/convert_test_to_async.py [test_file.py]`
+
+## Generating a flame graph using py-spy
+To profile a test script and generate a flame graph, follow these steps:
+1. Install `py-spy` if you haven't already:
+   ```bash
+   pip install py-spy
+   ```
+2. Inside your test script, perform any required setup and then loop over the code you want to profile for improved sampling
+3. Run the `flamegraph` justfile target to generate a `.svg` file containing the flame graph:
+  ```bash
+  just flamegraph <output_name=profile> <sample_rate=2000> <path/to/script>
+  ```
+4. Profiling should be done on a Linux system, as macOS and Windows do not support the `--native` option of `py-spy`.
+   Creating an ubuntu Evergreen spawn host and using `scp` to copy the flamegraph `.svg` file back to your local machine is the best way to do this.
