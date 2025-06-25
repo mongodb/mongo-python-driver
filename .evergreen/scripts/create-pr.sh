@@ -58,6 +58,3 @@ echo $resp | jq '.html_url'
 echo "Creating the PR... done."
 
 rm -rf $tools
-
-# use file names or reg-ex patterns
-# or automate which version of the spec we support (like schema version)
