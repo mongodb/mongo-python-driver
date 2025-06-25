@@ -2,12 +2,10 @@
 # Run spec syncing script and create PR
 
 # SETUP
-SPEC_DEST="$(realpath -s "./test")"
 SRC_URL="https://github.com/mongodb/specifications.git"
 # needs to be set for resunc-specs.sh
 SPEC_SRC="$(realpath -s "../specifications")"
 SCRIPT="$(realpath -s "./.evergreen/resync-specs.sh")"
-BRANCH_NAME="spec-resync-"$(date '+%m-%d-%Y')
 
 # Clone the spec repo if the directory does not exist
 if [[ ! -d $SPEC_SRC ]]; then

@@ -2,9 +2,8 @@
 
 tools="../drivers-evergreen-tools"
 git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $tools
-body="$(cat "$1")"
 
-pushd $tools/.evergreen/github_app
+pushd $tools/.evergreen/github_app || exit
 
 owner="mongodb"
 repo="mongo-python-driver"
@@ -23,11 +22,11 @@ echo "Getting github token..."
 token=$(bash ./get-access-token.sh $repo $owner)
 if [ -z "${token}" ]; then
     echo "Failed to get github access token!"
-    popd
+    popd || exit
     exit 1
 fi
 echo "Getting github token... done."
-popd
+popd || exit
 
 # Make the git checkout and create a new branch.
 echo "Creating the git checkout..."
@@ -40,10 +39,7 @@ git apply -R .evergreen/specs.patch
 git commit -am "resyncing specs test?"
 echo "Creating the git checkout... done."
 
-echo "THIS IS THE BODY"
-echo "$body"
 git push origin $branch
-echo "{\"title\":\"[Spec Resync] $(date '+%m-%d-%Y')\",\"body\":\"$(cat "$1")\",\"head\":\"${branch}\",\"base\":\"master\"}"
 resp=$(curl -L \
     -X POST \
     -H "Accept: application/vnd.github+json" \
@@ -51,8 +47,6 @@ resp=$(curl -L \
     -H "X-GitHub-Api-Version: 2022-11-28" \
     -d "{\"title\":\"[Spec Resync] $(date '+%m-%d-%Y')\",\"body\":\"$(cat "$1")\",\"head\":\"${branch}\",\"base\":\"master\"}" \
     --url https://api.github.com/repos/$owner/$repo/pulls)
-echo $resp
-echo $resp | jq '.html_url'
 echo "Creating the PR... done."
 
 rm -rf $tools
