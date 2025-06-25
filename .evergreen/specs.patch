@@ -86,3 +86,1242 @@ index 346c050f..d42fba91 100644
                "component": "serverSelection",
                "data": {
                  "message": "Waiting for suitable server to become available",
+diff --git a/test/client-side-encryption/spec/unified/fle2v2-BypassQueryAnalysis.json b/test/client-side-encryption/spec/unified/fle2v2-BypassQueryAnalysis.json
+new file mode 100644
+index 00000000..0817508f
+--- /dev/null
++++ b/test/client-side-encryption/spec/unified/fle2v2-BypassQueryAnalysis.json
+@@ -0,0 +1,322 @@
++{
++  "description": "fle2v2-BypassQueryAnalysis",
++  "schemaVersion": "1.23",
++  "runOnRequirements": [
++    {
++      "minServerVersion": "7.0.0",
++      "serverless": "forbid",
++      "csfle": true,
++      "topologies": [
++        "replicaset",
++        "sharded",
++        "load-balanced"
++      ]
++    }
++  ],
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0",
++        "autoEncryptOpts": {
++          "kmsProviders": {
++            "local": {
++              "key": "Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
++            }
++          },
++          "keyVaultNamespace": "keyvault.datakeys",
++          "bypassQueryAnalysis": true
++        },
++        "observeEvents": [
++          "commandStartedEvent"
++        ]
++      }
++    },
++    {
++      "database": {
++        "id": "encryptedDB",
++        "client": "client0",
++        "databaseName": "default"
++      }
++    },
++    {
++      "collection": {
++        "id": "encryptedColl",
++        "database": "encryptedDB",
++        "collectionName": "default"
++      }
++    },
++    {
++      "client": {
++        "id": "client1"
++      }
++    },
++    {
++      "database": {
++        "id": "unencryptedDB",
++        "client": "client1",
++        "databaseName": "default"
++      }
++    },
++    {
++      "collection": {
++        "id": "unencryptedColl",
++        "database": "unencryptedDB",
++        "collectionName": "default"
++      }
++    }
++  ],
++  "initialData": [
++    {
++      "databaseName": "keyvault",
++      "collectionName": "datakeys",
++      "documents": [
++        {
++          "_id": {
++            "$binary": {
++              "base64": "EjRWeBI0mHYSNBI0VniQEg==",
++              "subType": "04"
++            }
++          },
++          "keyMaterial": {
++            "$binary": {
++              "base64": "sHe0kz57YW7v8g9VP9sf/+K1ex4JqKc5rf/URX3n3p8XdZ6+15uXPaSayC6adWbNxkFskuMCOifDoTT+rkqMtFkDclOy884RuGGtUysq3X7zkAWYTKi8QAfKkajvVbZl2y23UqgVasdQu3OVBQCrH/xY00nNAs/52e958nVjBuzQkSb1T8pKJAyjZsHJ60+FtnfafDZSTAIBJYn7UWBCwQ==",
++              "subType": "00"
++            }
++          },
++          "creationDate": {
++            "$date": {
++              "$numberLong": "1648914851981"
++            }
++          },
++          "updateDate": {
++            "$date": {
++              "$numberLong": "1648914851981"
++            }
++          },
++          "status": {
++            "$numberInt": "0"
++          },
++          "masterKey": {
++            "provider": "local"
++          }
++        }
++      ]
++    },
++    {
++      "databaseName": "default",
++      "collectionName": "default",
++      "documents": [],
++      "createOptions": {
++        "encryptedFields": {
++          "fields": [
++            {
++              "keyId": {
++                "$binary": {
++                  "base64": "EjRWeBI0mHYSNBI0VniQEg==",
++                  "subType": "04"
++                }
++              },
++              "path": "encryptedIndexed",
++              "bsonType": "string",
++              "queries": {
++                "queryType": "equality",
++                "contention": {
++                  "$numberLong": "0"
++                }
++              }
++            },
++            {
++              "keyId": {
++                "$binary": {
++                  "base64": "q83vqxI0mHYSNBI0VniQEg==",
++                  "subType": "04"
++                }
++              },
++              "path": "encryptedUnindexed",
++              "bsonType": "string"
++            }
++          ]
++        }
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "BypassQueryAnalysis decrypts",
++      "operations": [
++        {
++          "object": "encryptedColl",
++          "name": "insertOne",
++          "arguments": {
++            "document": {
++              "_id": 1,
++              "encryptedIndexed": {
++                "$binary": {
++                  "base64": "C18BAAAFZAAgAAAAANnt+eLTkv4GdDPl8IAfJOvTzArOgFJQ2S/DcLza4W0DBXMAIAAAAAD2u+omZme3P2gBPehMQyQHQ153tPN1+z7bksYA9jKTpAVwADAAAAAAUnCOQqIvmR65YKyYnsiVfVrg9hwUVO3RhhKExo3RWOzgaS0QdsBL5xKFS0JhZSoWBXUAEAAAAAQSNFZ4EjSYdhI0EjRWeJASEHQAAgAAAAV2AFAAAAAAEjRWeBI0mHYSNBI0VniQEpQbp/ZJpWBKeDtKLiXb0P2E9wvc0g3f373jnYQYlJquOrlPOoEy3ngsHPJuSUijvWDsrQzqYa349K7G/66qaXEFZQAgAAAAAOuac/eRLYakKX6B0vZ1r3QodOQFfjqJD+xlGiPu4/PsBWwAIAAAAACkm0o9bj6j0HuADKc0svbqO2UHj6GrlNdF6yKNxh63xRJrAAAAAAAAAAAAAA==",
++                  "subType": "06"
++                }
++              }
++            }
++          }
++        },
++        {
++          "object": "encryptedColl",
++          "name": "find",
++          "arguments": {
++            "filter": {
++              "_id": 1
++            }
++          },
++          "expectResult": [
++            {
++              "_id": 1,
++              "encryptedIndexed": "123"
++            }
++          ]
++        },
++        {
++          "object": "unencryptedColl",
++          "name": "find",
++          "arguments": {
++            "filter": {}
++          },
++          "expectResult": [
++            {
++              "_id": 1,
++              "encryptedIndexed": {
++                "$$type": "binData"
++              },
++              "__safeContent__": [
++                {
++                  "$binary": {
++                    "base64": "31eCYlbQoVboc5zwC8IoyJVSkag9PxREka8dkmbXJeY=",
++                    "subType": "00"
++                  }
++                }
++              ]
++            }
++          ]
++        }
++      ],
++      "expectEvents": [
++        {
++          "client": "client0",
++          "events": [
++            {
++              "commandStartedEvent": {
++                "command": {
++                  "listCollections": 1,
++                  "filter": {
++                    "name": "default"
++                  }
++                },
++                "commandName": "listCollections"
++              }
++            },
++            {
++              "commandStartedEvent": {
++                "command": {
++                  "insert": "default",
++                  "documents": [
++                    {
++                      "_id": 1,
++                      "encryptedIndexed": {
++                        "$binary": {
++                          "base64": "C18BAAAFZAAgAAAAANnt+eLTkv4GdDPl8IAfJOvTzArOgFJQ2S/DcLza4W0DBXMAIAAAAAD2u+omZme3P2gBPehMQyQHQ153tPN1+z7bksYA9jKTpAVwADAAAAAAUnCOQqIvmR65YKyYnsiVfVrg9hwUVO3RhhKExo3RWOzgaS0QdsBL5xKFS0JhZSoWBXUAEAAAAAQSNFZ4EjSYdhI0EjRWeJASEHQAAgAAAAV2AFAAAAAAEjRWeBI0mHYSNBI0VniQEpQbp/ZJpWBKeDtKLiXb0P2E9wvc0g3f373jnYQYlJquOrlPOoEy3ngsHPJuSUijvWDsrQzqYa349K7G/66qaXEFZQAgAAAAAOuac/eRLYakKX6B0vZ1r3QodOQFfjqJD+xlGiPu4/PsBWwAIAAAAACkm0o9bj6j0HuADKc0svbqO2UHj6GrlNdF6yKNxh63xRJrAAAAAAAAAAAAAA==",
++                          "subType": "06"
++                        }
++                      }
++                    }
++                  ],
++                  "ordered": true,
++                  "encryptionInformation": {
++                    "type": 1,
++                    "schema": {
++                      "default.default": {
++                        "escCollection": "enxcol_.default.esc",
++                        "ecocCollection": "enxcol_.default.ecoc",
++                        "fields": [
++                          {
++                            "keyId": {
++                              "$binary": {
++                                "base64": "EjRWeBI0mHYSNBI0VniQEg==",
++                                "subType": "04"
++                              }
++                            },
++                            "path": "encryptedIndexed",
++                            "bsonType": "string",
++                            "queries": {
++                              "queryType": "equality",
++                              "contention": {
++                                "$numberLong": "0"
++                              }
++                            }
++                          },
++                          {
++                            "keyId": {
++                              "$binary": {
++                                "base64": "q83vqxI0mHYSNBI0VniQEg==",
++                                "subType": "04"
++                              }
++                            },
++                            "path": "encryptedUnindexed",
++                            "bsonType": "string"
++                          }
++                        ]
++                      }
++                    }
++                  }
++                },
++                "commandName": "insert"
++              }
++            },
++            {
++              "commandStartedEvent": {
++                "command": {
++                  "find": "default",
++                  "filter": {
++                    "_id": 1
++                  }
++                },
++                "commandName": "find"
++              }
++            },
++            {
++              "commandStartedEvent": {
++                "command": {
++                  "find": "datakeys",
++                  "filter": {
++                    "$or": [
++                      {
++                        "_id": {
++                          "$in": [
++                            {
++                              "$binary": {
++                                "base64": "EjRWeBI0mHYSNBI0VniQEg==",
++                                "subType": "04"
++                              }
++                            }
++                          ]
++                        }
++                      },
++                      {
++                        "keyAltNames": {
++                          "$in": []
++                        }
++                      }
++                    ]
++                  },
++                  "$db": "keyvault",
++                  "readConcern": {
++                    "level": "majority"
++                  }
++                },
++                "commandName": "find"
++              }
++            }
++          ]
++        }
++      ]
++    }
++  ]
++}
+diff --git a/test/client-side-encryption/spec/unified/fle2v2-EncryptedFields-vs-EncryptedFieldsMap.json b/test/client-side-encryption/spec/unified/fle2v2-EncryptedFields-vs-EncryptedFieldsMap.json
+new file mode 100644
+index 00000000..b5f848c0
+--- /dev/null
++++ b/test/client-side-encryption/spec/unified/fle2v2-EncryptedFields-vs-EncryptedFieldsMap.json
+@@ -0,0 +1,256 @@
++{
++  "description": "fle2v2-EncryptedFields-vs-EncryptedFieldsMap",
++  "schemaVersion": "1.23",
++  "runOnRequirements": [
++    {
++      "minServerVersion": "7.0.0",
++      "serverless": "forbid",
++      "csfle": true,
++      "topologies": [
++        "replicaset",
++        "sharded",
++        "load-balanced"
++      ]
++    }
++  ],
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0",
++        "autoEncryptOpts": {
++          "kmsProviders": {
++            "local": {
++              "key": "Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
++            }
++          },
++          "keyVaultNamespace": "keyvault.datakeys",
++          "encryptedFieldsMap": {
++            "default.default": {
++              "fields": []
++            }
++          }
++        },
++        "observeEvents": [
++          "commandStartedEvent"
++        ]
++      }
++    },
++    {
++      "database": {
++        "id": "encryptedDB",
++        "client": "client0",
++        "databaseName": "default"
++      }
++    },
++    {
++      "collection": {
++        "id": "encryptedColl",
++        "database": "encryptedDB",
++        "collectionName": "default"
++      }
++    }
++  ],
++  "initialData": [
++    {
++      "databaseName": "keyvault",
++      "collectionName": "datakeys",
++      "documents": [
++        {
++          "_id": {
++            "$binary": {
++              "base64": "q83vqxI0mHYSNBI0VniQEg==",
++              "subType": "04"
++            }
++          },
++          "keyMaterial": {
++            "$binary": {
++              "base64": "HBk9BWihXExNDvTp1lUxOuxuZK2Pe2ZdVdlsxPEBkiO1bS4mG5NNDsQ7zVxJAH8BtdOYp72Ku4Y3nwc0BUpIKsvAKX4eYXtlhv5zUQxWdeNFhg9qK7qb8nqhnnLeT0f25jFSqzWJoT379hfwDeu0bebJHr35QrJ8myZdPMTEDYF08QYQ48ShRBli0S+QzBHHAQiM2iJNr4svg2WR8JSeWQ==",
++              "subType": "00"
++            }
++          },
++          "creationDate": {
++            "$date": {
++              "$numberLong": "1648914851981"
++            }
++          },
++          "updateDate": {
++            "$date": {
++              "$numberLong": "1648914851981"
++            }
++          },
++          "status": {
++            "$numberInt": "0"
++          },
++          "masterKey": {
++            "provider": "local"
++          }
++        }
++      ]
++    },
++    {
++      "databaseName": "default",
++      "collectionName": "default",
++      "documents": [],
++      "createOptions": {
++        "encryptedFields": {
++          "fields": [
++            {
++              "keyId": {
++                "$binary": {
++                  "base64": "EjRWeBI0mHYSNBI0VniQEg==",
++                  "subType": "04"
++                }
++              },
++              "path": "encryptedIndexed",
++              "bsonType": "string",
++              "queries": {
++                "queryType": "equality",
++                "contention": {
++                  "$numberLong": "0"
++                }
++              }
++            },
++            {
++              "keyId": {
++                "$binary": {
++                  "base64": "q83vqxI0mHYSNBI0VniQEg==",
++                  "subType": "04"
++                }
++              },
++              "path": "encryptedUnindexed",
++              "bsonType": "string"
++            }
++          ]
++        }
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "encryptedFieldsMap is preferred over remote encryptedFields",
++      "operations": [
++        {
++          "object": "encryptedColl",
++          "name": "insertOne",
++          "arguments": {
++            "document": {
++              "_id": 1,
++              "encryptedUnindexed": {
++                "$binary": {
++                  "base64": "BqvN76sSNJh2EjQSNFZ4kBICTQaVZPWgXp41I7mPV1rLFTtw1tXzjcdSEyxpKKqujlko5TeizkB9hHQ009dVY1+fgIiDcefh+eQrm3CkhQ==",
++                  "subType": "06"
++                }
++              }
++            }
++          }
++        },
++        {
++          "object": "encryptedColl",
++          "name": "find",
++          "arguments": {
++            "filter": {
++              "_id": 1
++            }
++          },
++          "expectResult": [
++            {
++              "_id": 1,
++              "encryptedUnindexed": "value123"
++            }
++          ]
++        }
++      ],
++      "expectEvents": [
++        {
++          "client": "client0",
++          "events": [
++            {
++              "commandStartedEvent": {
++                "databaseName": "default",
++                "commandName": "insert",
++                "command": {
++                  "insert": "default",
++                  "documents": [
++                    {
++                      "_id": 1,
++                      "encryptedUnindexed": {
++                        "$binary": {
++                          "base64": "BqvN76sSNJh2EjQSNFZ4kBICTQaVZPWgXp41I7mPV1rLFTtw1tXzjcdSEyxpKKqujlko5TeizkB9hHQ009dVY1+fgIiDcefh+eQrm3CkhQ==",
++                          "subType": "06"
++                        }
++                      }
++                    }
++                  ],
++                  "ordered": true
++                }
++              }
++            },
++            {
++              "commandStartedEvent": {
++                "databaseName": "default",
++                "commandName": "find",
++                "command": {
++                  "find": "default",
++                  "filter": {
++                    "_id": 1
++                  }
++                }
++              }
++            },
++            {
++              "commandStartedEvent": {
++                "databaseName": "keyvault",
++                "commandName": "find",
++                "command": {
++                  "find": "datakeys",
++                  "filter": {
++                    "$or": [
++                      {
++                        "_id": {
++                          "$in": [
++                            {
++                              "$binary": {
++                                "base64": "q83vqxI0mHYSNBI0VniQEg==",
++                                "subType": "04"
++                              }
++                            }
++                          ]
++                        }
++                      },
++                      {
++                        "keyAltNames": {
++                          "$in": []
++                        }
++                      }
++                    ]
++                  },
++                  "$db": "keyvault",
++                  "readConcern": {
++                    "level": "majority"
++                  }
++                }
++              }
++            }
++          ]
++        }
++      ],
++      "outcome": [
++        {
++          "collectionName": "default",
++          "databaseName": "default",
++          "documents": [
++            {
++              "_id": 1,
++              "encryptedUnindexed": {
++                "$binary": {
++                  "base64": "BqvN76sSNJh2EjQSNFZ4kBICTQaVZPWgXp41I7mPV1rLFTtw1tXzjcdSEyxpKKqujlko5TeizkB9hHQ009dVY1+fgIiDcefh+eQrm3CkhQ==",
++                  "subType": "06"
++                }
++              }
++            }
++          ]
++        }
++      ]
++    }
++  ]
++}
+diff --git a/test/client-side-encryption/spec/unified/localSchema.json b/test/client-side-encryption/spec/unified/localSchema.json
+new file mode 100644
+index 00000000..a7acccac
+--- /dev/null
++++ b/test/client-side-encryption/spec/unified/localSchema.json
+@@ -0,0 +1,342 @@
++{
++  "description": "localSchema",
++  "schemaVersion": "1.23",
++  "runOnRequirements": [
++    {
++      "minServerVersion": "4.1.10",
++      "csfle": true
++    }
++  ],
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0",
++        "autoEncryptOpts": {
++          "schemaMap": {
++            "default.default": {
++              "properties": {
++                "encrypted_w_altname": {
++                  "encrypt": {
++                    "keyId": "/altname",
++                    "bsonType": "string",
++                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
++                  }
++                },
++                "encrypted_string": {
++                  "encrypt": {
++                    "keyId": [
++                      {
++                        "$binary": {
++                          "base64": "AAAAAAAAAAAAAAAAAAAAAA==",
++                          "subType": "04"
++                        }
++                      }
++                    ],
++                    "bsonType": "string",
++                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
++                  }
++                },
++                "random": {
++                  "encrypt": {
++                    "keyId": [
++                      {
++                        "$binary": {
++                          "base64": "AAAAAAAAAAAAAAAAAAAAAA==",
++                          "subType": "04"
++                        }
++                      }
++                    ],
++                    "bsonType": "string",
++                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
++                  }
++                },
++                "encrypted_string_equivalent": {
++                  "encrypt": {
++                    "keyId": [
++                      {
++                        "$binary": {
++                          "base64": "AAAAAAAAAAAAAAAAAAAAAA==",
++                          "subType": "04"
++                        }
++                      }
++                    ],
++                    "bsonType": "string",
++                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
++                  }
++                }
++              },
++              "bsonType": "object"
++            }
++          },
++          "keyVaultNamespace": "keyvault.datakeys",
++          "kmsProviders": {
++            "aws": {
++              "accessKeyId": {
++                "$$placeholder": 1
++              },
++              "secretAccessKey": {
++                "$$placeholder": 1
++              },
++              "sessionToken": {
++                "$$placeholder": 1
++              }
++            }
++          }
++        },
++        "observeEvents": [
++          "commandStartedEvent"
++        ]
++      }
++    },
++    {
++      "client": {
++        "id": "client1",
++        "autoEncryptOpts": {
++          "schemaMap": {
++            "default.default": {
++              "properties": {
++                "test": {
++                  "bsonType": "string"
++                }
++              },
++              "bsonType": "object",
++              "required": [
++                "test"
++              ]
++            }
++          },
++          "keyVaultNamespace": "keyvault.datakeys",
++          "kmsProviders": {
++            "aws": {
++              "accessKeyId": {
++                "$$placeholder": 1
++              },
++              "secretAccessKey": {
++                "$$placeholder": 1
++              },
++              "sessionToken": {
++                "$$placeholder": 1
++              }
++            }
++          }
++        },
++        "observeEvents": [
++          "commandStartedEvent"
++        ]
++      }
++    },
++    {
++      "database": {
++        "id": "encryptedDB",
++        "client": "client0",
++        "databaseName": "default"
++      }
++    },
++    {
++      "collection": {
++        "id": "encryptedColl",
++        "database": "encryptedDB",
++        "collectionName": "default"
++      }
++    },
++    {
++      "database": {
++        "id": "encryptedDB2",
++        "client": "client1",
++        "databaseName": "default"
++      }
++    },
++    {
++      "collection": {
++        "id": "encryptedColl2",
++        "database": "encryptedDB2",
++        "collectionName": "default"
++      }
++    }
++  ],
++  "initialData": [
++    {
++      "databaseName": "keyvault",
++      "collectionName": "datakeys",
++      "documents": [
++        {
++          "status": 1,
++          "_id": {
++            "$binary": {
++              "base64": "AAAAAAAAAAAAAAAAAAAAAA==",
++              "subType": "04"
++            }
++          },
++          "masterKey": {
++            "provider": "aws",
++            "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
++            "region": "us-east-1"
++          },
++          "updateDate": {
++            "$date": {
++              "$numberLong": "1552949630483"
++            }
++          },
++          "keyMaterial": {
++            "$binary": {
++              "base64": "AQICAHhQNmWG2CzOm1dq3kWLM+iDUZhEqnhJwH9wZVpuZ94A8gEqnsxXlR51T5EbEVezUqqKAAAAwjCBvwYJKoZIhvcNAQcGoIGxMIGuAgEAMIGoBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDHa4jo6yp0Z18KgbUgIBEIB74sKxWtV8/YHje5lv5THTl0HIbhSwM6EqRlmBiFFatmEWaeMk4tO4xBX65eq670I5TWPSLMzpp8ncGHMmvHqRajNBnmFtbYxN3E3/WjxmdbOOe+OXpnGJPcGsftc7cB2shRfA4lICPnE26+oVNXT6p0Lo20nY5XC7jyCO",
++              "subType": "00"
++            }
++          },
++          "creationDate": {
++            "$date": {
++              "$numberLong": "1552949630483"
++            }
++          },
++          "keyAltNames": [
++            "altname",
++            "another_altname"
++          ]
++        }
++      ]
++    },
++    {
++      "databaseName": "default",
++      "collectionName": "default",
++      "documents": []
++    }
++  ],
++  "tests": [
++    {
++      "description": "A local schema should override",
++      "operations": [
++        {
++          "object": "encryptedColl",
++          "name": "insertOne",
++          "arguments": {
++            "document": {
++              "_id": 1,
++              "encrypted_string": "string0"
++            }
++          }
++        },
++        {
++          "object": "encryptedColl",
++          "name": "find",
++          "arguments": {
++            "filter": {
++              "_id": 1
++            }
++          },
++          "expectResult": [
++            {
++              "_id": 1,
++              "encrypted_string": "string0"
++            }
++          ]
++        }
++      ],
++      "expectEvents": [
++        {
++          "client": "client0",
++          "events": [
++            {
++              "commandStartedEvent": {
++                "databaseName": "keyvault",
++                "commandName": "find",
++                "command": {
++                  "find": "datakeys",
++                  "filter": {
++                    "$or": [
++                      {
++                        "_id": {
++                          "$in": [
++                            {
++                              "$binary": {
++                                "base64": "AAAAAAAAAAAAAAAAAAAAAA==",
++                                "subType": "04"
++                              }
++                            }
++                          ]
++                        }
++                      },
++                      {
++                        "keyAltNames": {
++                          "$in": []
++                        }
++                      }
++                    ]
++                  },
++                  "readConcern": {
++                    "level": "majority"
++                  }
++                }
++              }
++            },
++            {
++              "commandStartedEvent": {
++                "commandName": "insert",
++                "command": {
++                  "insert": "default",
++                  "documents": [
++                    {
++                      "_id": 1,
++                      "encrypted_string": {
++                        "$binary": {
++                          "base64": "AQAAAAAAAAAAAAAAAAAAAAACwj+3zkv2VM+aTfk60RqhXq6a/77WlLwu/BxXFkL7EppGsju/m8f0x5kBDD3EZTtGALGXlym5jnpZAoSIkswHoA==",
++                          "subType": "06"
++                        }
++                      }
++                    }
++                  ],
++                  "ordered": true
++                }
++              }
++            },
++            {
++              "commandStartedEvent": {
++                "commandName": "find",
++                "command": {
++                  "find": "default",
++                  "filter": {
++                    "_id": 1
++                  }
++                }
++              }
++            }
++          ]
++        }
++      ],
++      "outcome": [
++        {
++          "collectionName": "default",
++          "databaseName": "default",
++          "documents": [
++            {
++              "_id": 1,
++              "encrypted_string": {
++                "$binary": {
++                  "base64": "AQAAAAAAAAAAAAAAAAAAAAACwj+3zkv2VM+aTfk60RqhXq6a/77WlLwu/BxXFkL7EppGsju/m8f0x5kBDD3EZTtGALGXlym5jnpZAoSIkswHoA==",
++                  "subType": "06"
++                }
++              }
++            }
++          ]
++        }
++      ]
++    },
++    {
++      "description": "A local schema with no encryption is an error",
++      "operations": [
++        {
++          "object": "encryptedColl2",
++          "name": "insertOne",
++          "arguments": {
++            "document": {
++              "_id": 1,
++              "encrypted_string": "string0"
++            }
++          },
++          "expectError": {
++            "isClientError": true
++          }
++        }
++      ]
++    }
++  ]
++}
+diff --git a/test/client-side-encryption/spec/unified/maxWireVersion.json b/test/client-side-encryption/spec/unified/maxWireVersion.json
+new file mode 100644
+index 00000000..d0af75ac
+--- /dev/null
++++ b/test/client-side-encryption/spec/unified/maxWireVersion.json
+@@ -0,0 +1,101 @@
++{
++  "description": "maxWireVersion",
++  "schemaVersion": "1.23",
++  "runOnRequirements": [
++    {
++      "maxServerVersion": "4.0.99",
++      "csfle": true
++    }
++  ],
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0",
++        "autoEncryptOpts": {
++          "kmsProviders": {
++            "aws": {}
++          },
++          "keyVaultNamespace": "keyvault.datakeys",
++          "extraOptions": {
++            "mongocryptdBypassSpawn": true
++          }
++        }
++      }
++    },
++    {
++      "database": {
++        "id": "database0",
++        "client": "client0",
++        "databaseName": "default"
++      }
++    },
++    {
++      "collection": {
++        "id": "collection0",
++        "database": "database0",
++        "collectionName": "default"
++      }
++    }
++  ],
++  "initialData": [
++    {
++      "databaseName": "keyvault",
++      "collectionName": "datakeys",
++      "documents": [
++        {
++          "status": 1,
++          "_id": {
++            "$binary": {
++              "base64": "AAAAAAAAAAAAAAAAAAAAAA==",
++              "subType": "04"
++            }
++          },
++          "masterKey": {
++            "provider": "aws",
++            "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
++            "region": "us-east-1"
++          },
++          "updateDate": {
++            "$date": {
++              "$numberLong": "1552949630483"
++            }
++          },
++          "keyMaterial": {
++            "$binary": {
++              "base64": "AQICAHhQNmWG2CzOm1dq3kWLM+iDUZhEqnhJwH9wZVpuZ94A8gEqnsxXlR51T5EbEVezUqqKAAAAwjCBvwYJKoZIhvcNAQcGoIGxMIGuAgEAMIGoBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDHa4jo6yp0Z18KgbUgIBEIB74sKxWtV8/YHje5lv5THTl0HIbhSwM6EqRlmBiFFatmEWaeMk4tO4xBX65eq670I5TWPSLMzpp8ncGHMmvHqRajNBnmFtbYxN3E3/WjxmdbOOe+OXpnGJPcGsftc7cB2shRfA4lICPnE26+oVNXT6p0Lo20nY5XC7jyCO",
++              "subType": "00"
++            }
++          },
++          "creationDate": {
++            "$date": {
++              "$numberLong": "1552949630483"
++            }
++          },
++          "keyAltNames": [
++            "altname",
++            "another_altname"
++          ]
++        }
++      ]
++    }
++  ],
++  "tests": [
++    {
++      "description": "operation fails with maxWireVersion < 8",
++      "operations": [
++        {
++          "name": "insertOne",
++          "object": "collection0",
++          "arguments": {
++            "document": {
++              "encrypted_string": "string0"
++            }
++          },
++          "expectError": {
++            "errorContains": "Auto-encryption requires a minimum MongoDB version of 4.2"
++          }
++        }
++      ]
++    }
++  ]
++}
+diff --git a/test/unified-test-format/valid-pass/poc-queryable-encryption.json b/test/unified-test-format/valid-pass/poc-queryable-encryption.json
+new file mode 100644
+index 00000000..9788977c
+--- /dev/null
++++ b/test/unified-test-format/valid-pass/poc-queryable-encryption.json
+@@ -0,0 +1,188 @@
++{
++  "description": "poc-queryable-encryption",
++  "schemaVersion": "1.23",
++  "runOnRequirements": [
++    {
++      "minServerVersion": "7.0",
++      "csfle": true
++    }
++  ],
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0",
++        "autoEncryptOpts": {
++          "keyVaultNamespace": "keyvault.datakeys",
++          "kmsProviders": {
++            "local": {
++              "key": "Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
++            }
++          }
++        }
++      }
++    },
++    {
++      "database": {
++        "id": "encryptedDB",
++        "client": "client0",
++        "databaseName": "poc-queryable-encryption"
++      }
++    },
++    {
++      "collection": {
++        "id": "encryptedColl",
++        "database": "encryptedDB",
++        "collectionName": "encrypted"
++      }
++    },
++    {
++      "client": {
++        "id": "client1"
++      }
++    },
++    {
++      "database": {
++        "id": "unencryptedDB",
++        "client": "client1",
++        "databaseName": "poc-queryable-encryption"
++      }
++    },
++    {
++      "collection": {
++        "id": "unencryptedColl",
++        "database": "unencryptedDB",
++        "collectionName": "encrypted"
++      }
++    }
++  ],
++  "initialData": [
++    {
++      "databaseName": "keyvault",
++      "collectionName": "datakeys",
++      "documents": [
++        {
++          "_id": {
++            "$binary": {
++              "base64": "EjRWeBI0mHYSNBI0VniQEg==",
++              "subType": "04"
++            }
++          },
++          "keyMaterial": {
++            "$binary": {
++              "base64": "sHe0kz57YW7v8g9VP9sf/+K1ex4JqKc5rf/URX3n3p8XdZ6+15uXPaSayC6adWbNxkFskuMCOifDoTT+rkqMtFkDclOy884RuGGtUysq3X7zkAWYTKi8QAfKkajvVbZl2y23UqgVasdQu3OVBQCrH/xY00nNAs/52e958nVjBuzQkSb1T8pKJAyjZsHJ60+FtnfafDZSTAIBJYn7UWBCwQ==",
++              "subType": "00"
++            }
++          },
++          "creationDate": {
++            "$date": {
++              "$numberLong": "1641024000000"
++            }
++          },
++          "updateDate": {
++            "$date": {
++              "$numberLong": "1641024000000"
++            }
++          },
++          "status": 1,
++          "masterKey": {
++            "provider": "local"
++          }
++        }
++      ]
++    },
++    {
++      "databaseName": "poc-queryable-encryption",
++      "collectionName": "encrypted",
++      "documents": [],
++      "createOptions": {
++        "encryptedFields": {
++          "fields": [
++            {
++              "keyId": {
++                "$binary": {
++                  "base64": "EjRWeBI0mHYSNBI0VniQEg==",
++                  "subType": "04"
++                }
++              },
++              "path": "encryptedInt",
++              "bsonType": "int",
++              "queries": {
++                "queryType": "equality",
++                "contention": {
++                  "$numberLong": "0"
++                }
++              }
++            }
++          ]
++        }
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "insert, replace, and find with queryable encryption",
++      "operations": [
++        {
++          "object": "encryptedColl",
++          "name": "insertOne",
++          "arguments": {
++            "document": {
++              "_id": 1,
++              "encryptedInt": 11
++            }
++          }
++        },
++        {
++          "object": "encryptedColl",
++          "name": "replaceOne",
++          "arguments": {
++            "filter": {
++              "encryptedInt": 11
++            },
++            "replacement": {
++              "encryptedInt": 22
++            }
++          }
++        },
++        {
++          "object": "encryptedColl",
++          "name": "find",
++          "arguments": {
++            "filter": {
++              "encryptedInt": 22
++            }
++          },
++          "expectResult": [
++            {
++              "_id": 1,
++              "encryptedInt": 22
++            }
++          ]
++        },
++        {
++          "object": "unencryptedColl",
++          "name": "find",
++          "arguments": {
++            "filter": {}
++          },
++          "expectResult": [
++            {
++              "_id": 1,
++              "encryptedInt": {
++                "$$type": "binData"
++              },
++              "__safeContent__": [
++                {
++                  "$binary": {
++                    "base64": "rhS16TJojgDDBtbluxBokvcotP1mQTGeYpNt8xd3MJQ=",
++                    "subType": "00"
++                  }
++                }
++              ]
++            }
++          ]
++        }
++      ]
++    }
++  ]
++}

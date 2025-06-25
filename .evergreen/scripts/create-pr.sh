@@ -44,17 +44,18 @@ echo "Creating the git checkout... done."
 
 echo "THIS IS THE BODY"
 echo "$body"
-#git push origin $branch
-#resp=$(curl -L \
-#    -X POST \
-#    -H "Accept: application/vnd.github+json" \
-#    -H "Authorization: Bearer $token" \
-#    -H "X-GitHub-Api-Version: 2022-11-28" \
-#    -d "{\"title\":\"[Spec Resync] $(date '+%m-%d-%Y')\",\"body\":\"${body}\",\"head\":\"${branch}\",\"base\":\"master\"}" \
-#    --url https://api.github.com/repos/$owner/$repo/pulls)
-#echo $resp
-#echo $resp | jq '.html_url'
-#echo "Creating the PR... done."
+git push origin $branch
+echo "{\"title\":\"[Spec Resync] $(date '+%m-%d-%Y')\",\"body\":\"$(cat "$1")\",\"head\":\"${branch}\",\"base\":\"master\"}"
+resp=$(curl -L \
+    -X POST \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer $token" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    -d "{\"title\":\"[Spec Resync] $(date '+%m-%d-%Y')\",\"body\":\"$(cat "$1")\",\"head\":\"${branch}\",\"base\":\"master\"}" \
+    --url https://api.github.com/repos/$owner/$repo/pulls)
+echo $resp
+echo $resp | jq '.html_url'
+echo "Creating the PR... done."
 
 rm -rf $tools
 
