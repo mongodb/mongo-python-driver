@@ -472,5 +472,5 @@ To profile a test script and generate a flame graph, follow these steps:
   ```bash
   just flamegraph <output_name=profile> <sample_rate=2000> <path/to/script>
   ```
-4. Profiling should be done on a Linux system, as macOS and Windows do not support the `--native` option of `py-spy`.
+4. If you need to include native code (for example the C extensions), profiling should be done on a Linux system, as macOS and Windows do not support the `--native` option of `py-spy`.
    Creating an ubuntu Evergreen spawn host and using `scp` to copy the flamegraph `.svg` file back to your local machine is the best way to do this.
