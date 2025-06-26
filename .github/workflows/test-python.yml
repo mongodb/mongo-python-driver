@@ -239,5 +239,5 @@ jobs:
         - name: Run connect test
           shell: bash
           run: |
-            uv sync --python=${{ matrix.python-version }} --resolution=lowest-direct
+            uv sync --python=3.9 --resolution=lowest-direct
             PYMONGO_MUST_CONNECT=1 pytest -v -k client_context
