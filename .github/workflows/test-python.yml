@@ -239,5 +239,5 @@ jobs:
         - name: Run connect test
           shell: bash
           run: |
-            uv sync --python=3.9 --resolution=lowest-direct
+            uv pip install --python=3.9 .
             PYMONGO_MUST_CONNECT=1 pytest -v -k client_context
