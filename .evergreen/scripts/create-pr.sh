@@ -36,7 +36,7 @@ git remote set-url origin https://x-access-token:${token}@github.com/$owner/$rep
 git checkout -b $branch "origin/master"
 git add ./test
 git apply -R .evergreen/specs.patch
-git commit -am "resyncing specs test?"
+git commit -am "resyncing specs $(date '+%m-%d-%Y')"
 echo "Creating the git checkout... done."
 
 git push origin $branch
