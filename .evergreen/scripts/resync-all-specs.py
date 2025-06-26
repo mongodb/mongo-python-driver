@@ -7,6 +7,7 @@ import subprocess
 
 
 def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> list[str]:
+    """Actually sync the specs"""
     for spec in os.scandir(directory):
         if not spec.is_dir():
             continue
@@ -35,6 +36,7 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> list[str]:
 
 
 def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
+    """Check to see if there are any directories in the spec repo that don't exist in pymongo/test"""
     spec_dir = pathlib.Path(os.environ["MDB_SPECS"]) / "source"
     spec_set = {
         entry.name.replace("-", "_")
@@ -64,6 +66,7 @@ def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
 
 
 def write_summary(succeeded: list[str], errored: dict[str, str], new: list[str]) -> None:
+    """Generate the PR description"""
     pr_body = ""
     if len(succeeded) > 0:
         pr_body += "The following specs were changed:\n- "
@@ -81,7 +84,7 @@ def write_summary(succeeded: list[str], errored: dict[str, str], new: list[str])
 
     if pr_body != "":
         with open("spec_sync.txt", "w") as f:
-            # replacements made for to be json
+            # replacements made for proper json
             f.write(pr_body.replace("\n", "\\n").replace("\t", "\\t"))
 
 
