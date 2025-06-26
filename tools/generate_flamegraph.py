@@ -49,7 +49,7 @@ def main():
         bash_command.insert(6, "--native")
 
     try:
-        subprocess.check_call(bash_command)  # noqa: S603
+        subprocess.run(bash_command, check=True)  # noqa: S603
     except Exception:
         sys.exit(1)
 
