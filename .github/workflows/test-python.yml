@@ -241,5 +241,5 @@ jobs:
           run: |
             uv venv
             source .venv/bin/activate
-            uv pip install -e ".[test]"
-            PYMONGO_MUST_CONNECT=1 pytest -v -k client_context
+            uv pip install -e ".[test]" --resolution=lowest-direct
+            pytest -v test/test_srv_polling.py
