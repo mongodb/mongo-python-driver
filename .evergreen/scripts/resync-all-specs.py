@@ -4,6 +4,7 @@ import argparse
 import os
 import pathlib
 import subprocess
+from subprocess import CalledProcessError
 
 
 def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> list[str]:
@@ -14,15 +15,15 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> list[str]:
 
         if spec.name in ["asynchronous"]:
             continue
-        process = subprocess.run(
-            ["bash", "./.evergreen/resync-specs.sh", spec.name],  # noqa: S603, S607
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-
-        if process.returncode != 0:
-            errored[spec.name] = process.stderr
+        try:
+            subprocess.run(
+                ["bash", "./.evergreen/resync-specs.sh", spec.name],  # noqa: S603, S607
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except CalledProcessError as exc:
+            errored[spec.name] = exc.stderr
 
     process = subprocess.run(
         ["git diff --name-only | awk -F'/' '{print $2}' | sort | uniq"],  # noqa: S607
