@@ -47,6 +47,7 @@ resp=$(curl -L \
     -H "X-GitHub-Api-Version: 2022-11-28" \
     -d "{\"title\":\"[Spec Resync] $(date '+%m-%d-%Y')\",\"body\":\"$(cat "$1")\",\"head\":\"${branch}\",\"base\":\"master\"}" \
     --url https://api.github.com/repos/$owner/$repo/pulls)
+echo $resp | jq '.html_url'
 echo "Creating the PR... done."
 
 rm -rf $tools
