@@ -239,5 +239,7 @@ jobs:
         - name: Run connect test
           shell: bash
           run: |
-            uv pip install --python=3.9 .
+            uv venv
+            source .venv/bin/activate
+            uv pip install -e ".[test]"
             PYMONGO_MUST_CONNECT=1 pytest -v -k client_context
