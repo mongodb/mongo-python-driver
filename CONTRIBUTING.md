@@ -467,10 +467,8 @@ To profile a test script and generate a flame graph, follow these steps:
    ```bash
    pip install py-spy
    ```
-2. Inside your test script, perform any required setup and then loop over the code you want to profile for improved sampling
-3. Run the `flamegraph` justfile target to generate a `.svg` file containing the flame graph:
-  ```bash
-  just flamegraph <output_name=profile> <sample_rate=2000> <path/to/script>
-  ```
+2. Inside your test script, perform any required setup and then loop over the code you want to profile for improved sampling.
+3. Run `py-spy record -o <output.svg> -r <sample_rate=100> -- python <path/to/script>` to generate a `.svg` file containing the flame graph.
+   (Note: on macOS you will need to run this command using `sudo` to allow `py-spy` to attach to the Python process.)
 4. If you need to include native code (for example the C extensions), profiling should be done on a Linux system, as macOS and Windows do not support the `--native` option of `py-spy`.
    Creating an ubuntu Evergreen spawn host and using `scp` to copy the flamegraph `.svg` file back to your local machine is the best way to do this.
