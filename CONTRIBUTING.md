@@ -436,7 +436,9 @@ you are attempting to validate new spec tests in PyMongo.
 `/.evergreen/scripts/resync-all-specs.sh` is a script that will
 automatically run once a week. This script calls a python script
 `.evergreen/scripts/resync-all-specs.py` that actually does all
-the resyncing. If appropriate, the bash script then calls
+the resyncing. Then, any desired un-syncing will be accomplished
+with the help of patch files through a `git apply -R`. If
+appropriate, the bash script then calls
 `.evergreen/scripts/create-pr.sh` that actually publishes a PR.
 
 There are three patch files that contain test differences between
@@ -448,8 +450,13 @@ Python driver having a different behaviour.)
 we fail.
 `.evergreen/patch/update.patch`: This is for test changes that were
 updated and now fail. In this case, we want to keep the old passing
-version, add the appropriate `git diff` to this patch file, and open
+version, add the diff to this patch file, and open
 a new ticket to unskip these.
+
+#### Adding to a patch file
+Assuming the changes are committed somewhere, to add to any of the
+patch files, run `git diff` to show the desired changes and paste the
+results into the patch file.
 
 ## Making a Release
 
