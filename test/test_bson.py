@@ -1045,6 +1045,7 @@ class TestBSON(unittest.TestCase):
 
     def test_minkey_maxkey_comparison(self):
         # MinKey's <, <=, >, >=, !=, and ==.
+        # These tests should be kept as assertTrue as opposed to using unittest's build in comparison assertions.
         self.assertTrue(MinKey() < None)
         self.assertTrue(MinKey() < 1)
         self.assertTrue(MinKey() <= 1)
