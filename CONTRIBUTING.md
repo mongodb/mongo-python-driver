@@ -432,6 +432,25 @@ update in PyMongo. This is primarily helpful if you are implementing a
 new feature in PyMongo that has spec tests already implemented, or if
 you are attempting to validate new spec tests in PyMongo.
 
+### Automated Specification Test Resyncing
+`/.evergreen/scripts/resync-all-specs.sh` is a script that will
+automatically run once a week. This script calls a python script
+`.evergreen/scripts/resync-all-specs.py` that actually does all
+the resyncing. If appropriate, the bash script then calls
+`.evergreen/scripts/create-pr.sh` that actually publishes a PR.
+
+There are three patch files that contain test differences between
+pymongo tests and the specs
+`.evergreen/patch/diff.patch`: These contain tests that we know we
+differ in and do not plan to fix. (This is likely an instance of the
+Python driver having a different behaviour.)
+`.evergreen/patch/new.patch`: This is for newly added test files that
+we fail.
+`.evergreen/patch/update.patch`: This is for test changes that were
+updated and now fail. In this case, we want to keep the old passing
+version, add the appropriate `git diff` to this patch file, and open
+a new ticket to unskip these.
+
 ## Making a Release
 
 Follow the [Python Driver Release Process Wiki](https://wiki.corp.mongodb.com/display/DRIVERS/Python+Driver+Release+Process).
