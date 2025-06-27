@@ -441,17 +441,12 @@ with the help of patch files through a `git apply -R`. If
 appropriate, the bash script then calls
 `.evergreen/scripts/create-pr.sh` that actually publishes a PR.
 
-There are three patch files that contain test differences between
-pymongo tests and the specs
-`.evergreen/patch/diff.patch`: These contain tests that we know we
-differ in and do not plan to fix. (This is likely an instance of the
-Python driver having a different behaviour.)
-`.evergreen/patch/new.patch`: This is for newly added test files that
-we fail.
-`.evergreen/patch/update.patch`: This is for test changes that were
-updated and now fail. In this case, we want to keep the old passing
-version, add the diff to this patch file, and open
-a new ticket to unskip these.
+There are three patch files that contain known test differences between
+PyMongo's tests and the specification:
+`.evergreen/patch/diff.patch`: tests where 
+PyMongo intentionally behaves differently than the specification. This file should rarely be modified, as most of these represent fundamental differences in design or behavior.
+`.evergreen/patch/new.patch`: tests for new features that have not yet been implemented in PyMongo. Tests must be removed from this file as part of the PR that implements their feature. 
+`.evergreen/patch/update.patch`: tests that have been updated in a way that causes them to fail until their associated driver change is implemented. Tests must be removed from this file as part of the PR that implements the fix or behavioral change.
 
 #### Adding to a patch file
 Assuming the changes are committed somewhere, to add to any of the
