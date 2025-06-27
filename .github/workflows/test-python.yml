@@ -222,6 +222,8 @@ jobs:
             PYMONGO_MUST_CONNECT=1 pytest -v -k client_context
 
   test_minimum:
+      permissions:
+        contents: read
       runs-on: ubuntu-latest
       name: Test using minimum dependencies and supported Python
       steps:
