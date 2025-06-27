@@ -25,7 +25,6 @@ from generate_config_utils import (
     get_task_name,
     get_variant_name,
     get_versions_from,
-    get_versions_until,
     handle_c_ext,
     write_functions_to_file,
     write_tasks_to_file,
@@ -196,7 +195,7 @@ def create_compression_variants():
     for compressor in "snappy", "zlib", "zstd":
         expansions = dict(COMPRESSOR=compressor)
         if compressor == "zstd":
-            tasks = [".test-standard !.server-4.0"]
+            tasks = [".test-standard !.server-4.2"]
         else:
             tasks = [".test-standard"]
         display_name = get_variant_name(f"Compression {compressor}", host)
@@ -249,16 +248,11 @@ def create_pyopenssl_variants():
 
 def create_storage_engine_variants():
     host = DEFAULT_HOST
-    engines = ["InMemory", "MMAPv1"]
+    engines = ["InMemory"]
     variants = []
     for engine in engines:
         expansions = dict(STORAGE_ENGINE=engine.lower())
-        if engine == engines[0]:
-            tasks = [".test-standard .standalone-noauth-nossl"]
-        else:
-            # MongoDB 4.2 drops support for MMAPv1
-            versions = get_versions_until("4.0")
-            tasks = [f".test-standard !.sharded_cluster-auth-ssl .server-{v}" for v in versions]
+        tasks = [".test-standard .standalone-noauth-nossl"]
         display_name = get_variant_name(f"Storage {engine}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
@@ -350,23 +344,6 @@ def create_disable_test_commands_variants():
     display_name = get_variant_name("Disable test commands", host, python=python)
     tasks = [".test-standard .server-latest"]
     return [create_variant(tasks, display_name, host=host, python=python, expansions=expansions)]
-
-
-def create_serverless_variants():
-    host = DEFAULT_HOST
-    batchtime = BATCHTIME_WEEK
-    tasks = [".serverless"]
-    base_name = "Serverless"
-    return [
-        create_variant(
-            tasks,
-            get_variant_name(base_name, host, python=python),
-            host=host,
-            python=python,
-            batchtime=batchtime,
-        )
-        for python in MIN_MAX_PYTHON
-    ]
 
 
 def create_oidc_auth_variants():
@@ -920,7 +897,8 @@ def create_backport_pr_tasks():
         "${github_commit}",
     ]
     cmd = get_subprocess_exec(args=args)
-    return [EvgTask(name=name, commands=[cmd], allowed_requesters=["commit"])]
+    assume_func = FunctionCall(func="assume ec2 role")
+    return [EvgTask(name=name, commands=[assume_func, cmd], allowed_requesters=["commit"])]
 
 
 def create_ocsp_tasks():
@@ -966,14 +944,6 @@ def create_free_threading_tasks():
     task_name = "test-free-threading"
     tags = ["free-threading"]
     return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
-
-
-def create_serverless_tasks():
-    vars = dict(TEST_NAME="serverless", AUTH="auth", SSL="ssl")
-    test_func = FunctionCall(func="run tests", vars=vars)
-    tags = ["serverless"]
-    task_name = "test-serverless"
-    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
 
 
 ##############

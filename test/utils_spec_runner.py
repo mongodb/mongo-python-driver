@@ -124,18 +124,6 @@ class SpecTestCreator:
             if max_ver is not None:
                 method = client_context.require_version_max(*max_ver)(method)
 
-        if "serverless" in scenario_def:
-            serverless = scenario_def["serverless"]
-            if serverless == "require":
-                serverless_satisfied = client_context.serverless
-            elif serverless == "forbid":
-                serverless_satisfied = not client_context.serverless
-            else:  # unset or "allow"
-                serverless_satisfied = True
-            method = unittest.skipUnless(
-                serverless_satisfied, "Serverless requirement not satisfied"
-            )(method)
-
         return method
 
     @staticmethod
@@ -168,16 +156,6 @@ class SpecTestCreator:
             return not client_context.auth_enabled
         return True
 
-    @staticmethod
-    def serverless_ok(run_on_req):
-        serverless = run_on_req["serverless"]
-        if serverless == "require":
-            return client_context.serverless
-        elif serverless == "forbid":
-            return not client_context.serverless
-        else:  # unset or "allow"
-            return True
-
     def should_run_on(self, scenario_def):
         run_on = scenario_def.get("runOn", [])
         if not run_on:
@@ -190,7 +168,6 @@ class SpecTestCreator:
                 and self.min_server_version(req)
                 and self.max_server_version(req)
                 and self.valid_auth_enabled(req)
-                and self.serverless_ok(req)
             ):
                 return True
         return False
@@ -671,13 +648,10 @@ class SpecRunner(IntegrationTest):
         server_listener = ServerAndTopologyEventListener()
         # Create a new client, to avoid interference from pooled sessions.
         client_options = self.parse_client_options(test["clientOptions"])
-        # MMAPv1 does not support retryable writes.
-        if client_options.get("retryWrites") is True and client_context.storage_engine == "mmapv1":
-            self.skipTest("MMAPv1 does not support retryWrites=True")
         use_multi_mongos = test["useMultipleMongoses"]
         host = None
         if use_multi_mongos:
-            if client_context.load_balancer or client_context.serverless:
+            if client_context.load_balancer:
                 host = client_context.MULTI_MONGOS_LB_URI
             elif client_context.is_mongos:
                 host = client_context.mongos_seeds()

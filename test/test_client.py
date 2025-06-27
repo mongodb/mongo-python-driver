@@ -1963,7 +1963,7 @@ class TestClient(IntegrationTest):
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
 
     @unittest.skipIf(
-        client_context.load_balancer or client_context.serverless,
+        client_context.load_balancer,
         "loadBalanced clients do not run SDAM",
     )
     @unittest.skipIf(sys.platform == "win32", "Windows does not support SIGSTOP")

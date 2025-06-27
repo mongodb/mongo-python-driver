@@ -146,7 +146,7 @@ buildvariants:
       COMPRESSOR: zlib
   - name: compression-zstd-rhel8
     tasks:
-      - name: .test-standard !.server-4.0
+      - name: .test-standard !.server-4.2
     display_name: Compression zstd RHEL8
     run_on:
       - rhel87-small
@@ -522,13 +522,6 @@ buildvariants:
       PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Server version tests
-  - name: mongodb-v4.0
-    tasks:
-      - name: .server-version
-    display_name: "* MongoDB v4.0"
-    run_on:
-      - rhel87-small
-    tags: [coverage_tag]
   - name: mongodb-v4.2
     tasks:
       - name: .server-version
@@ -585,26 +578,6 @@ buildvariants:
     run_on:
       - rhel87-small
     tags: [coverage_tag]
-
-  # Serverless tests
-  - name: serverless-rhel8-python3.9
-    tasks:
-      - name: .serverless
-    display_name: Serverless RHEL8 Python3.9
-    run_on:
-      - rhel87-small
-    batchtime: 10080
-    expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
-  - name: serverless-rhel8-python3.13
-    tasks:
-      - name: .serverless
-    display_name: Serverless RHEL8 Python3.13
-    run_on:
-      - rhel87-small
-    batchtime: 10080
-    expansions:
-      PYTHON_BINARY: /opt/python/3.13/bin/python3
 
   # Stable api tests
   - name: stable-api-require-v1-rhel8-auth
@@ -684,11 +657,3 @@ buildvariants:
       - rhel87-small
     expansions:
       STORAGE_ENGINE: inmemory
-  - name: storage-mmapv1-rhel8
-    tasks:
-      - name: .test-standard !.sharded_cluster-auth-ssl .server-4.0
-    display_name: Storage MMAPv1 RHEL8
-    run_on:
-      - rhel87-small
-    expansions:
-      STORAGE_ENGINE: mmapv1

@@ -67,6 +67,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
 from gridfs import GridFSBucket, GridOut, NoFile
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
+from pymongo.driver_info import DriverInfo
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     AutoReconnect,
@@ -130,14 +131,6 @@ def is_run_on_requirement_satisfied(requirement):
     if req_max_server_version:
         max_version_satisfied = Version.from_string(req_max_server_version) >= server_version
 
-    serverless = requirement.get("serverless")
-    if serverless == "require":
-        serverless_satisfied = client_context.serverless
-    elif serverless == "forbid":
-        serverless_satisfied = not client_context.serverless
-    else:  # unset or "allow"
-        serverless_satisfied = True
-
     params_satisfied = True
     params = requirement.get("serverParameters")
     if params:
@@ -167,7 +160,6 @@ def is_run_on_requirement_satisfied(requirement):
         topology_satisfied
         and min_version_satisfied
         and max_version_satisfied
-        and serverless_satisfied
         and params_satisfied
         and auth_satisfied
         and csfle_satisfied
@@ -283,7 +275,7 @@ class EntityMapUtil:
             self._listeners[spec["id"]] = listener
             kwargs["event_listeners"] = [listener]
             if spec.get("useMultipleMongoses"):
-                if client_context.load_balancer or client_context.serverless:
+                if client_context.load_balancer:
                     kwargs["h"] = client_context.MULTI_MONGOS_LB_URI
                 elif client_context.is_mongos:
                     kwargs["h"] = client_context.mongos_seeds()
@@ -439,7 +431,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     SCHEMA_VERSION = Version.from_string("1.22")
     RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes
     mongos_clients: list[MongoClient] = []
@@ -502,19 +493,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             raise unittest.SkipTest(f"{self.__class__.__name__} runOnRequirements not satisfied")
 
         # add any special-casing for skipping tests here
-        if client_context.storage_engine == "mmapv1":
-            if "retryable-writes" in self.TEST_SPEC["description"] or "retryable_writes" in str(
-                self.TEST_PATH
-            ):
-                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
         # Handle mongos_clients for transactions tests.
         self.mongos_clients = []
-        if (
-            client_context.supports_transactions()
-            and not client_context.load_balancer
-            and not client_context.serverless
-        ):
+        if client_context.supports_transactions() and not client_context.load_balancer:
             for address in client_context.mongoses:
                 self.mongos_clients.append(self.single_client("{}:{}".format(*address)))
 
@@ -532,13 +514,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
-        if client_context.storage_engine == "mmapv1":
-            if (
-                "Dirty explicit session is discarded" in spec["description"]
-                or "Dirty implicit session is discarded" in spec["description"]
-                or "Cancel server check" in spec["description"]
-            ):
-                self.skipTest("MMAPv1 does not support retryWrites=True")
         if "Client side error in command starting transaction" in spec["description"]:
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
@@ -551,22 +526,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("PYTHON-5170 tests are flakey")
         if "Driver extends timeout while streaming" in spec["description"] and not _IS_SYNC:
             self.skipTest("PYTHON-5174 tests are flakey")
-        if (
-            "inserting _id with type null via clientBulkWrite" in spec["description"]
-            or "commitTransaction fails after Interrupted" in spec["description"]
-            or "commit is not retried after MaxTimeMSExpired error" in spec["description"]
-        ) and client_context.serverless:
-            self.skipTest("PYTHON-5326 known serverless failures")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
             if "gridfs" in class_name and sys.platform == "win32":
                 self.skipTest("PYTHON-3522 CSOT GridFS tests are flaky on Windows")
-            if client_context.storage_engine == "mmapv1":
-                self.skipTest(
-                    "MMAPv1 does not support retryable writes which is required for CSOT tests"
-                )
             if "change" in description or "change" in class_name:
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
@@ -591,11 +556,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.skipTest("PyMongo does not support count()")
             if name == "listIndexNames":
                 self.skipTest("PyMongo does not support list_index_names()")
-            if client_context.storage_engine == "mmapv1":
-                if name == "createChangeStream":
-                    self.skipTest("MMAPv1 does not support change streams")
-                if name == "withTransaction" or name == "startTransaction":
-                    self.skipTest("MMAPv1 does not support document-level locking")
             if not client_context.test_commands_enabled:
                 if name == "failPoint" or name == "targetedFailPoint":
                     self.skipTest("Test commands must be enabled to use fail points")
@@ -701,8 +661,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.fail(f"Operation {opname} not supported for entity of type {type(target)}")
 
     def __entityOperation_createChangeStream(self, target, *args, **kwargs):
-        if client_context.storage_engine == "mmapv1":
-            self.skipTest("MMAPv1 does not support change streams")
         self.__raise_if_unsupported("createChangeStream", target, MongoClient, Database, Collection)
         stream = target.watch(*args, **kwargs)
         self.addCleanup(stream.close)
@@ -827,14 +785,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return (target.list_search_indexes(name, **agg_kwargs)).to_list()
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
-        if client_context.storage_engine == "mmapv1":
-            self.skipTest("MMAPv1 does not support document-level locking")
         self.__raise_if_unsupported("withTransaction", target, ClientSession)
         return target.with_transaction(*args, **kwargs)
 
     def _sessionOperation_startTransaction(self, target, *args, **kwargs):
-        if client_context.storage_engine == "mmapv1":
-            self.skipTest("MMAPv1 does not support document-level locking")
         self.__raise_if_unsupported("startTransaction", target, ClientSession)
         return target.start_transaction(*args, **kwargs)
 
@@ -856,6 +810,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _cursor_close(self, target, *args, **kwargs):
         self.__raise_if_unsupported("close", target, NonLazyCursor, CommandCursor)
         return target.close()
+
+    def _clientOperation_appendMetadata(self, target, *args, **kwargs):
+        info_opts = kwargs["driver_info_options"]
+        driver_info = DriverInfo(info_opts["name"], info_opts["version"], info_opts["platform"])
+        target.append_metadata(driver_info)
 
     def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:

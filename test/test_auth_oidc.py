@@ -17,13 +17,13 @@ from __future__ import annotations
 
 import os
 import sys
-import threading
 import time
 import unittest
 import warnings
 from contextlib import contextmanager
 from pathlib import Path
 from test import PyMongoTestCase
+from test.helpers import ConcurrentRunner
 from typing import Dict
 
 import pytest
@@ -50,6 +50,8 @@ from pymongo.synchronous.auth_oidc import (
     _get_authenticator,
 )
 from pymongo.synchronous.uri_parser import parse_uri
+
+_IS_SYNC = True
 
 ROOT = Path(__file__).parent.parent.resolve()
 TEST_PATH = ROOT / "auth" / "unified"
@@ -86,7 +88,7 @@ class OIDCTestBase(PyMongoTestCase):
                 token_file = TOKEN_FILE
             else:
                 token_file = os.path.join(TOKEN_DIR, username)
-            with open(token_file) as fid:
+            with open(token_file) as fid:  # noqa: ASYNC101,RUF100
                 return fid.read()
         elif ENVIRON == "azure":
             opts = parse_uri(self.uri_single)["options"]
@@ -183,7 +185,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = self.create_client(username="test_user1")
         # Perform a find operation that succeeds.
         client.test.test.find_one()
-        # Close the client..
+        # Close the client.
         client.close()
 
     def test_1_3_multiple_principal_user_1(self):
@@ -254,9 +256,11 @@ class TestAuthOIDCHuman(OIDCTestBase):
         uri = "mongodb+srv://example.com?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D"
         with self.assertRaises(ConfigurationError), warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            _ = MongoClient(
-                uri, authmechanismproperties=dict(OIDC_HUMAN_CALLBACK=self.create_request_cb())
+            c = MongoClient(
+                uri,
+                authmechanismproperties=dict(OIDC_HUMAN_CALLBACK=self.create_request_cb()),
             )
+            c._connect()
 
     def test_1_8_machine_idp_human_callback(self):
         if not os.environ.get("OIDC_IS_LOCAL"):
@@ -634,7 +638,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         ):
             # Perform a bulk read operation.
             cursor = client.test.test.find_raw_batches({})
-            list(cursor)
+            cursor.to_list()
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -658,7 +662,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         ):
             # Perform a find operation.
             cursor = client.test.test.find({"a": 1})
-            self.assertGreaterEqual(len(list(cursor)), 1)
+            self.assertGreaterEqual(len(cursor.to_list()), 1)
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -682,7 +686,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         ):
             # Perform a find operation.
             cursor = client.test.test.find({"a": 1}, batch_size=1)
-            self.assertGreaterEqual(len(list(cursor)), 1)
+            self.assertGreaterEqual(len(cursor.to_list()), 1)
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -712,7 +716,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         ):
             # Perform a find operation.
             cursor = client.test.test.find({"a": 1}, batch_size=1, cursor_type=CursorType.EXHAUST)
-            self.assertGreaterEqual(len(list(cursor)), 1)
+            self.assertGreaterEqual(len(cursor.to_list()), 1)
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -737,7 +741,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             # Perform a count operation.
             cursor = client.test.command({"count": "test"})
 
-        self.assertGreaterEqual(len(list(cursor)), 1)
+        self.assertGreaterEqual(len(cursor), 1)
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -790,19 +794,20 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Create a ``MongoClient`` configured with a custom OIDC callback that
         # implements the provider logic.
         client = self.create_client()
+        client._connect()
 
-        # Start 10 threads and run 100 find operations in each thread that all succeed.
+        # Start 10 tasks and run 100 find operations that all succeed in each task.
         def target():
             for _ in range(100):
                 client.test.test.find_one()
 
-        threads = []
-        for _ in range(10):
-            thread = threading.Thread(target=target)
-            thread.start()
-            threads.append(thread)
-        for thread in threads:
-            thread.join()
+        tasks = []
+        for i in range(10):
+            tasks.append(ConcurrentRunner(target=target))
+        for t in tasks:
+            t.start()
+        for t in tasks:
+            t.join()
         # Assert that the callback was called 1 time.
         self.assertEqual(self.request_called, 1)
 
@@ -880,6 +885,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
     def test_3_1_authentication_failure_with_cached_tokens_fetch_a_new_token_and_retry(self):
         # Create a MongoClient and an OIDC callback that implements the provider logic.
         client = self.create_client()
+        client._connect()
         # Poison the cache with an invalid access token.
         # Set a fail point for ``find`` command.
         with self.fail_point(
@@ -946,6 +952,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Create a ``MongoClient`` configured with a custom OIDC callback that
         # implements the provider logic.
         client = self.create_client()
+        client._connect()
 
         # Set a fail point for the find command.
         with self.fail_point(
@@ -1037,6 +1044,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Create an OIDC configured client that can listen for `SaslStart` commands.
         listener = EventListener()
         client = self.create_client(event_listeners=[listener])
+        client._connect()
 
         # Preload the *Client Cache* with a valid access token to enforce Speculative Authentication.
         client2 = self.create_client()
@@ -1075,6 +1083,25 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Assert there were `SaslStart` commands executed.
         assert any(event.command_name.lower() == "saslstart" for event in listener.started_events)
 
+    def test_4_5_reauthentication_succeeds_when_a_session_is_involved(self):
+        # Create an OIDC configured client.
+        client = self.create_client()
+
+        # Set a fail point for `find` commands of the form:
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Start a new session.
+            with client.start_session() as session:
+                # In the started session perform a `find` operation that succeeds.
+                client.test.test.find_one({}, session=session)
+
+        # Assert that the callback was called 2 times (once during the connection handshake, and again during reauthentication).
+        self.assertEqual(self.request_called, 2)
+
     def test_5_1_azure_with_no_username(self):
         if ENVIRON != "azure":
             raise unittest.SkipTest("Test is only supported on Azure")
@@ -1101,6 +1128,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client1 = self.create_client()
         client1.test.test.find_one()
         client2 = self.create_client()
+        client2._connect()
 
         # Prime the cache of the second client.
         client2.options.pool_options._credentials.cache.data = (

@@ -75,6 +75,7 @@ from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.encryption import AsyncClientEncryption
 from pymongo.asynchronous.helpers import anext
+from pymongo.driver_info import DriverInfo
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     AutoReconnect,
@@ -131,14 +132,6 @@ async def is_run_on_requirement_satisfied(requirement):
     if req_max_server_version:
         max_version_satisfied = Version.from_string(req_max_server_version) >= server_version
 
-    serverless = requirement.get("serverless")
-    if serverless == "require":
-        serverless_satisfied = async_client_context.serverless
-    elif serverless == "forbid":
-        serverless_satisfied = not async_client_context.serverless
-    else:  # unset or "allow"
-        serverless_satisfied = True
-
     params_satisfied = True
     params = requirement.get("serverParameters")
     if params:
@@ -168,7 +161,6 @@ async def is_run_on_requirement_satisfied(requirement):
         topology_satisfied
         and min_version_satisfied
         and max_version_satisfied
-        and serverless_satisfied
         and params_satisfied
         and auth_satisfied
         and csfle_satisfied
@@ -284,7 +276,7 @@ class EntityMapUtil:
             self._listeners[spec["id"]] = listener
             kwargs["event_listeners"] = [listener]
             if spec.get("useMultipleMongoses"):
-                if async_client_context.load_balancer or async_client_context.serverless:
+                if async_client_context.load_balancer:
                     kwargs["h"] = async_client_context.MULTI_MONGOS_LB_URI
                 elif async_client_context.is_mongos:
                     kwargs["h"] = async_client_context.mongos_seeds()
@@ -440,7 +432,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
     SCHEMA_VERSION = Version.from_string("1.22")
     RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes
     mongos_clients: list[AsyncMongoClient] = []
@@ -503,19 +494,10 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             raise unittest.SkipTest(f"{self.__class__.__name__} runOnRequirements not satisfied")
 
         # add any special-casing for skipping tests here
-        if async_client_context.storage_engine == "mmapv1":
-            if "retryable-writes" in self.TEST_SPEC["description"] or "retryable_writes" in str(
-                self.TEST_PATH
-            ):
-                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
         # Handle mongos_clients for transactions tests.
         self.mongos_clients = []
-        if (
-            async_client_context.supports_transactions()
-            and not async_client_context.load_balancer
-            and not async_client_context.serverless
-        ):
+        if async_client_context.supports_transactions() and not async_client_context.load_balancer:
             for address in async_client_context.mongoses:
                 self.mongos_clients.append(await self.async_single_client("{}:{}".format(*address)))
 
@@ -533,13 +515,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
-        if async_client_context.storage_engine == "mmapv1":
-            if (
-                "Dirty explicit session is discarded" in spec["description"]
-                or "Dirty implicit session is discarded" in spec["description"]
-                or "Cancel server check" in spec["description"]
-            ):
-                self.skipTest("MMAPv1 does not support retryWrites=True")
         if "Client side error in command starting transaction" in spec["description"]:
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
@@ -552,22 +527,12 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             self.skipTest("PYTHON-5170 tests are flakey")
         if "Driver extends timeout while streaming" in spec["description"] and not _IS_SYNC:
             self.skipTest("PYTHON-5174 tests are flakey")
-        if (
-            "inserting _id with type null via clientBulkWrite" in spec["description"]
-            or "commitTransaction fails after Interrupted" in spec["description"]
-            or "commit is not retried after MaxTimeMSExpired error" in spec["description"]
-        ) and async_client_context.serverless:
-            self.skipTest("PYTHON-5326 known serverless failures")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
             if "gridfs" in class_name and sys.platform == "win32":
                 self.skipTest("PYTHON-3522 CSOT GridFS tests are flaky on Windows")
-            if async_client_context.storage_engine == "mmapv1":
-                self.skipTest(
-                    "MMAPv1 does not support retryable writes which is required for CSOT tests"
-                )
             if "change" in description or "change" in class_name:
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
@@ -592,11 +557,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 self.skipTest("PyMongo does not support count()")
             if name == "listIndexNames":
                 self.skipTest("PyMongo does not support list_index_names()")
-            if async_client_context.storage_engine == "mmapv1":
-                if name == "createChangeStream":
-                    self.skipTest("MMAPv1 does not support change streams")
-                if name == "withTransaction" or name == "startTransaction":
-                    self.skipTest("MMAPv1 does not support document-level locking")
             if not async_client_context.test_commands_enabled:
                 if name == "failPoint" or name == "targetedFailPoint":
                     self.skipTest("Test commands must be enabled to use fail points")
@@ -702,8 +662,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             self.fail(f"Operation {opname} not supported for entity of type {type(target)}")
 
     async def __entityOperation_createChangeStream(self, target, *args, **kwargs):
-        if async_client_context.storage_engine == "mmapv1":
-            self.skipTest("MMAPv1 does not support change streams")
         self.__raise_if_unsupported(
             "createChangeStream", target, AsyncMongoClient, AsyncDatabase, AsyncCollection
         )
@@ -830,14 +788,10 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         return await (await target.list_search_indexes(name, **agg_kwargs)).to_list()
 
     async def _sessionOperation_withTransaction(self, target, *args, **kwargs):
-        if async_client_context.storage_engine == "mmapv1":
-            self.skipTest("MMAPv1 does not support document-level locking")
         self.__raise_if_unsupported("withTransaction", target, AsyncClientSession)
         return await target.with_transaction(*args, **kwargs)
 
     async def _sessionOperation_startTransaction(self, target, *args, **kwargs):
-        if async_client_context.storage_engine == "mmapv1":
-            self.skipTest("MMAPv1 does not support document-level locking")
         self.__raise_if_unsupported("startTransaction", target, AsyncClientSession)
         return await target.start_transaction(*args, **kwargs)
 
@@ -859,6 +813,11 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     async def _cursor_close(self, target, *args, **kwargs):
         self.__raise_if_unsupported("close", target, NonLazyCursor, AsyncCommandCursor)
         return await target.close()
+
+    async def _clientOperation_appendMetadata(self, target, *args, **kwargs):
+        info_opts = kwargs["driver_info_options"]
+        driver_info = DriverInfo(info_opts["name"], info_opts["version"], info_opts["platform"])
+        target.append_metadata(driver_info)
 
     async def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:

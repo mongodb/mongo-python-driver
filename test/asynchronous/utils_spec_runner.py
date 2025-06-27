@@ -124,18 +124,6 @@ class AsyncSpecTestCreator:
             if max_ver is not None:
                 method = async_client_context.require_version_max(*max_ver)(method)
 
-        if "serverless" in scenario_def:
-            serverless = scenario_def["serverless"]
-            if serverless == "require":
-                serverless_satisfied = async_client_context.serverless
-            elif serverless == "forbid":
-                serverless_satisfied = not async_client_context.serverless
-            else:  # unset or "allow"
-                serverless_satisfied = True
-            method = unittest.skipUnless(
-                serverless_satisfied, "Serverless requirement not satisfied"
-            )(method)
-
         return method
 
     @staticmethod
@@ -168,16 +156,6 @@ class AsyncSpecTestCreator:
             return not async_client_context.auth_enabled
         return True
 
-    @staticmethod
-    def serverless_ok(run_on_req):
-        serverless = run_on_req["serverless"]
-        if serverless == "require":
-            return async_client_context.serverless
-        elif serverless == "forbid":
-            return not async_client_context.serverless
-        else:  # unset or "allow"
-            return True
-
     async def should_run_on(self, scenario_def):
         run_on = scenario_def.get("runOn", [])
         if not run_on:
@@ -190,7 +168,6 @@ class AsyncSpecTestCreator:
                 and self.min_server_version(req)
                 and self.max_server_version(req)
                 and self.valid_auth_enabled(req)
-                and self.serverless_ok(req)
             ):
                 return True
         return False
@@ -671,16 +648,10 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         server_listener = ServerAndTopologyEventListener()
         # Create a new client, to avoid interference from pooled sessions.
         client_options = self.parse_client_options(test["clientOptions"])
-        # MMAPv1 does not support retryable writes.
-        if (
-            client_options.get("retryWrites") is True
-            and async_client_context.storage_engine == "mmapv1"
-        ):
-            self.skipTest("MMAPv1 does not support retryWrites=True")
         use_multi_mongos = test["useMultipleMongoses"]
         host = None
         if use_multi_mongos:
-            if async_client_context.load_balancer or async_client_context.serverless:
+            if async_client_context.load_balancer:
                 host = async_client_context.MULTI_MONGOS_LB_URI
             elif async_client_context.is_mongos:
                 host = async_client_context.mongos_seeds()

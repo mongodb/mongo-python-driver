@@ -165,7 +165,7 @@ class AsyncTestBulk(AsyncBulkTestBase):
     async def test_update_many(self):
         await self._test_update_many({"$set": {"foo": "bar"}})
 
-    @async_client_context.require_version_min(4, 1, 11)
+    @async_client_context.require_version_min(4, 2, 0)
     async def test_update_many_pipeline(self):
         await self._test_update_many([{"$set": {"foo": "bar"}}])
 
@@ -206,7 +206,7 @@ class AsyncTestBulk(AsyncBulkTestBase):
     async def test_update_one(self):
         await self._test_update_one({"$set": {"foo": "bar"}})
 
-    @async_client_context.require_version_min(4, 1, 11)
+    @async_client_context.require_version_min(4, 2, 0)
     async def test_update_one_pipeline(self):
         await self._test_update_one([{"$set": {"foo": "bar"}}])
 

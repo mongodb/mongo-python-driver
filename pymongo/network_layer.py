@@ -286,6 +286,7 @@ async def _async_socket_receive(
 
 
 _PYPY = "PyPy" in sys.version
+_WINDOWS = sys.platform == "win32"
 
 
 def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
@@ -337,7 +338,8 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
         while bytes_read < length:
             try:
                 # Use the legacy wait_for_read cancellation approach on PyPy due to PYTHON-5011.
-                if _PYPY:
+                # also use it on Windows due to PYTHON-5405
+                if _PYPY or _WINDOWS:
                     wait_for_read(conn, deadline)
                     if _csot.get_timeout() and deadline is not None:
                         conn.set_conn_timeout(max(deadline - time.monotonic(), 0))
@@ -359,6 +361,7 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
                     raise _OperationCancelled("operation cancelled") from None
                 if (
                     _PYPY
+                    or _WINDOWS
                     or not conn.is_sdam
                     and deadline is not None
                     and deadline - time.monotonic() < 0

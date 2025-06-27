@@ -194,10 +194,11 @@ class TestSession(IntegrationTest):
         # successful connection checkout" test from Driver Sessions Spec.
         succeeded = False
         lsid_set = set()
-        failures = 0
-        for _ in range(5):
-            listener = OvertCommandListener()
-            client = self.rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
+        listener = OvertCommandListener()
+        client = self.rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
+        # Retry up to 10 times because there is a known race condition that can cause multiple
+        # sessions to be used: connection check in happens before session check in
+        for _ in range(10):
             cursor = client.db.test.find({})
             ops: List[Tuple[Callable, List[Any]]] = [
                 (client.db.test.find_one, [{"_id": 1}]),
@@ -234,15 +235,14 @@ class TestSession(IntegrationTest):
             for t in tasks:
                 t.join()
                 self.assertIsNone(t.exc)
-            client.close()
             lsid_set.clear()
             for i in listener.started_events:
                 if i.command.get("lsid"):
                     lsid_set.add(i.command.get("lsid")["id"])
             if len(lsid_set) == 1:
+                # Break on first success.
                 succeeded = True
-            else:
-                failures += 1
+                break
         self.assertTrue(succeeded, lsid_set)
 
     def test_pool_lifo(self):
@@ -1032,14 +1032,6 @@ class TestCausalConsistency(UnitTest):
         self._test_no_read_concern(lambda coll, session: coll.find({}, session=session).explain())
 
     @client_context.require_no_standalone
-    @client_context.require_version_max(4, 1, 0)
-    def test_aggregate_out_does_not_include_read_concern(self):
-        def alambda(coll, session):
-            (coll.aggregate([{"$out": "aggout"}], session=session)).to_list()
-
-        self._test_no_read_concern(alambda)
-
-    @client_context.require_no_standalone
     def test_get_more_does_not_include_read_concern(self):
         coll = self.client.pymongo_test.test
         with self.client.start_session() as sess:
@@ -1081,7 +1073,6 @@ class TestCausalConsistency(UnitTest):
             self.assertIsNone(act)
 
     @client_context.require_no_standalone
-    @client_context.require_no_mmap
     def test_read_concern(self):
         with self.client.start_session(causal_consistency=True) as s:
             coll = self.client.pymongo_test.test

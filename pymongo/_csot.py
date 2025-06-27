@@ -32,6 +32,12 @@ RTT: ContextVar[float] = ContextVar("RTT", default=0.0)
 DEADLINE: ContextVar[float] = ContextVar("DEADLINE", default=float("inf"))
 
 
+def reset_all() -> None:
+    TIMEOUT.set(None)
+    RTT.set(0.0)
+    DEADLINE.set(float("inf"))
+
+
 def get_timeout() -> Optional[float]:
     return TIMEOUT.get(None)
 

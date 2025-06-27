@@ -323,7 +323,7 @@ class TestSSL(AsyncIntegrationTest):
 
         response = await self.client.admin.command(HelloCompat.LEGACY_CMD)
 
-        with self.assertRaises(ConnectionFailure):
+        with self.assertRaises(ConnectionFailure) as cm:
             await connected(
                 self.simple_client(
                     "server",
@@ -335,6 +335,8 @@ class TestSSL(AsyncIntegrationTest):
                     **self.credentials,  # type: ignore[arg-type]
                 )
             )
+        # PYTHON-5414 Check for "module service_identity has no attribute SICertificateError"
+        self.assertNotIn("has no attribute", str(cm.exception))
 
         await connected(
             self.simple_client(

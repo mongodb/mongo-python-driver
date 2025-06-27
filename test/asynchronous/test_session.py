@@ -194,10 +194,11 @@ class TestSession(AsyncIntegrationTest):
         # successful connection checkout" test from Driver Sessions Spec.
         succeeded = False
         lsid_set = set()
-        failures = 0
-        for _ in range(5):
-            listener = OvertCommandListener()
-            client = await self.async_rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
+        listener = OvertCommandListener()
+        client = await self.async_rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
+        # Retry up to 10 times because there is a known race condition that can cause multiple
+        # sessions to be used: connection check in happens before session check in
+        for _ in range(10):
             cursor = client.db.test.find({})
             ops: List[Tuple[Callable, List[Any]]] = [
                 (client.db.test.find_one, [{"_id": 1}]),
@@ -234,15 +235,14 @@ class TestSession(AsyncIntegrationTest):
             for t in tasks:
                 await t.join()
                 self.assertIsNone(t.exc)
-            await client.close()
             lsid_set.clear()
             for i in listener.started_events:
                 if i.command.get("lsid"):
                     lsid_set.add(i.command.get("lsid")["id"])
             if len(lsid_set) == 1:
+                # Break on first success.
                 succeeded = True
-            else:
-                failures += 1
+                break
         self.assertTrue(succeeded, lsid_set)
 
     async def test_pool_lifo(self):
@@ -1046,14 +1046,6 @@ class TestCausalConsistency(AsyncUnitTest):
         )
 
     @async_client_context.require_no_standalone
-    @async_client_context.require_version_max(4, 1, 0)
-    async def test_aggregate_out_does_not_include_read_concern(self):
-        async def alambda(coll, session):
-            await (await coll.aggregate([{"$out": "aggout"}], session=session)).to_list()
-
-        await self._test_no_read_concern(alambda)
-
-    @async_client_context.require_no_standalone
     async def test_get_more_does_not_include_read_concern(self):
         coll = self.client.pymongo_test.test
         async with self.client.start_session() as sess:
@@ -1095,7 +1087,6 @@ class TestCausalConsistency(AsyncUnitTest):
             self.assertIsNone(act)
 
     @async_client_context.require_no_standalone
-    @async_client_context.require_no_mmap
     async def test_read_concern(self):
         async with self.client.start_session(causal_consistency=True) as s:
             coll = self.client.pymongo_test.test
