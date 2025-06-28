@@ -32,6 +32,7 @@ import unittest
 import warnings
 from asyncio import iscoroutinefunction
 
+from pymongo.errors import AutoReconnect
 from pymongo.synchronous.uri_parser import parse_uri
 
 try:
@@ -1219,12 +1220,17 @@ def teardown():
     c = client_context.client
     if c:
         if not client_context.is_data_lake:
-            c.drop_database("pymongo-pooling-tests")
-            c.drop_database("pymongo_test")
-            c.drop_database("pymongo_test1")
-            c.drop_database("pymongo_test2")
-            c.drop_database("pymongo_test_mike")
-            c.drop_database("pymongo_test_bernie")
+            try:
+                c.drop_database("pymongo-pooling-tests")
+                c.drop_database("pymongo_test")
+                c.drop_database("pymongo_test1")
+                c.drop_database("pymongo_test2")
+                c.drop_database("pymongo_test_mike")
+                c.drop_database("pymongo_test_bernie")
+            except AutoReconnect:
+                # PYTHON-4982
+                if sys.implementation.name.lower() != "pypy":
+                    raise
         c.close()
     print_running_clients()
 
