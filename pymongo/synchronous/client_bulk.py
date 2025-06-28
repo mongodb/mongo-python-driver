@@ -116,6 +116,7 @@ class _ClientBulk:
         self.is_retryable = self.client.options.retry_writes
         self.retrying = False
         self.started_retryable_write = False
+        self.current_run = None
 
     @property
     def bulk_ctx_class(self) -> Type[_ClientBulkWriteContext]:
