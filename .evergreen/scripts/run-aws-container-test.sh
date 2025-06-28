@@ -13,14 +13,17 @@ fi
 export MONGODB_URI="$1"
 
 if echo "$MONGODB_URI" | grep -q "@"; then
-  echo "MONGODB_URI unexpectedly contains user credentials in ECS test!";
+  echo "MONGODB_URI unexpectedly contains user credentials in container test!";
   exit 1
 fi
 # Now we can safely enable xtrace
 set -o xtrace
 
 # Install python with pip.
-PYTHON_VER="python3.9"
+PYTHON_VER="python3.xx"
+apt-get -qq update  < /dev/null > /dev/null
+apt-get -qq install software-properties-common -y < /dev/null > /dev/null  # needed for apt-add-repository
+add-apt-repository ppa:deadsnakes/ppa -y || true  # this will fail on debian
 apt-get -qq update  < /dev/null > /dev/null
 apt-get -qq install $PYTHON_VER $PYTHON_VER-venv build-essential $PYTHON_VER-dev -y  < /dev/null > /dev/null
 
