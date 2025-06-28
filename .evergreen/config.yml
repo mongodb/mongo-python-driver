@@ -42,3 +42,23 @@ post:
   - func: "upload mo artifacts"
   - func: "upload test results"
   - func: "cleanup"
+
+tasks:
+  - name: resync_specs
+    commands:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          include_expansions_in_env: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN]
+          args:
+            - .evergreen/scripts/resync-all-specs.sh
+          working_dir: src
+
+buildvariants:
+  - name: resync_specs
+    display_name: "Resync Specs"
+    run_on: rhel80-small
+    cron: '0 9 * * MON'
+    patchable: true
+    tasks:
+      - name: resync_specs
