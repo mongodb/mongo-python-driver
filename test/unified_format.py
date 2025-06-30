@@ -530,6 +530,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             slow_win32 = [
                 *slow_macos,
                 "maxTimeMS value in the command is less than timeoutMS",
+                "timeoutMS applies to whole operation.*",
             ]
             if sys.platform == "win32" and "gridfs" in class_name:
                 self.skipTest("PYTHON-3522 CSOT GridFS test runs too slow on Windows")
