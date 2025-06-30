@@ -66,6 +66,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
 from gridfs import GridFSBucket, GridOut, NoFile
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
+from pymongo.driver_info import DriverInfo
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     AutoReconnect,
@@ -818,6 +819,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _cursor_close(self, target, *args, **kwargs):
         self.__raise_if_unsupported("close", target, NonLazyCursor, CommandCursor)
         return target.close()
+
+    def _clientOperation_appendMetadata(self, target, *args, **kwargs):
+        info_opts = kwargs["driver_info_options"]
+        driver_info = DriverInfo(info_opts["name"], info_opts["version"], info_opts["platform"])
+        target.append_metadata(driver_info)
 
     def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:

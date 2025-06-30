@@ -25,7 +25,7 @@ jobs:
       - name: Install just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
       - name: Install uv
-        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v5
+        uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -65,7 +65,7 @@ jobs:
       - name: Install just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
       - name: Install uv
-        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v5
+        uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba # v5
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -88,7 +88,7 @@ jobs:
       - name: Install just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
       - name: Install uv
-        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v5
+        uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -111,7 +111,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v5
+        uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -130,7 +130,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v5
+        uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -152,7 +152,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v5
+        uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba # v5
         with:
           enable-cache: true
           python-version: "${{matrix.python}}"
@@ -220,3 +220,55 @@ jobs:
             which python
             pip install -e ".[test]"
             PYMONGO_MUST_CONNECT=1 pytest -v -k client_context
+
+  test_minimum:
+      permissions:
+        contents: read
+      runs-on: ubuntu-latest
+      name: Test using minimum dependencies and supported Python
+      steps:
+        - uses: actions/checkout@v4
+          with:
+            persist-credentials: false
+        - name: Install uv
+          uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba # v5
+          with:
+            python-version: '3.9'
+        - name: Start MongoDB
+          uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
+          with:
+            mongodb-version: 6.0
+        # Async and our test_dns do not support dnspython 1.X, so we don't run async or dns tests here
+        - name: Run tests
+          shell: bash
+          run: |
+            uv venv
+            source .venv/bin/activate
+            uv pip install -e ".[test]" --resolution=lowest-direct
+            pytest -v test/test_srv_polling.py
+
+  test_minimum_for_async:
+      permissions:
+        contents: read
+      runs-on: ubuntu-latest
+      name: Test async's minimum dependencies and Python
+      steps:
+        - uses: actions/checkout@v4
+          with:
+            persist-credentials: false
+        - name: Install uv
+          uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba # v5
+          with:
+            python-version: '3.9'
+        - name: Start MongoDB
+          uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
+          with:
+            mongodb-version: 6.0
+        # The lifetime kwarg we use in srv resolution was added to the async resolver API in dnspython 2.1.0
+        - name: Run tests
+          shell: bash
+          run: |
+            uv venv
+            source .venv/bin/activate
+            uv pip install -e ".[test]" --resolution=lowest-direct dnspython==2.1.0 --force-reinstall
+            pytest -v test/test_srv_polling.py test/test_dns.py test/asynchronous/test_srv_polling.py test/asynchronous/test_dns.py

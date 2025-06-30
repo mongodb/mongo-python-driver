@@ -500,7 +500,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         # Sort by 'score' field.
         cursor.sort([("score", {"$meta": "textScore"})])
         results = await cursor.to_list()
-        self.assertTrue(results[0]["score"] >= results[1]["score"])
+        self.assertGreaterEqual(results[0]["score"], results[1]["score"])
 
         await db.test.drop_indexes()
 
