@@ -547,6 +547,6 @@ def _validate_uri(
         "password": passwd,
         "database": dbase,
         "collection": collection,
-        "options": options.as_dict(),
+        "options": options,
         "fqdn": fqdn,
     }

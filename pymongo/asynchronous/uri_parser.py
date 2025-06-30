@@ -113,6 +113,7 @@ async def parse_uri(
             srv_max_hosts,
         )
     )
+    result["options"] = result["options"].as_dict()
     return result
 
 
@@ -184,5 +185,5 @@ async def _parse_srv(
 
     return {
         "nodelist": nodes,
-        "options": options.as_dict(),
+        "options": options,
     }
