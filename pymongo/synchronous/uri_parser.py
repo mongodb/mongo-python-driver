@@ -184,5 +184,5 @@ def _parse_srv(
 
     return {
         "nodelist": nodes,
-        "options": options,
+        "options": options.as_dict(),
     }
