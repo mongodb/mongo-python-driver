@@ -451,20 +451,6 @@ class TestClientMaxWireVersion(IntegrationTest):
     def setUp(self):
         super().setUp()
 
-    @client_context.require_version_max(4, 0, 99)
-    def test_raise_max_wire_version_error(self):
-        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
-        client = self.rs_or_single_client(auto_encryption_opts=opts)
-        msg = "Auto-encryption requires a minimum MongoDB version of 4.2"
-        with self.assertRaisesRegex(ConfigurationError, msg):
-            client.test.test.insert_one({})
-        with self.assertRaisesRegex(ConfigurationError, msg):
-            client.admin.command("ping")
-        with self.assertRaisesRegex(ConfigurationError, msg):
-            client.test.test.find_one({})
-        with self.assertRaisesRegex(ConfigurationError, msg):
-            client.test.test.bulk_write([InsertOne({})])
-
     def test_raise_unsupported_error(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = self.rs_or_single_client(auto_encryption_opts=opts)

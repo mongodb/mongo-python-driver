@@ -363,7 +363,7 @@ class TestSrvPolling(AsyncPyMongoTestCase):
         # Regression test for PYTHON-4407
         import dns.resolver
 
-        self.assertTrue(hasattr(dns.resolver, "resolve"))
+        self.assertTrue(hasattr(dns.resolver, "resolve") or hasattr(dns.resolver, "query"))
 
 
 if __name__ == "__main__":

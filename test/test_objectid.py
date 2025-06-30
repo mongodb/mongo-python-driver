@@ -92,7 +92,7 @@ class TestObjectId(unittest.TestCase):
 
         self.assertEqual(utc, d2.tzinfo)
         d2 = d2.replace(tzinfo=None)
-        self.assertTrue(d2 - d1 < datetime.timedelta(seconds=2))
+        self.assertLess(d2 - d1, datetime.timedelta(seconds=2))
 
     def test_from_datetime(self):
         d = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)

@@ -165,7 +165,7 @@ class AsyncTestBulk(AsyncBulkTestBase):
     async def test_update_many(self):
         await self._test_update_many({"$set": {"foo": "bar"}})
 
-    @async_client_context.require_version_min(4, 1, 11)
+    @async_client_context.require_version_min(4, 2, 0)
     async def test_update_many_pipeline(self):
         await self._test_update_many([{"$set": {"foo": "bar"}}])
 
@@ -206,7 +206,7 @@ class AsyncTestBulk(AsyncBulkTestBase):
     async def test_update_one(self):
         await self._test_update_one({"$set": {"foo": "bar"}})
 
-    @async_client_context.require_version_min(4, 1, 11)
+    @async_client_context.require_version_min(4, 2, 0)
     async def test_update_one_pipeline(self):
         await self._test_update_one([{"$set": {"foo": "bar"}}])
 
@@ -994,7 +994,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
 
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(details["writeConcernErrors"]) > 0)
+        self.assertGreater(len(details["writeConcernErrors"]), 0)
 
         failed = details["writeConcernErrors"][0]
         self.assertEqual(64, failed["code"])
@@ -1035,7 +1035,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
             details,
         )
 
-        self.assertTrue(len(details["writeConcernErrors"]) > 1)
+        self.assertGreater(len(details["writeConcernErrors"]), 1)
         failed = details["writeErrors"][0]
         self.assertIn("duplicate", failed["errmsg"])
 
@@ -1073,7 +1073,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
         self.assertEqual(0, len(details["writeErrors"]))
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(details["writeConcernErrors"]) > 1)
+        self.assertGreater(len(details["writeConcernErrors"]), 1)
 
         await self.coll.delete_many({})
         await self.coll.create_index("a", unique=True)
@@ -1100,7 +1100,7 @@ class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
         self.assertEqual(1, len(details["writeErrors"]))
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(details["writeConcernErrors"]) > 1)
+        self.assertGreater(len(details["writeConcernErrors"]), 1)
 
         failed = details["writeErrors"][0]
         self.assertEqual(2, failed["index"])

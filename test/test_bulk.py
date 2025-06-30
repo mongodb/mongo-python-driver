@@ -165,7 +165,7 @@ class TestBulk(BulkTestBase):
     def test_update_many(self):
         self._test_update_many({"$set": {"foo": "bar"}})
 
-    @client_context.require_version_min(4, 1, 11)
+    @client_context.require_version_min(4, 2, 0)
     def test_update_many_pipeline(self):
         self._test_update_many([{"$set": {"foo": "bar"}}])
 
@@ -206,7 +206,7 @@ class TestBulk(BulkTestBase):
     def test_update_one(self):
         self._test_update_one({"$set": {"foo": "bar"}})
 
-    @client_context.require_version_min(4, 1, 11)
+    @client_context.require_version_min(4, 2, 0)
     def test_update_one_pipeline(self):
         self._test_update_one([{"$set": {"foo": "bar"}}])
 
@@ -992,7 +992,7 @@ class TestBulkWriteConcern(BulkTestBase):
 
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(details["writeConcernErrors"]) > 0)
+        self.assertGreater(len(details["writeConcernErrors"]), 0)
 
         failed = details["writeConcernErrors"][0]
         self.assertEqual(64, failed["code"])
@@ -1033,7 +1033,7 @@ class TestBulkWriteConcern(BulkTestBase):
             details,
         )
 
-        self.assertTrue(len(details["writeConcernErrors"]) > 1)
+        self.assertGreater(len(details["writeConcernErrors"]), 1)
         failed = details["writeErrors"][0]
         self.assertIn("duplicate", failed["errmsg"])
 
@@ -1069,7 +1069,7 @@ class TestBulkWriteConcern(BulkTestBase):
         self.assertEqual(0, len(details["writeErrors"]))
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(details["writeConcernErrors"]) > 1)
+        self.assertGreater(len(details["writeConcernErrors"]), 1)
 
         self.coll.delete_many({})
         self.coll.create_index("a", unique=True)
@@ -1096,7 +1096,7 @@ class TestBulkWriteConcern(BulkTestBase):
         self.assertEqual(1, len(details["writeErrors"]))
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(details["writeConcernErrors"]) > 1)
+        self.assertGreater(len(details["writeConcernErrors"]), 1)
 
         failed = details["writeErrors"][0]
         self.assertEqual(2, failed["index"])

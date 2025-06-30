@@ -376,24 +376,32 @@ class PoolOptions:
                 "async",
             )
         if driver:
-            if driver.name:
-                self.__metadata["driver"]["name"] = "{}|{}".format(
-                    self.__metadata["driver"]["name"],
-                    driver.name,
-                )
-            if driver.version:
-                self.__metadata["driver"]["version"] = "{}|{}".format(
-                    _METADATA["driver"]["version"],
-                    driver.version,
-                )
-            if driver.platform:
-                self.__metadata["platform"] = "{}|{}".format(_METADATA["platform"], driver.platform)
+            self._update_metadata(driver)
 
         env = _metadata_env()
         if env:
             self.__metadata["env"] = env
 
         _truncate_metadata(self.__metadata)
+
+    def _update_metadata(self, driver: DriverInfo) -> None:
+        """Updates the client's metadata"""
+
+        metadata = copy.deepcopy(self.__metadata)
+        if driver.name:
+            metadata["driver"]["name"] = "{}|{}".format(
+                metadata["driver"]["name"],
+                driver.name,
+            )
+        if driver.version:
+            metadata["driver"]["version"] = "{}|{}".format(
+                metadata["driver"]["version"],
+                driver.version,
+            )
+        if driver.platform:
+            metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+
+        self.__metadata = metadata
 
     @property
     def _credentials(self) -> Optional[MongoCredential]:
