@@ -533,6 +533,9 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 "maxTimeMS value in the command is less than timeoutMS",
                 "timeoutMS applies to whole operation.*",
             ]
+            slow_pypy = [
+                "timeoutMS applies to whole operation.*",
+            ]
             if sys.platform == "win32" and "gridfs" in class_name:
                 self.skipTest("PYTHON-3522 CSOT GridFS test runs too slow on Windows")
             if sys.platform == "win32":
@@ -543,6 +546,10 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 for pat in slow_macos:
                     if re.match(pat.lower(), description):
                         self.skipTest("PYTHON-3522 CSOT test runs too slow on MacOS")
+            if sys.implementation.name.lower() == "pypy":
+                for pat in slow_pypy:
+                    if re.match(pat.lower(), description):
+                        self.skipTest("PYTHON-3522 CSOT test runs too slow on PyPy")
             if "change" in description or "change" in class_name:
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
