@@ -90,8 +90,8 @@ async def create_mock_topology(uri, monitor_class=DummyMonitor):
     replica_set_name = None
     direct_connection = None
     load_balanced = None
-    if "replicaset" in parsed_uri["options"]:
-        replica_set_name = parsed_uri["options"]["replicaset"]
+    if "replicaSet" in parsed_uri["options"]:
+        replica_set_name = parsed_uri["options"]["replicaSet"]
     if "directConnection" in parsed_uri["options"]:
         direct_connection = parsed_uri["options"]["directConnection"]
     if "loadBalanced" in parsed_uri["options"]:
