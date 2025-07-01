@@ -347,8 +347,8 @@ class TestURI(unittest.TestCase):
 
         res = copy.deepcopy(orig)
         res["options"] = {
-            "readpreference": ReadPreference.SECONDARY.mongos_mode,
-            "readpreferencetags": [
+            "readPreference": ReadPreference.SECONDARY.mongos_mode,
+            "readPreferenceTags": [
                 {"dc": "west", "use": "website"},
                 {"dc": "east", "use": "website"},
             ],
@@ -368,8 +368,8 @@ class TestURI(unittest.TestCase):
 
         res = copy.deepcopy(orig)
         res["options"] = {
-            "readpreference": ReadPreference.SECONDARY.mongos_mode,
-            "readpreferencetags": [
+            "readPreference": ReadPreference.SECONDARY.mongos_mode,
+            "readPreferenceTags": [
                 {"dc": "west", "use": "website"},
                 {"dc": "east", "use": "website"},
                 {},
@@ -457,10 +457,10 @@ class TestURI(unittest.TestCase):
         self.maxDiff = None
         uri = "mongodb://example.com/?tlsInsecure=true"
         res = {
-            "tlsallowinvalidhostnames": True,
-            "tlsallowinvalidcertificates": True,
+            "tlsAllowInvalidHostnames": True,
+            "tlsAllowInvalidCertificates": True,
             "tlsInsecure": True,
-            "tlsdisableocspendpointcheck": True,
+            "tlsDisableOCSPEndpointCheck": True,
         }
         print(parse_uri(uri)["options"])
         self.assertEqual(res, parse_uri(uri)["options"])
@@ -492,8 +492,8 @@ class TestURI(unittest.TestCase):
         )
         res = parse_uri(uri)
         options = {
-            "readpreference": ReadPreference.SECONDARY.mongos_mode,
-            "readpreferencetags": [
+            "readPreference": ReadPreference.SECONDARY.mongos_mode,
+            "readPreferenceTags": [
                 {"dc": "west", unquoted_val: unquoted_val},
                 {"dc": "east", "use": unquoted_val},
             ],

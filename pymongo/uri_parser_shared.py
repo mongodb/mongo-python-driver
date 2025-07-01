@@ -603,9 +603,12 @@ def _validate_uri(
     }
 
 
-def _make_options_case_sensative(options: _CaseInsensitiveDictionary) -> dict[str, Any]:
-    case_sensative = {}
+def _make_options_case_sensitive(options: _CaseInsensitiveDictionary) -> dict[str, Any]:
+    case_sensitive = {}
     for option in URI_OPTIONS:
         if option.lower() in options:
-            case_sensative[option] = options[option]
-    return case_sensative
+            case_sensitive[option] = options[option]
+            options.pop(option)
+    for k, v in options.items():
+        case_sensitive[k] = v
+    return case_sensitive

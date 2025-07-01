@@ -29,7 +29,7 @@ from pymongo.uri_parser_shared import (
     SCHEME_LEN,
     SRV_SCHEME_LEN,
     _check_options,
-    _make_options_case_sensative,
+    _make_options_case_sensitive,
     _validate_uri,
     split_hosts,
     split_options,
@@ -114,7 +114,7 @@ def parse_uri(
             srv_max_hosts,
         )
     )
-    result["options"] = _make_options_case_sensative(result["options"])
+    result["options"] = _make_options_case_sensitive(result["options"])
     return result
 
 
