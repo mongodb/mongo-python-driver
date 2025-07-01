@@ -532,7 +532,7 @@ class Binary(bytes):
             unpacked_uint8s = list(struct.unpack_from(format_string, self, position))
             if padding and n_values and unpacked_uint8s[-1] & (1 << padding) - 1 != 0:
                 warnings.warn(
-                    "Vector has a padding P, but bits in the final byte lower than P are non-zero. In the next major version, they must be zero.",
+                    "Vector has a padding P, but bits in the final byte lower than P are non-zero. For pymongo>=5.0, they must be zero.",
                     DeprecationWarning,
                     stacklevel=2,
                 )

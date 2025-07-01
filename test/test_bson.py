@@ -784,20 +784,12 @@ class TestBSON(unittest.TestCase):
 
         # Now some invalid cases
         for x in [-1, 257]:
-            try:
+            with self.assertRaises(struct.error):
                 Binary.from_vector([x], BinaryVectorDtype.PACKED_BIT)
-            except Exception as exc:
-                self.assertIsInstance(exc, struct.error)
-            else:
-                self.fail("Failed to raise an exception.")
 
         # Test one must pass zeros for all ignored bits
-        try:
+        with self.assertRaises(ValueError):
             Binary.from_vector([255], BinaryVectorDtype.PACKED_BIT, padding=7)
-        except Exception as exc:
-            self.assertIsInstance(exc, ValueError)
-        else:
-            self.fail("Failed to raise an exception.")
 
         # Test form of Binary.from_vector(BinaryVector)
         assert padded_vec == Binary.from_vector(
