@@ -535,17 +535,17 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             slow_pypy = [
                 "timeoutMS applies to whole operation.*",
             ]
-            if sys.platform == "win32" and "gridfs" in class_name:
+            if "CI" in os.environ and sys.platform == "win32" and "gridfs" in class_name:
                 self.skipTest("PYTHON-3522 CSOT GridFS test runs too slow on Windows")
-            if sys.platform == "win32":
+            if "CI" in os.environ and sys.platform == "win32":
                 for pat in slow_win32:
                     if re.match(pat.lower(), description):
                         self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows")
-            if sys.platform == "darwin":
+            if "CI" in os.environ and sys.platform == "darwin":
                 for pat in slow_macos:
                     if re.match(pat.lower(), description):
                         self.skipTest("PYTHON-3522 CSOT test runs too slow on MacOS")
-            if sys.implementation.name.lower() == "pypy":
+            if "CI" in os.environ and sys.implementation.name.lower() == "pypy":
                 for pat in slow_pypy:
                     if re.match(pat.lower(), description):
                         self.skipTest("PYTHON-3522 CSOT test runs too slow on PyPy")

@@ -183,6 +183,9 @@ def flaky(
         raise ValueError("flaky requires a reason input")
     is_cpython_linux = sys.platform == "linux" and sys.implementation.name == "cpython"
     disable_flaky = "DISABLE_FLAKY" in os.environ
+    if "CI" not in os.environ and "ENABLE_FLAKY" not in os.environ:
+        disable_flaky = True
+
     if disable_flaky or (is_cpython_linux and not affects_cpython_linux):
         max_runs = 1
         min_passes = 1

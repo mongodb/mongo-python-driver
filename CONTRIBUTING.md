@@ -410,6 +410,8 @@ We have a custom `flaky` decorator in [test/asynchronous/utils.py](test/asynchro
 tests that are `flaky`.  By default the decorator only applies when not running on CPython on Linux, since other
 runtimes tend to have more variation.  When using the `flaky` decorator, open a corresponding ticket and
 a use the ticket number as the "reason" parameter to the decorator, e.g. `@flaky(reason="PYTHON-1234")`.
+When running tests locally (not in CI), the `flaky` decorator will be disabled unless `ENABLE_FLAKY` is set.
+To disable the `flaky` decorator in CI, you can use `evergreen patch --param DISABLE_FLAKY=1`.
 
 ## Specification Tests
 

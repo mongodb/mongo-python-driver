@@ -1084,6 +1084,7 @@ def create_run_tests_func():
         "MONGODB_API_VERSION",
         "REQUIRE_API_VERSION",
         "DEBUG_LOG",
+        "DISABLE_FLAKY",
         "ORCHESTRATION_FILE",
         "OCSP_SERVER_TYPE",
         "VERSION",
