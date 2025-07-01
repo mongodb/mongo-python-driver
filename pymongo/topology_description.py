@@ -61,6 +61,16 @@ _ServerSelector = Callable[[List[ServerDescription]], List[ServerDescription]]
 
 
 class TopologyDescription:
+    __slots__ = (
+        "_topology_type",
+        "_replica_set_name",
+        "_server_descriptions",
+        "_max_set_version",
+        "_max_election_id",
+        "_incompatible_err",
+        "_ls_timeout_minutes",
+    )
+
     def __init__(
         self,
         topology_type: int,
