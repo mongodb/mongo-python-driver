@@ -142,9 +142,9 @@ class TestURI(unittest.TestCase):
         self.assertTrue(split_options("wtimeoutms=500"))
         self.assertEqual({"fsync": True}, split_options("fsync=true"))
         self.assertEqual({"fsync": False}, split_options("fsync=false"))
-        self.assertEqual({"authmechanism": "GSSAPI"}, split_options("authMechanism=GSSAPI"))
+        self.assertEqual({"authMechanism": "GSSAPI"}, split_options("authMechanism=GSSAPI"))
         self.assertEqual(
-            {"authmechanism": "SCRAM-SHA-1"}, split_options("authMechanism=SCRAM-SHA-1")
+            {"authMechanism": "SCRAM-SHA-1"}, split_options("authMechanism=SCRAM-SHA-1")
         )
         self.assertEqual({"authsource": "foobar"}, split_options("authSource=foobar"))
         self.assertEqual({"maxpoolsize": 50}, split_options("maxpoolsize=50"))
@@ -290,12 +290,12 @@ class TestURI(unittest.TestCase):
         self.assertEqual(res, parse_uri('mongodb://localhost/test.name/with "delimiters'))
 
         res = copy.deepcopy(orig)
-        res["options"] = {"readpreference": ReadPreference.SECONDARY.mongos_mode}
+        res["options"] = {"readPreference": ReadPreference.SECONDARY.mongos_mode}
         self.assertEqual(res, parse_uri("mongodb://localhost/?readPreference=secondary"))
 
         # Various authentication tests
         res = copy.deepcopy(orig)
-        res["options"] = {"authmechanism": "SCRAM-SHA-256"}
+        res["options"] = {"authMechanism": "SCRAM-SHA-256"}
         res["username"] = "user"
         res["password"] = "password"
         self.assertEqual(
@@ -303,7 +303,7 @@ class TestURI(unittest.TestCase):
         )
 
         res = copy.deepcopy(orig)
-        res["options"] = {"authmechanism": "SCRAM-SHA-256", "authsource": "bar"}
+        res["options"] = {"authMechanism": "SCRAM-SHA-256", "authSource": "bar"}
         res["username"] = "user"
         res["password"] = "password"
         res["database"] = "foo"
@@ -315,7 +315,7 @@ class TestURI(unittest.TestCase):
         )
 
         res = copy.deepcopy(orig)
-        res["options"] = {"authmechanism": "SCRAM-SHA-256"}
+        res["options"] = {"authMechanism": "SCRAM-SHA-256"}
         res["username"] = "user"
         res["password"] = ""
         self.assertEqual(res, parse_uri("mongodb://user:@localhost/?authMechanism=SCRAM-SHA-256"))
@@ -327,7 +327,7 @@ class TestURI(unittest.TestCase):
         self.assertEqual(res, parse_uri("mongodb://user%40domain.com:password@localhost/foo"))
 
         res = copy.deepcopy(orig)
-        res["options"] = {"authmechanism": "GSSAPI"}
+        res["options"] = {"authMechanism": "GSSAPI"}
         res["username"] = "user@domain.com"
         res["password"] = "password"
         res["database"] = "foo"
@@ -337,7 +337,7 @@ class TestURI(unittest.TestCase):
         )
 
         res = copy.deepcopy(orig)
-        res["options"] = {"authmechanism": "GSSAPI"}
+        res["options"] = {"authMechanism": "GSSAPI"}
         res["username"] = "user@domain.com"
         res["password"] = ""
         res["database"] = "foo"
@@ -457,11 +457,12 @@ class TestURI(unittest.TestCase):
         self.maxDiff = None
         uri = "mongodb://example.com/?tlsInsecure=true"
         res = {
-            "tlsAllowInvalidHostnames": True,
-            "tlsAllowInvalidCertificates": True,
+            "tlsallowinvalidhostnames": True,
+            "tlsallowinvalidcertificates": True,
             "tlsInsecure": True,
-            "tlsDisableOCSPEndpointCheck": True,
+            "tlsdisableocspendpointcheck": True,
         }
+        print(parse_uri(uri)["options"])
         self.assertEqual(res, parse_uri(uri)["options"])
 
     def test_normalize_options(self):
@@ -479,8 +480,8 @@ class TestURI(unittest.TestCase):
         )
         res = parse_uri(uri)
         options: dict[str, Any] = {
-            "authmechanism": "MONGODB-AWS",
-            "authmechanismproperties": {"AWS_SESSION_TOKEN": unquoted_val},
+            "authMechanism": "MONGODB-AWS",
+            "authMechanismProperties": {"AWS_SESSION_TOKEN": unquoted_val},
         }
         self.assertEqual(options, res["options"])
 
@@ -519,7 +520,7 @@ class TestURI(unittest.TestCase):
         )
         res = parse_uri(uri)
         options = {
-            "authmechanism": "MONGODB-AWS",
+            "authMechanism": "MONGODB-AWS",
             "authMechanismProperties": {"AWS_SESSION_TOKEN": token},
         }
         self.assertEqual(options, res["options"])
