@@ -1083,9 +1083,6 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
     def cased_key(self, key: str) -> Any:
         return self.__casedkeys[key.lower()]
 
-    def as_dict(self) -> dict[str, Any]:
-        return {self.__casedkeys[k]: self.__data[k] for k in self}
-
 
 def has_c() -> bool:
     """Is the C extension installed?"""
