@@ -32,7 +32,7 @@ TagSets = Sequence[TagSet]
 class Selection:
     """Input or output of a server selector function."""
 
-    __slots__ = ("totopology_description", "server_descriptions", "primary", "common_wire_version")
+    __slots__ = ("topology_description", "server_descriptions", "primary", "common_wire_version")
 
     @classmethod
     def from_topology_description(cls, topology_description: TopologyDescription) -> Selection:
