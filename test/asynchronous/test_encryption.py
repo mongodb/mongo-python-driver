@@ -32,6 +32,7 @@ import uuid
 import warnings
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, async_client_context
 from test.asynchronous.test_bulk import AsyncBulkTestBase
+from test.asynchronous.utils import flaky
 from test.asynchronous.utils_spec_runner import AsyncSpecRunner, AsyncSpecTestCreator
 from threading import Thread
 from typing import Any, Dict, Mapping, Optional
@@ -3247,6 +3248,7 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
 class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
     @async_client_context.require_no_standalone
     @async_client_context.require_version_min(7, 0, -1)
+    @flaky(reason="PYTHON-4982")
     async def asyncSetUp(self):
         await super().asyncSetUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
@@ -3489,6 +3491,8 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
 
         self.assertNotIn("lsid", self.listener.started_events[1].command)
 
+        await self.mongocryptd_client.close()
+
     async def test_explicit_session_errors_when_unsupported(self):
         self.listener.reset()
         async with self.mongocryptd_client.start_session() as s:
@@ -3500,6 +3504,8 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
                 ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
             ):
                 await self.mongocryptd_client.db.test.insert_one({"x": 1}, session=s)
+
+        await self.mongocryptd_client.close()
 
 
 if __name__ == "__main__":

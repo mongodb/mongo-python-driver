@@ -31,6 +31,7 @@ import pymongo
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
+from test.utils import flaky
 from test.utils_shared import (
     AllowListEventListener,
     EventListener,
@@ -1397,9 +1398,8 @@ class TestCursor(IntegrationTest):
         docs = c.to_list(3)
         self.assertEqual(len(docs), 2)
 
+    @flaky(reason="PYTHON-3522")
     def test_to_list_csot_applied(self):
-        if os.environ.get("SKIP_CSOT_TESTS", ""):
-            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         client = self.single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
         # Initialize the client with a larger timeout to help make test less flakey
@@ -1440,9 +1440,8 @@ class TestCursor(IntegrationTest):
         self.assertEqual(len(result.to_list(1)), 1)
 
     @client_context.require_failCommand_blockConnection
+    @flaky(reason="PYTHON-3522")
     def test_command_cursor_to_list_csot_applied(self):
-        if os.environ.get("SKIP_CSOT_TESTS", ""):
-            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         client = self.single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
         # Initialize the client with a larger timeout to help make test less flakey

@@ -21,6 +21,7 @@ import threading
 from pathlib import Path
 from test import IntegrationTest, client_context, unittest
 from test.helpers import ConcurrentRunner
+from test.utils import flaky
 from test.utils_selection_tests import create_topology
 from test.utils_shared import (
     CMAPListener,
@@ -137,6 +138,7 @@ class TestProse(IntegrationTest):
 
     @client_context.require_failCommand_appName
     @client_context.require_multiple_mongoses
+    @flaky(reason="PYTHON-3689")
     def test_load_balancing(self):
         listener = OvertCommandListener()
         cmap_listener = CMAPListener()
