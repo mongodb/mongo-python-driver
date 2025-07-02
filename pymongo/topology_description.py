@@ -324,6 +324,14 @@ class TopologyDescription:
             description = self.server_descriptions().get(address)
             return [description] if description else []
 
+        # Primary selection fast path.
+        if self.topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary and isinstance(
+            selector, TOPOLOGY_TYPE.Primary
+        ):
+            for sd in self._server_descriptions.values():
+                if sd.server_type == SERVER_TYPE.RSPrimary:
+                    return [sd]
+
         selection = Selection.from_topology_description(self)
         # Ignore read preference for sharded clusters.
         if self.topology_type != TOPOLOGY_TYPE.Sharded:
