@@ -24,6 +24,7 @@ import time
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
 from test.helpers import ConcurrentRunner
+from test.utils import flaky
 
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
@@ -378,6 +379,7 @@ class TestPoolManagement(IntegrationTest):
     @client_context.require_failCommand_appName
     @client_context.require_test_commands
     @client_context.require_async
+    @flaky(reason="PYTHON-5428")
     def test_connection_close_does_not_block_other_operations(self):
         listener = CMAPHeartbeatListener()
         client = self.single_client(
