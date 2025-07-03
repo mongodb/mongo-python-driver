@@ -896,7 +896,8 @@ def create_backport_pr_tasks():
         "mongo-python-driver",
         "${github_commit}",
     ]
-    cmd = get_subprocess_exec(args=args)
+    include_expansions = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+    cmd = get_subprocess_exec(args=args, include_expansions_in_env=include_expansions)
     assume_func = FunctionCall(func="assume ec2 role")
     return [EvgTask(name=name, commands=[assume_func, cmd], allowed_requesters=["commit"])]
 
