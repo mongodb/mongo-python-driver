@@ -27,7 +27,7 @@ sys.path[0:0] = [""]
 from test import unittest
 from test.helpers import clear_warning_registry
 
-from pymongo.common import INTERNAL_URI_OPTION_NAME_MAP, validate
+from pymongo.common import INTERNAL_URI_OPTION_NAME_MAP, _CaseInsensitiveDictionary, validate
 from pymongo.compression_support import _have_snappy
 from pymongo.synchronous.uri_parser import parse_uri
 
@@ -169,7 +169,8 @@ def create_test(test, test_workdir):
         # Compare URI options.
         err_msg = "For option %s expected %s but got %s"
         if test["options"]:
-            opts = options["options"]
+            opts = _CaseInsensitiveDictionary()
+            opts.update(options["options"])
             for opt in test["options"]:
                 lopt = opt.lower()
                 optname = INTERNAL_URI_OPTION_NAME_MAP.get(lopt, lopt)
