@@ -304,8 +304,13 @@ class TestSSL(AsyncIntegrationTest):
         client = self.simple_client(uri_fmt % (CLIENT_PEM, "true", CA_PEM))
         await self.assertClientWorks(client)
 
+    @unittest.skipIf(
+        "PyPy" in sys.version and not _IS_SYNC,
+        "https://github.com/pypy/pypy/issues/5131 flaky on async PyPy due to SSL EOF",
+    )
     @async_client_context.require_tlsCertificateKeyFile
     @async_client_context.require_server_resolvable
+    @async_client_context.require_no_api_version
     @ignore_deprecations
     async def test_cert_ssl_validation_hostname_matching(self):
         # Expects the server to be running with server.pem and ca.pem
@@ -430,8 +435,13 @@ class TestSSL(AsyncIntegrationTest):
                     self.simple_client(uri_fmt % (CRL_PEM, CA_PEM), **self.credentials)  # type: ignore[arg-type]
                 )
 
+    @unittest.skipIf(
+        "PyPy" in sys.version and not _IS_SYNC,
+        "https://github.com/pypy/pypy/issues/5131 flaky on async PyPy due to SSL EOF",
+    )
     @async_client_context.require_tlsCertificateKeyFile
     @async_client_context.require_server_resolvable
+    @async_client_context.require_no_api_version
     @ignore_deprecations
     async def test_validation_with_system_ca_certs(self):
         # Expects the server to be running with server.pem and ca.pem.
