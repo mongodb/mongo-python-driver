@@ -24,6 +24,7 @@ import time
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
 from test.helpers import ConcurrentRunner
+from test.utils import flaky
 
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
@@ -90,8 +91,8 @@ def create_mock_topology(uri, monitor_class=DummyMonitor):
     replica_set_name = None
     direct_connection = None
     load_balanced = None
-    if "replicaset" in parsed_uri["options"]:
-        replica_set_name = parsed_uri["options"]["replicaset"]
+    if "replicaSet" in parsed_uri["options"]:
+        replica_set_name = parsed_uri["options"]["replicaSet"]
     if "directConnection" in parsed_uri["options"]:
         direct_connection = parsed_uri["options"]["directConnection"]
     if "loadBalanced" in parsed_uri["options"]:
@@ -378,6 +379,7 @@ class TestPoolManagement(IntegrationTest):
     @client_context.require_failCommand_appName
     @client_context.require_test_commands
     @client_context.require_async
+    @flaky(reason="PYTHON-5428")
     def test_connection_close_does_not_block_other_operations(self):
         listener = CMAPHeartbeatListener()
         client = self.single_client(

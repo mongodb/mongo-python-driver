@@ -54,6 +54,57 @@ SRV_SCHEME = "mongodb+srv://"
 SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
 
+URI_OPTIONS = frozenset(
+    [
+        "appname",
+        "authMechanism",
+        "authMechanismProperties",
+        "authSource",
+        "compressors",
+        "connectTimeoutMS",
+        "directConnection",
+        "heartbeatFrequencyMS",
+        "journal",
+        "loadBalanced",
+        "localThresholdMS",
+        "maxIdleTimeMS",
+        "maxPoolSize",
+        "maxConnecting",
+        "maxStalenessSeconds",
+        "minPoolSize",
+        "proxyHost",
+        "proxyPort",
+        "proxyUsername",
+        "proxyPassword",
+        "readConcernLevel",
+        "readPreference",
+        "readPreferenceTags",
+        "replicaSet",
+        "retryReads",
+        "retryWrites",
+        "serverMonitoringMode",
+        "serverSelectionTimeoutMS",
+        "serverSelectionTryOnce",
+        "socketTimeoutMS",
+        "srvMaxHosts",
+        "srvServiceName",
+        "ssl",
+        "tls",
+        "tlsAllowInvalidCertificates",
+        "tlsAllowInvalidHostnames",
+        "tlsCAFile",
+        "tlsCertificateKeyFile",
+        "tlsCertificateKeyFilePassword",
+        "tlsDisableCertificateRevocationCheck",
+        "tlsDisableOCSPEndpointCheck",
+        "tlsInsecure",
+        "w",
+        "waitQueueTimeoutMS",
+        "wTimeoutMS",
+        "zlibCompressionLevel",
+    ]
+)
+
 
 def _unquoted_percent(s: str) -> bool:
     """Check for unescaped percent signs.
@@ -550,3 +601,14 @@ def _validate_uri(
         "options": options,
         "fqdn": fqdn,
     }
+
+
+def _make_options_case_sensitive(options: _CaseInsensitiveDictionary) -> dict[str, Any]:
+    case_sensitive = {}
+    for option in URI_OPTIONS:
+        if option.lower() in options:
+            case_sensitive[option] = options[option]
+            options.pop(option)
+    for k, v in options.items():
+        case_sensitive[k] = v
+    return case_sensitive
