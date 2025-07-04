@@ -834,12 +834,12 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         Any additional keyword arguments will be added to the final
         command document before it is sent.
 
-        For example, a command like ``{buildinfo: 1}`` can be sent
+        For example, a command like ``{buildInfo: 1}`` can be sent
         using:
 
-        >>> await db.command("buildinfo")
+        >>> await db.command("buildInfo")
         OR
-        >>> await db.command({"buildinfo": 1})
+        >>> await db.command({"buildInfo": 1})
 
         For a command where the value matters, like ``{count:
         collection_name}`` we can do:

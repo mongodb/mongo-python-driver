@@ -2311,7 +2311,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return cast(
             dict,
             await self.admin.command(
-                "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
+                "buildInfo", read_preference=ReadPreference.PRIMARY, session=session
             ),
         )
 
