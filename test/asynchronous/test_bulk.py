@@ -299,6 +299,29 @@ class AsyncTestBulk(AsyncBulkTestBase):
         self.assertEqual(n_docs, result.inserted_count)
         self.assertEqual(n_docs, await self.coll.count_documents({}))
 
+    async def test_numerous_inserts_generator(self):
+        # Ensure we don't exceed server's maxWriteBatchSize size limit.
+        n_docs = await async_client_context.max_write_batch_size + 100
+        requests = (InsertOne[dict]({}) for _ in range(n_docs))
+        result = await self.coll.bulk_write(requests, ordered=False)
+        self.assertEqual(n_docs, result.inserted_count)
+        self.assertEqual(n_docs, await self.coll.count_documents({}))
+
+        # Same with ordered bulk.
+        await self.coll.drop()
+        requests = (InsertOne[dict]({}) for _ in range(n_docs))
+        result = await self.coll.bulk_write(requests)
+        self.assertEqual(n_docs, result.inserted_count)
+        self.assertEqual(n_docs, await self.coll.count_documents({}))
+
+    async def test_huge_inserts_generator(self):
+        # Ensure we don't exceed server's maxWriteBatchSize size limit.
+        n_docs = 1000000
+        requests = (InsertOne({"x": "large" * 1024 * 1024}) for _ in range(n_docs))
+        result = await self.coll.bulk_write(requests)
+        self.assertEqual(n_docs, result.inserted_count)
+        self.assertEqual(n_docs, await self.coll.count_documents({}))
+
     async def test_bulk_max_message_size(self):
         await self.coll.delete_many({})
         self.addAsyncCleanup(self.coll.delete_many, {})
@@ -338,11 +361,6 @@ class AsyncTestBulk(AsyncBulkTestBase):
         self.assertRaises(InvalidOperation, lambda: result.upserted_ids)
 
     async def test_bulk_write_invalid_arguments(self):
-        # The requests argument must be a list.
-        generator = (InsertOne[dict]({}) for _ in range(10))
-        with self.assertRaises(TypeError):
-            await self.coll.bulk_write(generator)  # type: ignore[arg-type]
-
         # Document is not wrapped in a bulk write operation.
         with self.assertRaises(TypeError):
             await self.coll.bulk_write([{}])  # type: ignore[list-item]
