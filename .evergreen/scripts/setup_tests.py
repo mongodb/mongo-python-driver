@@ -403,11 +403,11 @@ def handle_test_env() -> None:
 
         setup_kms(sub_test_name)
 
-    if test_name == "auth_aws" and sub_test_name != "ecs-remote":
+    if test_name == "auth_aws" and sub_test_name not in ["ecs-remote", "eks-remote"]:
         auth_aws_dir = f"{DRIVERS_TOOLS}/.evergreen/auth_aws"
         if "AWS_ROLE_SESSION_NAME" in os.environ:
             write_env("AWS_ROLE_SESSION_NAME")
-        if sub_test_name != "ecs":
+        if sub_test_name not in ["ecs", "eks"]:
             aws_setup = f"{auth_aws_dir}/aws_setup.sh"
             run_command(f"bash {aws_setup} {sub_test_name}")
             creds = read_env(f"{auth_aws_dir}/test-env.sh")
@@ -415,6 +415,11 @@ def handle_test_env() -> None:
                 write_env(name, value)
         else:
             run_command(f"bash {auth_aws_dir}/setup-secrets.sh")
+        if sub_test_name == "eks":
+            # Store AWS creds if they were given.
+            for key in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+                if key in os.environ:
+                    write_env(key, os.environ[key])
 
     if test_name == "atlas_connect":
         get_secrets("drivers/atlas_connect")
