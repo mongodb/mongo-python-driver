@@ -412,9 +412,9 @@ class TestDatabase(AsyncIntegrationTest):
     async def test_command(self):
         self.maxDiff = None
         db = self.client.admin
-        first = await db.command("buildinfo")
-        second = await db.command({"buildinfo": 1})
-        third = await db.command("buildinfo", 1)
+        first = await db.command("buildInfo")
+        second = await db.command({"buildInfo": 1})
+        third = await db.command("buildInfo", 1)
         self.assertEqualReply(first, second)
         self.assertEqualReply(second, third)
 
