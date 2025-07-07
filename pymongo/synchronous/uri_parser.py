@@ -81,7 +81,7 @@ def parse_uri(
     :param srv_service_name: A custom SRV service name
 
     .. versionchanged:: 4.14
-       'options' is now type ``dict`` as opposed to a ``_CaseInsensitiveDictionary``.
+       ``options`` is now type ``dict`` as opposed to a ``_CaseInsensitiveDictionary``.
 
     .. versionchanged:: 4.6
        The delimiting slash (``/``) between hosts and connection options is now optional.
