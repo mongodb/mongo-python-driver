@@ -38,4 +38,14 @@ if [ "$(uname -s)" = "Darwin" ]; then
     fi
 fi
 
+if [ -w /etc/hosts ]; then
+  SUDO=""
+else
+  SUDO="sudo"
+fi
+
+# Add 'server' and 'hostname_not_in_cert' as a hostnames
+echo "127.0.0.1 server" | $SUDO tee -a /etc/hosts
+echo "127.0.0.1 hostname_not_in_cert" | $SUDO tee -a /etc/hosts
+
 echo "Setting up system... done."
