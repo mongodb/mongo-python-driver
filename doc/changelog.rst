@@ -10,9 +10,12 @@ PyMongo 4.14 brings a number of changes including:
 - Added :meth:`pymongo.asynchronous.mongo_client.AsyncMongoClient.append_metadata` and
   :meth:`pymongo.mongo_client.MongoClient.append_metadata` to allow instantiated MongoClients to send client metadata
   on-demand
-
 - Introduces a minor breaking change. When encoding :class:`bson.binary.BinaryVector`, a ``ValueError`` will be raised
   if the 'padding' metadata field is < 0 or > 7, or non-zero for any type other than PACKED_BIT.
+- Fixed a bug that raised ``EncryptionError`` when using :meth:`pymongo.mongo_client.MongoClient.server_info` with an
+  encrypted connection. :meth:`pymongo.mongo_client.MongoClient.server_info` now runs the camel cased ``buildInfo`` command
+  instead of the lower cased ``buildinfo`` command which may cause a breaking change in applications that rely on matching the
+  lower cased ``buildinfo`` command.
 
 Changes in Version 4.13.2 (2025/06/17)
 --------------------------------------

@@ -89,8 +89,8 @@ class TestResetAndRequestCheck(PyMongoTestCase):
         after = time.time()
 
         # Demand a reconnect.
-        with going(self.client.db.command, "buildinfo"):
-            self.server.receives("buildinfo").ok()
+        with going(self.client.db.command, "buildInfo"):
+            self.server.receives("buildInfo").ok()
 
         last = self.ismaster_time
         self.assertGreaterEqual(last, after, "called ismaster before needed")

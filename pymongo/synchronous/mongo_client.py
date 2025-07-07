@@ -2303,7 +2303,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return cast(
             dict,
             self.admin.command(
-                "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
+                "buildInfo", read_preference=ReadPreference.PRIMARY, session=session
             ),
         )
 

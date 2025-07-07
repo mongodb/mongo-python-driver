@@ -70,8 +70,8 @@ class TestNetworkDisconnectPrimary(unittest.TestCase):
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary, topology.description.topology_type)
 
         # Open a socket in the application pool (calls ismaster).
-        with going(client.db.command, "buildinfo"):
-            primary.receives("buildinfo").ok()
+        with going(client.db.command, "buildInfo"):
+            primary.receives("buildInfo").ok()
 
         # The primary hangs replying to ismaster.
         ismaster_future = Future()
@@ -79,8 +79,8 @@ class TestNetworkDisconnectPrimary(unittest.TestCase):
 
         # Network error on application operation.
         with self.assertRaises(ConnectionFailure):
-            with going(client.db.command, "buildinfo"):
-                primary.receives("buildinfo").hangup()
+            with going(client.db.command, "buildInfo"):
+                primary.receives("buildInfo").hangup()
 
         # Topology type is updated.
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary, topology.description.topology_type)
@@ -89,9 +89,9 @@ class TestNetworkDisconnectPrimary(unittest.TestCase):
         ismaster_future.set_result(primary_response)
 
         # Demand a primary.
-        with going(client.db.command, "buildinfo"):
+        with going(client.db.command, "buildInfo"):
             wait_until(lambda: client.primary == primary.address, "rediscover primary")
-            primary.receives("buildinfo").ok()
+            primary.receives("buildInfo").ok()
 
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary, topology.description.topology_type)
 

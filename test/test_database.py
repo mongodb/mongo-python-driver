@@ -407,9 +407,9 @@ class TestDatabase(IntegrationTest):
     def test_command(self):
         self.maxDiff = None
         db = self.client.admin
-        first = db.command("buildinfo")
-        second = db.command({"buildinfo": 1})
-        third = db.command("buildinfo", 1)
+        first = db.command("buildInfo")
+        second = db.command({"buildInfo": 1})
+        third = db.command("buildInfo", 1)
         self.assertEqualReply(first, second)
         self.assertEqualReply(second, third)
 
