@@ -443,6 +443,9 @@ class Binary(bytes):
         :param padding: For fractional bytes, number of bits to ignore at end of vector.
         :return: Binary packed data identified by dtype and padding.
 
+        .. versionchanged:: 4.14
+        When padding is non-zero, ignored bits should be zero. Raise exception on encoding, warn on decoding.
+
         .. versionadded:: 4.10
         """
         if isinstance(vector, BinaryVector):
