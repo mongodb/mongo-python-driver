@@ -113,7 +113,6 @@ do
     cmap|CMAP|connection-monitoring-and-pooling)
       cpjson connection-monitoring-and-pooling/tests/logging connection_logging
       cpjson connection-monitoring-and-pooling/tests/cmap-format connection_monitoring
-      rm $PYMONGO/test/connection_monitoring/wait-queue-fairness.json  # PYTHON-1873
       ;;
     apm|APM|command-monitoring|command_monitoring)
       cpjson command-logging-and-monitoring/tests/monitoring command_monitoring
@@ -177,7 +176,6 @@ do
       ;;
     server-selection|server_selection)
       cpjson server-selection/tests/ server_selection
-      rm -rf $PYMONGO/test/server_selection/logging
       cpjson server-selection/tests/logging server_selection_logging
       ;;
     server-selection-logging|server_selection_logging)
@@ -189,7 +187,6 @@ do
     transactions|transactions-convenient-api)
       cpjson transactions/tests/ transactions
       cpjson transactions-convenient-api/tests/ transactions-convenient-api
-      rm $PYMONGO/test/transactions/legacy/errors-client.json  # PYTHON-1894
       ;;
     unified|unified-test-format)
       cpjson unified-test-format/tests/ unified-test-format/
