@@ -325,9 +325,7 @@ class TopologyDescription:
             return [description] if description else []
 
         # Primary selection fast path.
-        if self.topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary and isinstance(
-            selector, Primary
-        ):
+        if self.topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary and type(selector) is Primary:
             for sd in self._server_descriptions.values():
                 if sd.server_type == SERVER_TYPE.RSPrimary:
                     return [sd]
