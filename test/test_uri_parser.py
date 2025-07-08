@@ -555,6 +555,10 @@ class TestURI(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r"Port contains whitespace character: '\\n'"):
             parse_uri("mongodb://localhost:27\n017")
 
+    def test_parse_uri_options_type(self):
+        opts = parse_uri("mongodb://localhost:27017")["options"]
+        self.assertIsInstance(opts, dict)
+
 
 if __name__ == "__main__":
     unittest.main()

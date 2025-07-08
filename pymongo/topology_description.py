@@ -331,6 +331,8 @@ class TopologyDescription:
             for sd in self._server_descriptions.values():
                 if sd.server_type == SERVER_TYPE.RSPrimary:
                     return [sd]
+            # No primary found, return an empty list.
+            return []
 
         selection = Selection.from_topology_description(self)
         # Ignore read preference for sharded clusters.
