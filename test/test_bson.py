@@ -791,6 +791,11 @@ class TestBSON(unittest.TestCase):
         with self.assertRaises(ValueError):
             Binary.from_vector([255], BinaryVectorDtype.PACKED_BIT, padding=7)
 
+        with self.assertWarns(DeprecationWarning):
+            meta = struct.pack("<sB", BinaryVectorDtype.PACKED_BIT.value, 7)
+            data = struct.pack("1B", 255)
+            Binary(meta + data, subtype=9).as_vector()
+
         # Test form of Binary.from_vector(BinaryVector)
         assert padded_vec == Binary.from_vector(
             BinaryVector(list_vector, BinaryVectorDtype.PACKED_BIT, padding)
