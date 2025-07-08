@@ -424,7 +424,10 @@ def handle_test_env() -> None:
         cert_file = ROOT / ".evergreen/atlas_x509_dev_client_certificate.pem"
         with cert_file.open("w") as file:
             file.write(decoded)
-        write_env("ATLAS_X509_DEV_WITH_CERT", secrets["ATLAS_X509_DEV"] + "&tlsCertificateKeyFile=" + str(cert_file))
+        write_env(
+            "ATLAS_X509_DEV_WITH_CERT",
+            secrets["ATLAS_X509_DEV"] + "&tlsCertificateKeyFile=" + str(cert_file),
+        )
 
         # We do not want the default client_context to be initialized.
         write_env("DISABLE_CONTEXT")
