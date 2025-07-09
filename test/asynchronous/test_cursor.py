@@ -1411,7 +1411,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_to_list_csot_applied(self):
         client = await self.async_single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
-        # Initialize the client with a larger timeout to help make test less flakey
+        # Initialize the client with a larger timeout to help make test less flaky
         with pymongo.timeout(10):
             await coll.insert_many([{} for _ in range(5)])
         cursor = coll.find({"$where": delay(1)})
@@ -1453,7 +1453,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_command_cursor_to_list_csot_applied(self):
         client = await self.async_single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
-        # Initialize the client with a larger timeout to help make test less flakey
+        # Initialize the client with a larger timeout to help make test less flaky
         with pymongo.timeout(10):
             await coll.insert_many([{} for _ in range(5)])
         fail_command = {
