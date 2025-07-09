@@ -13,3 +13,34 @@ rm $PYMONGO/test/gridfs/rename.json  # PYTHON-4931
 rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-application-error.json  # PYTHON-4918
 rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-checkout-error.json  # PYTHON-4918
 rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-min-pool-size-error.json  # PYTHON-4918
+
+# Python doesn't implement DRIVERS-3064
+rm $PYMONGO/test/collection_management/listCollections-rawdata.json
+rm $PYMONGO/test/crud/unified/aggregate-rawdata.json
+rm $PYMONGO/test/crud/unified/bulkWrite-deleteMany-rawdata.json
+rm $PYMONGO/test/crud/unified/bulkWrite-deleteOne-rawdata.json
+rm $PYMONGO/test/crud/unified/bulkWrite-replaceOne-rawdata.json
+rm $PYMONGO/test/crud/unified/bulkWrite-updateMany-rawdata.json
+rm $PYMONGO/test/crud/unified/bulkWrite-updateOne-rawdata.json
+rm $PYMONGO/test/crud/unified/client-bulkWrite-delete-rawdata.json
+rm $PYMONGO/test/crud/unified/client-bulkWrite-replaceOne-rawdata.json
+rm $PYMONGO/test/crud/unified/client-bulkWrite-update-rawdata.json
+rm $PYMONGO/test/crud/unified/count-rawdata.json
+rm $PYMONGO/test/crud/unified/countDocuments-rawdata.json
+rm $PYMONGO/test/crud/unified/db-aggregate-rawdata.json
+rm $PYMONGO/test/crud/unified/deleteMany-rawdata.json
+rm $PYMONGO/test/crud/unified/deleteOne-rawdata.json
+rm $PYMONGO/test/crud/unified/distinct-rawdata.json
+rm $PYMONGO/test/crud/unified/estimatedDocumentCount-rawdata.json
+rm $PYMONGO/test/crud/unified/find-rawdata.json
+rm $PYMONGO/test/crud/unified/findOneAndDelete-rawdata.json
+rm $PYMONGO/test/crud/unified/findOneAndReplace-rawdata.json
+rm $PYMONGO/test/crud/unified/findOneAndUpdate-rawdata.json
+rm $PYMONGO/test/crud/unified/insertMany-rawdata.json
+rm $PYMONGO/test/crud/unified/insertOne-rawdata.json
+rm $PYMONGO/test/crud/unified/replaceOne-rawdata.json
+rm $PYMONGO/test/crud/unified/updateMany-rawdata.json
+rm $PYMONGO/test/crud/unified/updateOne-rawdata.json
+rm $PYMONGO/test/index_management/index-rawdata.json
+
+echo "done removing unimplemented tests"
