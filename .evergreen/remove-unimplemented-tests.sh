@@ -1,5 +1,5 @@
 #!/bin/bash
-PYMONGO=$(dirname "$(cd "$(dirname "$0")"; pwd)")
+PYMONGO=$(dirname "$(cd "$(dirname "$0")" || exit; pwd)")
 
 rm -rf $PYMONGO/test/server_selection/logging
 rm $PYMONGO/test/transactions/legacy/errors-client.json  # PYTHON-1894
