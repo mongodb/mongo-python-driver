@@ -35,7 +35,6 @@ branch="spec-resync-"$(date '+%m-%d-%Y')
 git remote set-url origin https://x-access-token:${token}@github.com/$owner/$repo.git
 git checkout -b $branch "origin/master"
 git add ./test
-git apply -R --allow-empty .evergreen/patch/*
 git commit -am "resyncing specs $(date '+%m-%d-%Y')"
 echo "Creating the git checkout... done."
 

@@ -7,7 +7,7 @@ import subprocess
 from subprocess import CalledProcessError
 
 
-def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> list[str]:
+def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
     """Actually sync the specs"""
     for spec in os.scandir(directory):
         if not spec.is_dir():
@@ -25,15 +25,10 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> list[str]:
         except CalledProcessError as exc:
             errored[spec.name] = exc.stderr
 
-    process = subprocess.run(
-        ["git diff --name-only | awk -F'/' '{print $2}' | sort | uniq"],  # noqa: S607
-        shell=True,  # noqa: S602
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    # return successfully synced specs
-    return process.stdout.strip().split()
+
+def apply_patches():
+    subprocess.run(["bash", "./.evergreen/remove-unimplemented-tests.sh"], check=True)  # noqa: S603, S607
+    subprocess.run(["git apply -R --allow-empty ./.evergreen/patch/*"], shell=True, check=True)  # noqa: S602, S607
 
 
 def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
@@ -66,23 +61,30 @@ def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
     return list(spec_set - test_set)
 
 
-def write_summary(succeeded: list[str], errored: dict[str, str], new: list[str]) -> None:
+def write_summary(errored: dict[str, str], new: list[str]) -> None:
     """Generate the PR description"""
     pr_body = ""
+    process = subprocess.run(
+        ["git diff --name-only | awk -F'/' '{print $2}' | sort | uniq"],  # noqa: S607
+        shell=True,  # noqa: S602
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    succeeded = [i for i in process.stdout.strip().split() if "data/mci/" not in i]
     if len(succeeded) > 0:
-        pr_body += "The following specs were changed:\n- "
-        pr_body += "\n -".join(new)
+        pr_body += "The following specs were changed:\n -"
+        pr_body += "\n -".join(succeeded)
         pr_body += "\n"
     if len(errored) > 0:
-        pr_body += "\n\nThe following spec syncs encountered errors:"
+        pr_body += "\n\nThe following spec syncs encountered errors:\n -"
         for k, v in errored.items():
-            pr_body += f"\n- {k}\n```{v}\n```"
+            pr_body += f"\n -{k}\n```{v}\n```"
         pr_body += "\n"
     if len(new) > 0:
-        pr_body += "\n\nThe following directories are in the specification repository and not in our test directory:"
+        pr_body += "\n\nThe following directories are in the specification repository and not in our test directory:\n -"
         pr_body += "\n -".join(new)
         pr_body += "\n"
-
     if pr_body != "":
         with open("spec_sync.txt", "w") as f:
             # replacements made for proper json
@@ -92,9 +94,10 @@ def write_summary(succeeded: list[str], errored: dict[str, str], new: list[str])
 def main():
     directory = pathlib.Path("./test")
     errored: dict[str, str] = {}
-    succeeded = resync_specs(directory, errored)
+    resync_specs(directory, errored)
+    apply_patches()
     new = check_new_spec_directories(directory)
-    write_summary(succeeded, errored, new)
+    write_summary(errored, new)
 
 
 if __name__ == "__main__":
