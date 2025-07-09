@@ -75,6 +75,8 @@ buildvariants:
     display_name: Atlas connect RHEL8
     run_on:
       - rhel87-small
+    expansions:
+      TEST_NAME: atlas_connect
     tags: [pr]
 
   # Atlas data lake tests

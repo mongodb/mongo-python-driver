@@ -425,6 +425,7 @@ def create_atlas_connect_variants():
             get_variant_name("Atlas connect", host),
             tags=["pr"],
             host=DEFAULT_HOST,
+            expansions=dict(TEST_NAME="atlas_connect"),
         )
     ]
 
