@@ -262,6 +262,7 @@ class TestSrvPolling(AsyncPyMongoTestCase):
 
         await self._test_recover_from_initial(empty_seedlist)
 
+    @flaky(reason="PYTHON-5315")
     async def test_recover_from_initially_erroring_seedlist(self):
         def erroring_seedlist():
             raise ConfigurationError
