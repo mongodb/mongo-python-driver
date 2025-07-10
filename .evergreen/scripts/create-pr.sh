@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-tools="../drivers-evergreen-tools"
-git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $tools
-
+tools="$(realpath -s "../drivers-tools")"
 pushd $tools/.evergreen/github_app || exit
 
 owner="mongodb"
