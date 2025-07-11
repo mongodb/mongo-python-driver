@@ -4,11 +4,14 @@ import argparse
 import os
 import pathlib
 import subprocess
+from argparse import Namespace
 from subprocess import CalledProcessError
+from typing import Optional
 
 
 def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
     """Actually sync the specs"""
+    print("Beginning to sync specs")  # noqa: T201
     for spec in os.scandir(directory):
         if not spec.is_dir():
             continue
@@ -24,11 +27,13 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
             )
         except CalledProcessError as exc:
             errored[spec.name] = exc.stderr
+    print("Done syncing specs")  # noqa: T201
 
 
 def apply_patches():
+    print("Beginning to apply patches")  # noqa: T201
     subprocess.run(["bash", "./.evergreen/remove-unimplemented-tests.sh"], check=True)  # noqa: S603, S607
-    subprocess.run(["git apply -R --allow-empty ./.evergreen/patch/*"], shell=True, check=True)  # noqa: S602, S607
+    subprocess.run(["git apply -R --allow-empty ./.evergreen/spec-patch/*"], shell=True, check=True)  # noqa: S602, S607
 
 
 def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
@@ -61,7 +66,7 @@ def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
     return list(spec_set - test_set)
 
 
-def write_summary(errored: dict[str, str], new: list[str]) -> None:
+def write_summary(errored: dict[str, str], new: list[str], filename: Optional[str]) -> None:
     """Generate the PR description"""
     pr_body = ""
     process = subprocess.run(
@@ -86,24 +91,29 @@ def write_summary(errored: dict[str, str], new: list[str]) -> None:
         pr_body += "\n -".join(new)
         pr_body += "\n"
     if pr_body != "":
-        with open("spec_sync.txt", "w") as f:
-            # replacements made for proper json
-            f.write(pr_body.replace("\n", "\\n").replace("\t", "\\t"))
+        if filename is None:
+            print(f"\n{pr_body}")  # noqa: T201
+        else:
+            with open(filename, "w") as f:
+                # replacements made for proper json
+                f.write(pr_body.replace("\n", "\\n").replace("\t", "\\t"))
 
 
-def main():
+def main(args: Namespace):
     directory = pathlib.Path("./test")
     errored: dict[str, str] = {}
     resync_specs(directory, errored)
     apply_patches()
     new = check_new_spec_directories(directory)
-    write_summary(errored, new)
+    write_summary(errored, new, args.filename)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Python Script to resync all specs and generate summary for PR."
     )
-    parser.add_argument("filename", help="Name of file for the summary to be written into.")
+    parser.add_argument(
+        "--filename", help="Name of file for the summary to be written into.", default=None
+    )
     args = parser.parse_args()
-    main()
+    main(args)

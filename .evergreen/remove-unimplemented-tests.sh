@@ -43,4 +43,4 @@ rm $PYMONGO/test/crud/unified/updateMany-rawdata.json
 rm $PYMONGO/test/crud/unified/updateOne-rawdata.json
 rm $PYMONGO/test/index_management/index-rawdata.json
 
-echo "done removing unimplemented tests"
+echo "Done removing unimplemented tests\n"

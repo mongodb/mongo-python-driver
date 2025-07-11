@@ -3,9 +3,9 @@
 
 # SETUP
 SRC_URL="https://github.com/mongodb/specifications.git"
-# needs to be set for resunc-specs.sh
-SPEC_SRC="$(realpath -s "../specifications")"
-SCRIPT="$(realpath -s "./.evergreen/resync-specs.sh")"
+# needs to be set for resync-specs.sh
+SPEC_SRC="$(realpath "../specifications")"
+SCRIPT="$(realpath "./.evergreen/resync-specs.sh")"
 
 # Clone the spec repo if the directory does not exist
 if [[ ! -d $SPEC_SRC ]]; then
@@ -28,11 +28,15 @@ fi
 PR_DESC="spec_sync.txt"
 
 # run python script that actually does all the resyncing
-/opt/devtools/bin/python3.11 ./.evergreen/scripts/resync-all-specs.py "$PR_DESC"
-
-
-if [[ -f $PR_DESC ]]; then
-  # changes were made -> call scrypt to create PR for us
-  .evergreen/scripts/create-pr.sh "$PR_DESC"
-  rm "$PR_DESC"
+if ! [ -n "${CI:-}" ]
+then
+  # we're running locally
+  python3 ./.evergreen/scripts/resync-all-specs.py
+else
+  /opt/devtools/bin/python3.11 ./.evergreen/scripts/resync-all-specs.py "$PR_DESC"
+  if [[ -f $PR_DESC ]]; then
+    # changes were made -> call scrypt to create PR for us
+    .evergreen/scripts/create-spec-pr.sh "$PR_DESC"
+    rm "$PR_DESC"
+  fi
 fi
