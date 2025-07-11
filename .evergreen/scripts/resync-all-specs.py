@@ -76,7 +76,7 @@ def write_summary(errored: dict[str, str], new: list[str], filename: Optional[st
         text=True,
         check=True,
     )
-    succeeded = [i for i in process.stdout.strip().split() if "data/mci/" not in i]
+    succeeded = process.stdout.strip().split()
     if len(succeeded) > 0:
         pr_body += "The following specs were changed:\n -"
         pr_body += "\n -".join(succeeded)
