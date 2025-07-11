@@ -17,16 +17,5 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@9d7e65c320fdb52dcd45ffaa68deb6c02c8754d9 # v1
-      - name: Get zizmor
-        run: cargo install zizmor
       - name: Run zizmor 🌈
-        run: zizmor --format sarif . > results.sarif
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@ce28f5bb42b7a9f2c824e633a3f6ee835bab6858 # v3
-        with:
-          sarif_file: results.sarif
-          category: zizmor
+        uses: zizmorcore/zizmor-action@0f0557ab4a0b31211d42435e42df31cbd63fdd59

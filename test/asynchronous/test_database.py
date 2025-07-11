@@ -239,7 +239,7 @@ class TestDatabase(AsyncIntegrationTest):
         listener.reset()
         await db.drop_collection("unique")
         await db.create_collection("unique", check_exists=False)
-        self.assertTrue(len(listener.started_events) > 0)
+        self.assertGreater(len(listener.started_events), 0)
         self.assertNotIn("listCollections", listener.started_command_names())
 
     async def test_list_collections(self):

@@ -42,6 +42,7 @@ URIS = {
     "ATLAS_SRV_FREE": os.environ.get("ATLAS_SRV_FREE"),
     "ATLAS_SRV_TLS11": os.environ.get("ATLAS_SRV_TLS11"),
     "ATLAS_SRV_TLS12": os.environ.get("ATLAS_SRV_TLS12"),
+    "ATLAS_X509_DEV_WITH_CERT": os.environ.get("ATLAS_X509_DEV_WITH_CERT"),
 }
 
 
@@ -90,6 +91,9 @@ class TestAtlasConnect(PyMongoTestCase):
 
     def test_srv_tls_12(self):
         self.connect_srv(URIS["ATLAS_SRV_TLS12"])
+
+    def test_x509_with_cert(self):
+        self.connect(URIS["ATLAS_X509_DEV_WITH_CERT"])
 
     def test_uniqueness(self):
         """Ensure that we don't accidentally duplicate the test URIs."""

@@ -87,7 +87,7 @@ class TestPoolPausedError(AsyncIntegrationTest):
     async def test_pool_paused_error_is_retryable(self):
         if "PyPy" in sys.version:
             # Tracked in PYTHON-3519
-            self.skipTest("Test is flakey on PyPy")
+            self.skipTest("Test is flaky on PyPy")
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(

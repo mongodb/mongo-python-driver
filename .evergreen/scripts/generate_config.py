@@ -425,6 +425,7 @@ def create_atlas_connect_variants():
             get_variant_name("Atlas connect", host),
             tags=["pr"],
             host=DEFAULT_HOST,
+            expansions=dict(TEST_NAME="atlas_connect"),
         )
     ]
 
@@ -896,7 +897,8 @@ def create_backport_pr_tasks():
         "mongo-python-driver",
         "${github_commit}",
     ]
-    cmd = get_subprocess_exec(args=args)
+    include_expansions = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
+    cmd = get_subprocess_exec(args=args, include_expansions_in_env=include_expansions)
     assume_func = FunctionCall(func="assume ec2 role")
     return [EvgTask(name=name, commands=[assume_func, cmd], allowed_requesters=["commit"])]
 
@@ -1084,6 +1086,7 @@ def create_run_tests_func():
         "MONGODB_API_VERSION",
         "REQUIRE_API_VERSION",
         "DEBUG_LOG",
+        "DISABLE_FLAKY",
         "ORCHESTRATION_FILE",
         "OCSP_SERVER_TYPE",
         "VERSION",

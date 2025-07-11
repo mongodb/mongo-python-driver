@@ -331,8 +331,9 @@ class TestPooling(_TestPoolingBase):
                     pass
 
         duration = time.time() - start
-        self.assertTrue(
-            abs(wait_queue_timeout - duration) < 1,
+        self.assertLess(
+            abs(wait_queue_timeout - duration),
+            1,
             f"Waited {duration:.2f} seconds for a socket, expected {wait_queue_timeout:f}",
         )
 
@@ -545,7 +546,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         joinall(tasks)
         self.assertEqual(ntasks, self.n_passed)
-        self.assertTrue(len(cx_pool.conns) > 1)
+        self.assertGreater(len(cx_pool.conns), 1)
         self.assertEqual(0, cx_pool.requests)
 
     def test_max_pool_size_none(self):
@@ -576,7 +577,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         joinall(tasks)
         self.assertEqual(ntasks, self.n_passed)
-        self.assertTrue(len(cx_pool.conns) > 1)
+        self.assertGreater(len(cx_pool.conns), 1)
         self.assertEqual(cx_pool.max_pool_size, float("inf"))
 
     def test_max_pool_size_zero(self):

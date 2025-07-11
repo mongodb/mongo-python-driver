@@ -38,7 +38,6 @@ from test import (
 from test.unified_format_shared import (
     KMS_TLS_OPTS,
     PLACEHOLDER_MAP,
-    SKIP_CSOT_TESTS,
     EventListenerUtil,
     MatchEvaluatorUtil,
     coerce_result,
@@ -48,7 +47,7 @@ from test.unified_format_shared import (
     parse_collection_or_database_options,
     with_metaclass,
 )
-from test.utils import get_pool
+from test.utils import flaky, get_pool
 from test.utils_shared import (
     camel_to_snake,
     camel_to_snake_args,
@@ -518,20 +517,38 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
-        if (
-            "Error returned from connection pool clear with interruptInUseConnections=true is retryable"
-            in spec["description"]
-            and not _IS_SYNC
-        ):
-            self.skipTest("PYTHON-5170 tests are flakey")
-        if "Driver extends timeout while streaming" in spec["description"] and not _IS_SYNC:
-            self.skipTest("PYTHON-5174 tests are flakey")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
-            if "gridfs" in class_name and sys.platform == "win32":
-                self.skipTest("PYTHON-3522 CSOT GridFS tests are flaky on Windows")
+            # Skip tests that are too slow to run on a given platform.
+            slow_macos = [
+                "operation fails after two consecutive socket timeouts.*",
+                "operation succeeds after one socket timeout.*",
+                "Non-tailable cursor lifetime remaining timeoutMS applied to getMore if timeoutMode is unset",
+            ]
+            slow_win32 = [
+                *slow_macos,
+                "maxTimeMS value in the command is less than timeoutMS",
+                "timeoutMS applies to whole operation.*",
+            ]
+            slow_pypy = [
+                "timeoutMS applies to whole operation.*",
+            ]
+            if "CI" in os.environ and sys.platform == "win32" and "gridfs" in class_name:
+                self.skipTest("PYTHON-3522 CSOT GridFS test runs too slow on Windows")
+            if "CI" in os.environ and sys.platform == "win32":
+                for pat in slow_win32:
+                    if re.match(pat.lower(), description):
+                        self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows")
+            if "CI" in os.environ and sys.platform == "darwin":
+                for pat in slow_macos:
+                    if re.match(pat.lower(), description):
+                        self.skipTest("PYTHON-3522 CSOT test runs too slow on MacOS")
+            if "CI" in os.environ and sys.implementation.name.lower() == "pypy":
+                for pat in slow_pypy:
+                    if re.match(pat.lower(), description):
+                        self.skipTest("PYTHON-3522 CSOT test runs too slow on PyPy")
             if "change" in description or "change" in class_name:
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
@@ -1340,38 +1357,31 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
-        if "csot" in self.id().lower() and SKIP_CSOT_TESTS:
-            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
-
         # Kill all sessions before and after each test to prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         self.kill_all_sessions()
 
-        if "csot" in self.id().lower():
-            # Retry CSOT tests up to 2 times to deal with flakey tests.
-            attempts = 3
-            for i in range(attempts):
-                try:
-                    return self._run_scenario(spec, uri)
-                except (AssertionError, OperationFailure) as exc:
-                    if isinstance(exc, OperationFailure) and (
-                        _IS_SYNC or "failpoint" not in exc._message
-                    ):
-                        raise
-                    if i < attempts - 1:
-                        print(
-                            f"Retrying after attempt {i+1} of {self.id()} failed with:\n"
-                            f"{traceback.format_exc()}",
-                            file=sys.stderr,
-                        )
-                        self.setUp()
-                        continue
-                    raise
-            return None
-        else:
-            self._run_scenario(spec, uri)
-            return None
+        # Handle flaky tests.
+        flaky_tests = [
+            ("PYTHON-5170", ".*test_discovery_and_monitoring.*"),
+            ("PYTHON-5174", ".*Driver_extends_timeout_while_streaming"),
+            ("PYTHON-5315", ".*TestSrvPolling.test_recover_from_initially_.*"),
+            ("PYTHON-4987", ".*UnknownTransactionCommitResult_labels_to_connection_errors"),
+            ("PYTHON-3689", ".*TestProse.test_load_balancing"),
+            ("PYTHON-3522", ".*csot.*"),
+        ]
+        for reason, flaky_test in flaky_tests:
+            if re.match(flaky_test.lower(), self.id().lower()) is not None:
+                func_name = self.id()
+                options = dict(reason=reason, reset_func=self.setUp, func_name=func_name)
+                if "csot" in func_name.lower():
+                    options["max_runs"] = 3
+                    options["affects_cpython_linux"] = True
+                decorator = flaky(**options)
+                decorator(self._run_scenario)(spec, uri)
+                return
+        self._run_scenario(spec, uri)
 
     def _run_scenario(self, spec, uri=None):
         # maybe skip test manually

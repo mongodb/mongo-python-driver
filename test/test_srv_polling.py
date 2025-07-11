@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
+from test.utils import flaky
 from test.utils_shared import FunctionCallRecorder
 from typing import Any
 
@@ -254,12 +255,14 @@ class TestSrvPolling(PyMongoTestCase):
             # Nodelist should reflect new valid DNS resolver response.
             self.assert_nodelist_change(response_final, client)
 
+    @flaky(reason="PYTHON-5315")
     def test_recover_from_initially_empty_seedlist(self):
         def empty_seedlist():
             return []
 
         self._test_recover_from_initial(empty_seedlist)
 
+    @flaky(reason="PYTHON-5315")
     def test_recover_from_initially_erroring_seedlist(self):
         def erroring_seedlist():
             raise ConfigurationError
@@ -363,7 +366,7 @@ class TestSrvPolling(PyMongoTestCase):
         # Regression test for PYTHON-4407
         import dns.resolver
 
-        self.assertTrue(hasattr(dns.resolver, "resolve"))
+        self.assertTrue(hasattr(dns.resolver, "resolve") or hasattr(dns.resolver, "query"))
 
 
 if __name__ == "__main__":

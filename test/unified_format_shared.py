@@ -91,8 +91,6 @@ from pymongo.results import BulkWriteResult
 from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TopologyDescription
 
-SKIP_CSOT_TESTS = os.getenv("SKIP_CSOT_TESTS")
-
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
 
 IS_INTERRUPTED = False
