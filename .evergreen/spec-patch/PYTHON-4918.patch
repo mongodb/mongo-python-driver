@@ -1,0 +1,24 @@
+diff --git a/test/connection_monitoring/pool-create-min-size-error.json b/test/connection_monitoring/pool-create-min-size-error.json
+index 1c744b85..509b2a23 100644
+--- a/test/connection_monitoring/pool-create-min-size-error.json
++++ b/test/connection_monitoring/pool-create-min-size-error.json
+@@ -49,15 +49,15 @@
+       "type": "ConnectionCreated",
+       "address": 42
+     },
++    {
++      "type": "ConnectionPoolCleared",
++      "address": 42
++    },
+     {
+       "type": "ConnectionClosed",
+       "address": 42,
+       "connectionId": 42,
+       "reason": "error"
+-    },
+-    {
+-      "type": "ConnectionPoolCleared",
+-      "address": 42
+     }
+   ],
+   "ignore": [
