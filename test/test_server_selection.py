@@ -130,12 +130,12 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         test_collection = mongo_client.testdb.test_collection
         self.addCleanup(mongo_client.drop_database, "testdb")
 
-        # Do N operations and test selector is called at least N times.
+        # Do N operations and test selector is called at least N-1 times due to fast path.
         test_collection.insert_one({"age": 20, "name": "John"})
         test_collection.insert_one({"age": 31, "name": "Jane"})
         test_collection.update_one({"name": "Jane"}, {"$set": {"age": 21}})
         test_collection.find_one({"name": "Roe"})
-        self.assertGreaterEqual(selector.call_count, 4)
+        self.assertGreaterEqual(selector.call_count, 3)
 
     @client_context.require_replica_set
     def test_latency_threshold_application(self):
