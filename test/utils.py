@@ -17,10 +17,14 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 import random
+import sys
 import threading  # Used in the synchronized version of this file
 import time
+import traceback
 from asyncio import iscoroutinefunction
+from functools import wraps
 
 from bson.son import SON
 from pymongo import MongoClient
@@ -150,6 +154,65 @@ def joinall(tasks):
             assert not t.is_alive(), "Thread %s hung" % t
     else:
         asyncio.wait([t.task for t in tasks if t is not None], timeout=300)
+
+
+def flaky(
+    *,
+    reason=None,
+    max_runs=2,
+    min_passes=1,
+    delay=1,
+    affects_cpython_linux=False,
+    func_name=None,
+    reset_func=None,
+):
+    """Decorate a test as flaky.
+
+    :param reason: the reason why the test is flaky
+    :param max_runs: the maximum number of runs before raising an error
+    :param min_passes: the minimum number of passing runs
+    :param delay: the delay in seconds between retries
+    :param affects_cpython_links: whether the test is flaky on CPython on Linux
+    :param func_name: the name of the function, used for the rety message
+    :param reset_func: a function to call before retrying
+
+    """
+    if reason is None:
+        raise ValueError("flaky requires a reason input")
+    is_cpython_linux = sys.platform == "linux" and sys.implementation.name == "cpython"
+    disable_flaky = "DISABLE_FLAKY" in os.environ
+    if "CI" not in os.environ and "ENABLE_FLAKY" not in os.environ:
+        disable_flaky = True
+
+    if disable_flaky or (is_cpython_linux and not affects_cpython_linux):
+        max_runs = 1
+        min_passes = 1
+
+    def decorator(target_func):
+        @wraps(target_func)
+        def wrapper(*args, **kwargs):
+            passes = 0
+            for i in range(max_runs):
+                try:
+                    result = target_func(*args, **kwargs)
+                    passes += 1
+                    if passes == min_passes:
+                        return result
+                except Exception as e:
+                    if i == max_runs - 1:
+                        raise e
+                    print(
+                        f"Retrying after attempt {i+1} of {func_name or target_func.__name__} failed with ({reason})):\n"
+                        f"{traceback.format_exc()}",
+                        file=sys.stderr,
+                    )
+                    time.sleep(delay)
+                    if reset_func:
+                        reset_func()
+
+        return wrapper
+
+    return decorator
 
 
 class MockConnection:

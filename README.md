@@ -14,7 +14,7 @@ a native Python driver for MongoDB, offering both synchronous and asynchronous A
 [gridfs](https://github.com/mongodb/specifications/blob/master/source/gridfs/gridfs-spec.md/)
 implementation on top of `pymongo`.
 
-PyMongo supports MongoDB 4.0, 4.2, 4.4, 5.0, 6.0, 7.0, and 8.0.
+PyMongo supports MongoDB 4.0, 4.2, 4.4, 5.0, 6.0, 7.0, and 8.0. PyMongo follows [semantic versioning](https://semver.org/spec/v2.0.0.html) for its releases.
 
 ## Support / Feedback
 

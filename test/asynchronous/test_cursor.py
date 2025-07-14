@@ -31,6 +31,7 @@ import pymongo
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.utils import flaky
 from test.utils_shared import (
     AllowListEventListener,
     EventListener,
@@ -1406,12 +1407,11 @@ class TestCursor(AsyncIntegrationTest):
         docs = await c.to_list(3)
         self.assertEqual(len(docs), 2)
 
+    @flaky(reason="PYTHON-3522")
     async def test_to_list_csot_applied(self):
-        if os.environ.get("SKIP_CSOT_TESTS", ""):
-            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         client = await self.async_single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
-        # Initialize the client with a larger timeout to help make test less flakey
+        # Initialize the client with a larger timeout to help make test less flaky
         with pymongo.timeout(10):
             await coll.insert_many([{} for _ in range(5)])
         cursor = coll.find({"$where": delay(1)})
@@ -1449,12 +1449,11 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(len(await result.to_list(1)), 1)
 
     @async_client_context.require_failCommand_blockConnection
+    @flaky(reason="PYTHON-3522")
     async def test_command_cursor_to_list_csot_applied(self):
-        if os.environ.get("SKIP_CSOT_TESTS", ""):
-            raise unittest.SkipTest("SKIP_CSOT_TESTS is set, skipping...")
         client = await self.async_single_client(timeoutMS=500, w=1)
         coll = client.pymongo.test
-        # Initialize the client with a larger timeout to help make test less flakey
+        # Initialize the client with a larger timeout to help make test less flaky
         with pymongo.timeout(10):
             await coll.insert_many([{} for _ in range(5)])
         fail_command = {

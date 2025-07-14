@@ -20,7 +20,7 @@ import copy
 import pprint
 import sys
 import threading
-from test.asynchronous.utils import async_set_fail_point
+from test.asynchronous.utils import async_set_fail_point, flaky
 
 sys.path[0:0] = [""]
 
@@ -466,6 +466,7 @@ class TestPoolPausedError(AsyncIntegrationTest):
     @async_client_context.require_failCommand_blockConnection
     @async_client_context.require_retryable_writes
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
+    @flaky(reason="PYTHON-5291")
     async def test_pool_paused_error_is_retryable(self):
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()
