@@ -86,7 +86,6 @@ class TestClientBulkWrite(AsyncIntegrationTest):
         self.assertEqual(write_error["op"], {"insert": 0, "document": {"_id": 1}})
 
     @async_client_context.require_version_min(8, 0, 0, -24)
-    @async_client_context.require_no_serverless
     async def test_raw_bson_not_inflated(self):
         doc = RawBSONDocument(encode({"a": "b" * 100}))
         models = [
