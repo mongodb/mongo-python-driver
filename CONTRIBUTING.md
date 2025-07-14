@@ -453,8 +453,8 @@ or behavioral change has not been implemented yet. For existing tests that have 
 modified, we will add these changes to a patch file (in `/.evergreen/spec-patch`). Each patch
 file will be named after a PYTHON ticket and the contents of the file will be the associated
 test differences between PyMongo's tests and the specification.
-To be clear, changes listed in these patch files will be *undone* by the script, and thus won't
-be added to pymongo.
+All changes listed in these patch files will be *undone* by the script and won't
+be applied to PyMongo's tests.
 
 When a new test file or folder is added to the spec repo before the associated code changes are implemented, that test's path must be added to  `.evergreen/remove-unimplemented-tests.sh` along with a comment indicating the associated PYTHON ticket for those changes.
 
