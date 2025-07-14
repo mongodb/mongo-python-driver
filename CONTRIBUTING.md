@@ -456,9 +456,7 @@ test differences between PyMongo's tests and the specification.
 To be clear, changes listed in these patch files will be *undone* by the script, and thus won't
 be added to pymongo.
 
-In the case that a new test is added to the spec repo (i.e., a whole new file or folder in the spec repo),
-and the associated work isn't implemented yet, we will add the test's path to
-`.evergreen/remove-unimplemented-tests.sh` along with a comment indicating the associated PYTHON ticket.
+When a new test file or folder is added to the spec repo before the associated code changes are implemented, that test's path must be added to  `.evergreen/remove-unimplemented-tests.sh` along with a comment indicating the associated PYTHON ticket for those changes.
 
 Any PR that implements a PYTHON ticket documented in a patch file or within  `.evergreen/remove-unimplemented-tests.sh` must also remove the associated patch file or entry in `remove-unimplemented-tests.sh`.
 
