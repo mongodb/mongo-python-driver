@@ -178,6 +178,8 @@ class TestReadWriteConcernSpec(IntegrationTest):
         self.disable_replication(client_context.client)
         self.assertWriteOpsRaise(WriteConcern(w=client_context.w, wtimeout=1), WTimeoutError)
 
+    # https://github.com/mongodb/specifications/tree/master/source/crud/tests
+    # Test 1 (included here instead of test_client_bulk_write.py)
     @client_context.require_failCommand_fail_point
     def test_error_includes_errInfo(self):
         expected_wce = {
@@ -212,6 +214,8 @@ class TestReadWriteConcernSpec(IntegrationTest):
             }
             self.assertEqual(ctx.exception.details, expected_details)
 
+    # https://github.com/mongodb/specifications/tree/master/source/crud/tests
+    # Test 2 (included here instead of test_client_bulk_write.py)
     @client_context.require_version_min(4, 9)
     def test_write_error_details_exposes_errinfo(self):
         listener = OvertCommandListener()

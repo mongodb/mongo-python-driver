@@ -84,6 +84,7 @@ class TestClientBulkWrite(AsyncIntegrationTest):
 
 
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
+# Note: tests 1 and 2 are in test_read_write_concern_spec.py
 class TestClientBulkWriteCRUD(AsyncIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
@@ -581,6 +582,8 @@ class TestClientBulkWriteCRUD(AsyncIntegrationTest):
         self.assertEqual(result.update_results[0].did_upsert, True)
         self.assertEqual(result.update_results[1].did_upsert, True)
         self.assertEqual(result.update_results[2].did_upsert, False)
+
+    # Note: test 14 is optional and intentionally no implemented because we do provide multiple APIs to specify explain.
 
     @async_client_context.require_version_min(8, 0, 0, -24)
     async def test_15_unacknowledged_write_across_batches(self):

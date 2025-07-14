@@ -84,6 +84,7 @@ class TestClientBulkWrite(IntegrationTest):
 
 
 # https://github.com/mongodb/specifications/tree/master/source/crud/tests
+# Note: tests 1 and 2 are in test_read_write_concern_spec.py
 class TestClientBulkWriteCRUD(IntegrationTest):
     def setUp(self):
         super().setUp()
@@ -577,6 +578,8 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertEqual(result.update_results[0].did_upsert, True)
         self.assertEqual(result.update_results[1].did_upsert, True)
         self.assertEqual(result.update_results[2].did_upsert, False)
+
+    # Note: test 14 is optional and intentionally no implemented because we do provide multiple APIs to specify explain.
 
     @client_context.require_version_min(8, 0, 0, -24)
     def test_15_unacknowledged_write_across_batches(self):
