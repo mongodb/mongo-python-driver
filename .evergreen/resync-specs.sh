@@ -176,7 +176,7 @@ do
       ;;
     server-selection|server_selection)
       cpjson server-selection/tests/ server_selection
-      rm -rf $PYMONGO/test/server_selection/logging
+      rm -rf $PYMONGO/test/server_selection/logging  # these tests live in server_selection_logging
       cpjson server-selection/tests/logging server_selection_logging
       ;;
     server-selection-logging|server_selection_logging)
