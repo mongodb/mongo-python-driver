@@ -579,7 +579,7 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         self.assertEqual(result.update_results[1].did_upsert, True)
         self.assertEqual(result.update_results[2].did_upsert, False)
 
-    # Note: test 14 is optional and intentionally no implemented because we do provide multiple APIs to specify explain.
+    # Note: test 14 is optional and intentionally not implemented because we provide multiple APIs to specify explain.
 
     @client_context.require_version_min(8, 0, 0, -24)
     def test_15_unacknowledged_write_across_batches(self):
