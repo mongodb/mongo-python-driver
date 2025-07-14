@@ -30,6 +30,7 @@ expansion.yml
 .evergreen/scripts/test-env.sh
 specifications/
 results.json
+.evergreen/atlas_x509_dev_client_certificate.pem
 
 # Lambda temp files
 test/lambda/.aws-sam
