@@ -20,11 +20,11 @@ echo "Getting github token..."
 token=$(bash ./get-access-token.sh $repo $owner)
 if [ -z "${token}" ]; then
     echo "Failed to get github access token!"
-    popd || exit
+    popd
     exit 1
 fi
 echo "Getting github token... done."
-popd || exit
+popd
 
 # Make the git checkout and create a new branch.
 echo "Creating the git checkout..."

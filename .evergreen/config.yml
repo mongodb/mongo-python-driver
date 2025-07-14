@@ -59,6 +59,6 @@ buildvariants:
     display_name: "Resync Specs"
     run_on: rhel80-small
     cron: '0 16 * * MON'
-    patchable: false
+    patchable: true
     tasks:
       - name: resync_specs
