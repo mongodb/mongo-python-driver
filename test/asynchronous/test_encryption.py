@@ -1306,7 +1306,7 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
         kms_providers_invalid = copy.deepcopy(kms_providers)
         kms_providers_invalid["azure"]["identityPlatformEndpoint"] = "doesnotexist.invalid:443"
         kms_providers_invalid["gcp"]["endpoint"] = "doesnotexist.invalid:443"
-        kms_providers_invalid["kmip"]["endpoint"] = "doesnotexist.local:5698"
+        kms_providers_invalid["kmip"]["endpoint"] = "doesnotexist.invalid:5698"
         self.client_encryption_invalid = self.create_client_encryption(
             kms_providers=kms_providers_invalid,
             key_vault_namespace="keyvault.datakeys",
@@ -1364,15 +1364,10 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
             },
         )
 
-    @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
-    async def test_04_aws_endpoint_invalid_port(self):
-        master_key = {
-            "region": "us-east-1",
-            "key": ("arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
-            "endpoint": "kms.us-east-1.amazonaws.com:12345",
-        }
-        with self.assertRaisesRegex(EncryptionError, "kms.us-east-1.amazonaws.com:12345"):
-            await self.client_encryption.create_data_key("aws", master_key=master_key)
+    async def test_04_kmip_endpoint_invalid_port(self):
+        master_key = {"keyId": "1", "endpoint": "localhost:12345"}
+        with self.assertRaisesRegex(EncryptionError, "localhost:12345"):
+            await self.client_encryption.create_data_key("kmip", master_key=master_key)
 
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     async def test_05_aws_endpoint_wrong_region(self):
@@ -1478,7 +1473,7 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
         self.assertEqual("test", await self.client_encryption_invalid.decrypt(encrypted))
 
     async def test_12_kmip_master_key_invalid_endpoint(self):
-        key = {"keyId": "1", "endpoint": "doesnotexist.local:5698"}
+        key = {"keyId": "1", "endpoint": "doesnotexist.invalid:5698"}
         with self.assertRaisesRegex(EncryptionError, self.kmip_host_error):
             await self.client_encryption.create_data_key("kmip", key)
 
@@ -2166,7 +2161,7 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             await self.client_encryption_invalid_hostname.create_data_key("aws", key)
 
     async def test_02_azure(self):
-        key = {"keyVaultEndpoint": "doesnotexist.local", "keyName": "foo"}
+        key = {"keyVaultEndpoint": "doesnotexist.invalid", "keyName": "foo"}
         # Missing client cert error.
         with self.assertRaisesRegex(EncryptionError, self.cert_error):
             await self.client_encryption_no_client_cert.create_data_key("azure", key)
@@ -2241,7 +2236,7 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             await self.client_encryption_with_names.create_data_key("aws:with_tls", key)
 
     async def test_06_named_kms_providers_apply_tls_options_azure(self):
-        key = {"keyVaultEndpoint": "doesnotexist.local", "keyName": "foo"}
+        key = {"keyVaultEndpoint": "doesnotexist.invalid", "keyName": "foo"}
         # Missing client cert error.
         with self.assertRaisesRegex(EncryptionError, self.cert_error):
             await self.client_encryption_with_names.create_data_key("azure:no_client_cert", key)
