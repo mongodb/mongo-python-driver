@@ -1,7 +1,6 @@
 #!/bin/bash
 PYMONGO=$(dirname "$(cd "$(dirname "$0")" || exit; pwd)")
 
-rm -rf $PYMONGO/test/server_selection/logging
 rm $PYMONGO/test/transactions/legacy/errors-client.json  # PYTHON-1894
 rm $PYMONGO/test/connection_monitoring/wait-queue-fairness.json  # PYTHON-1873
 rm $PYMONGO/test/client-side-encryption/spec/unified/fle2v2-BypassQueryAnalysis.json  # PYTHON-5143

@@ -176,6 +176,7 @@ do
       ;;
     server-selection|server_selection)
       cpjson server-selection/tests/ server_selection
+      rm -rf $PYMONGO/test/server_selection/logging
       cpjson server-selection/tests/logging server_selection_logging
       ;;
     server-selection-logging|server_selection_logging)
