@@ -460,8 +460,7 @@ In the case that a new test is added to the spec repo (i.e., a whole new file or
 and the associated work isn't implemented yet, we will add the test's path to
 `.evergreen/remove-unimplemented-tests.sh` along with a comment indicating the associated PYTHON ticket.
 
-These patch files and/or unimplemented paths must be removed as part of the PR that implements
-the fix or behavioral change.
+Any PR that implements a PYTHON ticket documented in a patch file or within  `.evergreen/remove-unimplemented-tests.sh` must also remove the associated patch file or entry in `remove-unimplemented-tests.sh`.
 
 #### Adding to a patch file
 To add to or create a patch file, run `git diff` to show the desired changes to undo and copy the
