@@ -464,16 +464,12 @@ These patch files and/or unimplemented paths must be removed as part of the PR t
 the fix or behavioral change.
 
 #### Adding to a patch file
-Assuming the changes are committed somewhere, to add to any of the
-patch files, run `git diff` to show the desired changes to undo and paste (or add) the
+To add to or create a patch file, run `git diff` to show the desired changes to undo and copy the
 results into the patch file.
 
-For example, there are modifications to test files on the most recent commit of the current branch that are failing.
-To add those changes to `PYTHON-1234.patch` (where PYTHON-1234 is the ticket associated with the changes),
-I would do the following:
+For example: the imaginary, unimplemented PYTHON-1234 ticket has associated spec test changes. To add those changes to `PYTHON-1234.patch`), do the following:
 ```bash
-git diff HEAD~1 path/to/file >> .evergreen/spec-patch/PYTHON-1234.spec-patch
-```
+git diff HEAD~1 path/to/file >> .evergreen/spec-patch/PYTHON-1234.patch
 
 #### Running Locally
 Both `resync-all-specs.sh` and `resync-all-specs.py` can be run locally (and won't generate a PR).
