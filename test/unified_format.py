@@ -613,7 +613,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Connection errors are considered client errors.
             if isinstance(error, ConnectionFailure):
                 self.assertNotIsInstance(error, NotPrimaryError)
-            if isinstance(error, CorruptGridFile):
+            elif isinstance(error, CorruptGridFile):
                 pass
             elif isinstance(error, (InvalidOperation, ConfigurationError, EncryptionError, NoFile)):
                 pass
