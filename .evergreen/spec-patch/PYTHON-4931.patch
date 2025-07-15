@@ -1,0 +1,93 @@
+diff --git a/test/gridfs/delete.json b/test/gridfs/delete.json
+index 277b9ed7..9a9b22fc 100644
+--- a/test/gridfs/delete.json
++++ b/test/gridfs/delete.json
+@@ -497,7 +497,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ],
+@@ -650,7 +650,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ],
+diff --git a/test/gridfs/download.json b/test/gridfs/download.json
+index f0cb8517..67658ac5 100644
+--- a/test/gridfs/download.json
++++ b/test/gridfs/download.json
+@@ -338,7 +338,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+@@ -370,7 +370,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+@@ -402,7 +402,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+@@ -471,7 +471,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+@@ -514,7 +514,7 @@
+             }
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+diff --git a/test/gridfs/downloadByName.json b/test/gridfs/downloadByName.json
+index 7b20933c..45abaf7b 100644
+--- a/test/gridfs/downloadByName.json
++++ b/test/gridfs/downloadByName.json
+@@ -290,7 +290,7 @@
+             "filename": "xyz"
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
+@@ -306,7 +306,7 @@
+             "revision": 999
+           },
+           "expectError": {
+-            "isError": true
++            "isClientError": true
+           }
+         }
+       ]
