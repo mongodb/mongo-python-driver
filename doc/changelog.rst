@@ -58,6 +58,10 @@ PyMongo 4.13 brings a number of changes including:
   or the `migration guide <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/reference/migration/>`_ for more information.
 - Fixed a bug where :class:`pymongo.write_concern.WriteConcern` repr was not eval-able
   when using ``w="majority"``.
+- When padding is set, ignored bits in a BSON BinaryVector of PACKED_BIT dtype should be set to zero.
+  When encoding, this is enforced and is a breaking change.
+  It is not yet enforced when decoding, so reading from the database will not fail, however a warning will be triggered.
+  From PyMongo 5.0, this rule will be enforced for both encoding and decoding.
 
 Issues Resolved
 ...............
