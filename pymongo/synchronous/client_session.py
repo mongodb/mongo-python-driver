@@ -659,6 +659,11 @@ class ClientSession:
         ``with_transaction`` starts a new transaction and re-executes
         the ``callback``.
 
+        The ``callback`` MUST NOT silently handle command errors
+        without allowing such errors to propagate. Command errors may abort the
+        transaction on the server, and an attempt to commit the transaction will
+        be rejected with a ``NoSuchTransaction`` error.
+
         When :meth:`~ClientSession.commit_transaction` raises an exception with
         the ``"UnknownTransactionCommitResult"`` error label,
         ``with_transaction`` retries the commit until the result of the
