@@ -92,11 +92,11 @@ class OIDCTestBase(PyMongoTestCase):
                 return fid.read()
         elif ENVIRON == "azure":
             opts = parse_uri(self.uri_single)["options"]
-            token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
+            token_aud = opts["authMechanismProperties"]["TOKEN_RESOURCE"]
             return _get_azure_response(token_aud, username)["access_token"]
         elif ENVIRON == "gcp":
             opts = parse_uri(self.uri_single)["options"]
-            token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
+            token_aud = opts["authMechanismProperties"]["TOKEN_RESOURCE"]
             return _get_gcp_response(token_aud, username)["access_token"]
         elif ENVIRON == "k8s":
             return _get_k8s_token()
@@ -1106,7 +1106,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         if ENVIRON != "azure":
             raise unittest.SkipTest("Test is only supported on Azure")
         opts = parse_uri(self.uri_single)["options"]
-        resource = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
+        resource = opts["authMechanismProperties"]["TOKEN_RESOURCE"]
 
         props = dict(TOKEN_RESOURCE=resource, ENVIRONMENT="azure")
         client = self.create_client(authMechanismProperties=props)
@@ -1117,7 +1117,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
             raise unittest.SkipTest("Test is only supported on Azure")
 
         opts = parse_uri(self.uri_single)["options"]
-        token_aud = opts["authmechanismproperties"]["TOKEN_RESOURCE"]
+        token_aud = opts["authMechanismProperties"]["TOKEN_RESOURCE"]
 
         props = dict(TOKEN_RESOURCE=token_aud, ENVIRONMENT="azure")
         client = self.create_client(username="bad", authmechanismproperties=props)
