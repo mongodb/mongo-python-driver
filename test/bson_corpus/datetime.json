@@ -24,6 +24,7 @@
         {
             "description" : "Y10K",
             "canonical_bson" : "1000000009610000DC1FD277E6000000",
+            "relaxed_extjson" : "{\"a\":{\"$date\":{\"$numberLong\":\"253402300800000\"}}}",
             "canonical_extjson" : "{\"a\":{\"$date\":{\"$numberLong\":\"253402300800000\"}}}"
         },
         {
