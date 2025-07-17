@@ -660,6 +660,12 @@ class AsyncClientSession:
         ``with_transaction`` starts a new transaction and re-executes
         the ``callback``.
 
+        The ``callback`` MUST NOT silently handle command errors
+        without allowing such errors to propagate. Command errors may abort the
+        transaction on the server, and an attempt to commit the transaction will
+        be rejected with a ``NoSuchTransaction`` error.  For more information see
+        the `transactions specification`_.
+
         When :meth:`~AsyncClientSession.commit_transaction` raises an exception with
         the ``"UnknownTransactionCommitResult"`` error label,
         ``with_transaction`` retries the commit until the result of the
@@ -689,6 +695,9 @@ class AsyncClientSession:
         :return: The return value of the ``callback``.
 
         .. versionadded:: 3.9
+
+        .. _transactions specification:
+            https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback
         """
         start_time = time.monotonic()
         while True:
