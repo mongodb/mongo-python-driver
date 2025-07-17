@@ -696,7 +696,7 @@ class AsyncClientSession:
 
         .. versionadded:: 3.9
 
-        .. _tranactions specification:
+        .. _transactions specification:
             https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback
         """
         start_time = time.monotonic()
