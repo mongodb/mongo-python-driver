@@ -662,7 +662,8 @@ class ClientSession:
         The ``callback`` MUST NOT silently handle command errors
         without allowing such errors to propagate. Command errors may abort the
         transaction on the server, and an attempt to commit the transaction will
-        be rejected with a ``NoSuchTransaction`` error.
+        be rejected with a ``NoSuchTransaction`` error.  For more information see
+        the `transactions specification`_.
 
         When :meth:`~ClientSession.commit_transaction` raises an exception with
         the ``"UnknownTransactionCommitResult"`` error label,
@@ -693,6 +694,9 @@ class ClientSession:
         :return: The return value of the ``callback``.
 
         .. versionadded:: 3.9
+
+        .. _tranactions specification:
+            https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback
         """
         start_time = time.monotonic()
         while True:
