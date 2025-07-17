@@ -362,6 +362,24 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(len(started), 1)
         self.assertNotIn("readConcern", started[0].command)
 
+    # https://github.com/mongodb/specifications/blob/master/source/crud/tests/README.md#14-explain-helpers-allow-users-to-specify-maxtimems
+    async def test_explain_csot(self):
+        # Create a MongoClient with command monitoring enabled (referred to as client).
+        listener = AllowListEventListener("explain")
+        client = await self.rs_or_single_client(event_listeners=[listener])
+
+        # Create a collection, referred to as collection, with the namespace explain-test.collection.
+        collection = client["explain-test"]["collection"]
+
+        # Run an explained find on collection. The find will have the query predicate { name: 'john doe' }. Specify a maxTimeMS value of 2000ms for the explain.
+        with pymongo.timeout(2.0):
+            self.assertTrue(await collection.find({"name": "john doe"}).explain())
+
+        # Obtain the command started event for the explain. Confirm that the top-level explain command should has a maxTimeMS value of 2000.
+        started = listener.started_events
+        self.assertEqual(len(started), 1)
+        assert 1990 < started[0].command["maxTimeMS"] <= 2000
+
     async def test_hint(self):
         db = self.db
         with self.assertRaises(TypeError):
