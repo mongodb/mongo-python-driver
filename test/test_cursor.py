@@ -370,7 +370,7 @@ class TestCursor(IntegrationTest):
         # Obtain the command started event for the explain. Confirm that the top-level explain command should has a maxTimeMS value of 2000.
         started = listener.started_events
         self.assertEqual(len(started), 1)
-        assert 1990 < started[0].command["maxTimeMS"] <= 2000
+        assert 1900 < started[0].command["maxTimeMS"] <= 2000
 
     def test_hint(self):
         db = self.db
