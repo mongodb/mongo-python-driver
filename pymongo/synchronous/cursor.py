@@ -765,6 +765,8 @@ class Cursor(Generic[_DocumentType]):
           :meth:`~pymongo.database.Database.command` to run the explain
           command directly.
 
+        .. note:: The timeout of this method can be set using :func:`pymongo.timeout`.
+
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
         """
         c = self.clone()
