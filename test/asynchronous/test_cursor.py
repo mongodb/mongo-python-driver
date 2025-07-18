@@ -366,7 +366,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_explain_csot(self):
         # Create a MongoClient with command monitoring enabled (referred to as client).
         listener = AllowListEventListener("explain")
-        client = await self.rs_or_single_client(event_listeners=[listener])
+        client = await self.async_rs_or_single_client(event_listeners=[listener])
 
         # Create a collection, referred to as collection, with the namespace explain-test.collection.
         collection = client["explain-test"]["collection"]
