@@ -33,7 +33,7 @@ then
   # we're running locally
   python3 ./.evergreen/scripts/resync-all-specs.py
 else
-  /opt/devtools/bin/python3.11 ./.evergreen/scripts/resync-all-specs.py "$PR_DESC"
+  /opt/devtools/bin/python3.11 ./.evergreen/scripts/resync-all-specs.py --filename "$PR_DESC"
   if [[ -f $PR_DESC ]]; then
     # changes were made -> call scrypt to create PR for us
     .evergreen/scripts/create-spec-pr.sh "$PR_DESC"
