@@ -34,7 +34,7 @@ from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.errors import ConfigurationError, PyMongoError
-from pymongo.read_preferences import ReadPreference, _AggWritePref, _ServerMode
+from pymongo.read_preferences import Primary, ReadPreference, _AggWritePref, _ServerMode
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection
 from pymongo.server_type import SERVER_TYPE
@@ -323,6 +323,17 @@ class TopologyDescription:
             # Ignore selectors when explicit address is requested.
             description = self.server_descriptions().get(address)
             return [description] if description else []
+
+        # Primary selection fast path.
+        if self.topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary and type(selector) is Primary:
+            for sd in self._server_descriptions.values():
+                if sd.server_type == SERVER_TYPE.RSPrimary:
+                    sds = [sd]
+                    if custom_selector:
+                        sds = custom_selector(sds)
+                    return sds
+            # No primary found, return an empty list.
+            return []
 
         selection = Selection.from_topology_description(self)
         # Ignore read preference for sharded clusters.
