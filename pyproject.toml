@@ -112,7 +112,7 @@ filterwarnings = [
     "module:GridIn property:DeprecationWarning",
     "module:GridOut property:DeprecationWarning",
     # TODO: this needs a ticket
-    "module:WindowsSelectorEventLoopPolicy:DeprecationWarning",
+    "module:.*WindowsSelectorEventLoopPolicy:DeprecationWarning",
     # TODO: Remove as part of PYTHON-3923.
     "module:unclosed <eventlet.green.ssl.GreenSSLSocket:ResourceWarning",
     "module:unclosed <socket.socket:ResourceWarning",
