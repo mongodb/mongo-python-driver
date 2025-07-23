@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import asyncio
+import inspect
 import sys
 
 from pymongo import AsyncMongoClient
@@ -83,7 +83,7 @@ def get_async_methods() -> set[str]:
             for k, v in vars(x).items()
             if callable(v)
             and not isinstance(v, classmethod)
-            and asyncio.iscoroutinefunction(v)
+            and inspect.iscoroutinefunction(v)
             and v.__name__[0] != "_"
         }
         result = result | methods

@@ -20,8 +20,8 @@ import functools
 import os
 import time
 import unittest
-from asyncio import iscoroutinefunction
 from collections import abc
+from inspect import iscoroutinefunction
 from test.asynchronous import AsyncIntegrationTest, async_client_context, client_knobs
 from test.asynchronous.helpers import ConcurrentRunner
 from test.utils_shared import (

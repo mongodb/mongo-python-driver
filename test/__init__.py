@@ -30,7 +30,7 @@ import time
 import traceback
 import unittest
 import warnings
-from asyncio import iscoroutinefunction
+from inspect import iscoroutinefunction
 
 from pymongo.errors import AutoReconnect
 from pymongo.synchronous.uri_parser import parse_uri
