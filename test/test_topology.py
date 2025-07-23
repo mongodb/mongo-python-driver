@@ -30,7 +30,7 @@ from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.errors import AutoReconnect, ConfigurationError, ConnectionFailure
 from pymongo.hello import Hello, HelloCompat
-from pymongo.read_preferences import ReadPreference, Secondary
+from pymongo.read_preferences import Primary, ReadPreference, Secondary
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
@@ -51,7 +51,10 @@ address = ("a", 27017)
 
 
 def create_mock_topology(
-    seeds=None, replica_set_name=None, monitor_class=DummyMonitor, direct_connection=False
+    seeds=None,
+    replica_set_name=None,
+    monitor_class=DummyMonitor,
+    direct_connection=False,
 ):
     partitioned_seeds = list(map(common.partition_node, seeds or ["a"]))
     topology_settings = TopologySettings(
@@ -122,6 +125,25 @@ class TestTopologyConfiguration(TopologyTest):
 
         # The monitor, not its pool, is responsible for calling hello.
         self.assertTrue(monitor._pool.is_sdam)
+
+    def test_selector_fast_path(self):
+        topology = create_mock_topology(seeds=["a", "b:27018"], replica_set_name="foo")
+        description = topology.description
+        description._topology_type = TOPOLOGY_TYPE.ReplicaSetWithPrimary
+
+        # There is no primary yet, so it should give an empty list.
+        self.assertEqual(description.apply_selector(Primary()), [])
+
+        # If we set a primary server, we should get it back.
+        sd = list(description._server_descriptions.values())[0]
+        sd._server_type = SERVER_TYPE.RSPrimary
+        self.assertEqual(description.apply_selector(Primary()), [sd])
+
+        # If there is a custom selector, it should be applied.
+        def custom_selector(servers):
+            return []
+
+        self.assertEqual(description.apply_selector(Primary(), custom_selector=custom_selector), [])
 
 
 class TestSingleServerTopology(TopologyTest):
