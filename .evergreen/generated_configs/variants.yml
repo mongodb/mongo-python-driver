@@ -319,6 +319,15 @@ buildvariants:
     expansions:
       PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
     tags: []
+  - name: free-threaded-win64-python3.14t
+    tasks:
+      - name: .free-threading
+    display_name: Free-threaded Win64 Python3.14t
+    run_on:
+      - windows-64-vsMulti-small
+    expansions:
+      PYTHON_BINARY: C:/python/Python314t/python.exe
+    tags: []
 
   # Green framework tests
   - name: green-eventlet-rhel8

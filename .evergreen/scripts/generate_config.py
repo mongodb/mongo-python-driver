@@ -108,14 +108,14 @@ def create_free_threaded_variants() -> list[BuildVariant]:
     variants = []
     for host_name in ("rhel8", "macos", "macos-arm64", "win64"):
         if host_name == "win64":
-            # TODO: PYTHON-5027
-            continue
+            python = "3.14t"
+        else:
+            python = "3.13t"
         tasks = [".free-threading"]
         tags = []
         if host_name == "rhel8":
             tags.append("pr")
         host = HOSTS[host_name]
-        python = "3.13t"
         display_name = get_variant_name("Free-threaded", host, python=python)
         variant = create_variant(tasks, display_name, tags=tags, python=python, host=host)
         variants.append(variant)
