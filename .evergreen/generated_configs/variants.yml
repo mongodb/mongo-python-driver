@@ -308,7 +308,7 @@ buildvariants:
     run_on:
       - macos-14
     expansions:
-      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13t/bin/python3t
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3t
     tags: []
   - name: free-threaded-macos-arm64-python3.13t
     tasks:
@@ -317,7 +317,7 @@ buildvariants:
     run_on:
       - macos-14-arm64
     expansions:
-      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13t/bin/python3t
+      PYTHON_BINARY: /Library/Frameworks/Python.Framework/Versions/3.13/bin/python3t
     tags: []
   - name: free-threaded-win64-python3.14t
     tasks:
@@ -326,7 +326,7 @@ buildvariants:
     run_on:
       - windows-64-vsMulti-small
     expansions:
-      PYTHON_BINARY: C:/python/Python314t/python3.14t.exe
+      PYTHON_BINARY: C:/python/Python314/python3.14t.exe
     tags: []
 
   # Green framework tests
