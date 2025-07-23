@@ -162,7 +162,8 @@ def get_python_binary(python: str, host: Host) -> str:
     if name in ["macos", "macos-arm64"]:
         bin_name = "python3t" if "t" in python else "python3"
         python_dir = python.replace("t", "")
-        return f"/Library/Frameworks/Python.Framework/Versions/{python_dir}/bin/{bin_name}"
+        framework_dir = "PythonT" if "t" in python else "Python"
+        return f"/Library/Frameworks/{framework_dir}.Framework/Versions/{python_dir}/bin/{bin_name}"
 
     raise ValueError(f"no match found for python {python} on {name}")
 
