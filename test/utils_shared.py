@@ -26,9 +26,9 @@ import sys
 import threading
 import unittest
 import warnings
-from asyncio import iscoroutinefunction
 from collections import abc, defaultdict
 from functools import partial
+from inspect import iscoroutinefunction
 from test import client_context
 from test.asynchronous.utils import async_wait_until
 from test.utils import wait_until
