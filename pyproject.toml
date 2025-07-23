@@ -111,6 +111,8 @@ filterwarnings = [
     "module:Wire protocol compression with:UserWarning",
     "module:GridIn property:DeprecationWarning",
     "module:GridOut property:DeprecationWarning",
+    # TODO: this needs a ticket
+    "module:WindowsSelectorEventLoopPolicy:DeprecationWarning",
     # TODO: Remove as part of PYTHON-3923.
     "module:unclosed <eventlet.green.ssl.GreenSSLSocket:ResourceWarning",
     "module:unclosed <socket.socket:ResourceWarning",
