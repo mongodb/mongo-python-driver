@@ -113,7 +113,7 @@ filterwarnings = [
     "module:GridOut property:DeprecationWarning",
     # pytest-asyncio known issue: https://github.com/pytest-dev/pytest-asyncio/issues/1032
     "module:.*WindowsSelectorEventLoopPolicy:DeprecationWarning",
-    "module:.*get_event_loop_policy:DeprecationWarning",
+    "module:.*et_event_loop_policy:DeprecationWarning",
     # TODO: Remove as part of PYTHON-3923.
     "module:unclosed <eventlet.green.ssl.GreenSSLSocket:ResourceWarning",
     "module:unclosed <socket.socket:ResourceWarning",
