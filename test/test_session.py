@@ -19,7 +19,7 @@ import asyncio
 import copy
 import sys
 import time
-from asyncio import iscoroutinefunction
+from inspect import iscoroutinefunction
 from io import BytesIO
 from test.helpers import ExceptionCatchingTask
 from typing import Any, Callable, List, Set, Tuple

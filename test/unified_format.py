@@ -27,8 +27,8 @@ import re
 import sys
 import time
 import traceback
-from asyncio import iscoroutinefunction
 from collections import defaultdict
+from inspect import iscoroutinefunction
 from test import (
     IntegrationTest,
     client_context,

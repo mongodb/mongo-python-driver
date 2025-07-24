@@ -20,7 +20,7 @@ import inspect
 import sys
 
 sys.path[0:0] = [""]
-from asyncio import iscoroutinefunction
+from inspect import iscoroutinefunction
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils_shared import OvertCommandListener
 

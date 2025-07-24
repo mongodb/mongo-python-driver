@@ -23,8 +23,8 @@ import sys
 import threading  # Used in the synchronized version of this file
 import time
 import traceback
-from asyncio import iscoroutinefunction
 from functools import wraps
+from inspect import iscoroutinefunction
 
 from bson.son import SON
 from pymongo import AsyncMongoClient
