@@ -60,7 +60,7 @@ To explicitly connect before performing an operation, use :meth:`~pymongo.asynch
 
 .. code-block:: pycon
 
-  >>> client = await AsyncMongoClient().aconnect()
+  >>> await AsyncMongoClient().aconnect()
 
 Getting a Database
 ------------------
