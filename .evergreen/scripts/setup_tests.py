@@ -274,7 +274,7 @@ def handle_test_env() -> None:
         write_env("GSSAPI_PRINCIPAL", config["PRINCIPAL"])
 
     if test_name == "doctest":
-        UV_ARGS.append("--with sphinx")
+        UV_ARGS.append("--group doctest")
 
     if test_name == "load_balancer":
         SINGLE_MONGOS_LB_URI = os.environ.get(
