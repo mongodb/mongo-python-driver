@@ -360,7 +360,7 @@ class TestCursor(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         # Create a collection, referred to as collection, with the namespace explain-test.collection.
-        collection = client["explain-test"]["collection"]
+        collection = client["explain-test"].create_collection("collection")
 
         # Run an explained find on collection. The find will have the query predicate { name: 'john doe' }. Specify a maxTimeMS value of 2000ms for the explain.
         with pymongo.timeout(2.0):
