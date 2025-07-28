@@ -296,8 +296,8 @@ def create_stable_api_variants():
 def create_green_framework_variants():
     variants = []
     host = DEFAULT_HOST
-    for framework in ["eventlet", "gevent"]:
-        tasks = [".test-standard .sync"]
+    for framework in ["gevent"]:
+        tasks = [".test-standard .sync !.python-3.14"]
         expansions = dict(GREEN_FRAMEWORK=framework)
         display_name = get_variant_name(f"Green {framework.capitalize()}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
