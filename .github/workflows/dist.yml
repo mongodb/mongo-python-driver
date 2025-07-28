@@ -88,7 +88,7 @@ jobs:
           ls wheelhouse/*cp313*.whl
           ls wheelhouse/*cp314*.whl
           # Free-threading builds:
-          ls wheelhouse/*cp3134*.whl
+          ls wheelhouse/*cp314*.whl
 
       - uses: actions/upload-artifact@v4
         with:
