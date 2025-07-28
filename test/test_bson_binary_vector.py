@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import binascii
-import codecs
 import struct
 from pathlib import Path
 from test import unittest
@@ -111,7 +110,7 @@ def create_test(case_spec):
 
 def create_tests():
     for filename in _TEST_PATH.glob("*.json"):
-        with codecs.open(str(filename), encoding="utf-8") as test_file:
+        with open(str(filename), encoding="utf-8") as test_file:
             test_method = create_test(json_util.loads(test_file.read()))
         setattr(TestBSONBinaryVector, "test_" + filename.stem, test_method)
 

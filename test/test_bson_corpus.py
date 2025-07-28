@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import binascii
-import codecs
 import functools
 import glob
 import json
@@ -227,7 +226,7 @@ def create_test(case_spec):
 def create_tests():
     for filename in glob.glob(os.path.join(_TEST_PATH, "*.json")):
         test_suffix, _ = os.path.splitext(os.path.basename(filename))
-        with codecs.open(filename, encoding="utf-8") as bson_test_file:
+        with open(filename, encoding="utf-8") as bson_test_file:
             test_method = create_test(json.load(bson_test_file))
         setattr(TestBSONCorpus, "test_" + test_suffix, test_method)
 

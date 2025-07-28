@@ -153,18 +153,17 @@ def get_python_binary(python: str, host: Host) -> str:
             base = "C:/python/32"
         else:
             base = "C:/python"
-        python = python.replace(".", "")
-        if python == "313t":
-            return f"{base}/Python313/python3.13t.exe"
-        return f"{base}/Python{python}/python.exe"
+        python_dir = python.replace(".", "").replace("t", "")
+        return f"{base}/Python{python_dir}/python{python}.exe"
 
     if name in ["rhel8", "ubuntu22", "ubuntu20", "rhel7"]:
         return f"/opt/python/{python}/bin/python3"
 
     if name in ["macos", "macos-arm64"]:
-        if python == "3.13t":
-            return "/Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t"
-        return f"/Library/Frameworks/Python.Framework/Versions/{python}/bin/python3"
+        bin_name = "python3t" if "t" in python else "python3"
+        python_dir = python.replace("t", "")
+        framework_dir = "PythonT" if "t" in python else "Python"
+        return f"/Library/Frameworks/{framework_dir}.Framework/Versions/{python_dir}/bin/{bin_name}"
 
     raise ValueError(f"no match found for python {python} on {name}")
 
