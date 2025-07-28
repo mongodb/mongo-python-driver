@@ -297,8 +297,8 @@ def create_green_framework_variants():
     variants = []
     host = DEFAULT_HOST
     for framework in ["eventlet", "gevent"]:
-        tasks = [".test-standard .standalone-noauth-nossl"]
-        expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
+        tasks = [".test-standard .sync .standalone-noauth-nossl"]
+        expansions = dict(GREEN_FRAMEWORK=framework)
         display_name = get_variant_name(f"Green {framework.capitalize()}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
