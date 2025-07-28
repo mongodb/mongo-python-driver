@@ -762,6 +762,9 @@ def create_mod_wsgi_tasks():
     for (test, topology), python in zip_cycle(
         product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
     ):
+        if python == "3.14":
+            # TODO: PYTHON-5459
+            continue
         if test == "standalone":
             task_name = "mod-wsgi-"
         else:
