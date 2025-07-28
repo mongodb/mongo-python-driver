@@ -54,7 +54,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           cache: 'pip'
-          python-version: "3.10"
+          python-version: "3.11"  # cibuildwheel 3 requires 3.11+, and provides its own python for wheel building
           cache-dependency-path: 'pyproject.toml'
           allow-prereleases: true
 
@@ -69,22 +69,14 @@ jobs:
           platforms: all
 
       - name: Install cibuildwheel
-        # Note: the default manylinux is manylinux2014
+        # Note: the default manylinux is manylinux_2_28
         run: |
           python -m pip install -U pip
-          python -m pip install "cibuildwheel>=2.20,<3"
+          python -m pip install "cibuildwheel>=3.1.1,<4"
 
       - name: Build wheels
         env:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
-        run: python -m cibuildwheel --output-dir wheelhouse
-
-      - name: Build manylinux1 wheels
-        if: ${{ matrix.buildplat[1] == 'manylinux_x86_64' || matrix.buildplat[1] == 'manylinux_i686' }}
-        env:
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
-          CIBW_MANYLINUX_I686_IMAGE: manylinux1
-          CIBW_BUILD: "cp310-${{ matrix.buildplat[1] }} cp310-${{ matrix.buildplat[1] }}"
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Assert all versions in wheelhouse

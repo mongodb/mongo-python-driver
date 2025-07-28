@@ -73,7 +73,6 @@ from pymongo.results import (
 )
 from pymongo.synchronous.collection import Collection, ReturnDocument
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 

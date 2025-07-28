@@ -29,8 +29,6 @@ from test.utils_shared import (
     OvertCommandListener,
 )
 
-from pymongo.synchronous.helpers import next
-
 _IS_SYNC = True
 
 pytestmark = pytest.mark.data_lake

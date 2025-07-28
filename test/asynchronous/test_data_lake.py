@@ -29,8 +29,6 @@ from test.utils_shared import (
     OvertCommandListener,
 )
 
-from pymongo.asynchronous.helpers import anext
-
 _IS_SYNC = False
 
 pytestmark = pytest.mark.data_lake

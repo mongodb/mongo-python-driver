@@ -40,7 +40,6 @@ from typing import Any, Dict, Mapping, Optional
 import pytest
 
 from pymongo.asynchronous.collection import AsyncCollection
-from pymongo.asynchronous.helpers import anext
 from pymongo.daemon import _spawn_daemon
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 
