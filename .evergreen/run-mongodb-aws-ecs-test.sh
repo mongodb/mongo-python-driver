@@ -20,8 +20,9 @@ fi
 set -o xtrace
 
 # Install python with pip.
-PYTHON_VER="python3.9"
+PYTHON_VER="python3.10"
 apt-get -qq update  < /dev/null > /dev/null
+add-apt-repository -y 'ppa:deadsnakes/ppa'
 apt-get -qq install $PYTHON_VER $PYTHON_VER-venv build-essential $PYTHON_VER-dev -y  < /dev/null > /dev/null
 
 export PYTHON_BINARY=$PYTHON_VER

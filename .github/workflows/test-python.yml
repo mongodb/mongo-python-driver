@@ -28,7 +28,7 @@ jobs:
         uses: astral-sh/setup-uv@7edac99f961f18b581bbd960d59d049f04c0002f # v5
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Install Python dependencies
         run: |
           just install
@@ -56,7 +56,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.9", "pypy-3.10", "3.13", "3.13t"]
+        python-version: ["3.10", "pypy-3.10", "3.13", "3.14t"]
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -91,7 +91,7 @@ jobs:
         uses: astral-sh/setup-uv@7edac99f961f18b581bbd960d59d049f04c0002f # v5
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
         with:
@@ -114,7 +114,7 @@ jobs:
         uses: astral-sh/setup-uv@7edac99f961f18b581bbd960d59d049f04c0002f # v5
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Install just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
       - name: Install dependencies
@@ -133,7 +133,7 @@ jobs:
         uses: astral-sh/setup-uv@7edac99f961f18b581bbd960d59d049f04c0002f # v5
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Install just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
       - name: Install dependencies
@@ -146,7 +146,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.9", "3.11"]
+        python: ["3.10", "3.14"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -177,7 +177,7 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
           # Build sdist on lowest supported Python
-          python-version: '3.9'
+          python-version: '3.10'
       - name: Build SDist
         shell: bash
         run: |
@@ -209,7 +209,7 @@ jobs:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
             # Test sdist on lowest supported Python
-            python-version: '3.9'
+            python-version: '3.10'
         - name: Start MongoDB
           uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
         - name: Run connect test from sdist
@@ -233,7 +233,7 @@ jobs:
         - name: Install uv
           uses: astral-sh/setup-uv@7edac99f961f18b581bbd960d59d049f04c0002f # v5
           with:
-            python-version: '3.9'
+            python-version: '3.10'
         - name: Start MongoDB
           uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
           with:
@@ -259,7 +259,7 @@ jobs:
         - name: Install uv
           uses: astral-sh/setup-uv@7edac99f961f18b581bbd960d59d049f04c0002f # v5
           with:
-            python-version: '3.9'
+            python-version: '3.10'
         - name: Start MongoDB
           uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
           with:

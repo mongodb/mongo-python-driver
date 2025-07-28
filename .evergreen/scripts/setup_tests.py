@@ -53,7 +53,7 @@ EXTRAS_MAP = {
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 
 # The python version used for perf tests.
-PERF_PYTHON_VERSION = "3.9.13"
+PERF_PYTHON_VERSION = "3.10.14"
 
 
 def is_set(var: str) -> bool:

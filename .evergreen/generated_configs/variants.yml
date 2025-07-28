@@ -1,16 +1,16 @@
 buildvariants:
   # Alternative hosts tests
-  - name: openssl-1.0.2-rhel7-v5.0-python3.9
+  - name: openssl-1.0.2-rhel7-v5.0-python3.10
     tasks:
       - name: .test-no-toolchain
-    display_name: OpenSSL 1.0.2 RHEL7 v5.0 Python3.9
+    display_name: OpenSSL 1.0.2 RHEL7 v5.0 Python3.10
     run_on:
       - rhel79-small
     batchtime: 10080
     expansions:
       VERSION: "5.0"
-      PYTHON_VERSION: "3.9"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      PYTHON_VERSION: "3.10"
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
   - name: other-hosts-rhel9-fips-latest
     tasks:
       - name: .test-no-toolchain
@@ -164,17 +164,17 @@ buildvariants:
       - rhel87-small
 
   # Disable test commands tests
-  - name: disable-test-commands-rhel8-python3.9
+  - name: disable-test-commands-rhel8-python3.10
     tasks:
       - name: .test-standard .server-latest
-    display_name: Disable test commands RHEL8 Python3.9
+    display_name: Disable test commands RHEL8 Python3.10
     run_on:
       - rhel87-small
     expansions:
       AUTH: auth
       SSL: ssl
       DISABLE_TEST_COMMANDS: "1"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
 
   # Doctests tests
   - name: doctests-rhel8
@@ -292,32 +292,32 @@ buildvariants:
       AUTH: auth
 
   # Free threaded tests
-  - name: free-threaded-rhel8-python3.13t
+  - name: free-threaded-rhel8-python3.14t
     tasks:
       - name: .free-threading
-    display_name: Free-threaded RHEL8 Python3.13t
+    display_name: Free-threaded RHEL8 Python3.14t
     run_on:
       - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/python/3.13t/bin/python3
+      PYTHON_BINARY: /opt/python/3.14t/bin/python3
     tags: [pr]
-  - name: free-threaded-macos-python3.13t
+  - name: free-threaded-macos-python3.14t
     tasks:
       - name: .free-threading
-    display_name: Free-threaded macOS Python3.13t
+    display_name: Free-threaded macOS Python3.14t
     run_on:
       - macos-14
     expansions:
-      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
+      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.14/bin/python3t
     tags: []
-  - name: free-threaded-macos-arm64-python3.13t
+  - name: free-threaded-macos-arm64-python3.14t
     tasks:
       - name: .free-threading
-    display_name: Free-threaded macOS Arm64 Python3.13t
+    display_name: Free-threaded macOS Arm64 Python3.14t
     run_on:
       - macos-14-arm64
     expansions:
-      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
+      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.14/bin/python3t
     tags: []
   - name: free-threaded-win64-python3.14t
     tasks:
@@ -332,7 +332,7 @@ buildvariants:
   # Green framework tests
   - name: green-eventlet-rhel8
     tasks:
-      - name: .test-standard .standalone-noauth-nossl .python-3.9
+      - name: .test-standard .standalone-noauth-nossl
     display_name: Green Eventlet RHEL8
     run_on:
       - rhel87-small
@@ -523,14 +523,14 @@ buildvariants:
       SUB_TEST_NAME: pyopenssl
 
   # Search index tests
-  - name: search-index-helpers-rhel8-python3.9
+  - name: search-index-helpers-rhel8-python3.10
     tasks:
       - name: .search_index
-    display_name: Search Index Helpers RHEL8 Python3.9
+    display_name: Search Index Helpers RHEL8 Python3.10
     run_on:
       - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
 
   # Server version tests
   - name: mongodb-v4.2
