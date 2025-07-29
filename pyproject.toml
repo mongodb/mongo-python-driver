@@ -52,7 +52,7 @@ dev = [
 doctest = ["sphinx"]
 pip = ["pip"]
 # Install cffi with free-threading and Python 3.14 support
-gevent = ["gevent", "cffi>=2.0.0b1;python_version==3.14"]
+gevent = ["gevent", "cffi>=2.0.0b1;python_version=='3.14'"]
 eventlet = ["eventlet"]
 coverage = [
     "pytest-cov",
