@@ -366,7 +366,6 @@ class TestCursor(AsyncIntegrationTest):
         # Create a MongoClient with command monitoring enabled (referred to as client).
         listener = AllowListEventListener("explain")
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        client.drop_database("explain-test")
 
         # Create a collection, referred to as collection, with the namespace explain-test.collection.
         collection = client["explain-test"]["collection"]
