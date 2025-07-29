@@ -951,6 +951,9 @@ coverage = [
 dev = [
     { name = "pre-commit" },
 ]
+doctest = [
+    { name = "sphinx" },
+]
 eventlet = [
     { name = "eventlet" },
 ]
@@ -1009,6 +1012,7 @@ coverage = [
     { name = "pytest-cov" },
 ]
 dev = [{ name = "pre-commit", specifier = ">=4.0" }]
+doctest = [{ name = "sphinx" }]
 eventlet = [{ name = "eventlet" }]
 gevent = [{ name = "gevent" }]
 mockupdb = [{ name = "mockupdb", git = "https://github.com/mongodb-labs/mongo-mockup-db?rev=master" }]

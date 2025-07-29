@@ -358,13 +358,10 @@ class TestCursor(IntegrationTest):
         # Create a MongoClient with command monitoring enabled (referred to as client).
         listener = AllowListEventListener("explain")
         client = self.rs_or_single_client(event_listeners=[listener])
+        client.drop_database("explain-test")
 
         # Create a collection, referred to as collection, with the namespace explain-test.collection.
-        names = client["explain-test"].list_collection_names()
-        if "collection" not in names:
-            collection = client["explain-test"].create_collection("collection")
-        else:
-            collection = client["explain-test"]["collection"]
+        collection = client["explain-test"]["collection"]
 
         # Run an explained find on collection. The find will have the query predicate { name: 'john doe' }. Specify a maxTimeMS value of 2000ms for the explain.
         with pymongo.timeout(2.0):

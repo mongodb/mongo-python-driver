@@ -332,7 +332,7 @@ buildvariants:
   # Green framework tests
   - name: green-gevent-rhel8
     tasks:
-      - name: .test-standard .sync !.python-3.14
+      - name: .test-standard
     display_name: Green Gevent RHEL8
     run_on:
       - rhel87-small
