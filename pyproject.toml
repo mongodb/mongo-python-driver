@@ -103,32 +103,32 @@ log_cli_level = "INFO"
 faulthandler_timeout = 1500
 asyncio_default_fixture_loop_scope = "session"
 xfail_strict = true
-# filterwarnings = [
-#     "error",
-#     # Internal warnings raised during tests.
-#     "module:use an explicit session with no_cursor_timeout=True:UserWarning",
-#     "module:serverselectiontimeoutms must be:UserWarning",
-#     "module:Unsupported compressor:UserWarning",
-#     "module:zlibcompressionlevel must be:UserWarning",
-#     "module:Wire protocol compression with:UserWarning",
-#     "module:GridIn property:DeprecationWarning",
-#     "module:GridOut property:DeprecationWarning",
-#     # pytest-asyncio known issue: https://github.com/pytest-dev/pytest-asyncio/issues/1032
-#     "module:.*WindowsSelectorEventLoopPolicy:DeprecationWarning",
-#     "module:.*et_event_loop_policy:DeprecationWarning",
-#     # TODO: Remove as part of PYTHON-3923.
-#     "module:unclosed <eventlet.green.ssl.GreenSSLSocket:ResourceWarning",
-#     "module:unclosed <socket.socket:ResourceWarning",
-#     "module:unclosed <ssl.SSLSocket:ResourceWarning",
-#     "module:unclosed <socket object:ResourceWarning",
-#     "module:unclosed transport:ResourceWarning",
-#     # pytest-asyncio known issue: https://github.com/pytest-dev/pytest-asyncio/issues/724
-#     "module:unclosed event loop:ResourceWarning",
-#     # https://github.com/eventlet/eventlet/issues/818
-#     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
-#     # https://github.com/dateutil/dateutil/issues/1314
-#     "module:datetime.datetime.utc:DeprecationWarning",
-# ]
+filterwarnings = [
+    "error",
+    # Internal warnings raised during tests.
+    "module:use an explicit session with no_cursor_timeout=True:UserWarning",
+    "module:serverselectiontimeoutms must be:UserWarning",
+    "module:Unsupported compressor:UserWarning",
+    "module:zlibcompressionlevel must be:UserWarning",
+    "module:Wire protocol compression with:UserWarning",
+    "module:GridIn property:DeprecationWarning",
+    "module:GridOut property:DeprecationWarning",
+    # pytest-asyncio known issue: https://github.com/pytest-dev/pytest-asyncio/issues/1032
+    "module:.*WindowsSelectorEventLoopPolicy:DeprecationWarning",
+    "module:.*et_event_loop_policy:DeprecationWarning",
+    # TODO: Remove as part of PYTHON-3923.
+    "module:unclosed <eventlet.green.ssl.GreenSSLSocket:ResourceWarning",
+    "module:unclosed <socket.socket:ResourceWarning",
+    "module:unclosed <ssl.SSLSocket:ResourceWarning",
+    "module:unclosed <socket object:ResourceWarning",
+    "module:unclosed transport:ResourceWarning",
+    # pytest-asyncio known issue: https://github.com/pytest-dev/pytest-asyncio/issues/724
+    "module:unclosed event loop:ResourceWarning",
+    # https://github.com/eventlet/eventlet/issues/818
+    "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
+    # https://github.com/dateutil/dateutil/issues/1314
+    "module:datetime.datetime.utc:DeprecationWarning",
+]
 markers = [
     "auth_aws: tests that rely on pymongo-auth-aws",
     "auth_oidc: tests that rely on oidc auth",
