@@ -23,6 +23,9 @@ set -o xtrace
 PYTHON_VER="python3.10"
 apt-get -qq update  < /dev/null > /dev/null
 apt-get -q install -y software-properties-common
+# Use openpgp to avoid gpg key timeout.
+mkdir -p $HOME/.gnupg
+echo "keyserver keys.openpgp.org" >> $HOME/.gnupg/gpg.conf
 add-apt-repository -y 'ppa:deadsnakes/ppa'
 apt-get -qq install $PYTHON_VER $PYTHON_VER-venv build-essential $PYTHON_VER-dev -y  < /dev/null > /dev/null
 

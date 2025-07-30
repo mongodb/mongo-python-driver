@@ -297,7 +297,7 @@ def create_green_framework_variants():
     variants = []
     host = DEFAULT_HOST
     for framework in ["gevent"]:
-        # TODO: link ticket for gevent support, that depends on 3.14 support in pymongocrypt ticket
+        # TODO: Add Python 3.14 support (PYTHON-5464)
         tasks = [".test-standard .sync !.python-3.14"]
         expansions = dict(GREEN_FRAMEWORK=framework)
         display_name = get_variant_name(f"Green {framework.capitalize()}", host)
@@ -764,7 +764,7 @@ def create_mod_wsgi_tasks():
         product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
     ):
         if python == "3.14":
-            # TODO: PYTHON-5459
+            # TODO: Add Python 3.14 support (PYTHON-5462)
             continue
         if test == "standalone":
             task_name = "mod-wsgi-"
