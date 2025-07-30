@@ -973,13 +973,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if ignore and isinstance(exc, (PyMongoError,)):
                 return exc
             if expect_error:
-                if method_name == "_collectionOperation_bulkWrite":
-                    self.skipTest("Skipping test pending PYTHON-4598")
                 return self.process_error(exc, expect_error)
             raise
         else:
-            if method_name == "_collectionOperation_bulkWrite":
-                self.skipTest("Skipping test pending PYTHON-4598")
             if expect_error:
                 self.fail(f'Excepted error {expect_error} but "{opname}" succeeded: {result}')
 
