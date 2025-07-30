@@ -36,13 +36,10 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
         env["AZUREOIDC_VMNAME_PREFIX"] = "PYTHON_DRIVER"
     if "-remote" not in sub_test_name:
         if sub_test_name == "azure":
-            os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
             # Found using "az vm image list --output table"
-            os.environ[
-                "AZUREKMS_IMAGE"
-            ] = "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
+            env["AZUREKMS_IMAGE"] = "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
         else:
-            os.environ["GCPKMS_IMAGEFAMILY"] = "debian-12"
+            env["GCPKMS_IMAGEFAMILY"] = "debian-12"
         run_command(f"bash {target_dir}/setup.sh", env=env)
     if sub_test_name in K8S_NAMES:
         run_command(f"bash {target_dir}/setup-pod.sh {sub_test_name}")
