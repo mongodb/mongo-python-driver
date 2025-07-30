@@ -33,7 +33,11 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
 def apply_patches():
     print("Beginning to apply patches")  # noqa: T201
     subprocess.run(["bash", "./.evergreen/remove-unimplemented-tests.sh"], check=True)  # noqa: S603, S607
-    subprocess.run(["git apply -R --allow-empty ./.evergreen/spec-patch/*"], shell=True, check=True)  # noqa: S602, S607
+    subprocess.run(
+        ["git apply -R --allow-empty --ignore-whitespace ./.evergreen/spec-patch/*"],  # noqa: S607
+        shell=True,  # noqa: S602
+        check=True,
+    )
 
 
 def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
