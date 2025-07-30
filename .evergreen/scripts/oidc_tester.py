@@ -37,7 +37,7 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
     if "-remote" not in sub_test_name:
         if sub_test_name == "azure":
             # Found using "az vm image list --output table"
-            env["AZUREKMS_IMAGE"] = "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
+            env["AZUREOIDC_IMAGE"] = "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
         else:
             env["GCPKMS_IMAGEFAMILY"] = "debian-12"
         run_command(f"bash {target_dir}/setup.sh", env=env)
