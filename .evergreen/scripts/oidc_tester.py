@@ -35,6 +35,7 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
     if sub_test_name == "azure":
         env["AZUREOIDC_VMNAME_PREFIX"] = "PYTHON_DRIVER"
     if "-remote" not in sub_test_name:
+        env["NO_EXT"] = "1"
         if sub_test_name == "azure":
             # Found using "az vm image list --output table"
             env["AZUREOIDC_IMAGE"] = "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
