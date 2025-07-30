@@ -106,7 +106,7 @@ def get_test_options(
         parser.add_argument(
             "--green-framework",
             nargs=1,
-            choices=["eventlet", "gevent"],
+            choices=["gevent"],
             help="Optional green framework to test against.",
         )
         parser.add_argument(

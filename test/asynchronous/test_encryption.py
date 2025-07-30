@@ -395,7 +395,7 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
     )
     @unittest.skipIf(
         is_greenthread_patched(),
-        "gevent and eventlet do not support POSIX-style forking.",
+        "gevent does not support POSIX-style forking.",
     )
     @async_client_context.require_sync
     async def test_fork(self):
