@@ -34,7 +34,7 @@ def apply_patches():
     print("Beginning to apply patches")  # noqa: T201
     subprocess.run(["bash", "./.evergreen/remove-unimplemented-tests.sh"], check=True)  # noqa: S603, S607
     subprocess.run(
-        ["git apply -R --allow-empty --ignore-whitespace ./.evergreen/spec-patch/*"],  # noqa: S607
+        ["git apply -R --allow-empty --whitespace=fix ./.evergreen/spec-patch/*"],  # noqa: S607
         shell=True,  # noqa: S602
         check=True,
     )
