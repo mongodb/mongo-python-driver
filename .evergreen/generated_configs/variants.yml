@@ -265,7 +265,7 @@ buildvariants:
   # Enterprise auth tests
   - name: auth-enterprise-rhel8
     tasks:
-      - name: .test-non-standard .noauth
+      - name: .test-non-standard .auth
     display_name: Auth Enterprise RHEL8
     run_on:
       - rhel87-small
@@ -274,7 +274,7 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-macos
     tasks:
-      - name: .test-non-standard !.pypy .noauth
+      - name: .test-non-standard !.pypy .auth
     display_name: Auth Enterprise macOS
     run_on:
       - macos-14
@@ -283,7 +283,7 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-win64
     tasks:
-      - name: .test-non-standard !.pypy .noauth
+      - name: .test-non-standard !.pypy .auth
     display_name: Auth Enterprise Win64
     run_on:
       - windows-64-vsMulti-small
@@ -363,11 +363,11 @@ buildvariants:
   # Load balancer tests
   - name: load-balancer
     tasks:
-      - name: .test-non-standard .server-6.0 .sharded_cluster-noauth-nossl
-      - name: .test-non-standard .server-7.0 .sharded_cluster-noauth-nossl
-      - name: .test-non-standard .server-8.0 .sharded_cluster-noauth-nossl
-      - name: .test-non-standard .server-rapid .sharded_cluster-noauth-nossl
-      - name: .test-non-standard .server-latest .sharded_cluster-noauth-nossl
+      - name: .test-non-standard .server-6.0 .sharded_cluster-auth-ssl
+      - name: .test-non-standard .server-7.0 .sharded_cluster-auth-ssl
+      - name: .test-non-standard .server-8.0 .sharded_cluster-auth-ssl
+      - name: .test-non-standard .server-rapid .sharded_cluster-auth-ssl
+      - name: .test-non-standard .server-latest .sharded_cluster-auth-ssl
     display_name: Load Balancer
     run_on:
       - rhel87-small

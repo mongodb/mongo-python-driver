@@ -170,7 +170,7 @@ def create_encryption_variants() -> list[BuildVariant]:
 
 def create_load_balancer_variants():
     tasks = [
-        f".test-non-standard .server-{v} .sharded_cluster-noauth-nossl"
+        f".test-non-standard .server-{v} .sharded_cluster-auth-ssl"
         for v in get_versions_from("6.0")
     ]
     expansions = dict(TEST_NAME="load_balancer")
@@ -212,9 +212,9 @@ def create_enterprise_auth_variants():
     for host in ["rhel8", "macos", "win64"]:
         expansions = dict(TEST_NAME="enterprise_auth", AUTH="auth")
         display_name = get_variant_name("Auth Enterprise", host)
-        tasks = [".test-non-standard .noauth"]
+        tasks = [".test-non-standard .auth"]
         if host != "rhel8":
-            tasks = [".test-non-standard !.pypy .noauth"]
+            tasks = [".test-non-standard !.pypy .auth"]
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants
