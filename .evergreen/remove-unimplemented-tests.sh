@@ -41,6 +41,9 @@ rm $PYMONGO/test/crud/unified/updateMany-rawdata.json
 rm $PYMONGO/test/crud/unified/updateOne-rawdata.json
 rm $PYMONGO/test/index_management/index-rawdata.json
 
+# PyMongo does not support modifyCollection
+rm $PYMONGO/test/collection_management/modifyCollection-*.json
+
 # PYTHON-5248 - Remove support for MongoDB 4.0
 rm $PYMONGO/test/**/pre-42-*.json
 
