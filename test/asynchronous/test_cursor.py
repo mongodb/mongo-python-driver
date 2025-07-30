@@ -368,7 +368,7 @@ class TestCursor(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(event_listeners=[listener])
 
         # Create a collection, referred to as collection, with the namespace explain-test.collection.
-        # Workaround for SERVER-XXXX (TODO)
+        # Workaround for SERVER-108463
         names = await client["explain-test"].list_collection_names()
         if "collection" not in names:
             collection = await client["explain-test"].create_collection("collection")

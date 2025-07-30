@@ -91,7 +91,9 @@ def setup_kms(sub_test_name: str) -> None:
         create_archive()
         if sub_test_target == "azure":
             os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
-
+            os.environ["AZUREKMS_IMAGE"] = "Debian12"
+        else:
+            os.environ["GCPKMS_IMAGEFAMILY"] = "debian12"
         run_command("./setup.sh", cwd=kms_dir)
         base_env = _load_kms_config(sub_test_target)
 

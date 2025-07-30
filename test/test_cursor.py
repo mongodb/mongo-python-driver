@@ -360,7 +360,7 @@ class TestCursor(IntegrationTest):
         client = self.rs_or_single_client(event_listeners=[listener])
 
         # Create a collection, referred to as collection, with the namespace explain-test.collection.
-        # Workaround for SERVER-XXXX (TODO)
+        # Workaround for SERVER-108463
         names = client["explain-test"].list_collection_names()
         if "collection" not in names:
             collection = client["explain-test"].create_collection("collection")
