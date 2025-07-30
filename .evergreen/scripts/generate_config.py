@@ -434,7 +434,7 @@ def create_kms_variants():
     tasks.append("test-gcpkms-fail")
     tasks.append(EvgTaskRef(name="test-azurekms", batchtime=BATCHTIME_WEEK))
     tasks.append("test-azurekms-fail")
-    return [create_variant(tasks, "KMS", host=HOSTS["debian11"])]
+    return [create_variant(tasks, "KMS", host=HOSTS["debian12"])]
 
 
 def create_import_time_variants():

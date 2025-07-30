@@ -64,6 +64,7 @@ HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22", dict())
 HOSTS["rhel7"] = Host("rhel7", "rhel79-small", "RHEL7", dict())
 HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
 HOSTS["debian11"] = Host("debian11", "debian11-small", "Debian11", dict())
+HOSTS["debian12"] = Host("debian12", "debian12-small", "Debian12", dict())
 DEFAULT_HOST = HOSTS["rhel8"]
 
 # Other hosts
