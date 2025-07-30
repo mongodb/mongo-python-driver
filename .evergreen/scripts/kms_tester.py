@@ -91,7 +91,10 @@ def setup_kms(sub_test_name: str) -> None:
         create_archive()
         if sub_test_target == "azure":
             os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
-            os.environ["AZUREKMS_IMAGE"] = "Ubuntu2204"
+            # Found using "az vm image list --output table"
+            os.environ[
+                "AZUREKMS_IMAGE"
+            ] = "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
         else:
             os.environ["GCPKMS_IMAGEFAMILY"] = "debian-12"
         run_command("./setup.sh", cwd=kms_dir)
