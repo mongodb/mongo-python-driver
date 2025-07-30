@@ -7,13 +7,16 @@ PyMongo 4.14 brings a number of changes including:
 
 .. warning:: PyMongo 4.14 drops support for Python 3.9: Python 3.10+ or PyPy 3.10+ is now required.
 
-- Added support for Python 3.14 and Python 3.14t.
+- Added support for Python 3.14 and Python 3.14 in free-threaded mode.
 - Added :attr:`bson.codec_options.TypeRegistry.codecs` and :attr:`bson.codec_options.TypeRegistry.fallback_encoder` properties
   to allow users to directly access the type codecs and fallback encoder for a given :class:`bson.codec_options.TypeRegistry`.
 - Added :meth:`pymongo.asynchronous.mongo_client.AsyncMongoClient.append_metadata` and
   :meth:`pymongo.mongo_client.MongoClient.append_metadata` to allow instantiated MongoClients to send client metadata
   on-demand
 - Improved performance of selecting a server with the Primary selector.
+- Dropped support for Python 3.9.
+- Dropped support for free-threaded mode in Python 3.13.
+- Dropped support for ``dnspython`` 1.0.  ``dnspython`` 1.0 is not supported on Python 3.10+.
 - Dropped support for Eventlet.
 
 - Introduces a minor breaking change. When encoding :class:`bson.binary.BinaryVector`, a ``ValueError`` will be raised
