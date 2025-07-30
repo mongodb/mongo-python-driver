@@ -358,7 +358,7 @@ buildvariants:
       - name: test-azurekms-fail
     display_name: KMS
     run_on:
-      - debian12-small
+      - ubuntu2204-small
 
   # Load balancer tests
   - name: load-balancer
