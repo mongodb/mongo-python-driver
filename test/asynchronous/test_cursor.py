@@ -372,7 +372,7 @@ class TestCursor(AsyncIntegrationTest):
         # Workaround for SERVER-108463
         names = client["explain-test"].list_collection_names()
         if "collection" not in names:
-            collection = client["explain-test"].create_collection("collection")
+            collection = await client["explain-test"].create_collection("collection")
         else:
             collection = client["explain-test"]["collection"]
 
