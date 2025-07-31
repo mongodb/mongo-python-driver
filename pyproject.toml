@@ -50,7 +50,7 @@ dev = [
     "pre-commit>=4.0"
 ]
 pip = ["pip"]
-gevent = ["gevent"]
+gevent = ["gevent", "cffi>=2.0.0b1;python_version=='3.14'"]
 eventlet = ["eventlet"]
 coverage = [
     "pytest-cov",

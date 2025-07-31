@@ -340,7 +340,7 @@ buildvariants:
       GREEN_FRAMEWORK: eventlet
   - name: green-gevent-rhel8
     tasks:
-      - name: .test-standard .standalone-noauth-nossl .sync !.python-3.14
+      - name: .test-standard .standalone-noauth-nossl .sync
     display_name: Green Gevent RHEL8
     run_on:
       - rhel87-small

@@ -297,8 +297,7 @@ def create_green_framework_variants():
     variants = []
     host = DEFAULT_HOST
     for framework in ["eventlet", "gevent"]:
-        # TODO: Add Python 3.14 support (PYTHON-5464)
-        tasks = [".test-standard .standalone-noauth-nossl .sync !.python-3.14"]
+        tasks = [".test-standard .standalone-noauth-nossl .sync"]
         if framework == "eventlet":
             # Eventlet has issues with dnspython > 2.0 and newer versions of CPython
             # https://jira.mongodb.org/browse/PYTHON-5284
@@ -762,9 +761,6 @@ def create_mod_wsgi_tasks():
     for (test, topology), python in zip_cycle(
         product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
     ):
-        if python == "3.14":
-            # TODO: Add Python 3.14 support (PYTHON-5462)
-            continue
         if test == "standalone":
             task_name = "mod-wsgi-"
         else:
