@@ -189,7 +189,7 @@ class TestDatabase(AsyncIntegrationTest):
             filter={"name": {"$regex": r"^(?!system\.)"}}
         )
         for coll in no_system_collections:
-            self.assertTrue(not coll.startswith("system."))
+            self.assertFalse(coll.startswith("system."))
         self.assertIn("systemcoll.test", no_system_collections)
 
         # Force more than one batch.
@@ -265,19 +265,13 @@ class TestDatabase(AsyncIntegrationTest):
             try:
                 # Found duplicate.
                 coll_cnt[coll] += 1
-                self.assertTrue(False)
+                self.fail("Found duplicate")
             except KeyError:
                 coll_cnt[coll] = 1
         coll_cnt: dict = {}
 
-        # Checking if is there any collection which don't exists.
-        if (
-            len(set(colls) - {"test", "test.mike"}) == 0
-            or len(set(colls) - {"test", "test.mike", "system.indexes"}) == 0
-        ):
-            self.assertTrue(True)
-        else:
-            self.assertTrue(False)
+        # Check if there are any collections which don't exist.
+        self.assertLessEqual(set(colls), {"test", "test.mike", "system.indexes"})
 
         colls = await (await db.list_collections(filter={"name": {"$regex": "^test$"}})).to_list()
         self.assertEqual(1, len(colls))
@@ -307,16 +301,13 @@ class TestDatabase(AsyncIntegrationTest):
             try:
                 # Found duplicate.
                 coll_cnt[coll] += 1
-                self.assertTrue(False)
+                self.fail("Found duplicate")
             except KeyError:
                 coll_cnt[coll] = 1
         coll_cnt = {}
 
-        # Checking if is there any collection which don't exists.
-        if len(set(colls) - {"test"}) == 0 or len(set(colls) - {"test", "system.indexes"}) == 0:
-            self.assertTrue(True)
-        else:
-            self.assertTrue(False)
+        # Check if there are any collections which don't exist.
+        self.assertLessEqual(set(colls), {"test", "system.indexes"})
 
         await self.client.drop_database("pymongo_test")
 

@@ -512,9 +512,8 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             self.assertEqual(cursor.address, succeeded.connection_id)
             # There could be more than one cursor_id here depending on
             # when the thread last ran.
-            self.assertTrue(
-                cursor_id in succeeded.reply["cursorsUnknown"]
-                or cursor_id in succeeded.reply["cursorsKilled"]
+            self.assertIn(
+                cursor_id, succeeded.reply["cursorsUnknown"] + succeeded.reply["cursorsKilled"]
             )
 
     async def test_non_bulk_writes(self):
@@ -1066,7 +1065,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertEqual(2, len(errors))
         fields = {"index", "code", "errmsg"}
         for error in errors:
-            self.assertTrue(fields.issubset(set(error)))
+            self.assertLessEqual(fields, set(error))
 
     async def test_first_batch_helper(self):
         # Regardless of server version and use of helpers._first_batch
