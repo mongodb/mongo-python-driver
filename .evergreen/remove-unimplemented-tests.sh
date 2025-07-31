@@ -41,4 +41,17 @@ rm $PYMONGO/test/crud/unified/updateMany-rawdata.json
 rm $PYMONGO/test/crud/unified/updateOne-rawdata.json
 rm $PYMONGO/test/index_management/index-rawdata.json
 
-echo "Done removing unimplemented tests\n"
+# PyMongo does not support modifyCollection
+rm $PYMONGO/test/collection_management/modifyCollection-*.json
+
+# PYTHON-5248 - Remove support for MongoDB 4.0
+rm $PYMONGO/test/**/pre-42-*.json
+
+# PYTHON-3359 - Remove Database and Collection level timeout override
+rm $PYMONGO/test/csot/override-collection-timeoutMS.json
+rm $PYMONGO/test/csot/override-database-timeoutMS.json
+
+# PYTHON-2943 - Socks5 Proxy Support
+rm $PYMONGO/test/uri_options/proxy-options.json
+
+echo "Done removing unimplemented tests"
