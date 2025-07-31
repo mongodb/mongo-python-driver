@@ -1,0 +1,61 @@
+diff --git a/test/server_selection_logging/replica-set.json b/test/server_selection_logging/replica-set.json
+index 830b1ea51..5eba784bf 100644
+--- a/test/server_selection_logging/replica-set.json
++++ b/test/server_selection_logging/replica-set.json
+@@ -184,7 +184,7 @@
+               }
+             },
+             {
+-              "level": "debug",
++              "level": "info",
+               "component": "serverSelection",
+               "data": {
+                 "message": "Waiting for suitable server to become available",
+diff --git a/test/server_selection_logging/standalone.json b/test/server_selection_logging/standalone.json
+index 830b1ea51..5eba784bf 100644
+--- a/test/server_selection_logging/standalone.json
++++ b/test/server_selection_logging/standalone.json
+@@ -191,7 +191,7 @@
+               }
+             },
+             {
+-              "level": "debug",
++              "level": "info",
+               "component": "serverSelection",
+               "data": {
+                 "message": "Waiting for suitable server to become available",
+diff --git a/test/server_selection_logging/sharded.json b/test/server_selection_logging/sharded.json
+index 830b1ea51..5eba784bf 100644
+--- a/test/server_selection_logging/sharded.json
++++ b/test/server_selection_logging/sharded.json
+@@ -193,7 +193,7 @@
+               }
+             },
+             {
+-              "level": "debug",
++              "level": "info",
+               "component": "serverSelection",
+               "data": {
+                 "message": "Waiting for suitable server to become available",
+diff --git a/test/server_selection_logging/sharded.json b/test/server_selection_logging/operation-id.json
+index 830b1ea51..5eba784bf 100644
+--- a/test/server_selection_logging/operation-id.json
++++ b/test/server_selection_logging/operation-id.json
+@@ -197,7 +197,7 @@
+               }
+             },
+             {
+-              "level": "debug",
++              "level": "info",
+               "component": "serverSelection",
+               "data": {
+                 "message": "Waiting for suitable server to become available",
+@@ -383,7 +383,7 @@
+               }
+             },
+             {
+-              "level": "debug",
++              "level": "info",
+               "component": "serverSelection",
+               "data": {
+                 "message": "Waiting for suitable server to become available",

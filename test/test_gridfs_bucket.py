@@ -162,17 +162,16 @@ class TestGridfs(IntegrationTest):
         files.drop()
         self.fs.upload_from_stream("filename", b"junk")
 
-        self.assertTrue(
-            any(
-                info.get("key") == [("files_id", 1), ("n", 1)]
-                for info in (chunks.index_information()).values()
-            )
+        self.assertIn(
+            [("files_id", 1), ("n", 1)],
+            [info.get("key") for info in (chunks.index_information()).values()],
+            "Missing required index on chunks collection: {files_id: 1, n: 1}",
         )
-        self.assertTrue(
-            any(
-                info.get("key") == [("filename", 1), ("uploadDate", 1)]
-                for info in (files.index_information()).values()
-            )
+
+        self.assertIn(
+            [("filename", 1), ("uploadDate", 1)],
+            [info.get("key") for info in (files.index_information()).values()],
+            "Missing required index on files collection: {filename: 1, uploadDate: 1}",
         )
 
     def test_ensure_index_shell_compat(self):
@@ -190,11 +189,10 @@ class TestGridfs(IntegrationTest):
             # No error.
             self.fs.upload_from_stream("filename", b"data")
 
-            self.assertTrue(
-                any(
-                    info.get("key") == [("filename", 1), ("uploadDate", 1)]
-                    for info in (files.index_information()).values()
-                )
+            self.assertIn(
+                [("filename", 1), ("uploadDate", 1)],
+                [info.get("key") for info in (files.index_information()).values()],
+                "Missing required index on files collection: {filename: 1, uploadDate: 1}",
             )
             files.drop()
 
