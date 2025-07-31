@@ -332,24 +332,20 @@ buildvariants:
   # Green framework tests
   - name: green-eventlet-rhel8
     tasks:
-      - name: .test-standard .standalone-noauth-nossl .python-3.9
+      - name: .test-standard .standalone-noauth-nossl .python-3.9 .sync
     display_name: Green Eventlet RHEL8
     run_on:
       - rhel87-small
     expansions:
       GREEN_FRAMEWORK: eventlet
-      AUTH: auth
-      SSL: ssl
   - name: green-gevent-rhel8
     tasks:
-      - name: .test-standard .standalone-noauth-nossl
+      - name: .test-standard .standalone-noauth-nossl .sync
     display_name: Green Gevent RHEL8
     run_on:
       - rhel87-small
     expansions:
       GREEN_FRAMEWORK: gevent
-      AUTH: auth
-      SSL: ssl
 
   # Import time tests
   - name: import-time

@@ -370,11 +370,11 @@ class TestCursor(AsyncIntegrationTest):
 
         # Create a collection, referred to as collection, with the namespace explain-test.collection.
         # Workaround for SERVER-108463
-        names = client["explain-test"].list_collection_names()
+        names = await client["explain-test"].list_collection_names()
         if "collection" not in names:
             collection = await client["explain-test"].create_collection("collection")
         else:
-            collection = await client["explain-test"]["collection"]
+            collection = client["explain-test"]["collection"]
 
         # Run an explained find on collection. The find will have the query predicate { name: 'john doe' }. Specify a maxTimeMS value of 2000ms for the explain.
         with pymongo.timeout(2.0):

@@ -297,12 +297,12 @@ def create_green_framework_variants():
     variants = []
     host = DEFAULT_HOST
     for framework in ["eventlet", "gevent"]:
-        tasks = [".test-standard .standalone-noauth-nossl"]
+        tasks = [".test-standard .standalone-noauth-nossl .sync"]
         if framework == "eventlet":
             # Eventlet has issues with dnspython > 2.0 and newer versions of CPython
             # https://jira.mongodb.org/browse/PYTHON-5284
-            tasks = [".test-standard .standalone-noauth-nossl .python-3.9"]
-        expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
+            tasks = [".test-standard .standalone-noauth-nossl .python-3.9 .sync"]
+        expansions = dict(GREEN_FRAMEWORK=framework)
         display_name = get_variant_name(f"Green {framework.capitalize()}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
