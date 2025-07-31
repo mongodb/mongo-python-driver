@@ -374,7 +374,7 @@ class TestCursor(AsyncIntegrationTest):
         if "collection" not in names:
             collection = await client["explain-test"].create_collection("collection")
         else:
-            collection = client["explain-test"]["collection"]
+            collection = await client["explain-test"]["collection"]
 
         # Run an explained find on collection. The find will have the query predicate { name: 'john doe' }. Specify a maxTimeMS value of 2000ms for the explain.
         with pymongo.timeout(2.0):
