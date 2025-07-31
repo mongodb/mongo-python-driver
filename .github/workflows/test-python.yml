@@ -245,29 +245,3 @@ jobs:
             source .venv/bin/activate
             uv pip install -e ".[test]" --resolution=lowest-direct
             pytest -v test
-
-  test_minimum_for_async:
-      permissions:
-        contents: read
-      runs-on: ubuntu-latest
-      name: Test async's minimum dependencies and Python
-      steps:
-        - uses: actions/checkout@v4
-          with:
-            persist-credentials: false
-        - name: Install uv
-          uses: astral-sh/setup-uv@7edac99f961f18b581bbd960d59d049f04c0002f # v5
-          with:
-            python-version: '3.10'
-        - name: Start MongoDB
-          uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
-          with:
-            mongodb-version: 6.0
-        # The lifetime kwarg we use in srv resolution was added to the async resolver API in dnspython 2.1.0
-        - name: Run tests
-          shell: bash
-          run: |
-            uv venv
-            source .venv/bin/activate
-            uv pip install -e ".[test]" --resolution=lowest-direct dnspython==2.1.0 --force-reinstall
-            pytest -v test/test_srv_polling.py test/test_dns.py test/asynchronous/test_srv_polling.py test/asynchronous/test_dns.py
