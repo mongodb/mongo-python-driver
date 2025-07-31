@@ -518,6 +518,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("Implement PYTHON-1894")
         if "timeoutMS applied to entire download" in spec["description"]:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
+        if any(
+            x in spec["description"]
+            for x in [
+                "First insertOne is never committed",
+                "Second updateOne is never committed",
+                "Third updateOne is never committed",
+            ]
+        ):
+            self.skipTest("Implement PYTHON-4597")
 
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
@@ -671,7 +680,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.match_evaluator.match_result(expect_result, result)
             else:
                 self.fail(
-                    f"expectResult can only be specified with {BulkWriteError} or {ClientBulkWriteException} exceptions"
+                    f"expectResult can only be specified with {BulkWriteError} or {ClientBulkWriteException} exceptions, got {exception}"
                 )
 
         return exception
@@ -973,13 +982,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if ignore and isinstance(exc, (PyMongoError,)):
                 return exc
             if expect_error:
-                if method_name == "_collectionOperation_bulkWrite":
-                    self.skipTest("Skipping test pending PYTHON-4598")
                 return self.process_error(exc, expect_error)
             raise
         else:
-            if method_name == "_collectionOperation_bulkWrite":
-                self.skipTest("Skipping test pending PYTHON-4598")
             if expect_error:
                 self.fail(f'Excepted error {expect_error} but "{opname}" succeeded: {result}')
 
