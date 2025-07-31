@@ -292,32 +292,32 @@ buildvariants:
       AUTH: auth
 
   # Free threaded tests
-  - name: free-threaded-rhel8-python3.13t
+  - name: free-threaded-rhel8-python3.14t
     tasks:
       - name: .free-threading
-    display_name: Free-threaded RHEL8 Python3.13t
+    display_name: Free-threaded RHEL8 Python3.14t
     run_on:
       - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/python/3.13t/bin/python3
+      PYTHON_BINARY: /opt/python/3.14t/bin/python3
     tags: [pr]
-  - name: free-threaded-macos-python3.13t
+  - name: free-threaded-macos-python3.14t
     tasks:
       - name: .free-threading
-    display_name: Free-threaded macOS Python3.13t
+    display_name: Free-threaded macOS Python3.14t
     run_on:
       - macos-14
     expansions:
-      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
+      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.14/bin/python3t
     tags: []
-  - name: free-threaded-macos-arm64-python3.13t
+  - name: free-threaded-macos-arm64-python3.14t
     tasks:
       - name: .free-threading
-    display_name: Free-threaded macOS Arm64 Python3.13t
+    display_name: Free-threaded macOS Arm64 Python3.14t
     run_on:
       - macos-14-arm64
     expansions:
-      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.13/bin/python3t
+      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.14/bin/python3t
     tags: []
   - name: free-threaded-win64-python3.14t
     tasks:

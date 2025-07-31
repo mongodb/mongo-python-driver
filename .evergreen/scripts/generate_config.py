@@ -107,10 +107,7 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
 def create_free_threaded_variants() -> list[BuildVariant]:
     variants = []
     for host_name in ("rhel8", "macos", "macos-arm64", "win64"):
-        if host_name == "win64":
-            python = "3.14t"
-        else:
-            python = "3.13t"
+        python = "3.14t"
         tasks = [".free-threading"]
         tags = []
         if host_name == "rhel8":
