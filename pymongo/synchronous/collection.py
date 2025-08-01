@@ -582,7 +582,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         conn: Connection,
         command: MutableMapping[str, Any],
         read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional[CodecOptions[dict[str, Any]]] = None,
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -703,7 +703,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         bypass_document_validation: Optional[bool] = None,
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
-        let: Optional[Mapping] = None,
+        let: Optional[Mapping[str, Any]] = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -2522,7 +2522,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[ClientSession] = None,
         comment: Optional[Any] = None,
     ) -> CommandCursor[MutableMapping[str, Any]]:
-        codec_options: CodecOptions = CodecOptions(SON)
+        codec_options: CodecOptions[dict[str, Any]] = CodecOptions(SON)
         coll = cast(
             Collection[MutableMapping[str, Any]],
             self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
@@ -2864,7 +2864,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         aggregation_command: Type[_AggregationCommand],
         pipeline: _Pipeline,
-        cursor_class: Type[CommandCursor],
+        cursor_class: Type[CommandCursor],  # type: ignore[type-arg]
         session: Optional[ClientSession],
         explicit_session: bool,
         let: Optional[Mapping[str, Any]] = None,
@@ -3107,7 +3107,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
         hint: Optional[_IndexKeyHint] = None,
         **kwargs: Any,
-    ) -> list:
+    ) -> list[str]:
         """Get a list of distinct values for `key` among all documents
         in this collection.
 
@@ -3170,7 +3170,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             _server: Server,
             conn: Connection,
             read_preference: Optional[_ServerMode],
-        ) -> list:
+        ) -> list:  # type: ignore[type-arg]
             return (
                 self._command(
                     conn,
@@ -3195,7 +3195,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
-        let: Optional[Mapping] = None,
+        let: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> Any:
         """Internal findAndModify helper."""

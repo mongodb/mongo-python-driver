@@ -248,7 +248,7 @@ class _AsyncBulk:
         request_id: int,
         msg: bytes,
         docs: list[Mapping[str, Any]],
-        client: AsyncMongoClient,
+        client: AsyncMongoClient[Any],
     ) -> dict[str, Any]:
         """A proxy for SocketInfo.write_command that handles event publishing."""
         cmd[bwc.field] = docs
@@ -334,7 +334,7 @@ class _AsyncBulk:
         msg: bytes,
         max_doc_size: int,
         docs: list[Mapping[str, Any]],
-        client: AsyncMongoClient,
+        client: AsyncMongoClient[Any],
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for AsyncConnection.unack_write that handles event publishing."""
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
@@ -419,7 +419,7 @@ class _AsyncBulk:
         bwc: Union[_BulkWriteContext, _EncryptedBulkWriteContext],
         cmd: dict[str, Any],
         ops: list[Mapping[str, Any]],
-        client: AsyncMongoClient,
+        client: AsyncMongoClient[Any],
     ) -> list[Mapping[str, Any]]:
         if self.is_encrypted:
             _, batched_cmd, to_send = bwc.batch_command(cmd, ops)
@@ -446,7 +446,7 @@ class _AsyncBulk:
         bwc: Union[_BulkWriteContext, _EncryptedBulkWriteContext],
         cmd: dict[str, Any],
         ops: list[Mapping[str, Any]],
-        client: AsyncMongoClient,
+        client: AsyncMongoClient[Any],
     ) -> tuple[dict[str, Any], list[Mapping[str, Any]]]:
         if self.is_encrypted:
             _, batched_cmd, to_send = bwc.batch_command(cmd, ops)

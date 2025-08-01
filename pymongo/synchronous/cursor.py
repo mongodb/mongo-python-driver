@@ -216,7 +216,7 @@ class Cursor(Generic[_DocumentType]):
         # it anytime we change __limit.
         self._empty = False
 
-        self._data: deque = deque()
+        self._data: deque = deque()  # type: ignore[type-arg]
         self._address: Optional[_Address] = None
         self._retrieved = 0
 
@@ -280,7 +280,7 @@ class Cursor(Generic[_DocumentType]):
         """
         return self._clone(True)
 
-    def _clone(self, deepcopy: bool = True, base: Optional[Cursor] = None) -> Cursor:
+    def _clone(self, deepcopy: bool = True, base: Optional[Cursor] = None) -> Cursor:  # type: ignore[type-arg]
         """Internal clone helper."""
         if not base:
             if self._explicit_session:
@@ -322,7 +322,7 @@ class Cursor(Generic[_DocumentType]):
         base.__dict__.update(data)
         return base
 
-    def _clone_base(self, session: Optional[ClientSession]) -> Cursor:
+    def _clone_base(self, session: Optional[ClientSession]) -> Cursor:  # type: ignore[type-arg]
         """Creates an empty Cursor object for information to be copied into."""
         return self.__class__(self._collection, session=session)
 
@@ -862,7 +862,7 @@ class Cursor(Generic[_DocumentType]):
         if self._has_filter:
             spec = dict(self._spec)
         else:
-            spec = cast(dict, self._spec)
+            spec = cast(dict, self._spec)  # type: ignore[type-arg]
         spec["$where"] = code
         self._spec = spec
         return self
@@ -886,7 +886,7 @@ class Cursor(Generic[_DocumentType]):
         self,
         response: Union[_OpReply, _OpMsg],
         cursor_id: Optional[int],
-        codec_options: CodecOptions,
+        codec_options: CodecOptions,  # type: ignore[type-arg]
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
     ) -> Sequence[_DocumentOut]:
@@ -962,29 +962,31 @@ class Cursor(Generic[_DocumentType]):
         return self._clone(deepcopy=True)
 
     @overload
-    def _deepcopy(self, x: Iterable, memo: Optional[dict[int, Union[list, dict]]] = None) -> list:
+    def _deepcopy(self, x: Iterable, memo: Optional[dict[int, Union[list, dict]]] = None) -> list:  # type: ignore[type-arg]
         ...
 
     @overload
     def _deepcopy(
         self, x: SupportsItems, memo: Optional[dict[int, Union[list, dict]]] = None
-    ) -> dict:
+    ) -> dict:  # type: ignore[type-arg]
         ...
 
     def _deepcopy(
-        self, x: Union[Iterable, SupportsItems], memo: Optional[dict[int, Union[list, dict]]] = None
-    ) -> Union[list, dict]:
+        self,
+        x: Union[Iterable, SupportsItems],
+        memo: Optional[dict[int, Union[list, dict]]] = None,  # type: ignore[type-arg]
+    ) -> Union[list[Any], dict[str, Any]]:
         """Deepcopy helper for the data dictionary or list.
 
         Regular expressions cannot be deep copied but as they are immutable we
         don't have to copy them when cloning.
         """
-        y: Union[list, dict]
+        y: Union[list[Any], dict[str, Any]]
         iterator: Iterable[tuple[Any, Any]]
         if not hasattr(x, "items"):
             y, is_list, iterator = [], True, enumerate(x)
         else:
-            y, is_list, iterator = {}, False, cast("SupportsItems", x).items()
+            y, is_list, iterator = {}, False, cast("SupportsItems", x).items()  # type: ignore[type-arg]
         if memo is None:
             memo = {}
         val_id = id(x)
@@ -1058,7 +1060,7 @@ class Cursor(Generic[_DocumentType]):
         """Explicitly close / kill this cursor."""
         self._die_lock()
 
-    def distinct(self, key: str) -> list:
+    def distinct(self, key: str) -> list[str]:
         """Get a list of distinct values for `key` among all documents
         in the result set of this query.
 
@@ -1263,7 +1265,7 @@ class Cursor(Generic[_DocumentType]):
         else:
             raise StopIteration
 
-    def _next_batch(self, result: list, total: Optional[int] = None) -> bool:
+    def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]
         """Get all or some documents from the cursor."""
         if not self._exhaust_checked:
             self._exhaust_checked = True
@@ -1323,7 +1325,7 @@ class Cursor(Generic[_DocumentType]):
         return res
 
 
-class RawBatchCursor(Cursor, Generic[_DocumentType]):
+class RawBatchCursor(Cursor, Generic[_DocumentType]):  # type: ignore[type-arg]
     """A cursor / iterator over raw batches of BSON data from a query result."""
 
     _query_class = _RawBatchQuery

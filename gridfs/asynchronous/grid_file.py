@@ -70,7 +70,7 @@ def _disallow_transactions(session: Optional[AsyncClientSession]) -> None:
 class AsyncGridFS:
     """An instance of GridFS on top of a single Database."""
 
-    def __init__(self, database: AsyncDatabase, collection: str = "fs"):
+    def __init__(self, database: AsyncDatabase[Any], collection: str = "fs"):
         """Create a new instance of :class:`GridFS`.
 
         Raises :class:`TypeError` if `database` is not an instance of
@@ -463,7 +463,7 @@ class AsyncGridFSBucket:
 
     def __init__(
         self,
-        db: AsyncDatabase,
+        db: AsyncDatabase[Any],
         bucket_name: str = "fs",
         chunk_size_bytes: int = DEFAULT_CHUNK_SIZE,
         write_concern: Optional[WriteConcern] = None,
@@ -513,11 +513,11 @@ class AsyncGridFSBucket:
 
         self._bucket_name = bucket_name
         self._collection = db[bucket_name]
-        self._chunks: AsyncCollection = self._collection.chunks.with_options(
+        self._chunks: AsyncCollection[Any] = self._collection.chunks.with_options(
             write_concern=write_concern, read_preference=read_preference
         )
 
-        self._files: AsyncCollection = self._collection.files.with_options(
+        self._files: AsyncCollection[Any] = self._collection.files.with_options(
             write_concern=write_concern, read_preference=read_preference
         )
 
@@ -1085,7 +1085,7 @@ class AsyncGridIn:
 
     def __init__(
         self,
-        root_collection: AsyncCollection,
+        root_collection: AsyncCollection[Any],
         session: Optional[AsyncClientSession] = None,
         **kwargs: Any,
     ) -> None:
@@ -1141,7 +1141,7 @@ class AsyncGridIn:
         """
         if not isinstance(root_collection, AsyncCollection):
             raise TypeError(
-                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}"
+                f"root_collection must be an instance of AsyncCollection[Any], not {type(root_collection)}"
             )
 
         if not root_collection.write_concern.acknowledged:
@@ -1172,7 +1172,7 @@ class AsyncGridIn:
         object.__setattr__(self, "_buffered_docs_size", 0)
 
     async def _create_index(
-        self, collection: AsyncCollection, index_key: Any, unique: bool
+        self, collection: AsyncCollection[Any], index_key: Any, unique: bool
     ) -> None:
         doc = await collection.find_one(projection={"_id": 1}, session=self._session)
         if doc is None:
@@ -1456,7 +1456,7 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
 
     def __init__(
         self,
-        root_collection: AsyncCollection,
+        root_collection: AsyncCollection[Any],
         file_id: Optional[int] = None,
         file_document: Optional[Any] = None,
         session: Optional[AsyncClientSession] = None,
@@ -1494,7 +1494,7 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         """
         if not isinstance(root_collection, AsyncCollection):
             raise TypeError(
-                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}"
+                f"root_collection must be an instance of AsyncCollection[Any], not {type(root_collection)}"
             )
         _disallow_transactions(session)
 
@@ -1829,7 +1829,7 @@ class _AsyncGridOutChunkIterator:
     def __init__(
         self,
         grid_out: AsyncGridOut,
-        chunks: AsyncCollection,
+        chunks: AsyncCollection[Any],
         session: Optional[AsyncClientSession],
         next_chunk: Any,
     ) -> None:
@@ -1842,7 +1842,7 @@ class _AsyncGridOutChunkIterator:
         self._num_chunks = math.ceil(float(self._length) / self._chunk_size)
         self._cursor = None
 
-    _cursor: Optional[AsyncCursor]
+    _cursor: Optional[AsyncCursor[Any]]
 
     def expected_chunk_length(self, chunk_n: int) -> int:
         if chunk_n < self._num_chunks - 1:
@@ -1921,7 +1921,7 @@ class _AsyncGridOutChunkIterator:
 
 class AsyncGridOutIterator:
     def __init__(
-        self, grid_out: AsyncGridOut, chunks: AsyncCollection, session: AsyncClientSession
+        self, grid_out: AsyncGridOut, chunks: AsyncCollection[Any], session: AsyncClientSession
     ):
         self._chunk_iter = _AsyncGridOutChunkIterator(grid_out, chunks, session, 0)
 
@@ -1935,14 +1935,14 @@ class AsyncGridOutIterator:
     __anext__ = next
 
 
-class AsyncGridOutCursor(AsyncCursor):
+class AsyncGridOutCursor(AsyncCursor):  # type: ignore[type-arg]
     """A cursor / iterator for returning GridOut objects as the result
     of an arbitrary query against the GridFS files collection.
     """
 
     def __init__(
         self,
-        collection: AsyncCollection,
+        collection: AsyncCollection[Any],
         filter: Optional[Mapping[str, Any]] = None,
         skip: int = 0,
         limit: int = 0,

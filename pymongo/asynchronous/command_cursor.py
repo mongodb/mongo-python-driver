@@ -350,7 +350,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         else:
             return None
 
-    async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:
+    async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]
         """Get all or some available documents from the cursor."""
         if not len(self._data) and not self._killed:
             await self._refresh()
@@ -457,7 +457,7 @@ class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
         self,
         response: Union[_OpReply, _OpMsg],
         cursor_id: Optional[int],
-        codec_options: CodecOptions,
+        codec_options: CodecOptions[dict[str, Any]],
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
     ) -> list[Mapping[str, Any]]:

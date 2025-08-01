@@ -70,7 +70,7 @@ def _disallow_transactions(session: Optional[ClientSession]) -> None:
 class GridFS:
     """An instance of GridFS on top of a single Database."""
 
-    def __init__(self, database: Database, collection: str = "fs"):
+    def __init__(self, database: Database[Any], collection: str = "fs"):
         """Create a new instance of :class:`GridFS`.
 
         Raises :class:`TypeError` if `database` is not an instance of
@@ -461,7 +461,7 @@ class GridFSBucket:
 
     def __init__(
         self,
-        db: Database,
+        db: Database[Any],
         bucket_name: str = "fs",
         chunk_size_bytes: int = DEFAULT_CHUNK_SIZE,
         write_concern: Optional[WriteConcern] = None,
@@ -511,11 +511,11 @@ class GridFSBucket:
 
         self._bucket_name = bucket_name
         self._collection = db[bucket_name]
-        self._chunks: Collection = self._collection.chunks.with_options(
+        self._chunks: Collection[Any] = self._collection.chunks.with_options(
             write_concern=write_concern, read_preference=read_preference
         )
 
-        self._files: Collection = self._collection.files.with_options(
+        self._files: Collection[Any] = self._collection.files.with_options(
             write_concern=write_concern, read_preference=read_preference
         )
 
@@ -1077,7 +1077,7 @@ class GridIn:
 
     def __init__(
         self,
-        root_collection: Collection,
+        root_collection: Collection[Any],
         session: Optional[ClientSession] = None,
         **kwargs: Any,
     ) -> None:
@@ -1133,7 +1133,7 @@ class GridIn:
         """
         if not isinstance(root_collection, Collection):
             raise TypeError(
-                f"root_collection must be an instance of Collection, not {type(root_collection)}"
+                f"root_collection must be an instance of Collection[Any], not {type(root_collection)}"
             )
 
         if not root_collection.write_concern.acknowledged:
@@ -1163,7 +1163,7 @@ class GridIn:
         object.__setattr__(self, "_buffered_docs", [])
         object.__setattr__(self, "_buffered_docs_size", 0)
 
-    def _create_index(self, collection: Collection, index_key: Any, unique: bool) -> None:
+    def _create_index(self, collection: Collection[Any], index_key: Any, unique: bool) -> None:
         doc = collection.find_one(projection={"_id": 1}, session=self._session)
         if doc is None:
             try:
@@ -1444,7 +1444,7 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
 
     def __init__(
         self,
-        root_collection: Collection,
+        root_collection: Collection[Any],
         file_id: Optional[int] = None,
         file_document: Optional[Any] = None,
         session: Optional[ClientSession] = None,
@@ -1482,7 +1482,7 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         """
         if not isinstance(root_collection, Collection):
             raise TypeError(
-                f"root_collection must be an instance of Collection, not {type(root_collection)}"
+                f"root_collection must be an instance of Collection[Any], not {type(root_collection)}"
             )
         _disallow_transactions(session)
 
@@ -1817,7 +1817,7 @@ class GridOutChunkIterator:
     def __init__(
         self,
         grid_out: GridOut,
-        chunks: Collection,
+        chunks: Collection[Any],
         session: Optional[ClientSession],
         next_chunk: Any,
     ) -> None:
@@ -1830,7 +1830,7 @@ class GridOutChunkIterator:
         self._num_chunks = math.ceil(float(self._length) / self._chunk_size)
         self._cursor = None
 
-    _cursor: Optional[Cursor]
+    _cursor: Optional[Cursor[Any]]
 
     def expected_chunk_length(self, chunk_n: int) -> int:
         if chunk_n < self._num_chunks - 1:
@@ -1908,7 +1908,7 @@ class GridOutChunkIterator:
 
 
 class GridOutIterator:
-    def __init__(self, grid_out: GridOut, chunks: Collection, session: ClientSession):
+    def __init__(self, grid_out: GridOut, chunks: Collection[Any], session: ClientSession):
         self._chunk_iter = GridOutChunkIterator(grid_out, chunks, session, 0)
 
     def __iter__(self) -> GridOutIterator:
@@ -1921,14 +1921,14 @@ class GridOutIterator:
     __next__ = next
 
 
-class GridOutCursor(Cursor):
+class GridOutCursor(Cursor):  # type: ignore[type-arg]
     """A cursor / iterator for returning GridOut objects as the result
     of an arbitrary query against the GridFS files collection.
     """
 
     def __init__(
         self,
-        collection: Collection,
+        collection: Collection[Any],
         filter: Optional[Mapping[str, Any]] = None,
         skip: int = 0,
         limit: int = 0,

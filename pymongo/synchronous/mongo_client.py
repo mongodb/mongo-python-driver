@@ -2434,7 +2434,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         verbose_results: bool = False,
         bypass_document_validation: Optional[bool] = None,
         comment: Optional[Any] = None,
-        let: Optional[Mapping] = None,
+        let: Optional[Mapping[str, Any]] = None,
         write_concern: Optional[WriteConcern] = None,
     ) -> ClientBulkWriteResult:
         """Send a batch of write operations, potentially across multiple namespaces, to the server.
