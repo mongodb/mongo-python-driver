@@ -333,7 +333,7 @@ def _op_msg_no_header(
     command: Mapping[str, Any],
     identifier: str,
     docs: Optional[list[Mapping[str, Any]]],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
 ) -> tuple[bytes, int, int]:
     """Get a OP_MSG message.
 
@@ -365,7 +365,7 @@ def _op_msg_compressed(
     command: Mapping[str, Any],
     identifier: str,
     docs: Optional[list[Mapping[str, Any]]],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: Union[SnappyContext, ZlibContext, ZstdContext],
 ) -> tuple[int, bytes, int, int]:
     """Internal OP_MSG message helper."""
@@ -379,7 +379,7 @@ def _op_msg_uncompressed(
     command: Mapping[str, Any],
     identifier: str,
     docs: Optional[list[Mapping[str, Any]]],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
 ) -> tuple[int, bytes, int, int]:
     """Internal compressed OP_MSG message helper."""
     data, total_size, max_bson_size = _op_msg_no_header(flags, command, identifier, docs, opts)
@@ -396,7 +396,7 @@ def _op_msg(
     command: MutableMapping[str, Any],
     dbname: str,
     read_preference: Optional[_ServerMode],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
 ) -> tuple[int, bytes, int, int]:
     """Get a OP_MSG message."""
@@ -430,7 +430,7 @@ def _query_impl(
     num_to_return: int,
     query: Mapping[str, Any],
     field_selector: Optional[Mapping[str, Any]],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
 ) -> tuple[bytes, int]:
     """Get an OP_QUERY message."""
     encoded = _dict_to_bson(query, False, opts)
@@ -461,7 +461,7 @@ def _query_compressed(
     num_to_return: int,
     query: Mapping[str, Any],
     field_selector: Optional[Mapping[str, Any]],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: Union[SnappyContext, ZlibContext, ZstdContext],
 ) -> tuple[int, bytes, int]:
     """Internal compressed query message helper."""
@@ -479,7 +479,7 @@ def _query_uncompressed(
     num_to_return: int,
     query: Mapping[str, Any],
     field_selector: Optional[Mapping[str, Any]],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
 ) -> tuple[int, bytes, int]:
     """Internal query message helper."""
     op_query, max_bson_size = _query_impl(
@@ -500,7 +500,7 @@ def _query(
     num_to_return: int,
     query: Mapping[str, Any],
     field_selector: Optional[Mapping[str, Any]],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
 ) -> tuple[int, bytes, int]:
     """Get a **query** message."""
@@ -598,7 +598,7 @@ class _BulkWriteContextBase:
         listeners: _EventListeners,
         session: Optional[_AgnosticClientSession],
         op_type: int,
-        codec: CodecOptions,
+        codec: CodecOptions[Any],
     ):
         self.db_name = database_name
         self.conn = conn
@@ -679,7 +679,7 @@ class _BulkWriteContext(_BulkWriteContextBase):
         listeners: _EventListeners,
         session: Optional[_AgnosticClientSession],
         op_type: int,
-        codec: CodecOptions,
+        codec: CodecOptions[Any],
     ):
         super().__init__(
             database_name,
@@ -771,7 +771,7 @@ def _batched_op_msg_impl(
     command: Mapping[str, Any],
     docs: list[Mapping[str, Any]],
     ack: bool,
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
     buf: _BytesIO,
 ) -> tuple[list[Mapping[str, Any]], int]:
@@ -839,7 +839,7 @@ def _encode_batched_op_msg(
     command: Mapping[str, Any],
     docs: list[Mapping[str, Any]],
     ack: bool,
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
 ) -> tuple[bytes, list[Mapping[str, Any]]]:
     """Encode the next batched insert, update, or delete operation
@@ -860,7 +860,7 @@ def _batched_op_msg_compressed(
     command: Mapping[str, Any],
     docs: list[Mapping[str, Any]],
     ack: bool,
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]]]:
     """Create the next batched insert, update, or delete operation
@@ -878,7 +878,7 @@ def _batched_op_msg(
     command: Mapping[str, Any],
     docs: list[Mapping[str, Any]],
     ack: bool,
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]]]:
     """OP_MSG implementation entry point."""
@@ -910,7 +910,7 @@ def _do_batched_op_msg(
     operation: int,
     command: MutableMapping[str, Any],
     docs: list[Mapping[str, Any]],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]]]:
     """Create the next batched insert, update, or delete operation
@@ -939,7 +939,7 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
         operation_id: int,
         listeners: _EventListeners,
         session: Optional[_AgnosticClientSession],
-        codec: CodecOptions,
+        codec: CodecOptions[Any],
     ):
         super().__init__(
             database_name,
@@ -1043,7 +1043,7 @@ def _client_batched_op_msg_impl(
     operations: list[tuple[str, Mapping[str, Any]]],
     namespaces: list[str],
     ack: bool,
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
     buf: _BytesIO,
 ) -> tuple[list[Mapping[str, Any]], list[Mapping[str, Any]], int]:
@@ -1161,7 +1161,7 @@ def _client_encode_batched_op_msg(
     operations: list[tuple[str, Mapping[str, Any]]],
     namespaces: list[str],
     ack: bool,
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
 ) -> tuple[bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
     """Encode the next batched client-level bulkWrite
@@ -1180,7 +1180,7 @@ def _client_batched_op_msg_compressed(
     operations: list[tuple[str, Mapping[str, Any]]],
     namespaces: list[str],
     ack: bool,
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
     """Create the next batched client-level bulkWrite operation
@@ -1200,7 +1200,7 @@ def _client_batched_op_msg(
     operations: list[tuple[str, Mapping[str, Any]]],
     namespaces: list[str],
     ack: bool,
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
     """OP_MSG implementation entry point for client-level bulkWrite."""
@@ -1229,7 +1229,7 @@ def _client_do_batched_op_msg(
     command: MutableMapping[str, Any],
     operations: list[tuple[str, Mapping[str, Any]]],
     namespaces: list[str],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
     """Create the next batched client-level bulkWrite
@@ -1253,7 +1253,7 @@ def _encode_batched_write_command(
     operation: int,
     command: MutableMapping[str, Any],
     docs: list[Mapping[str, Any]],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
 ) -> tuple[bytes, list[Mapping[str, Any]]]:
     """Encode the next batched insert, update, or delete command."""
@@ -1272,7 +1272,7 @@ def _batched_write_command_impl(
     operation: int,
     command: MutableMapping[str, Any],
     docs: list[Mapping[str, Any]],
-    opts: CodecOptions,
+    opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
     buf: _BytesIO,
 ) -> tuple[list[Mapping[str, Any]], int]:
@@ -1383,7 +1383,7 @@ class _OpReply:
             errobj = {"ok": 0, "errmsg": msg, "code": 43}
             raise CursorNotFound(msg, 43, errobj)
         elif self.flags & 2:
-            error_object: dict = bson.BSON(self.documents).decode()
+            error_object: dict[str, Any] = bson.BSON(self.documents).decode()
             # Fake the ok field if it doesn't exist.
             error_object.setdefault("ok", 0)
             if error_object["$err"].startswith(HelloCompat.LEGACY_ERROR):
@@ -1405,7 +1405,7 @@ class _OpReply:
     def unpack_response(
         self,
         cursor_id: Optional[int] = None,
-        codec_options: CodecOptions = _UNICODE_REPLACE_CODEC_OPTIONS,
+        codec_options: CodecOptions[Any] = _UNICODE_REPLACE_CODEC_OPTIONS,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
     ) -> list[dict[str, Any]]:
@@ -1431,7 +1431,7 @@ class _OpReply:
             return bson.decode_all(self.documents, codec_options)
         return bson._decode_all_selective(self.documents, codec_options, user_fields)
 
-    def command_response(self, codec_options: CodecOptions) -> dict[str, Any]:
+    def command_response(self, codec_options: CodecOptions[Any]) -> dict[str, Any]:
         """Unpack a command response."""
         docs = self.unpack_response(codec_options=codec_options)
         assert self.number_returned == 1
@@ -1491,7 +1491,7 @@ class _OpMsg:
     def unpack_response(
         self,
         cursor_id: Optional[int] = None,
-        codec_options: CodecOptions = _UNICODE_REPLACE_CODEC_OPTIONS,
+        codec_options: CodecOptions[Any] = _UNICODE_REPLACE_CODEC_OPTIONS,
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
     ) -> list[dict[str, Any]]:
@@ -1508,7 +1508,7 @@ class _OpMsg:
         assert not legacy_response
         return bson._decode_all_selective(self.payload_document, codec_options, user_fields)
 
-    def command_response(self, codec_options: CodecOptions) -> dict[str, Any]:
+    def command_response(self, codec_options: CodecOptions[Any]) -> dict[str, Any]:
         """Unpack a command response."""
         return self.unpack_response(codec_options=codec_options)[0]
 
@@ -1583,7 +1583,7 @@ class _Query:
         ntoskip: int,
         spec: Mapping[str, Any],
         fields: Optional[Mapping[str, Any]],
-        codec_options: CodecOptions,
+        codec_options: CodecOptions[Any],
         read_preference: _ServerMode,
         limit: int,
         batch_size: int,
@@ -1757,7 +1757,7 @@ class _GetMore:
         coll: str,
         ntoreturn: int,
         cursor_id: int,
-        codec_options: CodecOptions,
+        codec_options: CodecOptions[Any],
         read_preference: _ServerMode,
         session: Optional[_AgnosticClientSession],
         client: _AgnosticMongoClient,
@@ -1871,7 +1871,7 @@ class _RawBatchGetMore(_GetMore):
         return False
 
 
-class _CursorAddress(tuple):
+class _CursorAddress(tuple[Any, ...]):
     """The server address (host, port) of a cursor, with namespace property."""
 
     __namespace: Any

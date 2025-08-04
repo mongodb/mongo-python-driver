@@ -158,10 +158,10 @@ _ReadCall = Callable[
 _IS_SYNC = True
 
 _WriteOp = Union[
-    InsertOne,
+    InsertOne,  # type: ignore[type-arg]
     DeleteOne,
     DeleteMany,
-    ReplaceOne,
+    ReplaceOne,  # type: ignore[type-arg]
     UpdateOne,
     UpdateMany,
 ]
@@ -173,7 +173,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # Define order to retrieve options from ClientOptions for __repr__.
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ("document_class", "tz_aware", "connect")
-    _clients: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
+    _clients: weakref.WeakValueDictionary = weakref.WeakValueDictionary()  # type: ignore[type-arg]
 
     def __init__(
         self,
@@ -847,7 +847,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self._default_database_name = dbase
         self._lock = _create_lock()
-        self._kill_cursors_queue: list = []
+        self._kill_cursors_queue: list = []  # type: ignore[type-arg]
 
         self._encrypter: Optional[_Encrypter] = None
 
@@ -1064,7 +1064,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Reset the session pool to avoid duplicate sessions in the child process.
         self._topology._session_pool.reset()
 
-    def _duplicate(self, **kwargs: Any) -> MongoClient:
+    def _duplicate(self, **kwargs: Any) -> MongoClient:  # type: ignore[type-arg]
         args = self._init_kwargs.copy()
         args.update(kwargs)
         return MongoClient(**args)
@@ -1546,7 +1546,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self, name, codec_options, read_preference, write_concern, read_concern
         )
 
-    def _database_default_options(self, name: str) -> database.Database:
+    def _database_default_options(self, name: str) -> database.Database:  # type: ignore[type-arg]
         """Get a Database instance with the default settings."""
         return self.get_database(
             name,
@@ -1883,7 +1883,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _run_operation(
         self,
         operation: Union[_Query, _GetMore],
-        unpack_res: Callable,
+        unpack_res: Callable,  # type: ignore[type-arg]
         address: Optional[_Address] = None,
     ) -> Response:
         """Run a _Query/_GetMore operation and return a Response.
@@ -2257,7 +2257,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     @contextlib.contextmanager
     def _tmp_session(
         self, session: Optional[client_session.ClientSession], close: bool = True
-    ) -> Generator[Optional[client_session.ClientSession], None, None]:
+    ) -> Generator[Optional[client_session.ClientSession], None]:
         """If provided session is None, lend a temporary session."""
         if session is not None:
             if not isinstance(session, client_session.ClientSession):
@@ -2300,8 +2300,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        return cast(
-            dict,
+        return cast(  # type: ignore[redundant-cast]
+            dict[str, Any],
             self.admin.command(
                 "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
             ),
@@ -2428,7 +2428,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def bulk_write(
         self,
-        models: Sequence[_WriteOp[_DocumentType]],
+        models: Sequence[_WriteOp],
         session: Optional[ClientSession] = None,
         ordered: bool = True,
         verbose_results: bool = False,
@@ -2620,7 +2620,12 @@ class _MongoClientErrorHandler:
         "handled",
     )
 
-    def __init__(self, client: MongoClient, server: Server, session: Optional[ClientSession]):
+    def __init__(
+        self,
+        client: MongoClient,  # type: ignore[type-arg]
+        server: Server,
+        session: Optional[ClientSession],
+    ):
         if not isinstance(client, MongoClient):
             # This is for compatibility with mocked and subclassed types, such as in Motor.
             if not any(cls.__name__ == "MongoClient" for cls in type(client).__mro__):
@@ -2692,7 +2697,7 @@ class _ClientConnectionRetryable(Generic[T]):
 
     def __init__(
         self,
-        mongo_client: MongoClient,
+        mongo_client: MongoClient,  # type: ignore[type-arg]
         func: _WriteCall[T] | _ReadCall[T],
         bulk: Optional[Union[_Bulk, _ClientBulk]],
         operation: str,

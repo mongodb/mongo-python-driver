@@ -967,13 +967,15 @@ class Cursor(Generic[_DocumentType]):
 
     @overload
     def _deepcopy(
-        self, x: SupportsItems, memo: Optional[dict[int, Union[list, dict]]] = None
+        self,
+        x: SupportsItems,  # type: ignore[type-arg]
+        memo: Optional[dict[int, Union[list, dict]]] = None,  # type: ignore[type-arg]
     ) -> dict:  # type: ignore[type-arg]
         ...
 
     def _deepcopy(
         self,
-        x: Union[Iterable, SupportsItems],
+        x: Union[Iterable, SupportsItems],  # type: ignore[type-arg]
         memo: Optional[dict[int, Union[list, dict]]] = None,  # type: ignore[type-arg]
     ) -> Union[list[Any], dict[str, Any]]:
         """Deepcopy helper for the data dictionary or list.

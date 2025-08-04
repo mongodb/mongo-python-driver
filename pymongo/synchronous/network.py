@@ -66,7 +66,7 @@ def command(
     read_preference: Optional[_ServerMode],
     codec_options: CodecOptions[_DocumentType],
     session: Optional[ClientSession],
-    client: Optional[MongoClient],
+    client: Optional[MongoClient[Any]],
     check: bool = True,
     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
     address: Optional[_Address] = None,

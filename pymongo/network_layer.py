@@ -96,7 +96,7 @@ if sys.platform != "win32":
         view = memoryview(buf)
         sent = 0
 
-        def _is_ready(fut: Future) -> None:
+        def _is_ready(fut: Future[Any]) -> None:
             if fut.done():
                 return
             fut.set_result(None)
@@ -139,7 +139,7 @@ if sys.platform != "win32":
         mv = memoryview(bytearray(length))
         total_read = 0
 
-        def _is_ready(fut: Future) -> None:
+        def _is_ready(fut: Future[Any]) -> None:
             if fut.done():
                 return
             fut.set_result(None)
@@ -486,15 +486,15 @@ class PyMongoProtocol(BufferedProtocol):
         self._message_size = 0
         self._op_code = 0
         self._connection_lost = False
-        self._read_waiter: Optional[Future] = None
+        self._read_waiter: Optional[Future[Any]] = None
         self._timeout = timeout
         self._is_compressed = False
         self._compressor_id: Optional[int] = None
         self._max_message_size = MAX_MESSAGE_SIZE
         self._response_to: Optional[int] = None
         self._closed = asyncio.get_running_loop().create_future()
-        self._pending_messages: collections.deque[Future] = collections.deque()
-        self._done_messages: collections.deque[Future] = collections.deque()
+        self._pending_messages: collections.deque[Future[Any]] = collections.deque()
+        self._done_messages: collections.deque[Future[Any]] = collections.deque()
 
     def settimeout(self, timeout: float | None) -> None:
         self._timeout = timeout
@@ -613,7 +613,7 @@ class PyMongoProtocol(BufferedProtocol):
                 result = self._pending_messages.popleft()
             else:
                 result = asyncio.get_running_loop().create_future()
-            # Future has been cancelled, close this connection
+            # Future[Any] has been cancelled, close this connection
             if result.done():
                 self.close(None)
                 return

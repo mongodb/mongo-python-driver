@@ -56,17 +56,22 @@ if HAVE_SSL:
 
     if HAVE_PYSSL:
         PYSSLError: Any = _pyssl.SSLError
-        BLOCKING_IO_ERRORS: tuple = _ssl.BLOCKING_IO_ERRORS + _pyssl.BLOCKING_IO_ERRORS
-        BLOCKING_IO_READ_ERROR: tuple = (_pyssl.BLOCKING_IO_READ_ERROR, _ssl.BLOCKING_IO_READ_ERROR)
-        BLOCKING_IO_WRITE_ERROR: tuple = (
+        BLOCKING_IO_ERRORS: tuple = (  # type: ignore[type-arg]
+            _ssl.BLOCKING_IO_ERRORS + _pyssl.BLOCKING_IO_ERRORS
+        )
+        BLOCKING_IO_READ_ERROR: tuple = (  # type: ignore[type-arg]
+            _pyssl.BLOCKING_IO_READ_ERROR,
+            _ssl.BLOCKING_IO_READ_ERROR,
+        )
+        BLOCKING_IO_WRITE_ERROR: tuple = (  # type: ignore[type-arg]
             _pyssl.BLOCKING_IO_WRITE_ERROR,
             _ssl.BLOCKING_IO_WRITE_ERROR,
         )
     else:
         PYSSLError = _ssl.SSLError
-        BLOCKING_IO_ERRORS = _ssl.BLOCKING_IO_ERRORS
-        BLOCKING_IO_READ_ERROR = (_ssl.BLOCKING_IO_READ_ERROR,)
-        BLOCKING_IO_WRITE_ERROR = (_ssl.BLOCKING_IO_WRITE_ERROR,)
+        BLOCKING_IO_ERRORS: tuple = _ssl.BLOCKING_IO_ERRORS  # type: ignore[type-arg, no-redef]
+        BLOCKING_IO_READ_ERROR: tuple = (_ssl.BLOCKING_IO_READ_ERROR,)  # type: ignore[type-arg, no-redef]
+        BLOCKING_IO_WRITE_ERROR: tuple = (_ssl.BLOCKING_IO_WRITE_ERROR,)  # type: ignore[type-arg, no-redef]
     SSLError = _ssl.SSLError
     BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
@@ -131,7 +136,7 @@ else:
         pass
 
     IPADDR_SAFE = False
-    BLOCKING_IO_ERRORS = ()
+    BLOCKING_IO_ERRORS: tuple = ()  # type: ignore[type-arg, no-redef]
 
     def _has_sni(is_sync: bool) -> bool:  # noqa: ARG001
         return False

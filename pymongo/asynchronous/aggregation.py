@@ -46,8 +46,8 @@ class _AggregationCommand:
 
     def __init__(
         self,
-        target: Union[AsyncDatabase, AsyncCollection],
-        cursor_class: type[AsyncCommandCursor],
+        target: Union[AsyncDatabase[Any], AsyncCollection[Any]],
+        cursor_class: type[AsyncCommandCursor[Any]],
         pipeline: _Pipeline,
         options: MutableMapping[str, Any],
         explicit_session: bool,
@@ -111,12 +111,12 @@ class _AggregationCommand:
         """The namespace in which the aggregate command is run."""
         raise NotImplementedError
 
-    def _cursor_collection(self, cursor_doc: Mapping[str, Any]) -> AsyncCollection:
+    def _cursor_collection(self, cursor_doc: Mapping[str, Any]) -> AsyncCollection[Any]:
         """The AsyncCollection used for the aggregate command cursor."""
         raise NotImplementedError
 
     @property
-    def _database(self) -> AsyncDatabase:
+    def _database(self) -> AsyncDatabase[Any]:
         """The database against which the aggregation command is run."""
         raise NotImplementedError
 
@@ -205,7 +205,7 @@ class _AggregationCommand:
 
 
 class _CollectionAggregationCommand(_AggregationCommand):
-    _target: AsyncCollection
+    _target: AsyncCollection[Any]
 
     @property
     def _aggregation_target(self) -> str:
@@ -215,12 +215,12 @@ class _CollectionAggregationCommand(_AggregationCommand):
     def _cursor_namespace(self) -> str:
         return self._target.full_name
 
-    def _cursor_collection(self, cursor: Mapping[str, Any]) -> AsyncCollection:
+    def _cursor_collection(self, cursor: Mapping[str, Any]) -> AsyncCollection[Any]:
         """The AsyncCollection used for the aggregate command cursor."""
         return self._target
 
     @property
-    def _database(self) -> AsyncDatabase:
+    def _database(self) -> AsyncDatabase[Any]:
         return self._target.database
 
 
@@ -234,7 +234,7 @@ class _CollectionRawAggregationCommand(_CollectionAggregationCommand):
 
 
 class _DatabaseAggregationCommand(_AggregationCommand):
-    _target: AsyncDatabase
+    _target: AsyncDatabase[Any]
 
     @property
     def _aggregation_target(self) -> int:
@@ -245,10 +245,10 @@ class _DatabaseAggregationCommand(_AggregationCommand):
         return f"{self._target.name}.$cmd.aggregate"
 
     @property
-    def _database(self) -> AsyncDatabase:
+    def _database(self) -> AsyncDatabase[Any]:
         return self._target
 
-    def _cursor_collection(self, cursor: Mapping[str, Any]) -> AsyncCollection:
+    def _cursor_collection(self, cursor: Mapping[str, Any]) -> AsyncCollection[Any]:
         """The AsyncCollection used for the aggregate command cursor."""
         # AsyncCollection level aggregate may not always return the "ns" field
         # according to our MockupDB tests. Let's handle that case for db level

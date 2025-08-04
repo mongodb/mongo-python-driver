@@ -581,7 +581,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         conn: AsyncConnection,
         command: MutableMapping[str, Any],
         read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions[dict[str, Any]]] = None,
+        codec_options: Optional[CodecOptions[Mapping[str, Any]]] = None,
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -2525,7 +2525,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
     ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
-        codec_options: CodecOptions[dict[str, Any]] = CodecOptions(SON)
+        codec_options: CodecOptions[Mapping[str, Any]] = CodecOptions(SON)
         coll = cast(
             AsyncCollection[MutableMapping[str, Any]],
             self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),

@@ -66,7 +66,7 @@ class Server:
         monitor: Monitor,
         topology_id: Optional[ObjectId] = None,
         listeners: Optional[_EventListeners] = None,
-        events: Optional[ReferenceType[Queue]] = None,
+        events: Optional[ReferenceType[Queue[Any]]] = None,
     ) -> None:
         """Represent one MongoDB server."""
         self._description = server_description
@@ -142,7 +142,7 @@ class Server:
         read_preference: _ServerMode,
         listeners: Optional[_EventListeners],
         unpack_res: Callable[..., list[_DocumentOut]],
-        client: MongoClient,
+        client: MongoClient[Any],
     ) -> Response:
         """Run a _Query or _GetMore operation and return a Response object.
 
