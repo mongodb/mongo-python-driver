@@ -64,7 +64,7 @@ pymongocrypt_source = [
 ]
 perf = ["simplejson"]
 typing = [
-    "mypy==1.14.1",
+    "mypy==1.17.1",
     "pyright==1.1.392.post0",
     "typing_extensions",
     "pip"
