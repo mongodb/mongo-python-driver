@@ -115,7 +115,7 @@ class UuidRepresentation:
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the Java driver's legacy byte order.
 
-    See :ref:`java-legacy-representation-details` for details.
+    See `Java Legacy UUID <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#java_legacy>`_ for details.
 
     .. versionadded:: 3.11
     """
@@ -127,7 +127,7 @@ class UuidRepresentation:
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the C# driver's legacy byte order.
 
-    See :ref:`csharp-legacy-representation-details` for details.
+    See `C# Legacy UUID <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#csharp_legacy>`_ for details.
 
     .. versionadded:: 3.11
     """
