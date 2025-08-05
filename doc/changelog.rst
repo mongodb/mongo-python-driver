@@ -5,8 +5,10 @@ Changes in Version 4.14.0 (XXXX/XX/XX)
 --------------------------------------
 PyMongo 4.14 brings a number of changes including:
 
-- Added preliminary support for Python 3.14 and 3.14 with free-threading.  We do not yet support subinterpreters in Python 3.14.
-  We do not yet support free-theading with Encryption. Full support will be added in a future release.
+- Added preliminary support for Python 3.14 and 3.14 with free-threading.  We do not yet support the following with Python 3.14:
+    - Subinterpreters (``concurrent.interpreters``)
+    - Free-threading with Encryption
+    - mod_wsgi
 - Removed experimental support for free-threading support in Python 3.13.
 - Added :attr:`bson.codec_options.TypeRegistry.codecs` and :attr:`bson.codec_options.TypeRegistry.fallback_encoder` properties
   to allow users to directly access the type codecs and fallback encoder for a given :class:`bson.codec_options.TypeRegistry`.
