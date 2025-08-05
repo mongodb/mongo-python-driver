@@ -614,7 +614,7 @@ An application using Azure credentials would look like, this time using
     from pymongo.encryption_options import AutoEncryptionOpts
 
     # The empty dictionary enables on-demand credentials.
-    kms_providers = ({"azure": {}},)
+    kms_providers = {"azure": {}}
     key_vault_namespace = "keyvault.datakeys"
     auto_encryption_opts = AutoEncryptionOpts(kms_providers, key_vault_namespace)
     client = MongoClient(auto_encryption_opts=auto_encryption_opts)
