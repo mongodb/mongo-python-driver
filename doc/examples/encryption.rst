@@ -647,7 +647,7 @@ as demonstrated by the following example:
   import os
   from bson.codec_options import CodecOptions
   from pymongo import MongoClient
-  from pymongo.encryption import Algorithm, ClientEncryption, QueryType
+  from pymongo.encryption import ClientEncryption
   from pymongo.encryption_options import AutoEncryptionOpts
 
   local_master_key = os.urandom(96)
