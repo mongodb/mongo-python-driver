@@ -614,7 +614,7 @@ An application using Azure credentials would look like, this time using
     from pymongo.encryption_options import AutoEncryptionOpts
 
     # The empty dictionary enables on-demand credentials.
-    kms_providers = ({"azure": {}},)
+    kms_providers = {"azure": {}}
     key_vault_namespace = "keyvault.datakeys"
     auto_encryption_opts = AutoEncryptionOpts(kms_providers, key_vault_namespace)
     client = MongoClient(auto_encryption_opts=auto_encryption_opts)
@@ -647,7 +647,7 @@ as demonstrated by the following example:
   import os
   from bson.codec_options import CodecOptions
   from pymongo import MongoClient
-  from pymongo.encryption import Algorithm, ClientEncryption, QueryType
+  from pymongo.encryption import ClientEncryption
   from pymongo.encryption_options import AutoEncryptionOpts
 
   local_master_key = os.urandom(96)
@@ -670,8 +670,6 @@ as demonstrated by the following example:
 
   encrypted_fields_map = {
       "default.encryptedCollection": {
-          "escCollection": "encryptedCollection.esc",
-          "ecocCollection": "encryptedCollection.ecoc",
           "fields": [
               {
                   "path": "firstName",
@@ -768,8 +766,6 @@ using an ``encrypted_fields`` mapping, as demonstrated by the following example:
         unindexed_key_id = client_encryption.create_data_key("local")
 
         encrypted_fields = {
-            "escCollection": "enxcol_.default.esc",
-            "ecocCollection": "enxcol_.default.ecoc",
             "fields": [
                 {
                     "keyId": indexed_key_id,
