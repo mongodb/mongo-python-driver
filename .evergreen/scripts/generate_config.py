@@ -107,10 +107,7 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
 def create_free_threaded_variants() -> list[BuildVariant]:
     variants = []
     for host_name in ("rhel8", "macos", "macos-arm64", "win64"):
-        if host_name == "win64":
-            python = "3.14t"
-        else:
-            python = "3.13t"
+        python = "3.14t"
         tasks = [".free-threading"]
         tags = []
         if host_name == "rhel8":
@@ -300,12 +297,12 @@ def create_green_framework_variants():
     variants = []
     host = DEFAULT_HOST
     for framework in ["eventlet", "gevent"]:
-        tasks = [".test-standard .standalone-noauth-nossl"]
+        tasks = [".test-standard .standalone-noauth-nossl .sync"]
         if framework == "eventlet":
             # Eventlet has issues with dnspython > 2.0 and newer versions of CPython
             # https://jira.mongodb.org/browse/PYTHON-5284
-            tasks = [".test-standard .standalone-noauth-nossl .python-3.9"]
-        expansions = dict(GREEN_FRAMEWORK=framework, AUTH="auth", SSL="ssl")
+            tasks = [".test-standard .standalone-noauth-nossl .python-3.9 .sync"]
+        expansions = dict(GREEN_FRAMEWORK=framework)
         display_name = get_variant_name(f"Green {framework.capitalize()}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
@@ -636,20 +633,15 @@ def create_test_non_standard_tasks():
 def create_standard_tasks():
     """For variants that do not set a TEST_NAME."""
     tasks = []
-    task_combos = []
-    # For each version and topology, rotate through the CPythons and sync/async.
-    for (version, topology), python, sync in zip_cycle(
-        list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS, SYNCS
+    task_combos = set()
+    # For each python and topology and sync/async, rotate through the the versions.
+    for (python, topology, sync), version in zip_cycle(
+        list(product(CPYTHONS + PYPYS, TOPOLOGIES, SYNCS)), ALL_VERSIONS
     ):
-        pr = version == "latest"
-        task_combos.append((version, topology, python, sync, pr))
-    # For each PyPy and topology, rotate through the the versions and sync/async.
-    for (python, topology), version, sync in zip_cycle(
-        list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS, SYNCS
-    ):
-        task_combos.append((version, topology, python, sync, False))
+        pr = version == "latest" and python not in PYPYS
+        task_combos.add((version, topology, python, sync, pr))
 
-    for version, topology, python, sync, pr in task_combos:
+    for version, topology, python, sync, pr in sorted(task_combos):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-standard",
