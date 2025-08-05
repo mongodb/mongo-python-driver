@@ -1141,7 +1141,7 @@ class AsyncGridIn:
         """
         if not isinstance(root_collection, AsyncCollection):
             raise TypeError(
-                f"root_collection must be an instance of AsyncCollection[Any], not {type(root_collection)}"
+                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}"
             )
 
         if not root_collection.write_concern.acknowledged:
@@ -1494,7 +1494,7 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         """
         if not isinstance(root_collection, AsyncCollection):
             raise TypeError(
-                f"root_collection must be an instance of AsyncCollection[Any], not {type(root_collection)}"
+                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}"
             )
         _disallow_transactions(session)
 

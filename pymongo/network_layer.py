@@ -613,7 +613,7 @@ class PyMongoProtocol(BufferedProtocol):
                 result = self._pending_messages.popleft()
             else:
                 result = asyncio.get_running_loop().create_future()
-            # Future[Any] has been cancelled, close this connection
+            # Future has been cancelled, close this connection
             if result.done():
                 self.close(None)
                 return

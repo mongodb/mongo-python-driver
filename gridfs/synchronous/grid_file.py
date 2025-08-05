@@ -1133,7 +1133,7 @@ class GridIn:
         """
         if not isinstance(root_collection, Collection):
             raise TypeError(
-                f"root_collection must be an instance of Collection[Any], not {type(root_collection)}"
+                f"root_collection must be an instance of Collection, not {type(root_collection)}"
             )
 
         if not root_collection.write_concern.acknowledged:
@@ -1482,7 +1482,7 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         """
         if not isinstance(root_collection, Collection):
             raise TypeError(
-                f"root_collection must be an instance of Collection[Any], not {type(root_collection)}"
+                f"root_collection must be an instance of Collection, not {type(root_collection)}"
             )
         _disallow_transactions(session)
 
