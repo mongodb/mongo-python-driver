@@ -766,8 +766,6 @@ using an ``encrypted_fields`` mapping, as demonstrated by the following example:
         unindexed_key_id = client_encryption.create_data_key("local")
 
         encrypted_fields = {
-            "escCollection": "enxcol_.default.esc",
-            "ecocCollection": "enxcol_.default.ecoc",
             "fields": [
                 {
                     "keyId": indexed_key_id,
