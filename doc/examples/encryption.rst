@@ -670,8 +670,6 @@ as demonstrated by the following example:
 
   encrypted_fields_map = {
       "default.encryptedCollection": {
-          "escCollection": "encryptedCollection.esc",
-          "ecocCollection": "encryptedCollection.ecoc",
           "fields": [
               {
                   "path": "firstName",
