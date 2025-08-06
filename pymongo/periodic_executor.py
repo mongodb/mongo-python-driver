@@ -53,7 +53,7 @@ class AsyncPeriodicExecutor:
         self._min_interval = min_interval
         self._target = target
         self._stopped = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: Optional[asyncio.Task[Any]] = None
         self._name = name
         self._skip_sleep = False
 

@@ -351,7 +351,7 @@ class Monitor(MonitorBase):
                 )
             return sd
 
-    async def _check_with_socket(self, conn: AsyncConnection) -> tuple[Hello, float]:
+    async def _check_with_socket(self, conn: AsyncConnection) -> tuple[Hello, float]:  # type: ignore[type-arg]
         """Return (Hello, round_trip_time).
 
         Can raise ConnectionFailure or OperationFailure.

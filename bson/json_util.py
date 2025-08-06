@@ -844,7 +844,7 @@ def _encode_binary(data: bytes, subtype: int, json_options: JSONOptions) -> Any:
     return {"$binary": {"base64": base64.b64encode(data).decode(), "subType": "%02x" % subtype}}
 
 
-def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:
+def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:  # type: ignore[type-arg]
     if (
         json_options.datetime_representation == DatetimeRepresentation.ISO8601
         and 0 <= int(obj) <= _MAX_UTC_MS
@@ -855,7 +855,7 @@ def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:
     return {"$date": {"$numberLong": str(int(obj))}}
 
 
-def _encode_code(obj: Code, json_options: JSONOptions) -> dict:
+def _encode_code(obj: Code, json_options: JSONOptions) -> dict:  # type: ignore[type-arg]
     if obj.scope is None:
         return {"$code": str(obj)}
     else:
@@ -873,7 +873,7 @@ def _encode_noop(obj: Any, dummy0: Any) -> Any:
     return obj
 
 
-def _encode_regex(obj: Any, json_options: JSONOptions) -> dict:
+def _encode_regex(obj: Any, json_options: JSONOptions) -> dict:  # type: ignore[type-arg]
     flags = ""
     if obj.flags & re.IGNORECASE:
         flags += "i"
@@ -918,7 +918,7 @@ def _encode_float(obj: float, json_options: JSONOptions) -> Any:
     return obj
 
 
-def _encode_datetime(obj: datetime.datetime, json_options: JSONOptions) -> dict:
+def _encode_datetime(obj: datetime.datetime, json_options: JSONOptions) -> dict:  # type: ignore[type-arg]
     if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
         if not obj.tzinfo:
             obj = obj.replace(tzinfo=utc)
@@ -941,15 +941,15 @@ def _encode_datetime(obj: datetime.datetime, json_options: JSONOptions) -> dict:
     return {"$date": {"$numberLong": str(millis)}}
 
 
-def _encode_bytes(obj: bytes, json_options: JSONOptions) -> dict:
+def _encode_bytes(obj: bytes, json_options: JSONOptions) -> dict:  # type: ignore[type-arg]
     return _encode_binary(obj, 0, json_options)
 
 
-def _encode_binary_obj(obj: Binary, json_options: JSONOptions) -> dict:
+def _encode_binary_obj(obj: Binary, json_options: JSONOptions) -> dict:  # type: ignore[type-arg]
     return _encode_binary(obj, obj.subtype, json_options)
 
 
-def _encode_uuid(obj: uuid.UUID, json_options: JSONOptions) -> dict:
+def _encode_uuid(obj: uuid.UUID, json_options: JSONOptions) -> dict:  # type: ignore[type-arg]
     if json_options.strict_uuid:
         binval = Binary.from_uuid(obj, uuid_representation=json_options.uuid_representation)
         return _encode_binary(binval, binval.subtype, json_options)
@@ -957,27 +957,27 @@ def _encode_uuid(obj: uuid.UUID, json_options: JSONOptions) -> dict:
         return {"$uuid": obj.hex}
 
 
-def _encode_objectid(obj: ObjectId, dummy0: Any) -> dict:
+def _encode_objectid(obj: ObjectId, dummy0: Any) -> dict:  # type: ignore[type-arg]
     return {"$oid": str(obj)}
 
 
-def _encode_timestamp(obj: Timestamp, dummy0: Any) -> dict:
+def _encode_timestamp(obj: Timestamp, dummy0: Any) -> dict:  # type: ignore[type-arg]
     return {"$timestamp": {"t": obj.time, "i": obj.inc}}
 
 
-def _encode_decimal128(obj: Timestamp, dummy0: Any) -> dict:
+def _encode_decimal128(obj: Timestamp, dummy0: Any) -> dict:  # type: ignore[type-arg]
     return {"$numberDecimal": str(obj)}
 
 
-def _encode_dbref(obj: DBRef, json_options: JSONOptions) -> dict:
+def _encode_dbref(obj: DBRef, json_options: JSONOptions) -> dict:  # type: ignore[type-arg]
     return _json_convert(obj.as_doc(), json_options=json_options)
 
 
-def _encode_minkey(dummy0: Any, dummy1: Any) -> dict:
+def _encode_minkey(dummy0: Any, dummy1: Any) -> dict:  # type: ignore[type-arg]
     return {"$minKey": 1}
 
 
-def _encode_maxkey(dummy0: Any, dummy1: Any) -> dict:
+def _encode_maxkey(dummy0: Any, dummy1: Any) -> dict:  # type: ignore[type-arg]
     return {"$maxKey": 1}
 
 
@@ -985,7 +985,7 @@ def _encode_maxkey(dummy0: Any, dummy1: Any) -> dict:
 # Each encoder function's signature is:
 #   - obj: a Python data type, e.g. a Python int for _encode_int
 #   - json_options: a JSONOptions
-_ENCODERS: dict[Type, Callable[[Any, JSONOptions], Any]] = {
+_ENCODERS: dict[Type, Callable[[Any, JSONOptions], Any]] = {  # type: ignore[type-arg]
     bool: _encode_noop,
     bytes: _encode_bytes,
     datetime.datetime: _encode_datetime,
@@ -1056,7 +1056,7 @@ def _get_datetime_size(obj: datetime.datetime) -> int:
     return 5 + len(str(obj.time()))
 
 
-def _get_regex_size(obj: Regex) -> int:
+def _get_regex_size(obj: Regex) -> int:  # type: ignore[type-arg]
     return 18 + len(obj.pattern)
 
 

@@ -216,7 +216,7 @@ class AsyncCursor(Generic[_DocumentType]):
         # it anytime we change __limit.
         self._empty = False
 
-        self._data: deque = deque()
+        self._data: deque = deque()  # type: ignore[type-arg]
         self._address: Optional[_Address] = None
         self._retrieved = 0
 
@@ -280,7 +280,7 @@ class AsyncCursor(Generic[_DocumentType]):
         """
         return self._clone(True)
 
-    def _clone(self, deepcopy: bool = True, base: Optional[AsyncCursor] = None) -> AsyncCursor:
+    def _clone(self, deepcopy: bool = True, base: Optional[AsyncCursor] = None) -> AsyncCursor:  # type: ignore[type-arg]
         """Internal clone helper."""
         if not base:
             if self._explicit_session:
@@ -322,7 +322,7 @@ class AsyncCursor(Generic[_DocumentType]):
         base.__dict__.update(data)
         return base
 
-    def _clone_base(self, session: Optional[AsyncClientSession]) -> AsyncCursor:
+    def _clone_base(self, session: Optional[AsyncClientSession]) -> AsyncCursor:  # type: ignore[type-arg]
         """Creates an empty AsyncCursor object for information to be copied into."""
         return self.__class__(self._collection, session=session)
 
@@ -864,7 +864,7 @@ class AsyncCursor(Generic[_DocumentType]):
         if self._has_filter:
             spec = dict(self._spec)
         else:
-            spec = cast(dict, self._spec)
+            spec = cast(dict, self._spec)  # type: ignore[type-arg]
         spec["$where"] = code
         self._spec = spec
         return self
@@ -888,7 +888,7 @@ class AsyncCursor(Generic[_DocumentType]):
         self,
         response: Union[_OpReply, _OpMsg],
         cursor_id: Optional[int],
-        codec_options: CodecOptions,
+        codec_options: CodecOptions,  # type: ignore[type-arg]
         user_fields: Optional[Mapping[str, Any]] = None,
         legacy_response: bool = False,
     ) -> Sequence[_DocumentOut]:
@@ -964,29 +964,33 @@ class AsyncCursor(Generic[_DocumentType]):
         return self._clone(deepcopy=True)
 
     @overload
-    def _deepcopy(self, x: Iterable, memo: Optional[dict[int, Union[list, dict]]] = None) -> list:
+    def _deepcopy(self, x: Iterable, memo: Optional[dict[int, Union[list, dict]]] = None) -> list:  # type: ignore[type-arg]
         ...
 
     @overload
     def _deepcopy(
-        self, x: SupportsItems, memo: Optional[dict[int, Union[list, dict]]] = None
-    ) -> dict:
+        self,
+        x: SupportsItems,  # type: ignore[type-arg]
+        memo: Optional[dict[int, Union[list, dict]]] = None,  # type: ignore[type-arg]
+    ) -> dict:  # type: ignore[type-arg]
         ...
 
     def _deepcopy(
-        self, x: Union[Iterable, SupportsItems], memo: Optional[dict[int, Union[list, dict]]] = None
-    ) -> Union[list, dict]:
+        self,
+        x: Union[Iterable, SupportsItems],  # type: ignore[type-arg]
+        memo: Optional[dict[int, Union[list, dict]]] = None,  # type: ignore[type-arg]
+    ) -> Union[list[Any], dict[str, Any]]:
         """Deepcopy helper for the data dictionary or list.
 
         Regular expressions cannot be deep copied but as they are immutable we
         don't have to copy them when cloning.
         """
-        y: Union[list, dict]
+        y: Union[list[Any], dict[str, Any]]
         iterator: Iterable[tuple[Any, Any]]
         if not hasattr(x, "items"):
             y, is_list, iterator = [], True, enumerate(x)
         else:
-            y, is_list, iterator = {}, False, cast("SupportsItems", x).items()
+            y, is_list, iterator = {}, False, cast("SupportsItems", x).items()  # type: ignore[type-arg]
         if memo is None:
             memo = {}
         val_id = id(x)
@@ -1060,7 +1064,7 @@ class AsyncCursor(Generic[_DocumentType]):
         """Explicitly close / kill this cursor."""
         await self._die_lock()
 
-    async def distinct(self, key: str) -> list:
+    async def distinct(self, key: str) -> list[str]:
         """Get a list of distinct values for `key` among all documents
         in the result set of this query.
 
@@ -1265,7 +1269,7 @@ class AsyncCursor(Generic[_DocumentType]):
         else:
             raise StopAsyncIteration
 
-    async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:
+    async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]
         """Get all or some documents from the cursor."""
         if not self._exhaust_checked:
             self._exhaust_checked = True
@@ -1325,7 +1329,7 @@ class AsyncCursor(Generic[_DocumentType]):
         return res
 
 
-class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):
+class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):  # type: ignore[type-arg]
     """An asynchronous cursor / iterator over raw batches of BSON data from a query result."""
 
     _query_class = _RawBatchQuery

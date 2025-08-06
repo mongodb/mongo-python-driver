@@ -161,10 +161,10 @@ _ReadCall = Callable[
 _IS_SYNC = False
 
 _WriteOp = Union[
-    InsertOne,
+    InsertOne,  # type: ignore[type-arg]
     DeleteOne,
     DeleteMany,
-    ReplaceOne,
+    ReplaceOne,  # type: ignore[type-arg]
     UpdateOne,
     UpdateMany,
 ]
@@ -176,7 +176,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     # Define order to retrieve options from ClientOptions for __repr__.
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ("document_class", "tz_aware", "connect")
-    _clients: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
+    _clients: weakref.WeakValueDictionary = weakref.WeakValueDictionary()  # type: ignore[type-arg]
 
     def __init__(
         self,
@@ -847,7 +847,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self._default_database_name = dbase
         self._lock = _async_create_lock()
-        self._kill_cursors_queue: list = []
+        self._kill_cursors_queue: list = []  # type: ignore[type-arg]
 
         self._encrypter: Optional[_Encrypter] = None
 
@@ -1064,7 +1064,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # Reset the session pool to avoid duplicate sessions in the child process.
         self._topology._session_pool.reset()
 
-    def _duplicate(self, **kwargs: Any) -> AsyncMongoClient:
+    def _duplicate(self, **kwargs: Any) -> AsyncMongoClient:  # type: ignore[type-arg]
         args = self._init_kwargs.copy()
         args.update(kwargs)
         return AsyncMongoClient(**args)
@@ -1548,7 +1548,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self, name, codec_options, read_preference, write_concern, read_concern
         )
 
-    def _database_default_options(self, name: str) -> database.AsyncDatabase:
+    def _database_default_options(self, name: str) -> database.AsyncDatabase:  # type: ignore[type-arg]
         """Get a AsyncDatabase instance with the default settings."""
         return self.get_database(
             name,
@@ -1887,7 +1887,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     async def _run_operation(
         self,
         operation: Union[_Query, _GetMore],
-        unpack_res: Callable,
+        unpack_res: Callable,  # type: ignore[type-arg]
         address: Optional[_Address] = None,
     ) -> Response:
         """Run a _Query/_GetMore operation and return a Response.
@@ -2261,7 +2261,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     @contextlib.asynccontextmanager
     async def _tmp_session(
         self, session: Optional[client_session.AsyncClientSession], close: bool = True
-    ) -> AsyncGenerator[Optional[client_session.AsyncClientSession], None, None]:
+    ) -> AsyncGenerator[Optional[client_session.AsyncClientSession], None]:
         """If provided session is None, lend a temporary session."""
         if session is not None:
             if not isinstance(session, client_session.AsyncClientSession):
@@ -2308,8 +2308,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        return cast(
-            dict,
+        return cast(  # type: ignore[redundant-cast]
+            dict[str, Any],
             await self.admin.command(
                 "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
             ),
@@ -2438,13 +2438,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     async def bulk_write(
         self,
-        models: Sequence[_WriteOp[_DocumentType]],
+        models: Sequence[_WriteOp],
         session: Optional[AsyncClientSession] = None,
         ordered: bool = True,
         verbose_results: bool = False,
         bypass_document_validation: Optional[bool] = None,
         comment: Optional[Any] = None,
-        let: Optional[Mapping] = None,
+        let: Optional[Mapping[str, Any]] = None,
         write_concern: Optional[WriteConcern] = None,
     ) -> ClientBulkWriteResult:
         """Send a batch of write operations, potentially across multiple namespaces, to the server.
@@ -2631,7 +2631,10 @@ class _MongoClientErrorHandler:
     )
 
     def __init__(
-        self, client: AsyncMongoClient, server: Server, session: Optional[AsyncClientSession]
+        self,
+        client: AsyncMongoClient,  # type: ignore[type-arg]
+        server: Server,
+        session: Optional[AsyncClientSession],
     ):
         if not isinstance(client, AsyncMongoClient):
             # This is for compatibility with mocked and subclassed types, such as in Motor.
@@ -2704,7 +2707,7 @@ class _ClientConnectionRetryable(Generic[T]):
 
     def __init__(
         self,
-        mongo_client: AsyncMongoClient,
+        mongo_client: AsyncMongoClient,  # type: ignore[type-arg]
         func: _WriteCall[T] | _ReadCall[T],
         bulk: Optional[Union[_AsyncBulk, _AsyncClientBulk]],
         operation: str,

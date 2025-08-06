@@ -247,7 +247,7 @@ class ClientOptions:
         return self.__connect
 
     @property
-    def codec_options(self) -> CodecOptions:
+    def codec_options(self) -> CodecOptions[Any]:
         """A :class:`~bson.codec_options.CodecOptions` instance."""
         return self.__codec_options
 

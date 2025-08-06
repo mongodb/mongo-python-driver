@@ -88,7 +88,7 @@ class _ClientBulk:
 
     def __init__(
         self,
-        client: MongoClient,
+        client: MongoClient[Any],
         write_concern: WriteConcern,
         ordered: bool = True,
         bypass_document_validation: Optional[bool] = None,
@@ -233,7 +233,7 @@ class _ClientBulk:
         msg: Union[bytes, dict[str, Any]],
         op_docs: list[Mapping[str, Any]],
         ns_docs: list[Mapping[str, Any]],
-        client: MongoClient,
+        client: MongoClient[Any],
     ) -> dict[str, Any]:
         """A proxy for Connection.write_command that handles event publishing."""
         cmd["ops"] = op_docs
@@ -324,7 +324,7 @@ class _ClientBulk:
         msg: bytes,
         op_docs: list[Mapping[str, Any]],
         ns_docs: list[Mapping[str, Any]],
-        client: MongoClient,
+        client: MongoClient[Any],
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for Connection.unack_write that handles event publishing."""
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):

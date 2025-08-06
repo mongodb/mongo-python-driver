@@ -164,7 +164,7 @@ class ChangeStream(Generic[_DocumentType]):
         raise NotImplementedError
 
     @property
-    def _client(self) -> MongoClient:
+    def _client(self) -> MongoClient:  # type: ignore[type-arg]
         """The client against which the aggregation commands for
         this ChangeStream will be run.
         """
@@ -206,7 +206,7 @@ class ChangeStream(Generic[_DocumentType]):
     def _aggregation_pipeline(self) -> list[dict[str, Any]]:
         """Return the full aggregation pipeline for this ChangeStream."""
         options = self._change_stream_options()
-        full_pipeline: list = [{"$changeStream": options}]
+        full_pipeline: list[dict[str, Any]] = [{"$changeStream": options}]
         full_pipeline.extend(self._pipeline)
         return full_pipeline
 
@@ -237,7 +237,7 @@ class ChangeStream(Generic[_DocumentType]):
 
     def _run_aggregation_cmd(
         self, session: Optional[ClientSession], explicit_session: bool
-    ) -> CommandCursor:
+    ) -> CommandCursor:  # type: ignore[type-arg]
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
         """
@@ -257,7 +257,7 @@ class ChangeStream(Generic[_DocumentType]):
             operation=_Op.AGGREGATE,
         )
 
-    def _create_cursor(self) -> CommandCursor:
+    def _create_cursor(self) -> CommandCursor:  # type: ignore[type-arg]
         with self._client._tmp_session(self._session, close=False) as s:
             return self._run_aggregation_cmd(session=s, explicit_session=self._session is not None)
 

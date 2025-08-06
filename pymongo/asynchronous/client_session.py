@@ -396,7 +396,7 @@ class _TxnState:
 class _Transaction:
     """Internal class to hold transaction information in a AsyncClientSession."""
 
-    def __init__(self, opts: Optional[TransactionOptions], client: AsyncMongoClient):
+    def __init__(self, opts: Optional[TransactionOptions], client: AsyncMongoClient[Any]):
         self.opts = opts
         self.state = _TxnState.NONE
         self.sharded = False
@@ -459,7 +459,7 @@ def _max_time_expired_error(exc: PyMongoError) -> bool:
 
 # From the transactions spec, all the retryable writes errors plus
 # WriteConcernTimeout.
-_UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(
+_UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(  # type: ignore[type-arg]
     [
         64,  # WriteConcernTimeout
         50,  # MaxTimeMSExpired
@@ -499,13 +499,13 @@ class AsyncClientSession:
 
     def __init__(
         self,
-        client: AsyncMongoClient,
+        client: AsyncMongoClient[Any],
         server_session: Any,
         options: SessionOptions,
         implicit: bool,
     ) -> None:
         # An AsyncMongoClient, a _ServerSession, a SessionOptions, and a set.
-        self._client: AsyncMongoClient = client
+        self._client: AsyncMongoClient[Any] = client
         self._server_session = server_session
         self._options = options
         self._cluster_time: Optional[Mapping[str, Any]] = None
@@ -551,7 +551,7 @@ class AsyncClientSession:
         await self._end_session(lock=True)
 
     @property
-    def client(self) -> AsyncMongoClient:
+    def client(self) -> AsyncMongoClient[Any]:
         """The :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` this session was
         created from.
         """
@@ -751,7 +751,7 @@ class AsyncClientSession:
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
         max_commit_time_ms: Optional[int] = None,
-    ) -> AsyncContextManager:
+    ) -> AsyncContextManager[Any]:
         """Start a multi-statement transaction.
 
         Takes the same arguments as :class:`TransactionOptions`.
@@ -1123,7 +1123,7 @@ class _ServerSession:
         self._transaction_id += 1
 
 
-class _ServerSessionPool(collections.deque):
+class _ServerSessionPool(collections.deque):  # type: ignore[type-arg]
     """Pool of _ServerSession objects.
 
     This class is thread-safe.

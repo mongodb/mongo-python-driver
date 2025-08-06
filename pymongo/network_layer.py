@@ -310,13 +310,13 @@ class PyMongoProtocol(PyMongoBaseProtocol):
         self._message_size = 0
         self._op_code = 0
         self._connection_lost = False
-        self._read_waiter: Optional[Future] = None
+        self._read_waiter: Optional[Future[Any]] = None
         self._is_compressed = False
         self._compressor_id: Optional[int] = None
         self._max_message_size = MAX_MESSAGE_SIZE
         self._response_to: Optional[int] = None
-        self._pending_messages: collections.deque[Future] = collections.deque()
-        self._done_messages: collections.deque[Future] = collections.deque()
+        self._pending_messages: collections.deque[Future[Any]] = collections.deque()
+        self._done_messages: collections.deque[Future[Any]] = collections.deque()
 
     def connection_made(self, transport: BaseTransport) -> None:
         """Called exactly once when a connection is made.
@@ -493,7 +493,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         self._bytes_ready = 0
         self._bytes_requested = 0
         self._pending_reads: collections.deque[int] = collections.deque()
-        self._pending_listeners: collections.deque[Future] = collections.deque()
+        self._pending_listeners: collections.deque[Future[Any]] = collections.deque()
 
     def connection_made(self, transport: BaseTransport) -> None:
         """Called exactly once when a connection is made.

@@ -68,7 +68,7 @@ def clamp_remaining(max_timeout: float) -> float:
     return min(timeout, max_timeout)
 
 
-class _TimeoutContext(AbstractContextManager):
+class _TimeoutContext(AbstractContextManager[Any]):
     """Internal timeout context manager.
 
     Use :func:`pymongo.timeout` instead::

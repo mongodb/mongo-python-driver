@@ -395,7 +395,7 @@ class _TxnState:
 class _Transaction:
     """Internal class to hold transaction information in a ClientSession."""
 
-    def __init__(self, opts: Optional[TransactionOptions], client: MongoClient):
+    def __init__(self, opts: Optional[TransactionOptions], client: MongoClient[Any]):
         self.opts = opts
         self.state = _TxnState.NONE
         self.sharded = False
@@ -458,7 +458,7 @@ def _max_time_expired_error(exc: PyMongoError) -> bool:
 
 # From the transactions spec, all the retryable writes errors plus
 # WriteConcernTimeout.
-_UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(
+_UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(  # type: ignore[type-arg]
     [
         64,  # WriteConcernTimeout
         50,  # MaxTimeMSExpired
@@ -498,13 +498,13 @@ class ClientSession:
 
     def __init__(
         self,
-        client: MongoClient,
+        client: MongoClient[Any],
         server_session: Any,
         options: SessionOptions,
         implicit: bool,
     ) -> None:
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
-        self._client: MongoClient = client
+        self._client: MongoClient[Any] = client
         self._server_session = server_session
         self._options = options
         self._cluster_time: Optional[Mapping[str, Any]] = None
@@ -550,7 +550,7 @@ class ClientSession:
         self._end_session(lock=True)
 
     @property
-    def client(self) -> MongoClient:
+    def client(self) -> MongoClient[Any]:
         """The :class:`~pymongo.mongo_client.MongoClient` this session was
         created from.
         """
@@ -748,7 +748,7 @@ class ClientSession:
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
         max_commit_time_ms: Optional[int] = None,
-    ) -> ContextManager:
+    ) -> ContextManager[Any]:
         """Start a multi-statement transaction.
 
         Takes the same arguments as :class:`TransactionOptions`.
@@ -1118,7 +1118,7 @@ class _ServerSession:
         self._transaction_id += 1
 
 
-class _ServerSessionPool(collections.deque):
+class _ServerSessionPool(collections.deque):  # type: ignore[type-arg]
     """Pool of _ServerSession objects.
 
     This class is thread-safe.
