@@ -24,7 +24,7 @@ from typing import Any, Coroutine, Optional
 
 
 # TODO (https://jira.mongodb.org/browse/PYTHON-4981): Revisit once the underlying cause of the swallowed cancellations is uncovered
-class _Task(asyncio.Task):
+class _Task(asyncio.Task[Any]):
     def __init__(self, coro: Coroutine[Any, Any, Any], *, name: Optional[str] = None) -> None:
         super().__init__(coro, name=name)
         self._cancel_requests = 0
@@ -43,7 +43,7 @@ class _Task(asyncio.Task):
         return self._cancel_requests
 
 
-def create_task(coro: Coroutine[Any, Any, Any], *, name: Optional[str] = None) -> asyncio.Task:
+def create_task(coro: Coroutine[Any, Any, Any], *, name: Optional[str] = None) -> asyncio.Task[Any]:
     if sys.version_info >= (3, 11):
         return asyncio.create_task(coro, name=name)
     return _Task(coro, name=name)

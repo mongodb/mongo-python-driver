@@ -93,7 +93,7 @@ class Lock(_ContextManagerMixin, _LoopBoundMixin):
     """
 
     def __init__(self) -> None:
-        self._waiters: Optional[collections.deque] = None
+        self._waiters: Optional[collections.deque[Any]] = None
         self._locked = False
 
     def __repr__(self) -> str:
@@ -196,7 +196,7 @@ class Condition(_ContextManagerMixin, _LoopBoundMixin):
         self.acquire = lock.acquire
         self.release = lock.release
 
-        self._waiters: collections.deque = collections.deque()
+        self._waiters: collections.deque[Any] = collections.deque()
 
     def __repr__(self) -> str:
         res = super().__repr__()
@@ -260,7 +260,7 @@ class Condition(_ContextManagerMixin, _LoopBoundMixin):
             self._notify(1)
             raise
 
-    async def wait_for(self, predicate: Any) -> Coroutine:
+    async def wait_for(self, predicate: Any) -> Coroutine[Any, Any, Any]:
         """Wait until a predicate becomes true.
 
         The predicate should be a callable whose result will be

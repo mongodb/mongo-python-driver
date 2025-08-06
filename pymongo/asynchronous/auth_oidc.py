@@ -259,7 +259,7 @@ class _OIDCAuthenticator:
     ) -> Mapping[str, Any]:
         self.access_token = None
         self.refresh_token = None
-        start_payload: dict = bson.decode(start_resp["payload"])
+        start_payload: dict[str, Any] = bson.decode(start_resp["payload"])
         if "issuer" in start_payload:
             self.idp_info = OIDCIdPInfo(**start_payload)
         access_token = await self._get_access_token()

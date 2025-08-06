@@ -66,7 +66,7 @@ async def command(
     read_preference: Optional[_ServerMode],
     codec_options: CodecOptions[_DocumentType],
     session: Optional[AsyncClientSession],
-    client: Optional[AsyncMongoClient],
+    client: Optional[AsyncMongoClient[Any]],
     check: bool = True,
     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
     address: Optional[_Address] = None,

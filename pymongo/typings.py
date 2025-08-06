@@ -51,7 +51,7 @@ ClusterTime = Mapping[str, Any]
 _T = TypeVar("_T")
 
 # Type hinting types for compatibility between async and sync classes
-_AgnosticMongoClient = Union["AsyncMongoClient", "MongoClient"]
+_AgnosticMongoClient = Union["AsyncMongoClient", "MongoClient"]  # type: ignore[type-arg]
 _AgnosticConnection = Union["AsyncConnection", "Connection"]
 _AgnosticClientSession = Union["AsyncClientSession", "ClientSession"]
 _AgnosticBulk = Union["_AsyncBulk", "_Bulk"]

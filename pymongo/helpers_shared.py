@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 
 # From the SDAM spec, the "node is shutting down" codes.
 
-_SHUTDOWN_CODES: frozenset = frozenset(
+_SHUTDOWN_CODES: frozenset[int] = frozenset(
     [
         11600,  # InterruptedAtShutdown
         91,  # ShutdownInProgress
@@ -61,7 +61,7 @@ _SHUTDOWN_CODES: frozenset = frozenset(
 # From the SDAM spec, the "not primary" error codes are combined with the
 # "node is recovering" error codes (of which the "node is shutting down"
 # errors are a subset).
-_NOT_PRIMARY_CODES: frozenset = (
+_NOT_PRIMARY_CODES: frozenset[int] = (
     frozenset(
         [
             10058,  # LegacyNotPrimary <=3.2 "not primary" error code
@@ -75,7 +75,7 @@ _NOT_PRIMARY_CODES: frozenset = (
     | _SHUTDOWN_CODES
 )
 # From the retryable writes spec.
-_RETRYABLE_ERROR_CODES: frozenset = _NOT_PRIMARY_CODES | frozenset(
+_RETRYABLE_ERROR_CODES: frozenset[int] = _NOT_PRIMARY_CODES | frozenset(
     [
         7,  # HostNotFound
         6,  # HostUnreachable
@@ -95,7 +95,7 @@ _AUTHENTICATION_FAILURE_CODE: int = 18
 # Note - to avoid bugs from forgetting which if these is all lowercase and
 # which are camelCase, and at the same time avoid having to add a test for
 # every command, use all lowercase here and test against command_name.lower().
-_SENSITIVE_COMMANDS: set = {
+_SENSITIVE_COMMANDS: set[str] = {
     "authenticate",
     "saslstart",
     "saslcontinue",

@@ -56,7 +56,7 @@ if TYPE_CHECKING:
     from pymongo.typings import _AgnosticClientSession
 
 
-ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
+ORDERED_TYPES: Sequence[Type[Any]] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024**2)
@@ -166,7 +166,7 @@ def clean_node(node: str) -> tuple[str, int]:
     return host.lower(), port
 
 
-def raise_config_error(key: str, suggestions: Optional[list] = None) -> NoReturn:
+def raise_config_error(key: str, suggestions: Optional[list[str]] = None) -> NoReturn:
     """Raise ConfigurationError with the given key name."""
     msg = f"Unknown option: {key}."
     if suggestions:
@@ -411,7 +411,7 @@ def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]
     if not isinstance(value, list):
         value = [value]
 
-    tag_sets: list = []
+    tag_sets: list[dict[str, Any]] = []
     for tag_set in value:
         if tag_set == "":
             tag_sets.append({})
@@ -497,7 +497,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
 
 def validate_document_class(
     option: str, value: Any
-) -> Union[Type[MutableMapping], Type[RawBSONDocument]]:
+) -> Union[Type[MutableMapping[str, Any]], Type[RawBSONDocument]]:
     """Validate the document_class option."""
     # issubclass can raise TypeError for generic aliases like SON[str, Any].
     # In that case we can use the base class for the comparison.
@@ -523,14 +523,14 @@ def validate_type_registry(option: Any, value: Any) -> Optional[TypeRegistry]:
     return value
 
 
-def validate_list(option: str, value: Any) -> list:
+def validate_list(option: str, value: Any) -> list[Any]:
     """Validates that 'value' is a list."""
     if not isinstance(value, list):
         raise TypeError(f"{option} must be a list, not {type(value)}")
     return value
 
 
-def validate_list_or_none(option: Any, value: Any) -> Optional[list]:
+def validate_list_or_none(option: Any, value: Any) -> Optional[list[Any]]:
     """Validates that 'value' is a list or None."""
     if value is None:
         return value
@@ -597,7 +597,7 @@ def validate_server_api_or_none(option: Any, value: Any) -> Optional[ServerApi]:
     return value
 
 
-def validate_is_callable_or_none(option: Any, value: Any) -> Optional[Callable]:
+def validate_is_callable_or_none(option: Any, value: Any) -> Optional[Callable[..., Any]]:
     """Validates that 'value' is a callable."""
     if value is None:
         return value
@@ -829,7 +829,7 @@ def validate_auth_option(option: str, value: Any) -> tuple[str, Any]:
 
 def _get_validator(
     key: str, validators: dict[str, Callable[[Any, Any], Any]], normed_key: Optional[str] = None
-) -> Callable:
+) -> Callable[[Any, Any], Any]:
     normed_key = normed_key or key
     try:
         return validators[normed_key]
@@ -917,7 +917,7 @@ class BaseObject:
 
     def __init__(
         self,
-        codec_options: CodecOptions,
+        codec_options: CodecOptions[Any],
         read_preference: _ServerMode,
         write_concern: WriteConcern,
         read_concern: ReadConcern,
@@ -947,7 +947,7 @@ class BaseObject:
         self._read_concern = read_concern
 
     @property
-    def codec_options(self) -> CodecOptions:
+    def codec_options(self) -> CodecOptions[Any]:
         """Read only access to the :class:`~bson.codec_options.CodecOptions`
         of this instance.
         """
