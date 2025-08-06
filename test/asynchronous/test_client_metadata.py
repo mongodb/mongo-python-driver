@@ -210,6 +210,46 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         self.assertIsNone(self.handshake_req)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 0)
 
+    async def test_duplicate_driver_name_no_op(self):
+        client = await self.async_rs_or_single_client(
+            "mongodb://" + self.server.address_string,
+            maxIdleTimeMS=1,
+        )
+        client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
+        # send initial metadata
+        name, version, platform, metadata = await self.send_ping_and_get_metadata(client, True)
+        # wait for connection to become idle
+        await asyncio.sleep(0.005)
+
+        # add new metadata
+        client.append_metadata(DriverInfo("framework", None, None))
+        new_name, new_version, new_platform, new_metadata = await self.send_ping_and_get_metadata(
+            client, True
+        )
+        self.assertEqual(new_name, f"{name}|framework")
+        self.assertEqual(new_version, version)
+        self.assertEqual(new_platform, platform)
+
+        metadata.pop("driver")
+        metadata.pop("platform")
+        new_metadata.pop("driver")
+        new_metadata.pop("platform")
+        self.assertEqual(metadata, new_metadata)
+
+        # wait for connection to become idle
+        await asyncio.sleep(0.005)
+        # add same metadata again
+        client.append_metadata(DriverInfo("framework", None, None))
+        (
+            same_name,
+            same_version,
+            same_platform,
+            same_metadata,
+        ) = await self.send_ping_and_get_metadata(client, True)
+        self.assertEqual(new_name, same_name)
+        self.assertEqual(new_version, same_version)
+        self.assertEqual(new_platform, same_platform)
+
 
 if __name__ == "__main__":
     unittest.main()
