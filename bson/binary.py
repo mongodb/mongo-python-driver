@@ -79,7 +79,7 @@ class UuidRepresentation:
     :class:`~bson.binary.Binary` instance will be returned instead of a
     :class:`uuid.UUID` instance.
 
-    See :ref:`unspecified-representation-details` for details.
+    See `unspecified representation details <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#unspecified>`_ for details.
 
     .. versionadded:: 3.11
     """
@@ -91,7 +91,7 @@ class UuidRepresentation:
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`UUID_SUBTYPE`.
 
-    See :ref:`standard-representation-details` for details.
+    See `standard representation details <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#standard>`_ for details.
 
     .. versionadded:: 3.11
     """
@@ -103,7 +103,7 @@ class UuidRepresentation:
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`OLD_UUID_SUBTYPE`.
 
-    See :ref:`python-legacy-representation-details` for details.
+    See `python legacy representation details <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#python_legacy>`_ for details.
 
     .. versionadded:: 3.11
     """
@@ -328,7 +328,7 @@ class Binary(bytes):
         :param uuid_representation: A member of
             :class:`~bson.binary.UuidRepresentation`. Default:
             :const:`~bson.binary.UuidRepresentation.STANDARD`.
-            See :ref:`handling-uuid-data-example` for details.
+            See `UUID representations <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_ for details.
 
         .. versionadded:: 3.11
         """
@@ -377,7 +377,7 @@ class Binary(bytes):
         :param uuid_representation: A member of
             :class:`~bson.binary.UuidRepresentation`. Default:
             :const:`~bson.binary.UuidRepresentation.STANDARD`.
-            See :ref:`handling-uuid-data-example` for details.
+            See `UUID representations <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_ for details.
 
         .. versionadded:: 3.11
         """

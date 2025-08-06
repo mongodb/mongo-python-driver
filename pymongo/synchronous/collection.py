@@ -2970,7 +2970,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            The :meth:`aggregate` method always returns a CommandCursor. The
            pipeline argument must be a list.
 
-        .. seealso:: :doc:`/examples/aggregation`
+        .. seealso:: `Aggregation <https://mongodb.com/docs/manual/applications/aggregation/>`_
 
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate

@@ -14,7 +14,7 @@
 
 """Tools for connecting to MongoDB.
 
-.. seealso:: :doc:`/examples/high_availability` for examples of connecting
+.. seealso:: `Read and Write Settings <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_ for examples of connecting
    to replica sets or sets of mongos servers.
 
 To get a :class:`~pymongo.database.Database` instance from a
@@ -496,7 +496,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             is set, it must be a positive integer greater than or equal to
             90 seconds.
 
-          .. seealso:: :doc:`/examples/server_selection`
+          .. seealso:: `Customize Server Selection <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/server-selection/#customize-server-selection>`_
 
           | **Authentication:**
 
@@ -522,7 +522,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             To specify the session token for MONGODB-AWS authentication pass
             ``authMechanismProperties='AWS_SESSION_TOKEN:<session token>'``.
 
-          .. seealso:: :doc:`/examples/authentication`
+          .. seealso:: `Authentication <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/#authentication-mechanisms>`_
 
           | **TLS/SSL configuration:**
 
@@ -719,8 +719,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
            The ``start_request``, ``in_request``, and ``end_request`` methods
            are removed, as well as the ``auto_start_request`` option.
 
-           The ``copy_database`` method is removed, see the
-           :doc:`copy_database examples </examples/copydb>` for alternatives.
+           The ``copy_database`` method is removed, see
+           `Copy and Clone Databases <https://www.mongodb.com/docs/database-tools/mongodump/mongodump-examples/#copy-and-clone-databases>`_ for alternatives.
 
            The :meth:`MongoClient.disconnect` method is removed; it was a
            synonym for :meth:`~pymongo.MongoClient.close`.
@@ -2509,7 +2509,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :return: An instance of :class:`~pymongo.results.ClientBulkWriteResult`.
 
-        .. seealso:: For more info, see :doc:`/examples/client_bulk`.
+        .. seealso:: For more info, see `Client Bulk Write <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/bulk-write/#client-bulk-write-example>`_.
 
         .. seealso:: `Writes and ids <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/insert/#overview>`_
 
