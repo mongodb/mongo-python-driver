@@ -190,6 +190,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             conn = BaseConnection(interface, opts)
             try:
                 sendall(interface.get_conn, message)
+                # CSOT: update timeout.
                 interface.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
                 data = receive_kms(conn, kms_context.bytes_needed)
                 if not data:

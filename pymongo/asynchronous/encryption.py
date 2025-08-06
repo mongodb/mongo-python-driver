@@ -191,6 +191,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             conn = AsyncBaseConnection(interface, opts)
             try:
                 await async_sendall(interface.get_conn, message)
+                # CSOT: update timeout.
                 interface.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
                 data = await async_receive_kms(conn, kms_context.bytes_needed)
                 if not data:
