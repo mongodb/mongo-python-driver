@@ -1,25 +1,35 @@
 Changelog
 =========
 
-Changes in Version 4.14.0 (XXXX/XX/XX)
+Changes in Version 4.14.0 (2025/08/06)
 --------------------------------------
+
 PyMongo 4.14 brings a number of changes including:
 
-- Added preliminary support for Python 3.14 and 3.14 with free-threading.  We do not yet support the following with Python 3.14:
-    - Subinterpreters (``concurrent.interpreters``)
-    - Free-threading with Encryption
-    - mod_wsgi
+- Added preliminary support for Python 3.14 and 3.14 with free-threading. We do
+  not yet support the following with Python 3.14:
+
+  - Subinterpreters (``concurrent.interpreters``)
+  - Free-threading with Encryption
+  - mod_wsgi
+
 - Removed experimental support for free-threading support in Python 3.13.
-- Added :attr:`bson.codec_options.TypeRegistry.codecs` and :attr:`bson.codec_options.TypeRegistry.fallback_encoder` properties
-  to allow users to directly access the type codecs and fallback encoder for a given :class:`bson.codec_options.TypeRegistry`.
-- Added :meth:`pymongo.asynchronous.mongo_client.AsyncMongoClient.append_metadata` and
-  :meth:`pymongo.mongo_client.MongoClient.append_metadata` to allow instantiated MongoClients to send client metadata
-  on-demand
+- Added :attr:`bson.codec_options.TypeRegistry.codecs` and
+  :attr:`bson.codec_options.TypeRegistry.fallback_encoder` properties
+  to allow users to directly access the type codecs and fallback encoder for a
+  given :class:`bson.codec_options.TypeRegistry`.
+- Added
+  :meth:`pymongo.asynchronous.mongo_client.AsyncMongoClient.append_metadata` and
+  :meth:`pymongo.mongo_client.MongoClient.append_metadata` to allow instantiated
+  MongoClients to send client metadata on-demand
 - Improved performance of selecting a server with the Primary selector.
 
-- Introduces a minor breaking change. When encoding :class:`bson.binary.BinaryVector`, a ``ValueError`` will be raised
-  if the 'padding' metadata field is < 0 or > 7, or non-zero for any type other than PACKED_BIT.
-- Changed :meth:`~pymongo.uri_parser.parse_uri`'s ``options`` parameter to be type ``dict`` instead of ``_CaseInsensitiveDictionary``.
+- Introduces a minor breaking change. When encoding
+  :class:`bson.binary.BinaryVector`, a ``ValueError`` will be raised if the
+  'padding' metadata field is < 0 or > 7, or non-zero for any type other than
+  PACKED_BIT.
+- Changed :meth:`~pymongo.uri_parser.parse_uri`'s ``options`` parameter to be
+  type ``dict`` instead of ``_CaseInsensitiveDictionary``.
 
 Changes in Version 4.13.2 (2025/06/17)
 --------------------------------------
