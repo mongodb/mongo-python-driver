@@ -74,7 +74,6 @@ from pymongo.network_layer import receive_kms, sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
-    _configured_socket,
     _configured_socket_interface,
     _get_timeout_details,
     _raise_connection_failure,
@@ -94,9 +93,6 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
-    from pymongo.pyopenssl_context import _sslConn
-    from pymongo.typings import _Address
-
 
 _IS_SYNC = True
 
@@ -110,13 +106,6 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
-
-
-def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
-    try:
-        return _configured_socket(address, opts)
-    except Exception as exc:
-        _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
 
 @contextlib.contextmanager
@@ -199,7 +188,6 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         try:
             interface = _configured_socket_interface(address, opts)
             conn = BaseConnection(interface, opts)
-            # Given a conn object, we want to send a message and then receive the bytes needed
             try:
                 sendall(interface.get_conn, message)
                 interface.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
