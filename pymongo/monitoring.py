@@ -1347,7 +1347,11 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
     __slots__ = ("__duration", "__reply")
 
     def __init__(
-        self, duration: float, reply: Hello, connection_id: _Address, awaited: bool = False
+        self,
+        duration: float,
+        reply: Hello[dict[str, Any]],
+        connection_id: _Address,
+        awaited: bool = False,
     ) -> None:
         super().__init__(connection_id, awaited)
         self.__duration = duration
@@ -1359,7 +1363,7 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         return self.__duration
 
     @property
-    def reply(self) -> Hello:
+    def reply(self) -> Hello[dict[str, Any]]:
         """An instance of :class:`~pymongo.hello.Hello`."""
         return self.__reply
 
@@ -1647,7 +1651,7 @@ class _EventListeners:
                 _handle_exception()
 
     def publish_server_heartbeat_succeeded(
-        self, connection_id: _Address, duration: float, reply: Hello, awaited: bool
+        self, connection_id: _Address, duration: float, reply: Hello[dict[str, Any]], awaited: bool
     ) -> None:
         """Publish a ServerHeartbeatSucceededEvent to all server heartbeat
         listeners.

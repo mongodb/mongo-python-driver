@@ -771,7 +771,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 self._name,
                 command,
                 read_preference,
-                codec_options,
+                codec_options,  # type: ignore[arg-type]
                 check,
                 allowable_errors,
                 write_concern=write_concern,

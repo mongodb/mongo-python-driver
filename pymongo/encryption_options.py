@@ -37,7 +37,7 @@ from pymongo.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext
-    from pymongo.typings import _AgnosticMongoClient, _DocumentTypeArg
+    from pymongo.typings import _AgnosticMongoClient
 
 
 class AutoEncryptionOpts:
@@ -47,7 +47,7 @@ class AutoEncryptionOpts:
         self,
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
-        key_vault_client: Optional[_AgnosticMongoClient[_DocumentTypeArg]] = None,
+        key_vault_client: Optional[_AgnosticMongoClient] = None,
         schema_map: Optional[Mapping[str, Any]] = None,
         bypass_auto_encryption: bool = False,
         mongocryptd_uri: str = "mongodb://localhost:27020",

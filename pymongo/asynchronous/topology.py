@@ -84,7 +84,7 @@ _IS_SYNC = False
 _pymongo_dir = str(Path(__file__).parent)
 
 
-def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:
+def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:  # type: ignore[type-arg]
     q = queue_ref()
     if not q:
         return False  # Cancel PeriodicExecutor.
@@ -186,7 +186,7 @@ class Topology:
 
         if self._publish_server or self._publish_tp:
             assert self._events is not None
-            weak: weakref.ReferenceType[queue.Queue]
+            weak: weakref.ReferenceType[queue.Queue[Any]]
 
             async def target() -> bool:
                 return process_events_queue(weak)

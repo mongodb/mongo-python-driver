@@ -200,7 +200,7 @@ class AsyncConnection:
         self.conn.get_conn.settimeout(timeout)
 
     def apply_timeout(
-        self, client: AsyncMongoClient, cmd: Optional[MutableMapping[str, Any]]
+        self, client: AsyncMongoClient[Any], cmd: Optional[MutableMapping[str, Any]]
     ) -> Optional[float]:
         # CSOT: use remaining timeout when set.
         timeout = _csot.remaining()
@@ -254,7 +254,7 @@ class AsyncConnection:
         else:
             return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
 
-    async def hello(self) -> Hello:
+    async def hello(self) -> Hello[dict[str, Any]]:
         return await self._hello(None, None)
 
     async def _hello(
@@ -356,7 +356,7 @@ class AsyncConnection:
         dbname: str,
         spec: MutableMapping[str, Any],
         read_preference: _ServerMode = ReadPreference.PRIMARY,
-        codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
+        codec_options: CodecOptions[Mapping[str, Any]] = DEFAULT_CODEC_OPTIONS,  # type: ignore[assignment]
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -364,7 +364,7 @@ class AsyncConnection:
         parse_write_concern_error: bool = False,
         collation: Optional[_CollationIn] = None,
         session: Optional[AsyncClientSession] = None,
-        client: Optional[AsyncMongoClient] = None,
+        client: Optional[AsyncMongoClient[Any]] = None,
         retryable_write: bool = False,
         publish_events: bool = True,
         user_fields: Optional[Mapping[str, Any]] = None,
@@ -416,7 +416,7 @@ class AsyncConnection:
                 spec,
                 self.is_mongos,
                 read_preference,
-                codec_options,
+                codec_options,  # type: ignore[arg-type]
                 session,
                 client,
                 check,
@@ -488,7 +488,7 @@ class AsyncConnection:
         await self.send_message(msg, max_doc_size)
 
     async def write_command(
-        self, request_id: int, msg: bytes, codec_options: CodecOptions
+        self, request_id: int, msg: bytes, codec_options: CodecOptions[Mapping[str, Any]]
     ) -> dict[str, Any]:
         """Send "insert" etc. command, returning response as a dict.
 
@@ -540,7 +540,7 @@ class AsyncConnection:
                 )
 
     def validate_session(
-        self, client: Optional[AsyncMongoClient], session: Optional[AsyncClientSession]
+        self, client: Optional[AsyncMongoClient[Any]], session: Optional[AsyncClientSession]
     ) -> None:
         """Validate this session before use with client.
 
@@ -597,7 +597,7 @@ class AsyncConnection:
         self,
         command: MutableMapping[str, Any],
         session: Optional[AsyncClientSession],
-        client: Optional[AsyncMongoClient],
+        client: Optional[AsyncMongoClient[Any]],
     ) -> None:
         """Add $clusterTime."""
         if client:
@@ -731,7 +731,7 @@ class Pool:
         # LIFO pool. Sockets are ordered on idle time. Sockets claimed
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
-        self.conns: collections.deque = collections.deque()
+        self.conns: collections.deque[AsyncConnection] = collections.deque()
         self.active_contexts: set[_CancellationContext] = set()
         self.lock = _async_create_lock()
         self._max_connecting_cond = _async_create_condition(self.lock)
@@ -838,8 +838,8 @@ class Pool:
             if service_id is None:
                 sockets, self.conns = self.conns, collections.deque()
             else:
-                discard: collections.deque = collections.deque()
-                keep: collections.deque = collections.deque()
+                discard: collections.deque = collections.deque()  # type: ignore[type-arg]
+                keep: collections.deque = collections.deque()  # type: ignore[type-arg]
                 for conn in self.conns:
                     if conn.service_id == service_id:
                         discard.append(conn)
@@ -865,7 +865,7 @@ class Pool:
         if close:
             if not _IS_SYNC:
                 await asyncio.gather(
-                    *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets],
+                    *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets],  # type: ignore[func-returns-value]
                     return_exceptions=True,
                 )
             else:
@@ -902,7 +902,7 @@ class Pool:
                     )
             if not _IS_SYNC:
                 await asyncio.gather(
-                    *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],
+                    *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
                     return_exceptions=True,
                 )
             else:
@@ -916,7 +916,7 @@ class Pool:
         self.is_writable = is_writable
         async with self.lock:
             for _socket in self.conns:
-                _socket.update_is_writable(self.is_writable)
+                _socket.update_is_writable(self.is_writable)  # type: ignore[arg-type]
 
     async def reset(
         self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
@@ -955,7 +955,7 @@ class Pool:
                     close_conns.append(self.conns.pop())
             if not _IS_SYNC:
                 await asyncio.gather(
-                    *[conn.close_conn(ConnectionClosedReason.IDLE) for conn in close_conns],
+                    *[conn.close_conn(ConnectionClosedReason.IDLE) for conn in close_conns],  # type: ignore[func-returns-value]
                     return_exceptions=True,
                 )
             else:
@@ -1476,4 +1476,4 @@ class Pool:
         # not safe to acquire a lock in __del__.
         if _IS_SYNC:
             for conn in self.conns:
-                conn.close_conn(None)
+                conn.close_conn(None)  # type: ignore[unused-coroutine]

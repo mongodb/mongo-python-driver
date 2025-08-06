@@ -69,7 +69,7 @@ class ServerDescription:
     def __init__(
         self,
         address: _Address,
-        hello: Optional[Hello] = None,
+        hello: Optional[Hello[dict[str, Any]]] = None,
         round_trip_time: Optional[float] = None,
         error: Optional[Exception] = None,
         min_round_trip_time: float = 0.0,
@@ -299,4 +299,4 @@ class ServerDescription:
         )
 
     # For unittesting only. Use under no circumstances!
-    _host_to_round_trip_time: dict = {}
+    _host_to_round_trip_time: dict = {}  # type: ignore[type-arg]
