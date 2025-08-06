@@ -257,6 +257,7 @@ class PyMongoBaseProtocol(BufferedProtocol):
         self.transport: Transport = None  # type: ignore[assignment]
         self._timeout = timeout
         self._closed = asyncio.get_running_loop().create_future()
+        self._connection_lost = False
 
     def settimeout(self, timeout: float | None) -> None:
         self._timeout = timeout
@@ -309,7 +310,6 @@ class PyMongoProtocol(PyMongoBaseProtocol):
         self._expecting_compression = False
         self._message_size = 0
         self._op_code = 0
-        self._connection_lost = False
         self._read_waiter: Optional[Future[Any]] = None
         self._is_compressed = False
         self._compressor_id: Optional[int] = None
@@ -551,7 +551,8 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
             buffer = self._buffers.popleft()
             buffer_remaining = len(buffer.buffer) - buffer.start_index
             # if we didn't exhaust the buffer, read the partial data and put it back.
-            if buffer_remaining <= n_remaining:
+            if buffer_remaining > n_remaining:
+                n_remaining = 0
                 output_buf[out_index : n_remaining + out_index] = buffer.buffer[
                     buffer.start_index : buffer.start_index + n_remaining
                 ]
@@ -562,6 +563,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
                 output_buf[out_index : out_index + buffer_remaining] = buffer.buffer[
                     buffer.start_index :
                 ]
+                n_remaining -= buffer_remaining
                 buffer.start_index = 0
                 self._buffer_pool.append(buffer)
         waiter.set_result(output_buf)

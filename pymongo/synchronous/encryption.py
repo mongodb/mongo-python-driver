@@ -70,7 +70,7 @@ from pymongo.errors import (
     NetworkTimeout,
     ServerSelectionTimeoutError,
 )
-from pymongo.network_layer import receive_kms, sendall
+from pymongo.network_layer import PyMongoKMSProtocol, receive_kms, sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
@@ -186,16 +186,17 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             sleep_sec = float(sleep_u) / 1e6
             time.sleep(sleep_sec)
         try:
-            interface = _configured_socket_interface(address, opts)
+            interface = _configured_socket_interface(address, opts, PyMongoKMSProtocol)
             conn = BaseConnection(interface, opts)
             try:
                 sendall(interface.get_conn, message)
-                # CSOT: update timeout.
-                interface.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                data = receive_kms(conn, kms_context.bytes_needed)
-                if not data:
-                    raise OSError("KMS connection closed")
-                kms_context.feed(bytes)
+                while kms_context.bytes_needed > 0:
+                    # CSOT: update timeout.
+                    interface.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    data = receive_kms(conn, kms_context.bytes_needed)
+                    if not data:
+                        raise OSError("KMS connection closed")
+                    kms_context.feed(data)
             except MongoCryptError:
                 raise  # Propagate MongoCryptError errors directly.
             except Exception as exc:
@@ -211,7 +212,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                     address, exc, msg_prefix=msg_prefix, timeout_details=_get_timeout_details(opts)
                 )
             finally:
-                conn.close_conn()
+                conn.close_conn(None)
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
         except Exception as exc:

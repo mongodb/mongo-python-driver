@@ -76,7 +76,7 @@ from pymongo.errors import (
     NetworkTimeout,
     ServerSelectionTimeoutError,
 )
-from pymongo.network_layer import async_receive_kms, async_sendall
+from pymongo.network_layer import PyMongoKMSProtocol, async_receive_kms, async_sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
@@ -187,16 +187,17 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             sleep_sec = float(sleep_u) / 1e6
             await asyncio.sleep(sleep_sec)
         try:
-            interface = await _configured_protocol_interface(address, opts)
+            interface = await _configured_protocol_interface(address, opts, PyMongoKMSProtocol)
             conn = AsyncBaseConnection(interface, opts)
             try:
                 await async_sendall(interface.get_conn, message)
-                # CSOT: update timeout.
-                interface.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                data = await async_receive_kms(conn, kms_context.bytes_needed)
-                if not data:
-                    raise OSError("KMS connection closed")
-                kms_context.feed(bytes)
+                while kms_context.bytes_needed > 0:
+                    # CSOT: update timeout.
+                    interface.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    data = await async_receive_kms(conn, kms_context.bytes_needed)
+                    if not data:
+                        raise OSError("KMS connection closed")
+                    kms_context.feed(data)
             except MongoCryptError:
                 raise  # Propagate MongoCryptError errors directly.
             except Exception as exc:
@@ -212,7 +213,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                     address, exc, msg_prefix=msg_prefix, timeout_details=_get_timeout_details(opts)
                 )
             finally:
-                conn.close_conn()
+                conn.close_conn(None)
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
         except Exception as exc:

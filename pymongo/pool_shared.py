@@ -36,7 +36,12 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     NetworkTimeout,
     _CertificateError,
 )
-from pymongo.network_layer import AsyncNetworkingInterface, NetworkingInterface, PyMongoProtocol
+from pymongo.network_layer import (
+    AsyncNetworkingInterface,
+    NetworkingInterface,
+    PyMongoBaseProtocol,
+    PyMongoProtocol,
+)
 from pymongo.pool_options import PoolOptions
 from pymongo.ssl_support import PYSSLError, SSLError, _has_sni
 
@@ -326,7 +331,7 @@ async def _async_configured_socket(
 
 
 async def _configured_protocol_interface(
-    address: _Address, options: PoolOptions
+    address: _Address, options: PoolOptions, protocol_kls: PyMongoBaseProtocol = PyMongoProtocol
 ) -> AsyncNetworkingInterface:
     """Given (host, port) and PoolOptions, return a configured AsyncNetworkingInterface.
 
@@ -341,7 +346,7 @@ async def _configured_protocol_interface(
     if ssl_context is None:
         return AsyncNetworkingInterface(
             await asyncio.get_running_loop().create_connection(
-                lambda: PyMongoProtocol(timeout=timeout), sock=sock
+                lambda: protocol_kls(timeout=timeout), sock=sock
             )
         )
 
@@ -350,7 +355,7 @@ async def _configured_protocol_interface(
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
         transport, protocol = await asyncio.get_running_loop().create_connection(  # type: ignore[call-overload]
-            lambda: PyMongoProtocol(timeout=timeout),
+            lambda: protocol_kls(timeout=timeout),
             sock=sock,
             server_hostname=host,
             ssl=ssl_context,
