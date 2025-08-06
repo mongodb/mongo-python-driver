@@ -64,6 +64,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from pymongo.asynchronous.pool import AsyncBaseConnection
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
@@ -75,11 +76,12 @@ from pymongo.errors import (
     NetworkTimeout,
     ServerSelectionTimeoutError,
 )
-from pymongo.network_layer import async_socket_sendall
+from pymongo.network_layer import async_receive_kms, async_sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
     _async_configured_socket,
+    _configured_protocol_interface,
     _get_timeout_details,
     _raise_connection_failure,
 )
@@ -196,23 +198,16 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             sleep_sec = float(sleep_u) / 1e6
             await asyncio.sleep(sleep_sec)
         try:
-            conn = await _connect_kms(address, opts)
+            interface = await _configured_protocol_interface(address, opts)
+            conn = AsyncBaseConnection(interface, opts)
+            # Given a conn object, we want to send a message and then receive the bytes needed
             try:
-                await async_socket_sendall(conn, message)
-                while kms_context.bytes_needed > 0:
-                    # CSOT: update timeout.
-                    conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                    if _IS_SYNC:
-                        data = conn.recv(kms_context.bytes_needed)
-                    else:
-                        from pymongo.network_layer import (  # type: ignore[attr-defined]
-                            async_receive_data_socket,
-                        )
-
-                        data = await async_receive_data_socket(conn, kms_context.bytes_needed)
-                    if not data:
-                        raise OSError("KMS connection closed")
-                    kms_context.feed(data)
+                await async_sendall(interface.get_conn, message)
+                interface.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                data = await async_receive_kms(conn, kms_context.bytes_needed)
+                if not data:
+                    raise OSError("KMS connection closed")
+                kms_context.feed(bytes)
             except MongoCryptError:
                 raise  # Propagate MongoCryptError errors directly.
             except Exception as exc:
@@ -228,7 +223,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                     address, exc, msg_prefix=msg_prefix, timeout_details=_get_timeout_details(opts)
                 )
             finally:
-                conn.close()
+                interface.get_conn.close()
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
         except Exception as exc:

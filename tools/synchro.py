@@ -120,6 +120,7 @@ replacements = {
     "_async_create_lock": "_create_lock",
     "_async_create_condition": "_create_condition",
     "_async_cond_wait": "_cond_wait",
+    "async_receive_kms": "receive_kms",
     "AsyncNetworkingInterface": "NetworkingInterface",
     "_configured_protocol_interface": "_configured_socket_interface",
     "_async_configured_socket": "_configured_socket",
