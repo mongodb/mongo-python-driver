@@ -499,13 +499,13 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         """
         self.transport = transport  # type: ignore[assignment]
 
-    async def read(self, bytes_needed: int, first=False) -> bytes:
-        """Read the requested bytes from this connection."""
-        if self._bytes_ready >= bytes_needed or (self._bytes_ready > 0 and first):
+    async def read(self, bytes_needed: int) -> bytes:
+        """Read up to the requested bytes from this connection."""
+        if self._bytes_ready > 0:
             # Wait for other listeners first.
             if len(self._pending_listeners):
                 await asyncio.gather(*self._pending_listeners)
-            return self._read(bytes_needed, first)
+            return self._read(bytes_needed)
         if self.transport:
             try:
                 self.transport.resume_reading()
@@ -514,7 +514,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
                 raise OSError("connection is already closed") from None
         if self.transport and self.transport.is_closing():
             raise OSError("connection is already closed")
-        self._pending_reads.append((bytes_needed, first))
+        self._pending_reads.append(bytes_needed)
         read_waiter = asyncio.get_running_loop().create_future()
         self._pending_listeners.append(read_waiter)
         return await read_waiter
@@ -548,19 +548,15 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         if not len(self._pending_reads):
             return
 
-        bytes_needed, first = self._pending_reads.popleft()
-        if not first and (bytes_needed == 0 or self._bytes_ready < bytes_needed):
-            self._pending_reads.appendleft((bytes_needed, first))
-            return
-
-        data = self._read(bytes_needed, first)
+        bytes_needed = self._pending_reads.popleft()
+        data = self._read(bytes_needed)
         waiter = self._pending_listeners.popleft()
         waiter.set_result(data)
 
-    def _read(self, bytes_needed, first=False):
+    def _read(self, bytes_needed):
         """Read bytes from the buffer."""
         # Send the bytes to the listener.
-        if first and self._bytes_ready < bytes_needed:
+        if self._bytes_ready < bytes_needed:
             bytes_needed = self._bytes_ready
         self._bytes_ready -= bytes_needed
 
@@ -596,13 +592,13 @@ async def async_sendall(conn: PyMongoBaseProtocol, buf: bytes) -> None:
         raise socket.timeout("timed out") from exc
 
 
-async def async_receive_kms(conn: AsyncBaseConnection, bytes_needed: int, first=False) -> bytes:
+async def async_receive_kms(conn: AsyncBaseConnection, bytes_needed: int) -> bytes:
     """Receive raw bytes from the kms connection."""
 
     def callback(result: Any) -> bytes:
         return result
 
-    return await _async_receive_data(conn, callback, bytes_needed, first)
+    return await _async_receive_data(conn, callback, bytes_needed)
 
 
 async def _async_receive_data(

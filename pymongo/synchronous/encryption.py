@@ -190,15 +190,13 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             conn = BaseConnection(interface, opts)
             try:
                 sendall(interface.get_conn, message)
-                first = True
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
                     interface.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                    data = receive_kms(conn, kms_context.bytes_needed, first)
+                    data = receive_kms(conn, kms_context.bytes_needed)
                     if not data:
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
-                    first = False
             except MongoCryptError:
                 raise  # Propagate MongoCryptError errors directly.
             except Exception as exc:
