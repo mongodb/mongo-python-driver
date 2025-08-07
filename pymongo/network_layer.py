@@ -511,6 +511,8 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
                 raise OSError("connection is already closed") from None
         if self.transport and self.transport.is_closing():
             raise OSError("connection is already closed")
+        if self._bytes_ready >= bytes_needed:
+            return self._read(bytes_needed)
         self._pending_reads.append(bytes_needed)
         read_waiter = asyncio.get_running_loop().create_future()
         self._pending_listeners.append(read_waiter)
@@ -540,18 +542,24 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         self._bytes_ready += nbytes
 
         # Bail we don't have the current requested number of bytes.
-        n_requested = self._bytes_requested
-        if n_requested == 0 and self._pending_reads:
-            n_requested = self._pending_reads.popleft()
-        if n_requested == 0 or self._bytes_ready < n_requested:
+        bytes_needed = self._bytes_requested
+        if bytes_needed == 0 and self._pending_reads:
+            bytes_needed = self._pending_reads.popleft()
+        if bytes_needed == 0 or self._bytes_ready < bytes_needed:
             return
 
-        # Send the bytes to the listener.
-        self._bytes_ready -= n_requested
-        self._bytes_requested = 0
+        data = self._read(bytes_needed)
         waiter = self._pending_listeners.popleft()
-        output_buf = bytearray(n_requested)
-        n_remaining = n_requested
+        waiter.set_result(data)
+
+    def _read(self, bytes_needed):
+        """Read bytes from the buffer."""
+        # Send the bytes to the listener.
+        self._bytes_ready -= bytes_needed
+        self._bytes_requested = 0
+
+        output_buf = bytearray(bytes_needed)
+        n_remaining = bytes_needed
         out_index = 0
         while n_remaining > 0:
             buffer = self._buffers.popleft()
@@ -572,7 +580,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
                 n_remaining -= buffer_remaining
                 buffer.start_index = 0
                 self._buffer_pool.append(buffer)
-        waiter.set_result(output_buf)
+        return output_buf
 
 
 async def async_sendall(conn: PyMongoBaseProtocol, buf: bytes) -> None:
