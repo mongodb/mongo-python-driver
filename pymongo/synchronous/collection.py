@@ -1775,6 +1775,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         improper type. Returns an instance of
         :class:`~pymongo.cursor.Cursor` corresponding to this query.
 
+        Best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+            with collection.find() as cursor:
+                for doc in cursor:
+                    print(doc)
+
         The :meth:`find` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
 

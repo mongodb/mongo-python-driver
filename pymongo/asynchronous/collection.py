@@ -1776,6 +1776,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         improper type. Returns an instance of
         :class:`~pymongo.asynchronous.cursor.AsyncCursor` corresponding to this query.
 
+        Best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+            async with collection.find() as cursor:
+                async for doc in cursor:
+                    print(doc)
+
         The :meth:`find` method obeys the :attr:`read_preference` of
         this :class:`AsyncCollection`.
 
