@@ -1,3 +1,5 @@
+:orphan:
+
 .. _pymongo4-migration-guide:
 
 PyMongo 4 Migration Guide

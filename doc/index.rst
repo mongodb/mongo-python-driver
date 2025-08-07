@@ -68,5 +68,4 @@ Indices and tables
 
    api/index
    changelog
-   migrate-to-pymongo4
    contributors
