@@ -239,7 +239,7 @@ class TestClientMetadataProse(IntegrationTest):
         # wait for connection to become idle
         time.sleep(0.005)
         # add same metadata again
-        client.append_metadata(DriverInfo("framework", None, None))
+        client.append_metadata(DriverInfo("Framework", None, None))
         (
             same_name,
             same_version,
