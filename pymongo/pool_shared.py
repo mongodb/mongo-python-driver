@@ -504,7 +504,9 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
     return ssl_sock
 
 
-def _configured_socket_interface(address: _Address, options: PoolOptions) -> NetworkingInterface:
+def _configured_socket_interface(
+    address: _Address, options: PoolOptions, *args: Any
+) -> NetworkingInterface:
     """Given (host, port) and PoolOptions, return a NetworkingInterface wrapping a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
