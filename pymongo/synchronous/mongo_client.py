@@ -14,7 +14,7 @@
 
 """Tools for connecting to MongoDB.
 
-.. seealso:: :doc:`/examples/high_availability` for examples of connecting
+.. seealso:: `Read and Write Settings <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_ for examples of connecting
    to replica sets or sets of mongos servers.
 
 To get a :class:`~pymongo.database.Database` instance from a
@@ -260,7 +260,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 print("Server not available")
 
         .. warning:: When using PyMongo in a multiprocessing context, please
-          read :ref:`multiprocessing` first.
+          read `PyMongo multiprocessing <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/mongoclient/#multiprocessing>`_ first.
 
         .. note:: Many of the following options can be passed using a MongoDB
           URI or keyword parameters. If the same option is passed in a URI and
@@ -296,7 +296,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             return DatetimeMS objects when the underlying datetime is
             out-of-range and 'datetime_clamp' to clamp to the minimum and
             maximum possible datetimes. Defaults to 'datetime'. See
-            :ref:`handling-out-of-range-datetimes` for details.
+            `handling out of range datetimes <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes>`_ for details.
           - `directConnection` (optional): if ``True``, forces this client to
              connect directly to the specified MongoDB host as a standalone.
              If ``false``, the client connects to the entire replica set of
@@ -421,7 +421,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             package. By default no compression is used. Compression support
             must also be enabled on the server. MongoDB 3.6+ supports snappy
             and zlib compression. MongoDB 4.2+ adds support for zstd.
-            See :ref:`network-compression-example` for details.
+            See `compress network traffic <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/network-compression/#compress-network-traffic>`_ for details.
           - `zlibCompressionLevel`: (int) The zlib compression level to use
             when zlib is used as the wire protocol compressor. Supported values
             are -1 through 9. -1 tells the zlib library to use its default
@@ -432,7 +432,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             values are the strings: "standard", "pythonLegacy", "javaLegacy",
             "csharpLegacy", and "unspecified" (the default). New applications
             should consider setting this to "standard" for cross language
-            compatibility. See :ref:`handling-uuid-data-example` for details.
+            compatibility. See `handling UUID data <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#unspecified>`_ for details.
           - `unicode_decode_error_handler`: The error handler to apply when
             a Unicode-related error occurs during BSON decoding that would
             otherwise raise :exc:`UnicodeDecodeError`. Valid options include
@@ -496,7 +496,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             is set, it must be a positive integer greater than or equal to
             90 seconds.
 
-          .. seealso:: :doc:`/examples/server_selection`
+          .. seealso:: `Customize Server Selection <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/server-selection/#customize-server-selection>`_
 
           | **Authentication:**
 
@@ -522,7 +522,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             To specify the session token for MONGODB-AWS authentication pass
             ``authMechanismProperties='AWS_SESSION_TOKEN:<session token>'``.
 
-          .. seealso:: :doc:`/examples/authentication`
+          .. seealso:: `Authentication <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/#authentication-mechanisms>`_
 
           | **TLS/SSL configuration:**
 
@@ -585,7 +585,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.encryption_options.AutoEncryptionOpts` which
             configures this client to automatically encrypt collection commands
             and automatically decrypt results. See
-            :ref:`automatic-client-side-encryption` for an example.
+            `client-side field level encryption <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#client-side-field-level-encryption>`_ for an example.
             If a :class:`MongoClient` is configured with
             ``auto_encryption_opts`` and a non-None ``maxPoolSize``, a
             separate internal ``MongoClient`` is created if any of the
@@ -601,7 +601,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
           - `server_api`: A
             :class:`~pymongo.server_api.ServerApi` which configures this
-            client to use Stable API. See :ref:`versioned-api-ref` for
+            client to use Stable API. See `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_ for
             details.
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
@@ -712,15 +712,15 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
            reconnect to one of them. In PyMongo 3, the client monitors its
            network latency to all the mongoses continuously, and distributes
            operations evenly among those with the lowest latency. See
-           :ref:`mongos-load-balancing` for more information.
+           `load balancing <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-targets/#replica-sets>`_ for more information.
 
            The ``connect`` option is added.
 
            The ``start_request``, ``in_request``, and ``end_request`` methods
            are removed, as well as the ``auto_start_request`` option.
 
-           The ``copy_database`` method is removed, see the
-           :doc:`copy_database examples </examples/copydb>` for alternatives.
+           The ``copy_database`` method is removed, see
+           `Copy and Clone Databases <https://www.mongodb.com/docs/database-tools/mongodump/mongodump-examples/#copy-and-clone-databases>`_ for alternatives.
 
            The :meth:`MongoClient.disconnect` method is removed; it was a
            synonym for :meth:`~pymongo.MongoClient.close`.
@@ -2509,9 +2509,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :return: An instance of :class:`~pymongo.results.ClientBulkWriteResult`.
 
-        .. seealso:: For more info, see :doc:`/examples/client_bulk`.
+        .. seealso:: For more info, see `Client Bulk Write <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/bulk-write/#client-bulk-write-example>`_.
 
-        .. seealso:: :ref:`writes-and-ids`
+        .. seealso:: `Writes and ids <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/insert/#overview>`_
 
         .. note:: requires MongoDB server version 8.0+.
 

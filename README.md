@@ -16,6 +16,13 @@ implementation on top of `pymongo`.
 
 PyMongo supports MongoDB 4.0, 4.2, 4.4, 5.0, 6.0, 7.0, and 8.0. PyMongo follows [semantic versioning](https://semver.org/spec/v2.0.0.html) for its releases.
 
+## Documentation
+
+Documentation is available at
+[mongodb.com](https://www.mongodb.com/docs/languages/python/pymongo-driver/current/).
+
+[API documentation](https://pymongo.readthedocs.io/en/stable/api/) and the [full changelog](https://pymongo.readthedocs.io/en/stable/changelog.html) for each release is available at [readthedocs.io](https://pymongo.readthedocs.io/en/stable/index.html).
+
 ## Support / Feedback
 
 For issues with, questions about, or feedback for PyMongo, please look
@@ -190,13 +197,6 @@ ObjectId('4aba160ee23f6b543e000002')
 >>> [item["x"] for item in db.my_collection.find().limit(2).skip(1)]
 [8, 11]
 ```
-
-## Documentation
-
-Documentation is available at
-[pymongo.readthedocs.io](https://pymongo.readthedocs.io/en/stable/).
-
-See the [contributing guide](./CONTRIBUTING.md#documentation) for how to build the documentation.
 
 ## Learning Resources
 
