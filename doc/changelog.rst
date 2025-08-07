@@ -4,8 +4,12 @@ Changelog
 Changes in Version 4.14.0 (2025/08/06)
 --------------------------------------
 
+.. warning:: PyMongo 4.14 drops support for MongoDB 4.0. PyMongo now supports
+   MongoDB 4.2+.
+
 PyMongo 4.14 brings a number of changes including:
 
+- Dropped support for MongoDB 4.0.
 - Added preliminary support for Python 3.14 and 3.14 with free-threading. We do
   not yet support the following with Python 3.14:
 
@@ -23,12 +27,11 @@ PyMongo 4.14 brings a number of changes including:
   :meth:`pymongo.mongo_client.MongoClient.append_metadata` to allow instantiated
   MongoClients to send client metadata on-demand
 - Improved performance of selecting a server with the Primary selector.
-
 - Introduces a minor breaking change. When encoding
   :class:`bson.binary.BinaryVector`, a ``ValueError`` will be raised if the
   'padding' metadata field is < 0 or > 7, or non-zero for any type other than
   PACKED_BIT.
-- Changed :meth:`~pymongo.uri_parser.parse_uri`'s ``options`` parameter to be
+- Changed :meth:`~pymongo.uri_parser.parse_uri`'s ``options`` return value to be
   type ``dict`` instead of ``_CaseInsensitiveDictionary``.
 
 Changes in Version 4.13.2 (2025/06/17)
