@@ -149,11 +149,12 @@ markers = [
 strict = true
 show_error_codes = true
 pretty = true
-disable_error_code = ["type-arg", "no-any-return"]
+disable_error_code = ["no-any-return"]
+disallow_any_generics = true
 
 [[tool.mypy.overrides]]
 module = ["test.*"]
-disable_error_code = ["no-untyped-def", "no-untyped-call"]
+disable_error_code = ["type-arg", "no-untyped-def", "no-untyped-call"]
 
 [[tool.mypy.overrides]]
 module = ["service_identity.*"]

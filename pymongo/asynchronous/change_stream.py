@@ -164,7 +164,7 @@ class AsyncChangeStream(Generic[_DocumentType]):
         raise NotImplementedError
 
     @property
-    def _client(self) -> AsyncMongoClient:
+    def _client(self) -> AsyncMongoClient:  # type: ignore[type-arg]
         """The client against which the aggregation commands for
         this AsyncChangeStream will be run.
         """
@@ -206,7 +206,7 @@ class AsyncChangeStream(Generic[_DocumentType]):
     def _aggregation_pipeline(self) -> list[dict[str, Any]]:
         """Return the full aggregation pipeline for this AsyncChangeStream."""
         options = self._change_stream_options()
-        full_pipeline: list = [{"$changeStream": options}]
+        full_pipeline: list[dict[str, Any]] = [{"$changeStream": options}]
         full_pipeline.extend(self._pipeline)
         return full_pipeline
 
@@ -237,7 +237,7 @@ class AsyncChangeStream(Generic[_DocumentType]):
 
     async def _run_aggregation_cmd(
         self, session: Optional[AsyncClientSession], explicit_session: bool
-    ) -> AsyncCommandCursor:
+    ) -> AsyncCommandCursor:  # type: ignore[type-arg]
         """Run the full aggregation pipeline for this AsyncChangeStream and return
         the corresponding AsyncCommandCursor.
         """
@@ -257,7 +257,7 @@ class AsyncChangeStream(Generic[_DocumentType]):
             operation=_Op.AGGREGATE,
         )
 
-    async def _create_cursor(self) -> AsyncCommandCursor:
+    async def _create_cursor(self) -> AsyncCommandCursor:  # type: ignore[type-arg]
         async with self._client._tmp_session(self._session, close=False) as s:
             return await self._run_aggregation_cmd(
                 session=s, explicit_session=self._session is not None

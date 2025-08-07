@@ -37,7 +37,7 @@ from pymongo.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext
-    from pymongo.typings import _AgnosticMongoClient, _DocumentTypeArg
+    from pymongo.typings import _AgnosticMongoClient
 
 
 class AutoEncryptionOpts:
@@ -47,7 +47,7 @@ class AutoEncryptionOpts:
         self,
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
-        key_vault_client: Optional[_AgnosticMongoClient[_DocumentTypeArg]] = None,
+        key_vault_client: Optional[_AgnosticMongoClient] = None,
         schema_map: Optional[Mapping[str, Any]] = None,
         bypass_auto_encryption: bool = False,
         mongocryptd_uri: str = "mongodb://localhost:27020",
@@ -75,7 +75,7 @@ class AutoEncryptionOpts:
         encryption and explicit decryption is also supported for all users
         with the :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption` and :class:`~pymongo.encryption.ClientEncryption` classes.
 
-        See :ref:`automatic-client-side-encryption` for an example.
+        See `client-side field level encryption <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#client-side-field-level-encryption>`_ for an example.
 
         :param kms_providers: Map of KMS provider options. The `kms_providers`
             map values differ by provider:
@@ -104,7 +104,7 @@ class AutoEncryptionOpts:
 
             KMS providers may be specified with an optional name suffix
             separated by a colon, for example "kmip:name" or "aws:name".
-            Named KMS providers do not support :ref:`CSFLE on-demand credentials`.
+            Named KMS providers do not support `CSFLE on-demand credentials <https://www.mongodb.com/docs/manual/core/csfle/tutorials/aws/aws-automatic/?interface=driver&language=python#use-automatic-client-side-field-level-encryption-with-aws>`_.
             Named KMS providers enables more than one of each KMS provider type to be configured.
             For example, to configure multiple local KMS providers::
 

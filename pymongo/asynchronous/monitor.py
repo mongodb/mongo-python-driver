@@ -351,7 +351,7 @@ class Monitor(MonitorBase):
                 )
             return sd
 
-    async def _check_with_socket(self, conn: AsyncConnection) -> tuple[Hello, float]:
+    async def _check_with_socket(self, conn: AsyncConnection) -> tuple[Hello, float]:  # type: ignore[type-arg]
         """Return (Hello, round_trip_time).
 
         Can raise ConnectionFailure or OperationFailure.
@@ -423,12 +423,13 @@ class SrvMonitor(MonitorBase):
             if len(seedlist) == 0:
                 # As per the spec: this should be treated as a failure.
                 raise Exception
-        except Exception:
+        except Exception as exc:
             # As per the spec, upon encountering an error:
             # - An error must not be raised
             # - SRV records must be rescanned every heartbeatFrequencyMS
             # - Topology must be left unchanged
             self.request_check()
+            _debug_log(_SDAM_LOGGER, message="SRV monitor check failed", failure=repr(exc))
             return None
         else:
             self._executor.update_interval(max(ttl, common.MIN_SRV_RESCAN_INTERVAL))

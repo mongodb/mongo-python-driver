@@ -3,70 +3,21 @@ PyMongo |release| Documentation
 
 .. note:: The PyMongo documentation has been migrated to the
    `MongoDB Documentation site <https://www.mongodb.com/docs/languages/python/pymongo-driver/current>`_.
-   As of PyMongo 4.10, the ReadTheDocs site will contain the detailed changelog and API docs, while the
-   rest of the documentation will only appear on the MongoDB Documentation site.
+   This site contains only the detailed changelog and API docs, while the
+   rest of the documentation appears on the MongoDB Documentation site.
 
 Overview
 --------
 **PyMongo** is a Python distribution containing tools for working with
 `MongoDB <https://www.mongodb.org>`_, and is the recommended way to
-work with MongoDB from Python. This documentation attempts to explain
-everything you need to know to use **PyMongo**.
-
-.. todo:: a list of PyMongo's features
-
-:doc:`installation`
-  Instructions on how to get the distribution.
-
-:doc:`tutorial`
-  Start here for a quick overview.
-
-:doc:`async-tutorial`
-  Start here for a quick overview of the asynchronous API.
-
-:doc:`examples/index`
-  Examples of how to perform specific tasks.
-
-:doc:`atlas`
-  Using PyMongo with MongoDB Atlas.
-
-:doc:`examples/tls`
-  Using PyMongo with TLS / SSL.
-
-:doc:`examples/encryption`
-  Using PyMongo with In-Use Encryption.
-
-:doc:`examples/type_hints`
-  Using PyMongo with type hints.
-
-:doc:`examples/logging`
-  Using PyMongo's logging capabilities.
-
-:doc:`faq`
-  Some questions that come up often.
-
-:doc:`migrate-to-pymongo4`
-  A PyMongo 3.x to 4.x migration guide.
-
-:doc:`python3`
-  Frequently asked questions about python 3 support.
-
-:doc:`compatibility-policy`
-  Explanation of deprecations, and how to keep pace with changes in PyMongo's
-  API.
+work with MongoDB from Python.
 
 :doc:`api/index`
   The complete API documentation, organized by module.
 
-:doc:`tools`
-  A listing of Python tools and libraries that have been written for
-  MongoDB.
+:doc:`changelog`
+  A full list of changes to PyMongo.
 
-:doc:`developer/index`
-  Developer guide for contributors to PyMongo.
-
-:doc:`common-issues`
-  Common issues encountered when using PyMongo.
 
 Getting Help
 ------------
@@ -97,10 +48,6 @@ minor tweaks to this documentation. To contribute, fork the project on
 `GitHub <https://github.com/mongodb/mongo-python-driver/>`_ and send a
 pull request.
 
-Changes
--------
-See the :doc:`changelog` for a full list of changes to PyMongo.
-
 About This Documentation
 ------------------------
 This documentation is generated using the `Sphinx
@@ -119,18 +66,6 @@ Indices and tables
 .. toctree::
    :hidden:
 
-   atlas
-   installation
-   tutorial
-   async-tutorial
-   examples/index
-   faq
-   compatibility-policy
    api/index
-   tools
-   contributors
    changelog
-   python3
-   migrate-to-pymongo4
-   developer/index
-   common-issues
+   contributors

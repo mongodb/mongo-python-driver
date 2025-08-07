@@ -88,7 +88,7 @@ class _AsyncClientBulk:
 
     def __init__(
         self,
-        client: AsyncMongoClient,
+        client: AsyncMongoClient[Any],
         write_concern: WriteConcern,
         ordered: bool = True,
         bypass_document_validation: Optional[bool] = None,
@@ -233,7 +233,7 @@ class _AsyncClientBulk:
         msg: Union[bytes, dict[str, Any]],
         op_docs: list[Mapping[str, Any]],
         ns_docs: list[Mapping[str, Any]],
-        client: AsyncMongoClient,
+        client: AsyncMongoClient[Any],
     ) -> dict[str, Any]:
         """A proxy for AsyncConnection.write_command that handles event publishing."""
         cmd["ops"] = op_docs
@@ -324,7 +324,7 @@ class _AsyncClientBulk:
         msg: bytes,
         op_docs: list[Mapping[str, Any]],
         ns_docs: list[Mapping[str, Any]],
-        client: AsyncMongoClient,
+        client: AsyncMongoClient[Any],
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for AsyncConnection.unack_write that handles event publishing."""
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):

@@ -581,7 +581,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         conn: AsyncConnection,
         command: MutableMapping[str, Any],
         read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional[CodecOptions[Mapping[str, Any]]] = None,
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -704,7 +704,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         bypass_document_validation: Optional[bool] = None,
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
-        let: Optional[Mapping] = None,
+        let: Optional[Mapping[str, Any]] = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -762,7 +762,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         :return: An instance of :class:`~pymongo.results.BulkWriteResult`.
 
-        .. seealso:: :ref:`writes-and-ids`
+        .. seealso:: `Writes and ids <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/insert/#overview>`_
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
@@ -867,7 +867,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         :return: - An instance of :class:`~pymongo.results.InsertOneResult`.
 
-        .. seealso:: :ref:`writes-and-ids`
+        .. seealso:: `Writes and ids <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/insert/#overview>`_
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
@@ -936,7 +936,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         :return: An instance of :class:`~pymongo.results.InsertManyResult`.
 
-        .. seealso:: :ref:`writes-and-ids`
+        .. seealso:: `Writes and ids <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/insert/#overview>`_
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
@@ -2041,7 +2041,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 4.2
            This method now always uses the `count`_ command. Due to an oversight in versions
            5.0.0-5.0.8 of MongoDB, the count command was not included in V1 of the
-           :ref:`versioned-api-ref`. Users of the Stable API with estimated_document_count are
+           `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_. Users of the Stable API with estimated_document_count are
            recommended to upgrade their server version to 5.0.9+ or set
            :attr:`pymongo.server_api.ServerApi.strict` to ``False`` to avoid encountering errors.
 
@@ -2525,7 +2525,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
     ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
-        codec_options: CodecOptions = CodecOptions(SON)
+        codec_options: CodecOptions[Mapping[str, Any]] = CodecOptions(SON)
         coll = cast(
             AsyncCollection[MutableMapping[str, Any]],
             self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
@@ -2871,7 +2871,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         aggregation_command: Type[_AggregationCommand],
         pipeline: _Pipeline,
-        cursor_class: Type[AsyncCommandCursor],
+        cursor_class: Type[AsyncCommandCursor],  # type: ignore[type-arg]
         session: Optional[AsyncClientSession],
         explicit_session: bool,
         let: Optional[Mapping[str, Any]] = None,
@@ -2916,7 +2916,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: This method does not support the 'explain' option. Please
            use `PyMongoExplain <https://pypi.org/project/pymongoexplain/>`_
-           instead. An example is included in the :ref:`aggregate-examples`
+           instead. An example is included in the `aggregation example <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/aggregation/#aggregation-example>`_
            documentation.
 
         .. note:: The :attr:`~pymongo.asynchronous.collection.AsyncCollection.write_concern` of
@@ -2977,7 +2977,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
            The :meth:`aggregate` method always returns an AsyncCommandCursor. The
            pipeline argument must be a list.
 
-        .. seealso:: :doc:`/examples/aggregation`
+        .. seealso:: `Aggregation <https://mongodb.com/docs/manual/applications/aggregation/>`_
 
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
@@ -3114,7 +3114,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
         hint: Optional[_IndexKeyHint] = None,
         **kwargs: Any,
-    ) -> list:
+    ) -> list[str]:
         """Get a list of distinct values for `key` among all documents
         in this collection.
 
@@ -3177,7 +3177,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             _server: Server,
             conn: AsyncConnection,
             read_preference: Optional[_ServerMode],
-        ) -> list:
+        ) -> list:  # type: ignore[type-arg]
             return (
                 await self._command(
                     conn,
@@ -3202,7 +3202,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping] = None,
+        let: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> Any:
         """Internal findAndModify helper."""
