@@ -584,6 +584,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
                 output_buf[out_index : out_index + buffer_remaining] = buffer.buffer[
                     buffer.start_index :
                 ]
+                out_index += buffer_remaining
                 n_remaining -= buffer_remaining
                 buffer.start_index = 0
                 self._buffer_pool.append(buffer)
