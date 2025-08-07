@@ -213,7 +213,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                     address, exc, msg_prefix=msg_prefix, timeout_details=_get_timeout_details(opts)
                 )
             finally:
-                conn.close_conn(None)
+                await conn.close_conn(None)
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
         except Exception as exc:

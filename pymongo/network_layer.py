@@ -503,6 +503,12 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
 
     async def read(self, bytes_needed: int) -> bytes:
         """Read the requested bytes from this connection."""
+        if self.transport:
+            try:
+                self.transport.resume_reading()
+            # Known bug in SSL Protocols, fixed in Python 3.11: https://github.com/python/cpython/issues/89322
+            except AttributeError:
+                raise OSError("connection is already closed") from None
         if self.transport and self.transport.is_closing():
             raise OSError("connection is already closed")
         self._pending_reads.append(bytes_needed)
@@ -552,11 +558,11 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
             buffer_remaining = len(buffer.buffer) - buffer.start_index
             # if we didn't exhaust the buffer, read the partial data and put it back.
             if buffer_remaining > n_remaining:
-                n_remaining = 0
                 output_buf[out_index : n_remaining + out_index] = buffer.buffer[
                     buffer.start_index : buffer.start_index + n_remaining
                 ]
                 buffer.start_index += n_remaining
+                n_remaining = 0
                 self._buffers.appendleft(buffer)
             # otherwise exhaust the buffer and return it to the pool.
             else:
