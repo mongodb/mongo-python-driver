@@ -576,7 +576,7 @@ class ClientEncryption(Generic[_DocumentType]):
         creating data keys. It does not provide an API to query keys from the
         key vault collection, as this can be done directly on the MongoClient.
 
-        See :ref:`explicit-client-side-encryption` for an example.
+        See `explicit client-side encryption <https://www.mongodb.com/docs/manual/core/csfle/fundamentals/manual-encryption/#csfle-explicit-encryption>`_ for an example.
 
         :param kms_providers: Map of KMS provider options. The `kms_providers`
             map values differ by provider:
@@ -605,7 +605,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
             KMS providers may be specified with an optional name suffix
             separated by a colon, for example "kmip:name" or "aws:name".
-            Named KMS providers do not support :ref:`CSFLE on-demand credentials`.
+            Named KMS providers do not support `CSFLE on-demand credentials <https://www.mongodb.com/docs/manual/core/csfle/tutorials/aws/aws-automatic/?interface=driver&language=python#use-automatic-client-side-field-level-encryption-with-aws>`_.
         :param key_vault_namespace: The namespace for the key vault collection.
             The key vault collection contains all data keys used for encryption
             and decryption. Data keys are stored as documents in this MongoDB

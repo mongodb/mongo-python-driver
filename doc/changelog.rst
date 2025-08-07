@@ -128,7 +128,7 @@ PyMongo 4.12 brings a number of changes including:
 - Support for configuring DEK cache lifetime via the ``key_expiration_ms`` argument to
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
 - Support for $lookup in CSFLE and QE supported on MongoDB 8.1+.
-- pymongocrypt>=1.13 is now required for :ref:`In-Use Encryption` support.
+- pymongocrypt>=1.13 is now required for `In-Use Encryption <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#in-use-encryption>`_ support.
 - Added :meth:`gridfs.asynchronous.grid_file.AsyncGridFSBucket.rename_by_name` and :meth:`gridfs.grid_file.GridFSBucket.rename_by_name`
   for more performant renaming of a file with multiple revisions.
 - Added :meth:`gridfs.asynchronous.grid_file.AsyncGridFSBucket.delete_by_name` and :meth:`gridfs.grid_file.GridFSBucket.delete_by_name`
@@ -190,7 +190,7 @@ PyMongo 4.11 brings a number of changes including:
 - Dropped support for Python 3.8 and PyPy 3.9.
 - Dropped support for MongoDB 3.6.
 - Dropped support for the MONGODB-CR authenticate mechanism, which is no longer supported by MongoDB 4.0+.
-- pymongocrypt>=1.12 is now required for :ref:`In-Use Encryption` support.
+- pymongocrypt>=1.12 is now required for `In-Use Encryption <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#in-use-encryption>`_ support.
 - Added support for free-threaded Python with the GIL disabled. For more information see:
   `Free-threaded CPython <https://docs.python.org/3.13/whatsnew/3.13.html#whatsnew313-free-threaded-cpython>`_.
   We do not yet support free-threaded Python on Windows (`PYTHON-5027`_) or with In-Use Encryption (`PYTHON-5024`_).
@@ -312,7 +312,7 @@ PyMongo 4.9 brings a number of improvements including:
   ``sparsity`` and ``trim_factor`` are now optional in :class:`~pymongo.encryption_options.RangeOpts`.
 - Added support for the "delegated" option for the KMIP ``master_key`` in
   :meth:`~pymongo.encryption.ClientEncryption.create_data_key`.
-- pymongocrypt>=1.10 is now required for :ref:`In-Use Encryption` support.
+- pymongocrypt>=1.10 is now required for `In-Use Encryption <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#in-use-encryption>`_ support.
 - Added :meth:`~pymongo.cursor.Cursor.to_list` to :class:`~pymongo.cursor.Cursor`,
   :class:`~pymongo.command_cursor.CommandCursor`,
   :class:`~pymongo.asynchronous.cursor.AsyncCursor`,
@@ -322,7 +322,7 @@ PyMongo 4.9 brings a number of improvements including:
   and :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`,
   enabling users to perform insert, update, and delete operations
   against mixed namespaces in a minimized number of round trips.
-  Please see :doc:`examples/client_bulk` for more information.
+  Please see `Client Bulk Write <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/bulk-write/#client-bulk-write-example>`_ for more information.
 - Added support for the ``namespace`` parameter to the
   :class:`~pymongo.operations.InsertOne`,
   :class:`~pymongo.operations.ReplaceOne`,
@@ -352,7 +352,7 @@ PyMongo 4.9 brings a number of improvements including:
   unction-as-a-service (FaaS) like AWS Lambda, Google Cloud Functions, and Microsoft Azure Functions.
   On some FaaS systems, there is a ``fork()`` operation at function
   startup.  By delaying the connection to the first operation, we avoid a deadlock.  See
-  :ref:`pymongo-fork-safe` for more information.
+  `multiple forks <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/mongoclient/#multiple-forks>`_ for more information.
 
 
 Issues Resolved
@@ -459,10 +459,10 @@ PyMongo 4.7 brings a number of improvements including:
   using an OpenID Connect (OIDC) access token.
   The driver supports OIDC for workload identity, defined as an identity you assign to a software workload
   (such as an application, service, script, or container) to authenticate and access other services and resources.
-  Please see :doc:`examples/authentication` for more information.
+  Please see `Authentication <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/#authentication-mechanisms>`_ for more information.
 - Added support for Python's `native logging library <https://docs.python.org/3/howto/logging.html>`_,
   enabling developers to customize the verbosity of log messages for their applications.
-  Please see :doc:`examples/logging` for more information.
+  Please see `Logging <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/monitoring-and-logging/logging/#logging>`_ for more information.
 - Significantly improved the performance of encoding BSON documents to JSON.
 - Added support for named KMS providers for client side field level encryption.
   Previously supported KMS providers were only: aws, azure, gcp, kmip, and local.
@@ -621,7 +621,7 @@ PyMongo 4.6 brings a number of improvements including:
   "mongodb://example.com?tls=true" is now a valid URI.
 - Fixed a bug where PyMongo would incorrectly promote all cursors to exhaust cursors
   when connected to load balanced MongoDB clusters or Serverless clusters.
-- Added the :ref:`network-compression-example` documentation page.
+- Added the `network compression <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/network-compression/#compress-network-traffic>`_ documentation page.
 - Added more timeout information to network errors.
 
 Issues Resolved
@@ -646,7 +646,7 @@ PyMongo 4.5 brings a number of improvements including:
 - Added :meth:`~pymongo.database.Database.cursor_command`
   and :meth:`~pymongo.command_cursor.CommandCursor.try_next` to support
   executing an arbitrary command that returns a cursor.
-- ``cryptography`` 2.5 or later is now required for :ref:`OCSP` support.
+- ``cryptography`` 2.5 or later is now required for `OCSP <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/tls/#ocsp>`_ support.
 - Improved bson encoding and decoding performance by up to 134%(`PYTHON-3729`_, `PYTHON-3797`_, `PYTHON-3816`_, `PYTHON-3817`_, `PYTHON-3820`_, `PYTHON-3824`_, and `PYTHON-3846`_).
 
 .. warning:: PyMongo no longer supports PyPy3 versions older than 3.8. Users
@@ -707,7 +707,7 @@ PyMongo 4.4 brings a number of improvements including:
   :class:`~pymongo.encryption_options.RangeOpts`,
   and :attr:`~pymongo.encryption.Algorithm.RANGEPREVIEW` as part of the experimental
   Queryable Encryption beta.
-- pymongocrypt 1.6.0 or later is now required for :ref:`In-Use Encryption` support. MongoDB
+- pymongocrypt 1.6.0 or later is now required for `In-Use Encryption <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#in-use-encryption>`_ support. MongoDB
   Server 7.0 introduced a backwards breaking change to the QE protocol. Users taking
   advantage of the Queryable Encryption beta must now upgrade to MongoDB 7.0+ and
   PyMongo 4.4+.
@@ -735,9 +735,9 @@ Changes in Version 4.3.3 (2022/11/17)
 
 Version 4.3.3 documents support for the following:
 
-- :ref:`CSFLE on-demand credentials` for cloud KMS providers.
-- Authentication support for :ref:`EKS Clusters`.
-- Added the :ref:`timeout-example` example page to improve the documentation
+- `CSFLE on-demand credentials <https://www.mongodb.com/docs/v7.0/core/csfle/tutorials/aws/aws-automatic/?interface=driver&language=python#use-automatic-client-side-field-level-encryption-with-aws>`_ for cloud KMS providers.
+- Authentication support for `EKS Clusters <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/aws-iam/#assumerolewithwebidentity>`_.
+- Added the `timeout <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/csot/#limit-server-execution-time>`_ example page to improve the documentation
   for :func:`pymongo.timeout`.
 
 Bug Fixes
@@ -772,7 +772,7 @@ PyMongo 4.3 brings a number of improvements including:
 
 - Added support for decoding BSON datetimes outside of the range supported
   by Python's :class:`~datetime.datetime` builtin. See
-  :ref:`handling-out-of-range-datetimes` for examples, as well as
+  `handling out of range datetimes <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes>`_ for examples, as well as
   :class:`bson.datetime_ms.DatetimeMS`,
   :class:`bson.codec_options.DatetimeConversion`, and
   :class:`bson.codec_options.CodecOptions`'s ``datetime_conversion``
@@ -781,7 +781,7 @@ PyMongo 4.3 brings a number of improvements including:
   after a :py:func:`os.fork` to reduce the frequency of deadlocks. Note that
   deadlocks are still possible because libraries that PyMongo depends like
   OpenSSL cannot be made fork() safe in multithreaded applications.
-  (`PYTHON-2484`_). For more info see :ref:`pymongo-fork-safe`.
+  (`PYTHON-2484`_). For more info see `multiple forks <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/mongoclient/#multiple-forks>`_.
 - When used with MongoDB 6.0+, :class:`~pymongo.change_stream.ChangeStream` s
   now allow for new types of events (such as DDL and C2C replication events)
   to be recorded with the new parameter ``show_expanded_events``
@@ -791,7 +791,7 @@ PyMongo 4.3 brings a number of improvements including:
   credentials expire or an error is encountered.
 - When using the ``MONGODB-AWS`` authentication mechanism with the
   ``aws`` extra, the behavior of credential fetching has changed with
-  ``pymongo_auth_aws>=1.1.0``.  Please see :doc:`examples/authentication` for
+  ``pymongo_auth_aws>=1.1.0``.  Please see `Authentication <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/#authentication-mechanisms>`_ for
   more information.
 
 Bug fixes
@@ -824,9 +824,9 @@ PyMongo 4.2 brings a number of improvements including:
 
 - Support for MongoDB 6.0.
 - Support for the Queryable Encryption beta with MongoDB 6.0. Note that backwards-breaking
-  changes may be made before the final release.  See :ref:`automatic-queryable-client-side-encryption` for example usage.
+  changes may be made before the final release.  See `automatic queryable client-side encryption <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#queryable-encryption>`_ for example usage.
 - Provisional (beta) support for :func:`pymongo.timeout` to apply a single timeout
-  to an entire block of pymongo operations. See :ref:`timeout-example` for examples.
+  to an entire block of pymongo operations. See `timeout <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/csot/#limit-server-execution-time>`_ for examples.
 - Added the ``timeoutMS`` URI and keyword argument to :class:`~pymongo.mongo_client.MongoClient`.
 - Added the :attr:`pymongo.errors.PyMongoError.timeout` property which is ``True`` when
   the error was caused by a timeout.
@@ -874,7 +874,7 @@ Unavoidable breaking changes
   encryption support.
 - :meth:`~pymongo.collection.Collection.estimated_document_count` now always uses
   the `count`_ command. Due to an oversight in versions 5.0.0-5.0.8 of MongoDB,
-  the count command was not included in V1 of the :ref:`versioned-api-ref`.
+  the count command was not included in V1 of the `Stable API <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/stable-api/#stable-api>`_.
   Users of the Stable API with estimated_document_count are recommended to upgrade
   their server version to 5.0.9+ or set :attr:`pymongo.server_api.ServerApi.strict`
   to ``False`` to avoid encountering errors (`PYTHON-3167`_).
@@ -937,7 +937,7 @@ Changes in Version 4.1 (2021/12/07)
 
 PyMongo 4.1 brings a number of improvements including:
 
-- Type Hinting support (formerly provided by `pymongo-stubs`_).  See :doc:`examples/type_hints` for more information.
+- Type Hinting support (formerly provided by `pymongo-stubs`_).  See `Type Hints <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/run-command/#type-hints>`_ for more information.
 - Added support for the ``comment`` parameter to all helpers. For example see
   :meth:`~pymongo.collection.Collection.insert_one`.
 - Added support for the ``let`` parameter to
@@ -1026,7 +1026,7 @@ Breaking Changes in 4.0
   :data:`bson.binary.UuidRepresentation.PYTHON_LEGACY` to
   :data:`bson.binary.UuidRepresentation.UNSPECIFIED`. Attempting to encode a
   :class:`uuid.UUID` instance to BSON or JSON now produces an error by default.
-  See :ref:`handling-uuid-data-example` for details.
+  See `UUID representations <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_ for details.
 - Removed the ``waitQueueMultiple`` keyword argument to
   :class:`~pymongo.mongo_client.MongoClient` and removed
   :exc:`pymongo.errors.ExceededMaxWaiters`.
@@ -1365,7 +1365,7 @@ Notable improvements
 
 - Added support for MongoDB 5.0.
 - Support for MongoDB Stable API, see :class:`~pymongo.server_api.ServerApi`.
-- Support for snapshot reads on secondaries (see :ref:`snapshot-reads-ref`).
+- Support for snapshot reads on secondaries (see `snapshot reads <https://www.mongodb.com/docs/manual/reference/read-concern-snapshot/#read-concern--snapshot->`_).
 - Support for Azure and GCP KMS providers for client side field level
   encryption. See the docstring for :class:`~pymongo.mongo_client.MongoClient`,
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
@@ -1422,7 +1422,7 @@ Deprecations
   same API.
 - Deprecated the :mod:`pymongo.messeage` module.
 - Deprecated the ``ssl_keyfile`` and ``ssl_certfile`` URI options in favor
-  of ``tlsCertificateKeyFile`` (see :doc:`examples/tls`).
+  of ``tlsCertificateKeyFile`` (see `TLS <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/tls/#configure-transport-layer-security--tls->`_).
 
 .. _PYTHON-2466: https://jira.mongodb.org/browse/PYTHON-2466
 .. _PYTHON-1690: https://jira.mongodb.org/browse/PYTHON-1690
@@ -1520,12 +1520,12 @@ Changes in Version 3.11.0 (2020/07/30)
 Version 3.11 adds support for MongoDB 4.4 and includes a number of bug fixes.
 Highlights include:
 
-- Support for :ref:`OCSP` (Online Certificate Status Protocol).
+- Support for `OCSP <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/tls/#ocsp>`_ (Online Certificate Status Protocol).
 - Support for `PyOpenSSL <https://pypi.org/project/pyOpenSSL/>`_ as an
-  alternative TLS implementation. PyOpenSSL is required for :ref:`OCSP`
+  alternative TLS implementation. PyOpenSSL is required for `OCSP <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/tls/#ocsp>`_
   support. It will also be installed when using the "tls" extra if the
   version of Python in use is older than 2.7.9.
-- Support for the :ref:`MONGODB-AWS` authentication mechanism.
+- Support for the `MONGODB-AWS <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/aws-iam/#aws-identity-and-access-management>`_ authentication mechanism.
 - Support for the ``directConnection`` URI option and kwarg to
   :class:`~pymongo.mongo_client.MongoClient`.
 - Support for speculative authentication attempts in connection handshakes
@@ -1551,7 +1551,7 @@ Highlights include:
 - Added support for :data:`bson.binary.UuidRepresentation.UNSPECIFIED` and
   ``MongoClient(uuidRepresentation='unspecified')`` which will become the
   default UUID representation starting in PyMongo 4.0. See
-  :ref:`handling-uuid-data-example` for details.
+  `UUID representations <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_ for details.
 - New methods :meth:`bson.binary.Binary.from_uuid` and
   :meth:`bson.binary.Binary.as_uuid`.
 - Added the ``background`` parameter to
@@ -1635,7 +1635,7 @@ Version 3.10 includes a number of improvements and bug fixes. Highlights
 include:
 
 - Support for Client-Side Field Level Encryption with MongoDB 4.2. See
-  :doc:`examples/encryption` for examples.
+  `Client-Side Field Level Encryption <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#client-side-field-level-encryption>`_ for examples.
 - Support for Python 3.8.
 - Added :attr:`pymongo.client_session.ClientSession.in_transaction`.
 - Do not hold the Topology lock while creating connections in a MongoClient's
@@ -1661,7 +1661,7 @@ Changes in Version 3.9.0 (2019/08/13)
 Version 3.9 adds support for MongoDB 4.2. Highlights include:
 
 - Support for MongoDB 4.2 sharded transactions. Sharded transactions have
-  the same API as replica set transactions. See :ref:`transactions-ref`.
+  the same API as replica set transactions. See `Transactions <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/transactions/#transactions>`_.
 - New method :meth:`pymongo.client_session.ClientSession.with_transaction` to
   support conveniently running a transaction in a session with automatic
   retries and at-most-once semantics.
@@ -1789,7 +1789,7 @@ Changes in Version 3.8.0 (2019/04/22)
 - Custom types can now be directly encoded to, and decoded from MongoDB using
   the :class:`~bson.codec_options.TypeCodec` and
   :class:`~bson.codec_options.TypeRegistry` APIs. For more information, see
-  the :doc:`custom type example <examples/custom_type>`.
+  `Custom Types <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#encode-data-with-type-codecs>`_.
 - Attempting a multi-document transaction on a sharded cluster now raises a
   :exc:`~pymongo.errors.ConfigurationError`.
 - :meth:`pymongo.cursor.Cursor.distinct` and
@@ -1819,7 +1819,7 @@ Changes in Version 3.8.0 (2019/04/22)
 - Iterating over a :class:`~bson.raw_bson.RawBSONDocument` now maintains the
   same field order of the underlying raw BSON document.
 - Applications can now register a custom server selector. For more information
-  see the :doc:`server selector example <examples/server_selection>`.
+  see `Customize Server Selection <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/server-selection/#customize-server-selection>`_.
 - The connection pool now implements a LIFO policy.
 
 Unavoidable breaking changes:
@@ -1887,9 +1887,9 @@ Changes in Version 3.7.0 (2018/06/26)
 Version 3.7 adds support for MongoDB 4.0. Highlights include:
 
 - Support for single replica set multi-document ACID transactions.
-  See :ref:`transactions-ref`.
+  See `transactions <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/transactions/#transactions>`_.
 - Support for wire protocol compression via the new ``compressors`` URI and keyword argument to
-  :meth:`~pymongo.mongo_client.MongoClient`. See :ref:`network-compression-example` for details.
+  :meth:`~pymongo.mongo_client.MongoClient`. See `network compression <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/network-compression/#compress-network-traffic>`_ for details.
 - Support for Python 3.7.
 - New count methods, :meth:`~pymongo.collection.Collection.count_documents`
   and :meth:`~pymongo.collection.Collection.estimated_document_count`.
@@ -1910,9 +1910,9 @@ Version 3.7 adds support for MongoDB 4.0. Highlights include:
   the following features and changes allow PyMongo to function when MD5 support
   is disabled in OpenSSL by the FIPS Object Module:
 
-  - Support for the :ref:`SCRAM-SHA-256 <scram_sha_256>`
-    authentication mechanism. The :ref:`GSSAPI <gssapi>`,
-    :ref:`PLAIN <sasl_plain>`, and :ref:`MONGODB-X509 <mongodb_x509>`
+  - Support for the `SCRAM-SHA-256 <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/scram/#scram>`_
+    authentication mechanism. The `GSSAPI <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/kerberos/#kerberos--gssapi->`_,
+    `PLAIN <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/ldap/#overview>`_, and `MONGODB-X509 <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/x509/#x.509>`_
     mechanisms can also be used to avoid issues with OpenSSL in FIPS
     environments.
   - MD5 checksums are now optional in GridFS. See the ``disable_md5`` option
@@ -1930,7 +1930,7 @@ Version 3.7 adds support for MongoDB 4.0. Highlights include:
   class which is a subclass of :class:`~pymongo.change_stream.ChangeStream`.
 - SCRAM client and server keys are cached for improved performance, following
   `RFC 5802 <https://tools.ietf.org/html/rfc5802>`_.
-- If not specified, the authSource for the :ref:`PLAIN <sasl_plain>`
+- If not specified, the authSource for the `PLAIN <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/ldap/#overview>`_
   authentication mechanism defaults to $external.
 - wtimeoutMS is once again supported as a URI option.
 - When using unacknowledged write concern and connected to MongoDB server
@@ -2180,7 +2180,7 @@ Changes and Deprecations:
   consistent across all MongoDB versions.
 - In Python 3, :meth:`~bson.json_util.loads` now automatically decodes JSON
   $binary with a subtype of 0 into :class:`bytes` instead of
-  :class:`~bson.binary.Binary`. See the :doc:`/python3` for more details.
+  :class:`~bson.binary.Binary`.
 - :meth:`~bson.json_util.loads` now raises ``TypeError`` or ``ValueError``
   when parsing JSON type wrappers with values of the wrong type or any
   extra keys.
@@ -2209,7 +2209,7 @@ Highlights include:
 
 - Complete support for MongoDB 3.4:
 
-  - Unicode aware string comparison using :doc:`examples/collations`.
+  - Unicode aware string comparison using `Collation <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#collation>`_.
   - Support for the new :class:`~bson.decimal128.Decimal128` BSON type.
   - A new maxStalenessSeconds read preference option.
   - A username is no longer required for the MONGODB-X509 authentication
@@ -2547,7 +2547,7 @@ In PyMongo 3.0, the ``use_greenlets`` option is gone. To use PyMongo with
 Gevent simply call ``gevent.monkey.patch_all()``.
 
 For more information,
-see :doc:`PyMongo's Gevent documentation <examples/gevent>`.
+see `Gevent <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/integrations/#gevent>`_.
 
 :class:`~pymongo.mongo_client.MongoClient` changes
 ..................................................
@@ -2591,7 +2591,7 @@ the list, and used it until a network error prompted it to re-evaluate all
 mongoses' latencies and reconnect to one of them. In PyMongo 3, the client
 monitors its network latency to all the mongoses continuously, and distributes
 operations evenly among those with the lowest latency.
-See :ref:`mongos-load-balancing` for more information.
+See `load balancing <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-targets/#replica-sets>`_ for more information.
 
 The client methods ``start_request``, ``in_request``, and ``end_request``
 are removed, and so is the ``auto_start_request`` option. Requests were
@@ -2599,7 +2599,7 @@ designed to make read-your-writes consistency more likely with the ``w=0``
 write concern. Additionally, a thread in a request used the same member for
 all secondary reads in a replica set. To ensure read-your-writes consistency
 in PyMongo 3.0, do not override the default write concern with ``w=0``, and
-do not override the default :ref:`read preference <secondary-reads>` of
+do not override the default `read preference <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_ of
 PRIMARY.
 
 Support for the ``slaveOk`` (or ``slave_okay``), ``safe``, and
@@ -2613,8 +2613,7 @@ The ``max_pool_size`` option has been removed. It is replaced by the
 ``maxPoolSize`` MongoDB URI option. ``maxPoolSize`` is now a supported URI
 option in PyMongo and can be passed as a keyword argument.
 
-The ``copy_database`` method is removed, see the
-:doc:`copy_database examples </examples/copydb>` for alternatives.
+The ``copy_database`` method is removed, see `Copy and Clone Databases <https://www.mongodb.com/docs/database-tools/mongodump/mongodump-examples/#copy-and-clone-databases>`_ for alternatives.
 
 The ``disconnect`` method is removed. Use
 :meth:`~pymongo.mongo_client.MongoClient.close` instead.
@@ -2951,7 +2950,7 @@ Version 2.9.4 fixes issues reported since the release of 2.9.3.
 - Fixed :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient` handling of
   uuidRepresentation.
 - Fixed building and testing the documentation with python 3.x.
-- New documentation for :doc:`examples/tls` and :doc:`atlas`.
+- New documentation for `TLS <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/tls/#configure-transport-layer-security--tls->`_ and `Atlas <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-targets/#atlas>`_.
 
 Issues Resolved
 ...............
@@ -3190,7 +3189,7 @@ PyMongo 2.7 is a major release with a large number of new features and bug
 fixes. Highlights include:
 
 - Full support for MongoDB 2.6.
-- A new :doc:`bulk write operations API </examples/bulk>`.
+- A new `bulk write operations API <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/bulk-write/#collection-bulk-write-example>`_.
 - Support for server side query timeouts using
   :meth:`~pymongo.cursor.Cursor.max_time_ms`.
 - Support for writing :meth:`~pymongo.collection.Collection.aggregate`
@@ -3201,7 +3200,7 @@ fixes. Highlights include:
   error details from the server.
 - A new GridFS :meth:`~gridfs.GridFS.find` method that returns a
   :class:`~gridfs.grid_file.GridOutCursor`.
-- Greatly improved :doc:`support for mod_wsgi </examples/mod_wsgi>` when using
+- Greatly improved `support for mod_wsgi <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/integrations/#mod_wsgi>`_ when using
   PyMongo's C extensions. Read `Jesse's blog post
   <https://emptysqua.re/blog/python-c-extensions-and-mod-wsgi/>`_ for details.
 - Improved C extension support for ARM little endian.
@@ -3281,14 +3280,14 @@ Important new features:
   ``waitQueueTimeoutMS`` is set, an operation that blocks waiting for a socket
   will raise :exc:`~pymongo.errors.ConnectionFailure` after the timeout. By
   default ``waitQueueTimeoutMS`` is not set.
-  See :ref:`connection-pooling` for more information.
+  See `connection pooling <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/connection-pools/#connection-pools>`_ for more information.
 - The :meth:`~pymongo.collection.Collection.insert` method automatically splits
   large batches of documents into multiple insert messages based on
   :attr:`~pymongo.mongo_client.MongoClient.max_message_size`
 - Support for the exhaust cursor flag.
   See :meth:`~pymongo.collection.Collection.find` for details and caveats.
 - Support for the PLAIN and MONGODB-X509 authentication mechanisms.
-  See :doc:`the authentication docs </examples/authentication>` for more
+  See `the authentication docs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/#authentication-mechanisms>`_ for more
   information.
 - Support aggregation output as a :class:`~pymongo.cursor.Cursor`. See
   :meth:`~pymongo.collection.Collection.aggregate` for details.
@@ -3301,7 +3300,7 @@ Important new features:
   to having a ``max_pool_size`` larger than necessary. Err towards a larger
   value.) If your application accepts the default, continue to do so.
 
-  See :ref:`connection-pooling` for more information.
+  See `connection pooling <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/connection-pools/#connection-pools>`_ for more information.
 
 Issues Resolved
 ...............
@@ -3347,7 +3346,7 @@ Version 2.5 includes changes to support new features in MongoDB 2.4.
 
 Important new features:
 
-- Support for :ref:`GSSAPI (Kerberos) authentication <gssapi>`.
+- Support for `GSSAPI (Kerberos) <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/authentication/kerberos/#kerberos--gssapi->`_.
 - Support for SSL certificate validation with hostname matching.
 - Support for delegated and role based authentication.
 - New GEOSPHERE (2dsphere) and HASHED index constants.
@@ -3454,7 +3453,7 @@ Version 2.3 adds support for new features and behavior changes in MongoDB
 Important New Features:
 
 - Support for expanded read preferences including directing reads to tagged
-  servers - See :ref:`secondary-reads` for more information.
+  servers - See `secondary reads <https://www.mongodb.com/docs/manual/core/read-preference/#mongodb-readmode-secondary>`_ for more information.
 - Support for mongos failover.
 - A new :meth:`~pymongo.collection.Collection.aggregate` method to support
   MongoDB's new `aggregation framework
@@ -3508,10 +3507,10 @@ to this release.
 
 Important New Features:
 
-- Support for Python 3 -
-  See the :doc:`python3` for more information.
+- Support for Python 3.
+  See `Python 3 <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/reference/upgrade/#upgrade-pymongo-versions>`_ for more information.
 - Support for Gevent -
-  See :doc:`examples/gevent` for more information.
+  See `Gevent <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/integrations/#gevent>`_ for more information.
 - Improved connection pooling.
   See `PYTHON-287 <https://jira.mongodb.org/browse/PYTHON-287>`_.
 
@@ -4117,7 +4116,7 @@ Other changes:
 - clean up all cases where :class:`~pymongo.errors.ConnectionFailure`
   is raised.
 - simplification of connection pooling - makes driver ~2x faster for
-  simple benchmarks. see :ref:`connection-pooling` for more information.
+  simple benchmarks. see `connection pooling <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/connection-pools/#connection-pools>`_ for more information.
 - DEPRECATED ``pool_size``, ``auto_start_request`` and ``timeout``
   parameters to :class:`~pymongo.connection.Connection`. DEPRECATED
   :meth:`~pymongo.connection.Connection.start_request`.
@@ -4184,7 +4183,7 @@ Changes in Version 1.2 (2009/12/09)
   get around some issues with queries on fields named ``query``
 - enforce 4MB document limit on the client side
 - added :meth:`~pymongo.collection.Collection.map_reduce` helper - see
-  :doc:`example <examples/aggregation>`
+  `Aggregation <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/aggregation/#transform-your-data-with-aggregation>`_
 - added :meth:`~pymongo.cursor.Cursor.distinct` method on
   :class:`~pymongo.cursor.Cursor` instances to allow distinct with
   queries
