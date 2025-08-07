@@ -482,16 +482,14 @@ class PyMongoProtocol(PyMongoBaseProtocol):
 class KMSBuffer:
     buffer: memoryview
     start_index: int
+    length: int
 
 
 class PyMongoKMSProtocol(PyMongoBaseProtocol):
     def __init__(self, timeout: Optional[float] = None):
         super().__init__(timeout)
         self._buffers: collections.deque[KMSBuffer] = collections.deque()
-        # pool for buffers that have been exhausted and can be reused.
-        self._buffer_pool: collections.deque[KMSBuffer] = collections.deque(maxlen=3)
         self._bytes_ready = 0
-        self._bytes_requested = 0
         self._pending_reads: collections.deque[int] = collections.deque()
         self._pending_listeners: collections.deque[Future[Any]] = collections.deque()
 
@@ -507,7 +505,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
             # Wait for other listeners first.
             if len(self._pending_listeners):
                 await asyncio.gather(*self._pending_listeners)
-            return self._read(bytes_needed)
+            return self._read(bytes_needed, first)
         if self.transport:
             try:
                 self.transport.resume_reading()
@@ -527,10 +525,8 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         If any data does not fit into the returned buffer, this method will be called again until
         either no data remains or an empty buffer is returned.
         """
-        if self._buffer_pool:
-            buffer = self._buffer_pool.popleft()
-        else:
-            buffer = KMSBuffer(memoryview(bytearray(sizehint)), 0)
+        sizehint = max(sizehint, 1024)
+        buffer = KMSBuffer(memoryview(bytearray(sizehint)), 0, 0)
         self._buffers.append(buffer)
         return buffer.buffer
 
@@ -544,13 +540,17 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
             return
         self._bytes_ready += nbytes
 
-        # Bail we don't have the current requested number of bytes.
-        bytes_needed = self._bytes_requested
-        first = False
-        if bytes_needed == 0 and self._pending_reads:
-            bytes_needed, first = self._pending_reads.popleft()
-        read_first = first and self._bytes_ready > 0
-        if not read_first and (bytes_needed == 0 or self._bytes_ready < bytes_needed):
+        # Update the length of the current buffer.
+        current_buffer = self._buffers.pop()
+        current_buffer.length += nbytes
+        self._buffers.append(current_buffer)
+
+        if not len(self._pending_reads):
+            return
+
+        bytes_needed, first = self._pending_reads.popleft()
+        if not first and (bytes_needed == 0 or self._bytes_ready < bytes_needed):
+            self._pending_reads.appendleft((bytes_needed, first))
             return
 
         data = self._read(bytes_needed, first)
@@ -563,15 +563,14 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         if first and self._bytes_ready < bytes_needed:
             bytes_needed = self._bytes_ready
         self._bytes_ready -= bytes_needed
-        self._bytes_requested = 0
 
         output_buf = bytearray(bytes_needed)
         n_remaining = bytes_needed
         out_index = 0
         while n_remaining > 0:
             buffer = self._buffers.popleft()
-            buffer_remaining = len(buffer.buffer) - buffer.start_index
-            # if we didn't exhaust the buffer, read the partial data and put it back.
+            buffer_remaining = buffer.length - buffer.start_index
+            # if we didn't exhaust the buffer, read the partial data and return the buffer.
             if buffer_remaining > n_remaining:
                 output_buf[out_index : n_remaining + out_index] = buffer.buffer[
                     buffer.start_index : buffer.start_index + n_remaining
@@ -579,15 +578,13 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
                 buffer.start_index += n_remaining
                 n_remaining = 0
                 self._buffers.appendleft(buffer)
-            # otherwise exhaust the buffer and return it to the pool.
+            # otherwise exhaust the buffer.
             else:
                 output_buf[out_index : out_index + buffer_remaining] = buffer.buffer[
-                    buffer.start_index :
+                    buffer.start_index : buffer.length
                 ]
                 out_index += buffer_remaining
                 n_remaining -= buffer_remaining
-                buffer.start_index = 0
-                self._buffer_pool.append(buffer)
         return output_buf
 
 
