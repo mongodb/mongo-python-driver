@@ -201,11 +201,6 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
                     conn.set_conn_timeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                    # if _IS_SYNC:
-                    #     # TODO: why can't we use receive_kms?
-                    #     data = conn.conn.sock.recv(kms_context.bytes_needed)
-                    # else:
-                    #     data = receive_kms(conn, kms_context.bytes_needed)
                     data = receive_kms(conn, kms_context.bytes_needed)
                     if not data:
                         raise OSError("KMS connection closed")
