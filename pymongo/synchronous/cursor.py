@@ -1261,14 +1261,10 @@ class Cursor(Generic[_DocumentType]):
             self._exhaust_checked = True
             self._supports_exhaust()
         if self._empty:
-            if self._cursor_type == CursorType.NON_TAILABLE:
-                self.close()
             raise StopIteration
         if len(self._data) or self._refresh():
             return self._data.popleft()
         else:
-            if self._cursor_type == CursorType.NON_TAILABLE:
-                self.close()
             raise StopIteration
 
     def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]

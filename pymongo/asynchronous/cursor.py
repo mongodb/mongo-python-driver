@@ -1263,14 +1263,10 @@ class AsyncCursor(Generic[_DocumentType]):
             self._exhaust_checked = True
             await self._supports_exhaust()
         if self._empty:
-            if self._cursor_type == CursorType.NON_TAILABLE:
-                await self.close()
             raise StopAsyncIteration
         if len(self._data) or await self._refresh():
             return self._data.popleft()
         else:
-            if self._cursor_type == CursorType.NON_TAILABLE:
-                await self.close()
             raise StopAsyncIteration
 
     async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]

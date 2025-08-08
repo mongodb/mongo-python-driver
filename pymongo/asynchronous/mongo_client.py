@@ -205,7 +205,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         Best practice is to call :meth:`AsyncMongoClient.close` when the client is no longer needed,
         or use the client in a with statement::
 
-            with AsyncMongoClient(url) as client:
+            async with AsyncMongoClient(url) as client:
                 # Use client here.
 
         The `host` parameter can be a full `mongodb URI

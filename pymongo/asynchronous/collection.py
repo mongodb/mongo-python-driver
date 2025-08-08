@@ -1776,7 +1776,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         improper type. Returns an instance of
         :class:`~pymongo.asynchronous.cursor.AsyncCursor` corresponding to this query.
 
-        Best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
         or use the cursor in a with statement::
 
             async with collection.find() as cursor:
