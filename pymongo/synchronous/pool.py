@@ -592,7 +592,9 @@ class Connection(BaseConnection):
 
     def close_conn(self, reason: Optional[str]) -> None:
         """Close this connection with a reason."""
-        super().close_conn(reason)
+        if self.closed:
+            return
+        self._close_conn()
         if reason:
             if self.enabled_for_cmap:
                 assert self.listeners is not None

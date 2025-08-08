@@ -594,7 +594,9 @@ class AsyncConnection(AsyncBaseConnection):
 
     async def close_conn(self, reason: Optional[str]) -> None:
         """Close this connection with a reason."""
-        await super().close_conn(reason)
+        if self.closed:
+            return
+        await self._close_conn()
         if reason:
             if self.enabled_for_cmap:
                 assert self.listeners is not None
