@@ -1043,6 +1043,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def append_metadata(self, driver_info: DriverInfo) -> None:
         """Appends the given metadata to existing driver metadata.
+        If given driver_info.name is already present in the metadata, no append is done.
 
         :param driver_info: a :class:`~pymongo.driver_info.DriverInfo`
 
@@ -1053,7 +1054,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             raise TypeError(
                 f"driver_info must be an instance of DriverInfo, not {type(driver_info)}"
             )
-        self._options.pool_options._update_metadata(driver_info)
+        if (
+            driver_info.name
+            and driver_info.name not in self._options.pool_options.metadata["driver"]["name"]
+        ):
+            self._options.pool_options._update_metadata(driver_info)
 
     def _should_pin_cursor(self, session: Optional[AsyncClientSession]) -> Optional[bool]:
         return self._options.load_balanced and not (session and session.in_transaction)

@@ -96,6 +96,7 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         add_name: str,
         add_version: Optional[str],
         add_platform: Optional[str],
+        is_duplicate: bool = False,
     ) -> None:
         # send initial metadata
         name, version, platform, metadata = await self.send_ping_and_get_metadata(client, True)
@@ -107,15 +108,22 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         new_name, new_version, new_platform, new_metadata = await self.send_ping_and_get_metadata(
             client, True
         )
-        self.assertEqual(new_name, f"{name}|{add_name}" if add_name is not None else name)
-        self.assertEqual(
-            new_version,
-            f"{version}|{add_version}" if add_version is not None else version,
-        )
-        self.assertEqual(
-            new_platform,
-            f"{platform}|{add_platform}" if add_platform is not None else platform,
-        )
+
+        if not is_duplicate:
+            self.assertEqual(new_name, f"{name}|{add_name}" if add_name is not None else name)
+            self.assertEqual(
+                new_version,
+                f"{version}|{add_version}" if add_version is not None else version,
+            )
+            self.assertEqual(
+                new_platform,
+                f"{platform}|{add_platform}" if add_platform is not None else platform,
+            )
+        # Metadata should be unchanged if the new name was already present
+        else:
+            self.assertEqual(new_name, name)
+            self.assertEqual(new_version, version)
+            self.assertEqual(new_platform, platform)
 
         metadata.pop("driver")
         metadata.pop("platform")
@@ -209,6 +217,16 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         await client.admin.command("ping")
         self.assertIsNone(self.handshake_req)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 0)
+
+    async def test_append_metadata_duplicate_name(self):
+        client = await self.async_rs_or_single_client(
+            "mongodb://" + self.server.address_string,
+            maxIdleTimeMS=1,
+            driver=DriverInfo("library", "1.2", "Library Platform"),
+        )
+        await self.check_metadata_added(
+            client, "library", "2.0", "Framework Platform", is_duplicate=True
+        )
 
 
 if __name__ == "__main__":
