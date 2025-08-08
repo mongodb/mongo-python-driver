@@ -107,15 +107,20 @@ class TestClientMetadataProse(IntegrationTest):
         new_name, new_version, new_platform, new_metadata = self.send_ping_and_get_metadata(
             client, True
         )
-        self.assertEqual(new_name, f"{name}|{add_name}" if add_name is not None else name)
-        self.assertEqual(
-            new_version,
-            f"{version}|{add_version}" if add_version is not None else version,
-        )
-        self.assertEqual(
-            new_platform,
-            f"{platform}|{add_platform}" if add_platform is not None else platform,
-        )
+        if add_name is not None and add_name.lower() in name.lower().split("|"):
+            self.assertEqual(name, new_name)
+            self.assertEqual(version, new_version)
+            self.assertEqual(platform, new_platform)
+        else:
+            self.assertEqual(new_name, f"{name}|{add_name}" if add_name is not None else name)
+            self.assertEqual(
+                new_version,
+                f"{version}|{add_version}" if add_version is not None else version,
+            )
+            self.assertEqual(
+                new_platform,
+                f"{platform}|{add_platform}" if add_platform is not None else platform,
+            )
 
         metadata.pop("driver")
         metadata.pop("platform")
@@ -216,39 +221,11 @@ class TestClientMetadataProse(IntegrationTest):
             maxIdleTimeMS=1,
         )
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
-        # send initial metadata
-        name, version, platform, metadata = self.send_ping_and_get_metadata(client, True)
-        # wait for connection to become idle
-        time.sleep(0.005)
-
-        # add new metadata
-        client.append_metadata(DriverInfo("framework", None, None))
-        new_name, new_version, new_platform, new_metadata = self.send_ping_and_get_metadata(
-            client, True
-        )
-        self.assertEqual(new_name, f"{name}|framework")
-        self.assertEqual(new_version, version)
-        self.assertEqual(new_platform, platform)
-
-        metadata.pop("driver")
-        metadata.pop("platform")
-        new_metadata.pop("driver")
-        new_metadata.pop("platform")
-        self.assertEqual(metadata, new_metadata)
-
+        self.check_metadata_added(client, "framework", None, None)
         # wait for connection to become idle
         time.sleep(0.005)
         # add same metadata again
-        client.append_metadata(DriverInfo("Framework", None, None))
-        (
-            same_name,
-            same_version,
-            same_platform,
-            same_metadata,
-        ) = self.send_ping_and_get_metadata(client, True)
-        self.assertEqual(new_name, same_name)
-        self.assertEqual(new_version, same_version)
-        self.assertEqual(new_platform, same_platform)
+        self.check_metadata_added(client, "Framework", None, None)
 
 
 if __name__ == "__main__":
