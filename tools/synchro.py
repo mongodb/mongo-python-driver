@@ -123,7 +123,6 @@ replacements = {
     "async_receive_kms": "receive_kms",
     "AsyncNetworkingInterface": "NetworkingInterface",
     "_configured_protocol_interface": "_configured_socket_interface",
-    "_async_configured_socket": "_configured_socket",
     "SpecRunnerTask": "SpecRunnerThread",
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",

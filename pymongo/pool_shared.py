@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import asyncio
-import functools
 import socket
 import ssl
 import sys
@@ -25,7 +24,6 @@ from typing import (
     Any,
     NoReturn,
     Optional,
-    Union,
 )
 
 from pymongo import _csot
@@ -47,7 +45,6 @@ from pymongo.ssl_support import PYSSLError, SSLError, _has_sni
 
 SSLErrors = (PYSSLError, SSLError)
 if TYPE_CHECKING:
-    from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
 
 try:
@@ -274,64 +271,10 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
         raise OSError("getaddrinfo failed")
 
 
-async def _async_configured_socket(
-    address: _Address, options: PoolOptions
-) -> Union[socket.socket, _sslConn]:
-    """Given (host, port) and PoolOptions, return a raw configured socket.
-
-    Can raise socket.error, ConnectionFailure, or _CertificateError.
-
-    Sets socket's SSL and timeout options.
-    """
-    sock = await _async_create_connection(address, options)
-    ssl_context = options._ssl_context
-
-    if ssl_context is None:
-        sock.settimeout(options.socket_timeout)
-        return sock
-
-    host = address[0]
-    try:
-        # We have to pass hostname / ip address to wrap_socket
-        # to use SSLContext.check_hostname.
-        if _has_sni(False):
-            loop = asyncio.get_running_loop()
-            ssl_sock = await loop.run_in_executor(
-                None,
-                functools.partial(ssl_context.wrap_socket, sock, server_hostname=host),  # type: ignore[assignment, misc, unused-ignore]
-            )
-        else:
-            loop = asyncio.get_running_loop()
-            ssl_sock = await loop.run_in_executor(None, ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc, unused-ignore]
-    except _CertificateError:
-        sock.close()
-        # Raise _CertificateError directly like we do after match_hostname
-        # below.
-        raise
-    except (OSError, *SSLErrors) as exc:
-        sock.close()
-        # We raise AutoReconnect for transient and permanent SSL handshake
-        # failures alike. Permanent handshake failures, like protocol
-        # mismatch, will be turned into ServerSelectionTimeoutErrors later.
-        details = _get_timeout_details(options)
-        _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
-    if (
-        ssl_context.verify_mode
-        and not ssl_context.check_hostname
-        and not options.tls_allow_invalid_hostnames
-    ):
-        try:
-            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined, unused-ignore]
-        except _CertificateError:
-            ssl_sock.close()
-            raise
-
-    ssl_sock.settimeout(options.socket_timeout)
-    return ssl_sock
-
-
 async def _configured_protocol_interface(
-    address: _Address, options: PoolOptions, protocol_kls: PyMongoBaseProtocol = PyMongoProtocol
+    address: _Address,
+    options: PoolOptions,
+    protocol_kls: type[PyMongoBaseProtocol] = PyMongoProtocol,
 ) -> AsyncNetworkingInterface:
     """Given (host, port) and PoolOptions, return a configured AsyncNetworkingInterface.
 
@@ -453,55 +396,6 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         # support IPv6. The test case is Jython2.5.1 which doesn't
         # support IPv6 at all.
         raise OSError("getaddrinfo failed")
-
-
-def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
-    """Given (host, port) and PoolOptions, return a raw configured socket.
-
-    Can raise socket.error, ConnectionFailure, or _CertificateError.
-
-    Sets socket's SSL and timeout options.
-    """
-    sock = _create_connection(address, options)
-    ssl_context = options._ssl_context
-
-    if ssl_context is None:
-        sock.settimeout(options.socket_timeout)
-        return sock
-
-    host = address[0]
-    try:
-        # We have to pass hostname / ip address to wrap_socket
-        # to use SSLContext.check_hostname.
-        if _has_sni(True):
-            ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)  # type: ignore[assignment, misc, unused-ignore]
-        else:
-            ssl_sock = ssl_context.wrap_socket(sock)  # type: ignore[assignment, misc, unused-ignore]
-    except _CertificateError:
-        sock.close()
-        # Raise _CertificateError directly like we do after match_hostname
-        # below.
-        raise
-    except (OSError, *SSLErrors) as exc:
-        sock.close()
-        # We raise AutoReconnect for transient and permanent SSL handshake
-        # failures alike. Permanent handshake failures, like protocol
-        # mismatch, will be turned into ServerSelectionTimeoutErrors later.
-        details = _get_timeout_details(options)
-        _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
-    if (
-        ssl_context.verify_mode
-        and not ssl_context.check_hostname
-        and not options.tls_allow_invalid_hostnames
-    ):
-        try:
-            ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined, unused-ignore]
-        except _CertificateError:
-            ssl_sock.close()
-            raise
-
-    ssl_sock.settimeout(options.socket_timeout)
-    return ssl_sock
 
 
 def _configured_socket_interface(

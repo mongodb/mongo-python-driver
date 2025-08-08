@@ -41,9 +41,8 @@ from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.socket_checker import _errno_from_exception
 
 if TYPE_CHECKING:
-    from ssl import SSLSocket
-
     from pymongo.asynchronous.pool import AsyncBaseConnection
+    from pymongo.pyopenssl_context import _sslConn
     from pymongo.synchronous.pool import BaseConnection
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -60,7 +59,7 @@ BLOCKING_IO_ERRORS = (
 )
 
 
-def sendall(sock: Union[socket.socket, SSLSocket], buf: bytes) -> None:
+def sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
     sock.sendall(buf)
 
 
@@ -222,7 +221,7 @@ class AsyncNetworkingInterface(NetworkingInterfaceBase):
 
 
 class NetworkingInterface(NetworkingInterfaceBase):
-    def __init__(self, conn: Union[socket.socket, SSLSocket]):
+    def __init__(self, conn: Union[socket.socket, _sslConn]):
         super().__init__(conn)
 
     def gettimeout(self) -> float | None:
@@ -238,11 +237,11 @@ class NetworkingInterface(NetworkingInterfaceBase):
         return self.conn.is_closing()
 
     @property
-    def get_conn(self) -> Union[socket.socket, SSLSocket]:
+    def get_conn(self) -> Union[socket.socket, _sslConn]:
         return self.conn
 
     @property
-    def sock(self) -> Union[socket.socket, SSLSocket]:
+    def sock(self) -> Union[socket.socket, _sslConn]:
         return self.conn
 
     def fileno(self) -> int:
@@ -553,7 +552,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         waiter = self._pending_listeners.popleft()
         waiter.set_result(data)
 
-    def _read(self, bytes_needed):
+    def _read(self, bytes_needed: int) -> memoryview:
         """Read bytes from the buffer."""
         # Send the bytes to the listener.
         if self._bytes_ready < bytes_needed:
@@ -581,7 +580,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
                 ]
                 out_index += buffer_remaining
                 n_remaining -= buffer_remaining
-        return output_buf
+        return memoryview(output_buf)
 
 
 async def async_sendall(conn: PyMongoBaseProtocol, buf: bytes) -> None:
