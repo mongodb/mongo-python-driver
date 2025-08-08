@@ -93,6 +93,7 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
+    from pymongo.typings import _Address
 
 _IS_SYNC = True
 
@@ -106,6 +107,14 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
+
+
+def _connect_kms(address: _Address, opts: PoolOptions) -> BaseConnection:
+    try:
+        interface = _configured_socket_interface(address, opts, PyMongoKMSProtocol)
+        return BaseConnection(interface, opts)
+    except Exception as exc:
+        _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
 
 @contextlib.contextmanager
@@ -186,13 +195,17 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             sleep_sec = float(sleep_u) / 1e6
             time.sleep(sleep_sec)
         try:
-            interface = _configured_socket_interface(address, opts, PyMongoKMSProtocol)
-            conn = BaseConnection(interface, opts)
+            conn = _connect_kms(address, opts)
             try:
-                sendall(interface.get_conn, message)
+                sendall(conn.conn.get_conn, message)
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
-                    interface.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    conn.set_conn_timeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    # if _IS_SYNC:
+                    #     # TODO: why can't we use receive_kms?
+                    #     data = conn.conn.sock.recv(kms_context.bytes_needed)
+                    # else:
+                    #     data = receive_kms(conn, kms_context.bytes_needed)
                     data = receive_kms(conn, kms_context.bytes_needed)
                     if not data:
                         raise OSError("KMS connection closed")

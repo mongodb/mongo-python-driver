@@ -41,9 +41,9 @@ from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
 from pymongo.socket_checker import _errno_from_exception
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.pool import AsyncBaseConnection
+    from pymongo.asynchronous.pool import AsyncBaseConnection, AsyncConnection
     from pymongo.pyopenssl_context import _sslConn
-    from pymongo.synchronous.pool import BaseConnection
+    from pymongo.synchronous.pool import BaseConnection, Connection
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
@@ -642,7 +642,7 @@ async def _async_receive_data(
 
 
 async def async_receive_message(
-    conn: AsyncBaseConnection,
+    conn: AsyncConnection,
     request_id: Optional[int],
     max_message_size: int = MAX_MESSAGE_SIZE,
 ) -> Union[_OpReply, _OpMsg]:
@@ -663,19 +663,11 @@ async def async_receive_message(
 
 def receive_kms(conn: BaseConnection, bytes_needed: int) -> bytes:
     """Receive raw bytes from the kms connection."""
-    if _csot.get_timeout():
-        deadline = _csot.get_deadline()
-    else:
-        timeout = conn.conn.gettimeout()
-        if timeout:
-            deadline = time.monotonic() + timeout
-        else:
-            deadline = None
-    return receive_data(conn, bytes_needed, deadline)
+    return conn.conn.sock.recv(bytes_needed)
 
 
 def receive_message(
-    conn: BaseConnection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
+    conn: Connection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
 ) -> Union[_OpReply, _OpMsg]:
     """Receive a raw BSON message or raise socket.error."""
     if _csot.get_timeout():
