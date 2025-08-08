@@ -51,7 +51,7 @@ class DatetimeMS:
 
         To decode UTC datetimes as a ``DatetimeMS``, `datetime_conversion` in
         :class:`~bson.codec_options.CodecOptions` must be set to 'datetime_ms' or
-        'datetime_auto'. See :ref:`handling-out-of-range-datetimes` for
+        'datetime_auto'. See `handling out of range datetimes <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes>`_ for
         details.
 
         :param value: An instance of :class:`datetime.datetime` to be
