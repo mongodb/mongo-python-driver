@@ -205,7 +205,7 @@ class Server:
                 reply = await conn.receive_message(None)
             else:
                 await conn.send_message(data, max_doc_size)
-                reply = await conn.receive_message(request_id)
+                reply = await conn.receive_message(request_id, operation.pending_enabled())
 
             # Unpack and check for command errors.
             if use_cmd:
