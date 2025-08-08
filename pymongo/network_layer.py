@@ -481,7 +481,7 @@ class PyMongoProtocol(PyMongoBaseProtocol):
 class KMSBuffer:
     buffer: memoryview
     start_index: int
-    length: int
+    end_index: int
 
 
 class PyMongoKMSProtocol(PyMongoBaseProtocol):
@@ -524,10 +524,20 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         If any data does not fit into the returned buffer, this method will be called again until
         either no data remains or an empty buffer is returned.
         """
-        sizehint = max(sizehint, 1024)
-        buffer = KMSBuffer(memoryview(bytearray(sizehint)), 0, 0)
+        # Reuse the active buffer if it has space.
+        if len(self._buffers):
+            buffer = self._buffers[-1]
+            if len(buffer.buffer) - buffer.end_index > sizehint:
+                return buffer.buffer[buffer.end_index :]
+        # Allocate a bit more than the max response size for an AWS KMS response.
+        buffer = KMSBuffer(memoryview(bytearray(16384)), 0, 0)
         self._buffers.append(buffer)
         return buffer.buffer
+
+    def _resolve_pending(self, exc: Optional[Exception] = None) -> None:
+        while self._pending_listeners:
+            fut = self._pending_listeners.popleft()
+            fut.set_result(b"")
 
     def buffer_updated(self, nbytes: int) -> None:
         """Called when the buffer was updated with the received data"""
@@ -540,9 +550,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         self._bytes_ready += nbytes
 
         # Update the length of the current buffer.
-        current_buffer = self._buffers.pop()
-        current_buffer.length += nbytes
-        self._buffers.append(current_buffer)
+        self._buffers[-1].end_index += nbytes
 
         if not len(self._pending_reads):
             return
@@ -564,7 +572,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         out_index = 0
         while n_remaining > 0:
             buffer = self._buffers.popleft()
-            buffer_remaining = buffer.length - buffer.start_index
+            buffer_remaining = buffer.end_index - buffer.start_index
             # if we didn't exhaust the buffer, read the partial data and return the buffer.
             if buffer_remaining > n_remaining:
                 output_buf[out_index : n_remaining + out_index] = buffer.buffer[
@@ -576,10 +584,14 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
             # otherwise exhaust the buffer.
             else:
                 output_buf[out_index : out_index + buffer_remaining] = buffer.buffer[
-                    buffer.start_index : buffer.length
+                    buffer.start_index : buffer.end_index
                 ]
                 out_index += buffer_remaining
                 n_remaining -= buffer_remaining
+                # if this is the only buffer, add it back to the queue.
+                if not len(self._buffers):
+                    buffer.start_index = buffer.end_index
+                    self._buffers.appendleft(buffer)
         return memoryview(output_buf)
 
 
