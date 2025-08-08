@@ -2,7 +2,7 @@
 set shell := ["bash", "-c"]
 
 # Commonly used command segments.
-uv_run := "uv run --frozen "
+uv_run := "uv run --isolated --frozen "
 typing_run := uv_run + "--group typing --extra aws --extra encryption --extra ocsp --extra snappy --extra test --extra zstd"
 docs_run := uv_run + "--extra docs"
 doc_build := "./doc/_build"
