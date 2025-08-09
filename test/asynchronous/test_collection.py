@@ -335,6 +335,8 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.create_index(["hello", ("world", DESCENDING)])
         await db.test.create_index({"hello": 1}.items())  # type:ignore[arg-type]
 
+    # TODO: PYTHON-5491 - remove version max
+    @async_client_context.require_version_max(8, 0, -1)
     async def test_drop_index(self):
         db = self.db
         await db.test.drop_indexes()
