@@ -333,6 +333,8 @@ class TestCollection(IntegrationTest):
         db.test.create_index(["hello", ("world", DESCENDING)])
         db.test.create_index({"hello": 1}.items())  # type:ignore[arg-type]
 
+    # TODO: PYTHON-5491 - remove version max
+    @client_context.require_version_max(8, 0, -1)
     def test_drop_index(self):
         db = self.db
         db.test.drop_indexes()

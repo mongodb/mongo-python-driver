@@ -564,6 +564,8 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
                 self.skipTest("CSOT not implemented for cursors")
+            if "dropindex on collection" in description:
+                self.skipTest("PYTHON-5491")
             if (
                 "tailable" in class_name
                 or "tailable" in description
