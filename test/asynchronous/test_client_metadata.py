@@ -112,14 +112,14 @@ class TestClientMetadataProse(AsyncIntegrationTest):
             self.assertEqual(version, new_version)
             self.assertEqual(platform, new_platform)
         else:
-            self.assertEqual(new_name, f"{name}|{add_name}" if add_name is not None else name)
+            self.assertEqual(new_name, f"{name}|{add_name}" if add_name is not None else f"{name}|")
             self.assertEqual(
                 new_version,
-                f"{version}|{add_version}" if add_version is not None else version,
+                f"{version}|{add_version}" if add_version is not None else f"{version}|",
             )
             self.assertEqual(
                 new_platform,
-                f"{platform}|{add_platform}" if add_platform is not None else platform,
+                f"{platform}|{add_platform}" if add_platform is not None else f"{platform}|",
             )
 
         metadata.pop("driver")
