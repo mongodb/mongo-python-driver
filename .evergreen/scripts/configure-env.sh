@@ -76,8 +76,6 @@ EOT
 rm -rf $DRIVERS_TOOLS
 BRANCH=master
 ORG=mongodb-labs
-BRANCH=fix-mock-kms-headers
-ORG=blink1073
 git clone --branch $BRANCH https://github.com/$ORG/drivers-evergreen-tools.git $DRIVERS_TOOLS
 
 cat <<EOT > ${DRIVERS_TOOLS}/.env
