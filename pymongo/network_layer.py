@@ -500,10 +500,11 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
 
     async def read(self, bytes_needed: int) -> bytes:
         """Read up to the requested bytes from this connection."""
+        # Wait for other listeners first.
+        if len(self._pending_listeners):
+            await asyncio.gather(*self._pending_listeners)
+        # If there are bytes ready, then there is no need to wait further.
         if self._bytes_ready > 0:
-            # Wait for other listeners first.
-            if len(self._pending_listeners):
-                await asyncio.gather(*self._pending_listeners)
             return self._read(bytes_needed)
         if self.transport:
             try:
