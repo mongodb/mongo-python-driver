@@ -551,7 +551,7 @@ class ReadPreference:
 
        Nearest(tag_sets=[{"node":"analytics"}])
 
-    See :doc:`/examples/high_availability` for code examples.
+    See `Read and Write Settings <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_ for code examples.
 
     A read preference is used in three cases:
 
