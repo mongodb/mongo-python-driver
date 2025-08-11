@@ -525,12 +525,13 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         either no data remains or an empty buffer is returned.
         """
         # Reuse the active buffer if it has space.
+        # Allocate a bit more than the max response size for an AWS KMS response.
+        sizehint = max(sizehint, 16384)
         if len(self._buffers):
             buffer = self._buffers[-1]
             if len(buffer.buffer) - buffer.end_index > sizehint:
                 return buffer.buffer[buffer.end_index :]
-        # Allocate a bit more than the max response size for an AWS KMS response.
-        buffer = KMSBuffer(memoryview(bytearray(16384)), 0, 0)
+        buffer = KMSBuffer(memoryview(bytearray(sizehint)), 0, 0)
         self._buffers.append(buffer)
         return buffer.buffer
 
