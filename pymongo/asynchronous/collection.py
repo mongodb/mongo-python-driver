@@ -2512,6 +2512,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
           ...
           SON([('v', 2), ('key', SON([('_id', 1)])), ('name', '_id_')])
 
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+            async with await collection.list_indexes() as cursor:
+                async for index in cursor:
+                    print(index)
+
         :param session: a
             :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this
@@ -2628,6 +2637,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         **kwargs: Any,
     ) -> AsyncCommandCursor[Mapping[str, Any]]:
         """Return a cursor over search indexes for the current collection.
+
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+            async with await collection.list_search_indexes() as cursor:
+                async for index in cursor:
+                    print(index)
 
         :param name: If given, the name of the index to search
             for.  Only indexes with matching index names will be returned.
@@ -2930,6 +2948,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: The :attr:`~pymongo.asynchronous.collection.AsyncCollection.write_concern` of
            this collection is automatically applied to this operation.
+
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+        async with await collection.aggregate() as cursor:
+            async for operation in cursor:
+                print(operation)
 
         :param pipeline: a list of aggregation pipeline stages
         :param session: a

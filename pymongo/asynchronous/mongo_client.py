@@ -2351,6 +2351,15 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> AsyncCommandCursor[dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
 
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+        async with await client.list_databases() as cursor:
+            async for database in cursor:
+                print(database)
+
         :param session: a
             :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
         :param comment: A user-provided comment to attach to this

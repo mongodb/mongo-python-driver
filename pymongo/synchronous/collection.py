@@ -2509,6 +2509,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           ...
           SON([('v', 2), ('key', SON([('_id', 1)])), ('name', '_id_')])
 
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+            with collection.list_indexes() as cursor:
+                for index in cursor:
+                    print(index)
+
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.
         :param comment: A user-provided comment to attach to this
@@ -2625,6 +2634,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         **kwargs: Any,
     ) -> CommandCursor[Mapping[str, Any]]:
         """Return a cursor over search indexes for the current collection.
+
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+            with collection.list_search_indexes() as cursor:
+                for index in cursor:
+                    print(index)
 
         :param name: If given, the name of the index to search
             for.  Only indexes with matching index names will be returned.
@@ -2923,6 +2941,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
+
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+        with collection.aggregate() as cursor:
+            for operation in cursor:
+                print(operation)
 
         :param pipeline: a list of aggregation pipeline stages
         :param session: a

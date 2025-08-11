@@ -2341,6 +2341,15 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> CommandCursor[dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
 
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+        with client.list_databases() as cursor:
+            for database in cursor:
+                print(database)
+
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.
         :param comment: A user-provided comment to attach to this
