@@ -500,6 +500,8 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
 
     async def read(self, bytes_needed: int) -> bytes:
         """Read up to the requested bytes from this connection."""
+        # Note: all reads are "up-to" bytes_needed because we don't know if the kms_context
+        # has processed a Content-Length header and is requesting a response or not.
         # Wait for other listeners first.
         if len(self._pending_listeners):
             await asyncio.gather(*self._pending_listeners)
