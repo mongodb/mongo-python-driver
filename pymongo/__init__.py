@@ -165,7 +165,7 @@ def timeout(seconds: Optional[float]) -> ContextManager[None]:
 
     :raises: :py:class:`ValueError`: When `seconds` is negative.
 
-    See :ref:`timeout-example` for more examples.
+    See `Limit Server Execution Time <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/csot/#overview>`_ for more examples.
 
     .. versionadded:: 4.2
     """
