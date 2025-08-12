@@ -2954,9 +2954,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
         or use the cursor in a with statement::
 
-        async with await collection.aggregate() as cursor:
-            async for operation in cursor:
-                print(operation)
+            async with await collection.aggregate() as cursor:
+                async for operation in cursor:
+                    print(operation)
 
         :param pipeline: a list of aggregation pipeline stages
         :param session: a

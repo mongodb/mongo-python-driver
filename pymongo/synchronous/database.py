@@ -1158,9 +1158,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
         or use the cursor in a with statement::
 
-        with database.list_collections() as cursor:
-            for collection in cursor:
-                print(collection)
+            with database.list_collections() as cursor:
+                for collection in cursor:
+                    print(collection)
 
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.

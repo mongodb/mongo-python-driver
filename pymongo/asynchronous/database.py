@@ -1164,9 +1164,9 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
         or use the cursor in a with statement::
 
-        async with await database.list_collections() as cursor:
-            async for collection in cursor:
-                print(collection)
+            async with await database.list_collections() as cursor:
+                async for collection in cursor:
+                    print(collection)
 
         :param session: a
             :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.

@@ -2947,9 +2947,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
         or use the cursor in a with statement::
 
-        with collection.aggregate() as cursor:
-            for operation in cursor:
-                print(operation)
+            with collection.aggregate() as cursor:
+                for operation in cursor:
+                    print(operation)
 
         :param pipeline: a list of aggregation pipeline stages
         :param session: a

@@ -2346,9 +2346,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
         or use the cursor in a with statement::
 
-        with client.list_databases() as cursor:
-            for database in cursor:
-                print(database)
+            with client.list_databases() as cursor:
+                for database in cursor:
+                    print(database)
 
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.
