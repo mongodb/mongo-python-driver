@@ -55,7 +55,7 @@ gevent = ["gevent", "cffi>=2.0.0b1;python_version=='3.14'"]
 eventlet = ["eventlet"]
 coverage = [
     "pytest-cov",
-    "coverage>=5,<=7.10.2"
+    "coverage>=5,<=7.10.3"
 ]
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
