@@ -199,6 +199,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         exception (recognizing that the operation failed) and then continue to
         execute.
 
+        Best practice is to call :meth:`MongoClient.close` when the client is no longer needed,
+        or use the client in a with statement::
+
+            with MongoClient(url) as client:
+                # Use client here.
+
         The `host` parameter can be a full `mongodb URI
         <https://dochub.mongodb.org/core/connections>`_, in addition to
         a simple hostname. It can also be a list of hostnames but no more
@@ -2334,6 +2340,15 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         **kwargs: Any,
     ) -> CommandCursor[dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
+
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+            with client.list_databases() as cursor:
+                for database in cursor:
+                    print(database)
 
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.
