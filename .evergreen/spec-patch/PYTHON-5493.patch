@@ -1,0 +1,53 @@
+diff --git a/test/connection_logging/connection-logging.json b/test/connection_logging/connection-logging.json
+index 72103b3ca..d40cfbb7e 100644
+--- a/test/connection_logging/connection-logging.json
++++ b/test/connection_logging/connection-logging.json
+@@ -272,13 +272,7 @@
+               "level": "debug",
+               "component": "connection",
+               "data": {
+-                "message": "Connection closed",
+-                "driverConnectionId": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                },
++                "message": "Connection pool closed",
+                 "serverHost": {
+                   "$$type": "string"
+                 },
+@@ -287,15 +281,20 @@
+                     "int",
+                     "long"
+                   ]
+-                },
+-                "reason": "Connection pool was closed"
++                }
+               }
+             },
+             {
+               "level": "debug",
+               "component": "connection",
+               "data": {
+-                "message": "Connection pool closed",
++                "message": "Connection closed",
++                "driverConnectionId": {
++                  "$$type": [
++                    "int",
++                    "long"
++                  ]
++                },
+                 "serverHost": {
+                   "$$type": "string"
+                 },
+@@ -304,7 +303,8 @@
+                     "int",
+                     "long"
+                   ]
+-                }
++                },
++                "reason": "Connection pool was closed"
+               }
+             }
+           ]
