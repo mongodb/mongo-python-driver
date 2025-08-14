@@ -24,6 +24,11 @@ jobs:
           persist-credentials: false
       - name: Install just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          cache: 'pip'
+          python-version: 3.9
       - name: Install uv
         uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
         with:
@@ -245,7 +250,7 @@ jobs:
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
           with:
-            version: "6.0"
+            version: "8.0"
             topology: replica_set
         # Async and our test_dns do not support dnspython 1.X, so we don't run async or dns tests here
         - name: Run tests
@@ -272,7 +277,7 @@ jobs:
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
           with:
-            version: "6.0"
+            version: "8.0"
             topology: replica_set
         # The lifetime kwarg we use in srv resolution was added to the async resolver API in dnspython 2.1.0
         - name: Run tests
