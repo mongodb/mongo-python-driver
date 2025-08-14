@@ -1,6 +1,6 @@
 #!/bin/bash
 # Set up a development environment on an evergreen host.
-set -eux
+set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"

@@ -82,6 +82,7 @@ jobs:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
+        shell: bash
         run: just install
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
