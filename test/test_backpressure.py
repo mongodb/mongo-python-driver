@@ -150,6 +150,28 @@ class TestBackpressure(IntegrationTest):
 
         self.assertIn("Retryable", str(error.exception))
 
+    @client_context.require_failCommand_appName
+    def test_limit_retry_command(self):
+        client = self.rs_or_single_client()
+        client._retry_policy.token_bucket.tokens = 1
+        db = client.pymongo_test
+        db.t.insert_one({"x": 1})
+
+        # Ensure command is retried once overload error.
+        fail_many = mock_overload_error.copy()
+        fail_many["mode"] = {"times": 1}
+        with self.fail_point(fail_many):
+            db.command("find", "t")
+
+        # Ensure command stops retrying when there are no tokens left.
+        fail_too_many = mock_overload_error.copy()
+        fail_too_many["mode"] = {"times": 2}
+        with self.fail_point(fail_too_many):
+            with self.assertRaises(PyMongoError) as error:
+                db.command("find", "t")
+
+        self.assertIn("Retryable", str(error.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

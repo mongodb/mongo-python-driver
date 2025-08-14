@@ -256,6 +256,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             unicode_decode_error_handler="replace", document_class=dict
         )
         self._timeout = database.client.options.timeout
+        self._retry_policy = database.client._retry_policy
 
         if create or kwargs:
             if _IS_SYNC:

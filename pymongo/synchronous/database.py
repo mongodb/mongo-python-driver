@@ -136,6 +136,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self._name = name
         self._client: MongoClient[_DocumentType] = client
         self._timeout = client.options.timeout
+        self._retry_policy = client._retry_policy
 
     @property
     def client(self) -> MongoClient[_DocumentType]:
