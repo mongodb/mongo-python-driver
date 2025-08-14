@@ -272,22 +272,6 @@
               "level": "debug",
               "component": "connection",
               "data": {
-                "message": "Connection pool closed",
-                "serverHost": {
-                  "$$type": "string"
-                },
-                "serverPort": {
-                  "$$type": [
-                    "int",
-                    "long"
-                  ]
-                }
-              }
-            },
-            {
-              "level": "debug",
-              "component": "connection",
-              "data": {
                 "message": "Connection closed",
                 "driverConnectionId": {
                   "$$type": [
@@ -305,6 +289,22 @@
                   ]
                 },
                 "reason": "Connection pool was closed"
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection pool closed",
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
               }
             }
           ]
@@ -450,22 +450,6 @@
               "level": "debug",
               "component": "connection",
               "data": {
-                "message": "Connection pool cleared",
-                "serverHost": {
-                  "$$type": "string"
-                },
-                "serverPort": {
-                  "$$type": [
-                    "int",
-                    "long"
-                  ]
-                }
-              }
-            },
-            {
-              "level": "debug",
-              "component": "connection",
-              "data": {
                 "message": "Connection closed",
                 "driverConnectionId": {
                   "$$type": [
@@ -485,6 +469,22 @@
                 "reason": "An error occurred while using the connection",
                 "error": {
                   "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection pool cleared",
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
                 }
               }
             },

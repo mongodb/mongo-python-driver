@@ -1,36 +1,12 @@
 diff --git a/test/connection_logging/connection-logging.json b/test/connection_logging/connection-logging.json
-index 72103b3ca..d40cfbb7e 100644
+index 72103b3ca..43ae51d73 100644
 --- a/test/connection_logging/connection-logging.json
 +++ b/test/connection_logging/connection-logging.json
-@@ -272,13 +272,7 @@
+@@ -450,7 +450,13 @@
                "level": "debug",
                "component": "connection",
                "data": {
--                "message": "Connection closed",
--                "driverConnectionId": {
--                  "$$type": [
--                    "int",
--                    "long"
--                  ]
--                },
-+                "message": "Connection pool closed",
-                 "serverHost": {
-                   "$$type": "string"
-                 },
-@@ -287,15 +281,20 @@
-                     "int",
-                     "long"
-                   ]
--                },
--                "reason": "Connection pool was closed"
-+                }
-               }
-             },
-             {
-               "level": "debug",
-               "component": "connection",
-               "data": {
--                "message": "Connection pool closed",
+-                "message": "Connection pool cleared",
 +                "message": "Connection closed",
 +                "driverConnectionId": {
 +                  "$$type": [
@@ -41,13 +17,40 @@ index 72103b3ca..d40cfbb7e 100644
                  "serverHost": {
                    "$$type": "string"
                  },
-@@ -304,7 +303,8 @@
+@@ -459,6 +465,10 @@
                      "int",
                      "long"
                    ]
--                }
 +                },
-+                "reason": "Connection pool was closed"
++                "reason": "An error occurred while using the connection",
++                "error": {
++                  "$$exists": true
+                 }
                }
-             }
-           ]
+             },
+@@ -466,13 +476,7 @@
+               "level": "debug",
+               "component": "connection",
+               "data": {
+-                "message": "Connection closed",
+-                "driverConnectionId": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                },
++                "message": "Connection pool cleared",
+                 "serverHost": {
+                   "$$type": "string"
+                 },
+@@ -481,10 +485,6 @@
+                     "int",
+                     "long"
+                   ]
+-                },
+-                "reason": "An error occurred while using the connection",
+-                "error": {
+-                  "$$exists": true
+                 }
+               }
+             },
