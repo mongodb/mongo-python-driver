@@ -476,22 +476,6 @@
               "level": "debug",
               "component": "connection",
               "data": {
-                "message": "Connection pool cleared",
-                "serverHost": {
-                  "$$type": "string"
-                },
-                "serverPort": {
-                  "$$type": [
-                    "int",
-                    "long"
-                  ]
-                }
-              }
-            },
-            {
-              "level": "debug",
-              "component": "connection",
-              "data": {
                 "message": "Connection checkout failed",
                 "serverHost": {
                   "$$type": "string"
@@ -509,6 +493,22 @@
                 "durationMS": {
                   "$$type": [
                     "double",
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection pool cleared",
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
                     "int",
                     "long"
                   ]

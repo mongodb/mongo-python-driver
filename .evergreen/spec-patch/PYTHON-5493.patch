@@ -1,12 +1,12 @@
 diff --git a/test/connection_logging/connection-logging.json b/test/connection_logging/connection-logging.json
-index 72103b3ca..43ae51d73 100644
+index d40cfbb7e..5799e834d 100644
 --- a/test/connection_logging/connection-logging.json
 +++ b/test/connection_logging/connection-logging.json
-@@ -450,7 +450,13 @@
+@@ -272,7 +272,13 @@
                "level": "debug",
                "component": "connection",
                "data": {
--                "message": "Connection pool cleared",
+-                "message": "Connection pool closed",
 +                "message": "Connection closed",
 +                "driverConnectionId": {
 +                  "$$type": [
@@ -17,18 +17,16 @@ index 72103b3ca..43ae51d73 100644
                  "serverHost": {
                    "$$type": "string"
                  },
-@@ -459,6 +465,10 @@
+@@ -281,20 +287,15 @@
                      "int",
                      "long"
                    ]
+-                }
 +                },
-+                "reason": "An error occurred while using the connection",
-+                "error": {
-+                  "$$exists": true
-                 }
++                "reason": "Connection pool was closed"
                }
              },
-@@ -466,13 +476,7 @@
+             {
                "level": "debug",
                "component": "connection",
                "data": {
@@ -39,18 +37,63 @@ index 72103b3ca..43ae51d73 100644
 -                    "long"
 -                  ]
 -                },
-+                "message": "Connection pool cleared",
++                "message": "Connection pool closed",
                  "serverHost": {
                    "$$type": "string"
                  },
-@@ -481,10 +485,6 @@
+@@ -303,8 +304,7 @@
                      "int",
                      "long"
                    ]
 -                },
--                "reason": "An error occurred while using the connection",
--                "error": {
--                  "$$exists": true
+-                "reason": "Connection pool was closed"
++                }
+               }
+             }
+           ]
+@@ -446,22 +446,6 @@
                  }
                }
              },
+-            {
+-              "level": "debug",
+-              "component": "connection",
+-              "data": {
+-                "message": "Connection pool cleared",
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+-            },
+             {
+               "level": "debug",
+               "component": "connection",
+@@ -514,6 +498,22 @@
+                   ]
+                 }
+               }
++            },
++            {
++              "level": "debug",
++              "component": "connection",
++              "data": {
++                "message": "Connection pool cleared",
++                "serverHost": {
++                  "$$type": "string"
++                },
++                "serverPort": {
++                  "$$type": [
++                    "int",
++                    "long"
++                  ]
++                }
++              }
+             }
+           ]
+         }
