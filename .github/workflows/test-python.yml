@@ -78,7 +78,7 @@ jobs:
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
-          version: 6.0
+          version: "6.0"
           topology: replica_set
       - name: Run tests
         run: just test
@@ -100,7 +100,7 @@ jobs:
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
-          version: 8.0
+          version: "8.0"
       - name: Install dependencies
         run: just install
       - name: Run tests
@@ -242,7 +242,7 @@ jobs:
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
           with:
-            version: 6.0
+            version: "6.0"
             topology: replica_set
         # Async and our test_dns do not support dnspython 1.X, so we don't run async or dns tests here
         - name: Run tests
@@ -269,7 +269,7 @@ jobs:
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
           with:
-            version: 6.0
+            version: "6.0"
             topology: replica_set
         # The lifetime kwarg we use in srv resolution was added to the async resolver API in dnspython 2.1.0
         - name: Run tests
