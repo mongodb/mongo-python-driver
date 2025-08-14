@@ -50,13 +50,17 @@ jobs:
           cppcheck pymongo
 
   build:
-    # supercharge/mongodb-github-action requires containers so we don't test other platforms
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.9", "pypy-3.10", "3.13", "3.13t"]
+        python-version: ["3.9", "pypy-3.10", "3.13t"]
+        include:
+          - os: windows-latest
+            python-version: "3.13"
+          - os: macos-latest
+            python-version: "3.10"
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -71,10 +75,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: just install
-      - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
+      - id: setup-mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@master
         with:
-          mongodb-version: 6.0
+          version: 6.0
+          topology: replica_set
       - name: Run tests
         run: just test
 
@@ -92,10 +97,10 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.9"
-      - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
+      - id: setup-mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@master
         with:
-          mongodb-version: '8.0.0-rc4'
+          version: 8.0
       - name: Install dependencies
         run: just install
       - name: Run tests
@@ -210,8 +215,8 @@ jobs:
             cache-dependency-path: 'sdist/test/pyproject.toml'
             # Test sdist on lowest supported Python
             python-version: '3.9'
-        - name: Start MongoDB
-          uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
+        - id: setup-mongodb
+          uses: mongodb-labs/drivers-evergreen-tools@master
         - name: Run connect test from sdist
           shell: bash
           run: |
@@ -234,10 +239,11 @@ jobs:
           uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
           with:
             python-version: '3.9'
-        - name: Start MongoDB
-          uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
+        - id: setup-mongodb
+          uses: mongodb-labs/drivers-evergreen-tools@master
           with:
-            mongodb-version: 6.0
+            version: 6.0
+            topology: replica_set
         # Async and our test_dns do not support dnspython 1.X, so we don't run async or dns tests here
         - name: Run tests
           shell: bash
@@ -260,10 +266,11 @@ jobs:
           uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
           with:
             python-version: '3.9'
-        - name: Start MongoDB
-          uses: supercharge/mongodb-github-action@90004df786821b6308fb02299e5835d0dae05d0d # 1.12.0
+        - id: setup-mongodb
+          uses: mongodb-labs/drivers-evergreen-tools@master
           with:
-            mongodb-version: 6.0
+            version: 6.0
+            topology: replica_set
         # The lifetime kwarg we use in srv resolution was added to the async resolver API in dnspython 2.1.0
         - name: Run tests
           shell: bash
