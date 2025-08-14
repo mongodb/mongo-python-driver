@@ -56,11 +56,14 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.9", "pypy-3.10", "3.13t"]
+        mongodb-version: ["8.0"]
         include:
           - os: windows-latest
             python-version: "3.13"
+            mongodb-version: "8.0"
           - os: macos-latest
             python-version: "3.10"
+
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +81,7 @@ jobs:
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
-          version: "6.0"
+          version: "${{ matrix.mongodb-version }}"
           topology: replica_set
       - name: Run tests
         run: just test
