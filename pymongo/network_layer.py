@@ -22,8 +22,7 @@ import socket
 import struct
 import sys
 import time
-from asyncio import BaseTransport, BufferedProtocol, Future, Transport
-from dataclasses import dataclass
+from asyncio import BaseTransport, BufferedProtocol, Future, Protocol, Transport
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -251,7 +250,7 @@ class NetworkingInterface(NetworkingInterfaceBase):
         return self.conn.recv_into(buffer)
 
 
-class PyMongoBaseProtocol(BufferedProtocol):
+class PyMongoBaseProtocol(Protocol):
     def __init__(self, timeout: Optional[float] = None):
         self.transport: Transport = None  # type: ignore[assignment]
         self._timeout = timeout
@@ -293,7 +292,7 @@ class PyMongoBaseProtocol(BufferedProtocol):
         raise NotImplementedError
 
 
-class PyMongoProtocol(PyMongoBaseProtocol):
+class PyMongoProtocol(PyMongoBaseProtocol, BufferedProtocol):
     def __init__(self, timeout: Optional[float] = None):
         super().__init__(timeout)
         # Each message is reader in 2-3 parts: header, compression header, and message body
@@ -477,17 +476,10 @@ class PyMongoProtocol(PyMongoBaseProtocol):
             self._done_messages.append(msg)
 
 
-@dataclass
-class KMSBuffer:
-    buffer: memoryview
-    start_index: int
-    end_index: int
-
-
 class PyMongoKMSProtocol(PyMongoBaseProtocol):
     def __init__(self, timeout: Optional[float] = None):
         super().__init__(timeout)
-        self._buffers: collections.deque[KMSBuffer] = collections.deque()
+        self._buffers: collections.deque[memoryview[bytes]] = collections.deque()
         self._bytes_ready = 0
         self._pending_reads: collections.deque[int] = collections.deque()
         self._pending_listeners: collections.deque[Future[Any]] = collections.deque()
@@ -497,6 +489,24 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         The transport argument is the transport representing the write side of the connection.
         """
         self.transport = transport  # type: ignore[assignment]
+
+    def data_received(self, data: bytes) -> None:
+        if self._connection_lost:
+            return
+
+        self._bytes_ready += len(data)
+        self._buffers.append(memoryview[data])
+
+        if not len(self._pending_reads):
+            return
+
+        bytes_needed = self._pending_reads.popleft()
+        data = self._read(bytes_needed)
+        waiter = self._pending_listeners.popleft()
+        waiter.set_result(data)
+
+    def eof_received(self):
+        self.close(OSError("connection closed"))
 
     async def read(self, bytes_needed: int) -> bytes:
         """Read up to the requested bytes from this connection."""
@@ -521,51 +531,13 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         self._pending_listeners.append(read_waiter)
         return await read_waiter
 
-    def get_buffer(self, sizehint: int) -> memoryview:
-        """Called to allocate a new receive buffer.
-        The asyncio loop calls this method expecting to receive a non-empty buffer to fill with data.
-        If any data does not fit into the returned buffer, this method will be called again until
-        either no data remains or an empty buffer is returned.
-        """
-        # Reuse the active buffer if it has space.
-        # Allocate a bit more than the max response size for an AWS KMS response.
-        sizehint = max(sizehint, 16384)
-        if len(self._buffers):
-            buffer = self._buffers[-1]
-            if len(buffer.buffer) - buffer.end_index > sizehint:
-                return buffer.buffer[buffer.end_index :]
-        buffer = KMSBuffer(memoryview(bytearray(sizehint)), 0, 0)
-        self._buffers.append(buffer)
-        return buffer.buffer
-
     def _resolve_pending(self, exc: Optional[Exception] = None) -> None:
         while self._pending_listeners:
             fut = self._pending_listeners.popleft()
             fut.set_result(b"")
 
-    def buffer_updated(self, nbytes: int) -> None:
-        """Called when the buffer was updated with the received data"""
-        # Wrote 0 bytes into a non-empty buffer, signal connection closed
-        if nbytes == 0:
-            self.close(OSError("connection closed"))
-            return
-        if self._connection_lost:
-            return
-        self._bytes_ready += nbytes
-
-        # Update the length of the current buffer.
-        self._buffers[-1].end_index += nbytes
-
-        if not len(self._pending_reads):
-            return
-
-        bytes_needed = self._pending_reads.popleft()
-        data = self._read(bytes_needed)
-        waiter = self._pending_listeners.popleft()
-        waiter.set_result(data)
-
     def _read(self, bytes_needed: int) -> memoryview:
-        """Read bytes from the buffer."""
+        """Read bytes."""
         # Send the bytes to the listener.
         if self._bytes_ready < bytes_needed:
             bytes_needed = self._bytes_ready
@@ -576,26 +548,17 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         out_index = 0
         while n_remaining > 0:
             buffer = self._buffers.popleft()
-            buffer_remaining = buffer.end_index - buffer.start_index
+            buf_size = len(buffer)
             # if we didn't exhaust the buffer, read the partial data and return the buffer.
-            if buffer_remaining > n_remaining:
-                output_buf[out_index : n_remaining + out_index] = buffer.buffer[
-                    buffer.start_index : buffer.start_index + n_remaining
-                ]
-                buffer.start_index += n_remaining
+            if buf_size > n_remaining:
+                output_buf[out_index : n_remaining + out_index] = buffer[:n_remaining]
                 n_remaining = 0
-                self._buffers.appendleft(buffer)
+                self._buffers.appendleft(buffer[n_remaining:])
             # otherwise exhaust the buffer.
             else:
-                output_buf[out_index : out_index + buffer_remaining] = buffer.buffer[
-                    buffer.start_index : buffer.end_index
-                ]
-                out_index += buffer_remaining
-                n_remaining -= buffer_remaining
-                # if this is the only buffer, add it back to the queue.
-                if not len(self._buffers):
-                    buffer.start_index = buffer.end_index
-                    self._buffers.appendleft(buffer)
+                output_buf[out_index : out_index + buf_size] = buffer[:]
+                out_index += buf_size
+                n_remaining -= buf_size
         return memoryview(output_buf)
 
 
