@@ -37,7 +37,6 @@ from pymongo.logger import (
     _SDAMStatusMessage,
 )
 from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
-from pymongo.pool_shared import _get_timeout_details, format_timeout_details
 from pymongo.response import PinnedResponse, Response
 from pymongo.synchronous.helpers import _handle_reauth
 
@@ -225,10 +224,6 @@ class Server:
             if use_cmd:
                 first = docs[0]
                 operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
-                # Append timeout details to MaxTimeMSExpired responses.
-                if first.get("code") == 50:
-                    timeout_details = _get_timeout_details(conn.opts)
-                    first["errmsg"] += format_timeout_details(timeout_details)
                 _check_command_response(first, conn.max_wire_version)
         except Exception as exc:
             duration = datetime.now() - start
