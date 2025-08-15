@@ -495,7 +495,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
             return
 
         self._bytes_ready += len(data)
-        self._buffers.append(memoryview[data])
+        self._buffers.append(memoryview(data))
 
         if not len(self._pending_reads):
             return
@@ -504,9 +504,6 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         data = self._read(bytes_needed)
         waiter = self._pending_listeners.popleft()
         waiter.set_result(data)
-
-    def eof_received(self):
-        self.close(OSError("connection closed"))
 
     async def read(self, bytes_needed: int) -> bytes:
         """Read up to the requested bytes from this connection."""
@@ -552,8 +549,9 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
             # if we didn't exhaust the buffer, read the partial data and return the buffer.
             if buf_size > n_remaining:
                 output_buf[out_index : n_remaining + out_index] = buffer[:n_remaining]
+                buffer = buffer[n_remaining:]
                 n_remaining = 0
-                self._buffers.appendleft(buffer[n_remaining:])
+                self._buffers.appendleft(buffer)
             # otherwise exhaust the buffer.
             else:
                 output_buf[out_index : out_index + buf_size] = buffer[:]
