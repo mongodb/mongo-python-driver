@@ -21,7 +21,7 @@ import random
 import socket
 import sys
 import time
-from test.asynchronous.utils import async_get_pool, async_joinall
+from test.asynchronous.utils import async_get_pool, async_joinall, flaky
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -429,6 +429,7 @@ class TestPooling(_TestPoolingBase):
         # maxConnecting = unbounded: 30+ connections in ~0.140+ seconds
         print(len(pool.conns))
 
+    @flaky(reason="PYTHON-5492")
     @async_client_context.require_failCommand_appName
     async def test_csot_timeout_message(self):
         client = await self.async_rs_or_single_client(appName="connectionTimeoutApp")
