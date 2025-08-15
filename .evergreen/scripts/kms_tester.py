@@ -30,7 +30,7 @@ def _setup_azure_vm(base_env: dict[str, str]) -> None:
     env["AZUREKMS_CMD"] = "tar xf mongo-python-driver.tgz"
     run_command(f"{azure_dir}/run-command.sh", env=env)
 
-    env["AZUREKMS_CMD"] = "bash .evergreen/just.sh setup-tests kms azure-remote"
+    env["AZUREKMS_CMD"] = "NO_EXT=1 bash .evergreen/just.sh setup-tests kms azure-remote"
     run_command(f"{azure_dir}/run-command.sh", env=env)
     LOGGER.info("Setting up Azure VM... done.")
 
@@ -47,7 +47,7 @@ def _setup_gcp_vm(base_env: dict[str, str]) -> None:
     env["GCPKMS_CMD"] = "tar xf mongo-python-driver.tgz"
     run_command(f"{gcp_dir}/run-command.sh", env=env)
 
-    env["GCPKMS_CMD"] = "bash ./.evergreen/just.sh setup-tests kms gcp-remote"
+    env["GCPKMS_CMD"] = "NO_EXT=1 bash ./.evergreen/just.sh setup-tests kms gcp-remote"
     run_command(f"{gcp_dir}/run-command.sh", env=env)
     LOGGER.info("Setting up GCP VM...")
 
@@ -80,10 +80,8 @@ def setup_kms(sub_test_name: str) -> None:
 
     write_env("SUCCESS", success)
 
-    # For remote tests, there is no further work required, other than to disable C extensions
-    # because the VM doesn't necessarily have the ability to build them.
+    # For remote tests, there is no further work required.
     if sub_test_type == "remote":
-        write_env("NO_EXT")
         return
 
     if sub_test_target == "azure":
