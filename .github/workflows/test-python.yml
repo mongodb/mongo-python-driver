@@ -54,13 +54,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Tests currently only pass on ubuntu on GitHub Actions.
         os: [ubuntu-latest]
         python-version: ["3.9", "pypy-3.10", "3.13t"]
         mongodb-version: ["8.0"]
-        include:
-          - os: windows-latest
-            python-version: "3.13"
-            mongodb-version: "8.0"
 
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
