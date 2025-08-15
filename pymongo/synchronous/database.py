@@ -652,6 +652,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         which case  :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`
         is used.
 
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement.
+
         .. note:: This method does not support the 'explain' option. Please
            use :meth:`~pymongo.database.Database.command` instead.
 
@@ -1147,6 +1152,15 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         **kwargs: Any,
     ) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the collections of this database.
+
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+            with database.list_collections() as cursor:
+                for collection in cursor:
+                    print(collection)
 
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.

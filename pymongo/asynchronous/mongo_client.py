@@ -202,6 +202,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         exception (recognizing that the operation failed) and then continue to
         execute.
 
+        Best practice is to call :meth:`AsyncMongoClient.close` when the client is no longer needed,
+        or use the client in a with statement::
+
+            async with AsyncMongoClient(url) as client:
+                # Use client here.
+
         The `host` parameter can be a full `mongodb URI
         <https://dochub.mongodb.org/core/connections>`_, in addition to
         a simple hostname. It can also be a list of hostnames but no more
@@ -2344,6 +2350,15 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         **kwargs: Any,
     ) -> AsyncCommandCursor[dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
+
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+            async with await client.list_databases() as cursor:
+                async for database in cursor:
+                    print(database)
 
         :param session: a
             :class:`~pymongo.asynchronous.client_session.AsyncClientSession`.
