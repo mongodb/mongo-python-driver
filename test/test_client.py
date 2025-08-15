@@ -365,6 +365,7 @@ class ClientUnitTest(UnitTest):
         else:
             metadata["driver"]["name"] = "PyMongo|FooDriver"
         metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
+        metadata["platform"] = "{}|".format(_METADATA["platform"])
         client = self.simple_client(
             "foo",
             27017,

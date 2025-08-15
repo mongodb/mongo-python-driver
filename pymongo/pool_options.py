@@ -386,20 +386,26 @@ class PoolOptions:
 
     def _update_metadata(self, driver: DriverInfo) -> None:
         """Updates the client's metadata"""
+        if driver.name and driver.name.lower() in self.__metadata["driver"]["name"].lower().split(
+            "|"
+        ):
+            return
 
         metadata = copy.deepcopy(self.__metadata)
-        if driver.name:
-            metadata["driver"]["name"] = "{}|{}".format(
-                metadata["driver"]["name"],
-                driver.name,
-            )
-        if driver.version:
-            metadata["driver"]["version"] = "{}|{}".format(
-                metadata["driver"]["version"],
-                driver.version,
-            )
-        if driver.platform:
-            metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+
+        name = driver.name or ""
+        version = driver.version or ""
+        platform = driver.platform or ""
+
+        metadata["driver"]["name"] = "{}|{}".format(
+            metadata["driver"]["name"],
+            name,
+        )
+        metadata["driver"]["version"] = "{}|{}".format(
+            metadata["driver"]["version"],
+            version,
+        )
+        metadata["platform"] = "{}|{}".format(metadata["platform"], platform)
 
         self.__metadata = metadata
 
