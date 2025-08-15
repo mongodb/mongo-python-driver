@@ -80,8 +80,10 @@ def setup_kms(sub_test_name: str) -> None:
 
     write_env("SUCCESS", success)
 
-    # For remote tests, there is no further work required.
+    # For remote tests, there is no further work required, other than to disable C extensions
+    # because the VM doesn't necessarily have the ability to build them.
     if sub_test_type == "remote":
+        write_env("NO_EXT")
         return
 
     if sub_test_target == "azure":
