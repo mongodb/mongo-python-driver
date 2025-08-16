@@ -429,7 +429,6 @@ class TestPooling(_TestPoolingBase):
         # maxConnecting = unbounded: 30+ connections in ~0.140+ seconds
         print(len(pool.conns))
 
-    @flaky(reason="PYTHON-5492")
     @async_client_context.require_failCommand_appName
     async def test_csot_timeout_message(self):
         client = await self.async_rs_or_single_client(appName="connectionTimeoutApp")
