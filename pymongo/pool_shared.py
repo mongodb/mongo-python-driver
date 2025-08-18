@@ -36,6 +36,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     NetworkTimeout,
     _CertificateError,
 )
+from pymongo.helpers_shared import _get_timeout_details, format_timeout_details
 from pymongo.network_layer import AsyncNetworkingInterface, NetworkingInterface, PyMongoProtocol
 from pymongo.pool_options import PoolOptions
 from pymongo.ssl_support import PYSSLError, SSLError, _has_sni
@@ -147,32 +148,6 @@ def _raise_connection_failure(
         raise NetworkTimeout(msg) from error
     else:
         raise AutoReconnect(msg) from error
-
-
-def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
-    details = {}
-    timeout = _csot.get_timeout()
-    socket_timeout = options.socket_timeout
-    connect_timeout = options.connect_timeout
-    if timeout:
-        details["timeoutMS"] = timeout * 1000
-    if socket_timeout and not timeout:
-        details["socketTimeoutMS"] = socket_timeout * 1000
-    if connect_timeout:
-        details["connectTimeoutMS"] = connect_timeout * 1000
-    return details
-
-
-def format_timeout_details(details: Optional[dict[str, float]]) -> str:
-    result = ""
-    if details:
-        result += " (configured timeouts:"
-        for timeout in ["socketTimeoutMS", "timeoutMS", "connectTimeoutMS"]:
-            if timeout in details:
-                result += f" {timeout}: {details[timeout]}ms,"
-        result = result[:-1]
-        result += ")"
-    return result
 
 
 class _CancellationContext:

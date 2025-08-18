@@ -55,6 +55,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     WaitQueueTimeoutError,
 )
 from pymongo.hello import Hello, HelloCompat
+from pymongo.helpers_shared import _get_timeout_details, format_timeout_details
 from pymongo.lock import (
     _cond_wait,
     _create_condition,
@@ -76,9 +77,7 @@ from pymongo.pool_shared import (
     SSLErrors,
     _CancellationContext,
     _configured_socket_interface,
-    _get_timeout_details,
     _raise_connection_failure,
-    format_timeout_details,
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
