@@ -393,19 +393,18 @@ class PoolOptions:
 
         metadata = copy.deepcopy(self.__metadata)
 
-        name = driver.name or ""
-        version = driver.version or ""
-        platform = driver.platform or ""
-
-        metadata["driver"]["name"] = "{}|{}".format(
-            metadata["driver"]["name"],
-            name,
-        )
-        metadata["driver"]["version"] = "{}|{}".format(
-            metadata["driver"]["version"],
-            version,
-        )
-        metadata["platform"] = "{}|{}".format(metadata["platform"], platform)
+        if driver.name:
+            metadata["driver"]["name"] = "{}|{}".format(
+                metadata["driver"]["name"],
+                driver.name,
+            )
+        if driver.version:
+            metadata["driver"]["version"] = "{}|{}".format(
+                metadata["driver"]["version"],
+                driver.version,
+            )
+        if driver.platform:
+            metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
 
         self.__metadata = metadata
 
