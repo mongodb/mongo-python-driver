@@ -48,6 +48,7 @@ if ! command -v just &>/dev/null; then
     _TARGET="--target x86_64-pc-windows-msvc"
   fi
   _BIN_DIR=$PYMONGO_BIN_DIR
+  mkdir -p ${_BIN_DIR}
   echo "Installing just..."
   mkdir -p "$_BIN_DIR" 2>/dev/null || true
   curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- $_TARGET --to "$_BIN_DIR" || {
@@ -61,6 +62,7 @@ fi
 # Ensure uv is installed.
 if ! command -v uv &>/dev/null; then
   _BIN_DIR=$PYMONGO_BIN_DIR
+  mkdir -p ${_BIN_DIR}
   echo "Installing uv..."
   # On most systems we can install directly.
   curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh || {
