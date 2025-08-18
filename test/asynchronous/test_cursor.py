@@ -43,6 +43,7 @@ from test.utils_shared import (
 
 from bson import decode_all
 from bson.code import Code
+from bson.raw_bson import RawBSONDocument
 from pymongo import ASCENDING, DESCENDING
 from pymongo.asynchronous.cursor import AsyncCursor, CursorType
 from pymongo.asynchronous.helpers import anext
@@ -198,6 +199,21 @@ class TestCursor(AsyncIntegrationTest):
                     await coll.find_one(max_time_ms=1)
             finally:
                 await client.admin.command("configureFailPoint", "maxTimeAlwaysTimeOut", mode="off")
+
+    async def test_maxtime_ms_message(self):
+        db = self.db
+        await db.t.insert_one({"x": 1})
+        with self.assertRaises(Exception) as error:
+            await db.t.find_one({"$where": delay(2)}, max_time_ms=1)
+
+        self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
+
+        client = await self.async_rs_client(document_class=RawBSONDocument)
+        await client.db.t.insert_one({"x": 1})
+        with self.assertRaises(Exception) as error:
+            await client.db.t.find_one({"$where": delay(2)}, max_time_ms=1)
+
+        self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
 
     async def test_max_await_time_ms(self):
         db = self.db

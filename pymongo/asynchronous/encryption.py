@@ -76,12 +76,12 @@ from pymongo.errors import (
     NetworkTimeout,
     ServerSelectionTimeoutError,
 )
+from pymongo.helpers_shared import _get_timeout_details
 from pymongo.network_layer import PyMongoKMSProtocol, async_receive_kms, async_sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
     _configured_protocol_interface,
-    _get_timeout_details,
     _raise_connection_failure,
 )
 from pymongo.read_concern import ReadConcern

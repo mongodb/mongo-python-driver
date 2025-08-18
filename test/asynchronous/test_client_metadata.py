@@ -107,15 +107,20 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         new_name, new_version, new_platform, new_metadata = await self.send_ping_and_get_metadata(
             client, True
         )
-        self.assertEqual(new_name, f"{name}|{add_name}" if add_name is not None else name)
-        self.assertEqual(
-            new_version,
-            f"{version}|{add_version}" if add_version is not None else version,
-        )
-        self.assertEqual(
-            new_platform,
-            f"{platform}|{add_platform}" if add_platform is not None else platform,
-        )
+        if add_name is not None and add_name.lower() in name.lower().split("|"):
+            self.assertEqual(name, new_name)
+            self.assertEqual(version, new_version)
+            self.assertEqual(platform, new_platform)
+        else:
+            self.assertEqual(new_name, f"{name}|{add_name}" if add_name is not None else name)
+            self.assertEqual(
+                new_version,
+                f"{version}|{add_version}" if add_version is not None else version,
+            )
+            self.assertEqual(
+                new_platform,
+                f"{platform}|{add_platform}" if add_platform is not None else platform,
+            )
 
         metadata.pop("driver")
         metadata.pop("platform")
@@ -209,6 +214,18 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         await client.admin.command("ping")
         self.assertIsNone(self.handshake_req)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 0)
+
+    async def test_duplicate_driver_name_no_op(self):
+        client = await self.async_rs_or_single_client(
+            "mongodb://" + self.server.address_string,
+            maxIdleTimeMS=1,
+        )
+        client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
+        await self.check_metadata_added(client, "framework", None, None)
+        # wait for connection to become idle
+        await asyncio.sleep(0.005)
+        # add same metadata again
+        await self.check_metadata_added(client, "Framework", None, None)
 
 
 if __name__ == "__main__":
