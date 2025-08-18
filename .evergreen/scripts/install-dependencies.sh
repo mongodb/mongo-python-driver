@@ -51,6 +51,8 @@ if ! command -v just &>/dev/null; then
   echo "Installing just..."
   mkdir -p "$_BIN_DIR" 2>/dev/null || true
   curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- $_TARGET --to "$_BIN_DIR" || {
+    # Remove just file if it exists (can be created if there was an install error).
+    rm -f ${_BIN_DIR}/just
     _pip_install rust-just just
   }
   echo "Installing just... done."
