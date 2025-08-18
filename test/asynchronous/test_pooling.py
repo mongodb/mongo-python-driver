@@ -24,6 +24,7 @@ import time
 from test.asynchronous.utils import async_get_pool, async_joinall, flaky
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import AsyncMongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
