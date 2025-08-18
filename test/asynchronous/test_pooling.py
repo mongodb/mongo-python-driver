@@ -21,7 +21,7 @@ import random
 import socket
 import sys
 import time
-from test.asynchronous.utils import async_get_pool, async_joinall
+from test.asynchronous.utils import async_get_pool, async_joinall, flaky
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
