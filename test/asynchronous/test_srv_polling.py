@@ -225,6 +225,7 @@ class TestSrvPolling(AsyncPyMongoTestCase):
 
             await self.run_scenario(response_callback, False)
 
+    @flaky(reason="PYTHON-5500")
     async def test_dns_failures_logging(self):
         from dns import exception
 
