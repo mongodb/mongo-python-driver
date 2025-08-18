@@ -24,7 +24,6 @@ import time
 from test.utils import flaky, get_pool, joinall
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
-from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import MongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
