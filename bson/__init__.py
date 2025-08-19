@@ -920,8 +920,8 @@ for _typ in _ENCODERS:
     if hasattr(_typ, "_type_marker"):
         _MARKERS[_typ._type_marker] = _ENCODERS[_typ]
 
-
-_BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
+# Exclude decimal.Decimal since auto-conversion is explicitly opt-in.
+_BUILT_IN_TYPES = tuple(t for t in _ENCODERS if t != decimal.Decimal)
 
 
 def _name_value_to_bson(
