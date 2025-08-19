@@ -37,7 +37,7 @@ from test.asynchronous import (
 )
 from test.asynchronous.utils import async_get_pool, flaky
 from test.asynchronous.utils_spec_runner import SpecRunnerTask
-from test.helpers import ALL_KMS_PROVIDERS, DEFAULT_KMS_TLS
+from test.helpers_shared import ALL_KMS_PROVIDERS, DEFAULT_KMS_TLS
 from test.unified_format_shared import (
     KMS_TLS_OPTS,
     PLACEHOLDER_MAP,

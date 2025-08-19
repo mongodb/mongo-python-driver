@@ -59,7 +59,7 @@ from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 
 sys.path[0:0] = [""]
 
-from test.helpers import (
+from test.helpers_shared import (
     COMPRESSORS,
     IS_SRV,
     MONGODB_API_VERSION,

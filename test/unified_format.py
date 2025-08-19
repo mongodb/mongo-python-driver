@@ -35,7 +35,7 @@ from test import (
     client_knobs,
     unittest,
 )
-from test.helpers import ALL_KMS_PROVIDERS, DEFAULT_KMS_TLS
+from test.helpers_shared import ALL_KMS_PROVIDERS, DEFAULT_KMS_TLS
 from test.unified_format_shared import (
     KMS_TLS_OPTS,
     PLACEHOLDER_MAP,

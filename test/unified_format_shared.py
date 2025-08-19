@@ -25,7 +25,7 @@ import os
 import time
 import types
 from collections import abc
-from test.helpers import (
+from test.helpers_shared import (
     AWS_CREDS,
     AWS_CREDS_2,
     AWS_TEMP_CREDS,

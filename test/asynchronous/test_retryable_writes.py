@@ -30,7 +30,7 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
-from test.asynchronous.helpers import client_knobs
+from test.helpers_shared import client_knobs
 from test.utils_shared import (
     CMAPListener,
     DeprecationFilter,

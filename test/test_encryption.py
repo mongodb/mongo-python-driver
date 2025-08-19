@@ -54,7 +54,7 @@ sys.path[0:0] = [""]
 from test import (
     unittest,
 )
-from test.helpers import (
+from test.helpers_shared import (
     ALL_KMS_PROVIDERS,
     AWS_CREDS,
     AWS_TEMP_CREDS,
