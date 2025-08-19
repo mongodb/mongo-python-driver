@@ -28,7 +28,7 @@ jobs:
           enable-cache: true
           python-version: "3.9"
       - name: Install just
-        run: uv tool install just
+        run: uv tool install rust-just
       - name: Install Python dependencies
         run: |
           just install
@@ -89,7 +89,7 @@ jobs:
           enable-cache: true
           python-version: "3.9"
       - name: Install just
-        run: uv tool install just
+        run: uv tool install rust-just
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
@@ -114,7 +114,7 @@ jobs:
           enable-cache: true
           python-version: "3.9"
       - name: Install just
-        run: uv tool install just
+        run: uv tool install rust-just
       - name: Install dependencies
         run: just install
       - name: Build docs
@@ -133,7 +133,7 @@ jobs:
           enable-cache: true
           python-version: "3.9"
       - name: Install just
-        run: uv tool install just
+        run: uv tool install rust-just
       - name: Install dependencies
         run: just install
       - name: Build docs
@@ -155,7 +155,7 @@ jobs:
           enable-cache: true
           python-version: "${{matrix.python}}"
       - name: Install just
-        run: uv tool install just
+        run: uv tool install rust-just
       - name: Install dependencies
         run: |
           just install
