@@ -483,6 +483,12 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             else:
                 wc = WriteConcern(w=1)
 
+            # Remove any encryption collections associated with the collection.
+            collections = await db.list_collection_names()
+            for collection in collections:
+                if collection in [f"enxcol_.{coll_name}.esc", f"enxcol_.{coll_name}.ecoc"]:
+                    await db.drop_collection(collection)
+
             if documents:
                 if opts:
                     await db.create_collection(coll_name, **opts)
@@ -490,12 +496,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             else:
                 # Ensure collection exists
                 await db.create_collection(coll_name, write_concern=wc, **opts)
-
-            # Remove any encryption collections associated with the collection.
-            collections = await db.list_collection_names()
-            for collection in collections:
-                if collection in [f"nxcol_{coll_name}.esc", "enxcol_{coll_name}.ecoc"]:
-                    await db.drop_collection(collection)
 
     @classmethod
     def setUpClass(cls) -> None:
