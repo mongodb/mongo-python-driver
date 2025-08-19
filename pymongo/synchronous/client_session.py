@@ -136,6 +136,7 @@ Classes
 from __future__ import annotations
 
 import collections
+import random
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
@@ -469,6 +470,8 @@ _UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(  # 
 # This limit is non-configurable and was chosen to be twice the 60 second
 # default value of MongoDB's `transactionLifetimeLimitSeconds` parameter.
 _WITH_TRANSACTION_RETRY_TIME_LIMIT = 120
+_BACKOFF_MAX = 1
+_BACKOFF_INITIAL = 0.050  # 50ms initial backoff
 
 
 def _within_time_limit(start_time: float) -> bool:
@@ -702,7 +705,13 @@ class ClientSession:
             https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback
         """
         start_time = time.monotonic()
+        retry = 0
         while True:
+            if retry:  # Implement exponential backoff on retry.
+                jitter = random.random()  # noqa: S311
+                backoff = jitter * min(_BACKOFF_INITIAL * (2**retry), _BACKOFF_MAX)
+                time.sleep(backoff)
+            retry += 1
             self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
             try:
                 ret = callback(self)

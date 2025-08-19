@@ -209,6 +209,7 @@ converted_tests = [
     "test_auth_oidc.py",
     "test_auth_spec.py",
     "test_bulk.py",
+    "test_backpressure.py",
     "test_change_stream.py",
     "test_client.py",
     "test_client_bulk_write.py",

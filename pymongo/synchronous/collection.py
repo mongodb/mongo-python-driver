@@ -89,6 +89,7 @@ from pymongo.synchronous.cursor import (
     Cursor,
     RawBatchCursor,
 )
+from pymongo.synchronous.helpers import _retry_overload
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
@@ -255,6 +256,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             unicode_decode_error_handler="replace", document_class=dict
         )
         self._timeout = database.client.options.timeout
+        self._retry_policy = database.client._retry_policy
 
         if create or kwargs:
             if _IS_SYNC:
@@ -2224,6 +2226,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return self._create_indexes(indexes, session, **kwargs)
 
     @_csot.apply
+    @_retry_overload
     def _create_indexes(
         self, indexes: Sequence[IndexModel], session: Optional[ClientSession], **kwargs: Any
     ) -> list[str]:
@@ -2419,7 +2422,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
         self._drop_index("*", session=session, **kwargs)
 
-    @_csot.apply
     def drop_index(
         self,
         index_or_name: _IndexKeyHint,
@@ -2469,6 +2471,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self._drop_index(index_or_name, session, comment, **kwargs)
 
     @_csot.apply
+    @_retry_overload
     def _drop_index(
         self,
         index_or_name: _IndexKeyHint,
@@ -3065,6 +3068,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             )
 
     @_csot.apply
+    @_retry_overload
     def rename(
         self,
         new_name: str,
