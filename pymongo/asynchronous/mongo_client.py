@@ -2737,6 +2737,7 @@ class _ClientConnectionRetryable(Generic[T]):
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
+        self._overload = False
         self._multiple_retries = _csot.get_timeout() is not None
         self._client = mongo_client
 
@@ -2808,8 +2809,6 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 # Specialized catch on write operation
                 if not self._is_read:
-                    if not self._retryable:
-                        raise
                     if isinstance(exc, ClientBulkWriteException) and exc.error:
                         retryable_write_error_exc = isinstance(
                             exc.error, PyMongoError
@@ -2820,6 +2819,8 @@ class _ClientConnectionRetryable(Generic[T]):
                     else:
                         retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
                         overload = exc.has_error_label("Retryable")
+                    if not self._retryable and not overload:
+                        raise
                     if retryable_write_error_exc or overload:
                         assert self._session
                         await self._session._unpin()
@@ -2843,6 +2844,7 @@ class _ClientConnectionRetryable(Generic[T]):
                 if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
                     self._deprioritized_servers.append(self._server)
 
+                self._overload = overload
                 if overload:
                     if self._attempt_number > _MAX_RETRIES:
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
@@ -2944,7 +2946,7 @@ class _ClientConnectionRetryable(Generic[T]):
             conn,
             read_pref,
         ):
-            if self._retrying and not self._retryable:
+            if self._retrying and not self._retryable and not self._overload:
                 self._check_last_error()
             if self._retrying:
                 _debug_log(

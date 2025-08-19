@@ -98,6 +98,37 @@ class TestCSOT(AsyncIntegrationTest):
 
         self.assertIn("Retryable", str(error.exception))
 
+    @async_client_context.require_failCommand_appName
+    async def test_retry_overload_error_getMore(self):
+        coll = self.db.t
+        await coll.insert_many([{"x": 1} for _ in range(10)])
+
+        # Ensure command is retried on overload error.
+        fail_once = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": _MAX_RETRIES},
+            "data": {
+                "failCommands": ["getMore"],
+                "errorCode": 462,  # IngressRequestRateLimitExceeded
+                "errorLabels": ["Retryable"],
+            },
+        }
+        cursor = coll.find(batch_size=2)
+        await cursor.next()
+        async with self.fail_point(fail_once):
+            await cursor.to_list()
+
+        # Ensure command stops retrying after _MAX_RETRIES.
+        fail_many_times = fail_once.copy()
+        fail_many_times["mode"] = {"times": _MAX_RETRIES + 1}
+        cursor = coll.find(batch_size=2)
+        await cursor.next()
+        async with self.fail_point(fail_many_times):
+            with self.assertRaises(PyMongoError) as error:
+                await cursor.to_list()
+
+        self.assertIn("Retryable", str(error.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
