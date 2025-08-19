@@ -481,6 +481,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 wc = WriteConcern(w="majority")
             else:
                 wc = WriteConcern(w=1)
+
             if documents:
                 if opts:
                     db.create_collection(coll_name, **opts)
@@ -488,6 +489,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 # Ensure collection exists
                 db.create_collection(coll_name, write_concern=wc, **opts)
+
+            # Remove any encryption collections associated with the collection.
+            collections = db.list_collection_names()
+            for collection in collections:
+                if collection in [f"nxcol_{coll_name}.esc", "enxcol_{coll_name}.ecoc"]:
+                    db.drop_collection(collection)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -507,6 +514,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def setUp(self):
         # super call creates internal client cls.client
         super().setUp()
+
         # process file-level runOnRequirements
         run_on_spec = self.TEST_SPEC.get("runOnRequirements", [])
         if not self.should_run_on(run_on_spec):
