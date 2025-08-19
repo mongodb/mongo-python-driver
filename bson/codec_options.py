@@ -369,6 +369,9 @@ else:
             be automatically converted to :class:`~bson.decimal128.Decimal128` when encoding to BSON.
             Defaults to ``False``.
 
+            .. versionadded:: 4.15
+               `convert_decimal` attribute.
+
             .. versionchanged:: 4.0
                The default for `uuid_representation` was changed from
                :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
