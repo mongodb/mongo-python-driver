@@ -706,9 +706,9 @@ class AsyncClientSession:
         start_time = time.monotonic()
         retry = 0
         while True:
-            if retry > 1:  # Implement exponential backoff after the first retry.
+            if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
-                backoff = jitter * min(_BACKOFF_INITIAL * (2 ** (retry - 1)), _BACKOFF_MAX)
+                backoff = jitter * min(_BACKOFF_INITIAL * (2**retry), _BACKOFF_MAX)
                 await asyncio.sleep(backoff)
             retry += 1
             await self.start_transaction(
