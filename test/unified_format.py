@@ -262,7 +262,7 @@ class EntityMapUtil:
             observe_events = spec.get("observeEvents", [])
 
             if "autoEncryptOpts" in spec:
-                auto_encrypt_opts = spec["autoEncryptOpts"]
+                auto_encrypt_opts = spec["autoEncryptOpts"].copy()
                 auto_encrypt_kwargs: dict = dict(kms_tls_options=DEFAULT_KMS_TLS)
                 kms_providers = ALL_KMS_PROVIDERS.copy()
                 key_vault_namespace = auto_encrypt_opts.pop("keyVaultNamespace")
