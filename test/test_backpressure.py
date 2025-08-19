@@ -1,0 +1,103 @@
+# Copyright 2025-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Test the CSOT unified spec tests."""
+from __future__ import annotations
+
+import sys
+
+sys.path[0:0] = [""]
+
+from test import IntegrationTest, client_context, unittest
+
+from pymongo.errors import PyMongoError
+from pymongo.synchronous.helpers import _MAX_RETRIES
+
+_IS_SYNC = True
+
+# Mock an system overload error.
+mock_overload_error = {
+    "configureFailPoint": "failCommand",
+    "mode": {"times": 1},
+    "data": {
+        "failCommands": ["find", "insert"],
+        "errorCode": 462,  # IngressRequestRateLimitExceeded
+        "errorLabels": ["Retryable"],
+    },
+}
+
+
+class TestCSOT(IntegrationTest):
+    RUN_ON_LOAD_BALANCER = True
+
+    @client_context.require_failCommand_appName
+    def test_retry_overload_error_command(self):
+        self.db.t.insert_one({"x": 1})
+
+        # Ensure command is retried on overload error.
+        fail_once = mock_overload_error.copy()
+        fail_once["mode"] = {"times": _MAX_RETRIES}
+        with self.fail_point(fail_once):
+            self.db.command("find", "t")
+
+        # Ensure command stops retrying after _MAX_RETRIES.
+        fail_many_times = mock_overload_error.copy()
+        fail_many_times["mode"] = {"times": _MAX_RETRIES + 1}
+        with self.fail_point(fail_many_times):
+            with self.assertRaises(PyMongoError) as error:
+                self.db.command("find", "t")
+
+        self.assertIn("Retryable", str(error.exception))
+
+    @client_context.require_failCommand_appName
+    def test_retry_overload_error_find(self):
+        self.db.t.insert_one({"x": 1})
+
+        # Ensure command is retried on overload error.
+        fail_once = mock_overload_error.copy()
+        fail_once["mode"] = {"times": _MAX_RETRIES}
+        with self.fail_point(fail_once):
+            self.db.t.find_one()
+
+        # Ensure command stops retrying after _MAX_RETRIES.
+        fail_many_times = mock_overload_error.copy()
+        fail_many_times["mode"] = {"times": _MAX_RETRIES + 1}
+        with self.fail_point(fail_many_times):
+            with self.assertRaises(PyMongoError) as error:
+                self.db.t.find_one()
+
+        self.assertIn("Retryable", str(error.exception))
+
+    @client_context.require_failCommand_appName
+    def test_retry_overload_error_insert_one(self):
+        self.db.t.insert_one({"x": 1})
+
+        # Ensure command is retried on overload error.
+        fail_once = mock_overload_error.copy()
+        fail_once["mode"] = {"times": _MAX_RETRIES}
+        with self.fail_point(fail_once):
+            self.db.t.find_one()
+
+        # Ensure command stops retrying after _MAX_RETRIES.
+        fail_many_times = mock_overload_error.copy()
+        fail_many_times["mode"] = {"times": _MAX_RETRIES + 1}
+        with self.fail_point(fail_many_times):
+            with self.assertRaises(PyMongoError) as error:
+                self.db.t.find_one()
+
+        self.assertIn("Retryable", str(error.exception))
+
+
+if __name__ == "__main__":
+    unittest.main()

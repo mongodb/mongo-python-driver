@@ -110,6 +110,7 @@ from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.helpers import _MAX_RETRIES, _backoff, _retry_overload
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
@@ -2388,6 +2389,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return [doc["name"] for doc in res]
 
     @_csot.apply
+    @_retry_overload
     def drop_database(
         self,
         name_or_database: Union[str, database.Database[_DocumentTypeArg]],
@@ -2773,14 +2775,19 @@ class _ClientConnectionRetryable(Generic[T]):
                 # most likely be a waste of time.
                 raise
             except PyMongoError as exc:
+                overload = False
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
-                        if self._is_not_eligible_for_retry() or (
-                            isinstance(exc, OperationFailure)
-                            and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
+                        overload = exc.has_error_label("Retryable")
+                        if not overload and (
+                            self._is_not_eligible_for_retry()
+                            or (
+                                isinstance(exc, OperationFailure)
+                                and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
+                            )
                         ):
                             raise
                         self._retrying = True
@@ -2797,12 +2804,18 @@ class _ClientConnectionRetryable(Generic[T]):
                         retryable_write_error_exc = isinstance(
                             exc.error, PyMongoError
                         ) and exc.error.has_error_label("RetryableWriteError")
+                        overload = isinstance(
+                            exc.error, PyMongoError
+                        ) and exc.error.has_error_label("Retryable")
                     else:
                         retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
-                    if retryable_write_error_exc:
+                        overload = exc.has_error_label("Retryable")
+                    if retryable_write_error_exc or overload:
                         assert self._session
                         self._session._unpin()
-                    if not retryable_write_error_exc or self._is_not_eligible_for_retry():
+                    if not overload and (
+                        not retryable_write_error_exc or not self._is_not_eligible_for_retry()
+                    ):
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
@@ -2819,6 +2832,14 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
                     self._deprioritized_servers.append(self._server)
+
+                if overload:
+                    if self._attempt_number > _MAX_RETRIES:
+                        if exc.has_error_label("NoWritesPerformed") and self._last_error:
+                            raise self._last_error from exc
+                        else:
+                            raise
+                    _backoff(self._attempt_number)
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""

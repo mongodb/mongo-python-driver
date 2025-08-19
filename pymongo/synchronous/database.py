@@ -43,6 +43,7 @@ from pymongo.synchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.synchronous.change_stream import DatabaseChangeStream
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.helpers import _retry_overload
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
@@ -477,6 +478,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         return change_stream
 
     @_csot.apply
+    @_retry_overload
     def create_collection(
         self,
         name: str,
@@ -816,6 +818,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @_csot.apply
+    @_retry_overload
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -945,6 +948,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             )
 
     @_csot.apply
+    @_retry_overload
     def cursor_command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1257,6 +1261,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             )
 
     @_csot.apply
+    @_retry_overload
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],

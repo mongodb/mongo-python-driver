@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import asyncio
 import builtins
+import random
 import socket
 import sys
+import time
 from typing import (
     Any,
     Callable,
@@ -28,6 +30,7 @@ from typing import (
 
 from pymongo.errors import (
     OperationFailure,
+    PyMongoError,
 )
 from pymongo.helpers_shared import _REAUTHENTICATION_REQUIRED_CODE
 
@@ -66,6 +69,41 @@ def _handle_reauth(func: F) -> F:
                     raise
                 return await func(*args, **kwargs)
             raise
+
+    return cast(F, inner)
+
+
+_MAX_RETRIES = 3
+_BACKOFF_INITIAL = 0.05
+_BACKOFF_MAX = 10
+_TIME = time
+
+
+async def _backoff(
+    attempt: int, initial_delay: float = _BACKOFF_INITIAL, max_delay: float = _BACKOFF_MAX
+) -> None:
+    jitter = random.random()  # noqa: S311
+    backoff = jitter * min(initial_delay * (2**attempt), max_delay)
+    await asyncio.sleep(backoff)
+
+
+def _retry_overload(func: F) -> F:
+    async def inner(*args: Any, **kwargs: Any) -> Any:
+        no_retry = kwargs.pop("no_retry", False)
+        attempt = 0
+        while True:
+            try:
+                return await func(*args, **kwargs)
+            except PyMongoError as exc:
+                if no_retry or not exc.has_error_label("Retryable"):
+                    raise
+                attempt += 1
+                if attempt > _MAX_RETRIES:
+                    raise
+
+                # Implement exponential backoff on retry.
+                await _backoff(attempt)
+                continue
 
     return cast(F, inner)
 
