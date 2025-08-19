@@ -31,7 +31,7 @@ mock_overload_error = {
     "configureFailPoint": "failCommand",
     "mode": {"times": 1},
     "data": {
-        "failCommands": ["find", "insert"],
+        "failCommands": ["find", "insert", "update"],
         "errorCode": 462,  # IngressRequestRateLimitExceeded
         "errorLabels": ["Retryable"],
     },
@@ -95,6 +95,27 @@ class TestBackpressure(IntegrationTest):
         with self.fail_point(fail_many_times):
             with self.assertRaises(PyMongoError) as error:
                 self.db.t.find_one()
+
+        self.assertIn("Retryable", str(error.exception))
+
+    @client_context.require_failCommand_appName
+    def test_retry_overload_error_update_many(self):
+        # Even though update_many is not a retryable write operation, it will
+        # still be retried via the "Retryable" error label.
+        self.db.t.insert_one({"x": 1})
+
+        # Ensure command is retried on overload error.
+        fail_once = mock_overload_error.copy()
+        fail_once["mode"] = {"times": _MAX_RETRIES}
+        with self.fail_point(fail_once):
+            self.db.t.update_many({}, {"$set": {"x": 2}})
+
+        # Ensure command stops retrying after _MAX_RETRIES.
+        fail_many_times = mock_overload_error.copy()
+        fail_many_times["mode"] = {"times": _MAX_RETRIES + 1}
+        with self.fail_point(fail_many_times):
+            with self.assertRaises(PyMongoError) as error:
+                self.db.t.update_many({}, {"$set": {"x": 2}})
 
         self.assertIn("Retryable", str(error.exception))
 
