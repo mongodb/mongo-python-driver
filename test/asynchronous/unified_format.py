@@ -515,7 +515,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     async def asyncSetUp(self):
         # super call creates internal client cls.client
         await super().asyncSetUp()
-
         # process file-level runOnRequirements
         run_on_spec = self.TEST_SPEC.get("runOnRequirements", [])
         if not await self.should_run_on(run_on_spec):

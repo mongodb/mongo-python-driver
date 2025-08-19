@@ -514,7 +514,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def setUp(self):
         # super call creates internal client cls.client
         super().setUp()
-
         # process file-level runOnRequirements
         run_on_spec = self.TEST_SPEC.get("runOnRequirements", [])
         if not self.should_run_on(run_on_spec):
