@@ -120,6 +120,11 @@ GCP_CREDS = {
     "privateKey": os.environ.get("FLE_GCP_PRIVATEKEY", ""),
 }
 KMIP_CREDS = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
+AWS_TEMP_CREDS = {
+    "accessKeyId": os.environ.get("CSFLE_AWS_TEMP_ACCESS_KEY_ID", ""),
+    "secretAccessKey": os.environ.get("CSFLE_AWS_TEMP_SECRET_ACCESS_KEY", ""),
+    "sessionToken": os.environ.get("CSFLE_AWS_TEMP_SESSION_TOKEN", ""),
+}
 
 ALL_KMS_PROVIDERS = dict(
     aws=AWS_CREDS,

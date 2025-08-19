@@ -57,6 +57,7 @@ from test import (
 from test.asynchronous.helpers import (
     ALL_KMS_PROVIDERS,
     AWS_CREDS,
+    AWS_TEMP_CREDS,
     AZURE_CREDS,
     CA_PEM,
     CLIENT_PEM,
@@ -618,12 +619,6 @@ class TestExplicitSimple(AsyncEncryptionIntegrationTest):
 
 
 # Spec tests
-AWS_TEMP_CREDS = {
-    "accessKeyId": os.environ.get("CSFLE_AWS_TEMP_ACCESS_KEY_ID", ""),
-    "secretAccessKey": os.environ.get("CSFLE_AWS_TEMP_SECRET_ACCESS_KEY", ""),
-    "sessionToken": os.environ.get("CSFLE_AWS_TEMP_SESSION_TOKEN", ""),
-}
-
 AWS_TEMP_NO_SESSION_CREDS = {
     "accessKeyId": os.environ.get("CSFLE_AWS_TEMP_ACCESS_KEY_ID", ""),
     "secretAccessKey": os.environ.get("CSFLE_AWS_TEMP_SECRET_ACCESS_KEY", ""),
