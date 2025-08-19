@@ -35,6 +35,7 @@ from test import (
     client_knobs,
     unittest,
 )
+from test.helpers import ALL_KMS_PROVIDERS, DEFAULT_KMS_TLS
 from test.unified_format_shared import (
     KMS_TLS_OPTS,
     PLACEHOLDER_MAP,
@@ -60,6 +61,8 @@ from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
 from typing import Any, Dict, List, Mapping, Optional
 
+import pytest
+
 import pymongo
 from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
@@ -68,7 +71,7 @@ from gridfs import GridFSBucket, GridOut, NoFile
 from gridfs.errors import CorruptGridFile
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
 from pymongo.driver_info import DriverInfo
-from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
+from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -258,6 +261,23 @@ class EntityMapUtil:
             kwargs: dict = {}
             observe_events = spec.get("observeEvents", [])
 
+            if "autoEncryptOpts" in spec:
+                auto_encrypt_opts = spec["autoEncryptOpts"]
+                auto_encrypt_kwargs: dict = dict(kms_tls_options=DEFAULT_KMS_TLS)
+                kms_providers = ALL_KMS_PROVIDERS.copy()
+                key_vault_namespace = auto_encrypt_opts.pop("keyVaultNamespace")
+                for provider_name, provider_value in auto_encrypt_opts.pop("kmsProviders").items():
+                    kms_providers[provider_name].update(provider_value)
+                extra_opts = auto_encrypt_opts.pop("extraOptions", {})
+                for key, value in extra_opts.items():
+                    auto_encrypt_kwargs[camel_to_snake(key)] = value
+                for key, value in auto_encrypt_opts.items():
+                    auto_encrypt_kwargs[camel_to_snake(key)] = value
+                auto_encryption_opts = AutoEncryptionOpts(
+                    kms_providers, key_vault_namespace, **auto_encrypt_kwargs
+                )
+                kwargs["auto_encryption_opts"] = auto_encryption_opts
+
             # The unified tests use topologyOpeningEvent, we use topologyOpenedEvent
             for i in range(len(observe_events)):
                 if "topologyOpeningEvent" == observe_events[i]:
@@ -429,7 +449,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.22")
+    SCHEMA_VERSION = Version.from_string("1.23")
     RUN_ON_LOAD_BALANCER = True
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes
@@ -1501,7 +1521,14 @@ def generate_test_classes(
             TEST_SPEC = test_spec
             EXPECTED_FAILURES = expected_failures
 
-        return SpecTestBase
+        base = SpecTestBase
+
+        # Add "encryption" marker if the "csfle" runOnRequirement is set.
+        for req in test_spec.get("runOnRequirements", []):
+            if req.get("csfle", False):
+                base = pytest.mark.encryption(base)
+
+        return base
 
     for dirpath, _, filenames in os.walk(test_path):
         dirname = os.path.split(dirpath)[-1]

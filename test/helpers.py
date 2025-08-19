@@ -116,6 +116,15 @@ GCP_CREDS = {
 }
 KMIP_CREDS = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
 
+ALL_KMS_PROVIDERS = dict(
+    aws=AWS_CREDS,
+    azure=AZURE_CREDS,
+    gcp=GCP_CREDS,
+    local=dict(key=LOCAL_MASTER_KEY),
+    kmip=KMIP_CREDS,
+)
+DEFAULT_KMS_TLS = dict(kmip=dict(tlsCAFile=CA_PEM, tlsCertificateKeyFile=CLIENT_PEM))
+
 # Ensure Evergreen metadata doesn't result in truncation
 os.environ.setdefault("MONGOB_LOG_MAX_DOCUMENT_LENGTH", "2000")
 
