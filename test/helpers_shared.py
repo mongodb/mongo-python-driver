@@ -35,7 +35,7 @@ from typing import no_type_check
 from unittest import SkipTest
 
 from bson.son import SON
-from pymongo import common, message
+from pymongo import message
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 from pymongo.synchronous.uri_parser import parse_uri
 
@@ -148,89 +148,6 @@ def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
     return authdb.command(cmd)
 
 
-class client_knobs:
-    def __init__(
-        self,
-        heartbeat_frequency=None,
-        min_heartbeat_interval=None,
-        kill_cursor_frequency=None,
-        events_queue_frequency=None,
-    ):
-        self.heartbeat_frequency = heartbeat_frequency
-        self.min_heartbeat_interval = min_heartbeat_interval
-        self.kill_cursor_frequency = kill_cursor_frequency
-        self.events_queue_frequency = events_queue_frequency
-
-        self.old_heartbeat_frequency = None
-        self.old_min_heartbeat_interval = None
-        self.old_kill_cursor_frequency = None
-        self.old_events_queue_frequency = None
-        self._enabled = False
-        self._stack = None
-
-    def enable(self):
-        self.old_heartbeat_frequency = common.HEARTBEAT_FREQUENCY
-        self.old_min_heartbeat_interval = common.MIN_HEARTBEAT_INTERVAL
-        self.old_kill_cursor_frequency = common.KILL_CURSOR_FREQUENCY
-        self.old_events_queue_frequency = common.EVENTS_QUEUE_FREQUENCY
-
-        if self.heartbeat_frequency is not None:
-            common.HEARTBEAT_FREQUENCY = self.heartbeat_frequency
-
-        if self.min_heartbeat_interval is not None:
-            common.MIN_HEARTBEAT_INTERVAL = self.min_heartbeat_interval
-
-        if self.kill_cursor_frequency is not None:
-            common.KILL_CURSOR_FREQUENCY = self.kill_cursor_frequency
-
-        if self.events_queue_frequency is not None:
-            common.EVENTS_QUEUE_FREQUENCY = self.events_queue_frequency
-        self._enabled = True
-        # Store the allocation traceback to catch non-disabled client_knobs.
-        self._stack = "".join(traceback.format_stack())
-
-    def __enter__(self):
-        self.enable()
-
-    @no_type_check
-    def disable(self):
-        common.HEARTBEAT_FREQUENCY = self.old_heartbeat_frequency
-        common.MIN_HEARTBEAT_INTERVAL = self.old_min_heartbeat_interval
-        common.KILL_CURSOR_FREQUENCY = self.old_kill_cursor_frequency
-        common.EVENTS_QUEUE_FREQUENCY = self.old_events_queue_frequency
-        self._enabled = False
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disable()
-
-    def __call__(self, func):
-        def make_wrapper(f):
-            @wraps(f)
-            async def wrap(*args, **kwargs):
-                with self:
-                    return await f(*args, **kwargs)
-
-            return wrap
-
-        return make_wrapper(func)
-
-    def __del__(self):
-        if self._enabled:
-            msg = (
-                "ERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY={}, "
-                "MIN_HEARTBEAT_INTERVAL={}, KILL_CURSOR_FREQUENCY={}, "
-                "EVENTS_QUEUE_FREQUENCY={}, stack:\n{}".format(
-                    common.HEARTBEAT_FREQUENCY,
-                    common.MIN_HEARTBEAT_INTERVAL,
-                    common.KILL_CURSOR_FREQUENCY,
-                    common.EVENTS_QUEUE_FREQUENCY,
-                    self._stack,
-                )
-            )
-            self.disable()
-            raise Exception(msg)
-
-
 def _all_users(db):
     return {u["user"] for u in db.command("usersInfo").get("users", [])}
 
@@ -285,10 +202,6 @@ def print_thread_stacks(pid: int) -> None:
         sys.stderr.write(f"Could not print C-level thread stacks because {cmd[0]} failed: {exc}")
     else:
         sys.stderr.write(res.stdout)
-
-
-# Global knobs to speed up the test suite.
-global_knobs = client_knobs(events_queue_frequency=0.05)
 
 
 def _get_executors(topology):

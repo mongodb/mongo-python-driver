@@ -30,7 +30,7 @@ from test import (
     client_context,
     unittest,
 )
-from test.helpers_shared import client_knobs
+from test.helpers import client_knobs
 from test.utils_shared import (
     CMAPListener,
     DeprecationFilter,
