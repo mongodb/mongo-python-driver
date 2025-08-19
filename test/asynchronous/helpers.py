@@ -30,6 +30,7 @@ import traceback
 import unittest
 import warnings
 from inspect import iscoroutinefunction
+from pathlib import Path
 
 from pymongo._asyncio_task import create_task
 
@@ -69,7 +70,11 @@ IS_SRV = "mongodb+srv" in host
 db_user = os.environ.get("DB_USER", "user")
 db_pwd = os.environ.get("DB_PASSWORD", "password")
 
-CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "certificates")
+HERE = Path(__file__).absolute()
+if _IS_SYNC:
+    CERT_PATH = str(HERE.parent / "certificates")
+else:
+    CERT_PATH = str(HERE.parent.parent / "certificates")
 CLIENT_PEM = os.environ.get("CLIENT_PEM", os.path.join(CERT_PATH, "client.pem"))
 CA_PEM = os.environ.get("CA_PEM", os.path.join(CERT_PATH, "ca.pem"))
 
