@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import builtins
+import functools
 import random
 import socket
 import sys
@@ -41,6 +42,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def _handle_reauth(func: F) -> F:
+    @functools.wraps(func)
     def inner(*args: Any, **kwargs: Any) -> Any:
         no_reauth = kwargs.pop("no_reauth", False)
         from pymongo.message import _BulkWriteContext
@@ -88,6 +90,7 @@ def _backoff(
 
 
 def _retry_overload(func: F) -> F:
+    @functools.wraps(func)
     def inner(*args: Any, **kwargs: Any) -> Any:
         no_retry = kwargs.pop("no_retry", False)
         attempt = 0

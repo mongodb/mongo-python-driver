@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the CSOT unified spec tests."""
+"""Test Client Backpressure spec."""
 from __future__ import annotations
 
 import sys
@@ -38,7 +38,7 @@ mock_overload_error = {
 }
 
 
-class TestCSOT(AsyncIntegrationTest):
+class TestBackpressure(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
     @async_client_context.require_failCommand_appName
