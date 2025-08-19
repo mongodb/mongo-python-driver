@@ -47,6 +47,7 @@ from pymongo.hello import HelloCompat
 if TYPE_CHECKING:
     from pymongo.cursor_shared import _Hint
     from pymongo.operations import _IndexList
+    from pymongo.pool_options import PoolOptions
     from pymongo.typings import _DocumentOut
 
 
@@ -106,6 +107,34 @@ _SENSITIVE_COMMANDS: set = {
     "copydbsaslstart",
     "copydb",
 }
+
+
+def _get_timeout_details(options: PoolOptions) -> dict[str, float]:
+    from pymongo import _csot
+
+    details = {}
+    timeout = _csot.get_timeout()
+    socket_timeout = options.socket_timeout
+    connect_timeout = options.connect_timeout
+    if timeout:
+        details["timeoutMS"] = timeout * 1000
+    if socket_timeout and not timeout:
+        details["socketTimeoutMS"] = socket_timeout * 1000
+    if connect_timeout:
+        details["connectTimeoutMS"] = connect_timeout * 1000
+    return details
+
+
+def format_timeout_details(details: Optional[dict[str, float]]) -> str:
+    result = ""
+    if details:
+        result += " (configured timeouts:"
+        for timeout in ["socketTimeoutMS", "timeoutMS", "connectTimeoutMS"]:
+            if timeout in details:
+                result += f" {timeout}: {details[timeout]}ms,"
+        result = result[:-1]
+        result += ")"
+    return result
 
 
 def _gen_index_name(keys: _IndexList) -> str:
@@ -188,6 +217,7 @@ def _check_command_response(
     max_wire_version: Optional[int],
     allowable_errors: Optional[Container[Union[int, str]]] = None,
     parse_write_concern_error: bool = False,
+    pool_opts: Optional[PoolOptions] = None,
 ) -> None:
     """Check the response to a command for errors."""
     if "ok" not in response:
@@ -243,6 +273,10 @@ def _check_command_response(
     if code in (11000, 11001, 12582):
         raise DuplicateKeyError(errmsg, code, response, max_wire_version)
     elif code == 50:
+        # Append timeout details to MaxTimeMSExpired responses.
+        if pool_opts:
+            timeout_details = _get_timeout_details(pool_opts)
+            errmsg += format_timeout_details(timeout_details)
         raise ExecutionTimeout(errmsg, code, response, max_wire_version)
     elif code == 43:
         raise CursorNotFound(errmsg, code, response, max_wire_version)
