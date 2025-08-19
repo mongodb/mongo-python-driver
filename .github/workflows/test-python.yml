@@ -23,7 +23,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Install just
-        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+        uses: extractions/setup-crate@4993624604c307fbca528d28a3c8b60fa5ecc859 # v1.4.0
+        with:
+          repo: casey/just
+          version: 1.42.4
       - name: Install uv
         uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
         with:
@@ -84,7 +87,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Install just
-        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+        uses: extractions/setup-crate@4993624604c307fbca528d28a3c8b60fa5ecc859 # v1.4.0
+        with:
+          repo: casey/just
+          version: 1.42.4
       - name: Install uv
         uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
         with:
@@ -114,7 +120,10 @@ jobs:
           enable-cache: true
           python-version: "3.9"
       - name: Install just
-        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+        uses: extractions/setup-crate@4993624604c307fbca528d28a3c8b60fa5ecc859 # v1.4.0
+        with:
+          repo: casey/just
+          version: 1.42.4
       - name: Install dependencies
         run: just install
       - name: Build docs
@@ -133,7 +142,10 @@ jobs:
           enable-cache: true
           python-version: "3.9"
       - name: Install just
-        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+        uses: extractions/setup-crate@4993624604c307fbca528d28a3c8b60fa5ecc859 # v1.4.0
+        with:
+          repo: casey/just
+          version: 1.42.4
       - name: Install dependencies
         run: just install
       - name: Build docs
@@ -155,7 +167,10 @@ jobs:
           enable-cache: true
           python-version: "${{matrix.python}}"
       - name: Install just
-        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+        uses: extractions/setup-crate@4993624604c307fbca528d28a3c8b60fa5ecc859 # v1.4.0
+        with:
+          repo: casey/just
+          version: 1.42.4
       - name: Install dependencies
         run: |
           just install
