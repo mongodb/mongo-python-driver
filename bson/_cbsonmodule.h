@@ -70,6 +70,7 @@ typedef struct codec_options_t {
     PyObject* tzinfo;
     type_registry_t type_registry;
     unsigned char datetime_conversion;
+    unsigned char convert_decimal;
     PyObject* options_obj;
     unsigned char is_raw_bson;
 } codec_options_t;

@@ -241,6 +241,7 @@ class _BaseCodecOptions(NamedTuple):
     tzinfo: Optional[datetime.tzinfo]
     type_registry: TypeRegistry
     datetime_conversion: Optional[DatetimeConversion]
+    convert_decimal: Optional[bool]
 
 
 if TYPE_CHECKING:
@@ -253,6 +254,7 @@ if TYPE_CHECKING:
         tzinfo: Optional[datetime.tzinfo]
         type_registry: TypeRegistry
         datetime_conversion: Optional[int]
+        convert_decimal: Optional[bool]
 
         def __new__(
             cls: Type[CodecOptions[_DocumentType]],
@@ -263,6 +265,7 @@ if TYPE_CHECKING:
             tzinfo: Optional[datetime.tzinfo] = ...,
             type_registry: Optional[TypeRegistry] = ...,
             datetime_conversion: Optional[int] = ...,
+            convert_decimal: Optional[bool] = ...,
         ) -> CodecOptions[_DocumentType]:
             ...
 
@@ -362,6 +365,9 @@ else:
                 return DatetimeMS objects when the underlying datetime is
                 out-of-range and 'datetime_clamp' to clamp to the minimum and
                 maximum possible datetimes. Defaults to 'datetime'.
+            :param convert_decimal: If ``True``, instances of :class:`~decimal.Decimal` will
+            be automatically converted to :class:`~bson.decimal128.Decimal128` when encoding to BSON.
+            Defaults to ``False``.
 
             .. versionchanged:: 4.0
                The default for `uuid_representation` was changed from
@@ -388,6 +394,7 @@ else:
             tzinfo: Optional[datetime.tzinfo] = None,
             type_registry: Optional[TypeRegistry] = None,
             datetime_conversion: Optional[DatetimeConversion] = DatetimeConversion.DATETIME,
+            convert_decimal: Optional[bool] = False,
         ) -> CodecOptions:
             doc_class = document_class or dict
             # issubclass can raise TypeError for generic aliases like SON[str, Any].
@@ -439,6 +446,7 @@ else:
                     tzinfo,
                     type_registry,
                     datetime_conversion,
+                    convert_decimal,
                 ),
             )
 
@@ -455,7 +463,7 @@ else:
             return (
                 "document_class={}, tz_aware={!r}, uuid_representation={}, "
                 "unicode_decode_error_handler={!r}, tzinfo={!r}, "
-                "type_registry={!r}, datetime_conversion={!s}".format(
+                "type_registry={!r}, datetime_conversion={!s}, convert_decimal={!s}".format(
                     document_class_repr,
                     self.tz_aware,
                     uuid_rep_repr,
@@ -463,6 +471,7 @@ else:
                     self.tzinfo,
                     self.type_registry,
                     self.datetime_conversion,
+                    self.convert_decimal,
                 )
             )
 
@@ -477,6 +486,7 @@ else:
                 "tzinfo": self.tzinfo,
                 "type_registry": self.type_registry,
                 "datetime_conversion": self.datetime_conversion,
+                "convert_decimal": self.convert_decimal,
             }
 
         def __repr__(self) -> str:
@@ -513,6 +523,7 @@ def _parse_codec_options(options: Any) -> CodecOptions[Any]:
         "tzinfo",
         "type_registry",
         "datetime_conversion",
+        "convert_decimal",
     }:
         if k == "uuidrepresentation":
             kwargs["uuid_representation"] = options[k]

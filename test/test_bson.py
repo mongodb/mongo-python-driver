@@ -19,6 +19,7 @@ from __future__ import annotations
 import array
 import collections
 import datetime
+import decimal
 import mmap
 import os
 import pickle
@@ -1405,6 +1406,15 @@ class TestCodecOptions(unittest.TestCase):
         # Documents returned from decode are mutable.
         decoded["new_field"] = 1
         self.assertTrue(decoded["_id"].generation_time)
+
+    def test_convert_decimal(self):
+        opts = CodecOptions(convert_decimal=True)
+        decimal128_doc = {"d": bson.Decimal128("1.0")}
+        decimal_doc = {"d": decimal.Decimal("1.0")}
+        decimal_128_encoded = bson.encode(decimal128_doc, codec_options=opts)
+        decimal_encoded = bson.encode(decimal_doc, codec_options=opts)
+
+        self.assertEqual(decimal_128_encoded, decimal_encoded)
 
 
 class TestDatetimeConversion(unittest.TestCase):

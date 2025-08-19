@@ -72,6 +72,7 @@ bytes [#bytes]_                          binary         both
 from __future__ import annotations
 
 import datetime
+import decimal
 import itertools
 import os
 import re
@@ -858,6 +859,16 @@ def _encode_decimal128(name: bytes, value: Decimal128, dummy0: Any, dummy1: Any)
     return b"\x13" + name + value.bid
 
 
+def _encode_python_decimal(
+    name: bytes, value: decimal.Decimal, dummy0: Any, opts: CodecOptions[Any]
+) -> bytes:
+    if opts.convert_decimal:
+        converted = Decimal128(value)
+        return b"\x13" + name + converted.bid
+    else:
+        raise InvalidDocument("decimal.Decimal must be converted to bson.decimal128.Decimal128.")
+
+
 def _encode_minkey(name: bytes, dummy0: Any, dummy1: Any, dummy2: Any) -> bytes:
     """Encode bson.min_key.MinKey."""
     return b"\xFF" + name
@@ -885,6 +896,7 @@ _ENCODERS = {
     str: _encode_text,
     tuple: _encode_list,
     type(None): _encode_none,
+    decimal.Decimal: _encode_python_decimal,
     uuid.UUID: _encode_uuid,
     Binary: _encode_binary,
     Int64: _encode_long,

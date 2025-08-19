@@ -159,6 +159,27 @@ extern int cbson_long_long_to_str(long long num, char* str, size_t size) {
     return 0;
 }
 
+int _check_decimal(PyObject *value) {
+    static PyObject *decimal_module = NULL;
+    static PyObject *decimal_class = NULL;
+
+    if (decimal_module == NULL) {
+        decimal_module = PyImport_ImportModule("decimal");
+        if (decimal_module == NULL) {
+            PyErr_SetString(PyExc_ImportError, "Failed to import decimal module");
+            return -1;
+        }
+        decimal_class = PyObject_GetAttrString(decimal_module, "Decimal");
+        if (decimal_class == NULL) {
+            Py_DECREF(decimal_module);
+            decimal_module = NULL;
+            PyErr_SetString(PyExc_AttributeError, "Failed to get Decimal class");
+            return -1;
+        }
+    }
+    return PyObject_IsInstance(value, decimal_class);
+}
+
 static PyObject* _test_long_long_to_str(PyObject* self, PyObject* args) {
     // Test extreme values
     Py_ssize_t maxNum = PY_SSIZE_T_MAX;
@@ -791,14 +812,15 @@ int convert_codec_options(PyObject* self, PyObject* options_obj, codec_options_t
 
     options->unicode_decode_error_handler = NULL;
 
-    if (!PyArg_ParseTuple(options_obj, "ObbzOOb",
+    if (!PyArg_ParseTuple(options_obj, "ObbzOObb",
                           &options->document_class,
                           &options->tz_aware,
                           &options->uuid_rep,
                           &options->unicode_decode_error_handler,
                           &options->tzinfo,
                           &type_registry_obj,
-                          &options->datetime_conversion)) {
+                          &options->datetime_conversion,
+                          &options->convert_decimal)) {
         return 0;
     }
 
@@ -990,6 +1012,26 @@ static int _write_regex_to_buffer(
         return 0;
     }
     *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x0B;
+    return 1;
+}
+
+static int _write_decimal_128_to_buffer(struct module_state *state, PyObject* value, buffer_t buffer, int type_byte) {
+    const char* data;
+    PyObject* pystring = PyObject_GetAttr(value, state->_bid_str);
+    if (!pystring) {
+        return 0;
+    }
+    data = PyBytes_AsString(pystring);
+    if (!data) {
+        Py_DECREF(pystring);
+        return 0;
+    }
+    if (!buffer_write_bytes(buffer, data, 16)) {
+        Py_DECREF(pystring);
+        return 0;
+    }
+    Py_DECREF(pystring);
+    *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x13;
     return 1;
 }
 
@@ -1206,23 +1248,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     case 19:
         {
             /* Decimal128 */
-            const char* data;
-            PyObject* pystring = PyObject_GetAttr(value, state->_bid_str);
-            if (!pystring) {
-                return 0;
-            }
-            data = PyBytes_AsString(pystring);
-            if (!data) {
-                Py_DECREF(pystring);
-                return 0;
-            }
-            if (!buffer_write_bytes(buffer, data, 16)) {
-                Py_DECREF(pystring);
-                return 0;
-            }
-            Py_DECREF(pystring);
-            *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x13;
-            return 1;
+            return _write_decimal_128_to_buffer(state, value, buffer, type_byte);
         }
     case 100:
         {
@@ -1436,6 +1462,16 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                           in_fallback_call);
         Py_DECREF(binary_value);
         return result;
+    } else if (options->convert_decimal && _check_decimal(value)) {
+            /* Convert decimal.Decimal to Decimal128 */
+            PyObject* args = PyTuple_New(1);
+
+            Py_INCREF(value);
+            PyTuple_SetItem(args, 0, value);
+            PyObject* converted = PyObject_CallObject(state->Decimal128, args);
+            Py_DECREF(args);
+
+            return _write_decimal_128_to_buffer(state, converted, buffer, type_byte);
     }
 
     /* Try a custom encoder if one is provided and we have not already
