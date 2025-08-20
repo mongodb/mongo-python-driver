@@ -1,5 +1,15 @@
 Changelog
 =========
+Changes in Version 4.15.0 (XXXX/XX/XX)
+--------------------------------------
+.. warning:: When converting BSON data types to and from built-in data types, the possibility of data loss is always present
+ due to mismatches in underlying implementations.
+
+PyMongo 4.15 brings a number of changes including:
+
+- Added :class:`bson.decimal128.DecimalEncoder` and :class:`bson.decimal128.DecimalDecoder`
+  to support encoding and decoding of BSON Decimal128 values to decimal.Decimal values using the TypeRegistry API.
+
 Changes in Version 4.14.1 (2025/08/19)
 --------------------------------------
 

@@ -20,7 +20,10 @@ from __future__ import annotations
 
 import decimal
 import struct
+from decimal import Decimal
 from typing import Any, Sequence, Tuple, Type, Union
+
+from bson.codec_options import TypeDecoder, TypeEncoder
 
 _PACK_64 = struct.Struct("<Q").pack
 _UNPACK_64 = struct.Struct("<Q").unpack
@@ -56,6 +59,38 @@ _CTX_OPTIONS = {
 
 _DEC128_CTX = decimal.Context(**_CTX_OPTIONS.copy())  # type: ignore
 _VALUE_OPTIONS = Union[decimal.Decimal, float, str, Tuple[int, Sequence[int], int]]
+
+
+class DecimalEncoder(TypeEncoder):
+    """Converts Python :class:`decimal.Decimal` to BSON :class:`Decimal128`.
+
+    .. warning:: When converting BSON data types to and from built-in data types,
+       the possibility of data loss is always present due to mismatches in underlying implementations.
+
+    .. versionadded:: 4.15"""
+
+    @property
+    def python_type(self):
+        return Decimal
+
+    def transform_python(self, value):
+        return Decimal128(value)
+
+
+class DecimalDecoder(TypeDecoder):
+    """Converts BSON :class:`Decimal128` to Python :class:`decimal.Decimal`.
+
+    .. warning:: When converting BSON data types to and from built-in data types,
+       the possibility of data loss is always present due to mismatches in underlying implementations.
+
+    .. versionadded:: 4.15"""
+
+    @property
+    def bson_type(self):
+        return Decimal128
+
+    def transform_bson(self, value):
+        return value.to_decimal()
 
 
 def create_decimal128_context() -> decimal.Context:
