@@ -2827,7 +2827,7 @@ class _ClientConnectionRetryable(Generic[T]):
                         assert self._session
                         await self._session._unpin()
                     if not always_retryable and (
-                        not retryable_write_label or not self._is_not_eligible_for_retry()
+                        not retryable_write_label or self._is_not_eligible_for_retry()
                     ):
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
