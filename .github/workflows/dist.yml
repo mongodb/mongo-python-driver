@@ -41,6 +41,7 @@ jobs:
         - [ubuntu-latest, "manylinux_i686", "cp3*-manylinux_i686"]
         - [windows-2022, "win_amd6", "cp3*-win_amd64"]
         - [windows-2022, "win32", "cp3*-win32"]
+        - [windows-11-arm, "win_arm64", "cp3*-win_arm64"]
         - [macos-14, "macos", "cp*-macosx_*"]
 
     steps:
