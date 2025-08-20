@@ -2801,24 +2801,23 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 # Specialized catch on write operation
                 if not self._is_read:
+                    retryable_write_label = False
                     if isinstance(exc, ClientBulkWriteException) and exc.error:
                         if isinstance(exc.error, PyMongoError):
-                            retryable_write_error_exc = exc.error.has_error_label(
-                                "RetryableWriteError"
-                            )
+                            retryable_write_label = exc.error.has_error_label("RetryableWriteError")
                             always_retryable = exc.error.has_error_label("Retryable")
                             overloaded = exc.error.has_error_label("SystemOverloaded")
                     else:
-                        retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
+                        retryable_write_label = exc.has_error_label("RetryableWriteError")
                         always_retryable = exc.has_error_label("Retryable")
                         overloaded = exc.has_error_label("SystemOverloaded")
                     if not self._retryable and not always_retryable:
                         raise
-                    if retryable_write_error_exc or always_retryable:
+                    if retryable_write_label or always_retryable:
                         assert self._session
                         self._session._unpin()
                     if not always_retryable and (
-                        not retryable_write_error_exc or not self._is_not_eligible_for_retry()
+                        not retryable_write_label or not self._is_not_eligible_for_retry()
                     ):
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
