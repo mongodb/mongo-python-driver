@@ -2788,6 +2788,7 @@ class _ClientConnectionRetryable(Generic[T]):
             except PyMongoError as exc:
                 always_retryable = False
                 overloaded = False
+                exc_to_check = exc
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
@@ -2811,16 +2812,13 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 # Specialized catch on write operation
                 if not self._is_read:
-                    retryable_write_label = False
-                    if isinstance(exc, ClientBulkWriteException) and exc.error:
-                        if isinstance(exc.error, PyMongoError):
-                            retryable_write_label = exc.error.has_error_label("RetryableWriteError")
-                            always_retryable = exc.error.has_error_label("Retryable")
-                            overloaded = exc.error.has_error_label("SystemOverloaded")
-                    else:
-                        retryable_write_label = exc.has_error_label("RetryableWriteError")
-                        always_retryable = exc.has_error_label("Retryable")
-                        overloaded = exc.has_error_label("SystemOverloaded")
+                    if isinstance(exc, ClientBulkWriteException) and isinstance(
+                        exc.error, PyMongoError
+                    ):
+                        exc_to_check = exc.error
+                    retryable_write_label = exc_to_check.has_error_label("RetryableWriteError")
+                    always_retryable = exc_to_check.has_error_label("Retryable")
+                    overloaded = exc_to_check.has_error_label("SystemOverloaded")
                     if not self._retryable and not always_retryable:
                         raise
                     if retryable_write_label or always_retryable:
@@ -2829,7 +2827,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     if not always_retryable and (
                         not retryable_write_label or self._is_not_eligible_for_retry()
                     ):
-                        if exc.has_error_label("NoWritesPerformed") and self._last_error:
+                        if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
                             raise
@@ -2838,7 +2836,7 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._bulk.retrying = True
                     else:
                         self._retrying = True
-                    if not exc.has_error_label("NoWritesPerformed"):
+                    if not exc_to_check.has_error_label("NoWritesPerformed"):
                         self._last_error = exc
                     if self._last_error is None:
                         self._last_error = exc
@@ -2849,7 +2847,7 @@ class _ClientConnectionRetryable(Generic[T]):
                 self._always_retryable = always_retryable
                 if always_retryable:
                     if self._attempt_number > _MAX_RETRIES:
-                        if exc.has_error_label("NoWritesPerformed") and self._last_error:
+                        if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
                             raise
