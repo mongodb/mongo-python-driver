@@ -105,7 +105,8 @@ def _retry_overload(func: F) -> F:
                     raise
 
                 # Implement exponential backoff on retry.
-                await _backoff(attempt)
+                if exc.has_error_label("SystemOverloaded"):
+                    await _backoff(attempt)
                 continue
 
     return cast(F, inner)
