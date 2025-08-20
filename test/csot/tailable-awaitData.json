@@ -78,7 +78,7 @@
       ]
     },
     {
-      "description": "error if maxAwaitTimeMS is greater than timeoutMS",
+      "description": "error on find if maxAwaitTimeMS is greater than timeoutMS",
       "operations": [
         {
           "name": "find",
@@ -90,13 +90,50 @@
             "maxAwaitTimeMS": 10
           },
           "expectError": {
-            "isClientError": true
+            "isClientError": true,
+            "isTimeoutError": false
           }
         }
       ]
     },
     {
-      "description": "error if maxAwaitTimeMS is equal to timeoutMS",
+      "description": "error on aggregate if maxAwaitTimeMS is greater than timeoutMS",
+      "operations": [
+        {
+          "name": "aggregate",
+          "object": "collection",
+          "arguments": {
+            "pipeline": [],
+            "timeoutMS": 5,
+            "maxAwaitTimeMS": 10
+          },
+          "expectError": {
+            "isClientError": true,
+            "isTimeoutError": false
+          }
+        }
+      ]
+    },
+    {
+      "description": "error on watch if maxAwaitTimeMS is greater than timeoutMS",
+      "operations": [
+        {
+          "name": "createChangeStream",
+          "object": "collection",
+          "arguments": {
+            "pipeline": [],
+            "timeoutMS": 5,
+            "maxAwaitTimeMS": 10
+          },
+          "expectError": {
+            "isClientError": true,
+            "isTimeoutError": false
+          }
+        }
+      ]
+    },
+    {
+      "description": "error on find if maxAwaitTimeMS is equal to timeoutMS",
       "operations": [
         {
           "name": "find",
@@ -108,7 +145,44 @@
             "maxAwaitTimeMS": 5
           },
           "expectError": {
-            "isClientError": true
+            "isClientError": true,
+            "isTimeoutError": false
+          }
+        }
+      ]
+    },
+    {
+      "description": "error on aggregate if maxAwaitTimeMS is equal to timeoutMS",
+      "operations": [
+        {
+          "name": "aggregate",
+          "object": "collection",
+          "arguments": {
+            "pipeline": [],
+            "timeoutMS": 5,
+            "maxAwaitTimeMS": 5
+          },
+          "expectError": {
+            "isClientError": true,
+            "isTimeoutError": false
+          }
+        }
+      ]
+    },
+    {
+      "description": "error on watch if maxAwaitTimeMS is equal to timeoutMS",
+      "operations": [
+        {
+          "name": "createChangeStream",
+          "object": "collection",
+          "arguments": {
+            "pipeline": [],
+            "timeoutMS": 5,
+            "maxAwaitTimeMS": 5
+          },
+          "expectError": {
+            "isClientError": true,
+            "isTimeoutError": false
           }
         }
       ]

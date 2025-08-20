@@ -1,5 +1,5 @@
 {
-  "description": "timeoutMS can be configured on a MongoClient",
+  "description": "timeoutMS can be overridden for a MongoDatabase",
   "schemaVersion": "1.9",
   "runOnRequirements": [
     {
@@ -16,6 +16,21 @@
         "id": "failPointClient",
         "useMultipleMongoses": false
       }
+    },
+    {
+      "client": {
+        "id": "client",
+        "uriOptions": {
+          "timeoutMS": 10
+        },
+        "useMultipleMongoses": false,
+        "observeEvents": [
+          "commandStartedEvent"
+        ],
+        "ignoreCommandMonitoringEvents": [
+          "killCursors"
+        ]
+      }
     }
   ],
   "initialData": [
@@ -27,7 +42,7 @@
   ],
   "tests": [
     {
-      "description": "timeoutMS can be configured on a MongoClient - listDatabases on client",
+      "description": "timeoutMS can be configured on a MongoDatabase - aggregate on database",
       "operations": [
         {
           "name": "createEntities",
@@ -35,468 +50,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
-                }
-              },
-              {
-                "collection": {
-                  "id": "collection",
-                  "database": "database",
-                  "collectionName": "coll"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "failPoint",
-          "object": "testRunner",
-          "arguments": {
-            "client": "failPointClient",
-            "failPoint": {
-              "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 2
-              },
-              "data": {
-                "failCommands": [
-                  "listDatabases"
-                ],
-                "blockConnection": true,
-                "blockTimeMS": 350
-              }
-            }
-          }
-        },
-        {
-          "name": "listDatabases",
-          "object": "client",
-          "arguments": {
-            "filter": {}
-          },
-          "expectError": {
-            "isTimeoutError": true
-          }
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "events": [
-            {
-              "commandStartedEvent": {
-                "commandName": "listDatabases",
-                "databaseName": "admin",
-                "command": {
-                  "listDatabases": 1,
-                  "maxTimeMS": {
-                    "$$type": [
-                      "int",
-                      "long"
-                    ]
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
                   }
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "description": "timeoutMS can be set to 0 on a MongoClient - listDatabases on client",
-      "operations": [
-        {
-          "name": "createEntities",
-          "object": "testRunner",
-          "arguments": {
-            "entities": [
-              {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
-                "database": {
-                  "id": "database",
-                  "client": "client",
-                  "databaseName": "test"
-                }
-              },
-              {
-                "collection": {
-                  "id": "collection",
-                  "database": "database",
-                  "collectionName": "coll"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "failPoint",
-          "object": "testRunner",
-          "arguments": {
-            "client": "failPointClient",
-            "failPoint": {
-              "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 1
-              },
-              "data": {
-                "failCommands": [
-                  "listDatabases"
-                ],
-                "blockConnection": true,
-                "blockTimeMS": 15
-              }
-            }
-          }
-        },
-        {
-          "name": "listDatabases",
-          "object": "client",
-          "arguments": {
-            "filter": {}
-          }
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "events": [
-            {
-              "commandStartedEvent": {
-                "commandName": "listDatabases",
-                "databaseName": "admin",
-                "command": {
-                  "listDatabases": 1,
-                  "maxTimeMS": {
-                    "$$exists": false
-                  }
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "description": "timeoutMS can be configured on a MongoClient - listDatabaseNames on client",
-      "operations": [
-        {
-          "name": "createEntities",
-          "object": "testRunner",
-          "arguments": {
-            "entities": [
-              {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
-                "database": {
-                  "id": "database",
-                  "client": "client",
-                  "databaseName": "test"
-                }
-              },
-              {
-                "collection": {
-                  "id": "collection",
-                  "database": "database",
-                  "collectionName": "coll"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "failPoint",
-          "object": "testRunner",
-          "arguments": {
-            "client": "failPointClient",
-            "failPoint": {
-              "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 2
-              },
-              "data": {
-                "failCommands": [
-                  "listDatabases"
-                ],
-                "blockConnection": true,
-                "blockTimeMS": 350
-              }
-            }
-          }
-        },
-        {
-          "name": "listDatabaseNames",
-          "object": "client",
-          "expectError": {
-            "isTimeoutError": true
-          }
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "events": [
-            {
-              "commandStartedEvent": {
-                "commandName": "listDatabases",
-                "databaseName": "admin",
-                "command": {
-                  "listDatabases": 1,
-                  "maxTimeMS": {
-                    "$$type": [
-                      "int",
-                      "long"
-                    ]
-                  }
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "description": "timeoutMS can be set to 0 on a MongoClient - listDatabaseNames on client",
-      "operations": [
-        {
-          "name": "createEntities",
-          "object": "testRunner",
-          "arguments": {
-            "entities": [
-              {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
-                "database": {
-                  "id": "database",
-                  "client": "client",
-                  "databaseName": "test"
-                }
-              },
-              {
-                "collection": {
-                  "id": "collection",
-                  "database": "database",
-                  "collectionName": "coll"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "failPoint",
-          "object": "testRunner",
-          "arguments": {
-            "client": "failPointClient",
-            "failPoint": {
-              "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 1
-              },
-              "data": {
-                "failCommands": [
-                  "listDatabases"
-                ],
-                "blockConnection": true,
-                "blockTimeMS": 15
-              }
-            }
-          }
-        },
-        {
-          "name": "listDatabaseNames",
-          "object": "client"
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "events": [
-            {
-              "commandStartedEvent": {
-                "commandName": "listDatabases",
-                "databaseName": "admin",
-                "command": {
-                  "listDatabases": 1,
-                  "maxTimeMS": {
-                    "$$exists": false
-                  }
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "description": "timeoutMS can be configured on a MongoClient - createChangeStream on client",
-      "operations": [
-        {
-          "name": "createEntities",
-          "object": "testRunner",
-          "arguments": {
-            "entities": [
-              {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
-                "database": {
-                  "id": "database",
-                  "client": "client",
-                  "databaseName": "test"
-                }
-              },
-              {
-                "collection": {
-                  "id": "collection",
-                  "database": "database",
-                  "collectionName": "coll"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "failPoint",
-          "object": "testRunner",
-          "arguments": {
-            "client": "failPointClient",
-            "failPoint": {
-              "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 2
-              },
-              "data": {
-                "failCommands": [
-                  "aggregate"
-                ],
-                "blockConnection": true,
-                "blockTimeMS": 350
-              }
-            }
-          }
-        },
-        {
-          "name": "createChangeStream",
-          "object": "client",
-          "arguments": {
-            "pipeline": []
-          },
-          "expectError": {
-            "isTimeoutError": true
-          }
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "events": [
-            {
-              "commandStartedEvent": {
-                "commandName": "aggregate",
-                "databaseName": "admin",
-                "command": {
-                  "aggregate": 1,
-                  "maxTimeMS": {
-                    "$$type": [
-                      "int",
-                      "long"
-                    ]
-                  }
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "description": "timeoutMS can be set to 0 on a MongoClient - createChangeStream on client",
-      "operations": [
-        {
-          "name": "createEntities",
-          "object": "testRunner",
-          "arguments": {
-            "entities": [
-              {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
-                "database": {
-                  "id": "database",
-                  "client": "client",
-                  "databaseName": "test"
                 }
               },
               {
@@ -525,91 +85,6 @@
                 ],
                 "blockConnection": true,
                 "blockTimeMS": 15
-              }
-            }
-          }
-        },
-        {
-          "name": "createChangeStream",
-          "object": "client",
-          "arguments": {
-            "pipeline": []
-          }
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "events": [
-            {
-              "commandStartedEvent": {
-                "commandName": "aggregate",
-                "databaseName": "admin",
-                "command": {
-                  "aggregate": 1,
-                  "maxTimeMS": {
-                    "$$exists": false
-                  }
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "description": "timeoutMS can be configured on a MongoClient - aggregate on database",
-      "operations": [
-        {
-          "name": "createEntities",
-          "object": "testRunner",
-          "arguments": {
-            "entities": [
-              {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
-                "database": {
-                  "id": "database",
-                  "client": "client",
-                  "databaseName": "test"
-                }
-              },
-              {
-                "collection": {
-                  "id": "collection",
-                  "database": "database",
-                  "collectionName": "coll"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "failPoint",
-          "object": "testRunner",
-          "arguments": {
-            "client": "failPointClient",
-            "failPoint": {
-              "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 2
-              },
-              "data": {
-                "failCommands": [
-                  "aggregate"
-                ],
-                "blockConnection": true,
-                "blockTimeMS": 350
               }
             }
           }
@@ -626,9 +101,6 @@
                 "$limit": 1
               }
             ]
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -656,7 +128,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - aggregate on database",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - aggregate on database",
       "operations": [
         {
           "name": "createEntities",
@@ -664,25 +136,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -751,7 +211,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - listCollections on database",
+      "description": "timeoutMS can be configured on a MongoDatabase - listCollections on database",
       "operations": [
         {
           "name": "createEntities",
@@ -759,22 +219,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -795,14 +246,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "listCollections"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -812,9 +263,6 @@
           "object": "database",
           "arguments": {
             "filter": {}
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -842,7 +290,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - listCollections on database",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - listCollections on database",
       "operations": [
         {
           "name": "createEntities",
@@ -850,25 +298,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -930,7 +366,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - listCollectionNames on database",
+      "description": "timeoutMS can be configured on a MongoDatabase - listCollectionNames on database",
       "operations": [
         {
           "name": "createEntities",
@@ -938,22 +374,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -974,14 +401,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "listCollections"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -991,9 +418,6 @@
           "object": "database",
           "arguments": {
             "filter": {}
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -1021,7 +445,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - listCollectionNames on database",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - listCollectionNames on database",
       "operations": [
         {
           "name": "createEntities",
@@ -1029,25 +453,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -1109,7 +521,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - runCommand on database",
+      "description": "timeoutMS can be configured on a MongoDatabase - runCommand on database",
       "operations": [
         {
           "name": "createEntities",
@@ -1117,22 +529,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -1153,14 +556,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "ping"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -1173,9 +576,6 @@
               "ping": 1
             },
             "commandName": "ping"
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -1203,7 +603,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - runCommand on database",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - runCommand on database",
       "operations": [
         {
           "name": "createEntities",
@@ -1211,25 +611,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -1294,7 +682,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - createChangeStream on database",
+      "description": "timeoutMS can be configured on a MongoDatabase - createChangeStream on database",
       "operations": [
         {
           "name": "createEntities",
@@ -1302,22 +690,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -1338,14 +717,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "aggregate"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -1355,9 +734,6 @@
           "object": "database",
           "arguments": {
             "pipeline": []
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -1385,7 +761,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - createChangeStream on database",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - createChangeStream on database",
       "operations": [
         {
           "name": "createEntities",
@@ -1393,25 +769,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -1473,7 +837,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - aggregate on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - aggregate on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -1481,22 +845,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -1517,14 +872,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "aggregate"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -1534,9 +889,6 @@
           "object": "collection",
           "arguments": {
             "pipeline": []
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -1564,7 +916,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - aggregate on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - aggregate on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -1572,25 +924,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -1652,7 +992,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - count on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - count on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -1660,22 +1000,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -1696,14 +1027,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "count"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -1713,9 +1044,6 @@
           "object": "collection",
           "arguments": {
             "filter": {}
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -1743,7 +1071,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - count on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - count on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -1751,25 +1079,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -1831,7 +1147,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - countDocuments on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - countDocuments on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -1839,22 +1155,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -1875,14 +1182,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "aggregate"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -1892,9 +1199,6 @@
           "object": "collection",
           "arguments": {
             "filter": {}
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -1922,7 +1226,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - countDocuments on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - countDocuments on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -1930,25 +1234,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -2010,7 +1302,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - estimatedDocumentCount on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - estimatedDocumentCount on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2018,22 +1310,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -2054,24 +1337,21 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "count"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
         },
         {
           "name": "estimatedDocumentCount",
-          "object": "collection",
-          "expectError": {
-            "isTimeoutError": true
-          }
+          "object": "collection"
         }
       ],
       "expectEvents": [
@@ -2098,7 +1378,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - estimatedDocumentCount on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - estimatedDocumentCount on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2106,25 +1386,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -2183,7 +1451,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - distinct on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - distinct on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2191,22 +1459,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -2227,14 +1486,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "distinct"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -2245,9 +1504,6 @@
           "arguments": {
             "fieldName": "x",
             "filter": {}
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -2275,7 +1531,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - distinct on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - distinct on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2283,25 +1539,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -2364,7 +1608,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - find on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - find on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2372,22 +1616,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -2408,14 +1643,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "find"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -2425,9 +1660,6 @@
           "object": "collection",
           "arguments": {
             "filter": {}
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -2455,7 +1687,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - find on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - find on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2463,25 +1695,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -2543,7 +1763,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - findOne on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - findOne on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2551,22 +1771,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -2587,14 +1798,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "find"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -2604,9 +1815,6 @@
           "object": "collection",
           "arguments": {
             "filter": {}
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -2634,7 +1842,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - findOne on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - findOne on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2642,25 +1850,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -2722,7 +1918,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - listIndexes on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - listIndexes on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2730,22 +1926,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -2766,24 +1953,21 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "listIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
         },
         {
           "name": "listIndexes",
-          "object": "collection",
-          "expectError": {
-            "isTimeoutError": true
-          }
+          "object": "collection"
         }
       ],
       "expectEvents": [
@@ -2810,7 +1994,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - listIndexes on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - listIndexes on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2818,25 +2002,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -2895,7 +2067,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - listIndexNames on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - listIndexNames on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2903,22 +2075,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -2939,24 +2102,21 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "listIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
         },
         {
           "name": "listIndexNames",
-          "object": "collection",
-          "expectError": {
-            "isTimeoutError": true
-          }
+          "object": "collection"
         }
       ],
       "expectEvents": [
@@ -2983,7 +2143,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - listIndexNames on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - listIndexNames on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -2991,25 +2151,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -3068,7 +2216,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - createChangeStream on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - createChangeStream on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -3076,22 +2224,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -3112,14 +2251,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "aggregate"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -3129,9 +2268,6 @@
           "object": "collection",
           "arguments": {
             "pipeline": []
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -3159,7 +2295,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - createChangeStream on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - createChangeStream on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -3167,25 +2303,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -3247,7 +2371,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - insertOne on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - insertOne on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -3255,22 +2379,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -3291,14 +2406,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "insert"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -3310,9 +2425,6 @@
             "document": {
               "x": 1
             }
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -3340,7 +2452,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - insertOne on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - insertOne on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -3348,25 +2460,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -3430,7 +2530,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - insertMany on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - insertMany on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -3438,22 +2538,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -3474,14 +2565,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "insert"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -3495,9 +2586,6 @@
                 "x": 1
               }
             ]
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -3525,7 +2613,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - insertMany on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - insertMany on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -3533,25 +2621,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -3617,7 +2693,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - deleteOne on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - deleteOne on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -3625,22 +2701,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -3661,14 +2728,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "delete"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -3678,9 +2745,6 @@
           "object": "collection",
           "arguments": {
             "filter": {}
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -3708,7 +2772,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - deleteOne on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - deleteOne on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -3716,25 +2780,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -3796,7 +2848,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - deleteMany on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - deleteMany on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -3804,22 +2856,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -3840,14 +2883,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "delete"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -3857,9 +2900,6 @@
           "object": "collection",
           "arguments": {
             "filter": {}
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -3887,7 +2927,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - deleteMany on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - deleteMany on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -3895,25 +2935,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -3975,7 +3003,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - replaceOne on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - replaceOne on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -3983,22 +3011,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -4019,14 +3038,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "update"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -4039,9 +3058,6 @@
             "replacement": {
               "x": 1
             }
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -4069,7 +3085,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - replaceOne on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - replaceOne on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -4077,25 +3093,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -4160,7 +3164,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - updateOne on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - updateOne on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -4168,22 +3172,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -4204,14 +3199,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "update"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -4226,9 +3221,6 @@
                 "x": 1
               }
             }
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -4256,7 +3248,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - updateOne on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - updateOne on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -4264,25 +3256,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -4349,7 +3329,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - updateMany on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - updateMany on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -4357,22 +3337,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -4393,14 +3364,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "update"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -4415,9 +3386,6 @@
                 "x": 1
               }
             }
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -4445,7 +3413,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - updateMany on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - updateMany on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -4453,25 +3421,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -4538,7 +3494,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - findOneAndDelete on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - findOneAndDelete on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -4546,22 +3502,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -4582,14 +3529,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "findAndModify"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -4599,9 +3546,6 @@
           "object": "collection",
           "arguments": {
             "filter": {}
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -4629,7 +3573,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - findOneAndDelete on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - findOneAndDelete on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -4637,25 +3581,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -4717,7 +3649,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - findOneAndReplace on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - findOneAndReplace on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -4725,22 +3657,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -4761,14 +3684,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "findAndModify"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -4781,9 +3704,6 @@
             "replacement": {
               "x": 1
             }
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -4811,7 +3731,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - findOneAndReplace on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - findOneAndReplace on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -4819,25 +3739,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -4902,7 +3810,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - findOneAndUpdate on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - findOneAndUpdate on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -4910,22 +3818,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -4946,14 +3845,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "findAndModify"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -4968,9 +3867,6 @@
                 "x": 1
               }
             }
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -4998,7 +3894,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - findOneAndUpdate on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - findOneAndUpdate on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -5006,25 +3902,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -5091,7 +3975,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - bulkWrite on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - bulkWrite on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -5099,22 +3983,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -5135,14 +4010,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "insert"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -5160,9 +4035,6 @@
                 }
               }
             ]
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -5190,7 +4062,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - bulkWrite on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - bulkWrite on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -5198,25 +4070,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -5286,7 +4146,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - createIndex on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - createIndex on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -5294,22 +4154,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -5330,14 +4181,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "createIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
@@ -5350,9 +4201,6 @@
               "x": 1
             },
             "name": "x_1"
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -5380,7 +4228,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - createIndex on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - createIndex on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -5388,25 +4236,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -5471,7 +4307,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - dropIndex on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - dropIndex on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -5479,22 +4315,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -5515,16 +4342,26 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "dropIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
+          }
+        },
+        {
+          "name": "createIndex",
+          "object": "collection",
+          "arguments": {
+            "keys": {
+              "x": 1
+            },
+            "name": "x_1"
           }
         },
         {
@@ -5532,9 +4369,6 @@
           "object": "collection",
           "arguments": {
             "name": "x_1"
-          },
-          "expectError": {
-            "isTimeoutError": true
           }
         }
       ],
@@ -5542,6 +4376,12 @@
         {
           "client": "client",
           "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "createIndexes",
+                "databaseName": "test"
+              }
+            },
             {
               "commandStartedEvent": {
                 "commandName": "dropIndexes",
@@ -5562,7 +4402,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - dropIndex on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - dropIndex on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -5570,25 +4410,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
@@ -5666,7 +4494,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be configured on a MongoClient - dropIndexes on collection",
+      "description": "timeoutMS can be configured on a MongoDatabase - dropIndexes on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -5674,22 +4502,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 250
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 1000
+                  }
                 }
               },
               {
@@ -5710,24 +4529,21 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
                   "dropIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 350
+                "blockTimeMS": 15
               }
             }
           }
         },
         {
           "name": "dropIndexes",
-          "object": "collection",
-          "expectError": {
-            "isTimeoutError": true
-          }
+          "object": "collection"
         }
       ],
       "expectEvents": [
@@ -5754,7 +4570,7 @@
       ]
     },
     {
-      "description": "timeoutMS can be set to 0 on a MongoClient - dropIndexes on collection",
+      "description": "timeoutMS can be set to 0 on a MongoDatabase - dropIndexes on collection",
       "operations": [
         {
           "name": "createEntities",
@@ -5762,25 +4578,13 @@
           "arguments": {
             "entities": [
               {
-                "client": {
-                  "id": "client",
-                  "uriOptions": {
-                    "timeoutMS": 0
-                  },
-                  "useMultipleMongoses": false,
-                  "observeEvents": [
-                    "commandStartedEvent"
-                  ],
-                  "ignoreCommandMonitoringEvents": [
-                    "killCursors"
-                  ]
-                }
-              },
-              {
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "test",
+                  "databaseOptions": {
+                    "timeoutMS": 0
+                  }
                 }
               },
               {
