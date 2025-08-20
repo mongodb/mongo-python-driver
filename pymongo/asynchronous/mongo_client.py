@@ -2915,7 +2915,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     and conn.supports_sessions
                 )
                 is_mongos = conn.is_mongos
-                if not sessions_supported:
+                if not self._always_retryable and not sessions_supported:
                     # A retry is not possible because this server does
                     # not support sessions raise the last error.
                     self._check_last_error()
