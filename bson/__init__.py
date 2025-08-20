@@ -948,7 +948,7 @@ def _name_value_to_bson(
         was_integer_overflow = True
 
     if opts.convert_decimal and type(value) == decimal.Decimal:
-        return _encode_python_decimal(name, value, check_keys, opts)  # type: ignore
+        return _encode_python_decimal(name, value, check_keys, opts)
 
     # Second, fall back to trying _type_marker. This has to be done
     # before the loop below since users could subclass one of our
