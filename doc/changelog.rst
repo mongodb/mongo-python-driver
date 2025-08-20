@@ -2,9 +2,6 @@ Changelog
 =========
 Changes in Version 4.15.0 (XXXX/XX/XX)
 --------------------------------------
-.. warning:: When converting BSON data types to and from built-in data types, the possibility of data loss is always present
- due to mismatches in underlying implementations.
-
 PyMongo 4.15 brings a number of changes including:
 
 - Added :class:`bson.decimal128.DecimalEncoder` and :class:`bson.decimal128.DecimalDecoder`

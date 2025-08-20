@@ -64,8 +64,9 @@ _VALUE_OPTIONS = Union[decimal.Decimal, float, str, Tuple[int, Sequence[int], in
 class DecimalEncoder(TypeEncoder):
     """Converts Python :class:`decimal.Decimal` to BSON :class:`Decimal128`.
 
-    .. warning:: When converting BSON data types to and from built-in data types,
-       the possibility of data loss is always present due to mismatches in underlying implementations.
+    For example::
+        opts = CodecOptions(type_registry=TypeRegistry([DecimalEncoder()]))
+        bson.encode({"d": decimal.Decimal('1.0')}, codec_options=opts)
 
     .. versionadded:: 4.15"""
 
@@ -80,8 +81,9 @@ class DecimalEncoder(TypeEncoder):
 class DecimalDecoder(TypeDecoder):
     """Converts BSON :class:`Decimal128` to Python :class:`decimal.Decimal`.
 
-    .. warning:: When converting BSON data types to and from built-in data types,
-       the possibility of data loss is always present due to mismatches in underlying implementations.
+    For example::
+        opts = CodecOptions(type_registry=TypeRegistry([DecimalDecoder()]))
+        bson.decode(b'\x18\x00\x00\x00\x13d\x00\n\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00>0\x00', codec_options=opts)
 
     .. versionadded:: 4.15"""
 
