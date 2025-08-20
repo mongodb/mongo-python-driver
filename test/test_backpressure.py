@@ -46,15 +46,15 @@ class TestBackpressure(IntegrationTest):
         self.db.t.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
-        fail_once = mock_overload_error.copy()
-        fail_once["mode"] = {"times": _MAX_RETRIES}
-        with self.fail_point(fail_once):
+        fail_many = mock_overload_error.copy()
+        fail_many["mode"] = {"times": _MAX_RETRIES}
+        with self.fail_point(fail_many):
             self.db.command("find", "t")
 
         # Ensure command stops retrying after _MAX_RETRIES.
-        fail_many_times = mock_overload_error.copy()
-        fail_many_times["mode"] = {"times": _MAX_RETRIES + 1}
-        with self.fail_point(fail_many_times):
+        fail_too_many = mock_overload_error.copy()
+        fail_too_many["mode"] = {"times": _MAX_RETRIES + 1}
+        with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.command("find", "t")
 
@@ -65,15 +65,15 @@ class TestBackpressure(IntegrationTest):
         self.db.t.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
-        fail_once = mock_overload_error.copy()
-        fail_once["mode"] = {"times": _MAX_RETRIES}
-        with self.fail_point(fail_once):
+        fail_many = mock_overload_error.copy()
+        fail_many["mode"] = {"times": _MAX_RETRIES}
+        with self.fail_point(fail_many):
             self.db.t.find_one()
 
         # Ensure command stops retrying after _MAX_RETRIES.
-        fail_many_times = mock_overload_error.copy()
-        fail_many_times["mode"] = {"times": _MAX_RETRIES + 1}
-        with self.fail_point(fail_many_times):
+        fail_too_many = mock_overload_error.copy()
+        fail_too_many["mode"] = {"times": _MAX_RETRIES + 1}
+        with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.t.find_one()
 
@@ -84,15 +84,15 @@ class TestBackpressure(IntegrationTest):
         self.db.t.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
-        fail_once = mock_overload_error.copy()
-        fail_once["mode"] = {"times": _MAX_RETRIES}
-        with self.fail_point(fail_once):
+        fail_many = mock_overload_error.copy()
+        fail_many["mode"] = {"times": _MAX_RETRIES}
+        with self.fail_point(fail_many):
             self.db.t.find_one()
 
         # Ensure command stops retrying after _MAX_RETRIES.
-        fail_many_times = mock_overload_error.copy()
-        fail_many_times["mode"] = {"times": _MAX_RETRIES + 1}
-        with self.fail_point(fail_many_times):
+        fail_too_many = mock_overload_error.copy()
+        fail_too_many["mode"] = {"times": _MAX_RETRIES + 1}
+        with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.t.find_one()
 
@@ -105,15 +105,15 @@ class TestBackpressure(IntegrationTest):
         self.db.t.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
-        fail_once = mock_overload_error.copy()
-        fail_once["mode"] = {"times": _MAX_RETRIES}
-        with self.fail_point(fail_once):
+        fail_many = mock_overload_error.copy()
+        fail_many["mode"] = {"times": _MAX_RETRIES}
+        with self.fail_point(fail_many):
             self.db.t.update_many({}, {"$set": {"x": 2}})
 
         # Ensure command stops retrying after _MAX_RETRIES.
-        fail_many_times = mock_overload_error.copy()
-        fail_many_times["mode"] = {"times": _MAX_RETRIES + 1}
-        with self.fail_point(fail_many_times):
+        fail_too_many = mock_overload_error.copy()
+        fail_too_many["mode"] = {"times": _MAX_RETRIES + 1}
+        with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.t.update_many({}, {"$set": {"x": 2}})
 
@@ -125,7 +125,7 @@ class TestBackpressure(IntegrationTest):
         coll.insert_many([{"x": 1} for _ in range(10)])
 
         # Ensure command is retried on overload error.
-        fail_once = {
+        fail_many = {
             "configureFailPoint": "failCommand",
             "mode": {"times": _MAX_RETRIES},
             "data": {
@@ -136,15 +136,15 @@ class TestBackpressure(IntegrationTest):
         }
         cursor = coll.find(batch_size=2)
         cursor.next()
-        with self.fail_point(fail_once):
+        with self.fail_point(fail_many):
             cursor.to_list()
 
         # Ensure command stops retrying after _MAX_RETRIES.
-        fail_many_times = fail_once.copy()
-        fail_many_times["mode"] = {"times": _MAX_RETRIES + 1}
+        fail_too_many = fail_many.copy()
+        fail_too_many["mode"] = {"times": _MAX_RETRIES + 1}
         cursor = coll.find(batch_size=2)
         cursor.next()
-        with self.fail_point(fail_many_times):
+        with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 cursor.to_list()
 
