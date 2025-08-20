@@ -896,7 +896,6 @@ _ENCODERS = {
     str: _encode_text,
     tuple: _encode_list,
     type(None): _encode_none,
-    decimal.Decimal: _encode_python_decimal,
     uuid.UUID: _encode_uuid,
     Binary: _encode_binary,
     Int64: _encode_long,
@@ -920,8 +919,7 @@ for _typ in _ENCODERS:
     if hasattr(_typ, "_type_marker"):
         _MARKERS[_typ._type_marker] = _ENCODERS[_typ]
 
-# Exclude decimal.Decimal since auto-conversion is explicitly opt-in.
-_BUILT_IN_TYPES = tuple(t for t in _ENCODERS if t != decimal.Decimal)
+_BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
 
 
 def _name_value_to_bson(
@@ -948,6 +946,9 @@ def _name_value_to_bson(
 
         # Give the fallback_encoder a chance
         was_integer_overflow = True
+
+    if opts.convert_decimal and type(value) == decimal.Decimal:
+        return _encode_python_decimal(name, value, check_keys, opts)  # type: ignore
 
     # Second, fall back to trying _type_marker. This has to be done
     # before the loop below since users could subclass one of our
@@ -1029,8 +1030,8 @@ def _dict_to_bson(
     return _PACK_INT(len(encoded) + 5) + encoded + b"\x00"
 
 
-if _USE_C:
-    _dict_to_bson = _cbson._dict_to_bson
+# if _USE_C:
+#     _dict_to_bson = _cbson._dict_to_bson
 
 
 _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of CodecOptions")
