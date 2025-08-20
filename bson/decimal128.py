@@ -70,10 +70,10 @@ class DecimalEncoder(TypeEncoder):
     .. versionadded:: 4.15"""
 
     @property
-    def python_type(self):
+    def python_type(self) -> Type[Decimal]:
         return Decimal
 
-    def transform_python(self, value):
+    def transform_python(self, value: Any) -> Decimal128:
         return Decimal128(value)
 
 
@@ -86,10 +86,10 @@ class DecimalDecoder(TypeDecoder):
     .. versionadded:: 4.15"""
 
     @property
-    def bson_type(self):
+    def bson_type(self) -> Type[Decimal128]:
         return Decimal128
 
-    def transform_bson(self, value):
+    def transform_bson(self, value: Any) -> decimal.Decimal:
         return value.to_decimal()
 
 
