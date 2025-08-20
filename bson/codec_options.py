@@ -366,8 +366,8 @@ else:
                 out-of-range and 'datetime_clamp' to clamp to the minimum and
                 maximum possible datetimes. Defaults to 'datetime'.
             :param convert_decimal: If ``True``, instances of :class:`~decimal.Decimal` will
-            be automatically converted to :class:`~bson.decimal128.Decimal128` when encoding to BSON.
-            Defaults to ``False``.
+                be automatically converted to :class:`~bson.decimal128.Decimal128` when encoding to BSON.
+                Defaults to ``False``.
 
             .. versionadded:: 4.15
                `convert_decimal` attribute.
