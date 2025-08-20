@@ -919,6 +919,7 @@ for _typ in _ENCODERS:
     if hasattr(_typ, "_type_marker"):
         _MARKERS[_typ._type_marker] = _ENCODERS[_typ]
 
+
 _BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
 
 
@@ -1030,8 +1031,8 @@ def _dict_to_bson(
     return _PACK_INT(len(encoded) + 5) + encoded + b"\x00"
 
 
-# if _USE_C:
-#     _dict_to_bson = _cbson._dict_to_bson
+if _USE_C:
+    _dict_to_bson = _cbson._dict_to_bson
 
 
 _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of CodecOptions")
