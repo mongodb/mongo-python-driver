@@ -68,7 +68,8 @@ class DecimalEncoder(TypeEncoder):
         opts = CodecOptions(type_registry=TypeRegistry([DecimalEncoder()]))
         bson.encode({"d": decimal.Decimal('1.0')}, codec_options=opts)
 
-    .. versionadded:: 4.15"""
+    .. versionadded:: 4.15
+    """
 
     @property
     def python_type(self) -> Type[Decimal]:
@@ -83,9 +84,10 @@ class DecimalDecoder(TypeDecoder):
 
     For example::
         opts = CodecOptions(type_registry=TypeRegistry([DecimalDecoder()]))
-        bson.decode(b'\x18\x00\x00\x00\x13d\x00\n\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00>0\x00', codec_options=opts)
+        bson.decode(data, codec_options=opts)
 
-    .. versionadded:: 4.15"""
+    .. versionadded:: 4.15
+    """
 
     @property
     def bson_type(self) -> Type[Decimal128]:
