@@ -92,13 +92,12 @@ async def _backoff(
 def _retry_overload(func: F) -> F:
     @functools.wraps(func)
     async def inner(*args: Any, **kwargs: Any) -> Any:
-        no_retry = kwargs.pop("no_retry", False)
         attempt = 0
         while True:
             try:
                 return await func(*args, **kwargs)
             except PyMongoError as exc:
-                if no_retry or not exc.has_error_label("Retryable"):
+                if not exc.has_error_label("Retryable"):
                     raise
                 attempt += 1
                 if attempt > _MAX_RETRIES:
