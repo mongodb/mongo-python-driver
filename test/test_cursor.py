@@ -43,6 +43,7 @@ from test.utils_shared import (
 
 from bson import decode_all
 from bson.code import Code
+from bson.raw_bson import RawBSONDocument
 from pymongo import ASCENDING, DESCENDING
 from pymongo.collation import Collation
 from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure, PyMongoError
@@ -196,6 +197,21 @@ class TestCursor(IntegrationTest):
                     coll.find_one(max_time_ms=1)
             finally:
                 client.admin.command("configureFailPoint", "maxTimeAlwaysTimeOut", mode="off")
+
+    def test_maxtime_ms_message(self):
+        db = self.db
+        db.t.insert_one({"x": 1})
+        with self.assertRaises(Exception) as error:
+            db.t.find_one({"$where": delay(2)}, max_time_ms=1)
+
+        self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
+
+        client = self.rs_client(document_class=RawBSONDocument)
+        client.db.t.insert_one({"x": 1})
+        with self.assertRaises(Exception) as error:
+            client.db.t.find_one({"$where": delay(2)}, max_time_ms=1)
+
+        self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
 
     def test_max_await_time_ms(self):
         db = self.db

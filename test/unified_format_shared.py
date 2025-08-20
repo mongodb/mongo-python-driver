@@ -25,9 +25,10 @@ import os
 import time
 import types
 from collections import abc
-from test.helpers import (
+from test.helpers_shared import (
     AWS_CREDS,
     AWS_CREDS_2,
+    AWS_TEMP_CREDS,
     AZURE_CREDS,
     CA_PEM,
     CLIENT_PEM,
@@ -118,8 +119,20 @@ for provider_name, provider_data in [
     ("kmip", KMIP_CREDS),
     ("kmip:name1", KMIP_CREDS),
 ]:
+    # Use the temp aws creds for autoEncryptOpts.
+    if provider_name == "aws":
+        for key, value in AWS_TEMP_CREDS.items():
+            placeholder = f"/autoEncryptOpts/kmsProviders/{provider_name}/{key}"
+            PLACEHOLDER_MAP[placeholder] = value
+
     for key, value in provider_data.items():
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
+        PLACEHOLDER_MAP[placeholder] = value
+
+        if provider_name == "aws":
+            continue
+
+        placeholder = f"/autoEncryptOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
 
 OIDC_ENV = os.environ.get("OIDC_ENV", "test")

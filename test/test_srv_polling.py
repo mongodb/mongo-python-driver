@@ -225,6 +225,20 @@ class TestSrvPolling(PyMongoTestCase):
 
             self.run_scenario(response_callback, False)
 
+    @flaky(reason="PYTHON-5500")
+    def test_dns_failures_logging(self):
+        from dns import exception
+
+        with self.assertLogs("pymongo.topology", level="DEBUG") as cm:
+
+            def response_callback(*args):
+                raise exception.Timeout("DNS Failure!")
+
+            self.run_scenario(response_callback, False)
+
+        srv_failure_logs = [r for r in cm.records if "SRV monitor check failed" in r.getMessage()]
+        self.assertEqual(len(srv_failure_logs), 1)
+
     def test_dns_record_lookup_empty(self):
         response: list = []
         self.run_scenario(response, False)

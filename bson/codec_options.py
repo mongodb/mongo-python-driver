@@ -57,7 +57,7 @@ class TypeEncoder(abc.ABC):
     Codec classes must implement the ``python_type`` attribute, and the
     ``transform_python`` method to support encoding.
 
-    See :ref:`custom-type-type-codec` documentation for an example.
+    See `encode data with type codecs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#encode-data-with-type-codecs>`_ documentation for an example.
     """
 
     @abc.abstractproperty
@@ -76,7 +76,7 @@ class TypeDecoder(abc.ABC):
     Codec classes must implement the ``bson_type`` attribute, and the
     ``transform_bson`` method to support decoding.
 
-    See :ref:`custom-type-type-codec` documentation for an example.
+    See `encode data with type codecs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#encode-data-with-type-codecs>`_ documentation for an example.
     """
 
     @abc.abstractproperty
@@ -98,7 +98,7 @@ class TypeCodec(TypeEncoder, TypeDecoder):
     ``bson_type`` attribute, and the ``transform_bson`` method to support
     decoding.
 
-    See :ref:`custom-type-type-codec` documentation for an example.
+    See `encode data with type codecs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#encode-data-with-type-codecs>`_ documentation for an example.
     """
 
 
@@ -118,7 +118,7 @@ class TypeRegistry:
       >>> type_registry = TypeRegistry([Codec1, Codec2, Codec3, ...],
       ...                              fallback_encoder)
 
-    See :ref:`custom-type-type-registry` documentation for an example.
+    See `add codec to the type registry <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#add-codec-to-the-type-registry>`_ documentation for an example.
 
     :param type_codecs: iterable of type codec instances. If
         ``type_codecs`` contains multiple codecs that transform a single
@@ -128,7 +128,7 @@ class TypeRegistry:
         type.
     :param fallback_encoder: callable that accepts a single,
         unencodable python value and transforms it into a type that
-        :mod:`bson` can encode. See :ref:`fallback-encoder-callable`
+        :mod:`bson` can encode. See `define a fallback encoder <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#define-a-fallback-encoder>`_
         documentation for an example.
     """
 
@@ -330,10 +330,10 @@ else:
               >>> doc._id
               ObjectId('5b3016359110ea14e8c58b93')
 
-            See :doc:`/examples/datetimes` for examples using the `tz_aware` and
+            See `Dates and Times <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#dates-and-times>`_ for examples using the `tz_aware` and
             `tzinfo` options.
 
-            See :doc:`/examples/uuid` for examples using the `uuid_representation`
+            See `UUID <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_ for examples using the `uuid_representation`
             option.
 
             :param document_class: BSON documents returned in queries will be decoded
@@ -347,7 +347,7 @@ else:
                 :data:`~bson.binary.UuidRepresentation.UNSPECIFIED`. New
                 applications should consider setting this to
                 :data:`~bson.binary.UuidRepresentation.STANDARD` for cross language
-                compatibility. See :ref:`handling-uuid-data-example` for details.
+                compatibility. See `UUID representations <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_ for details.
             :param unicode_decode_error_handler: The error handler to apply when
                 a Unicode-related error occurs during BSON decoding that would
                 otherwise raise :exc:`UnicodeDecodeError`. Valid options include

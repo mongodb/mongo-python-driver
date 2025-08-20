@@ -652,6 +652,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         which case  :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`
         is used.
 
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement.
+
         .. note:: This method does not support the 'explain' option. Please
            use :meth:`~pymongo.database.Database.command` instead.
 
@@ -893,7 +898,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
            when decoding the command response.
 
         .. note:: If this client has been configured to use MongoDB Stable
-           API (see :ref:`versioned-api-ref`), then :meth:`command` will
+           API (see `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_), then :meth:`command` will
            automatically add API versioning options to the given command.
            Explicitly adding API versioning options in the command and
            declaring an API version on the client is not supported.
@@ -992,7 +997,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
            when decoding the command response.
 
         .. note:: If this client has been configured to use MongoDB Stable
-           API (see :ref:`versioned-api-ref`), then :meth:`command` will
+           API (see `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_), then :meth:`command` will
            automatically add API versioning options to the given command.
            Explicitly adding API versioning options in the command and
            declaring an API version on the client is not supported.
@@ -1147,6 +1152,15 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         **kwargs: Any,
     ) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the collections of this database.
+
+        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        or use the cursor in a with statement::
+
+            with database.list_collections() as cursor:
+                for collection in cursor:
+                    print(collection)
 
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.

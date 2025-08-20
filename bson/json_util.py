@@ -281,7 +281,7 @@ class JSONOptions(_BASE_CLASS):
             return DatetimeMS objects when the underlying datetime is
             out-of-range and 'datetime_clamp' to clamp to the minimum and
             maximum possible datetimes. Defaults to 'datetime'. See
-            :ref:`handling-out-of-range-datetimes` for details.
+            `handling out of range datetimes <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes>`_ for details.
         :param args: arguments to :class:`~bson.codec_options.CodecOptions`
         :param kwargs: arguments to :class:`~bson.codec_options.CodecOptions`
 

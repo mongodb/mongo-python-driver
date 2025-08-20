@@ -224,7 +224,7 @@ class Server:
             if use_cmd:
                 first = docs[0]
                 operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
-                _check_command_response(first, conn.max_wire_version)
+                _check_command_response(first, conn.max_wire_version, pool_opts=conn.opts)  # type:ignore[has-type]
         except Exception as exc:
             duration = datetime.now() - start
             if isinstance(exc, (NotPrimaryError, OperationFailure)):

@@ -70,12 +70,12 @@ from pymongo.errors import (
     NetworkTimeout,
     ServerSelectionTimeoutError,
 )
-from pymongo.network_layer import sendall
+from pymongo.helpers_shared import _get_timeout_details
+from pymongo.network_layer import PyMongoKMSProtocol, receive_kms, sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
-    _configured_socket,
-    _get_timeout_details,
+    _configured_socket_interface,
     _raise_connection_failure,
 )
 from pymongo.read_concern import ReadConcern
@@ -85,6 +85,7 @@ from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.pool import BaseConnection
 from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser_shared import _parse_kms_tls_options, parse_host
 from pymongo.write_concern import WriteConcern
@@ -92,9 +93,7 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
-    from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
-
 
 _IS_SYNC = True
 
@@ -110,9 +109,10 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
-def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
+def _connect_kms(address: _Address, opts: PoolOptions) -> BaseConnection:
     try:
-        return _configured_socket(address, opts)
+        interface = _configured_socket_interface(address, opts, PyMongoKMSProtocol)
+        return BaseConnection(interface, opts)
     except Exception as exc:
         _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
@@ -197,18 +197,11 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         try:
             conn = _connect_kms(address, opts)
             try:
-                sendall(conn, message)
+                sendall(conn.conn.get_conn, message)
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
-                    conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                    if _IS_SYNC:
-                        data = conn.recv(kms_context.bytes_needed)
-                    else:
-                        from pymongo.network_layer import (  # type: ignore[attr-defined]
-                            receive_data_socket,
-                        )
-
-                        data = receive_data_socket(conn, kms_context.bytes_needed)
+                    conn.set_conn_timeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    data = receive_kms(conn, kms_context.bytes_needed)
                     if not data:
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
@@ -227,7 +220,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                     address, exc, msg_prefix=msg_prefix, timeout_details=_get_timeout_details(opts)
                 )
             finally:
-                conn.close()
+                conn.close_conn(None)
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
         except Exception as exc:
@@ -576,7 +569,7 @@ class ClientEncryption(Generic[_DocumentType]):
         creating data keys. It does not provide an API to query keys from the
         key vault collection, as this can be done directly on the MongoClient.
 
-        See :ref:`explicit-client-side-encryption` for an example.
+        See `explicit client-side encryption <https://www.mongodb.com/docs/manual/core/csfle/fundamentals/manual-encryption/#csfle-explicit-encryption>`_ for an example.
 
         :param kms_providers: Map of KMS provider options. The `kms_providers`
             map values differ by provider:
@@ -605,7 +598,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
             KMS providers may be specified with an optional name suffix
             separated by a colon, for example "kmip:name" or "aws:name".
-            Named KMS providers do not support :ref:`CSFLE on-demand credentials`.
+            Named KMS providers do not support `CSFLE on-demand credentials <https://www.mongodb.com/docs/manual/core/csfle/tutorials/aws/aws-automatic/?interface=driver&language=python#use-automatic-client-side-field-level-encryption-with-aws>`_.
         :param key_vault_namespace: The namespace for the key vault collection.
             The key vault collection contains all data keys used for encryption
             and decryption. Data keys are stored as documents in this MongoDB

@@ -64,6 +64,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from pymongo.asynchronous.pool import AsyncBaseConnection
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
@@ -75,12 +76,12 @@ from pymongo.errors import (
     NetworkTimeout,
     ServerSelectionTimeoutError,
 )
-from pymongo.network_layer import async_socket_sendall
+from pymongo.helpers_shared import _get_timeout_details
+from pymongo.network_layer import PyMongoKMSProtocol, async_receive_kms, async_sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
-    _async_configured_socket,
-    _get_timeout_details,
+    _configured_protocol_interface,
     _raise_connection_failure,
 )
 from pymongo.read_concern import ReadConcern
@@ -93,9 +94,7 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
-    from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
-
 
 _IS_SYNC = False
 
@@ -111,9 +110,10 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
-async def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
+async def _connect_kms(address: _Address, opts: PoolOptions) -> AsyncBaseConnection:
     try:
-        return await _async_configured_socket(address, opts)
+        interface = await _configured_protocol_interface(address, opts, PyMongoKMSProtocol)
+        return AsyncBaseConnection(interface, opts)
     except Exception as exc:
         _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
@@ -198,18 +198,11 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         try:
             conn = await _connect_kms(address, opts)
             try:
-                await async_socket_sendall(conn, message)
+                await async_sendall(conn.conn.get_conn, message)
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
-                    conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                    if _IS_SYNC:
-                        data = conn.recv(kms_context.bytes_needed)
-                    else:
-                        from pymongo.network_layer import (  # type: ignore[attr-defined]
-                            async_receive_data_socket,
-                        )
-
-                        data = await async_receive_data_socket(conn, kms_context.bytes_needed)
+                    conn.set_conn_timeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    data = await async_receive_kms(conn, kms_context.bytes_needed)
                     if not data:
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
@@ -228,7 +221,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                     address, exc, msg_prefix=msg_prefix, timeout_details=_get_timeout_details(opts)
                 )
             finally:
-                conn.close()
+                await conn.close_conn(None)
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
         except Exception as exc:
@@ -579,7 +572,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         creating data keys. It does not provide an API to query keys from the
         key vault collection, as this can be done directly on the AsyncMongoClient.
 
-        See :ref:`explicit-client-side-encryption` for an example.
+        See `explicit client-side encryption <https://www.mongodb.com/docs/manual/core/csfle/fundamentals/manual-encryption/#csfle-explicit-encryption>`_ for an example.
 
         :param kms_providers: Map of KMS provider options. The `kms_providers`
             map values differ by provider:
@@ -608,7 +601,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
 
             KMS providers may be specified with an optional name suffix
             separated by a colon, for example "kmip:name" or "aws:name".
-            Named KMS providers do not support :ref:`CSFLE on-demand credentials`.
+            Named KMS providers do not support `CSFLE on-demand credentials <https://www.mongodb.com/docs/manual/core/csfle/tutorials/aws/aws-automatic/?interface=driver&language=python#use-automatic-client-side-field-level-encryption-with-aws>`_.
         :param key_vault_namespace: The namespace for the key vault collection.
             The key vault collection contains all data keys used for encryption
             and decryption. Data keys are stored as documents in this MongoDB

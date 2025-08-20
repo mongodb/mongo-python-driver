@@ -1,3 +1,5 @@
+:orphan:
+
 .. _pymongo4-migration-guide:
 
 PyMongo 4 Migration Guide
@@ -34,7 +36,7 @@ Python 3.6+
 
 PyMongo 4.0 drops support for Python 2.7, 3.4, and 3.5. Users who wish to
 upgrade to 4.x must first upgrade to Python 3.6.2+. Users upgrading from
-Python 2 should consult the :doc:`python3`.
+Python 2 should consult `Python 3 <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/reference/upgrade/#upgrade-pymongo-versions>`_.
 
 Enable Deprecation Warnings
 ---------------------------
@@ -796,8 +798,7 @@ incoming documents after receiving them from PyMongo.
 Alternatively, if your application uses the ``SONManipulator`` API to convert
 custom types to BSON, the :class:`~bson.codec_options.TypeCodec` and
 :class:`~bson.codec_options.TypeRegistry` APIs may be a suitable alternative.
-For more information, see the
-:doc:`custom type example <examples/custom_type>`.
+For more information, see `Custom Types <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#encode-data-with-type-codecs>`_.
 
 ``SON().items()`` now returns ``dict_items`` object.
 ----------------------------------------------------
@@ -982,7 +983,7 @@ you will receive an error like this when attempting to encode a :class:`uuid.UUI
 
     ValueError: cannot encode native uuid.UUID with UuidRepresentation.UNSPECIFIED. UUIDs can be manually converted...
 
-See :ref:`handling-uuid-data-example` for details.
+See `Handling UUIDs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_ for details.
 
 Additional BSON classes implement ``__slots__``
 ...............................................
