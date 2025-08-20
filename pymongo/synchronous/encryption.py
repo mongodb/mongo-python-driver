@@ -506,11 +506,6 @@ class Algorithm(str, enum.Enum):
 
     .. versionadded:: 4.9
     """
-    PREFIXPREVIEW = "prefixPreview"
-    """**Beta** - Used to encrypt a value for a prefixPreview query.
-
-    .. versionadded:: 4.15.0
-    """
     RANGEPREVIEW = "RangePreview"
     """**DEPRECATED** - RangePreview.
 
@@ -533,12 +528,6 @@ class QueryType(str, enum.Enum):
     """Used to encrypt a value for a range query.
 
     .. versionadded:: 4.9
-    """
-
-    PREFIXPREVIEW = "prefixPreview"
-    """**Beta** - Used to encrypt a value for a prefixPreview query.
-
-    .. versionadded:: 4.15.0
     """
 
     RANGEPREVIEW = "RangePreview"
