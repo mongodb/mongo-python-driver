@@ -2727,7 +2727,7 @@ class _ClientConnectionRetryable(Generic[T]):
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
-        self._overload = False
+        self._overloaded = False
         self._multiple_retries = _csot.get_timeout() is not None
         self._client = mongo_client
 
@@ -2776,14 +2776,14 @@ class _ClientConnectionRetryable(Generic[T]):
                 # most likely be a waste of time.
                 raise
             except PyMongoError as exc:
-                overload = False
+                overloaded = False
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
-                        overload = exc.has_error_label("Retryable")
-                        if not overload and (
+                        overloaded = exc.has_error_label("Retryable")
+                        if not overloaded and (
                             self._is_not_eligible_for_retry()
                             or (
                                 isinstance(exc, OperationFailure)
@@ -2803,18 +2803,18 @@ class _ClientConnectionRetryable(Generic[T]):
                         retryable_write_error_exc = isinstance(
                             exc.error, PyMongoError
                         ) and exc.error.has_error_label("RetryableWriteError")
-                        overload = isinstance(
+                        overloaded = isinstance(
                             exc.error, PyMongoError
                         ) and exc.error.has_error_label("Retryable")
                     else:
                         retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
-                        overload = exc.has_error_label("Retryable")
-                    if not self._retryable and not overload:
+                        overloaded = exc.has_error_label("Retryable")
+                    if not self._retryable and not overloaded:
                         raise
-                    if retryable_write_error_exc or overload:
+                    if retryable_write_error_exc or overloaded:
                         assert self._session
                         self._session._unpin()
-                    if not overload and (
+                    if not overloaded and (
                         not retryable_write_error_exc or not self._is_not_eligible_for_retry()
                     ):
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
@@ -2834,8 +2834,8 @@ class _ClientConnectionRetryable(Generic[T]):
                 if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
                     self._deprioritized_servers.append(self._server)
 
-                self._overload = overload
-                if overload:
+                self._overloaded = overloaded
+                if overloaded:
                     if self._attempt_number > _MAX_RETRIES:
                         if exc.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
@@ -2936,7 +2936,7 @@ class _ClientConnectionRetryable(Generic[T]):
             conn,
             read_pref,
         ):
-            if self._retrying and not self._retryable and not self._overload:
+            if self._retrying and not self._retryable and not self._overloaded:
                 self._check_last_error()
             if self._retrying:
                 _debug_log(
