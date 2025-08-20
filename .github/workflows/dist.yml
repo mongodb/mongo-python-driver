@@ -55,7 +55,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           cache: 'pip'
-          python-version: 3.9
+          python-version: ${{ matrix.buildplat[0] == 'windows-11-arm' && 3.11 || 3.9 }}
           cache-dependency-path: 'pyproject.toml'
           allow-prereleases: true
 
