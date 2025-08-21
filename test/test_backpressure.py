@@ -19,10 +19,16 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import (
+    IntegrationTest,
+    PyMongoTestCase,
+    client_context,
+    unittest,
+)
 
 from pymongo.errors import PyMongoError
-from pymongo.synchronous.helpers import _MAX_RETRIES
+from pymongo.synchronous import helpers
+from pymongo.synchronous.helpers import _MAX_RETRIES, _RetryPolicy, _TokenBucket
 
 _IS_SYNC = True
 
@@ -171,6 +177,40 @@ class TestBackpressure(IntegrationTest):
                 db.command("find", "t")
 
         self.assertIn("Retryable", str(error.exception))
+
+
+class TestRetryPolicy(PyMongoTestCase):
+    def test_retry_policy(self):
+        capacity = 10
+        retry_policy = _RetryPolicy(_TokenBucket(capacity=capacity))
+        self.assertEqual(retry_policy.attempts, helpers._MAX_RETRIES)
+        self.assertEqual(retry_policy.backoff_initial, helpers._BACKOFF_INITIAL)
+        self.assertEqual(retry_policy.backoff_max, helpers._BACKOFF_MAX)
+        for i in range(1, helpers._MAX_RETRIES + 1):
+            self.assertTrue(retry_policy.should_retry(i))
+        self.assertFalse(retry_policy.should_retry(helpers._MAX_RETRIES + 1))
+        for i in range(capacity - helpers._MAX_RETRIES):
+            self.assertTrue(retry_policy.should_retry(1))
+        # No tokens left, should not retry.
+        self.assertFalse(retry_policy.should_retry(1))
+        self.assertEqual(retry_policy.token_bucket.tokens, 0)
+
+        # record_success should generate tokens.
+        for _ in range(int(2 / helpers.DEFAULT_RETRY_TOKEN_RETURN)):
+            retry_policy.record_success(retry=False)
+        self.assertAlmostEqual(retry_policy.token_bucket.tokens, 2)
+        for i in range(2):
+            self.assertTrue(retry_policy.should_retry(1))
+        self.assertFalse(retry_policy.should_retry(1))
+
+        # Recording a successful retry should return 1 additional token.
+        retry_policy.record_success(retry=True)
+        self.assertAlmostEqual(
+            retry_policy.token_bucket.tokens, 1 + helpers.DEFAULT_RETRY_TOKEN_RETURN
+        )
+        self.assertTrue(retry_policy.should_retry(1))
+        self.assertFalse(retry_policy.should_retry(1))
+        self.assertAlmostEqual(retry_policy.token_bucket.tokens, helpers.DEFAULT_RETRY_TOKEN_RETURN)
 
 
 if __name__ == "__main__":
