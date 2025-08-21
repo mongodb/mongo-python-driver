@@ -58,6 +58,7 @@ from pymongo.asynchronous.cursor import (
     AsyncCursor,
     AsyncRawBatchCursor,
 )
+from pymongo.asynchronous.helpers import _retry_overload
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import (
@@ -2227,6 +2228,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         return await self._create_indexes(indexes, session, **kwargs)
 
     @_csot.apply
+    @_retry_overload
     async def _create_indexes(
         self, indexes: Sequence[IndexModel], session: Optional[AsyncClientSession], **kwargs: Any
     ) -> list[str]:
@@ -2422,7 +2424,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
         await self._drop_index("*", session=session, **kwargs)
 
-    @_csot.apply
     async def drop_index(
         self,
         index_or_name: _IndexKeyHint,
@@ -2472,6 +2473,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         await self._drop_index(index_or_name, session, comment, **kwargs)
 
     @_csot.apply
+    @_retry_overload
     async def _drop_index(
         self,
         index_or_name: _IndexKeyHint,
@@ -3079,6 +3081,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             )
 
     @_csot.apply
+    @_retry_overload
     async def rename(
         self,
         new_name: str,

@@ -110,6 +110,7 @@ from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.helpers import _MAX_RETRIES, _backoff, _retry_overload
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
@@ -2388,6 +2389,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return [doc["name"] for doc in res]
 
     @_csot.apply
+    @_retry_overload
     def drop_database(
         self,
         name_or_database: Union[str, database.Database[_DocumentTypeArg]],
@@ -2725,6 +2727,7 @@ class _ClientConnectionRetryable(Generic[T]):
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
+        self._always_retryable = False
         self._multiple_retries = _csot.get_timeout() is not None
         self._client = mongo_client
 
@@ -2773,14 +2776,22 @@ class _ClientConnectionRetryable(Generic[T]):
                 # most likely be a waste of time.
                 raise
             except PyMongoError as exc:
+                always_retryable = False
+                overloaded = False
+                exc_to_check = exc
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
-                        if self._is_not_eligible_for_retry() or (
-                            isinstance(exc, OperationFailure)
-                            and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
+                        always_retryable = exc.has_error_label("Retryable")
+                        overloaded = exc.has_error_label("SystemOverloaded")
+                        if not always_retryable and (
+                            self._is_not_eligible_for_retry()
+                            or (
+                                isinstance(exc, OperationFailure)
+                                and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
+                            )
                         ):
                             raise
                         self._retrying = True
@@ -2791,19 +2802,22 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 # Specialized catch on write operation
                 if not self._is_read:
-                    if not self._retryable:
+                    if isinstance(exc, ClientBulkWriteException) and isinstance(
+                        exc.error, PyMongoError
+                    ):
+                        exc_to_check = exc.error
+                    retryable_write_label = exc_to_check.has_error_label("RetryableWriteError")
+                    always_retryable = exc_to_check.has_error_label("Retryable")
+                    overloaded = exc_to_check.has_error_label("SystemOverloaded")
+                    if not self._retryable and not always_retryable:
                         raise
-                    if isinstance(exc, ClientBulkWriteException) and exc.error:
-                        retryable_write_error_exc = isinstance(
-                            exc.error, PyMongoError
-                        ) and exc.error.has_error_label("RetryableWriteError")
-                    else:
-                        retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
-                    if retryable_write_error_exc:
+                    if retryable_write_label or always_retryable:
                         assert self._session
                         self._session._unpin()
-                    if not retryable_write_error_exc or self._is_not_eligible_for_retry():
-                        if exc.has_error_label("NoWritesPerformed") and self._last_error:
+                    if not always_retryable and (
+                        not retryable_write_label or self._is_not_eligible_for_retry()
+                    ):
+                        if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
                             raise
@@ -2812,13 +2826,23 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._bulk.retrying = True
                     else:
                         self._retrying = True
-                    if not exc.has_error_label("NoWritesPerformed"):
+                    if not exc_to_check.has_error_label("NoWritesPerformed"):
                         self._last_error = exc
                     if self._last_error is None:
                         self._last_error = exc
 
                 if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
                     self._deprioritized_servers.append(self._server)
+
+                self._always_retryable = always_retryable
+                if always_retryable:
+                    if self._attempt_number > _MAX_RETRIES:
+                        if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
+                            raise self._last_error from exc
+                        else:
+                            raise
+                    if overloaded:
+                        _backoff(self._attempt_number)
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
@@ -2881,7 +2905,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     and conn.supports_sessions
                 )
                 is_mongos = conn.is_mongos
-                if not sessions_supported:
+                if not self._always_retryable and not sessions_supported:
                     # A retry is not possible because this server does
                     # not support sessions raise the last error.
                     self._check_last_error()
@@ -2913,7 +2937,7 @@ class _ClientConnectionRetryable(Generic[T]):
             conn,
             read_pref,
         ):
-            if self._retrying and not self._retryable:
+            if self._retrying and not self._retryable and not self._always_retryable:
                 self._check_last_error()
             if self._retrying:
                 _debug_log(
