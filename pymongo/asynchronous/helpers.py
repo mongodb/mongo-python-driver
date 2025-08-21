@@ -141,7 +141,7 @@ class _RetryPolicy:
         self.backoff_initial = backoff_initial
         self.backoff_max = backoff_max
 
-    async def record_success(self, retry: bool):
+    async def record_success(self, retry: bool) -> None:
         """Record a successful operation."""
         await self.token_bucket.deposit(retry)
 
