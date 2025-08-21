@@ -29,6 +29,7 @@ from typing import (
     cast,
 )
 
+from pymongo import _csot
 from pymongo.errors import (
     OperationFailure,
     PyMongoError,
@@ -87,10 +88,9 @@ _TIME = time  # Added so synchro script doesn't remove the time import.
 
 def _backoff(
     attempt: int, initial_delay: float = _BACKOFF_INITIAL, max_delay: float = _BACKOFF_MAX
-) -> None:
+) -> float:
     jitter = random.random()  # noqa: S311
-    backoff = jitter * min(initial_delay * (2**attempt), max_delay)
-    time.sleep(backoff)
+    return jitter * min(initial_delay * (2**attempt), max_delay)
 
 
 class _TokenBucket:
@@ -145,15 +145,20 @@ class _RetryPolicy:
         """Record a successful operation."""
         self.token_bucket.deposit(retry)
 
-    def backoff(self, attempt: int) -> None:
+    def backoff(self, attempt: int) -> float:
         """Return the backoff duration for the given ."""
-        _backoff(max(0, attempt - 1), self.backoff_initial, self.backoff_max)
+        return _backoff(max(0, attempt - 1), self.backoff_initial, self.backoff_max)
 
-    def should_retry(self, attempt: int) -> bool:
+    def should_retry(self, attempt: int, delay: float) -> bool:
         """Return if we have budget to retry and how long to backoff."""
-        # TODO: Check CSOT deadline here.
         if attempt > self.attempts:
             return False
+
+        # If the delay would exceed the deadline, bail early before consuming a token.
+        if _csot.get_timeout():
+            if time.monotonic() + delay > _csot.get_deadline():
+                return False
+
         # Check token bucket last since we only want to consume a token if we actually retry.
         if not self.token_bucket.consume():
             # DRIVERS-3246 Improve diagnostics when this case happens.
@@ -176,12 +181,15 @@ def _retry_overload(func: F) -> F:
                 if not exc.has_error_label("Retryable"):
                     raise
                 attempt += 1
-                if not retry_policy.should_retry(attempt):
+                delay = 0
+                if exc.has_error_label("SystemOverloaded"):
+                    delay = retry_policy.backoff(attempt)
+                if not retry_policy.should_retry(attempt, delay):
                     raise
 
                 # Implement exponential backoff on retry.
-                if exc.has_error_label("SystemOverloaded"):
-                    retry_policy.backoff(attempt)
+                if delay:
+                    time.sleep(delay)
                 continue
 
     return cast(F, inner)

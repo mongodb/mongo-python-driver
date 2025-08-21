@@ -35,6 +35,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+import time
 import warnings
 import weakref
 from collections import defaultdict
@@ -173,6 +174,8 @@ _WriteOp = Union[
     UpdateOne,
     UpdateMany,
 ]
+
+_TIME = time  # Added so synchro script doesn't remove the time import.
 
 
 class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
@@ -2853,13 +2856,14 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 self._always_retryable = always_retryable
                 if always_retryable:
-                    if not await self._retry_policy.should_retry(self._attempt_number):
+                    delay = self._retry_policy.backoff(self._attempt_number) if overloaded else 0
+                    if not await self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
                             raise
                     if overloaded:
-                        await self._retry_policy.backoff(self._attempt_number)
+                        await asyncio.sleep(delay)
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""

@@ -15,7 +15,10 @@
 """Test Client Backpressure spec."""
 from __future__ import annotations
 
+import asyncio
 import sys
+
+import pymongo
 
 sys.path[0:0] = [""]
 
@@ -187,12 +190,12 @@ class TestRetryPolicy(AsyncPyMongoTestCase):
         self.assertEqual(retry_policy.backoff_initial, helpers._BACKOFF_INITIAL)
         self.assertEqual(retry_policy.backoff_max, helpers._BACKOFF_MAX)
         for i in range(1, helpers._MAX_RETRIES + 1):
-            self.assertTrue(await retry_policy.should_retry(i))
-        self.assertFalse(await retry_policy.should_retry(helpers._MAX_RETRIES + 1))
+            self.assertTrue(await retry_policy.should_retry(i, 0))
+        self.assertFalse(await retry_policy.should_retry(helpers._MAX_RETRIES + 1, 0))
         for i in range(capacity - helpers._MAX_RETRIES):
-            self.assertTrue(await retry_policy.should_retry(1))
+            self.assertTrue(await retry_policy.should_retry(1, 0))
         # No tokens left, should not retry.
-        self.assertFalse(await retry_policy.should_retry(1))
+        self.assertFalse(await retry_policy.should_retry(1, 0))
         self.assertEqual(retry_policy.token_bucket.tokens, 0)
 
         # record_success should generate tokens.
@@ -200,17 +203,27 @@ class TestRetryPolicy(AsyncPyMongoTestCase):
             await retry_policy.record_success(retry=False)
         self.assertAlmostEqual(retry_policy.token_bucket.tokens, 2)
         for i in range(2):
-            self.assertTrue(await retry_policy.should_retry(1))
-        self.assertFalse(await retry_policy.should_retry(1))
+            self.assertTrue(await retry_policy.should_retry(1, 0))
+        self.assertFalse(await retry_policy.should_retry(1, 0))
 
         # Recording a successful retry should return 1 additional token.
         await retry_policy.record_success(retry=True)
         self.assertAlmostEqual(
             retry_policy.token_bucket.tokens, 1 + helpers.DEFAULT_RETRY_TOKEN_RETURN
         )
-        self.assertTrue(await retry_policy.should_retry(1))
-        self.assertFalse(await retry_policy.should_retry(1))
+        self.assertTrue(await retry_policy.should_retry(1, 0))
+        self.assertFalse(await retry_policy.should_retry(1, 0))
         self.assertAlmostEqual(retry_policy.token_bucket.tokens, helpers.DEFAULT_RETRY_TOKEN_RETURN)
+
+    async def test_retry_policy_csot(self):
+        retry_policy = _RetryPolicy(_TokenBucket())
+        self.assertTrue(await retry_policy.should_retry(1, 0.5))
+        with pymongo.timeout(0.5):
+            self.assertTrue(await retry_policy.should_retry(1, 0))
+            self.assertTrue(await retry_policy.should_retry(1, 0.1))
+            # Would exceed the timeout, should not retry.
+            self.assertFalse(await retry_policy.should_retry(1, 1.0))
+        self.assertTrue(await retry_policy.should_retry(1, 1.0))
 
 
 if __name__ == "__main__":
