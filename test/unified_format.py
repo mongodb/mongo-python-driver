@@ -158,6 +158,14 @@ def is_run_on_requirement_satisfied(requirement):
     if req_csfle is True:
         min_version_satisfied = Version.from_string("4.2") <= server_version
         csfle_satisfied = _HAVE_PYMONGOCRYPT and min_version_satisfied
+    elif isinstance(req_csfle, dict) and "minLibmongocryptVersion" in req_csfle:
+        csfle_satisfied = False
+        req_version = req_csfle["minLibmongocryptVersion"]
+        if _HAVE_PYMONGOCRYPT:
+            from pymongocrypt import libmongocrypt_version
+
+            if Version.from_string(libmongocrypt_version()) >= Version.from_string(req_version):
+                csfle_satisfied = True
 
     return (
         topology_satisfied
@@ -449,7 +457,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.23")
+    SCHEMA_VERSION = Version.from_string("1.25")
     RUN_ON_LOAD_BALANCER = True
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes
@@ -1530,7 +1538,7 @@ def generate_test_classes(
 
         # Add "encryption" marker if the "csfle" runOnRequirement is set.
         for req in test_spec.get("runOnRequirements", []):
-            if req.get("csfle", False):
+            if "csfle" in req:
                 base = pytest.mark.encryption(base)
 
         return base
