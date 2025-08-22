@@ -165,7 +165,6 @@ from pymongo.errors import (
     WTimeoutError,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
-from pymongo.operations import _Op
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
@@ -864,7 +863,9 @@ class ClientSession:
         ) -> dict[str, Any]:
             return self._finish_transaction(conn, command_name)
 
-        return self._client._retry_internal(func, self, None, retryable=True, operation=_Op.ABORT)
+        return self._client._retry_internal(
+            func, self, None, retryable=True, operation=command_name
+        )
 
     def _finish_transaction(self, conn: Connection, command_name: str) -> dict[str, Any]:
         self._transaction.attempt += 1
