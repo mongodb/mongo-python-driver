@@ -21,7 +21,7 @@ import functools
 import random
 import socket
 import sys
-import time
+import time as time  # noqa: PLC0414 # needed in sync version
 from typing import (
     Any,
     Callable,
@@ -83,7 +83,6 @@ _BACKOFF_MAX = 10
 # DRIVERS-3240 will determine these defaults.
 DEFAULT_RETRY_TOKEN_CAPACITY = 1000.0
 DEFAULT_RETRY_TOKEN_RETURN = 0.1
-_TIME = time  # Added so synchro script doesn't remove the time import.
 
 
 def _backoff(

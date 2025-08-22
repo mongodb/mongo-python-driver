@@ -35,7 +35,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
-import time
+import time as time  # noqa: PLC0414 # needed in sync version
 import warnings
 import weakref
 from collections import defaultdict
@@ -171,8 +171,6 @@ _WriteOp = Union[
     UpdateOne,
     UpdateMany,
 ]
-
-_TIME = time  # Added so synchro script doesn't remove the time import.
 
 
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
