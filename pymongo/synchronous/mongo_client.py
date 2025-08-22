@@ -35,6 +35,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+import time as time  # noqa: PLC0414 # needed in sync version
 import warnings
 import weakref
 from collections import defaultdict
@@ -110,7 +111,11 @@ from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.helpers import _MAX_RETRIES, _backoff, _retry_overload
+from pymongo.synchronous.helpers import (
+    _retry_overload,
+    _RetryPolicy,
+    _TokenBucket,
+)
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
@@ -774,6 +779,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._timeout: float | None = None
         self._topology_settings: TopologySettings = None  # type: ignore[assignment]
         self._event_listeners: _EventListeners | None = None
+        self._retry_policy = _RetryPolicy(_TokenBucket())
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
@@ -2730,7 +2736,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._always_retryable = False
         self._multiple_retries = _csot.get_timeout() is not None
         self._client = mongo_client
-
+        self._retry_policy = mongo_client._retry_policy
         self._func = func
         self._bulk = bulk
         self._session = session
@@ -2765,7 +2771,9 @@ class _ClientConnectionRetryable(Generic[T]):
         while True:
             self._check_last_error(check_csot=True)
             try:
-                return self._read() if self._is_read else self._write()
+                res = self._read() if self._is_read else self._write()
+                self._retry_policy.record_success(self._attempt_number > 0)
+                return res
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
                 # if we raise ServerSelectionTimeoutError on the retry
@@ -2836,13 +2844,14 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 self._always_retryable = always_retryable
                 if always_retryable:
-                    if self._attempt_number > _MAX_RETRIES:
+                    delay = self._retry_policy.backoff(self._attempt_number) if overloaded else 0
+                    if not self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
                             raise
                     if overloaded:
-                        _backoff(self._attempt_number)
+                        time.sleep(delay)
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""

@@ -136,6 +136,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         self._name = name
         self._client: AsyncMongoClient[_DocumentType] = client
         self._timeout = client.options.timeout
+        self._retry_policy = client._retry_policy
 
     @property
     def client(self) -> AsyncMongoClient[_DocumentType]:
