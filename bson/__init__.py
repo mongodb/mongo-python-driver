@@ -113,7 +113,7 @@ except ImportError:
 
 
 EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
-EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
+EPOCH_AWARE = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
 
 
 BSONNUM = b"\x01" # Floating point
