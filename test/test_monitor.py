@@ -28,7 +28,7 @@ from test import IntegrationTest, client_context, connected, unittest
 from test.utils import (
     wait_until,
 )
-from test.utils_shared import ServerAndTopologyEventListener
+from test.utils_shared import ServerAndTopologyEventListener, gevent_monkey_patched
 
 from pymongo.periodic_executor import _EXECUTORS
 
@@ -58,6 +58,9 @@ class TestMonitor(IntegrationTest):
         return client
 
     @unittest.skipIf("PyPy" in sys.version, "PYTHON-5283 fails often on PyPy")
+    @unittest.skipIf(
+        gevent_monkey_patched(), "PYTHON-5516 Resources are not cleared when using gevent"
+    )
     def test_cleanup_executors_on_client_del(self):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
