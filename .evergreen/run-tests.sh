@@ -26,11 +26,8 @@ else
 fi
 
 # List the packages.
-uv sync ${UV_ARGS} --reinstall
+uv sync ${UV_ARGS} --reinstall --quiet
 uv pip list
-
-# Ensure we go back to base environment after the test.
-trap "uv sync" EXIT HUP
 
 # Start the test runner.
 uv run ${UV_ARGS} .evergreen/scripts/run_tests.py "$@"

@@ -2,7 +2,7 @@
 set shell := ["bash", "-c"]
 
 # Commonly used command segments.
-uv_run := "uv run --isolated --frozen "
+uv_run := "uv run --frozen "
 typing_run := uv_run + "--group typing --extra aws --extra encryption --extra ocsp --extra snappy --extra test --extra zstd"
 docs_run := uv_run + "--extra docs"
 doc_build := "./doc/_build"
@@ -13,11 +13,15 @@ mypy_args := "--install-types --non-interactive"
 default:
   @just --list
 
+[private]
+resync:
+ @uv sync --quiet --frozen
+
 install:
    bash .evergreen/scripts/setup-dev-env.sh
 
 [group('docs')]
-docs:
+docs: && resync
     {{docs_run}} sphinx-build -W -b html doc {{doc_build}}/html
 
 [group('docs')]
