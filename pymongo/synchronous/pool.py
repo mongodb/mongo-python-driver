@@ -1418,7 +1418,7 @@ class Pool:
                         conn.conn.get_conn.settimeout(0.001)
                         close_conn = True
                         try:
-                            conn.conn.get_conn.read()
+                            conn.conn.get_conn.read(1)
                         except Exception as _:
                             # TODO: verify the exception
                             close_conn = False
