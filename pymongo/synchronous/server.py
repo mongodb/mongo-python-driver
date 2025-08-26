@@ -91,6 +91,10 @@ class Server:
         """Clear the connection pool."""
         self.pool.reset(service_id)
 
+    def backoff(self, service_id: Optional[ObjectId] = None) -> None:
+        """Set the connection pool in backoff mode."""
+        self.pool.backoff(service_id)
+
     def close(self) -> None:
         """Clear the connection pool and stop the monitor.
 

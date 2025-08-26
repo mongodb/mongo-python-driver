@@ -84,7 +84,7 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.client_session import _validate_session_write_concern
-from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.helpers import _backoff, _handle_reauth
 from pymongo.synchronous.network import command
 
 if TYPE_CHECKING:
@@ -789,6 +789,7 @@ class Pool:
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         self._client_id = client_id
+        self._backoff = 0
         if self.enabled_for_cmap:
             assert self.opts._event_listeners is not None
             self.opts._event_listeners.publish_pool_created(
@@ -844,6 +845,8 @@ class Pool:
         with self.size_cond:
             if self.closed:
                 return
+            # Clear the backoff state.
+            self._backoff = 0
             if self.opts.pause_enabled and pause and not self.opts.load_balanced:
                 old_state, self.state = self.state, PoolState.PAUSED
             self.gen.inc(service_id)
@@ -935,6 +938,12 @@ class Pool:
             for _socket in self.conns:
                 _socket.update_is_writable(self.is_writable)  # type: ignore[arg-type]
 
+    def backoff(self, service_id: Optional[ObjectId] = None) -> None:
+        # Mark the pool as in backoff.
+        # TODO: how to handle load balancers?
+        self._backoff += 1
+        # TODO: emit a message.
+
     def reset(
         self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
     ) -> None:
@@ -990,7 +999,8 @@ class Pool:
                 with self._max_connecting_cond:
                     # If maxConnecting connections are already being created
                     # by this pool then try again later instead of waiting.
-                    if self._pending >= self._max_connecting:
+                    max_connecting = 1 if self._backoff else self._max_connecting
+                    if self._pending >= max_connecting:
                         return
                     self._pending += 1
                     incremented = True
@@ -1047,6 +1057,10 @@ class Pool:
                 driverConnectionId=conn_id,
             )
 
+        # Apply backoff if applicable.
+        if self._backoff:
+            asyncio.sleep(_backoff(self._backoff))
+
         try:
             networking_interface = _configured_socket_interface(self.address, self.opts)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
@@ -1099,6 +1113,8 @@ class Pool:
         if handler:
             handler.client._topology.receive_cluster_time(conn._cluster_time)
 
+        # Clear the backoff state.
+        self._backoff = 0
         return conn
 
     @contextlib.contextmanager
@@ -1275,12 +1291,13 @@ class Pool:
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
-                    while not (self.conns or self._pending < self._max_connecting):
+                    max_connecting = 1 if self._backoff else self._max_connecting
+                    while not (self.conns or self._pending < max_connecting):
                         timeout = deadline - time.monotonic() if deadline else None
                         if not _cond_wait(self._max_connecting_cond, timeout):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
-                            if self.conns or self._pending < self._max_connecting:
+                            if self.conns or self._pending < max_connecting:
                                 self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout(checkout_started_time)
@@ -1391,6 +1408,20 @@ class Pool:
                     # Pool.reset().
                     if self.stale_generation(conn.generation, conn.service_id):
                         close_conn = True
+                    # If in backoff state, check the conn's readiness.
+                    elif self._backoff:
+                        # Set a 1ms read deadline and attempt to read 1 byte from the connection.
+                        # Expect it to block for 1ms then return a deadline exceeded error. If it
+                        # returns any other error, the connection is not usable, so return false.
+                        # If it doesn't return an error and actually reads data, the connection is
+                        # also not usable, so return false.
+                        conn.conn.get_conn.settimeout(0.001)
+                        close_conn = True
+                        try:
+                            conn.conn.get_conn.read()
+                        except Exception as _:
+                            # TODO: verify the exception
+                            close_conn = False
                     else:
                         conn.update_last_checkin_time()
                         conn.update_is_writable(bool(self.is_writable))
