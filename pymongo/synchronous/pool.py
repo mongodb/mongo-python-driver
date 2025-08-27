@@ -1098,11 +1098,11 @@ class Pool:
 
             conn.authenticate()
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException as e:
+        except BaseException:
             with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
             # Enter backoff mode and reconnect on establishment failure.
-            if type(e) == AutoReconnect:
+            if conn.conn_closed():
                 self._backoff += 1
                 # TODO: emit a message about backoff.
                 print("backing off", self._backoff)  # noqa: T201
