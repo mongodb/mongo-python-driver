@@ -378,9 +378,9 @@ class TestSession(AsyncIntegrationTest):
 
         async with self.client.start_session() as s:
             cursor = coll.find(session=s)
-            self.assertIs(cursor.session, s)
+            self.assertTrue(cursor.session is s)
             clone = cursor.clone()
-            self.assertIs(clone.session, s)
+            self.assertTrue(clone.session is s)
 
         # No explicit session.
         cursor = coll.find(batch_size=2)
@@ -392,7 +392,7 @@ class TestSession(AsyncIntegrationTest):
         await anext(clone)
         self.assertIsNone(clone.session)
         self.assertIsNotNone(clone._session)
-        self.assertIsNot(cursor._session, clone._session)
+        self.assertFalse(cursor._session is clone._session)
         await cursor.close()
         await clone.close()
 

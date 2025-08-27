@@ -23,7 +23,6 @@ from decimal import Decimal
 from random import random
 from typing import Any, Tuple, Type, no_type_check
 
-from bson.decimal128 import DecimalDecoder, DecimalEncoder
 from gridfs.synchronous.grid_file import GridIn, GridOut
 
 sys.path[0:0] = [""]
@@ -60,7 +59,29 @@ from pymongo.synchronous.helpers import next
 _IS_SYNC = True
 
 
-DECIMAL_CODECOPTS = CodecOptions(type_registry=TypeRegistry([DecimalEncoder(), DecimalDecoder()]))
+class DecimalEncoder(TypeEncoder):
+    @property
+    def python_type(self):
+        return Decimal
+
+    def transform_python(self, value):
+        return Decimal128(value)
+
+
+class DecimalDecoder(TypeDecoder):
+    @property
+    def bson_type(self):
+        return Decimal128
+
+    def transform_bson(self, value):
+        return value.to_decimal()
+
+
+class DecimalCodec(DecimalDecoder, DecimalEncoder):
+    pass
+
+
+DECIMAL_CODECOPTS = CodecOptions(type_registry=TypeRegistry([DecimalCodec()]))
 
 
 class UndecipherableInt64Type:

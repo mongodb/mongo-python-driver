@@ -59,8 +59,7 @@ from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
 
 sys.path[0:0] = [""]
 
-from test.asynchronous.helpers import client_knobs, global_knobs
-from test.helpers_shared import (
+from test.helpers import (
     COMPRESSORS,
     IS_SRV,
     MONGODB_API_VERSION,
@@ -68,8 +67,10 @@ from test.helpers_shared import (
     TEST_LOADBALANCER,
     TLS_OPTIONS,
     SystemCertsPatcher,
+    client_knobs,
     db_pwd,
     db_user,
+    global_knobs,
     host,
     is_server_resolvable,
     port,

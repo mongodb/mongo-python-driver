@@ -1,27 +1,5 @@
 Changelog
 =========
-Changes in Version 4.15.0 (XXXX/XX/XX)
---------------------------------------
-PyMongo 4.15 brings a number of changes including:
-
-- Added :class:`bson.decimal128.DecimalEncoder` and :class:`bson.decimal128.DecimalDecoder`
-  to support encoding and decoding of BSON Decimal128 values to decimal.Decimal values using the TypeRegistry API.
-
-Changes in Version 4.14.1 (2025/08/19)
---------------------------------------
-
-Version 4.14.1 is a bug fix release.
-
- - Fixed a bug in ``MongoClient.append_metadata()`` and ``AsyncMongoClient.append_metadata()``
-   that allowed duplicate ``DriverInfo.name`` to be appended to the metadata.
-
-Issues Resolved
-...............
-
-See the `PyMongo 4.14.1 release notes in JIRA`_ for the list of resolved issues
-in this release.
-
-.. _PyMongo 4.14.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=45256
 
 Changes in Version 4.14.0 (2025/08/06)
 --------------------------------------
@@ -55,14 +33,6 @@ PyMongo 4.14 brings a number of changes including:
   PACKED_BIT.
 - Changed :meth:`~pymongo.uri_parser.parse_uri`'s ``options`` return value to be
   type ``dict`` instead of ``_CaseInsensitiveDictionary``.
-
-Issues Resolved
-...............
-
-See the `PyMongo 4.14 release notes in JIRA`_ for the list of resolved issues
-in this release.
-
-.. _PyMongo 4.14 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=43041
 
 Changes in Version 4.13.2 (2025/06/17)
 --------------------------------------

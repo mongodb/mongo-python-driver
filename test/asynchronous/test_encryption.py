@@ -57,14 +57,11 @@ from test import (
 from test.asynchronous.test_bulk import AsyncBulkTestBase
 from test.asynchronous.unified_format import generate_test_classes
 from test.asynchronous.utils_spec_runner import AsyncSpecRunner
-from test.helpers_shared import (
-    ALL_KMS_PROVIDERS,
+from test.helpers import (
     AWS_CREDS,
-    AWS_TEMP_CREDS,
     AZURE_CREDS,
     CA_PEM,
     CLIENT_PEM,
-    DEFAULT_KMS_TLS,
     GCP_CREDS,
     KMIP_CREDS,
     LOCAL_MASTER_KEY,
@@ -207,7 +204,7 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
         opts = AutoEncryptionOpts(
             {},
             "k.d",
-            kms_tls_options=DEFAULT_KMS_TLS,
+            kms_tls_options={"kmip": {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM}},
         )
         _kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
         ctx = _kms_ssl_contexts["kmip"]
@@ -619,10 +616,17 @@ class TestExplicitSimple(AsyncEncryptionIntegrationTest):
 
 
 # Spec tests
+AWS_TEMP_CREDS = {
+    "accessKeyId": os.environ.get("CSFLE_AWS_TEMP_ACCESS_KEY_ID", ""),
+    "secretAccessKey": os.environ.get("CSFLE_AWS_TEMP_SECRET_ACCESS_KEY", ""),
+    "sessionToken": os.environ.get("CSFLE_AWS_TEMP_SESSION_TOKEN", ""),
+}
+
 AWS_TEMP_NO_SESSION_CREDS = {
     "accessKeyId": os.environ.get("CSFLE_AWS_TEMP_ACCESS_KEY_ID", ""),
     "secretAccessKey": os.environ.get("CSFLE_AWS_TEMP_SECRET_ACCESS_KEY", ""),
 }
+KMS_TLS_OPTS = {"kmip": {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM}}
 
 
 class AsyncTestSpec(AsyncSpecRunner):
@@ -659,7 +663,7 @@ class AsyncTestSpec(AsyncSpecRunner):
                 self.skipTest("GCP environment credentials are not set")
         if "kmip" in kms_providers:
             kms_providers["kmip"] = KMIP_CREDS
-            opts["kms_tls_options"] = DEFAULT_KMS_TLS
+            opts["kms_tls_options"] = KMS_TLS_OPTS
         if "key_vault_namespace" not in opts:
             opts["key_vault_namespace"] = "keyvault.datakeys"
         if "extra_options" in opts:
@@ -753,6 +757,14 @@ if _HAVE_PYMONGOCRYPT:
     )
 
 # Prose Tests
+ALL_KMS_PROVIDERS = {
+    "aws": AWS_CREDS,
+    "azure": AZURE_CREDS,
+    "gcp": GCP_CREDS,
+    "kmip": KMIP_CREDS,
+    "local": {"key": LOCAL_MASTER_KEY},
+}
+
 LOCAL_KEY_ID = Binary(base64.b64decode(b"LOCALAAAAAAAAAAAAAAAAA=="), UUID_SUBTYPE)
 AWS_KEY_ID = Binary(base64.b64decode(b"AWSAAAAAAAAAAAAAAAAAAA=="), UUID_SUBTYPE)
 AZURE_KEY_ID = Binary(base64.b64decode(b"AZUREAAAAAAAAAAAAAAAAA=="), UUID_SUBTYPE)
@@ -839,17 +851,13 @@ class TestDataKeyDoubleEncryption(AsyncEncryptionIntegrationTest):
             self.KMS_PROVIDERS,
             "keyvault.datakeys",
             schema_map=schemas,
-            kms_tls_options=DEFAULT_KMS_TLS,
+            kms_tls_options=KMS_TLS_OPTS,
         )
         self.client_encrypted = await self.async_rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation="standard"
         )
         self.client_encryption = self.create_client_encryption(
-            self.KMS_PROVIDERS,
-            "keyvault.datakeys",
-            self.client,
-            OPTS,
-            kms_tls_options=DEFAULT_KMS_TLS,
+            self.KMS_PROVIDERS, "keyvault.datakeys", self.client, OPTS, kms_tls_options=KMS_TLS_OPTS
         )
         self.listener.reset()
 
@@ -1058,7 +1066,7 @@ class TestCorpus(AsyncEncryptionIntegrationTest):
             "keyvault.datakeys",
             async_client_context.client,
             OPTS,
-            kms_tls_options=DEFAULT_KMS_TLS,
+            kms_tls_options=KMS_TLS_OPTS,
         )
 
         corpus = self.fix_up_curpus(json_data("corpus", "corpus.json"))
@@ -1150,7 +1158,7 @@ class TestCorpus(AsyncEncryptionIntegrationTest):
 
     async def test_corpus(self):
         opts = AutoEncryptionOpts(
-            self.kms_providers(), "keyvault.datakeys", kms_tls_options=DEFAULT_KMS_TLS
+            self.kms_providers(), "keyvault.datakeys", kms_tls_options=KMS_TLS_OPTS
         )
         await self._test_corpus(opts)
 
@@ -1161,7 +1169,7 @@ class TestCorpus(AsyncEncryptionIntegrationTest):
             self.kms_providers(),
             "keyvault.datakeys",
             schema_map=schemas,
-            kms_tls_options=DEFAULT_KMS_TLS,
+            kms_tls_options=KMS_TLS_OPTS,
         )
         await self._test_corpus(opts)
 
@@ -1292,7 +1300,7 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
             key_vault_namespace="keyvault.datakeys",
             key_vault_client=async_client_context.client,
             codec_options=OPTS,
-            kms_tls_options=DEFAULT_KMS_TLS,
+            kms_tls_options=KMS_TLS_OPTS,
         )
 
         kms_providers_invalid = copy.deepcopy(kms_providers)
@@ -1304,7 +1312,7 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
             key_vault_namespace="keyvault.datakeys",
             key_vault_client=async_client_context.client,
             codec_options=OPTS,
-            kms_tls_options=DEFAULT_KMS_TLS,
+            kms_tls_options=KMS_TLS_OPTS,
         )
         self._kmip_host_error = None
         self._invalid_host_error = None
@@ -2744,7 +2752,7 @@ class TestRewrapWithSeparateClientEncryption(AsyncEncryptionIntegrationTest):
             key_vault_client=self.client,
             key_vault_namespace="keyvault.datakeys",
             kms_providers=ALL_KMS_PROVIDERS,
-            kms_tls_options=DEFAULT_KMS_TLS,
+            kms_tls_options=KMS_TLS_OPTS,
             codec_options=OPTS,
         )
 
@@ -2764,7 +2772,7 @@ class TestRewrapWithSeparateClientEncryption(AsyncEncryptionIntegrationTest):
             key_vault_client=client2,
             key_vault_namespace="keyvault.datakeys",
             kms_providers=ALL_KMS_PROVIDERS,
-            kms_tls_options=DEFAULT_KMS_TLS,
+            kms_tls_options=KMS_TLS_OPTS,
             codec_options=OPTS,
         )
 

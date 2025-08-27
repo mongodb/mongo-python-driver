@@ -1305,7 +1305,7 @@ class TestCollection(IntegrationTest):
             self.assertIn(exc.code, (9, 10147, 16840, 17009))
             # Just check that we set the error document. Fields
             # vary by MongoDB version.
-            self.assertIsNotNone(exc.details)
+            self.assertTrue(exc.details is not None)
         else:
             self.fail("OperationFailure was not raised")
 

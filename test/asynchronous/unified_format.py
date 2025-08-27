@@ -37,7 +37,6 @@ from test.asynchronous import (
 )
 from test.asynchronous.utils import async_get_pool, flaky
 from test.asynchronous.utils_spec_runner import SpecRunnerTask
-from test.helpers_shared import ALL_KMS_PROVIDERS, DEFAULT_KMS_TLS
 from test.unified_format_shared import (
     KMS_TLS_OPTS,
     PLACEHOLDER_MAP,
@@ -62,8 +61,6 @@ from test.utils_shared import (
 from test.version import Version
 from typing import Any, Dict, List, Mapping, Optional
 
-import pytest
-
 import pymongo
 from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
@@ -79,7 +76,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.encryption import AsyncClientEncryption
 from pymongo.asynchronous.helpers import anext
 from pymongo.driver_info import DriverInfo
-from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
+from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -159,14 +156,6 @@ async def is_run_on_requirement_satisfied(requirement):
     if req_csfle is True:
         min_version_satisfied = Version.from_string("4.2") <= server_version
         csfle_satisfied = _HAVE_PYMONGOCRYPT and min_version_satisfied
-    elif isinstance(req_csfle, dict) and "minLibmongocryptVersion" in req_csfle:
-        csfle_satisfied = False
-        req_version = req_csfle["minLibmongocryptVersion"]
-        if _HAVE_PYMONGOCRYPT:
-            from pymongocrypt import libmongocrypt_version
-
-            if Version.from_string(libmongocrypt_version()) >= Version.from_string(req_version):
-                csfle_satisfied = True
 
     return (
         topology_satisfied
@@ -269,23 +258,6 @@ class EntityMapUtil:
         if entity_type == "client":
             kwargs: dict = {}
             observe_events = spec.get("observeEvents", [])
-
-            if "autoEncryptOpts" in spec:
-                auto_encrypt_opts = spec["autoEncryptOpts"].copy()
-                auto_encrypt_kwargs: dict = dict(kms_tls_options=DEFAULT_KMS_TLS)
-                kms_providers = ALL_KMS_PROVIDERS.copy()
-                key_vault_namespace = auto_encrypt_opts.pop("keyVaultNamespace")
-                for provider_name, provider_value in auto_encrypt_opts.pop("kmsProviders").items():
-                    kms_providers[provider_name].update(provider_value)
-                extra_opts = auto_encrypt_opts.pop("extraOptions", {})
-                for key, value in extra_opts.items():
-                    auto_encrypt_kwargs[camel_to_snake(key)] = value
-                for key, value in auto_encrypt_opts.items():
-                    auto_encrypt_kwargs[camel_to_snake(key)] = value
-                auto_encryption_opts = AutoEncryptionOpts(
-                    kms_providers, key_vault_namespace, **auto_encrypt_kwargs
-                )
-                kwargs["auto_encryption_opts"] = auto_encryption_opts
 
             # The unified tests use topologyOpeningEvent, we use topologyOpenedEvent
             for i in range(len(observe_events)):
@@ -458,7 +430,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.25")
+    SCHEMA_VERSION = Version.from_string("1.22")
     RUN_ON_LOAD_BALANCER = True
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes
@@ -490,13 +462,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 wc = WriteConcern(w="majority")
             else:
                 wc = WriteConcern(w=1)
-
-            # Remove any encryption collections associated with the collection.
-            collections = await db.list_collection_names()
-            for collection in collections:
-                if collection in [f"enxcol_.{coll_name}.esc", f"enxcol_.{coll_name}.ecoc"]:
-                    await db.drop_collection(collection)
-
             if documents:
                 if opts:
                     await db.create_collection(coll_name, **opts)
@@ -599,6 +564,8 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
                 self.skipTest("CSOT not implemented for cursors")
+            if "dropindex on collection" in description:
+                self.skipTest("PYTHON-5491")
             if (
                 "tailable" in class_name
                 or "tailable" in description
@@ -1549,14 +1516,7 @@ def generate_test_classes(
             TEST_SPEC = test_spec
             EXPECTED_FAILURES = expected_failures
 
-        base = SpecTestBase
-
-        # Add "encryption" marker if the "csfle" runOnRequirement is set.
-        for req in test_spec.get("runOnRequirements", []):
-            if "csfle" in req:
-                base = pytest.mark.encryption(base)
-
-        return base
+        return SpecTestBase
 
     for dirpath, _, filenames in os.walk(test_path):
         dirname = os.path.split(dirpath)[-1]
