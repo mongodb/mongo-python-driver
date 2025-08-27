@@ -8,7 +8,7 @@ if [ ${OIDC_ENV} == "k8s" ]; then
     SUB_TEST_NAME=$K8S_VARIANT-remote
 else
     SUB_TEST_NAME=$OIDC_ENV-remote
-    apt-get install -y python3-dev build-essential
+    sudo apt-get install -y python3-dev build-essential
 fi
 
 bash ./.evergreen/just.sh setup-tests auth_oidc $SUB_TEST_NAME

@@ -59,7 +59,8 @@ from pymongo.synchronous.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 
-from test.helpers import (
+from test.helpers import client_knobs, global_knobs
+from test.helpers_shared import (
     COMPRESSORS,
     IS_SRV,
     MONGODB_API_VERSION,
@@ -67,10 +68,8 @@ from test.helpers import (
     TEST_LOADBALANCER,
     TLS_OPTIONS,
     SystemCertsPatcher,
-    client_knobs,
     db_pwd,
     db_user,
-    global_knobs,
     host,
     is_server_resolvable,
     port,

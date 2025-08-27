@@ -169,7 +169,6 @@ from pymongo.errors import (
     WTimeoutError,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
-from pymongo.operations import _Op
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
@@ -878,7 +877,7 @@ class AsyncClientSession:
             return await self._finish_transaction(conn, command_name)
 
         return await self._client._retry_internal(
-            func, self, None, retryable=True, operation=_Op.ABORT
+            func, self, None, retryable=True, operation=command_name
         )
 
     async def _finish_transaction(self, conn: AsyncConnection, command_name: str) -> dict[str, Any]:
