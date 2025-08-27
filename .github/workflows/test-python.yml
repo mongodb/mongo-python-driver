@@ -19,11 +19,11 @@ jobs:
   static:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@4959332f0f014c5280e7eac8b70c90cb574c9f9b # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -61,11 +61,11 @@ jobs:
 
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@4959332f0f014c5280e7eac8b70c90cb574c9f9b # v5
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -80,11 +80,11 @@ jobs:
     runs-on: ubuntu-latest
     name: DocTest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@4959332f0f014c5280e7eac8b70c90cb574c9f9b # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -105,11 +105,11 @@ jobs:
     name: Docs Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@4959332f0f014c5280e7eac8b70c90cb574c9f9b # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -124,11 +124,11 @@ jobs:
     name: Link Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@4959332f0f014c5280e7eac8b70c90cb574c9f9b # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -146,11 +146,11 @@ jobs:
       matrix:
         python: ["3.9", "3.11"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@4959332f0f014c5280e7eac8b70c90cb574c9f9b # v5
         with:
           enable-cache: true
           python-version: "${{matrix.python}}"
@@ -167,7 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "Make an sdist"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - uses: actions/setup-python@v5
@@ -225,11 +225,11 @@ jobs:
       runs-on: ubuntu-latest
       name: Test using minimum dependencies and supported Python
       steps:
-        - uses: actions/checkout@v4
+        - uses: actions/checkout@v5
           with:
             persist-credentials: false
         - name: Install uv
-          uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+          uses: astral-sh/setup-uv@4959332f0f014c5280e7eac8b70c90cb574c9f9b # v5
           with:
             python-version: '3.9'
         - id: setup-mongodb
@@ -251,11 +251,11 @@ jobs:
       runs-on: ubuntu-latest
       name: Test async's minimum dependencies and Python
       steps:
-        - uses: actions/checkout@v4
+        - uses: actions/checkout@v5
           with:
             persist-credentials: false
         - name: Install uv
-          uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+          uses: astral-sh/setup-uv@4959332f0f014c5280e7eac8b70c90cb574c9f9b # v5
           with:
             python-version: '3.9'
         - id: setup-mongodb

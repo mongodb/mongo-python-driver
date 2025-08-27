@@ -378,9 +378,9 @@ class TestSession(IntegrationTest):
 
         with self.client.start_session() as s:
             cursor = coll.find(session=s)
-            self.assertTrue(cursor.session is s)
+            self.assertIs(cursor.session, s)
             clone = cursor.clone()
-            self.assertTrue(clone.session is s)
+            self.assertIs(clone.session, s)
 
         # No explicit session.
         cursor = coll.find(batch_size=2)
@@ -392,7 +392,7 @@ class TestSession(IntegrationTest):
         next(clone)
         self.assertIsNone(clone.session)
         self.assertIsNotNone(clone._session)
-        self.assertFalse(cursor._session is clone._session)
+        self.assertIsNot(cursor._session, clone._session)
         cursor.close()
         clone.close()
 
