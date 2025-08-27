@@ -1054,7 +1054,7 @@ class Pool:
 
         # Apply backoff if applicable.
         if self._backoff:
-            asyncio.sleep(_backoff(self._backoff))
+            time.sleep(_backoff(self._backoff))
 
         try:
             networking_interface = _configured_socket_interface(self.address, self.opts)
