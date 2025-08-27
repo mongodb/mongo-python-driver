@@ -49,16 +49,13 @@ from pymongo.common import (
 from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConfigurationError,
-    ConnectionFailure,
     DocumentTooLarge,
     ExecutionTimeout,
     InvalidOperation,
-    NetworkTimeout,
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
     WaitQueueTimeoutError,
-    _OperationCancelled,
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers_shared import _get_timeout_details, format_timeout_details
@@ -1109,11 +1106,10 @@ class Pool:
             async with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
             # Enter backoff mode and reconnect on establishment failure.
-            if isinstance(e, ConnectionFailure) and not isinstance(
-                e, (_OperationCancelled, NetworkTimeout)
-            ):
+            if type(e) == AutoReconnect:
                 self._backoff += 1
                 # TODO: emit a message about backoff.
+                print("backing off", self._backoff)  # noqa: T201
                 return await self.connect(handler)
             await conn.close_conn(ConnectionClosedReason.ERROR)
             raise
