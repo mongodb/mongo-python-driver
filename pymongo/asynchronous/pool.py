@@ -49,6 +49,7 @@ from pymongo.common import (
 from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConfigurationError,
+    ConnectionFailure,
     DocumentTooLarge,
     ExecutionTimeout,
     InvalidOperation,
@@ -940,12 +941,6 @@ class Pool:
             for _socket in self.conns:
                 _socket.update_is_writable(self.is_writable)  # type: ignore[arg-type]
 
-    async def backoff(self, service_id: Optional[ObjectId] = None) -> None:
-        # Mark the pool as in backoff.
-        # TODO: how to handle load balancers?
-        self._backoff += 1
-        # TODO: emit a message.
-
     async def reset(
         self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
     ) -> None:
@@ -1108,9 +1103,14 @@ class Pool:
 
             await conn.authenticate()
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException:
+        except BaseException as e:
             async with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
+            # Enter backoff mode and reconnect on establishment failure.
+            if isinstance(e, ConnectionFailure):
+                self._backoff += 1
+                # TODO: emit a message about backoff.
+                return await self.connect(handler)
             await conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
@@ -1412,20 +1412,6 @@ class Pool:
                     # Pool.reset().
                     if self.stale_generation(conn.generation, conn.service_id):
                         close_conn = True
-                    # If in backoff state, check the conn's readiness.
-                    elif self._backoff:
-                        # Set a 1ms read deadline and attempt to read 1 byte from the connection.
-                        # Expect it to block for 1ms then return a deadline exceeded error. If it
-                        # returns any other error, the connection is not usable, so return false.
-                        # If it doesn't return an error and actually reads data, the connection is
-                        # also not usable, so return false.
-                        conn.conn.get_conn.settimeout(0.001)
-                        close_conn = True
-                        try:
-                            conn.conn.get_conn.read(1)
-                        except Exception as _:
-                            # TODO: verify the exception
-                            close_conn = False
                     else:
                         conn.update_last_checkin_time()
                         conn.update_is_writable(bool(self.is_writable))
@@ -1456,8 +1442,8 @@ class Pool:
         :class:`~pymongo.errors.AutoReconnect` exceptions on server
         hiccups, etc. We only check if the socket was closed by an external
         error if it has been > 1 second since the socket was checked into the
-        pool, to keep performance reasonable - we can't avoid AutoReconnects
-        completely anyway.
+        pool, or we are in backoff mode, to keep performance reasonable -
+        we can't avoid AutoReconnects completely anyway.
         """
         idle_time_seconds = conn.idle_time_seconds()
         # If socket is idle, open a new one.
@@ -1468,8 +1454,11 @@ class Pool:
             await conn.close_conn(ConnectionClosedReason.IDLE)
             return True
 
-        if self._check_interval_seconds is not None and (
-            self._check_interval_seconds == 0 or idle_time_seconds > self._check_interval_seconds
+        check_interval_seconds = self._check_interval_seconds
+        if self._backoff:
+            check_interval_seconds = 0
+        if check_interval_seconds is not None and (
+            check_interval_seconds == 0 or idle_time_seconds > check_interval_seconds
         ):
             if conn.conn_closed():
                 await conn.close_conn(ConnectionClosedReason.ERROR)

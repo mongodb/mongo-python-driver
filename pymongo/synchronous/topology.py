@@ -895,17 +895,13 @@ class Topology:
             if not self._settings.load_balanced:
                 self._process_change(ServerDescription(address, error=error))
 
-            if err_ctx.completed_handshake:
-                # Clear the pool.
-                server.reset(service_id)
-                # "When a client marks a server Unknown from `Network error when
-                # reading or writing`_, clients MUST cancel the hello check on
-                # that server and close the current monitoring connection."
-                server._monitor.cancel_check()
-                return
-
-            # Set the pool into backoff mode.
-            server.backoff(service_id)
+            # Clear the pool.
+            server.reset(service_id)
+            # "When a client marks a server Unknown from `Network error when
+            # reading or writing`_, clients MUST cancel the hello check on
+            # that server and close the current monitoring connection."
+            server._monitor.cancel_check()
+            return
 
     def handle_error(self, address: _Address, err_ctx: _ErrorContext) -> None:
         """Handle an application error.

@@ -91,10 +91,6 @@ class Server:
         """Clear the connection pool."""
         await self.pool.reset(service_id)
 
-    async def backoff(self, service_id: Optional[ObjectId] = None) -> None:
-        """Set the connection pool in backoff mode."""
-        await self.pool.backoff(service_id)
-
     async def close(self) -> None:
         """Clear the connection pool and stop the monitor.
 
