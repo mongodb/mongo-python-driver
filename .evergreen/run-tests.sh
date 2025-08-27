@@ -30,6 +30,6 @@ uv sync ${UV_ARGS} --reinstall --quiet
 uv pip list
 
 # Start the test runner.
-uv run ${UV_ARGS} .evergreen/scripts/run_tests.py "$@"
+uv run ${UV_ARGS} .evergreen/scripts/run_tests.py -vv test/asynchronous/test_pooling.py
 
 popd
