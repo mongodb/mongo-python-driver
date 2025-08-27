@@ -508,10 +508,10 @@ class TestPooling(_TestPoolingBase):
             with self.assertRaises(Exception) as error:
                 await client.admin.command("ping")
 
-        if "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 500.0ms)" not in str(
-            error.exception
-        ):
-            raise error.exception
+        self.assertIn(
+            "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 500.0ms)",
+            str(error.exception),
+        )
 
     @async_client_context.require_failCommand_appName
     async def test_pool_backoff_preserves_existing_collections(self):
