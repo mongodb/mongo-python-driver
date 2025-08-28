@@ -53,7 +53,9 @@
                 "failCommands": [
                   "saslContinue"
                 ],
-                "closeConnection": true,
+                "closeConnection": false,
+                "blockConnection": true,
+                "blockTimeMS": 1000,
                 "appName": "authNetworkErrorTest"
               }
             }
@@ -75,6 +77,8 @@
                   ],
                   "uriOptions": {
                     "retryWrites": false,
+                    "socketTimeoutMS": 500,
+                    "connectTimeoutMS": 500,
                     "appname": "authNetworkErrorTest"
                   }
                 }
