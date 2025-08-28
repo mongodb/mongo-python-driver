@@ -126,9 +126,6 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
-            },
-            {
-              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -235,9 +232,6 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
-            },
-            {
-              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -331,9 +325,6 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
-            },
-            {
-              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -419,9 +410,6 @@
           "client": "client",
           "eventType": "cmap",
           "events": [
-            {
-              "connectionCheckOutStartedEvent": {}
-            },
             {
               "connectionCheckOutStartedEvent": {}
             },
@@ -525,9 +513,6 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
-            },
-            {
-              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -615,9 +600,6 @@
           "client": "client",
           "eventType": "cmap",
           "events": [
-            {
-              "connectionCheckOutStartedEvent": {}
-            },
             {
               "connectionCheckOutStartedEvent": {}
             },
@@ -716,9 +698,6 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
-            },
-            {
-              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -801,9 +780,6 @@
           "client": "client",
           "eventType": "cmap",
           "events": [
-            {
-              "connectionCheckOutStartedEvent": {}
-            },
             {
               "connectionCheckOutStartedEvent": {}
             },
@@ -905,9 +881,6 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
-            },
-            {
-              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -993,9 +966,6 @@
           "client": "client",
           "eventType": "cmap",
           "events": [
-            {
-              "connectionCheckOutStartedEvent": {}
-            },
             {
               "connectionCheckOutStartedEvent": {}
             },
@@ -1099,9 +1069,6 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
-            },
-            {
-              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -1189,9 +1156,6 @@
           "client": "client",
           "eventType": "cmap",
           "events": [
-            {
-              "connectionCheckOutStartedEvent": {}
-            },
             {
               "connectionCheckOutStartedEvent": {}
             },
@@ -1290,9 +1254,6 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
-            },
-            {
-              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -1375,9 +1336,6 @@
           "client": "client",
           "eventType": "cmap",
           "events": [
-            {
-              "connectionCheckOutStartedEvent": {}
-            },
             {
               "connectionCheckOutStartedEvent": {}
             },
@@ -1479,9 +1437,6 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
-            },
-            {
-              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -1567,9 +1522,6 @@
           "client": "client",
           "eventType": "cmap",
           "events": [
-            {
-              "connectionCheckOutStartedEvent": {}
-            },
             {
               "connectionCheckOutStartedEvent": {}
             },
@@ -1673,9 +1625,6 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
-            },
-            {
-              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -1763,9 +1712,6 @@
           "client": "client",
           "eventType": "cmap",
           "events": [
-            {
-              "connectionCheckOutStartedEvent": {}
-            },
             {
               "connectionCheckOutStartedEvent": {}
             },
@@ -1873,9 +1819,6 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
-            },
-            {
-              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -1967,9 +1910,6 @@
           "client": "client",
           "eventType": "cmap",
           "events": [
-            {
-              "connectionCheckOutStartedEvent": {}
-            },
             {
               "connectionCheckOutStartedEvent": {}
             },
