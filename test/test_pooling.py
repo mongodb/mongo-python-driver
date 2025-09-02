@@ -394,11 +394,13 @@ class TestPooling(_TestPoolingBase):
             time.sleep(0.05)
         pool.close()
 
-    def test_maxConnecting(self):
-        client = self.rs_or_single_client()
-        self.client.test.test.insert_one({})
-        self.addCleanup(self.client.test.test.delete_many, {})
+    def _check_maxConnecting(self, client: MongoClient, backoff=False) -> tuple[int, int]:
+        client.test.test.insert_one({})
+
+        self.addCleanup(client.test.test.delete_many, {})
         pool = get_pool(client)
+        if backoff:
+            pool._backoff = 1
         docs = []
 
         # Run 50 short running operations
@@ -411,15 +413,21 @@ class TestPooling(_TestPoolingBase):
         for task in tasks:
             task.join(10)
 
-        self.assertEqual(len(docs), 50)
-        self.assertLessEqual(len(pool.conns), 50)
+        return len(docs), len(pool.conns)
+
+    def test_maxConnecting(self):
+        client = self.rs_or_single_client()
+        num_docs, num_conns = self._check_maxConnecting(client)
+
+        self.assertEqual(num_docs, 50)
+        self.assertLessEqual(num_conns, 50)
         # TLS and auth make connection establishment more expensive than
         # the query which leads to more threads hitting maxConnecting.
         # The end result is fewer total connections and better latency.
         if client_context.tls and client_context.auth_enabled:
-            self.assertLessEqual(len(pool.conns), 30)
+            self.assertLessEqual(num_conns, 30)
         else:
-            self.assertLessEqual(len(pool.conns), 50)
+            self.assertLessEqual(num_conns, 50)
         # MongoDB 4.4.1 with auth + ssl:
         # maxConnecting = 2:         6 connections in ~0.231+ seconds
         # maxConnecting = unbounded: 50 connections in ~0.642+ seconds
@@ -427,7 +435,7 @@ class TestPooling(_TestPoolingBase):
         # MongoDB 4.4.1 with no-auth no-ssl Python 3.8:
         # maxConnecting = 2:         15-22 connections in ~0.108+ seconds
         # maxConnecting = unbounded: 30+ connections in ~0.140+ seconds
-        print(len(pool.conns))
+        print(num_conns)
 
     @client_context.require_failCommand_appName
     def test_csot_timeout_message(self):
@@ -511,8 +519,33 @@ class TestPooling(_TestPoolingBase):
             str(error.exception),
         )
 
+    def test_pool_check_backoff(self):
+        # Test that Pool recovers from two connection failures in a row.
+        # This exercises code at the end of Pool._check().
+        cx_pool = self.create_pool(max_pool_size=1, connect_timeout=1, wait_queue_timeout=1)
+        self.addCleanup(cx_pool.close)
+
+        with cx_pool.checkout() as conn:
+            # Simulate a closed socket without telling the Connection it's
+            # closed.
+            conn.conn.close()
+
+        # Enable backoff.
+        cx_pool._backoff = 1
+
+        # Swap pool's address with a bad one.
+        address, cx_pool.address = cx_pool.address, ("foo.com", 1234)
+        with self.assertRaises(AutoReconnect):
+            with cx_pool.checkout():
+                pass
+
+        # Back to normal, semaphore was correctly released.
+        cx_pool.address = address
+        with cx_pool.checkout():
+            pass
+
     @client_context.require_failCommand_appName
-    def test_pool_backoff_preserves_existing_collections(self):
+    def test_pool_backoff_preserves_existing_connections(self):
         client = self.rs_or_single_client()
         coll = self.db.t
         pool = get_pool(client)
@@ -547,30 +580,17 @@ class TestPooling(_TestPoolingBase):
         t.join()
         pool.close()
 
-    def test_pool_check_backoff(self):
-        # Test that Pool recovers from two connection failures in a row.
-        # This exercises code at the end of Pool._check().
-        cx_pool = self.create_pool(max_pool_size=1, connect_timeout=1, wait_queue_timeout=1)
-        self.addCleanup(cx_pool.close)
+    def test_pool_backoff_limits_maxConnecting(self):
+        client = self.rs_or_single_client()
+        _, baseline_conns = self._check_maxConnecting(client)
+        client.close()
 
-        with cx_pool.checkout() as conn:
-            # Simulate a closed socket without telling the Connection it's
-            # closed.
-            conn.conn.close()
+        client = self.rs_or_single_client()
+        _, backoff_conns = self._check_maxConnecting(client, backoff=True)
+        client.close()
 
-        # Enable backoff.
-        cx_pool._backoff = 1
-
-        # Swap pool's address with a bad one.
-        address, cx_pool.address = cx_pool.address, ("foo.com", 1234)
-        with self.assertRaises(AutoReconnect):
-            with cx_pool.checkout():
-                pass
-
-        # Back to normal, semaphore was correctly released.
-        cx_pool.address = address
-        with cx_pool.checkout():
-            pass
+        # We should have created less conns due to limiting maxConnecting.
+        self.assertLess(backoff_conns, baseline_conns)
 
 
 class TestPoolMaxSize(_TestPoolingBase):
