@@ -1106,7 +1106,7 @@ class Pool:
             async with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
             # Enter backoff mode and reconnect on establishment failure.
-            if type(e) == AutoReconnect:
+            if not self.is_sdam and type(e) == AutoReconnect:
                 await conn.close_conn(ConnectionClosedReason.ERROR)
                 self._backoff += 1
                 # TODO: emit a message about backoff.
