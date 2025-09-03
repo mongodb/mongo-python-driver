@@ -1,10 +1,9 @@
 {
-  "description": "fle2v2-BypassQueryAnalysis",
+  "description": "fle2v2-Delete",
   "schemaVersion": "1.25",
   "runOnRequirements": [
     {
       "minServerVersion": "7.0.0",
-      "serverless": "forbid",
       "topologies": [
         "replicaset",
         "sharded",
@@ -20,13 +19,12 @@
       "client": {
         "id": "client0",
         "autoEncryptOpts": {
+          "keyVaultNamespace": "keyvault.datakeys",
           "kmsProviders": {
             "local": {
               "key": "Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
             }
-          },
-          "keyVaultNamespace": "keyvault.datakeys",
-          "bypassQueryAnalysis": true
+          }
         },
         "observeEvents": [
           "commandStartedEvent"
@@ -35,75 +33,20 @@
     },
     {
       "database": {
-        "id": "encryptedDB",
+        "id": "db",
         "client": "client0",
         "databaseName": "default"
       }
     },
     {
       "collection": {
-        "id": "encryptedColl",
-        "database": "encryptedDB",
-        "collectionName": "default"
-      }
-    },
-    {
-      "client": {
-        "id": "client1"
-      }
-    },
-    {
-      "database": {
-        "id": "unencryptedDB",
-        "client": "client1",
-        "databaseName": "default"
-      }
-    },
-    {
-      "collection": {
-        "id": "unencryptedColl",
-        "database": "unencryptedDB",
+        "id": "coll",
+        "database": "db",
         "collectionName": "default"
       }
     }
   ],
   "initialData": [
-    {
-      "databaseName": "keyvault",
-      "collectionName": "datakeys",
-      "documents": [
-        {
-          "_id": {
-            "$binary": {
-              "base64": "EjRWeBI0mHYSNBI0VniQEg==",
-              "subType": "04"
-            }
-          },
-          "keyMaterial": {
-            "$binary": {
-              "base64": "sHe0kz57YW7v8g9VP9sf/+K1ex4JqKc5rf/URX3n3p8XdZ6+15uXPaSayC6adWbNxkFskuMCOifDoTT+rkqMtFkDclOy884RuGGtUysq3X7zkAWYTKi8QAfKkajvVbZl2y23UqgVasdQu3OVBQCrH/xY00nNAs/52e958nVjBuzQkSb1T8pKJAyjZsHJ60+FtnfafDZSTAIBJYn7UWBCwQ==",
-              "subType": "00"
-            }
-          },
-          "creationDate": {
-            "$date": {
-              "$numberLong": "1648914851981"
-            }
-          },
-          "updateDate": {
-            "$date": {
-              "$numberLong": "1648914851981"
-            }
-          },
-          "status": {
-            "$numberInt": "0"
-          },
-          "masterKey": {
-            "provider": "local"
-          }
-        }
-      ]
-    },
     {
       "databaseName": "default",
       "collectionName": "default",
@@ -140,64 +83,76 @@
           ]
         }
       }
+    },
+    {
+      "databaseName": "keyvault",
+      "collectionName": "datakeys",
+      "documents": [
+        {
+          "_id": {
+            "$binary": {
+              "base64": "EjRWeBI0mHYSNBI0VniQEg==",
+              "subType": "04"
+            }
+          },
+          "keyMaterial": {
+            "$binary": {
+              "base64": "sHe0kz57YW7v8g9VP9sf/+K1ex4JqKc5rf/URX3n3p8XdZ6+15uXPaSayC6adWbNxkFskuMCOifDoTT+rkqMtFkDclOy884RuGGtUysq3X7zkAWYTKi8QAfKkajvVbZl2y23UqgVasdQu3OVBQCrH/xY00nNAs/52e958nVjBuzQkSb1T8pKJAyjZsHJ60+FtnfafDZSTAIBJYn7UWBCwQ==",
+              "subType": "00"
+            }
+          },
+          "creationDate": {
+            "$date": {
+              "$numberLong": "1648914851981"
+            }
+          },
+          "updateDate": {
+            "$date": {
+              "$numberLong": "1648914851981"
+            }
+          },
+          "status": {
+            "$numberInt": "0"
+          },
+          "masterKey": {
+            "provider": "local"
+          }
+        }
+      ]
     }
   ],
   "tests": [
     {
-      "description": "BypassQueryAnalysis decrypts",
+      "description": "Delete can query an FLE2 indexed field",
       "operations": [
         {
-          "object": "encryptedColl",
           "name": "insertOne",
           "arguments": {
             "document": {
               "_id": 1,
-              "encryptedIndexed": {
-                "$binary": {
-                  "base64": "C18BAAAFZAAgAAAAANnt+eLTkv4GdDPl8IAfJOvTzArOgFJQ2S/DcLza4W0DBXMAIAAAAAD2u+omZme3P2gBPehMQyQHQ153tPN1+z7bksYA9jKTpAVwADAAAAAAUnCOQqIvmR65YKyYnsiVfVrg9hwUVO3RhhKExo3RWOzgaS0QdsBL5xKFS0JhZSoWBXUAEAAAAAQSNFZ4EjSYdhI0EjRWeJASEHQAAgAAAAV2AFAAAAAAEjRWeBI0mHYSNBI0VniQEpQbp/ZJpWBKeDtKLiXb0P2E9wvc0g3f373jnYQYlJquOrlPOoEy3ngsHPJuSUijvWDsrQzqYa349K7G/66qaXEFZQAgAAAAAOuac/eRLYakKX6B0vZ1r3QodOQFfjqJD+xlGiPu4/PsBWwAIAAAAACkm0o9bj6j0HuADKc0svbqO2UHj6GrlNdF6yKNxh63xRJrAAAAAAAAAAAAAA==",
-                  "subType": "06"
-                }
-              }
+              "encryptedIndexed": "value123"
             }
-          }
+          },
+          "object": "coll"
         },
         {
-          "object": "encryptedColl",
-          "name": "find",
+          "name": "deleteOne",
           "arguments": {
             "filter": {
-              "_id": 1
+              "encryptedIndexed": "value123"
             }
           },
-          "expectResult": [
-            {
-              "_id": 1,
-              "encryptedIndexed": "123"
-            }
-          ]
-        },
+          "object": "coll",
+          "expectResult": {
+            "deletedCount": 1
+          }
+        }
+      ],
+      "outcome": [
         {
-          "object": "unencryptedColl",
-          "name": "find",
-          "arguments": {
-            "filter": {}
-          },
-          "expectResult": [
-            {
-              "_id": 1,
-              "encryptedIndexed": {
-                "$$type": "binData"
-              },
-              "__safeContent__": [
-                {
-                  "$binary": {
-                    "base64": "31eCYlbQoVboc5zwC8IoyJVSkag9PxREka8dkmbXJeY=",
-                    "subType": "00"
-                  }
-                }
-              ]
-            }
-          ]
+          "documents": [],
+          "collectionName": "default",
+          "databaseName": "default"
         }
       ],
       "expectEvents": [
@@ -218,15 +173,45 @@
             {
               "commandStartedEvent": {
                 "command": {
+                  "find": "datakeys",
+                  "filter": {
+                    "$or": [
+                      {
+                        "_id": {
+                          "$in": [
+                            {
+                              "$binary": {
+                                "base64": "EjRWeBI0mHYSNBI0VniQEg==",
+                                "subType": "04"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "keyAltNames": {
+                          "$in": []
+                        }
+                      }
+                    ]
+                  },
+                  "$db": "keyvault",
+                  "readConcern": {
+                    "level": "majority"
+                  }
+                },
+                "commandName": "find"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
                   "insert": "default",
                   "documents": [
                     {
                       "_id": 1,
                       "encryptedIndexed": {
-                        "$binary": {
-                          "base64": "C18BAAAFZAAgAAAAANnt+eLTkv4GdDPl8IAfJOvTzArOgFJQ2S/DcLza4W0DBXMAIAAAAAD2u+omZme3P2gBPehMQyQHQ153tPN1+z7bksYA9jKTpAVwADAAAAAAUnCOQqIvmR65YKyYnsiVfVrg9hwUVO3RhhKExo3RWOzgaS0QdsBL5xKFS0JhZSoWBXUAEAAAAAQSNFZ4EjSYdhI0EjRWeJASEHQAAgAAAAV2AFAAAAAAEjRWeBI0mHYSNBI0VniQEpQbp/ZJpWBKeDtKLiXb0P2E9wvc0g3f373jnYQYlJquOrlPOoEy3ngsHPJuSUijvWDsrQzqYa349K7G/66qaXEFZQAgAAAAAOuac/eRLYakKX6B0vZ1r3QodOQFfjqJD+xlGiPu4/PsBWwAIAAAAACkm0o9bj6j0HuADKc0svbqO2UHj6GrlNdF6yKNxh63xRJrAAAAAAAAAAAAAA==",
-                          "subType": "06"
-                        }
+                        "$$type": "binData"
                       }
                     }
                   ],
@@ -275,45 +260,62 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "find": "default",
-                  "filter": {
-                    "_id": 1
-                  }
-                },
-                "commandName": "find"
-              }
-            },
-            {
-              "commandStartedEvent": {
-                "command": {
-                  "find": "datakeys",
-                  "filter": {
-                    "$or": [
-                      {
-                        "_id": {
-                          "$in": [
-                            {
+                  "delete": "default",
+                  "deletes": [
+                    {
+                      "q": {
+                        "encryptedIndexed": {
+                          "$eq": {
+                            "$binary": {
+                              "base64": "DIkAAAAFZAAgAAAAAPtVteJQAlgb2YMa/+7YWH00sbQPyt7L6Rb8OwBdMmL2BXMAIAAAAAAd44hgVKnEnTFlwNVC14oyc9OZOTspeymusqkRQj57nAVsACAAAAAAaZ9s3G+4znfxStxeOZwcZy1OhzjMGc5hjmdMN+b/w6kSY20AAAAAAAAAAAAA",
+                              "subType": "06"
+                            }
+                          }
+                        }
+                      },
+                      "limit": 1
+                    }
+                  ],
+                  "ordered": true,
+                  "encryptionInformation": {
+                    "type": 1,
+                    "schema": {
+                      "default.default": {
+                        "escCollection": "enxcol_.default.esc",
+                        "ecocCollection": "enxcol_.default.ecoc",
+                        "fields": [
+                          {
+                            "keyId": {
                               "$binary": {
                                 "base64": "EjRWeBI0mHYSNBI0VniQEg==",
                                 "subType": "04"
                               }
+                            },
+                            "path": "encryptedIndexed",
+                            "bsonType": "string",
+                            "queries": {
+                              "queryType": "equality",
+                              "contention": {
+                                "$numberLong": "0"
+                              }
                             }
-                          ]
-                        }
-                      },
-                      {
-                        "keyAltNames": {
-                          "$in": []
-                        }
+                          },
+                          {
+                            "keyId": {
+                              "$binary": {
+                                "base64": "q83vqxI0mHYSNBI0VniQEg==",
+                                "subType": "04"
+                              }
+                            },
+                            "path": "encryptedUnindexed",
+                            "bsonType": "string"
+                          }
+                        ]
                       }
-                    ]
-                  },
-                  "$db": "keyvault",
-                  "readConcern": {
-                    "level": "majority"
+                    }
                   }
                 },
-                "commandName": "find"
+                "commandName": "delete"
               }
             }
           ]
