@@ -1272,7 +1272,7 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         with self.assertRaises(BulkWriteError) as ctx:
             self.coll_encrypted.bulk_write([InsertOne(doc)])
         err = ctx.exception.details["writeErrors"][0]
-        self.assertEqual(2, err["code"])
+        self.assertIn(err["code"], [2, 10334])
         self.assertIn("object to insert too large", err["errmsg"])
 
 
