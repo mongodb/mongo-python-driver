@@ -1,10 +1,12 @@
 {
-  "description": "maxWireVersion",
-  "schemaVersion": "1.23",
+  "description": "bypassedCommand",
+  "schemaVersion": "1.25",
   "runOnRequirements": [
     {
-      "maxServerVersion": "4.0.99",
-      "csfle": true
+      "minServerVersion": "4.1.10",
+      "csfle": {
+        "minLibmongocryptVersion": "1.15.1"
+      }
     }
   ],
   "createEntities": [
@@ -22,29 +24,34 @@
                 "$$placeholder": 1
               }
             }
-          },
-          "extraOptions": {
-            "mongocryptdBypassSpawn": true
           }
-        }
+        },
+        "observeEvents": [
+          "commandStartedEvent"
+        ]
       }
     },
     {
       "database": {
-        "id": "database0",
+        "id": "db",
         "client": "client0",
         "databaseName": "default"
       }
     },
     {
       "collection": {
-        "id": "collection0",
-        "database": "database0",
+        "id": "coll",
+        "database": "db",
         "collectionName": "default"
       }
     }
   ],
   "initialData": [
+    {
+      "databaseName": "default",
+      "collectionName": "default",
+      "documents": []
+    },
     {
       "databaseName": "keyvault",
       "collectionName": "datakeys",
@@ -88,18 +95,50 @@
   ],
   "tests": [
     {
-      "description": "operation fails with maxWireVersion < 8",
+      "description": "ping is bypassed",
       "operations": [
         {
-          "name": "insertOne",
-          "object": "collection0",
+          "name": "runCommand",
+          "object": "db",
           "arguments": {
-            "document": {
-              "encrypted_string": "string0"
+            "command": {
+              "ping": 1
+            },
+            "commandName": "ping"
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "ping": 1
+                },
+                "commandName": "ping"
+              }
             }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "kill op is not bypassed",
+      "operations": [
+        {
+          "name": "runCommand",
+          "object": "db",
+          "arguments": {
+            "command": {
+              "killOp": 1,
+              "op": 1234
+            },
+            "commandName": "killOp"
           },
           "expectError": {
-            "errorContains": "Auto-encryption requires a minimum MongoDB version of 4.2"
+            "errorContains": "command not supported for auto encryption: killOp"
           }
         }
       ]
