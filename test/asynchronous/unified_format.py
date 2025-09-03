@@ -1032,7 +1032,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             raise
         else:
             if expect_error:
-                self.fail(f'Excepted error {expect_error} but "{opname}" succeeded: {result}')
+                self.fail(f'Expected error {expect_error} but "{opname}" succeeded: {result}')
 
         if expect_result:
             actual = coerce_result(opname, result)
