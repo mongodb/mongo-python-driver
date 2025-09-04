@@ -1107,6 +1107,8 @@ class Pool:
             if not self.is_sdam and type(e) == AutoReconnect:
                 self._backoff += 1
                 e._add_error_label("SystemOverloaded")
+                e._add_error_label("Retryable")
+                print("Setting backoff:", self._backoff)  # noqa: T201
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
