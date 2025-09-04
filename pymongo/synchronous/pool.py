@@ -1101,13 +1101,12 @@ class Pool:
         except BaseException as e:
             with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
-            # Enter backoff mode and reconnect on establishment failure.
+            # Handle system overload condition.  When the base AutoReconnect is
+            # raised and we are not an sdam pool, add to backoff and add the
+            # appropriate error label.
             if not self.is_sdam and type(e) == AutoReconnect:
-                conn.close_conn(ConnectionClosedReason.ERROR)
                 self._backoff += 1
-                # TODO: emit a message about backoff.
-                print("backing off", self._backoff)  # noqa: T201
-                return self.connect(handler)
+                e._add_error_label("SystemOverloaded")
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
