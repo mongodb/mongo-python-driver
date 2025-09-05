@@ -397,7 +397,6 @@ class TestPooling(_TestPoolingBase):
     def _check_maxConnecting(self, client: MongoClient, backoff=False) -> tuple[int, int]:
         client.test.test.insert_one({})
 
-        self.addCleanup(client.test.test.delete_many, {})
         pool = get_pool(client)
         if backoff:
             pool._backoff = 1
@@ -412,6 +411,8 @@ class TestPooling(_TestPoolingBase):
             task.start()
         for task in tasks:
             task.join(10)
+
+        client.test.test.delete_many({})
 
         return len(docs), len(pool.conns)
 

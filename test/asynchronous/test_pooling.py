@@ -399,7 +399,6 @@ class TestPooling(_TestPoolingBase):
     ) -> tuple[int, int]:
         await client.test.test.insert_one({})
 
-        self.addAsyncCleanup(client.test.test.delete_many, {})
         pool = await async_get_pool(client)
         if backoff:
             pool._backoff = 1
@@ -414,6 +413,8 @@ class TestPooling(_TestPoolingBase):
             await task.start()
         for task in tasks:
             await task.join(10)
+
+        await client.test.test.delete_many({})
 
         return len(docs), len(pool.conns)
 
