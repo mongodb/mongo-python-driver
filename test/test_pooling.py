@@ -579,6 +579,8 @@ class TestPooling(_TestPoolingBase):
         assert pool.maxConnecting == 10
         pool._backoff = 1
         assert pool.maxConnecting == 1
+        pool._backoff = 0
+        assert pool.maxConnecting == 10
         client.close()
 
 
