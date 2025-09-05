@@ -84,7 +84,7 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.client_session import _validate_session_write_concern
-from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.helpers import _backoff, _handle_reauth
 from pymongo.synchronous.network import command
 
 if TYPE_CHECKING:
@@ -786,9 +786,9 @@ class Pool:
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
         self._max_connecting_cond = _create_condition(self.lock)
-        self._max_connecting = self.opts.max_connecting
         self._pending = 0
         self._client_id = client_id
+        self._backoff = 0
         if self.enabled_for_cmap:
             assert self.opts._event_listeners is not None
             self.opts._event_listeners.publish_pool_created(
@@ -844,6 +844,8 @@ class Pool:
         with self.size_cond:
             if self.closed:
                 return
+            # Clear the backoff state.
+            self._backoff = 0
             if self.opts.pause_enabled and pause and not self.opts.load_balanced:
                 old_state, self.state = self.state, PoolState.PAUSED
             self.gen.inc(service_id)
@@ -926,6 +928,11 @@ class Pool:
                 for conn in sockets:
                     conn.close_conn(ConnectionClosedReason.STALE)
 
+    @property
+    def max_connecting(self) -> int:
+        """The current max connecting limit for the pool."""
+        return 1 if self._backoff else self.opts.max_connecting
+
     def update_is_writable(self, is_writable: Optional[bool]) -> None:
         """Updates the is_writable attribute on all sockets currently in the
         Pool.
@@ -990,7 +997,7 @@ class Pool:
                 with self._max_connecting_cond:
                     # If maxConnecting connections are already being created
                     # by this pool then try again later instead of waiting.
-                    if self._pending >= self._max_connecting:
+                    if self._pending >= self.max_connecting:
                         return
                     self._pending += 1
                     incremented = True
@@ -1047,6 +1054,10 @@ class Pool:
                 driverConnectionId=conn_id,
             )
 
+        # Apply backoff if applicable.
+        if self._backoff:
+            time.sleep(_backoff(self._backoff))
+
         try:
             networking_interface = _configured_socket_interface(self.address, self.opts)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
@@ -1090,15 +1101,25 @@ class Pool:
 
             conn.authenticate()
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException:
+        except BaseException as e:
             with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
+            # Handle system overload condition.  When the base AutoReconnect is
+            # raised and we are not an sdam pool, add to backoff and add the
+            # appropriate error label.
+            if not self.is_sdam and type(e) == AutoReconnect:
+                self._backoff += 1
+                e._add_error_label("SystemOverloaded")
+                e._add_error_label("Retryable")
+                print("Setting backoff:", self._backoff)  # noqa: T201
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
         if handler:
             handler.client._topology.receive_cluster_time(conn._cluster_time)
 
+        # Clear the backoff state.
+        self._backoff = 0
         return conn
 
     @contextlib.contextmanager
@@ -1275,12 +1296,12 @@ class Pool:
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
-                    while not (self.conns or self._pending < self._max_connecting):
+                    while not (self.conns or self._pending < self.max_connecting):
                         timeout = deadline - time.monotonic() if deadline else None
                         if not _cond_wait(self._max_connecting_cond, timeout):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
-                            if self.conns or self._pending < self._max_connecting:
+                            if self.conns or self._pending < self.max_connecting:
                                 self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout(checkout_started_time)
@@ -1421,8 +1442,8 @@ class Pool:
         :class:`~pymongo.errors.AutoReconnect` exceptions on server
         hiccups, etc. We only check if the socket was closed by an external
         error if it has been > 1 second since the socket was checked into the
-        pool, to keep performance reasonable - we can't avoid AutoReconnects
-        completely anyway.
+        pool, or we are in backoff mode, to keep performance reasonable -
+        we can't avoid AutoReconnects completely anyway.
         """
         idle_time_seconds = conn.idle_time_seconds()
         # If socket is idle, open a new one.
@@ -1433,8 +1454,11 @@ class Pool:
             conn.close_conn(ConnectionClosedReason.IDLE)
             return True
 
-        if self._check_interval_seconds is not None and (
-            self._check_interval_seconds == 0 or idle_time_seconds > self._check_interval_seconds
+        check_interval_seconds = self._check_interval_seconds
+        if self._backoff:
+            check_interval_seconds = 0
+        if check_interval_seconds is not None and (
+            check_interval_seconds == 0 or idle_time_seconds > check_interval_seconds
         ):
             if conn.conn_closed():
                 conn.close_conn(ConnectionClosedReason.ERROR)
