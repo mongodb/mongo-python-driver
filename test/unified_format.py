@@ -156,7 +156,9 @@ def is_run_on_requirement_satisfied(requirement):
     csfle_satisfied = True
     req_csfle = requirement.get("csfle")
     if req_csfle is True:
-        min_version_satisfied = Version.from_string("4.2") <= server_version
+        # Don't overwrite unsatisfied minimum version requirements.
+        if min_version_satisfied:
+            min_version_satisfied = Version.from_string("4.2") <= server_version
         csfle_satisfied = _HAVE_PYMONGOCRYPT and min_version_satisfied
     elif isinstance(req_csfle, dict) and "minLibmongocryptVersion" in req_csfle:
         csfle_satisfied = False
@@ -1021,7 +1023,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             raise
         else:
             if expect_error:
-                self.fail(f'Excepted error {expect_error} but "{opname}" succeeded: {result}')
+                self.fail(f'Expected error {expect_error} but "{opname}" succeeded: {result}')
 
         if expect_result:
             actual = coerce_result(opname, result)
