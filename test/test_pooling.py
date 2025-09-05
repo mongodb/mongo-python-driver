@@ -29,6 +29,7 @@ from pymongo import MongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _create_lock
+from pymongo.read_preferences import ReadPreference
 
 sys.path[0:0] = [""]
 
@@ -395,7 +396,8 @@ class TestPooling(_TestPoolingBase):
         pool.close()
 
     def _check_maxConnecting(self, client: MongoClient, backoff=False) -> tuple[int, int]:
-        client.test.test.insert_one({})
+        coll = client.test.test.with_options(read_preference=ReadPreference.PRIMARY)
+        coll.insert_one({})
 
         pool = get_pool(client)
         if backoff:
@@ -404,7 +406,7 @@ class TestPooling(_TestPoolingBase):
 
         # Run 50 short running operations
         def find_one():
-            docs.append(client.test.test.find_one({}))
+            docs.append(coll.find_one({}))
 
         tasks = [ConcurrentRunner(target=find_one) for _ in range(50)]
         for task in tasks:
@@ -412,7 +414,7 @@ class TestPooling(_TestPoolingBase):
         for task in tasks:
             task.join(10)
 
-        client.test.test.delete_many({})
+        coll.delete_many({})
 
         return len(docs), len(pool.conns)
 

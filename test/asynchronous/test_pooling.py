@@ -29,6 +29,7 @@ from pymongo import AsyncMongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _async_create_lock
+from pymongo.read_preferences import ReadPreference
 
 sys.path[0:0] = [""]
 
@@ -397,7 +398,8 @@ class TestPooling(_TestPoolingBase):
     async def _check_maxConnecting(
         self, client: AsyncMongoClient, backoff=False
     ) -> tuple[int, int]:
-        await client.test.test.insert_one({})
+        coll = client.test.test.with_options(read_preference=ReadPreference.PRIMARY)
+        await coll.insert_one({})
 
         pool = await async_get_pool(client)
         if backoff:
@@ -406,7 +408,7 @@ class TestPooling(_TestPoolingBase):
 
         # Run 50 short running operations
         async def find_one():
-            docs.append(await client.test.test.find_one({}))
+            docs.append(await coll.find_one({}))
 
         tasks = [ConcurrentRunner(target=find_one) for _ in range(50)]
         for task in tasks:
@@ -414,7 +416,7 @@ class TestPooling(_TestPoolingBase):
         for task in tasks:
             await task.join(10)
 
-        await client.test.test.delete_many({})
+        await coll.delete_many({})
 
         return len(docs), len(pool.conns)
 
