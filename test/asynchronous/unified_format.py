@@ -255,6 +255,10 @@ class EntityMapUtil:
                 raise ValueError(f"Could not find a placeholder value for {path}")
             return PLACEHOLDER_MAP[path]
 
+        # Distinguish between temp and non-temp aws credentials.
+        if path == "/autoEncryptOpts/kmsProviders/aws" and "sessionToken" in current:
+            path = "/autoEncryptOpts/kmsProviders/aws_temp"
+
         for key in list(current):
             value = current[key]
             if isinstance(value, dict):

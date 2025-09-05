@@ -109,6 +109,7 @@ PLACEHOLDER_MAP = {}
 for provider_name, provider_data in [
     ("local", {"key": LOCAL_MASTER_KEY}),
     ("local:name1", {"key": LOCAL_MASTER_KEY}),
+    ("aws_temp", AWS_TEMP_CREDS),
     ("aws", AWS_CREDS),
     ("aws:name1", AWS_CREDS),
     ("aws:name2", AWS_CREDS_2),
@@ -119,18 +120,9 @@ for provider_name, provider_data in [
     ("kmip", KMIP_CREDS),
     ("kmip:name1", KMIP_CREDS),
 ]:
-    # Use the temp aws creds for autoEncryptOpts.
-    if provider_name == "aws":
-        for key, value in AWS_TEMP_CREDS.items():
-            placeholder = f"/autoEncryptOpts/kmsProviders/{provider_name}/{key}"
-            PLACEHOLDER_MAP[placeholder] = value
-
     for key, value in provider_data.items():
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
-
-        if provider_name == "aws":
-            continue
 
         placeholder = f"/autoEncryptOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
