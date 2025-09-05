@@ -786,7 +786,6 @@ class Pool:
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
         self._max_connecting_cond = _create_condition(self.lock)
-        self._max_connecting = self.opts.max_connecting
         self._pending = 0
         self._client_id = client_id
         self._backoff = 0
@@ -929,6 +928,11 @@ class Pool:
                 for conn in sockets:
                     conn.close_conn(ConnectionClosedReason.STALE)
 
+    @property
+    def max_connecting(self) -> int:
+        """The current max connecting limit for the pool."""
+        return 1 if self._backoff else self.opts.max_connecting
+
     def update_is_writable(self, is_writable: Optional[bool]) -> None:
         """Updates the is_writable attribute on all sockets currently in the
         Pool.
@@ -993,8 +997,7 @@ class Pool:
                 with self._max_connecting_cond:
                     # If maxConnecting connections are already being created
                     # by this pool then try again later instead of waiting.
-                    max_connecting = 1 if self._backoff else self._max_connecting
-                    if self._pending >= max_connecting:
+                    if self._pending >= self.max_connecting:
                         return
                     self._pending += 1
                     incremented = True
@@ -1293,13 +1296,12 @@ class Pool:
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
-                    max_connecting = 1 if self._backoff else self._max_connecting
-                    while not (self.conns or self._pending < max_connecting):
+                    while not (self.conns or self._pending < self.max_connecting):
                         timeout = deadline - time.monotonic() if deadline else None
                         if not _cond_wait(self._max_connecting_cond, timeout):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
-                            if self.conns or self._pending < max_connecting:
+                            if self.conns or self._pending < self.max_connecting:
                                 self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout(checkout_started_time)

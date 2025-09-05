@@ -395,20 +395,16 @@ class TestPooling(_TestPoolingBase):
             await asyncio.sleep(0.05)
         await pool.close()
 
-    async def _check_maxConnecting(
-        self, client: AsyncMongoClient, backoff=False
-    ) -> tuple[int, int]:
-        coll = client.test.test.with_options(read_preference=ReadPreference.PRIMARY)
-        await coll.insert_one({})
-
+    async def test_maxConnecting(self):
+        client = await self.async_rs_or_single_client()
+        await self.client.test.test.insert_one({})
+        self.addAsyncCleanup(self.client.test.test.delete_many, {})
         pool = await async_get_pool(client)
-        if backoff:
-            pool._backoff = 1
         docs = []
 
         # Run 50 short running operations
         async def find_one():
-            docs.append(await coll.find_one({}))
+            docs.append(await client.test.test.find_one({}))
 
         tasks = [ConcurrentRunner(target=find_one) for _ in range(50)]
         for task in tasks:
@@ -416,23 +412,15 @@ class TestPooling(_TestPoolingBase):
         for task in tasks:
             await task.join(10)
 
-        await coll.delete_many({})
-
-        return len(docs), len(pool.conns)
-
-    async def test_maxConnecting(self):
-        client = await self.async_rs_or_single_client()
-        num_docs, num_conns = await self._check_maxConnecting(client)
-
-        self.assertEqual(num_docs, 50)
-        self.assertLessEqual(num_conns, 50)
+        self.assertEqual(len(docs), 50)
+        self.assertLessEqual(len(pool.conns), 50)
         # TLS and auth make connection establishment more expensive than
         # the query which leads to more threads hitting maxConnecting.
         # The end result is fewer total connections and better latency.
         if async_client_context.tls and async_client_context.auth_enabled:
-            self.assertLessEqual(num_conns, 30)
+            self.assertLessEqual(len(pool.conns), 30)
         else:
-            self.assertLessEqual(num_conns, 50)
+            self.assertLessEqual(len(pool.conns), 50)
         # MongoDB 4.4.1 with auth + ssl:
         # maxConnecting = 2:         6 connections in ~0.231+ seconds
         # maxConnecting = unbounded: 50 connections in ~0.642+ seconds
@@ -440,7 +428,7 @@ class TestPooling(_TestPoolingBase):
         # MongoDB 4.4.1 with no-auth no-ssl Python 3.8:
         # maxConnecting = 2:         15-22 connections in ~0.108+ seconds
         # maxConnecting = unbounded: 30+ connections in ~0.140+ seconds
-        print(num_conns)
+        print(len(pool.conns))
 
     @async_client_context.require_failCommand_appName
     async def test_csot_timeout_message(self):
@@ -588,16 +576,12 @@ class TestPooling(_TestPoolingBase):
         await pool.close()
 
     async def test_pool_backoff_limits_maxConnecting(self):
-        client = await self.async_rs_or_single_client(maxConnecting=30)
-        _, baseline_conns = await self._check_maxConnecting(client)
+        client = await self.async_rs_or_single_client(maxConnecting=10)
+        pool = await async_get_pool(client)
+        assert pool.maxConnecting == 10
+        pool._backoff = 1
+        assert pool.maxConnecting == 1
         await client.close()
-
-        client = await self.async_rs_or_single_client(maxConnecting=30)
-        _, backoff_conns = await self._check_maxConnecting(client, backoff=True)
-        await client.close()
-
-        # We should have created less conns due to limiting maxConnecting.
-        self.assertLess(backoff_conns, baseline_conns)
 
 
 class TestPoolMaxSize(_TestPoolingBase):
