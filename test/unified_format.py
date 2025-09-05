@@ -784,6 +784,38 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         return cursor
 
+    def _collectionOperation_assertIndexExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        index_names = [idx["name"] for idx in collection.list_indexes()]
+        self.assertIn(kwargs["index_name"], index_names)
+
+    def _collectionOperation_assertIndexNotExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        for index in collection.list_indexes():
+            self.assertNotEqual(kwargs["indexName"], index["name"])
+
+    def _collectionOperation_assertCollectionExists(self, target, **kwargs):
+        database_name = kwargs["database_name"]
+        collection_name = kwargs["collection_name"]
+        collection_name_list = list(self.client.get_database(database_name).list_collection_names())
+        self.assertIn(collection_name, collection_name_list)
+
+    def _databaseOperation_assertIndexExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        index_names = [idx["name"] for idx in collection.list_indexes()]
+        self.assertIn(kwargs["index_name"], index_names)
+
+    def _databaseOperation_assertIndexNotExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        for index in collection.list_indexes():
+            self.assertNotEqual(kwargs["indexName"], index["name"])
+
+    def _databaseOperation_assertCollectionExists(self, target, **kwargs):
+        database_name = kwargs["database_name"]
+        collection_name = kwargs["collection_name"]
+        collection_name_list = list(self.client.get_database(database_name).list_collection_names())
+        self.assertIn(collection_name, collection_name_list)
+
     def kill_all_sessions(self):
         if getattr(self, "client", None) is None:
             return

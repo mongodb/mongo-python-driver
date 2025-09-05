@@ -787,6 +787,42 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
         return cursor
 
+    async def _collectionOperation_assertIndexExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        index_names = [idx["name"] async for idx in await collection.list_indexes()]
+        self.assertIn(kwargs["index_name"], index_names)
+
+    async def _collectionOperation_assertIndexNotExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        async for index in await collection.list_indexes():
+            self.assertNotEqual(kwargs["indexName"], index["name"])
+
+    async def _collectionOperation_assertCollectionExists(self, target, **kwargs):
+        database_name = kwargs["database_name"]
+        collection_name = kwargs["collection_name"]
+        collection_name_list = list(
+            await self.client.get_database(database_name).list_collection_names()
+        )
+        self.assertIn(collection_name, collection_name_list)
+
+    async def _databaseOperation_assertIndexExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        index_names = [idx["name"] async for idx in await collection.list_indexes()]
+        self.assertIn(kwargs["index_name"], index_names)
+
+    async def _databaseOperation_assertIndexNotExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        async for index in await collection.list_indexes():
+            self.assertNotEqual(kwargs["indexName"], index["name"])
+
+    async def _databaseOperation_assertCollectionExists(self, target, **kwargs):
+        database_name = kwargs["database_name"]
+        collection_name = kwargs["collection_name"]
+        collection_name_list = list(
+            await self.client.get_database(database_name).list_collection_names()
+        )
+        self.assertIn(collection_name, collection_name_list)
+
     async def kill_all_sessions(self):
         if getattr(self, "client", None) is None:
             return
