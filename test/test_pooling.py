@@ -582,11 +582,11 @@ class TestPooling(_TestPoolingBase):
         pool.close()
 
     def test_pool_backoff_limits_maxConnecting(self):
-        client = self.rs_or_single_client()
+        client = self.rs_or_single_client(maxConnecting=30)
         _, baseline_conns = self._check_maxConnecting(client)
         client.close()
 
-        client = self.rs_or_single_client()
+        client = self.rs_or_single_client(maxConnecting=30)
         _, backoff_conns = self._check_maxConnecting(client, backoff=True)
         client.close()
 
