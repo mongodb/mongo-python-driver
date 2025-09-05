@@ -588,11 +588,11 @@ class TestPooling(_TestPoolingBase):
     async def test_pool_backoff_limits_maxConnecting(self):
         client = await self.async_rs_or_single_client()
         _, baseline_conns = await self._check_maxConnecting(client)
-        client.close()
+        await client.close()
 
         client = await self.async_rs_or_single_client()
         _, backoff_conns = await self._check_maxConnecting(client, backoff=True)
-        client.close()
+        await client.close()
 
         # We should have created less conns due to limiting maxConnecting.
         self.assertLess(backoff_conns, baseline_conns)
