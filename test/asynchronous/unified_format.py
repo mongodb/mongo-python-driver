@@ -279,10 +279,8 @@ class EntityMapUtil:
             if "autoEncryptOpts" in spec:
                 auto_encrypt_opts = spec["autoEncryptOpts"].copy()
                 auto_encrypt_kwargs: dict = dict(kms_tls_options=DEFAULT_KMS_TLS)
-                kms_providers = ALL_KMS_PROVIDERS.copy()
+                kms_providers = auto_encrypt_opts.pop("kmsProviders", ALL_KMS_PROVIDERS.copy())
                 key_vault_namespace = auto_encrypt_opts.pop("keyVaultNamespace")
-                for provider_name, provider_value in auto_encrypt_opts.pop("kmsProviders").items():
-                    kms_providers[provider_name].update(provider_value)
                 extra_opts = auto_encrypt_opts.pop("extraOptions", {})
                 for key, value in extra_opts.items():
                     auto_encrypt_kwargs[camel_to_snake(key)] = value
