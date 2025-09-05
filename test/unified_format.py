@@ -255,8 +255,8 @@ class EntityMapUtil:
             return PLACEHOLDER_MAP[path]
 
         # Distinguish between temp and non-temp aws credentials.
-        if path == "/autoEncryptOpts/kmsProviders/aws" and "sessionToken" in current:
-            path = "/autoEncryptOpts/kmsProviders/aws_temp"
+        if path.endswith("/kmsProviders/aws") and "sessionToken" in current:
+            path = path.replace("aws", "aws_temp")
 
         for key in list(current):
             value = current[key]
