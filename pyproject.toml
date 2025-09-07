@@ -61,7 +61,7 @@ mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
 ]
 pymongocrypt_source = [
-    "pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
+    "pymongocrypt@git+https://github.com/aclark4life/libmongocrypt@master#subdirectory=bindings/python"
 ]
 perf = ["simplejson"]
 typing = [
