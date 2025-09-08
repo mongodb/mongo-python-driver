@@ -800,7 +800,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _collectionOperation_assertCollectionExists(self, target, **kwargs):
         database_name = kwargs["database_name"]
         collection_name = kwargs["collection_name"]
-        collection_name_list = list(self.client.get_database(database_name).list_collection_names())
+        collection_name_list = self.client.get_database(database_name).list_collection_names()
         self.assertIn(collection_name, collection_name_list)
 
     def _databaseOperation_assertIndexExists(self, target, **kwargs):
@@ -816,7 +816,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _databaseOperation_assertCollectionExists(self, target, **kwargs):
         database_name = kwargs["database_name"]
         collection_name = kwargs["collection_name"]
-        collection_name_list = list(self.client.get_database(database_name).list_collection_names())
+        collection_name_list = self.client.get_database(database_name).list_collection_names()
         self.assertIn(collection_name, collection_name_list)
 
     def kill_all_sessions(self):
