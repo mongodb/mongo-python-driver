@@ -396,6 +396,12 @@
                         "$unset": {
                           "encrypted_string": ""
                         }
+                      },
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
                       }
                     }
                   ],
@@ -472,6 +478,12 @@
                         "$rename": {
                           "encrypted_string": "encrypted_string_equivalent"
                         }
+                      },
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
                       }
                     }
                   ],

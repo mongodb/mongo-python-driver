@@ -248,7 +248,7 @@
           "name": "runCommand",
           "object": "db",
           "arguments": {
-            "commandName": "collMod",
+            "commandName": "createIndexes",
             "command": {
               "createIndexes": "encryptedCollection",
               "indexes": [
