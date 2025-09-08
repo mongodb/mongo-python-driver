@@ -196,7 +196,7 @@
             }
           },
           "object": "coll",
-          "expectResult": {
+          "expectError": {
             "isTimeoutError": true
           }
         }
@@ -260,7 +260,7 @@
             }
           },
           "object": "coll",
-          "expectResult": {
+          "expectError": {
             "isTimeoutError": true
           }
         }
