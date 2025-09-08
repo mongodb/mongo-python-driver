@@ -194,6 +194,8 @@ jobs:
       steps:
         - name: Download sdist
           uses: actions/download-artifact@v5
+          with:
+            path: sdist/
         - name: Unpack SDist
           shell: bash
           run: |
