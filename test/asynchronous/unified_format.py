@@ -554,12 +554,16 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
-        if "Client side error in command starting transaction" in spec["description"]:
+        class_name = self.__class__.__name__.lower()
+        description = spec["description"].lower()
+        if "Client side error in command starting transaction" in description:
             self.skipTest("Implement PYTHON-1894")
-        if "timeoutMS applied to entire download" in spec["description"]:
+        if "type=symbol" in description:
+            self.skipTest("PyMongo does not support the symbol type")
+        if "timeoutMS applied to entire download" in description:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
         if any(
-            x in spec["description"]
+            x in description
             for x in [
                 "First insertOne is never committed",
                 "Second updateOne is never committed",
@@ -568,8 +572,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         ):
             self.skipTest("Implement PYTHON-4597")
 
-        class_name = self.__class__.__name__.lower()
-        description = spec["description"].lower()
         if "csot" in class_name:
             # Skip tests that are too slow to run on a given platform.
             slow_macos = [
