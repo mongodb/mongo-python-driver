@@ -566,9 +566,9 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         if any(
             x in description
             for x in [
-                "First insertOne is never committed",
-                "Second updateOne is never committed",
-                "Third updateOne is never committed",
+                "first insertone is never committed",
+                "second updateone is never committed",
+                "third updateone is never committed",
             ]
         ):
             self.skipTest("Implement PYTHON-4597")
