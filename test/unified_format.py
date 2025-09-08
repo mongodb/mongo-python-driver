@@ -555,11 +555,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # add any special-casing for skipping tests here
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
-        if "Client side error in command starting transaction" in description:
+
+        if "client side error in command starting transaction" in description:
             self.skipTest("Implement PYTHON-1894")
         if "type=symbol" in description:
             self.skipTest("PyMongo does not support the symbol type")
-        if "timeoutMS applied to entire download" in description:
+        if "timeoutms applied to entire download" in description:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
         if any(
             x in description
