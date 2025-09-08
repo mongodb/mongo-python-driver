@@ -6,6 +6,7 @@ rm $PYMONGO/test/connection_monitoring/wait-queue-fairness.json  # PYTHON-1873
 rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-application-error.json  # PYTHON-4918
 rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-checkout-error.json  # PYTHON-4918
 rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-min-pool-size-error.json  # PYTHON-4918
+rm $PYMONGO/test/client-side-encryption/spec/unified/client-bulkWrite-qe.json  # PYTHON-4929
 
 # Python doesn't implement DRIVERS-3064
 rm $PYMONGO/test/collection_management/listCollections-rawdata.json

@@ -1,10 +1,9 @@
 {
-  "description": "fle2v2-EncryptedFields-vs-EncryptedFieldsMap",
+  "description": "fle2v2-DecryptExistingData",
   "schemaVersion": "1.25",
   "runOnRequirements": [
     {
       "minServerVersion": "7.0.0",
-      "serverless": "forbid",
       "topologies": [
         "replicaset",
         "sharded",
@@ -25,11 +24,6 @@
             "local": {
               "key": "Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
             }
-          },
-          "encryptedFieldsMap": {
-            "default.default": {
-              "fields": []
-            }
           }
         },
         "observeEvents": [
@@ -39,20 +33,35 @@
     },
     {
       "database": {
-        "id": "encryptedDB",
+        "id": "db",
         "client": "client0",
         "databaseName": "default"
       }
     },
     {
       "collection": {
-        "id": "encryptedColl",
-        "database": "encryptedDB",
+        "id": "coll",
+        "database": "db",
         "collectionName": "default"
       }
     }
   ],
   "initialData": [
+    {
+      "databaseName": "default",
+      "collectionName": "default",
+      "documents": [
+        {
+          "_id": 1,
+          "encryptedUnindexed": {
+            "$binary": {
+              "base64": "BqvN76sSNJh2EjQSNFZ4kBICTQaVZPWgXp41I7mPV1rLFTtw1tXzjcdSEyxpKKqujlko5TeizkB9hHQ009dVY1+fgIiDcefh+eQrm3CkhQ==",
+              "subType": "06"
+            }
+          }
+        }
+      ]
+    },
     {
       "databaseName": "keyvault",
       "collectionName": "datakeys",
@@ -88,72 +97,20 @@
           }
         }
       ]
-    },
-    {
-      "databaseName": "default",
-      "collectionName": "default",
-      "documents": [],
-      "createOptions": {
-        "encryptedFields": {
-          "fields": [
-            {
-              "keyId": {
-                "$binary": {
-                  "base64": "EjRWeBI0mHYSNBI0VniQEg==",
-                  "subType": "04"
-                }
-              },
-              "path": "encryptedIndexed",
-              "bsonType": "string",
-              "queries": {
-                "queryType": "equality",
-                "contention": {
-                  "$numberLong": "0"
-                }
-              }
-            },
-            {
-              "keyId": {
-                "$binary": {
-                  "base64": "q83vqxI0mHYSNBI0VniQEg==",
-                  "subType": "04"
-                }
-              },
-              "path": "encryptedUnindexed",
-              "bsonType": "string"
-            }
-          ]
-        }
-      }
     }
   ],
   "tests": [
     {
-      "description": "encryptedFieldsMap is preferred over remote encryptedFields",
+      "description": "FLE2 decrypt of existing data succeeds",
       "operations": [
         {
-          "object": "encryptedColl",
-          "name": "insertOne",
-          "arguments": {
-            "document": {
-              "_id": 1,
-              "encryptedUnindexed": {
-                "$binary": {
-                  "base64": "BqvN76sSNJh2EjQSNFZ4kBICTQaVZPWgXp41I7mPV1rLFTtw1tXzjcdSEyxpKKqujlko5TeizkB9hHQ009dVY1+fgIiDcefh+eQrm3CkhQ==",
-                  "subType": "06"
-                }
-              }
-            }
-          }
-        },
-        {
-          "object": "encryptedColl",
           "name": "find",
           "arguments": {
             "filter": {
               "_id": 1
             }
           },
+          "object": "coll",
           "expectResult": [
             {
               "_id": 1,
@@ -168,41 +125,28 @@
           "events": [
             {
               "commandStartedEvent": {
-                "databaseName": "default",
-                "commandName": "insert",
                 "command": {
-                  "insert": "default",
-                  "documents": [
-                    {
-                      "_id": 1,
-                      "encryptedUnindexed": {
-                        "$binary": {
-                          "base64": "BqvN76sSNJh2EjQSNFZ4kBICTQaVZPWgXp41I7mPV1rLFTtw1tXzjcdSEyxpKKqujlko5TeizkB9hHQ009dVY1+fgIiDcefh+eQrm3CkhQ==",
-                          "subType": "06"
-                        }
-                      }
-                    }
-                  ],
-                  "ordered": true
-                }
+                  "listCollections": 1,
+                  "filter": {
+                    "name": "default"
+                  }
+                },
+                "commandName": "listCollections"
               }
             },
             {
               "commandStartedEvent": {
-                "databaseName": "default",
-                "commandName": "find",
                 "command": {
                   "find": "default",
                   "filter": {
                     "_id": 1
                   }
-                }
+                },
+                "commandName": "find"
               }
             },
             {
               "commandStartedEvent": {
-                "databaseName": "keyvault",
-                "commandName": "find",
                 "command": {
                   "find": "datakeys",
                   "filter": {
@@ -230,24 +174,8 @@
                   "readConcern": {
                     "level": "majority"
                   }
-                }
-              }
-            }
-          ]
-        }
-      ],
-      "outcome": [
-        {
-          "collectionName": "default",
-          "databaseName": "default",
-          "documents": [
-            {
-              "_id": 1,
-              "encryptedUnindexed": {
-                "$binary": {
-                  "base64": "BqvN76sSNJh2EjQSNFZ4kBICTQaVZPWgXp41I7mPV1rLFTtw1tXzjcdSEyxpKKqujlko5TeizkB9hHQ009dVY1+fgIiDcefh+eQrm3CkhQ==",
-                  "subType": "06"
-                }
+                },
+                "commandName": "find"
               }
             }
           ]
