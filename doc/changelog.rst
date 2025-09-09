@@ -4,6 +4,12 @@ Changes in Version 4.15.0 (XXXX/XX/XX)
 --------------------------------------
 PyMongo 4.15 brings a number of changes including:
 
+- Added :class:`~pymongo.encryption_options.TextOpts`,
+  :attr:`~pymongo.encryption.Algorithm.TEXTPREVIEW`,
+  :attr:`~pymongo.encryption.QueryType.PREFIXPREVIEW`,
+  :attr:`~pymongo.encryption.QueryType.SUFFIXPREVIEW`,
+  :attr:`~pymongo.encryption.QueryType.SUBSTRINGPREVIEW`,
+  as part of the experimental Queryable Encryption text queries beta.
 - Added :class:`bson.decimal128.DecimalEncoder` and :class:`bson.decimal128.DecimalDecoder`
   to support encoding and decoding of BSON Decimal128 values to decimal.Decimal values using the TypeRegistry API.
 
