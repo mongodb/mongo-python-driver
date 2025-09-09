@@ -745,8 +745,7 @@ test_creator.create_tests()
 if _HAVE_PYMONGOCRYPT:
     globals().update(
         generate_test_classes(
-            os.path.join(SPEC_PATH, "unified"),
-            module=__name__,
+            os.path.join(SPEC_PATH, "unified"), module=__name__, expected_failures=["mapReduce .*"]
         )
     )
 

@@ -254,6 +254,10 @@ class EntityMapUtil:
                 raise ValueError(f"Could not find a placeholder value for {path}")
             return PLACEHOLDER_MAP[path]
 
+        # Distinguish between temp and non-temp aws credentials.
+        if path.endswith("/kmsProviders/aws") and "sessionToken" in current:
+            path = path.replace("aws", "aws_temp")
+
         for key in list(current):
             value = current[key]
             if isinstance(value, dict):
@@ -274,10 +278,8 @@ class EntityMapUtil:
             if "autoEncryptOpts" in spec:
                 auto_encrypt_opts = spec["autoEncryptOpts"].copy()
                 auto_encrypt_kwargs: dict = dict(kms_tls_options=DEFAULT_KMS_TLS)
-                kms_providers = ALL_KMS_PROVIDERS.copy()
+                kms_providers = auto_encrypt_opts.pop("kmsProviders", ALL_KMS_PROVIDERS.copy())
                 key_vault_namespace = auto_encrypt_opts.pop("keyVaultNamespace")
-                for provider_name, provider_value in auto_encrypt_opts.pop("kmsProviders").items():
-                    kms_providers[provider_name].update(provider_value)
                 extra_opts = auto_encrypt_opts.pop("extraOptions", {})
                 for key, value in extra_opts.items():
                     auto_encrypt_kwargs[camel_to_snake(key)] = value
@@ -551,22 +553,25 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
-        if "Client side error in command starting transaction" in spec["description"]:
+        class_name = self.__class__.__name__.lower()
+        description = spec["description"].lower()
+
+        if "client side error in command starting transaction" in description:
             self.skipTest("Implement PYTHON-1894")
-        if "timeoutMS applied to entire download" in spec["description"]:
+        if "type=symbol" in description:
+            self.skipTest("PyMongo does not support the symbol type")
+        if "timeoutms applied to entire download" in description:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
         if any(
-            x in spec["description"]
+            x in description
             for x in [
-                "First insertOne is never committed",
-                "Second updateOne is never committed",
-                "Third updateOne is never committed",
+                "first insertone is never committed",
+                "second updateone is never committed",
+                "third updateone is never committed",
             ]
         ):
             self.skipTest("Implement PYTHON-4597")
 
-        class_name = self.__class__.__name__.lower()
-        description = spec["description"].lower()
         if "csot" in class_name:
             # Skip tests that are too slow to run on a given platform.
             slow_macos = [
@@ -781,6 +786,38 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             cursor.batch_size(batch_size)
 
         return cursor
+
+    def _collectionOperation_assertIndexExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        index_names = [idx["name"] for idx in collection.list_indexes()]
+        self.assertIn(kwargs["index_name"], index_names)
+
+    def _collectionOperation_assertIndexNotExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        for index in collection.list_indexes():
+            self.assertNotEqual(kwargs["indexName"], index["name"])
+
+    def _collectionOperation_assertCollectionExists(self, target, **kwargs):
+        database_name = kwargs["database_name"]
+        collection_name = kwargs["collection_name"]
+        collection_name_list = self.client.get_database(database_name).list_collection_names()
+        self.assertIn(collection_name, collection_name_list)
+
+    def _databaseOperation_assertIndexExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        index_names = [idx["name"] for idx in collection.list_indexes()]
+        self.assertIn(kwargs["index_name"], index_names)
+
+    def _databaseOperation_assertIndexNotExists(self, target, **kwargs):
+        collection = self.client[kwargs["database_name"]][kwargs["collection_name"]]
+        for index in collection.list_indexes():
+            self.assertNotEqual(kwargs["indexName"], index["name"])
+
+    def _databaseOperation_assertCollectionExists(self, target, **kwargs):
+        database_name = kwargs["database_name"]
+        collection_name = kwargs["collection_name"]
+        collection_name_list = self.client.get_database(database_name).list_collection_names()
+        self.assertIn(collection_name, collection_name_list)
 
     def kill_all_sessions(self):
         if getattr(self, "client", None) is None:
