@@ -1350,8 +1350,8 @@ wheels = [
 
 [[package]]
 name = "pymongocrypt"
-version = "1.14.2.dev0"
-source = { git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master#56048cf426bfeffa0805934b668a7af5ed8e907c" }
+version = "1.16.0"
+source = { git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master#63d2591b84a9d4348cbe1c74556e266cd560ac5b" }
 dependencies = [
     { name = "cffi", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version != '3.14.*'" },
     { name = "cffi", version = "2.0.0b1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.14.*'" },
