@@ -278,6 +278,7 @@ async def _configured_protocol_interface(
             server_hostname=host,
             ssl=ssl_context,
         )
+        await protocol._connection_made
     except _CertificateError:
         # Raise _CertificateError directly like we do after match_hostname
         # below.

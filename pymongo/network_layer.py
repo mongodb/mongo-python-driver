@@ -254,6 +254,7 @@ class PyMongoBaseProtocol(Protocol):
     def __init__(self, timeout: Optional[float] = None):
         self.transport: Transport = None  # type: ignore[assignment]
         self._timeout = timeout
+        self._connection_made = asyncio.get_running_loop().create_future()
         self._closed = asyncio.get_running_loop().create_future()
         self._connection_lost = False
 
@@ -270,7 +271,13 @@ class PyMongoBaseProtocol(Protocol):
         self._resolve_pending(exc)
         self._connection_lost = True
 
+    def connection_made(self, transport: BaseTransport) -> None:
+        super().connection_made(transport)
+        self._connection_made.set_result(None)
+
     def connection_lost(self, exc: Optional[Exception] = None) -> None:
+        if exc is not None and not self._connection_made.done():
+            self._connection_made.set_exception(exc)
         self._resolve_pending(exc)
         if not self._closed.done():
             self._closed.set_result(None)
@@ -322,6 +329,7 @@ class PyMongoProtocol(PyMongoBaseProtocol, BufferedProtocol):
         """
         self.transport = transport  # type: ignore[assignment]
         self.transport.set_write_buffer_limits(MAX_MESSAGE_SIZE, MAX_MESSAGE_SIZE)
+        super().connection_made(self)
 
     async def read(self, request_id: Optional[int], max_message_size: int) -> tuple[bytes, int]:
         """Read a single MongoDB Wire Protocol message from this connection."""
@@ -489,6 +497,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         The transport argument is the transport representing the write side of the connection.
         """
         self.transport = transport  # type: ignore[assignment]
+        super().connection_made(self)
 
     def data_received(self, data: bytes) -> None:
         if self._connection_lost:

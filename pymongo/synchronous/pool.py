@@ -1062,6 +1062,7 @@ class Pool:
             networking_interface = _configured_socket_interface(self.address, self.opts)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
+            print("Got the TLS handshake error")  # noqa: T201
             with self.lock:
                 self.active_contexts.discard(tmp_context)
             if self.enabled_for_cmap:
