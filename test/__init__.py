@@ -32,6 +32,7 @@ import unittest
 import warnings
 from inspect import iscoroutinefunction
 
+from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import AutoReconnect
 from pymongo.synchronous.uri_parser import parse_uri
 
@@ -522,6 +523,19 @@ class ClientContext:
         return self._require(
             lambda: self.version <= other_version,
             "Server version must be at most %s" % str(other_version),
+        )
+
+    def require_libmongocrypt_min(self, *ver):
+        other_version = Version(*ver)
+        if not _HAVE_PYMONGOCRYPT:
+            version = Version.from_string("0.0.0")
+        else:
+            from pymongocrypt import libmongocrypt_version
+
+            version = Version.from_string(libmongocrypt_version())
+        return self._require(
+            lambda: version >= other_version,
+            "Libmongocrypt version must be at least %s" % str(other_version),
         )
 
     def require_auth(self, func):

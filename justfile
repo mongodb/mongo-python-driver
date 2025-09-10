@@ -1,10 +1,11 @@
 # See https://just.systems/man/en/ for instructions
 set shell := ["bash", "-c"]
+# Do not modify the lock file when running justfile commands.
+export UV_FROZEN := "1"
 
 # Commonly used command segments.
-uv_run := "uv run --frozen "
-typing_run := uv_run + "--group typing --extra aws --extra encryption --extra ocsp --extra snappy --extra test --extra zstd"
-docs_run := uv_run + "--extra docs"
+typing_run := "uv run --group typing --extra aws --extra encryption --extra ocsp --extra snappy --extra test --extra zstd"
+docs_run := "uv run --extra docs"
 doc_build := "./doc/_build"
 mypy_args := "--install-types --non-interactive"
 
@@ -50,15 +51,15 @@ typing-pyright: && resync
 
 [group('lint')]
 lint: && resync
-    {{uv_run}} pre-commit run --all-files
+    uv run pre-commit run --all-files
 
 [group('lint')]
 lint-manual: && resync
-    {{uv_run}} pre-commit run --all-files --hook-stage manual
+    uv run pre-commit run --all-files --hook-stage manual
 
 [group('test')]
 test *args="-v --durations=5 --maxfail=10": && resync
-    {{uv_run}} --extra test pytest {{args}}
+    uv run --extra test pytest {{args}}
 
 [group('test')]
 run-tests *args: && resync

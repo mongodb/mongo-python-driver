@@ -61,7 +61,7 @@ from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bs
 from pymongo import _csot
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
-from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
+from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts, TextOpts
 from pymongo.errors import (
     ConfigurationError,
     EncryptedCollectionError,
@@ -513,6 +513,11 @@ class Algorithm(str, enum.Enum):
 
     .. versionadded:: 4.4
     """
+    TEXTPREVIEW = "TextPreview"
+    """**BETA** - TextPreview.
+
+    .. versionadded:: 4.15
+    """
 
 
 class QueryType(str, enum.Enum):
@@ -536,6 +541,24 @@ class QueryType(str, enum.Enum):
     .. note:: Support for RangePreview is deprecated. Use :attr:`QueryType.RANGE` instead.
 
     .. versionadded:: 4.4
+    """
+
+    PREFIXPREVIEW = "prefixPreview"
+    """**BETA** - Used to encrypt a value for a prefixPreview query.
+
+    .. versionadded:: 4.15
+    """
+
+    SUFFIXPREVIEW = "suffixPreview"
+    """**BETA** - Used to encrypt a value for a suffixPreview query.
+
+    .. versionadded:: 4.15
+    """
+
+    SUBSTRINGPREVIEW = "substringPreview"
+    """**BETA** - Used to encrypt a value for a substringPreview query.
+
+    .. versionadded:: 4.15
     """
 
 
@@ -869,6 +892,7 @@ class ClientEncryption(Generic[_DocumentType]):
         contention_factor: Optional[int] = None,
         range_opts: Optional[RangeOpts] = None,
         is_expression: bool = False,
+        text_opts: Optional[TextOpts] = None,
     ) -> Any:
         self._check_closed()
         if isinstance(key_id, uuid.UUID):
@@ -888,6 +912,12 @@ class ClientEncryption(Generic[_DocumentType]):
                 range_opts.document,
                 codec_options=self._codec_options,
             )
+        text_opts_bytes = None
+        if text_opts:
+            text_opts_bytes = encode(
+                text_opts.document,
+                codec_options=self._codec_options,
+            )
         with _wrap_encryption_errors():
             encrypted_doc = self._encryption.encrypt(
                 value=doc,
@@ -898,6 +928,7 @@ class ClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts_bytes,
                 is_expression=is_expression,
+                text_opts=text_opts_bytes,
             )
             return decode(encrypted_doc)["v"]
 
@@ -910,6 +941,7 @@ class ClientEncryption(Generic[_DocumentType]):
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
         range_opts: Optional[RangeOpts] = None,
+        text_opts: Optional[TextOpts] = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -930,8 +962,13 @@ class ClientEncryption(Generic[_DocumentType]):
             used.
         :param range_opts: Index options for `range` queries. See
             :class:`RangeOpts` for some valid options.
+        :param text_opts: Index options for `textPreview` queries. See
+            :class:`TextOpts` for some valid options.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+
+        .. versionchanged:: 4.9
+           Added the `text_opts` parameter.
 
         .. versionchanged:: 4.9
            Added the `range_opts` parameter.
@@ -953,6 +990,7 @@ class ClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts,
                 is_expression=False,
+                text_opts=text_opts,
             ),
         )
 

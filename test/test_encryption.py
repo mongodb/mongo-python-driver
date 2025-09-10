@@ -86,7 +86,7 @@ from bson.json_util import JSONOptions
 from bson.son import SON
 from pymongo import ReadPreference
 from pymongo.cursor_shared import CursorType
-from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
+from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts, TextOpts
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -3423,6 +3423,261 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 kms_provider="local",
             )
         self.assertIsInstance(exc.exception.encrypted_fields["fields"][0]["keyId"], Binary)
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#27-text-explicit-encryption
+class TestExplicitTextEncryptionProse(EncryptionIntegrationTest):
+    @client_context.require_no_standalone
+    @client_context.require_version_min(8, 2, -1)
+    @client_context.require_libmongocrypt_min(1, 15, 1)
+    def setUp(self):
+        super().setUp()
+        # Load the file key1-document.json as key1Document.
+        self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
+        # Read the "_id" field of key1Document as key1ID.
+        self.key1_id = self.key1_document["_id"]
+        # Drop and create the collection keyvault.datakeys.
+        # Insert key1Document in keyvault.datakeys with majority write concern.
+        self.key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
+        self.addCleanup(self.key_vault.drop)
+        # Create a ClientEncryption object named clientEncryption with these options.
+        self.kms_providers = {"local": {"key": LOCAL_MASTER_KEY}}
+        self.client_encryption = self.create_client_encryption(
+            self.kms_providers,
+            self.key_vault.full_name,
+            self.client,
+            OPTS,
+        )
+        # Create a MongoClient named encryptedClient with these AutoEncryptionOpts.
+        opts = AutoEncryptionOpts(
+            self.kms_providers,
+            "keyvault.datakeys",
+            bypass_query_analysis=True,
+        )
+        self.client_encrypted = self.rs_or_single_client(auto_encryption_opts=opts)
+
+        # Using QE CreateCollection() and Collection.Drop(), drop and create the following collections with majority write concern:
+        # db.prefix-suffix using the encryptedFields option set to the contents of encryptedFields-prefix-suffix.json.
+        db = self.client_encrypted.db
+        db.drop_collection("prefix-suffix")
+        encrypted_fields = json_data("etc", "data", "encryptedFields-prefix-suffix.json")
+        self.client_encryption.create_encrypted_collection(
+            db, "prefix-suffix", kms_provider="local", encrypted_fields=encrypted_fields
+        )
+        # db.substring using the encryptedFields option set to the contents of encryptedFields-substring.json.
+        db.drop_collection("substring")
+        encrypted_fields = json_data("etc", "data", "encryptedFields-substring.json")
+        self.client_encryption.create_encrypted_collection(
+            db, "substring", kms_provider="local", encrypted_fields=encrypted_fields
+        )
+
+        # Use clientEncryption to encrypt the string "foobarbaz" with the following EncryptOpts.
+        text_opts = TextOpts(
+            case_sensitive=True,
+            diacritic_sensitive=True,
+            prefix=dict(strMaxQueryLength=10, strMinQueryLength=2),
+            suffix=dict(strMaxQueryLength=10, strMinQueryLength=2),
+        )
+        encrypted_value = self.client_encryption.encrypt(
+            "foobarbaz",
+            key_id=self.key1_id,
+            algorithm=Algorithm.TEXTPREVIEW,
+            contention_factor=0,
+            text_opts=text_opts,
+        )
+        # Use encryptedClient to insert the following document into db.prefix-suffix with majority write concern.
+        coll = self.client_encrypted.db["prefix-suffix"].with_options(
+            write_concern=WriteConcern(w="majority")
+        )
+        coll.insert_one({"_id": 0, "encryptedText": encrypted_value})
+
+        # Use clientEncryption to encrypt the string "foobarbaz" with the following EncryptOpts.
+        text_opts = TextOpts(
+            case_sensitive=True,
+            diacritic_sensitive=True,
+            substring=dict(strMaxLength=10, strMaxQueryLength=10, strMinQueryLength=2),
+        )
+        encrypted_value = self.client_encryption.encrypt(
+            "foobarbaz",
+            key_id=self.key1_id,
+            algorithm=Algorithm.TEXTPREVIEW,
+            contention_factor=0,
+            text_opts=text_opts,
+        )
+        # Use encryptedClient to insert the following document into db.substring with majority write concern.
+        coll = self.client_encrypted.db["substring"].with_options(
+            write_concern=WriteConcern(w="majority")
+        )
+        coll.insert_one({"_id": 0, "encryptedText": encrypted_value})
+
+    def test_01_can_find_a_document_by_prefix(self):
+        # Use clientEncryption.encrypt() to encrypt the string "foo" with the following EncryptOpts.
+        text_opts = TextOpts(
+            case_sensitive=True,
+            diacritic_sensitive=True,
+            prefix=dict(strMaxQueryLength=10, strMinQueryLength=2),
+        )
+        encrypted_value = self.client_encryption.encrypt(
+            "foo",
+            key_id=self.key1_id,
+            algorithm=Algorithm.TEXTPREVIEW,
+            query_type=QueryType.PREFIXPREVIEW,
+            contention_factor=0,
+            text_opts=text_opts,
+        )
+        # Use encryptedClient to run a "find" operation on the db.prefix-suffix collection with the following filter.
+        value = self.client_encrypted.db["prefix-suffix"].find_one(
+            {"$expr": {"$encStrStartsWith": {"input": "$encryptedText", "prefix": encrypted_value}}}
+        )
+        # Assert the following document is returned.
+        expected = {"_id": 0, "encryptedText": "foobarbaz"}
+        value.pop("__safeContent__", None)
+        self.assertEqual(value, expected)
+
+    def test_02_can_find_a_document_by_suffix(self):
+        # Use clientEncryption.encrypt() to encrypt the string "baz" with the following EncryptOpts:
+        text_opts = TextOpts(
+            case_sensitive=True,
+            diacritic_sensitive=True,
+            suffix=dict(strMaxQueryLength=10, strMinQueryLength=2),
+        )
+        encrypted_value = self.client_encryption.encrypt(
+            "baz",
+            key_id=self.key1_id,
+            algorithm=Algorithm.TEXTPREVIEW,
+            query_type=QueryType.SUFFIXPREVIEW,
+            contention_factor=0,
+            text_opts=text_opts,
+        )
+        # Use encryptedClient to run a "find" operation on the db.prefix-suffix collection with the following filter:
+        value = self.client_encrypted.db["prefix-suffix"].find_one(
+            {"$expr": {"$encStrEndsWith": {"input": "$encryptedText", "suffix": encrypted_value}}}
+        )
+        # Assert the following document is returned.
+        expected = {"_id": 0, "encryptedText": "foobarbaz"}
+        value.pop("__safeContent__", None)
+        self.assertEqual(value, expected)
+
+    def test_03_no_document_found_by_prefix(self):
+        # Use clientEncryption.encrypt() to encrypt the string "baz" with the following EncryptOpts:
+        text_opts = TextOpts(
+            case_sensitive=True,
+            diacritic_sensitive=True,
+            prefix=dict(strMaxQueryLength=10, strMinQueryLength=2),
+        )
+        encrypted_value = self.client_encryption.encrypt(
+            "baz",
+            key_id=self.key1_id,
+            algorithm=Algorithm.TEXTPREVIEW,
+            query_type=QueryType.PREFIXPREVIEW,
+            contention_factor=0,
+            text_opts=text_opts,
+        )
+        # Use encryptedClient to run a "find" operation on the db.prefix-suffix collection with the following filter:
+        value = self.client_encrypted.db["prefix-suffix"].find_one(
+            {"$expr": {"$encStrStartsWith": {"input": "$encryptedText", "prefix": encrypted_value}}}
+        )
+        # Assert that no documents are returned.
+        self.assertIsNone(value)
+
+    def test_04_no_document_found_by_suffix(self):
+        # Use clientEncryption.encrypt() to encrypt the string "foo" with the following EncryptOpts:
+        text_opts = TextOpts(
+            case_sensitive=True,
+            diacritic_sensitive=True,
+            suffix=dict(strMaxQueryLength=10, strMinQueryLength=2),
+        )
+        encrypted_value = self.client_encryption.encrypt(
+            "foo",
+            key_id=self.key1_id,
+            algorithm=Algorithm.TEXTPREVIEW,
+            query_type=QueryType.SUFFIXPREVIEW,
+            contention_factor=0,
+            text_opts=text_opts,
+        )
+        # Use encryptedClient to run a "find" operation on the db.prefix-suffix collection with the following filter:
+        value = self.client_encrypted.db["prefix-suffix"].find_one(
+            {"$expr": {"$encStrEndsWith": {"input": "$encryptedText", "suffix": encrypted_value}}}
+        )
+        # Assert that no documents are returned.
+        self.assertIsNone(value)
+
+    def test_05_can_find_a_document_by_substring(self):
+        # Use clientEncryption.encrypt() to encrypt the string "bar" with the following EncryptOpts:
+        text_opts = TextOpts(
+            case_sensitive=True,
+            diacritic_sensitive=True,
+            substring=dict(strMaxLength=10, strMaxQueryLength=10, strMinQueryLength=2),
+        )
+        encrypted_value = self.client_encryption.encrypt(
+            "bar",
+            key_id=self.key1_id,
+            algorithm=Algorithm.TEXTPREVIEW,
+            query_type=QueryType.SUBSTRINGPREVIEW,
+            contention_factor=0,
+            text_opts=text_opts,
+        )
+        # Use encryptedClient to run a "find" operation on the db.substring collection with the following filter:
+        value = self.client_encrypted.db["substring"].find_one(
+            {
+                "$expr": {
+                    "$encStrContains": {"input": "$encryptedText", "substring": encrypted_value}
+                }
+            }
+        )
+        # Assert the following document is returned:
+        expected = {"_id": 0, "encryptedText": "foobarbaz"}
+        value.pop("__safeContent__", None)
+        self.assertEqual(value, expected)
+
+    def test_06_no_document_found_by_substring(self):
+        # Use clientEncryption.encrypt() to encrypt the string "qux" with the following EncryptOpts:
+        text_opts = TextOpts(
+            case_sensitive=True,
+            diacritic_sensitive=True,
+            substring=dict(strMaxLength=10, strMaxQueryLength=10, strMinQueryLength=2),
+        )
+        encrypted_value = self.client_encryption.encrypt(
+            "qux",
+            key_id=self.key1_id,
+            algorithm=Algorithm.TEXTPREVIEW,
+            query_type=QueryType.SUBSTRINGPREVIEW,
+            contention_factor=0,
+            text_opts=text_opts,
+        )
+        # Use encryptedClient to run a "find" operation on the db.substring collection with the following filter:
+        value = self.client_encrypted.db["substring"].find_one(
+            {
+                "$expr": {
+                    "$encStrContains": {"input": "$encryptedText", "substring": encrypted_value}
+                }
+            }
+        )
+        # Assert that no documents are returned.
+        self.assertIsNone(value)
+
+    def test_07_contentionFactor_is_required(self):
+        from pymongocrypt.errors import MongoCryptError
+
+        # Use clientEncryption.encrypt() to encrypt the string "foo" with the following EncryptOpts:
+        text_opts = TextOpts(
+            case_sensitive=True,
+            diacritic_sensitive=True,
+            prefix=dict(strMaxQueryLength=10, strMinQueryLength=2),
+        )
+        with self.assertRaises(EncryptionError) as ctx:
+            self.client_encryption.encrypt(
+                "foo",
+                key_id=self.key1_id,
+                algorithm=Algorithm.TEXTPREVIEW,
+                query_type=QueryType.PREFIXPREVIEW,
+                text_opts=text_opts,
+            )
+        # Expect an error from libmongocrypt with a message containing the string: "contention factor is required for textPreview algorithm".
+        self.assertIsInstance(ctx.exception.cause, MongoCryptError)
+        self.assertEqual(
+            str(ctx.exception), "contention factor is required for textPreview algorithm"
+        )
 
 
 def start_mongocryptd(port) -> None:
