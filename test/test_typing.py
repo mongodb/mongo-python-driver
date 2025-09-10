@@ -475,7 +475,7 @@ class TestDocumentType(PyMongoTestCase):
         # This should fail because the output is a Movie.
         assert out["foo"]  # type:ignore[typeddict-item]
         # pyright gives reportTypedDictNotRequiredAccess for the following:
-        assert out["_id"]  # type:ignore
+        assert out["_id"]  # type:ignore[unused-ignore]
 
     @only_type_check
     def test_typeddict_empty_document_type(self) -> None:
@@ -496,7 +496,7 @@ class TestDocumentType(PyMongoTestCase):
         out = coll.find_one({})
         assert out is not None
         # pyright gives reportTypedDictNotRequiredAccess for the following:
-        assert out["_id"]  # type:ignore
+        assert out["_id"]  # type:ignore[unused-ignore]
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:

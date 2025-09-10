@@ -264,7 +264,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         args.extend(self.opts._mongocryptd_spawn_args)
         _spawn_daemon(args)
 
-    async def mark_command(self, database: str, cmd: bytes) -> bytes:
+    async def mark_command(self, database: str, cmd: bytes) -> bytes | memoryview:
         """Mark a command for encryption.
 
         :param database: The database on which to run this command.
@@ -291,7 +291,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             )
         return res.raw
 
-    async def fetch_keys(self, filter: bytes) -> AsyncGenerator[bytes, None]:
+    async def fetch_keys(self, filter: bytes) -> AsyncGenerator[bytes | memoryview, None]:
         """Yields one or more keys from the key vault.
 
         :param filter: The filter to pass to find.
@@ -463,7 +463,7 @@ class _Encrypter:
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
             return _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
 
-    async def decrypt(self, response: bytes) -> Optional[bytes]:
+    async def decrypt(self, response: bytes | memoryview) -> Optional[bytes]:
         """Decrypt a MongoDB command response.
 
         :param response: A MongoDB command response as BSON.

@@ -298,7 +298,7 @@ class Binary(bytes):
 
     def __new__(
         cls: Type[Binary],
-        data: Union[memoryview, bytes, _mmap, _array[Any]],
+        data: Union[memoryview, bytes, bytearray, _mmap, _array[Any]],
         subtype: int = BINARY_SUBTYPE,
     ) -> Binary:
         if not isinstance(subtype, int):
