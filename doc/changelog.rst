@@ -8,6 +8,7 @@ PyMongo 4.15 brings a number of changes including:
 
 - Added :class:`bson.decimal128.DecimalEncoder` and :class:`bson.decimal128.DecimalDecoder`
   to support encoding and decoding of BSON Decimal128 values to decimal.Decimal values using the TypeRegistry API.
+- Added support for Windows ``arm64`` wheels.
 
 Changes in Version 4.14.1 (2025/08/19)
 --------------------------------------
