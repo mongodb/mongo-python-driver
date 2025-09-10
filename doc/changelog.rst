@@ -10,6 +10,7 @@ PyMongo 4.15 brings a number of changes including:
   :attr:`~pymongo.encryption.QueryType.SUFFIXPREVIEW`,
   :attr:`~pymongo.encryption.QueryType.SUBSTRINGPREVIEW`,
   as part of the experimental Queryable Encryption text queries beta.
+  ``pymongocrypt>=1.16`` is required for text query support.
 - Added :class:`bson.decimal128.DecimalEncoder` and :class:`bson.decimal128.DecimalDecoder`
   to support encoding and decoding of BSON Decimal128 values to decimal.Decimal values using the TypeRegistry API.
 
