@@ -246,7 +246,7 @@ class NetworkingInterface(NetworkingInterfaceBase):
     def fileno(self) -> int:
         return self.conn.fileno()
 
-    def recv_into(self, buffer: bytes) -> int:
+    def recv_into(self, buffer: bytes | memoryview) -> int:
         return self.conn.recv_into(buffer)
 
 
@@ -533,14 +533,14 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
             fut = self._pending_listeners.popleft()
             fut.set_result(b"")
 
-    def _read(self, bytes_needed: int) -> memoryview:
+    def _read(self, bytes_needed: int) -> bytes:
         """Read bytes."""
         # Send the bytes to the listener.
         if self._bytes_ready < bytes_needed:
             bytes_needed = self._bytes_ready
         self._bytes_ready -= bytes_needed
 
-        output_buf = bytearray(bytes_needed)
+        output_buf = memoryview(bytearray(bytes_needed))
         n_remaining = bytes_needed
         out_index = 0
         while n_remaining > 0:
@@ -557,7 +557,7 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
                 output_buf[out_index : out_index + buf_size] = buffer[:]
                 out_index += buf_size
                 n_remaining -= buf_size
-        return memoryview(output_buf)
+        return bytes(output_buf)
 
 
 async def async_sendall(conn: PyMongoBaseProtocol, buf: bytes) -> None:
@@ -670,6 +670,7 @@ def receive_message(
             f"Message length ({length!r}) is larger than server max "
             f"message size ({max_message_size!r})"
         )
+    data: bytes | memoryview
     if op_code == 2012:
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(receive_data(conn, 9, deadline))
         data = decompress(receive_data(conn, length - 25, deadline), compressor_id)
