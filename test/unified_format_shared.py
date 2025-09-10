@@ -37,7 +37,7 @@ from test.helpers_shared import (
     LOCAL_MASTER_KEY,
 )
 from test.utils_shared import CMAPListener, camel_to_snake, parse_collection_options
-from typing import Any, Union
+from typing import Any, MutableMapping, Union
 
 from bson import (
     RE_TYPE,
@@ -162,7 +162,9 @@ def with_metaclass(meta, *bases):
             return meta(name, resolved_bases, d)
 
         @classmethod
-        def __prepare__(cls, name, this_bases):
+        def __prepare__(
+            cls, name: str, this_bases: tuple[type, ...], /, **kwds: Any
+        ) -> MutableMapping[str, object]:
             return meta.__prepare__(name, bases)
 
     return type.__new__(metaclass, "temporary_class", (), {})
