@@ -52,7 +52,7 @@ jobs:
           persist-credentials: false
           ref: ${{ inputs.ref }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           cache: 'pip'
           python-version: 3.11
@@ -115,7 +115,7 @@ jobs:
           persist-credentials: false
           ref: ${{ inputs.ref }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           # Build sdist on lowest supported Python
           python-version: '3.9'
@@ -143,7 +143,7 @@ jobs:
     name: Download Wheels
     steps:
       - name: Download all workflow run artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
       - name: Flatten directory
         working-directory: .
         run: |
