@@ -1,7 +1,9 @@
 Changelog
 =========
-Changes in Version 4.15.0 (XXXX/XX/XX)
+
+Changes in Version 4.15.0 (2025/09/10)
 --------------------------------------
+
 PyMongo 4.15 brings a number of changes including:
 
 - Added :class:`bson.decimal128.DecimalEncoder` and :class:`bson.decimal128.DecimalDecoder`
