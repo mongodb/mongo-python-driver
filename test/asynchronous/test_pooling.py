@@ -578,11 +578,11 @@ class TestPooling(_TestPoolingBase):
     async def test_pool_backoff_limits_maxConnecting(self):
         client = await self.async_rs_or_single_client(maxConnecting=10)
         pool = await async_get_pool(client)
-        assert pool.maxConnecting == 10
+        assert pool.max_connecting == 10
         pool._backoff = 1
-        assert pool.maxConnecting == 1
+        assert pool.max_connecting == 1
         pool._backoff = 0
-        assert pool.maxConnecting == 10
+        assert pool.max_connecting == 10
         await client.close()
 
 
