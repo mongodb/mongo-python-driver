@@ -1025,6 +1025,16 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
+    def _handle_connection_error(self, error: Exception, phase: str) -> None:
+        # Handle system overload condition.  When the base AutoReconnect is
+        # raised and we are not an sdam pool, add to backoff and add the
+        # appropriate error label.
+        if not self.is_sdam and type(error) == AutoReconnect:
+            self._backoff += 1
+            error._add_error_label("SystemOverloaded")
+            error._add_error_label("Retryable")
+            print(f"Setting backoff in {phase}:", self._backoff)  # noqa: T201
+
     def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
         """Connect to Mongo and return a new Connection.
 
@@ -1062,7 +1072,6 @@ class Pool:
             networking_interface = _configured_socket_interface(self.address, self.opts)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
-            print("Got the TLS handshake error")  # noqa: T201
             with self.lock:
                 self.active_contexts.discard(tmp_context)
             if self.enabled_for_cmap:
@@ -1081,10 +1090,10 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
+            self._handle_connection_error(error, "handshake")
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
                 _raise_connection_failure(self.address, error, timeout_details=details)
-
             raise
 
         conn = Connection(networking_interface, self, self.address, conn_id, self.is_sdam)  # type: ignore[arg-type]
@@ -1105,14 +1114,7 @@ class Pool:
         except BaseException as e:
             with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
-            # Handle system overload condition.  When the base AutoReconnect is
-            # raised and we are not an sdam pool, add to backoff and add the
-            # appropriate error label.
-            if not self.is_sdam and type(e) == AutoReconnect:
-                self._backoff += 1
-                e._add_error_label("SystemOverloaded")
-                e._add_error_label("Retryable")
-                print("Setting backoff:", self._backoff)  # noqa: T201
+            self._handle_connection_error(e, "hello")
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 

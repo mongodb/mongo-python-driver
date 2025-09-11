@@ -254,7 +254,7 @@ class PyMongoBaseProtocol(Protocol):
     def __init__(self, timeout: Optional[float] = None):
         self.transport: Transport = None  # type: ignore[assignment]
         self._timeout = timeout
-        self._connection_made = asyncio.get_running_loop().create_future()
+        self._closing_error = asyncio.get_running_loop().create_future()
         self._closed = asyncio.get_running_loop().create_future()
         self._connection_lost = False
 
@@ -271,13 +271,9 @@ class PyMongoBaseProtocol(Protocol):
         self._resolve_pending(exc)
         self._connection_lost = True
 
-    def connection_made(self, transport: BaseTransport) -> None:
-        super().connection_made(transport)
-        self._connection_made.set_result(None)
-
     def connection_lost(self, exc: Optional[Exception] = None) -> None:
-        if exc is not None and not self._connection_made.done():
-            self._connection_made.set_exception(exc)
+        if exc is not None and not self._closing_error.done():
+            self._closing_error.set_exception(exc)
         self._resolve_pending(exc)
         if not self._closed.done():
             self._closed.set_result(None)
@@ -344,7 +340,7 @@ class PyMongoProtocol(PyMongoBaseProtocol, BufferedProtocol):
             message = await self._done_messages.popleft()
         else:
             if self.transport and self.transport.is_closing():
-                raise OSError("connection is already closed")
+                return await self._closing_error
             read_waiter = asyncio.get_running_loop().create_future()
             self._pending_messages.append(read_waiter)
             try:
