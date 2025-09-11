@@ -935,7 +935,8 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts_bytes,
                 is_expression=is_expression,
-                text_opts=text_opts_bytes,
+                # For compatibility with pymongocrypt < 1.16:
+                **{"text_opts": text_opts_bytes} if text_opts_bytes else {},
             )
             return decode(encrypted_doc)["v"]
 
