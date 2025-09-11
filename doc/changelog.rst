@@ -10,6 +10,9 @@ Version 4.15.1 is a bug fix release.
    that would cause a ``TypeError`` when using ``pymongocrypt<1.16`` by passing an unsupported ``type_opts`` parameter even if
    Queryable Encryption text queries beta was not used.
 
+- Fixed a bug in ``AsyncMongoClient`` that caused a
+  ``ServerSelectionTimeoutError`` when used with ``uvicorn``, ``FastAPI``, or ``uvloop``.
+
 Issues Resolved
 ...............
 
@@ -17,7 +20,6 @@ See the `PyMongo 4.15.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.15.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=46486
-
 
 Changes in Version 4.15.0 (2025/09/10)
 --------------------------------------
