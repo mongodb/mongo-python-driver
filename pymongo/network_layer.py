@@ -254,9 +254,9 @@ class PyMongoBaseProtocol(Protocol):
     def __init__(self, timeout: Optional[float] = None):
         self.transport: Transport = None  # type: ignore[assignment]
         self._timeout = timeout
-        self._closing_error = asyncio.get_running_loop().create_future()
         self._closed = asyncio.get_running_loop().create_future()
         self._connection_lost = False
+        self._closing_exception = None
 
     def settimeout(self, timeout: float | None) -> None:
         self._timeout = timeout
@@ -270,11 +270,11 @@ class PyMongoBaseProtocol(Protocol):
         self.transport.abort()
         self._resolve_pending(exc)
         self._connection_lost = True
+        self._closing_exception = exc
 
     def connection_lost(self, exc: Optional[Exception] = None) -> None:
-        if exc is not None and not self._closing_error.done():
-            self._closing_error.set_exception(exc)
         self._resolve_pending(exc)
+        self._closing_exception = exc
         if not self._closed.done():
             self._closed.set_result(None)
 
@@ -325,7 +325,6 @@ class PyMongoProtocol(PyMongoBaseProtocol, BufferedProtocol):
         """
         self.transport = transport  # type: ignore[assignment]
         self.transport.set_write_buffer_limits(MAX_MESSAGE_SIZE, MAX_MESSAGE_SIZE)
-        super().connection_made(self)
 
     async def read(self, request_id: Optional[int], max_message_size: int) -> tuple[bytes, int]:
         """Read a single MongoDB Wire Protocol message from this connection."""
@@ -339,8 +338,6 @@ class PyMongoProtocol(PyMongoBaseProtocol, BufferedProtocol):
         if self._done_messages:
             message = await self._done_messages.popleft()
         else:
-            if self.transport and self.transport.is_closing():
-                return await self._closing_error
             read_waiter = asyncio.get_running_loop().create_future()
             self._pending_messages.append(read_waiter)
             try:
@@ -478,6 +475,7 @@ class PyMongoProtocol(PyMongoBaseProtocol, BufferedProtocol):
                 else:
                     msg.set_exception(exc)
             self._done_messages.append(msg)
+        self._pending_messages.clear()
 
 
 class PyMongoKMSProtocol(PyMongoBaseProtocol):
@@ -493,7 +491,6 @@ class PyMongoKMSProtocol(PyMongoBaseProtocol):
         The transport argument is the transport representing the write side of the connection.
         """
         self.transport = transport  # type: ignore[assignment]
-        super().connection_made(self)
 
     def data_received(self, data: bytes) -> None:
         if self._connection_lost:
