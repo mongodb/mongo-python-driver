@@ -1,6 +1,24 @@
 Changelog
 =========
 
+Changes in Version 4.15.1 (2025/09/11)
+--------------------------------------
+
+Version 4.15.1 is a bug fix release.
+
+ - Fixed a bug in :meth:`~pymongo.synchronous.encryption.ClientEncryption.encrypt` and :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.encrypt`
+   that would cause a ``TypeError`` when using ``pymongocrypt<1.16`` by passing an unsupported ``type_opts`` parameter even if
+   Queryable Encryption text queries beta was not used.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.15.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.15.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=46486
+
+
 Changes in Version 4.15.0 (2025/09/10)
 --------------------------------------
 
