@@ -1029,7 +1029,7 @@ class Pool:
         # Handle system overload condition.  When the base AutoReconnect is
         # raised and we are not an sdam pool, add to backoff and add the
         # appropriate error label.
-        if not self.is_sdam and type(error) == AutoReconnect:
+        if not self.is_sdam and "[Errno 54] Connection reset by peer" in str(error):
             self._backoff += 1
             error._add_error_label("SystemOverloaded")
             error._add_error_label("Retryable")
