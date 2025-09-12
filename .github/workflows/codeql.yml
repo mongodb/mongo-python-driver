@@ -42,7 +42,7 @@ jobs:
       with:
         ref: ${{ inputs.ref }}
         persist-credentials: false
-    - uses: actions/setup-python@v6
+    - uses: actions/setup-python@v5
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
