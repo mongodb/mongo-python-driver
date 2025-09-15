@@ -18,4 +18,4 @@ jobs:
         with:
           persist-credentials: false
       - name: Run zizmor 🌈
-        uses: zizmorcore/zizmor-action@a016d81e77496751b5c04eb1e8f00214bd396553
+        uses: zizmorcore/zizmor-action@873539476a7f9b0da7504d0d9e9a6a5275094d98
