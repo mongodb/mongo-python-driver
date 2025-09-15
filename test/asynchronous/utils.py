@@ -193,6 +193,9 @@ def flaky(
     def decorator(target_func):
         @wraps(target_func)
         async def wrapper(*args, **kwargs):
+            print(
+                f"Hello from flaky {max_runs=} {min_passes=} {disable_flaky=} {is_cpython_linux=} {affects_cpython_linux=}"
+            )
             passes = 0
             for i in range(max_runs):
                 try:
