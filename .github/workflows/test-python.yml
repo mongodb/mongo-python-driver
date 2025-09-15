@@ -23,7 +23,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v5
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -65,7 +65,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v5
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -84,7 +84,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v5
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -109,7 +109,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v5
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -128,7 +128,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v5
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
         with:
           enable-cache: true
           python-version: "3.9"
@@ -150,7 +150,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v5
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
         with:
           enable-cache: true
           python-version: "${{matrix.python}}"
@@ -231,7 +231,7 @@ jobs:
           with:
             persist-credentials: false
         - name: Install uv
-          uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v5
+          uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
           with:
             python-version: '3.9'
         - id: setup-mongodb
@@ -257,7 +257,7 @@ jobs:
           with:
             persist-credentials: false
         - name: Install uv
-          uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v5
+          uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
           with:
             python-version: '3.9'
         - id: setup-mongodb
