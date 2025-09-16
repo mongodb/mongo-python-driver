@@ -39,7 +39,9 @@ class InvalidDocument(BSONError):
 
     @property
     def document(self) -> Any:
-        """The invalid document that caused the error."""
+        """The invalid document that caused the error.
+
+        ..versionadded:: 4.16"""
         return self._document
 
     @document.setter
