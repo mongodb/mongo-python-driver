@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Changes in Version 4.15.1 (2025/09/16)
+--------------------------------------
+
+Version 4.15.1 is a bug fix release.
+
+- Fixed a bug in :meth:`~pymongo.synchronous.encryption.ClientEncryption.encrypt`
+  and :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.encrypt`
+  that would cause a ``TypeError`` when using ``pymongocrypt<1.16`` by passing
+  an unsupported ``type_opts`` parameter even if Queryable Encryption text
+  queries beta was not used.
+
+- Fixed a bug in ``AsyncMongoClient`` that caused a ``ServerSelectionTimeoutError``
+  when used with ``uvicorn``, ``FastAPI``, or ``uvloop``.
+
 Changes in Version 4.15.0 (2025/09/10)
 --------------------------------------
 
