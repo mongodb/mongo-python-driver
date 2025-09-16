@@ -93,8 +93,8 @@ class _SrvResolver:
         try:
             split_fqdn = self.__fqdn.split(".")
             self.__plist = split_fqdn[1:] if len(split_fqdn) > 2 else split_fqdn
-        except Exception as exc:
-            raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,)) from exc
+        except Exception:
+            raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,)) from None
         self.__slen = len(self.__plist)
         self.nparts = len(split_fqdn)
 
@@ -122,11 +122,7 @@ class _SrvResolver:
                 # Raise the original error.
                 raise
             # Else, raise all errors as ConfigurationError.
-            import traceback
-
-            raise ConfigurationError(
-                traceback.format_exception(type(exc), exc, exc.__traceback__)
-            ) from exc
+            raise ConfigurationError(str(exc)) from exc
         return results
 
     def _get_srv_response_and_hosts(
