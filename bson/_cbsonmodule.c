@@ -1645,7 +1645,7 @@ fail:
 }
 
 
-/* Update Invalid Document error message to include doc.
+/* Update Invalid Document error to include doc as a property.
  */
 void handle_invalid_doc_error(PyObject* dict) {
     PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
@@ -1659,20 +1659,13 @@ void handle_invalid_doc_error(PyObject* dict) {
     if (evalue && PyErr_GivenExceptionMatches(etype, InvalidDocument)) {
         PyObject *msg = PyObject_Str(evalue);
         if (msg) {
-            // Prepend doc to the existing message
-            PyObject *dict_str = PyObject_Str(dict);
-            if (dict_str == NULL) {
-                goto cleanup;
-            }
-            const char * dict_str_utf8 = PyUnicode_AsUTF8(dict_str);
-            if (dict_str_utf8 == NULL) {
-                goto cleanup;
-            }
+            // Add doc to the error class as a property.
+            PyObject_SetAttrString(InvalidDocument, "document", dict);
             const char * msg_utf8 = PyUnicode_AsUTF8(msg);
             if (msg_utf8 == NULL) {
                 goto cleanup;
             }
-            PyObject *new_msg = PyUnicode_FromFormat("Invalid document %s | %s", dict_str_utf8, msg_utf8);
+            PyObject *new_msg = PyUnicode_FromFormat("Invalid document: %s", msg_utf8);
             Py_DECREF(evalue);
             Py_DECREF(etype);
             etype = InvalidDocument;

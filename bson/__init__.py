@@ -1009,7 +1009,7 @@ def _dict_to_bson(
                 try:
                     elements.append(_element_to_bson(key, value, check_keys, opts))
                 except InvalidDocument as err:
-                    raise InvalidDocument(f"Invalid document {doc} | {err}") from err
+                    raise InvalidDocument(f"Invalid document: {err}", doc) from err
     except AttributeError:
         raise TypeError(f"encoder expected a mapping type but got: {doc!r}") from None
 
