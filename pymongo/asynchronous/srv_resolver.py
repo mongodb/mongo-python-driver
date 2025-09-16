@@ -122,7 +122,7 @@ class _SrvResolver:
                 # Raise the original error.
                 raise
             # Else, raise all errors as ConfigurationError.
-            raise ValueError(f"{self.__srv=} {self.__fqdn=}") from None
+            raise ValueError(f"{self.__srv=} {self.__fqdn=} {exc=}") from None
             raise ConfigurationError(str(exc)) from None
         return results
 
