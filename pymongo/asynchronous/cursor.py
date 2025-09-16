@@ -1009,7 +1009,7 @@ class AsyncCursor(Generic[_DocumentType]):
             else:
                 if not isinstance(key, RE_TYPE):
                     key = copy.deepcopy(key, memo)  # noqa: PLW2901
-                y[key] = value
+                y[key] = value  # type:ignore[index]
         return y
 
     def _prepare_to_die(self, already_killed: bool) -> tuple[int, Optional[_CursorAddress]]:

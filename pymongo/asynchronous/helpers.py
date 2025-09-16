@@ -78,7 +78,7 @@ async def _getaddrinfo(
         socket.SocketKind,
         int,
         str,
-        tuple[str, int] | tuple[str, int, int, int],
+        tuple[str, int] | tuple[str, int, int, int] | tuple[int, bytes],
     ]
 ]:
     if not _IS_SYNC:

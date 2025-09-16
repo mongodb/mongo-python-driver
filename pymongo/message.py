@@ -1352,7 +1352,9 @@ class _OpReply:
     UNPACK_FROM = struct.Struct("<iqii").unpack_from
     OP_CODE = 1
 
-    def __init__(self, flags: int, cursor_id: int, number_returned: int, documents: bytes):
+    def __init__(
+        self, flags: int, cursor_id: int, number_returned: int, documents: bytes | memoryview
+    ):
         self.flags = flags
         self.cursor_id = Int64(cursor_id)
         self.number_returned = number_returned
@@ -1360,7 +1362,7 @@ class _OpReply:
 
     def raw_response(
         self, cursor_id: Optional[int] = None, user_fields: Optional[Mapping[str, Any]] = None
-    ) -> list[bytes]:
+    ) -> list[bytes | memoryview]:
         """Check the response header from the database, without decoding BSON.
 
         Check the response for errors and unpack.
@@ -1448,7 +1450,7 @@ class _OpReply:
         return False
 
     @classmethod
-    def unpack(cls, msg: bytes) -> _OpReply:
+    def unpack(cls, msg: bytes | memoryview) -> _OpReply:
         """Construct an _OpReply from raw bytes."""
         # PYTHON-945: ignore starting_from field.
         flags, cursor_id, _, number_returned = cls.UNPACK_FROM(msg)
@@ -1470,7 +1472,7 @@ class _OpMsg:
     MORE_TO_COME = 1 << 1
     EXHAUST_ALLOWED = 1 << 16  # Only present on requests.
 
-    def __init__(self, flags: int, payload_document: bytes):
+    def __init__(self, flags: int, payload_document: bytes | memoryview):
         self.flags = flags
         self.payload_document = payload_document
 
@@ -1512,7 +1514,7 @@ class _OpMsg:
         """Unpack a command response."""
         return self.unpack_response(codec_options=codec_options)[0]
 
-    def raw_command_response(self) -> bytes:
+    def raw_command_response(self) -> bytes | memoryview:
         """Return the bytes of the command response."""
         return self.payload_document
 
@@ -1522,7 +1524,7 @@ class _OpMsg:
         return bool(self.flags & self.MORE_TO_COME)
 
     @classmethod
-    def unpack(cls, msg: bytes) -> _OpMsg:
+    def unpack(cls, msg: bytes | memoryview) -> _OpMsg:
         """Construct an _OpMsg from raw bytes."""
         flags, first_payload_type, first_payload_size = cls.UNPACK_FROM(msg)
         if flags != 0:
@@ -1541,7 +1543,7 @@ class _OpMsg:
         return cls(flags, payload_document)
 
 
-_UNPACK_REPLY: dict[int, Callable[[bytes], Union[_OpReply, _OpMsg]]] = {
+_UNPACK_REPLY: dict[int, Callable[[bytes | memoryview], Union[_OpReply, _OpMsg]]] = {
     _OpReply.OP_CODE: _OpReply.unpack,
     _OpMsg.OP_CODE: _OpMsg.unpack,
 }

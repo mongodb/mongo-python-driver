@@ -152,7 +152,7 @@ class ZstdContext:
         return zstandard.ZstdCompressor().compress(data)
 
 
-def decompress(data: bytes, compressor_id: int) -> bytes:
+def decompress(data: bytes | memoryview, compressor_id: int) -> bytes:
     if compressor_id == SnappyContext.compressor_id:
         # python-snappy doesn't support the buffer interface.
         # https://github.com/andrix/python-snappy/issues/65
