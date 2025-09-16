@@ -520,4 +520,4 @@ To profile a test script and generate a flame graph, follow these steps:
 Dependabot will raise PRs at most once per week, grouped by GitHub Actions updates and Python requirement
 file updates.  We have a pre-commit hook that will update the `uv.lock` file when requirements change.
 To update the lock file on a failing PR, you can use a method like `gh pr checkout <pr number>`, then run
-`uvx pre-commit run --all-files uv-lock` to update the lock file, and then push the changes.
+`just lint uv-lock` to update the lock file, and then push the changes.
