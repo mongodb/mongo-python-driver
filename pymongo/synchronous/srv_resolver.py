@@ -124,7 +124,9 @@ class _SrvResolver:
             # Else, raise all errors as ConfigurationError.
             import traceback
 
-            raise ConfigurationError(traceback.format_exception(exc)) from exc
+            raise ConfigurationError(
+                traceback.format_exception(type(exc), exc, exc.__traceback__)
+            ) from exc
         return results
 
     def _get_srv_response_and_hosts(
