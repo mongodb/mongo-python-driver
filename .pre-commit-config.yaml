@@ -105,6 +105,13 @@ repos:
     # - test/test_client.py:188: te ==> the, be, we, to
     args: ["-L", "fle,fo,infinit,isnt,nin,te,aks"]
 
+- repo: https://github.com/astral-sh/uv-pre-commit
+  # uv version.
+  rev: 0.8.17
+  hooks:
+    - id: uv-lock
+      args: ["--upgrade-package", "pymongocrypt"]
+
 - repo: local
   hooks:
   - id: executable-shell
