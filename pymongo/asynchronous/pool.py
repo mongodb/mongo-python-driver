@@ -123,19 +123,74 @@ except ImportError:
 _IS_SYNC = False
 
 
-class AsyncBaseConnection:
-    """A base connection object for server and kms connections."""
+class AsyncConnection:
+    """Store a connection with some metadata.
 
-    def __init__(self, conn: AsyncNetworkingInterface, opts: PoolOptions):
+    :param conn: a raw connection object
+    :param pool: a Pool instance
+    :param address: the server's (host, port)
+    :param id: the id of this socket in it's pool
+    :param is_sdam: SDAM connections do not call hello on creation
+    """
+
+    def __init__(
+        self,
+        conn: AsyncNetworkingInterface,
+        pool: Pool,
+        address: tuple[str, int],
+        id: int,
+        is_sdam: bool,
+    ):
+        self.pool_ref = weakref.ref(pool)
         self.conn = conn
-        self.socket_checker: SocketChecker = SocketChecker()
-        self.cancel_context: _CancellationContext = _CancellationContext()
-        self.is_sdam = False
+        self.address = address
+        self.id = id
+        self.is_sdam = is_sdam
         self.closed = False
-        self.last_timeout: float | None = None
-        self.more_to_come = False
-        self.opts = opts
-        self.max_wire_version = -1
+        self.last_checkin_time = time.monotonic()
+        self.performed_handshake = False
+        self.is_writable: bool = False
+        self.max_wire_version = MAX_WIRE_VERSION
+        self.max_bson_size = MAX_BSON_SIZE
+        self.max_message_size = MAX_MESSAGE_SIZE
+        self.max_write_batch_size = MAX_WRITE_BATCH_SIZE
+        self.supports_sessions = False
+        self.hello_ok: bool = False
+        self.is_mongos = False
+        self.op_msg_enabled = False
+        self.listeners = pool.opts._event_listeners
+        self.enabled_for_cmap = pool.enabled_for_cmap
+        self.enabled_for_logging = pool.enabled_for_logging
+        self.compression_settings = pool.opts._compression_settings
+        self.compression_context: Union[SnappyContext, ZlibContext, ZstdContext, None] = None
+        self.socket_checker: SocketChecker = SocketChecker()
+        self.oidc_token_gen_id: Optional[int] = None
+        # Support for mechanism negotiation on the initial handshake.
+        self.negotiated_mechs: Optional[list[str]] = None
+        self.auth_ctx: Optional[_AuthContext] = None
+
+        # The pool's generation changes with each reset() so we can close
+        # sockets created before the last reset.
+        self.pool_gen = pool.gen
+        self.generation = self.pool_gen.get_overall()
+        self.ready = False
+        self.cancel_context: _CancellationContext = _CancellationContext()
+        self.opts = pool.opts
+        self.more_to_come: bool = False
+        # For load balancer support.
+        self.service_id: Optional[ObjectId] = None
+        self.server_connection_id: Optional[int] = None
+        # When executing a transaction in load balancing mode, this flag is
+        # set to true to indicate that the session now owns the connection.
+        self.pinned_txn = False
+        self.pinned_cursor = False
+        self.active = False
+        self.last_timeout = self.opts.socket_timeout
+        self.connect_rtt = 0.0
+        self._client_id = pool._client_id
+        self.creation_time = time.monotonic()
+        # For gossiping $clusterTime from the connection handshake to the client.
+        self._cluster_time = None
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
@@ -164,110 +219,16 @@ class AsyncBaseConnection:
             formatted = format_timeout_details(timeout_details)
             # CSOT: raise an error without running the command since we know it will time out.
             errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f} {formatted}"
-            if self.max_wire_version != -1:
-                raise ExecutionTimeout(
-                    errmsg,
-                    50,
-                    {"ok": 0, "errmsg": errmsg, "code": 50},
-                    self.max_wire_version,
-                )
-            else:
-                raise TimeoutError(errmsg)
+            raise ExecutionTimeout(
+                errmsg,
+                50,
+                {"ok": 0, "errmsg": errmsg, "code": 50},
+                self.max_wire_version,
+            )
         if cmd is not None:
             cmd["maxTimeMS"] = int(max_time_ms * 1000)
         self.set_conn_timeout(timeout)
         return timeout
-
-    async def close_conn(self, reason: Optional[str]) -> None:
-        """Close this connection with a reason."""
-        if self.closed:
-            return
-        await self._close_conn()
-
-    async def _close_conn(self) -> None:
-        """Close this connection."""
-        if self.closed:
-            return
-        self.closed = True
-        self.cancel_context.cancel()
-        # Note: We catch exceptions to avoid spurious errors on interpreter
-        # shutdown.
-        try:
-            await self.conn.close()
-        except Exception:  # noqa: S110
-            pass
-
-    def conn_closed(self) -> bool:
-        """Return True if we know socket has been closed, False otherwise."""
-        if _IS_SYNC:
-            return self.socket_checker.socket_closed(self.conn.get_conn)
-        else:
-            return self.conn.is_closing()
-
-
-class AsyncConnection(AsyncBaseConnection):
-    """Store a connection with some metadata.
-
-    :param conn: a raw connection object
-    :param pool: a Pool instance
-    :param address: the server's (host, port)
-    :param id: the id of this socket in it's pool
-    :param is_sdam: SDAM connections do not call hello on creation
-    """
-
-    def __init__(
-        self,
-        conn: AsyncNetworkingInterface,
-        pool: Pool,
-        address: tuple[str, int],
-        id: int,
-        is_sdam: bool,
-    ):
-        super().__init__(conn, pool.opts)
-        self.pool_ref = weakref.ref(pool)
-        self.address: tuple[str, int] = address
-        self.id: int = id
-        self.is_sdam = is_sdam
-        self.last_checkin_time = time.monotonic()
-        self.performed_handshake = False
-        self.is_writable: bool = False
-        self.max_wire_version = MAX_WIRE_VERSION
-        self.max_bson_size: int = MAX_BSON_SIZE
-        self.max_message_size: int = MAX_MESSAGE_SIZE
-        self.max_write_batch_size: int = MAX_WRITE_BATCH_SIZE
-        self.supports_sessions = False
-        self.hello_ok: bool = False
-        self.is_mongos: bool = False
-        self.op_msg_enabled = False
-        self.listeners = pool.opts._event_listeners
-        self.enabled_for_cmap = pool.enabled_for_cmap
-        self.enabled_for_logging = pool.enabled_for_logging
-        self.compression_settings = pool.opts._compression_settings
-        self.compression_context: Union[SnappyContext, ZlibContext, ZstdContext, None] = None
-        self.oidc_token_gen_id: Optional[int] = None
-        # Support for mechanism negotiation on the initial handshake.
-        self.negotiated_mechs: Optional[list[str]] = None
-        self.auth_ctx: Optional[_AuthContext] = None
-
-        # The pool's generation changes with each reset() so we can close
-        # sockets created before the last reset.
-        self.pool_gen = pool.gen
-        self.generation = self.pool_gen.get_overall()
-        self.ready = False
-        # For load balancer support.
-        self.service_id: Optional[ObjectId] = None
-        self.server_connection_id: Optional[int] = None
-        # When executing a transaction in load balancing mode, this flag is
-        # set to true to indicate that the session now owns the connection.
-        self.pinned_txn = False
-        self.pinned_cursor = False
-        self.active = False
-        self.last_timeout = self.opts.socket_timeout
-        self.connect_rtt = 0.0
-        self._client_id = pool._client_id
-        self.creation_time = time.monotonic()
-        # For gossiping $clusterTime from the connection handshake to the client.
-        self._cluster_time = None
 
     def pin_txn(self) -> None:
         self.pinned_txn = True
@@ -611,6 +572,26 @@ class AsyncConnection(AsyncBaseConnection):
                     reason=_verbose_connection_error_reason(reason),
                     error=reason,
                 )
+
+    async def _close_conn(self) -> None:
+        """Close this connection."""
+        if self.closed:
+            return
+        self.closed = True
+        self.cancel_context.cancel()
+        # Note: We catch exceptions to avoid spurious errors on interpreter
+        # shutdown.
+        try:
+            await self.conn.close()
+        except Exception:  # noqa: S110
+            pass
+
+    def conn_closed(self) -> bool:
+        """Return True if we know socket has been closed, False otherwise."""
+        if _IS_SYNC:
+            return self.socket_checker.socket_closed(self.conn.get_conn)
+        else:
+            return self.conn.is_closing()
 
     def send_cluster_time(
         self,
