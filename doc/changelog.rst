@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Changes in Version 4.15.1 (2025/09/11)
+Changes in Version 4.15.1 (2025/09/16)
 --------------------------------------
 
 Version 4.15.1 is a bug fix release.
