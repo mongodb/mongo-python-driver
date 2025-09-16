@@ -93,8 +93,8 @@ class _SrvResolver:
         try:
             split_fqdn = self.__fqdn.split(".")
             self.__plist = split_fqdn[1:] if len(split_fqdn) > 2 else split_fqdn
-        except Exception:
-            raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,)) from None
+        except Exception as exc:
+            raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,)) from exc
         self.__slen = len(self.__plist)
         self.nparts = len(split_fqdn)
 
@@ -107,7 +107,7 @@ class _SrvResolver:
             # No TXT records
             return None
         except Exception as exc:
-            raise ConfigurationError(str(exc)) from None
+            raise ConfigurationError(str(exc)) from exc
         if len(results) > 1:
             raise ConfigurationError("Only one TXT record is supported")
         return (b"&".join([b"".join(res.strings) for res in results])).decode("utf-8")  # type: ignore[attr-defined]
@@ -122,8 +122,7 @@ class _SrvResolver:
                 # Raise the original error.
                 raise
             # Else, raise all errors as ConfigurationError.
-            raise ValueError(f"{self.__srv=} {self.__fqdn=} {exc=}") from None
-            raise ConfigurationError(str(exc)) from None
+            raise ConfigurationError(str(exc)) from exc
         return results
 
     def _get_srv_response_and_hosts(
@@ -146,8 +145,8 @@ class _SrvResolver:
                 )
             try:
                 nlist = srv_host.split(".")[1:][-self.__slen :]
-            except Exception:
-                raise ConfigurationError(f"Invalid SRV host: {node[0]}") from None
+            except Exception as exc:
+                raise ConfigurationError(f"Invalid SRV host: {node[0]}") from exc
             if self.__plist != nlist:
                 raise ConfigurationError(f"Invalid SRV host: {node[0]}")
         if self.__srv_max_hosts:
