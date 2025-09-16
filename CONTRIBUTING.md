@@ -514,3 +514,10 @@ To profile a test script and generate a flame graph, follow these steps:
    (Note: on macOS you will need to run this command using `sudo` to allow `py-spy` to attach to the Python process.)
 4. If you need to include native code (for example the C extensions), profiling should be done on a Linux system, as macOS and Windows do not support the `--native` option of `py-spy`.
    Creating an ubuntu Evergreen spawn host and using `scp` to copy the flamegraph `.svg` file back to your local machine is the best way to do this.
+
+## Dependabot updates
+
+Dependabot will raise PRs at most once per week, grouped by GitHub Actions updates and Python requirement
+file updates.  We have a pre-commit hook that will update the `uv.lock` file when requirements change.
+To update the lock file on a failing PR, you can use a method like `gh pr checkout <pr number>`, then run
+`uvx pre-commit run --all-files uv-lock` to update the lock file, and then push the changes.
