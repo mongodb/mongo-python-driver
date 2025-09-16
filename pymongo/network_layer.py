@@ -22,7 +22,7 @@ import socket
 import struct
 import sys
 import time
-from asyncio import BaseProtocol, BaseTransport, BufferedProtocol, Future, Transport
+from asyncio import BaseTransport, BufferedProtocol, Future, Protocol, Transport
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -250,7 +250,7 @@ class NetworkingInterface(NetworkingInterfaceBase):
         return self.conn.recv_into(buffer)
 
 
-class PyMongoBaseProtocol(BaseProtocol):
+class PyMongoBaseProtocol(Protocol):
     def __init__(self, timeout: Optional[float] = None):
         self.transport: Transport = None  # type: ignore[assignment]
         self._timeout = timeout
