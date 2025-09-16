@@ -110,7 +110,6 @@ repos:
   rev: 0.8.17
   hooks:
     - id: uv-lock
-      args: ["--upgrade-package", "pymongocrypt"]
 
 - repo: local
   hooks:
