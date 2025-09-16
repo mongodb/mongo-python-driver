@@ -1,14 +1,6 @@
 Changelog
 =========
 
-Changes in Version 4.15.1 (XXXX/XX/XX)
---------------------------------------
-
-Version 4.15.1 is a bug fix release.
-
-- Fixed a bug in ``AsyncMongoClient`` that caused a
-  ``ServerSelectionTimeoutError`` when used with ``uvicorn``, ``FastAPI``, or ``uvloop``.
-
 Changes in Version 4.15.0 (2025/09/10)
 --------------------------------------
 
