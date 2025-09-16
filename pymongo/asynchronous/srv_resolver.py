@@ -113,6 +113,7 @@ class _SrvResolver:
         return (b"&".join([b"".join(res.strings) for res in results])).decode("utf-8")  # type: ignore[attr-defined]
 
     async def _resolve_uri(self, encapsulate_errors: bool) -> resolver.Answer:
+        print(f"{self.__srv=} {self.__fqdn=}")  # noqa: T201
         try:
             results = await _resolve(
                 "_" + self.__srv + "._tcp." + self.__fqdn, "SRV", lifetime=self.__connect_timeout
