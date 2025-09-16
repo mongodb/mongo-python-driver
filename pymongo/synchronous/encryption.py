@@ -71,11 +71,11 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.helpers_shared import _get_timeout_details
-from pymongo.network_layer import PyMongoKMSProtocol, receive_kms, sendall
+from pymongo.network_layer import sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
-    _configured_socket_interface,
+    _configured_socket,
     _raise_connection_failure,
 )
 from pymongo.read_concern import ReadConcern
@@ -85,7 +85,6 @@ from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.synchronous.pool import BaseConnection
 from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser_shared import _parse_kms_tls_options, parse_host
 from pymongo.write_concern import WriteConcern
@@ -93,7 +92,9 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
+    from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
+
 
 _IS_SYNC = True
 
@@ -109,10 +110,9 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
-def _connect_kms(address: _Address, opts: PoolOptions) -> BaseConnection:
+def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
     try:
-        interface = _configured_socket_interface(address, opts, PyMongoKMSProtocol)
-        return BaseConnection(interface, opts)
+        return _configured_socket(address, opts)
     except Exception as exc:
         _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
@@ -197,11 +197,19 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         try:
             conn = _connect_kms(address, opts)
             try:
-                sendall(conn.conn.get_conn, message)
+                sendall(conn, message)
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
-                    conn.set_conn_timeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                    data = receive_kms(conn, kms_context.bytes_needed)
+                    conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    data: memoryview | bytes
+                    if _IS_SYNC:
+                        data = conn.recv(kms_context.bytes_needed)
+                    else:
+                        from pymongo.network_layer import (  # type: ignore[attr-defined]
+                            receive_data_socket,
+                        )
+
+                        data = receive_data_socket(conn, kms_context.bytes_needed)
                     if not data:
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
@@ -220,7 +228,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                     address, exc, msg_prefix=msg_prefix, timeout_details=_get_timeout_details(opts)
                 )
             finally:
-                conn.close_conn(None)
+                conn.close()
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
         except Exception as exc:
