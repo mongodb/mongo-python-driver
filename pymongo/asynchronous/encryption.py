@@ -202,6 +202,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
                     conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    data: memoryview | bytes
                     if _IS_SYNC:
                         data = conn.recv(kms_context.bytes_needed)
                     else:

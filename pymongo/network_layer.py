@@ -103,7 +103,7 @@ if sys.platform != "win32":
 
         while sent < len(buf):
             try:
-                sent += sock.send(view[sent:])
+                sent += sock.send(view[sent:])  # type:ignore[arg-type]
             except BLOCKING_IO_ERRORS as exc:
                 fd = sock.fileno()
                 # Check for closed socket.
@@ -465,7 +465,7 @@ class NetworkingInterface(NetworkingInterfaceBase):
     def fileno(self) -> int:
         return self.conn.fileno()
 
-    def recv_into(self, buffer: bytes) -> int:
+    def recv_into(self, buffer: bytes | memoryview) -> int:
         return self.conn.recv_into(buffer)
 
 
@@ -770,6 +770,7 @@ def receive_message(
             f"Message length ({length!r}) is larger than server max "
             f"message size ({max_message_size!r})"
         )
+    data: memoryview | bytes
     if op_code == 2012:
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(receive_data(conn, 9, deadline))
         data = decompress(receive_data(conn, length - 25, deadline), compressor_id)
