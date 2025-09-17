@@ -73,6 +73,10 @@ setup-tests *args="":
 teardown-tests:
     bash .evergreen/scripts/teardown-tests.sh
 
+[group('test')]
+integration-tests:
+    UV_FROZEN="0" bash integration_tests/run.sh
+
 [group('server')]
 run-server *args="":
     bash .evergreen/scripts/run-server.sh {{args}}

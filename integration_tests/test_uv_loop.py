@@ -2,7 +2,7 @@
 # dependencies = [
 #   "uvloop>=0.18"
 # ]
-# requires-python = ">=3.11"
+# requires-python = ">=3.10"
 # ///
 from __future__ import annotations
 
@@ -20,7 +20,8 @@ from pymongo import AsyncMongoClient  # noqa: E402
 
 async def main():
     client = AsyncMongoClient()
-    print(await client.admin.command("ping"))
+    result = await client.admin.command("ping")
+    assert result["ok"]
 
 
 uvloop.run(main())
