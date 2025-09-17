@@ -218,6 +218,38 @@ class TestRetryableReads(AsyncIntegrationTest):
         #  Assert that both events occurred on the same mongos.
         assert listener.succeeded_events[0].connection_id == listener.failed_events[0].connection_id
 
+    @async_client_context.require_failCommand_fail_point
+    async def test_retryable_reads_are_retried_on_the_same_implicit_session(self):
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {"failCommands": ["count"], "errorCode": 6},
+        }
+
+        listener = OvertCommandListener()
+        client = await self.async_rs_or_single_client(
+            directConnection=False,
+            event_listeners=[listener],
+            retryReads=True,
+        )
+
+        await async_set_fail_point(client, fail_command)
+
+        await client.t.t.estimated_document_count()
+
+        # Disable failpoint.
+        fail_command["mode"] = "off"
+        await async_set_fail_point(client, fail_command)
+
+        #  Assert that both events occurred on the same session.
+        lsids = [
+            event.command["lsid"]
+            for event in listener.started_events
+            if event.command_name == "count"
+        ]
+        self.assertEqual(len(lsids), 2)
+        self.assertEqual(lsids[0], lsids[1])
+
 
 if __name__ == "__main__":
     unittest.main()
