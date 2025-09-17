@@ -1327,7 +1327,7 @@ def decode_iter(
         elements = data[position : position + obj_size]
         position += obj_size
 
-        yield _bson_to_dict(elements, opts)  # type:ignore[misc]
+        yield _bson_to_dict(elements, opts)
 
 
 @overload
@@ -1373,7 +1373,7 @@ def decode_file_iter(
             raise InvalidBSON("cut off in middle of objsize")
         obj_size = _UNPACK_INT_FROM(size_data, 0)[0] - 4
         elements = size_data + file_obj.read(max(0, obj_size))
-        yield _bson_to_dict(elements, opts)  # type:ignore[arg-type, misc]
+        yield _bson_to_dict(elements, opts)  # type:ignore[misc]
 
 
 def is_valid(bson: bytes) -> bool:
