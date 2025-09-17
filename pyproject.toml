@@ -60,9 +60,6 @@ coverage = [
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
 ]
-pymongocrypt_source = [
-    "pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
-]
 perf = ["simplejson"]
 typing = [
     "mypy==1.18.1",
@@ -134,7 +131,6 @@ markers = [
     "auth: tests that rely on authentication",
     "ocsp: tests that rely on ocsp",
     "atlas_connect: tests that rely on an atlas connection",
-    "data_lake: tests that rely on atlas data lake",
     "perf: benchmark tests",
     "search_index: search index helper tests",
     "kms: client-side field-level encryption tests using kms",
@@ -239,6 +235,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
 
 [tool.ruff.lint.per-file-ignores]
 "pymongo/__init__.py" = ["E402"]
+".evergreen/scripts/*.py" = ["T201"]
 "test/*.py" = ["PT", "E402", "PLW", "SIM", "E741", "PTH", "S", "B904", "E722", "T201",
     "RET", "ARG", "F405", "B028", "PGH001", "B018", "F403", "RUF015", "E731", "B007",
     "UP031", "F401", "B023", "F811"]

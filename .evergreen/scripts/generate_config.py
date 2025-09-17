@@ -322,14 +322,6 @@ def create_no_c_ext_variants():
     return [create_variant(tasks, display_name, host=host)]
 
 
-def create_atlas_data_lake_variants():
-    host = HOSTS["ubuntu22"]
-    tasks = [".test-no-orchestration"]
-    expansions = dict(TEST_NAME="data_lake")
-    display_name = get_variant_name("Atlas Data Lake", host)
-    return [create_variant(tasks, display_name, tags=["pr"], host=host, expansions=expansions)]
-
-
 def create_mod_wsgi_variants():
     host = HOSTS["ubuntu22"]
     tasks = [".mod_wsgi"]

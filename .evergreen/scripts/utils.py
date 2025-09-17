@@ -33,7 +33,6 @@ TEST_SUITE_MAP = {
     "atlas_connect": "atlas_connect",
     "auth_aws": "auth_aws",
     "auth_oidc": "auth_oidc",
-    "data_lake": "data_lake",
     "default": "",
     "default_async": "default_async",
     "default_sync": "default",
@@ -57,7 +56,6 @@ NO_RUN_ORCHESTRATION = [
     "auth_oidc",
     "atlas_connect",
     "aws_lambda",
-    "data_lake",
     "mockupdb",
     "ocsp",
 ]

@@ -25,11 +25,7 @@ else
   exit 1
 fi
 
-# List the packages.
-uv sync ${UV_ARGS} --reinstall --quiet
-uv pip list
-
 # Start the test runner.
-uv run ${UV_ARGS} .evergreen/scripts/run_tests.py "$@"
+uv run ${UV_ARGS} --reinstall .evergreen/scripts/run_tests.py "$@"
 
 popd

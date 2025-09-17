@@ -11,7 +11,7 @@ from typing import Optional
 
 def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
     """Actually sync the specs"""
-    print("Beginning to sync specs")  # noqa: T201
+    print("Beginning to sync specs")
     for spec in os.scandir(directory):
         if not spec.is_dir():
             continue
@@ -27,11 +27,11 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
             )
         except CalledProcessError as exc:
             errored[spec.name] = exc.stderr
-    print("Done syncing specs")  # noqa: T201
+    print("Done syncing specs")
 
 
 def apply_patches():
-    print("Beginning to apply patches")  # noqa: T201
+    print("Beginning to apply patches")
     subprocess.run(["bash", "./.evergreen/remove-unimplemented-tests.sh"], check=True)  # noqa: S603, S607
     subprocess.run(
         ["git apply -R --allow-empty --whitespace=fix ./.evergreen/spec-patch/*"],  # noqa: S607
@@ -56,7 +56,6 @@ def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
         "client_side_operations_timeout": "csot",
         "mongodb_handshake": "handshake",
         "load_balancers": "load_balancer",
-        "atlas_data_lake_testing": "atlas",
         "connection_monitoring_and_pooling": "connection_monitoring",
         "command_logging_and_monitoring": "command_logging",
         "initial_dns_seedlist_discovery": "srv_seedlist",
@@ -96,7 +95,7 @@ def write_summary(errored: dict[str, str], new: list[str], filename: Optional[st
         pr_body += "\n"
     if pr_body != "":
         if filename is None:
-            print(f"\n{pr_body}")  # noqa: T201
+            print(f"\n{pr_body}")
         else:
             with open(filename, "w") as f:
                 # replacements made for proper json

@@ -214,18 +214,8 @@ def handle_test_env() -> None:
                 if key in os.environ:
                     write_env(key, os.environ[key])
 
-    if test_name == "data_lake":
-        # Stop any running mongo-orchestration which might be using the port.
-        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh")
-        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/atlas_data_lake/setup.sh")
-        AUTH = "auth"
-
     if AUTH != "noauth":
-        if test_name == "data_lake":
-            config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas_data_lake/secrets-export.sh")
-            DB_USER = config["ADL_USERNAME"]
-            DB_PASSWORD = config["ADL_PASSWORD"]
-        elif test_name == "auth_oidc":
+        if test_name == "auth_oidc":
             DB_USER = config["OIDC_ADMIN_USER"]
             DB_PASSWORD = config["OIDC_ADMIN_PWD"]
         elif test_name == "search_index":
@@ -356,7 +346,9 @@ def handle_test_env() -> None:
             setup_libmongocrypt()
 
         # TODO: Test with 'pip install pymongocrypt'
-        UV_ARGS.append("--group pymongocrypt_source")
+        UV_ARGS.append(
+            "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
+        )
 
         # Use the nocrypto build to avoid dependency issues with older windows/python versions.
         BASE = ROOT / "libmongocrypt/nocrypto"

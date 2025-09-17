@@ -10,6 +10,12 @@ from datetime import datetime
 from pathlib import Path
 from shutil import which
 
+try:
+    import importlib_metadata
+except ImportError:
+    from importlib import metadata as importlib_metadata
+
+
 import pytest
 from utils import DRIVERS_TOOLS, LOGGER, ROOT, run_command
 
@@ -21,6 +27,21 @@ GREEN_FRAMEWORK = os.environ.get("GREEN_FRAMEWORK")
 TEST_ARGS = os.environ.get("TEST_ARGS", "").split()
 TEST_NAME = os.environ.get("TEST_NAME")
 SUB_TEST_NAME = os.environ.get("SUB_TEST_NAME")
+
+
+def list_packages():
+    packages = dict()
+    for distribution in importlib_metadata.distributions():
+        packages[distribution.name] = distribution
+    print("Package             Version     URL")
+    print("------------------- ----------- ----------------------------------------------------")
+    for name in sorted(packages):
+        distribution = packages[name]
+        url = ""
+        if distribution.origin is not None:
+            url = distribution.origin.url
+        print(f"{name:20s}{distribution.version:12s}{url}")
+    print("------------------- ----------- ----------------------------------------------------\n")
 
 
 def handle_perf(start_time: datetime):
@@ -121,6 +142,9 @@ def handle_aws_lambda() -> None:
 
 
 def run() -> None:
+    # List the installed packages.
+    list_packages()
+
     # Handle green framework first so they can patch modules.
     if GREEN_FRAMEWORK:
         handle_green_framework()
