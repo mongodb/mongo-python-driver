@@ -76,9 +76,6 @@ do
     auth)
       cpjson auth/tests/ auth
       ;;
-    atlas-data-lake-testing|data_lake)
-      cpjson atlas-data-lake-testing/tests/ data_lake
-      ;;
     bson-binary-vector|bson_binary_vector)
       cpjson bson-binary-vector/tests/ bson_binary_vector
       ;;
