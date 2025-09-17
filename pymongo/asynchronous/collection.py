@@ -2144,11 +2144,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
         pipeline.append({"$group": {"_id": 1, "n": {"$sum": 1}}})
-        cmd = {"aggregate": self._name, "pipeline": pipeline, "cursor": {}}
         if "hint" in kwargs and not isinstance(kwargs["hint"], str):
             kwargs["hint"] = helpers_shared._index_document(kwargs["hint"])
         collation = validate_collation_or_none(kwargs.pop("collation", None))
-        cmd.update(kwargs)
 
         async def _cmd(
             session: Optional[AsyncClientSession],
@@ -2156,6 +2154,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             conn: AsyncConnection,
             read_preference: Optional[_ServerMode],
         ) -> int:
+            cmd: dict[str, Any] = {"aggregate": self._name, "pipeline": pipeline, "cursor": {}}
+            cmd.update(kwargs)
             result = await self._aggregate_one_result(
                 conn, read_preference, cmd, collation, session
             )
@@ -3194,19 +3194,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """
         if not isinstance(key, str):
             raise TypeError(f"key must be an instance of str, not {type(key)}")
-        cmd = {"distinct": self._name, "key": key}
         if filter is not None:
             if "query" in kwargs:
                 raise ConfigurationError("can't pass both filter and query")
             kwargs["query"] = filter
         collation = validate_collation_or_none(kwargs.pop("collation", None))
-        cmd.update(kwargs)
-        if comment is not None:
-            cmd["comment"] = comment
         if hint is not None:
             if not isinstance(hint, str):
                 hint = helpers_shared._index_document(hint)
-            cmd["hint"] = hint  # type: ignore[assignment]
 
         async def _cmd(
             session: Optional[AsyncClientSession],
@@ -3214,6 +3209,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             conn: AsyncConnection,
             read_preference: Optional[_ServerMode],
         ) -> list:  # type: ignore[type-arg]
+            cmd = {"distinct": self._name, "key": key}
+            cmd.update(kwargs)
+            if comment is not None:
+                cmd["comment"] = comment
+            if hint is not None:
+                cmd["hint"] = hint  # type: ignore[assignment]
             return (
                 await self._command(
                     conn,
@@ -3248,27 +3249,26 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, not {type(return_document)}"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
-        cmd = {"findAndModify": self._name, "query": filter, "new": return_document}
-        if let is not None:
-            common.validate_is_mapping("let", let)
-            cmd["let"] = let
-        cmd.update(kwargs)
-        if projection is not None:
-            cmd["fields"] = helpers_shared._fields_list_to_dict(projection, "projection")
-        if sort is not None:
-            cmd["sort"] = helpers_shared._index_document(sort)
-        if upsert is not None:
-            validate_boolean("upsert", upsert)
-            cmd["upsert"] = upsert
         if hint is not None:
             if not isinstance(hint, str):
                 hint = helpers_shared._index_document(hint)
-
-        write_concern = self._write_concern_for_cmd(cmd, session)
+        write_concern = self._write_concern_for_cmd(kwargs, session)
 
         async def _find_and_modify_helper(
             session: Optional[AsyncClientSession], conn: AsyncConnection, retryable_write: bool
         ) -> Any:
+            cmd = {"findAndModify": self._name, "query": filter, "new": return_document}
+            if let is not None:
+                common.validate_is_mapping("let", let)
+                cmd["let"] = let
+            cmd.update(kwargs)
+            if projection is not None:
+                cmd["fields"] = helpers_shared._fields_list_to_dict(projection, "projection")
+            if sort is not None:
+                cmd["sort"] = helpers_shared._index_document(sort)
+            if upsert is not None:
+                validate_boolean("upsert", upsert)
+                cmd["upsert"] = upsert
             acknowledged = write_concern.acknowledged
             if array_filters is not None:
                 if not acknowledged:
