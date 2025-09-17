@@ -218,12 +218,6 @@ class TestRetryableReads(IntegrationTest):
 
     @client_context.require_failCommand_fail_point
     def test_retryable_reads_are_retried_on_the_same_implicit_session(self):
-        fail_command = {
-            "configureFailPoint": "failCommand",
-            "mode": {"times": 1},
-            "data": {"failCommands": ["count"], "errorCode": 6},
-        }
-
         listener = OvertCommandListener()
         client = self.rs_or_single_client(
             directConnection=False,
@@ -231,22 +225,36 @@ class TestRetryableReads(IntegrationTest):
             retryReads=True,
         )
 
-        set_fail_point(client, fail_command)
-
-        client.t.t.estimated_document_count()
-
-        # Disable failpoint.
-        fail_command["mode"] = "off"
-        set_fail_point(client, fail_command)
-
-        #  Assert that both events occurred on the same session.
-        lsids = [
-            event.command["lsid"]
-            for event in listener.started_events
-            if event.command_name == "count"
+        commands = [
+            ("aggregate", lambda: client.t.t.count_documents({})),
+            ("aggregate", lambda: client.t.t.aggregate([{"$match": {}}])),
+            ("count", lambda: client.t.t.estimated_document_count()),
+            ("distinct", lambda: client.t.t.distinct("x")),
+            ("find", lambda: client.t.t.find_one({})),
+            ("listDatabases", lambda: client.list_databases()),
+            ("listCollections", lambda: client.t.list_collections()),
+            ("listIndexes", lambda: client.t.t.list_indexes()),
         ]
-        self.assertEqual(len(lsids), 2)
-        self.assertEqual(lsids[0], lsids[1])
+
+        for command_name, operation in commands:
+            listener.reset()
+            fail_command = {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 1},
+                "data": {"failCommands": [command_name], "errorCode": 6},
+            }
+
+            with self.fail_point(fail_command):
+                operation()
+
+            #  Assert that both events occurred on the same session.
+            lsids = [
+                event.command["lsid"]
+                for event in listener.started_events
+                if event.command_name == command_name
+            ]
+            self.assertEqual(len(lsids), 2)
+            self.assertEqual(lsids[0], lsids[1])
 
 
 if __name__ == "__main__":
