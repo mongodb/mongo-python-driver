@@ -170,7 +170,7 @@ class TestPymongo(IntegrationTest):
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne(
                 {},
-                {"name": "American Graffiti", "year": "WRONG_TYPE"},  # type:ignore[typeddict-item]
+                {"name": "American Graffiti", "year": "WRONG_TYPE"},  # type:ignore[arg-type]
             ),
             DeleteOne({}),
         ]
@@ -243,7 +243,7 @@ class TestPymongo(IntegrationTest):
         assert retrieved is not None
         assert retrieved["name"] == "foo"
         # We expect a type error here.
-        assert retrieved["other"] == 1  # type:ignore[typeddict-item]
+        assert retrieved["other"] == 1  # type:ignore[misc]
 
 
 class TestDecode(unittest.TestCase):
@@ -416,11 +416,11 @@ class TestDocumentType(PyMongoTestCase):
         bad_mov = {"name": "THX-1138", "year": "WRONG TYPE"}
         bad_movie = Movie(name="THX-1138", year="WRONG TYPE")  # type: ignore[typeddict-item]
         coll.insert_one(bad_mov)  # type:ignore[arg-type]
-        coll.insert_one({"name": "THX-1138", "year": "WRONG TYPE"})  # type: ignore[typeddict-item]
+        coll.insert_one({"name": "THX-1138", "year": "WRONG TYPE"})  # type: ignore[arg-type]
         coll.insert_one(bad_movie)
         coll.insert_many([bad_mov])  # type: ignore[list-item]
         coll.insert_many(
-            [{"name": "THX-1138", "year": "WRONG TYPE"}]  # type: ignore[typeddict-item]
+            [{"name": "THX-1138", "year": "WRONG TYPE"}]  # type: ignore[list-item]
         )
         coll.insert_many([bad_movie])
 
