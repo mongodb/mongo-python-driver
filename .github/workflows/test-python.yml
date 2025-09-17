@@ -75,8 +75,6 @@ jobs:
           version: "${{ matrix.mongodb-version }}"
       - name: Run tests
         run: uv run --extra test pytest -v
-      - name: Run uvloop test
-        run: uv run tools/test_uv_loop.py
 
   doctest:
     runs-on: ubuntu-latest
