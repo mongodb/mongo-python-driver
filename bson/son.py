@@ -98,17 +98,6 @@ class SON(Dict[_Key, _Value]):
     def __iter__(self) -> Iterator[_Key]:
         yield from self.__keys
 
-    def has_key(self, key: _Key) -> bool:
-        return key in self.__keys
-
-    def iterkeys(self) -> Iterator[_Key]:
-        return self.__iter__()
-
-    # fourth level uses definitions from lower levels
-    def itervalues(self) -> Iterator[_Value]:
-        for _, v in self.items():
-            yield v
-
     def values(self) -> list[_Value]:  # type: ignore[override]
         return [v for _, v in self.items()]
 
