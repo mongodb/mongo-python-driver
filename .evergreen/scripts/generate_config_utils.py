@@ -41,7 +41,7 @@ DISPLAY_LOOKUP = dict(
     sync={"sync": "Sync", "async": "Async"},
     coverage={"1": "cov"},
     no_ext={"1": "No C"},
-    test_min_deps={True: "Min Deps", False: ""},
+    test_min_deps={True: "Min Deps"},
 )
 HOSTS = dict()
 
@@ -202,7 +202,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
                 name = f"Python{value}"
             else:
                 name = f"PyPy{value.replace('pypy', '')}"
-        elif key.lower() in DISPLAY_LOOKUP:
+        elif key.lower() in DISPLAY_LOOKUP and value in DISPLAY_LOOKUP[key.lower()]:
             name = DISPLAY_LOOKUP[key.lower()][value]
         else:
             continue
