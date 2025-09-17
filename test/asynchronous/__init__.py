@@ -121,7 +121,6 @@ class AsyncClientContext:
         self.sessions_enabled = False
         self.client = None  # type: ignore
         self.conn_lock = threading.Lock()
-        self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self._fips_enabled = None
         if self.load_balancer:
@@ -199,16 +198,6 @@ class AsyncClientContext:
         self.mongoses = []
         self.connection_attempts = []
         self.client = await self._connect(host, port)
-        if self.client is not None:
-            # Return early when connected to dataLake as mongohoused does not
-            # support the getCmdLineOpts command and is tested without TLS.
-            if os.environ.get("TEST_DATA_LAKE"):
-                self.is_data_lake = True
-                self.auth_enabled = True
-                await self.client.close()
-                self.client = await self._connect(host, port, username=db_user, password=db_pwd)
-                self.connected = True
-                return
 
         if HAVE_SSL and not self.client:
             # Is MongoDB configured for SSL?
@@ -498,14 +487,6 @@ class AsyncClientContext:
         return self._require(
             lambda: True,  # _require checks if we're connected
             "Cannot connect to MongoDB on self.pair",
-            func=func,
-        )
-
-    def require_data_lake(self, func):
-        """Run a test only if we are connected to Atlas Data Lake."""
-        return self._require(
-            lambda: self.is_data_lake,
-            "Not connected to Atlas Data Lake on self.pair",
             func=func,
         )
 
@@ -1246,21 +1227,6 @@ async def async_teardown():
         garbage.append(f"  gc.get_referrers: {gc.get_referrers(g)!r}")
     if garbage:
         raise AssertionError("\n".join(garbage))
-    c = async_client_context.client
-    if c:
-        if not async_client_context.is_data_lake:
-            try:
-                await c.drop_database("pymongo-pooling-tests")
-                await c.drop_database("pymongo_test")
-                await c.drop_database("pymongo_test1")
-                await c.drop_database("pymongo_test2")
-                await c.drop_database("pymongo_test_mike")
-                await c.drop_database("pymongo_test_bernie")
-            except AutoReconnect:
-                # PYTHON-4982
-                if sys.implementation.name.lower() != "pypy":
-                    raise
-        await c.close()
     print_running_clients()
 
 

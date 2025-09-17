@@ -355,13 +355,6 @@ Note: these tests can only be run from an Evergreen Linux host that has the Pyth
 The `mode` can be `standalone` or `embedded`.  For the `replica_set` version of the tests, use
 `TOPOLOGY=replica_set just run-server`.
 
-### Atlas Data Lake tests.
-
-You must have `docker` or `podman` installed locally.
-
-- Run `just setup-tests data_lake`.
-- Run `just run-tests`.
-
 ### OCSP tests
 
 - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.

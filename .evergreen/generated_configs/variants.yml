@@ -79,17 +79,6 @@ buildvariants:
       TEST_NAME: atlas_connect
     tags: [pr]
 
-  # Atlas data lake tests
-  - name: atlas-data-lake-ubuntu-22
-    tasks:
-      - name: .test-no-orchestration
-    display_name: Atlas Data Lake Ubuntu-22
-    run_on:
-      - ubuntu2204-small
-    expansions:
-      TEST_NAME: data_lake
-    tags: [pr]
-
   # Aws auth tests
   - name: auth-aws-ubuntu-20
     tasks:

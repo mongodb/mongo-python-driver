@@ -56,7 +56,6 @@ def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
         "client_side_operations_timeout": "csot",
         "mongodb_handshake": "handshake",
         "load_balancers": "load_balancer",
-        "atlas_data_lake_testing": "atlas",
         "connection_monitoring_and_pooling": "connection_monitoring",
         "command_logging_and_monitoring": "command_logging",
         "initial_dns_seedlist_discovery": "srv_seedlist",
