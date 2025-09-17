@@ -44,8 +44,7 @@ class InvalidDocument(BSONError):
         ..versionadded:: 4.16"""
         return self._document
 
-    @document.setter
-    def document(self, value: Any) -> None:
+    def _set_document(self, value: Any) -> None:
         self._document = value
 
 
