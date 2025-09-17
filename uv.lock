@@ -932,7 +932,7 @@ name = "importlib-metadata"
 version = "8.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp", marker = "python_full_version < '3.10'" },
+    { name = "zipp", marker = "python_full_version != '3.14.*'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/66/650a33bd90f786193e4de4b3ad86ea60b53c89b669a5c7be931fac31cdb0/importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000", size = 56641, upload-time = "2025-04-27T15:29:01.736Z" }
 wheels = [
@@ -1261,6 +1261,7 @@ snappy = [
     { name = "python-snappy" },
 ]
 test = [
+    { name = "importlib-metadata", marker = "python_full_version < '3.13'" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
 ]
@@ -1292,9 +1293,6 @@ perf = [
 pip = [
     { name = "pip" },
 ]
-pymongocrypt-source = [
-    { name = "pymongocrypt" },
-]
 typing = [
     { name = "mypy" },
     { name = "pip" },
@@ -1309,6 +1307,7 @@ requires-dist = [
     { name = "cryptography", marker = "extra == 'ocsp'", specifier = ">=2.5" },
     { name = "dnspython", specifier = ">=1.16.0,<3.0.0" },
     { name = "furo", marker = "extra == 'docs'", specifier = "==2025.7.19" },
+    { name = "importlib-metadata", marker = "python_full_version < '3.13' and extra == 'test'", specifier = ">=7.0" },
     { name = "pykerberos", marker = "os_name != 'nt' and extra == 'gssapi'" },
     { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.1.0,<2.0.0" },
     { name = "pymongo-auth-aws", marker = "extra == 'encryption'", specifier = ">=1.1.0,<2.0.0" },
@@ -1343,7 +1342,6 @@ gevent = [
 mockupdb = [{ name = "mockupdb", git = "https://github.com/mongodb-labs/mongo-mockup-db?rev=master" }]
 perf = [{ name = "simplejson" }]
 pip = [{ name = "pip" }]
-pymongocrypt-source = [{ name = "pymongocrypt", git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master" }]
 typing = [
     { name = "mypy", specifier = "==1.18.1" },
     { name = "pip" },
@@ -1366,14 +1364,21 @@ wheels = [
 
 [[package]]
 name = "pymongocrypt"
-version = "1.17.0.dev0"
-source = { git = "https://github.com/mongodb/libmongocrypt?subdirectory=bindings%2Fpython&rev=master#36a6beafc99efdbe990ece675573ef581d151c92" }
+version = "1.16.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cffi", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version != '3.14.*'" },
     { name = "cffi", version = "2.0.0b1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.14.*'" },
     { name = "cryptography" },
     { name = "httpx" },
     { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fb/8e/dd9ed710e8fd4eec127dac1db3b3e9156ffcf340a0463a82087a12ae924e/pymongocrypt-1.16.0.tar.gz", hash = "sha256:0db0812055d00e6f5562a8d66711c4cba4b75014c363306c9b298a9fd68fccdd", size = 65354, upload-time = "2025-09-09T18:54:25.531Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/8b/dda0f19ce16f7b257e4aa2a8831a1a1307c1ea124a00f571cda83a04adcb/pymongocrypt-1.16.0-py3-none-macosx_11_0_universal2.whl", hash = "sha256:fbd85534880ea8525956b96e583a7021c721abbf3b51a6dbe48a57d7eba8e74a", size = 4721169, upload-time = "2025-09-09T18:54:18.642Z" },
+    { url = "https://files.pythonhosted.org/packages/99/48/512a5b597d71407f9b06a14cd8e5ac376e06b780d4d54a4e69726bd48703/pymongocrypt-1.16.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:85df0a78480e91bdd3a5a6da3e4cdc7d9700de8a871aa8168588981c041f1914", size = 4038242, upload-time = "2025-09-09T18:54:20.496Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/67/3bdeda347191d6c1ee257eb3da8c85f1278d86dfb493cc9bc26352a41d0a/pymongocrypt-1.16.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b8d2ebeb1b5e4f4554bf44f726e8009c59c4d7d0b412beebfece875991714676", size = 3775742, upload-time = "2025-09-09T18:54:22.254Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/81/70f6947afbd1ac7be54482b44cb1b99e8e9b9cac41985e6250c4fc279e58/pymongocrypt-1.16.0-py3-none-win_amd64.whl", hash = "sha256:c20afcd89ec5fc53305e924c05c4a0321ddc73f1e4e7c8240ee2fd0123e23609", size = 1607917, upload-time = "2025-09-09T18:54:24.182Z" },
 ]
 
 [[package]]

@@ -346,7 +346,9 @@ def handle_test_env() -> None:
             setup_libmongocrypt()
 
         # TODO: Test with 'pip install pymongocrypt'
-        UV_ARGS.append("--group pymongocrypt_source")
+        UV_ARGS.append(
+            "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
+        )
 
         # Use the nocrypto build to avoid dependency issues with older windows/python versions.
         BASE = ROOT / "libmongocrypt/nocrypto"

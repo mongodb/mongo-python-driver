@@ -273,7 +273,7 @@ def generate_yaml(tasks=None, variants=None):
     out = ShrubService.generate_yaml(project)
     # Dedent by two spaces to match what we use in config.yml
     lines = [line[2:] for line in out.splitlines()]
-    print("\n".join(lines))  # noqa: T201
+    print("\n".join(lines))
 
 
 ##################
