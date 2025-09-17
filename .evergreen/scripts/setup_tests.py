@@ -178,6 +178,9 @@ def handle_test_env() -> None:
     if group := GROUP_MAP.get(test_name, ""):
         UV_ARGS.append(f"--group {group}")
 
+    if opts.test_min_deps:
+        UV_ARGS.append("--resolution=lowest-direct")
+
     if test_name == "auth_oidc":
         from oidc_tester import setup_oidc
 
@@ -345,10 +348,10 @@ def handle_test_env() -> None:
         if not (ROOT / "libmongocrypt").exists():
             setup_libmongocrypt()
 
-        # TODO: Test with 'pip install pymongocrypt'
-        UV_ARGS.append(
-            "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
-        )
+        if not opts.test_min_deps:
+            UV_ARGS.append(
+                "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
+            )
 
         # Use the nocrypto build to avoid dependency issues with older windows/python versions.
         BASE = ROOT / "libmongocrypt/nocrypto"

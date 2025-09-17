@@ -41,6 +41,7 @@ DISPLAY_LOOKUP = dict(
     sync={"sync": "Sync", "async": "Async"},
     coverage={"1": "cov"},
     no_ext={"1": "No C"},
+    test_min_deps={True: "Min Deps", False: ""},
 )
 HOSTS = dict()
 

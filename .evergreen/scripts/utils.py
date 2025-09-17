@@ -121,6 +121,9 @@ def get_test_options(
         parser.add_argument(
             "--disable-test-commands", action="store_true", help="Disable test commands."
         )
+        parser.add_argument(
+            "--test-min-deps", action="store_true", help="Test against minimum dependency versions"
+        )
 
     # Get the options.
     if not allow_extra_opts:
