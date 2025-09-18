@@ -225,6 +225,8 @@ class TestRetryableReads(IntegrationTest):
             retryReads=True,
         )
 
+        client.t.t.insert_one({"x": 1})
+
         commands = [
             ("aggregate", lambda: client.t.t.count_documents({})),
             ("aggregate", lambda: client.t.t.aggregate([{"$match": {}}])),
@@ -248,13 +250,14 @@ class TestRetryableReads(IntegrationTest):
                 operation()
 
             #  Assert that both events occurred on the same session.
-            lsids = [
-                event.command["lsid"]
+            command_docs = [
+                event.command
                 for event in listener.started_events
                 if event.command_name == command_name
             ]
-            self.assertEqual(len(lsids), 2)
-            self.assertEqual(lsids[0], lsids[1])
+            self.assertEqual(len(command_docs), 2)
+            self.assertEqual(command_docs[0]["lsid"], command_docs[1]["lsid"])
+            self.assertIsNot(command_docs[0], command_docs[1])
 
 
 if __name__ == "__main__":
