@@ -28,7 +28,7 @@ fi
 
 cleanup_tests() {
   # Avoid leaving the lock file in a changed state when we change the resolution type.
-  if [ -n "$TEST_MIN_DEPS" ]; then
+  if [ -n "${TEST_MIN_DEPS:-}" ]; then
     git checkout uv.lock || true
   fi
   cd $PREV_DIR
