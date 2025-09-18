@@ -144,7 +144,7 @@ def create_encryption_variants() -> list[BuildVariant]:
         display_name = get_variant_name(encryption, host, **expansions)
         tasks = [".test-non-standard", ".test-min-deps"]
         if host != "rhel8":
-            tasks = [".test-non-standard !.pypy", ".test-min-deps"]
+            tasks = [".test-non-standard !.pypy"]
         variant = create_variant(
             tasks,
             display_name,
