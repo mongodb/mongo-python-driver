@@ -387,8 +387,6 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 To run any of the test suites with minimum supported dependencies, pass `--test-min-deps` to
 `just setup-tests`.
 
-Note: the lock file will be modified by the test, make sure to revert `uv.lock` before committing.
-
 ## Adding a new test suite
 
 - If adding new tests files that should only be run for that test suite, add a pytest marker to the file and add
