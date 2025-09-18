@@ -87,7 +87,7 @@ tasks:
           SUB_TEST_NAME: web-identity
           PYTHON_VERSION: "3.14"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-rapid-web-identity-session-name-python3.14-min-deps
+  - name: test-auth-aws-rapid-web-identity-session-name-python3.9-min-deps
     commands:
       - func: run server
         vars:
@@ -99,7 +99,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
-          PYTHON_VERSION: "3.14"
+          PYTHON_VERSION: "3.9"
           TEST_MIN_DEPS: true
     tags: [auth-aws, auth-aws-web-identity]
   - name: test-auth-aws-latest-ecs-python3.9
@@ -2714,28 +2714,6 @@ tasks:
       - python-3.9
       - sharded_cluster-auth-ssl
       - async
-  - name: test-server-version-python3.9-async-min-deps-auth-ssl-sharded-cluster-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.9"
-          TEST_NAME: default_async
-          TEST_MIN_DEPS: "1"
-    tags:
-      - server-version
-      - python-3.9
-      - sharded_cluster-auth-ssl
-      - async
   - name: test-server-version-pypy3.10-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -2755,6 +2733,29 @@ tasks:
       - python-pypy3.10
       - sharded_cluster-auth-ssl
       - async
+  - name: test-server-version-python3.9-min-deps-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          COVERAGE: "1"
+          PYTHON_VERSION: "3.9"
+          TEST_NAME: default_aync
+          TEST_MIN_DEPS: "1"
+    tags:
+      - server-version
+      - python-3.9
+      - sharded_cluster-auth-ssl
+      - aync
+      - pr
   - name: test-server-version-python3.10-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
@@ -3975,7 +3976,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - async
       - pr
-  - name: test-standard-latest-python3.9-async-min-deps-auth-ssl-sharded-cluster
+  - name: test-standard-latest-python3.9-sync-min-deps-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -3990,14 +3991,14 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: latest
           PYTHON_VERSION: "3.9"
-          TEST_NAME: default_async
+          TEST_NAME: default_sync
           TEST_MIN_DEPS: "1"
     tags:
       - test-standard
       - server-latest
       - python-3.9
       - sharded_cluster-auth-ssl
-      - async
+      - sync
   - name: test-standard-latest-python3.10-async-noauth-nossl-standalone
     commands:
       - func: run server

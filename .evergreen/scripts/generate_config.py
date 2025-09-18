@@ -546,7 +546,8 @@ def create_server_version_tasks():
 
     # Add two tasks for min dependencies.
     task_combos.add(("standalone", "noauth", "nossl", "sync", CPYTHONS[0], True))
-    task_combos.add(("sharded_cluster", "auth", "ssl", "async", CPYTHONS[0], True))
+    # TODO: When we drop Python 3.9 support we should test with async.
+    task_combos.add(("sharded_cluster", "auth", "ssl", "aync", CPYTHONS[0], True))
 
     # Assemble the tasks.
     seen = set()
@@ -655,7 +656,8 @@ def create_standard_tasks():
         task_combos.add((version, topology, python, sync, pr, False))
     # Add two tasks for min dependencies.
     task_combos.add((ALL_VERSIONS[0], "standalone", CPYTHONS[0], "sync", False, True))
-    task_combos.add((ALL_VERSIONS[-1], "sharded_cluster", CPYTHONS[0], "async", False, True))
+    # TODO: When we drop Python 3.9 support we should test with async.
+    task_combos.add((ALL_VERSIONS[-1], "sharded_cluster", CPYTHONS[0], "sync", False, True))
 
     for version, topology, python, sync, pr, test_min_deps in sorted(task_combos):
         auth, ssl = get_standard_auth_ssl(topology)
@@ -759,6 +761,7 @@ def create_aws_tasks():
 
         if test_type == "web-identity":
             tags = [*base_tags, "auth-aws-web-identity"]
+            python = CPYTHONS[0]  # noqa: PLW2901
             name = get_task_name(
                 f"{base_name}-web-identity-session-name", python=python, test_min_deps=True
             )
