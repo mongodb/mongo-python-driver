@@ -28,7 +28,7 @@ fi
 
 cleanup_tests() {
   # Avoid leaving the lock file in a changed state when we change the resolution type.
-  if [ -n "TEST_MIN_DEPS" ]; then
+  if [ -n "$TEST_MIN_DEPS" ]; then
     git checkout uv.lock || true
   fi
   cd $PREV_DIR
@@ -39,4 +39,4 @@ trap "cleanup_tests" SIGINT ERR
 # Start the test runner.
 uv run ${UV_ARGS} --reinstall-package pymongo .evergreen/scripts/run_tests.py "$@"
 
-cleanup_tests()
+cleanup_tests
