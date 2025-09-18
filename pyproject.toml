@@ -54,7 +54,7 @@ gevent = ["gevent>=20.9"]
 eventlet = ["eventlet>0.29"]
 coverage = [
     "pytest-cov>=2.9.0",
-    "coverage[toml]>=5,<=7.10.6"
+    "coverage[toml]>=6.0,<=7.10.6"
 ]
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
