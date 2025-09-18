@@ -134,6 +134,12 @@ def get_test_options(
     else:
         opts, extra_opts = parser.parse_known_args()
 
+    # Convert list inputs to strings.
+    for name in vars(opts):
+        value = getattr(opts, name)
+        if isinstance(value, list):
+            setattr(opts, name, value[0])
+
     # Handle validation and environment variable overrides.
     test_name = opts.test_name
     sub_test_name = opts.sub_test_name if require_sub_test_name else ""

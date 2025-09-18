@@ -1317,7 +1317,7 @@ requires-dist = [
     { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.1.0,<2.0.0" },
     { name = "pymongo-auth-aws", marker = "extra == 'encryption'", specifier = ">=1.1.0,<2.0.0" },
     { name = "pymongocrypt", marker = "extra == 'encryption'", specifier = ">=1.13.0,<2.0.0" },
-    { name = "pyopenssl", marker = "extra == 'ocsp'", specifier = ">=17.2.0" },
+    { name = "pyopenssl", marker = "extra == 'ocsp'", specifier = ">=22.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.2" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.24.0" },
     { name = "python-snappy", marker = "extra == 'snappy'", specifier = ">=0.6.0" },
@@ -1340,7 +1340,7 @@ coverage = [
 ]
 dev = [{ name = "pre-commit", specifier = ">=4.0" }]
 eventlet = [{ name = "eventlet", specifier = ">0.29" }]
-gevent = [{ name = "gevent", specifier = ">=20.9" }]
+gevent = [{ name = "gevent", specifier = ">=24.2.1" }]
 mockupdb = [{ name = "mockupdb", git = "https://github.com/mongodb-labs/mongo-mockup-db?rev=master" }]
 perf = [{ name = "simplejson", specifier = ">3.17" }]
 pip = [{ name = "pip", specifier = ">23.0" }]

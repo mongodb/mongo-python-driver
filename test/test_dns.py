@@ -20,6 +20,7 @@ import json
 import os
 import pathlib
 import sys
+from importlib import metadata
 
 sys.path[0:0] = [""]
 
@@ -30,7 +31,10 @@ from test import (
     unittest,
 )
 from test.utils_shared import wait_until
+from test.version import Version
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
@@ -207,6 +211,10 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
     """
 
     def run_initial_dns_seedlist_discovery_prose_tests(self, test_cases):
+        version = metadata.version("dnspython")
+        # TODO: reference the Python 3.9 ticket.
+        if Version.from_string(version) < Version(2, 0):
+            pytest.skip("Test relies on dnspython 2.0+")
         for case in test_cases:
             with patch("dns.resolver.resolve") as mock_resolver:
 
@@ -229,6 +237,10 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
                         self.fail(f"ConfigurationError was not raised for query: {case['query']}")
 
     def test_1_allow_srv_hosts_with_fewer_than_three_dot_separated_parts(self):
+        # TODO: reference the Python 3.9 ticket.
+        version = metadata.version("dnspython")
+        if Version.from_string(version) < Version(2, 0):
+            pytest.skip("Test relies on dnspython 2.0+")
         with patch("dns.resolver.resolve"):
             parse_uri("mongodb+srv://localhost/")
             parse_uri("mongodb+srv://mongo.local/")

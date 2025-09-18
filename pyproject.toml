@@ -50,7 +50,7 @@ dev = [
     "pre-commit>=4.0"
 ]
 pip = ["pip>23.0"]
-gevent = ["gevent>=20.9"]
+gevent = ["gevent>=24.2.1"]  # this is the first version with a universal macos wheel.
 eventlet = ["eventlet>0.29"]
 coverage = [
     "pytest-cov>=6.0",
