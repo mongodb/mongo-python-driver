@@ -222,6 +222,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
+          TEST_MIN_DEPS: "1"
     tags: [test-min-deps, standalone-noauth-nossl]
   - name: test-standard-python3.9-sync-noauth-ssl-replica-set
     commands:
@@ -235,6 +236,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
+          TEST_MIN_DEPS: "1"
     tags: [test-min-deps, replica_set-noauth-ssl]
   - name: test-standard-python3.9-sync-auth-ssl-sharded-cluster
     commands:
@@ -248,6 +250,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
+          TEST_MIN_DEPS: "1"
     tags: [test-min-deps, sharded_cluster-auth-ssl]
 
   # Mod wsgi tests

@@ -636,9 +636,10 @@ def create_min_deps_tasks():
         auth, ssl = get_standard_auth_ssl(topology)
         tags = ["test-min-deps", f"{topology}-{auth}-{ssl}"]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
-        name = get_task_name("test-standard", python=CPYTHONS[0], sync="sync", **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
+        test_vars["TEST_MIN_DEPS"] = "1"
+        name = get_task_name("test-standard", python=CPYTHONS[0], sync="sync", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
