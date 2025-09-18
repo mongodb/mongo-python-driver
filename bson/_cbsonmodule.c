@@ -1649,7 +1649,7 @@ fail:
  */
 void handle_invalid_doc_error(PyObject* dict) {
     PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
-    PyObject *msg = NULL, *dict_str = NULL, *new_msg = NULL;
+    PyObject *msg = NULL, *new_msg = NULL, *new_evalue = NULL;
     PyErr_Fetch(&etype, &evalue, &etrace);
     PyObject *InvalidDocument = _error("InvalidDocument");
     if (InvalidDocument == NULL) {
@@ -1659,19 +1659,19 @@ void handle_invalid_doc_error(PyObject* dict) {
     if (evalue && PyErr_GivenExceptionMatches(etype, InvalidDocument)) {
         PyObject *msg = PyObject_Str(evalue);
         if (msg) {
-            // Add doc to the error class as a property.
-            PyObject_SetAttrString(InvalidDocument, "document", dict);
             const char * msg_utf8 = PyUnicode_AsUTF8(msg);
             if (msg_utf8 == NULL) {
                 goto cleanup;
             }
             PyObject *new_msg = PyUnicode_FromFormat("Invalid document: %s", msg_utf8);
+            // Add doc to the error instance as a property.
+            PyObject *new_evalue = PyObject_CallFunctionObjArgs(InvalidDocument, new_msg, dict, NULL);
             Py_DECREF(evalue);
             Py_DECREF(etype);
             etype = InvalidDocument;
             InvalidDocument = NULL;
-            if (new_msg) {
-                evalue = new_msg;
+            if (new_evalue) {
+                evalue = new_evalue;
             } else {
                 evalue = msg;
             }
@@ -1682,7 +1682,7 @@ cleanup:
     PyErr_Restore(etype, evalue, etrace);
     Py_XDECREF(msg);
     Py_XDECREF(InvalidDocument);
-    Py_XDECREF(dict_str);
+    Py_XDECREF(new_evalue);
     Py_XDECREF(new_msg);
 }
 
