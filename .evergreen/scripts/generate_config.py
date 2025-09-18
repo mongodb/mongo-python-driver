@@ -1130,6 +1130,7 @@ def create_run_tests_func():
         "VERSION",
         "IS_WIN32",
         "REQUIRE_FIPS",
+        "TEST_MIN_DEPS",
     ]
     args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
     setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
