@@ -142,9 +142,9 @@ def create_encryption_variants() -> list[BuildVariant]:
     ):
         expansions = get_encryption_expansions(encryption)
         display_name = get_variant_name(encryption, host, **expansions)
-        tasks = [".test-non-standard"]
+        tasks = [".test-non-standard", ".test-min-deps"]
         if host != "rhel8":
-            tasks = [".test-non-standard !.pypy"]
+            tasks = [".test-non-standard !.pypy", ".test-min-deps"]
         variant = create_variant(
             tasks,
             display_name,
@@ -538,20 +538,15 @@ def create_server_version_tasks():
     for (topology, auth, ssl, sync), python in zip_cycle(
         list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
     ):
-        task_combos.add((topology, auth, ssl, sync, python, False))
+        task_combos.add((topology, auth, ssl, sync, python))
 
     # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
     for python, sync in product(ALL_PYTHONS, SYNCS):
-        task_combos.add(("sharded_cluster", "auth", "ssl", sync, python, False))
-
-    # Add two tasks for min dependencies.
-    task_combos.add(("standalone", "noauth", "nossl", "sync", CPYTHONS[0], True))
-    # TODO: When we drop Python 3.9 support we should test with async.
-    task_combos.add(("sharded_cluster", "auth", "ssl", "sync", CPYTHONS[0], True))
+        task_combos.add(("sharded_cluster", "auth", "ssl", sync, python))
 
     # Assemble the tasks.
     seen = set()
-    for topology, auth, ssl, sync, python, test_min_deps in sorted(task_combos):
+    for topology, auth, ssl, sync, python in sorted(task_combos):
         combo = f"{topology}-{auth}-{ssl}"
         tags = ["server-version", f"python-{python}", combo, sync]
         if combo in [
@@ -570,15 +565,12 @@ def create_server_version_tasks():
             "test-server-version",
             python=python,
             sync=sync,
-            test_min_deps=test_min_deps,
             **expansions,
         )
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
         test_vars["TEST_NAME"] = f"default_{sync}"
-        if test_min_deps:
-            test_vars["TEST_MIN_DEPS"] = "1"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
@@ -610,14 +602,11 @@ def create_test_non_standard_tasks():
     # For each version and topology, rotate through the CPythons.
     for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
         pr = version == "latest"
-        task_combos.add((version, topology, python, pr, False))
+        task_combos.add((version, topology, python, pr))
     # For each PyPy and topology, rotate through the the versions.
     for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
-        task_combos.add((version, topology, python, False, False))
-    # Add two tasks for min dependencies.
-    task_combos.add((ALL_VERSIONS[0], "standalone", CPYTHONS[0], False, True))
-    task_combos.add((ALL_VERSIONS[-1], "sharded_cluster", CPYTHONS[0], False, True))
-    for version, topology, python, pr, test_min_deps in sorted(task_combos):
+        task_combos.add((version, topology, python, False))
+    for version, topology, python, pr in sorted(task_combos):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-non-standard",
@@ -631,14 +620,25 @@ def create_test_non_standard_tasks():
         if pr:
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
-        name = get_task_name(
-            "test-non-standard", python=python, test_min_deps=test_min_deps, **expansions
-        )
+        name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
-        if test_min_deps:
-            test_vars["TEST_MIN_DEPS"] = "1"
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
+def create_min_deps_tasks():
+    # TODO: create two tasks for testing min deps here and use them in encryption variants.
+    tasks = []
+    for topology in TOPOLOGIES:
+        auth, ssl = get_standard_auth_ssl(topology)
+        tags = ["test-min-deps", f"{topology}-{auth}-{ssl}"]
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
+        name = get_task_name("test-standard", python=CPYTHONS[0], sync="sync", **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
@@ -653,13 +653,9 @@ def create_standard_tasks():
         list(product(CPYTHONS + PYPYS, TOPOLOGIES, SYNCS)), ALL_VERSIONS
     ):
         pr = version == "latest" and python not in PYPYS
-        task_combos.add((version, topology, python, sync, pr, False))
-    # Add two tasks for min dependencies.
-    task_combos.add((ALL_VERSIONS[0], "standalone", CPYTHONS[0], "sync", False, True))
-    # TODO: When we drop Python 3.9 support we should test with async.
-    task_combos.add((ALL_VERSIONS[-1], "sharded_cluster", CPYTHONS[0], "sync", False, True))
+        task_combos.add((version, topology, python, sync, pr))
 
-    for version, topology, python, sync, pr, test_min_deps in sorted(task_combos):
+    for version, topology, python, sync, pr in sorted(task_combos):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-standard",
@@ -673,15 +669,11 @@ def create_standard_tasks():
         if pr:
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
-        name = get_task_name(
-            "test-standard", python=python, sync=sync, test_min_deps=test_min_deps, **expansions
-        )
+        name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
         test_vars["TEST_NAME"] = f"default_{sync}"
-        if test_min_deps:
-            test_vars["TEST_MIN_DEPS"] = "1"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
@@ -689,25 +681,14 @@ def create_standard_tasks():
 
 def create_no_orchestration_tasks():
     tasks = []
-    task_combos = (
-        (CPYTHONS[0], True),
-        (CPYTHONS[0], False),
-        (CPYTHONS[-1], False),
-        (PYPYS[-1], False),
-    )
-    for (
-        python,
-        test_min_deps,
-    ) in task_combos:
+    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
         tags = [
             "test-no-orchestration",
             f"python-{python}",
         ]
-        name = get_task_name("test-no-orchestration", python=python, test_min_deps=test_min_deps)
+        name = get_task_name("test-no-orchestration", python=python)
         assume_func = FunctionCall(func="assume ec2 role")
         test_vars = dict(PYTHON_VERSION=python)
-        if test_min_deps:
-            test_vars["TEST_MIN_DEPS"] = "1"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         commands = [assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=commands))
@@ -824,12 +805,6 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         else:
             python = MIN_MAX_PYTHON[0]
 
-        # Test with min deps on one particular task name.
-        test_min_deps = False
-        if base_task_name == "valid-cert-server-staples" and version == "latest":
-            python = MIN_MAX_PYTHON[0]
-            test_min_deps = True
-
         vars = dict(
             ORCHESTRATION_FILE=file_name,
             OCSP_SERVER_TYPE=server_type,
@@ -837,8 +812,6 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
             PYTHON_VERSION=python,
             VERSION=version,
         )
-        if test_min_deps:
-            vars["TEST_MIN_DEPS"] = "1"
         test_func = FunctionCall(func="run tests", vars=vars)
 
         tags = ["ocsp", f"ocsp-{algo}", version]
@@ -851,7 +824,6 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
             f"test-ocsp-{algo}-{base_task_name}",
             python=python,
             version=version,
-            test_min_deps=test_min_deps,
         )
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
 

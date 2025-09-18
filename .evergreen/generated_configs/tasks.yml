@@ -209,6 +209,47 @@ tasks:
           SUB_TEST_NAME: azure-fail
     tags: [pr]
 
+  # Min deps tests
+  - name: test-standard-python3.9-sync-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+    tags: [test-min-deps, standalone-noauth-nossl]
+  - name: test-standard-python3.9-sync-noauth-ssl-replica-set
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+    tags: [test-min-deps, replica_set-noauth-ssl]
+  - name: test-standard-python3.9-sync-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+    tags: [test-min-deps, sharded_cluster-auth-ssl]
+
   # Mod wsgi tests
   - name: mod-wsgi-replica-set-python3.9
     commands:
@@ -284,14 +325,6 @@ tasks:
     tags: [mod_wsgi, pr]
 
   # No orchestration tests
-  - name: test-no-orchestration-python3.9-min-deps
-    commands:
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          PYTHON_VERSION: "3.9"
-          TEST_MIN_DEPS: "1"
-    tags: [test-no-orchestration, python-3.9]
   - name: test-no-orchestration-python3.9
     commands:
       - func: assume ec2 role
@@ -793,16 +826,15 @@ tasks:
       - ocsp-ecdsa
       - rapid
       - ocsp-staple
-  - name: test-ocsp-ecdsa-valid-cert-server-staples-latest-python3.9-min-deps
+  - name: test-ocsp-ecdsa-valid-cert-server-staples-latest-python3.14
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.9"
+          PYTHON_VERSION: "3.14"
           VERSION: latest
-          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -1746,16 +1778,15 @@ tasks:
       - ocsp-rsa
       - rapid
       - ocsp-staple
-  - name: test-ocsp-rsa-valid-cert-server-staples-latest-python3.9-min-deps
+  - name: test-ocsp-rsa-valid-cert-server-staples-latest-python3.14
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.9"
+          PYTHON_VERSION: "3.14"
           VERSION: latest
-          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
@@ -2860,28 +2891,6 @@ tasks:
       - python-3.9
       - sharded_cluster-auth-ssl
       - sync
-  - name: test-server-version-python3.9-sync-min-deps-auth-ssl-sharded-cluster-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.9"
-          TEST_NAME: default_sync
-          TEST_MIN_DEPS: "1"
-    tags:
-      - server-version
-      - python-3.9
-      - sharded_cluster-auth-ssl
-      - sync
   - name: test-server-version-pypy3.10-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -3089,29 +3098,6 @@ tasks:
       - standalone-noauth-nossl
       - async
       - pr
-  - name: test-server-version-python3.9-sync-min-deps-noauth-nossl-standalone-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          COVERAGE: "1"
-          PYTHON_VERSION: "3.9"
-          TEST_NAME: default_sync
-          TEST_MIN_DEPS: "1"
-    tags:
-      - server-version
-      - python-3.9
-      - standalone-noauth-nossl
-      - sync
-      - pr
   - name: test-server-version-pypy3.10-sync-noauth-nossl-standalone
     commands:
       - func: run server
@@ -3131,6 +3117,7 @@ tasks:
       - python-pypy3.10
       - standalone-noauth-nossl
       - sync
+      - pr
   - name: test-server-version-python3.14-async-noauth-ssl-standalone-cov
     commands:
       - func: run server
@@ -3302,29 +3289,6 @@ tasks:
           VERSION: "4.2"
           PYTHON_VERSION: "3.9"
           TEST_NAME: default_sync
-    tags:
-      - test-standard
-      - server-4.2
-      - python-3.9
-      - standalone-noauth-nossl
-      - sync
-  - name: test-standard-v4.2-python3.9-sync-min-deps-noauth-nossl-standalone
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "4.2"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "4.2"
-          PYTHON_VERSION: "3.9"
-          TEST_NAME: default_sync
-          TEST_MIN_DEPS: "1"
     tags:
       - test-standard
       - server-4.2
@@ -3975,29 +3939,6 @@ tasks:
       - sharded_cluster-auth-ssl
       - async
       - pr
-  - name: test-standard-latest-python3.9-sync-min-deps-auth-ssl-sharded-cluster
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest
-          PYTHON_VERSION: "3.9"
-          TEST_NAME: default_sync
-          TEST_MIN_DEPS: "1"
-    tags:
-      - test-standard
-      - server-latest
-      - python-3.9
-      - sharded_cluster-auth-ssl
-      - sync
   - name: test-standard-latest-python3.10-async-noauth-nossl-standalone
     commands:
       - func: run server
@@ -4214,28 +4155,6 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "4.2"
           PYTHON_VERSION: "3.9"
-    tags:
-      - test-non-standard
-      - server-4.2
-      - python-3.9
-      - standalone-noauth-nossl
-      - noauth
-  - name: test-non-standard-v4.2-python3.9-min-deps-noauth-nossl-standalone
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "4.2"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: "4.2"
-          PYTHON_VERSION: "3.9"
-          TEST_MIN_DEPS: "1"
     tags:
       - test-non-standard
       - server-4.2
@@ -4755,28 +4674,6 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - pr
-  - name: test-non-standard-latest-python3.9-min-deps-auth-ssl-sharded-cluster
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest
-          PYTHON_VERSION: "3.9"
-          TEST_MIN_DEPS: "1"
-    tags:
-      - test-non-standard
-      - server-latest
-      - python-3.9
-      - sharded_cluster-auth-ssl
-      - auth
   - name: test-non-standard-latest-python3.12-noauth-nossl-standalone
     commands:
       - func: run server

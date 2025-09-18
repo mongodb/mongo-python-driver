@@ -179,6 +179,7 @@ buildvariants:
   - name: encryption-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-min-deps
     display_name: Encryption RHEL8
     run_on:
       - rhel87-small
@@ -189,6 +190,7 @@ buildvariants:
   - name: encryption-macos
     tasks:
       - name: .test-non-standard !.pypy
+      - name: .test-min-deps
     display_name: Encryption macOS
     run_on:
       - macos-14
@@ -199,6 +201,7 @@ buildvariants:
   - name: encryption-win64
     tasks:
       - name: .test-non-standard !.pypy
+      - name: .test-min-deps
     display_name: Encryption Win64
     run_on:
       - windows-64-vsMulti-small
@@ -209,6 +212,7 @@ buildvariants:
   - name: encryption-crypt_shared-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-min-deps
     display_name: Encryption crypt_shared RHEL8
     run_on:
       - rhel87-small
@@ -220,6 +224,7 @@ buildvariants:
   - name: encryption-crypt_shared-macos
     tasks:
       - name: .test-non-standard !.pypy
+      - name: .test-min-deps
     display_name: Encryption crypt_shared macOS
     run_on:
       - macos-14
@@ -231,6 +236,7 @@ buildvariants:
   - name: encryption-crypt_shared-win64
     tasks:
       - name: .test-non-standard !.pypy
+      - name: .test-min-deps
     display_name: Encryption crypt_shared Win64
     run_on:
       - windows-64-vsMulti-small
