@@ -25,6 +25,7 @@ else
   exit 1
 fi
 
-# Run the test runner.
-uv run ${UV_ARGS} --reinstall python .evergreen/scripts/run_tests.py "$@"
+# Start the test runner.
+uv run ${UV_ARGS} --reinstall .evergreen/scripts/run_tests.py "$@"
+
 popd
