@@ -1664,6 +1664,9 @@ void handle_invalid_doc_error(PyObject* dict) {
                 goto cleanup;
             }
             PyObject *new_msg = PyUnicode_FromFormat("Invalid document: %s", msg_utf8);
+            if (new_msg == NULL) {
+                goto cleanup;
+            }
             // Add doc to the error instance as a property.
             PyObject *new_evalue = PyObject_CallFunctionObjArgs(InvalidDocument, new_msg, dict, NULL);
             Py_DECREF(evalue);
