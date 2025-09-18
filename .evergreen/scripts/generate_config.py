@@ -630,7 +630,7 @@ def create_test_non_standard_tasks():
 
 
 def create_min_deps_tasks():
-    # TODO: create two tasks for testing min deps here and use them in encryption variants.
+    """For variants that support testing with minimum dependencies."""
     tasks = []
     for topology in TOPOLOGIES:
         auth, ssl = get_standard_auth_ssl(topology)
@@ -743,16 +743,12 @@ def create_aws_tasks():
 
         if test_type == "web-identity":
             tags = [*base_tags, "auth-aws-web-identity"]
-            python = CPYTHONS[0]  # noqa: PLW2901
-            name = get_task_name(
-                f"{base_name}-web-identity-session-name", python=python, test_min_deps=True
-            )
+            name = get_task_name(f"{base_name}-web-identity-session-name", python=python)
             test_vars = dict(
                 TEST_NAME="auth_aws",
                 SUB_TEST_NAME="web-identity",
                 AWS_ROLE_SESSION_NAME="test",
                 PYTHON_VERSION=python,
-                TEST_MIN_DEPS=True,
             )
             test_func = FunctionCall(func="run tests", vars=test_vars)
             funcs = [server_func, assume_func, test_func]

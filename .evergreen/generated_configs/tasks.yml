@@ -87,7 +87,7 @@ tasks:
           SUB_TEST_NAME: web-identity
           PYTHON_VERSION: "3.14"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-rapid-web-identity-session-name-python3.9-min-deps
+  - name: test-auth-aws-rapid-web-identity-session-name-python3.14
     commands:
       - func: run server
         vars:
@@ -99,8 +99,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
-          PYTHON_VERSION: "3.9"
-          TEST_MIN_DEPS: true
+          PYTHON_VERSION: "3.14"
     tags: [auth-aws, auth-aws-web-identity]
   - name: test-auth-aws-latest-ecs-python3.9
     commands:

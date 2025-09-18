@@ -123,8 +123,6 @@ filterwarnings = [
     "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314
     "module:datetime.datetime.utc:DeprecationWarning",
-    # TODO: remove in XXXX
-    "module:pkg_resources is deprecated as an API:UserWarning",
 ]
 markers = [
     "auth_aws: tests that rely on pymongo-auth-aws",
