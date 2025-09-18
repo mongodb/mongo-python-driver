@@ -61,7 +61,7 @@ mockupdb = [
 ]
 perf = ["simplejson>3.17"]
 typing = [
-    "mypy==1.17.1",
+    "mypy==1.18.1",
     "pyright==1.1.405",
     "typing_extensions>3.10",
     "pip>23.0"
