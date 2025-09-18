@@ -547,7 +547,7 @@ def create_server_version_tasks():
     # Add two tasks for min dependencies.
     task_combos.add(("standalone", "noauth", "nossl", "sync", CPYTHONS[0], True))
     # TODO: When we drop Python 3.9 support we should test with async.
-    task_combos.add(("sharded_cluster", "auth", "ssl", "aync", CPYTHONS[0], True))
+    task_combos.add(("sharded_cluster", "auth", "ssl", "sync", CPYTHONS[0], True))
 
     # Assemble the tasks.
     seen = set()
