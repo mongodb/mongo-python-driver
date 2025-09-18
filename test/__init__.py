@@ -1249,7 +1249,7 @@ def teardown():
 
 
 @contextmanager
-def async_simple_test_client():
+def simple_test_client():
     client_context.init()
     yield client_context.client
     client_context.client.close()

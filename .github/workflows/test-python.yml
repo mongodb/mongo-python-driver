@@ -183,13 +183,15 @@ jobs:
       - name: Install dependencies
         run: |
           just install
-      - name: Start server
-        run: just run-server
+      - id: setup-mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@master
       - name: Run tests
         run:  |
           just integration-tests
-      - name: Start server with SSL
-        run: just run-server --ssl
+      - id: setup-mongodb-ssl
+        uses: mongodb-labs/drivers-evergreen-tools@master
+        with:
+          ssl: true
       - name: Run tests
         run: |
           just integration-tests
