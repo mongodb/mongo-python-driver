@@ -49,23 +49,22 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 dev = [
     "pre-commit>=4.0"
 ]
-pip = ["pip"]
-# TODO: PYTHON-5464
-gevent = ["gevent", "cffi>=2.0.0b1;python_version=='3.14'"]
-eventlet = ["eventlet"]
+pip = ["pip>23.0"]
+gevent = ["gevent>=20.9"]
+eventlet = ["eventlet>0.29"]
 coverage = [
-    "pytest-cov",
+    "pytest-cov>=2.9.0",
     "coverage>=5,<=7.10.6"
 ]
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
 ]
-perf = ["simplejson"]
+perf = ["simplejson>3.17"]
 typing = [
-    "mypy==1.18.1",
+    "mypy==1.17.1",
     "pyright==1.1.405",
-    "typing_extensions",
-    "pip"
+    "typing_extensions>3.10",
+    "pip>23.0"
 ]
 
 # Used to call hatch_build.py
@@ -131,6 +130,7 @@ markers = [
     "auth: tests that rely on authentication",
     "ocsp: tests that rely on ocsp",
     "atlas_connect: tests that rely on an atlas connection",
+    "data_lake: tests that rely on atlas data lake",
     "perf: benchmark tests",
     "search_index: search index helper tests",
     "kms: client-side field-level encryption tests using kms",
@@ -235,7 +235,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
 
 [tool.ruff.lint.per-file-ignores]
 "pymongo/__init__.py" = ["E402"]
-".evergreen/scripts/*.py" = ["T201"]
+".evergreen/scripts/run_tests.py" = ["T201"]
 "test/*.py" = ["PT", "E402", "PLW", "SIM", "E741", "PTH", "S", "B904", "E722", "T201",
     "RET", "ARG", "F405", "B028", "PGH001", "B018", "F403", "RUF015", "E731", "B007",
     "UP031", "F401", "B023", "F811"]

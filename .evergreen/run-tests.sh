@@ -26,6 +26,10 @@ else
 fi
 
 # Start the test runner.
-uv run ${UV_ARGS} --reinstall .evergreen/scripts/run_tests.py "$@"
+set -x
+env | grep UV
+uv sync ${UV_ARGS}
+git status
+# uv run ${UV_ARGS} python .evergreen/scripts/run_tests.py "$@"
 
 popd
