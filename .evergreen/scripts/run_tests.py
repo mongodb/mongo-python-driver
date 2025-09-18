@@ -143,6 +143,9 @@ def handle_aws_lambda() -> None:
 
 
 def run() -> None:
+    # Add diagnostic for python version.
+    print("Running with python", sys.version)
+
     # List the installed packages.
     list_packages()
 
