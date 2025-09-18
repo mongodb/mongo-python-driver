@@ -53,7 +53,7 @@ pip = ["pip>23.0"]
 gevent = ["gevent>=20.9"]
 eventlet = ["eventlet>0.29"]
 coverage = [
-    "pytest-cov>=2.9.0",
+    "pytest-cov>=6.0",
     "coverage[toml]>=6.0,<=7.10.6"
 ]
 mockupdb = [

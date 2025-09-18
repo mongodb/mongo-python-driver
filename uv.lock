@@ -1336,7 +1336,7 @@ provides-extras = ["aws", "docs", "encryption", "gssapi", "ocsp", "snappy", "tes
 [package.metadata.requires-dev]
 coverage = [
     { name = "coverage", extras = ["toml"], specifier = ">=6.0,<=7.10.6" },
-    { name = "pytest-cov", specifier = ">=2.9.0" },
+    { name = "pytest-cov", specifier = ">=6.0" },
 ]
 dev = [{ name = "pre-commit", specifier = ">=4.0" }]
 eventlet = [{ name = "eventlet", specifier = ">0.29" }]
