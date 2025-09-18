@@ -20,6 +20,13 @@ if [ -f $SCRIPT_DIR/env.sh ]; then
   source $SCRIPT_DIR/env.sh
 fi
 
+env | grep TEST_MIN_DEPS || true
+env | grep UV || true
+
 echo "Setting up tests with args \"$*\"..."
 uv run $SCRIPT_DIR/setup_tests.py "$@"
+
+cat .evergreen/scripts/test-env.sh | grep UV_ARGS
+
+exit 1
 echo "Setting up tests with args \"$*\"... done."
