@@ -210,7 +210,7 @@ tasks:
     tags: [pr]
 
   # Min deps tests
-  - name: test-standard-python3.9-sync-noauth-nossl-standalone
+  - name: test-min-deps-python3.9-sync-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -224,7 +224,7 @@ tasks:
           TOPOLOGY: standalone
           TEST_MIN_DEPS: "1"
     tags: [test-min-deps, standalone-noauth-nossl]
-  - name: test-standard-python3.9-sync-noauth-ssl-replica-set
+  - name: test-min-deps-python3.9-sync-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -238,7 +238,7 @@ tasks:
           TOPOLOGY: replica_set
           TEST_MIN_DEPS: "1"
     tags: [test-min-deps, replica_set-noauth-ssl]
-  - name: test-standard-python3.9-sync-auth-ssl-sharded-cluster
+  - name: test-min-deps-python3.9-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
