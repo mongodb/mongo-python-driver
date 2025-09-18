@@ -419,6 +419,8 @@ The `integration_tests` directory has a set of scripts that verify the usage of 
 
 To run the tests, use `just integration_tests`.
 
+The tests should be able to run with and without SSL enabled.
+
 ## Specification Tests
 
 The MongoDB [specifications repository](https://github.com/mongodb/specifications)
