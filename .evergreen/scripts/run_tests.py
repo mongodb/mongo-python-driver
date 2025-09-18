@@ -32,7 +32,8 @@ SUB_TEST_NAME = os.environ.get("SUB_TEST_NAME")
 def list_packages():
     packages = set()
     for distribution in importlib_metadata.distributions():
-        packages.add(distribution.name)
+        if distribution.name:
+            packages.add(distribution.name)
     print("Package             Version     URL")
     print("------------------- ----------- ----------------------------------------------------")
     for name in sorted(packages):
