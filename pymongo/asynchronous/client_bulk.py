@@ -449,7 +449,6 @@ class _AsyncClientBulk:
                 result["cursor"],
                 conn.address,
                 session=session,
-                explicit_session=session is not None,
                 comment=self.comment,
             )
             await cmd_cursor._maybe_pin_connection(conn)

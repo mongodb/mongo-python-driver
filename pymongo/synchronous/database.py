@@ -699,7 +699,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-        with self.client._tmp_session(session, close=False) as s:
+        with self.client._tmp_session(session) as s:
             cmd = _DatabaseAggregationCommand(
                 self,
                 CommandCursor,
@@ -1009,7 +1009,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         else:
             command_name = next(iter(command))
 
-        with self._client._tmp_session(session, close=False) as tmp_session:
+        with self._client._tmp_session(session) as tmp_session:
             opts = codec_options or DEFAULT_CODEC_OPTIONS
 
             if read_preference is None:
@@ -1039,7 +1039,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                         conn.address,
                         max_await_time_ms=max_await_time_ms,
                         session=tmp_session,
-                        explicit_session=session is not None,
                         comment=comment,
                     )
                     cmd_cursor._maybe_pin_connection(conn)
@@ -1085,7 +1084,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         )
         cmd = {"listCollections": 1, "cursor": {}}
         cmd.update(kwargs)
-        with self._client._tmp_session(session, close=False) as tmp_session:
+        with self._client._tmp_session(session) as tmp_session:
             cursor = (
                 self._command(conn, cmd, read_preference=read_preference, session=tmp_session)
             )["cursor"]
@@ -1094,7 +1093,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 cursor,
                 conn.address,
                 session=tmp_session,
-                explicit_session=session is not None,
                 comment=cmd.get("comment"),
             )
         cmd_cursor._maybe_pin_connection(conn)

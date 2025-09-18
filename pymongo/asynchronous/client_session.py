@@ -137,6 +137,7 @@ from __future__ import annotations
 
 import collections
 import time
+import traceback
 import uuid
 from collections.abc import Mapping as _Mapping
 from typing import (
@@ -513,6 +514,7 @@ class AsyncClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
+        self._attached_to_cursor = False
 
     async def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -536,11 +538,14 @@ class AsyncClientSession:
     def _end_implicit_session(self) -> None:
         # Implicit sessions can't be part of transactions or pinned connections
         if self._server_session is not None:
+            # print(f"Ending session {self}, implicit: {self._implicit}, attached: {self._attached_to_cursor}")
             self._client._return_server_session(self._server_session)
             self._server_session = None
 
     def _check_ended(self) -> None:
         if self._server_session is None:
+            # print(f"Session {self} is already ended")
+            # print(f"Session {self} is already ended, implicit: {self._implicit}, attached: {self._attached_to_cursor}: {''.join(traceback.format_stack())}")
             raise InvalidOperation("Cannot use ended session")
 
     async def __aenter__(self) -> AsyncClientSession:
@@ -587,6 +592,20 @@ class AsyncClientSession:
         in this session.
         """
         return self._operation_time
+
+    @property
+    def implicit(self) -> bool:
+        """Whether this session was implicitly created by the driver."""
+        return self._implicit
+
+    @property
+    def attached_to_cursor(self) -> bool:
+        """Whether this session is owned by a cursor."""
+        return self._attached_to_cursor
+
+    @attached_to_cursor.setter
+    def attached_to_cursor(self, value: bool) -> None:
+        self._attached_to_cursor = value
 
     def _inherit_option(self, name: str, val: _T) -> _T:
         """Return the inherited TransactionOption value."""

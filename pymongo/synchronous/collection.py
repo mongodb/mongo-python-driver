@@ -2546,7 +2546,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        explicit_session = session is not None
 
         def _cmd(
             session: Optional[ClientSession],
@@ -2573,7 +2572,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 cursor,
                 conn.address,
                 session=session,
-                explicit_session=explicit_session,
                 comment=cmd.get("comment"),
             )
             cmd_cursor._maybe_pin_connection(conn)
@@ -2675,7 +2673,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             CommandCursor,
             pipeline,
             kwargs,
-            explicit_session=session is not None,
             comment=comment,
             user_fields={"cursor": {"firstBatch": 1}},
         )
@@ -2893,7 +2890,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         pipeline: _Pipeline,
         cursor_class: Type[CommandCursor],  # type: ignore[type-arg]
         session: Optional[ClientSession],
-        explicit_session: bool,
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -2905,7 +2901,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cursor_class,
             pipeline,
             kwargs,
-            explicit_session,
             let,
             user_fields={"cursor": {"firstBatch": 1}},
         )
@@ -3011,13 +3006,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-        with self._database.client._tmp_session(session, close=False) as s:
+        with self._database.client._tmp_session(session) as s:
             return self._aggregate(
                 _CollectionAggregationCommand,
                 pipeline,
                 CommandCursor,
                 session=s,
-                explicit_session=session is not None,
                 let=let,
                 comment=comment,
                 **kwargs,
@@ -3058,7 +3052,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise InvalidOperation("aggregate_raw_batches does not support auto encryption")
         if comment is not None:
             kwargs["comment"] = comment
-        with self._database.client._tmp_session(session, close=False) as s:
+        with self._database.client._tmp_session(session) as s:
             return cast(
                 RawBatchCursor[_DocumentType],
                 self._aggregate(
@@ -3066,7 +3060,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     pipeline,
                     RawBatchCommandCursor,
                     session=s,
-                    explicit_session=session is not None,
                     **kwargs,
                 ),
             )

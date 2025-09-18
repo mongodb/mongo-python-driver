@@ -64,7 +64,6 @@ class CommandCursor(Generic[_DocumentType]):
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
         session: Optional[ClientSession] = None,
-        explicit_session: bool = False,
         comment: Any = None,
     ) -> None:
         """Create a new command cursor."""
@@ -80,7 +79,8 @@ class CommandCursor(Generic[_DocumentType]):
         self._max_await_time_ms = max_await_time_ms
         self._timeout = self._collection.database.client.options.timeout
         self._session = session
-        self._explicit_session = explicit_session
+        if self._session is not None:
+            self._session.attached_to_cursor = True
         self._killed = self._id == 0
         self._comment = comment
         if self._killed:
@@ -197,7 +197,7 @@ class CommandCursor(Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        if self._explicit_session:
+        if not self._session.implicit:
             return self._session
         return None
 
@@ -218,10 +218,11 @@ class CommandCursor(Generic[_DocumentType]):
         """Closes this cursor without acquiring a lock."""
         cursor_id, address = self._prepare_to_die()
         self._collection.database.client._cleanup_cursor_no_lock(
-            cursor_id, address, self._sock_mgr, self._session, self._explicit_session
+            cursor_id, address, self._sock_mgr, self._session
         )
-        if not self._explicit_session:
-            self._session = None
+        if self._session:
+            if self._session.implicit:
+                self._session = None
         self._sock_mgr = None
 
     def _die_lock(self) -> None:
@@ -232,16 +233,17 @@ class CommandCursor(Generic[_DocumentType]):
             address,
             self._sock_mgr,
             self._session,
-            self._explicit_session,
         )
-        if not self._explicit_session:
-            self._session = None
+        if self._session:
+            if self._session.implicit:
+                self._session = None
         self._sock_mgr = None
 
     def _end_session(self) -> None:
-        if self._session and not self._explicit_session:
-            self._session._end_implicit_session()
-            self._session = None
+        if self._session:
+            if self._session.implicit:
+                self._session._end_implicit_session()
+                self._session = None
 
     def close(self) -> None:
         """Explicitly close / kill this cursor."""
@@ -430,7 +432,6 @@ class RawBatchCommandCursor(CommandCursor[_DocumentType]):
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
         session: Optional[ClientSession] = None,
-        explicit_session: bool = False,
         comment: Any = None,
     ) -> None:
         """Create a new cursor / iterator over raw batches of BSON data.
@@ -449,7 +450,6 @@ class RawBatchCommandCursor(CommandCursor[_DocumentType]):
             batch_size,
             max_await_time_ms,
             session,
-            explicit_session,
             comment,
         )
 

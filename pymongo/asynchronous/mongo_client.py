@@ -35,6 +35,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+import traceback
 import warnings
 import weakref
 from collections import defaultdict
@@ -2084,6 +2085,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
         """
         async with self._tmp_session(session) as s:
+            # print(f"Called retryable write with session = {session!r} and got {s}: {s._server_session!r}")
             return await self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
 
     def _cleanup_cursor_no_lock(
@@ -2092,7 +2094,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         address: Optional[_CursorAddress],
         conn_mgr: _ConnectionManager,
         session: Optional[AsyncClientSession],
-        explicit_session: bool,
     ) -> None:
         """Cleanup a cursor from __del__ without locking.
 
@@ -2107,7 +2108,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         # The cursor will be closed later in a different session.
         if cursor_id or conn_mgr:
             self._close_cursor_soon(cursor_id, address, conn_mgr)
-        if session and not explicit_session:
+        if session and session.implicit:
             session._end_implicit_session()
 
     async def _cleanup_cursor_lock(
@@ -2116,7 +2117,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         address: Optional[_CursorAddress],
         conn_mgr: _ConnectionManager,
         session: Optional[AsyncClientSession],
-        explicit_session: bool,
     ) -> None:
         """Cleanup a cursor from cursor.close() using a lock.
 
@@ -2128,7 +2128,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param address: The _CursorAddress.
         :param conn_mgr: The _ConnectionManager for the pinned connection or None.
         :param session: The cursor's session.
-        :param explicit_session: True if the session was passed explicitly.
         """
         if cursor_id:
             if conn_mgr and conn_mgr.more_to_come:
@@ -2141,7 +2140,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 await self._close_cursor_now(cursor_id, address, session=session, conn_mgr=conn_mgr)
         if conn_mgr:
             await conn_mgr.close()
-        if session and not explicit_session:
+        if session and session.implicit:
             session._end_implicit_session()
 
     async def _close_cursor_now(
@@ -2222,7 +2221,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         for address, cursor_id, conn_mgr in pinned_cursors:
             try:
-                await self._cleanup_cursor_lock(cursor_id, address, conn_mgr, None, False)
+                await self._cleanup_cursor_lock(cursor_id, address, conn_mgr, None)
             except Exception as exc:
                 if isinstance(exc, InvalidOperation) and self._topology._closed:
                     # Raise the exception when client is closed so that it
@@ -2267,7 +2266,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     @contextlib.asynccontextmanager
     async def _tmp_session(
-        self, session: Optional[client_session.AsyncClientSession], close: bool = True
+        self, session: Optional[client_session.AsyncClientSession]
     ) -> AsyncGenerator[Optional[client_session.AsyncClientSession], None]:
         """If provided session is None, lend a temporary session."""
         if session is not None:
@@ -2292,7 +2291,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 raise
             finally:
                 # Call end_session when we exit this scope.
-                if close:
+                if not s.attached_to_cursor:
+                    # print(f"Ending session {s}: {''.join(traceback.format_stack(limit=10))}")
                     await s.end_session()
         else:
             yield None

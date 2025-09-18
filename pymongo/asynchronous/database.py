@@ -699,7 +699,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-        async with self.client._tmp_session(session, close=False) as s:
+        async with self.client._tmp_session(session) as s:
             cmd = _DatabaseAggregationCommand(
                 self,
                 AsyncCommandCursor,
@@ -1011,7 +1011,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         else:
             command_name = next(iter(command))
 
-        async with self._client._tmp_session(session, close=False) as tmp_session:
+        async with self._client._tmp_session(session) as tmp_session:
             opts = codec_options or DEFAULT_CODEC_OPTIONS
 
             if read_preference is None:
@@ -1043,7 +1043,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                         conn.address,
                         max_await_time_ms=max_await_time_ms,
                         session=tmp_session,
-                        explicit_session=session is not None,
                         comment=comment,
                     )
                     await cmd_cursor._maybe_pin_connection(conn)
@@ -1089,7 +1088,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         )
         cmd = {"listCollections": 1, "cursor": {}}
         cmd.update(kwargs)
-        async with self._client._tmp_session(session, close=False) as tmp_session:
+        async with self._client._tmp_session(session) as tmp_session:
             cursor = (
                 await self._command(conn, cmd, read_preference=read_preference, session=tmp_session)
             )["cursor"]
@@ -1098,7 +1097,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 cursor,
                 conn.address,
                 session=tmp_session,
-                explicit_session=session is not None,
                 comment=cmd.get("comment"),
             )
         await cmd_cursor._maybe_pin_connection(conn)
