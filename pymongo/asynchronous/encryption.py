@@ -66,7 +66,12 @@ from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
-from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts, TextOpts
+from pymongo.encryption_options import (
+    AutoEncryptionOpts,
+    RangeOpts,
+    TextOpts,
+    check_min_pymongocrypt,
+)
 from pymongo.errors import (
     ConfigurationError,
     EncryptedCollectionError,
@@ -674,6 +679,8 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 "library: install a compatible version with: "
                 "python -m pip install --upgrade 'pymongo[encryption]'"
             )
+
+        check_min_pymongocrypt()
 
         if not isinstance(codec_options, CodecOptions):
             raise TypeError(

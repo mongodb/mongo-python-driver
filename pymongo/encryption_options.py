@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, TypedDict
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 
 try:
-    import pymongocrypt  # type:ignore[import-untyped] # noqa: F401
+    from pymongocrypt import __version__ as pymongocrypt_version  # type:ignore[import-untyped]
 
     # Check for pymongocrypt>=1.10.
     from pymongocrypt import synchronous as _  # noqa: F401
@@ -32,12 +32,24 @@ try:
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
 from bson import int64
-from pymongo.common import validate_is_mapping
+from pymongo.common import check_for_min_version, validate_is_mapping
 from pymongo.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext
     from pymongo.typings import _AgnosticMongoClient
+
+
+def check_min_pymongocrypt() -> None:
+    """Raise an appropriate error if the min pymongocrypt is not installed."""
+    required_version, is_valid = check_for_min_version(pymongocrypt_version, "pymongocrypt")
+    if not is_valid:
+        raise ConfigurationError(
+            f"client side encryption requires the pymongocrypt>={required_version}, "
+            f"found version {pymongocrypt_version}. "
+            "Install a compatible version with: "
+            "python -m pip install 'pymongo[encryption]'"
+        )
 
 
 class AutoEncryptionOpts:
@@ -215,6 +227,7 @@ class AutoEncryptionOpts:
                 "install a compatible version with: "
                 "python -m pip install 'pymongo[encryption]'"
             )
+        check_min_pymongocrypt()
         if encrypted_fields_map:
             validate_is_mapping("encrypted_fields_map", encrypted_fields_map)
         self._encrypted_fields_map = encrypted_fields_map
