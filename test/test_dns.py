@@ -30,10 +30,7 @@ from test import (
     unittest,
 )
 from test.utils_shared import wait_until
-from test.version import Version
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError

@@ -347,8 +347,13 @@ def _ocsp_callback(conn: Connection, ocsp_bytes: bytes, user_data: Optional[_Cal
         _LOGGER.debug("No peer cert?")
         return False
     cert = pycert.to_cryptography()
-    pychain = conn.get_verified_chain()
-    trusted_ca_certs = None
+    # Use the verified chain when available (pyopenssl>=20.0).
+    if hasattr(conn, "get_verified_chain"):
+        pychain = conn.get_verified_chain()
+        trusted_ca_certs = None
+    else:
+        pychain = conn.get_peer_cert_chain()
+        trusted_ca_certs = user_data.trusted_ca_certs
     if not pychain:
         _LOGGER.debug("No peer cert chain?")
         return False

@@ -30,10 +30,7 @@ from test.asynchronous import (
     unittest,
 )
 from test.utils_shared import async_wait_until
-from test.version import Version
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.common import validate_read_preference_tags
