@@ -40,6 +40,7 @@ from test.utils_shared import (
     OvertCommandListener,
     async_wait_until,
 )
+from test.version import Version
 
 from bson import encode
 from bson.codec_options import CodecOptions
@@ -335,8 +336,6 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.create_index(["hello", ("world", DESCENDING)])
         await db.test.create_index({"hello": 1}.items())  # type:ignore[arg-type]
 
-    # TODO: PYTHON-5491 - remove version max
-    @async_client_context.require_version_max(8, 0, -1)
     async def test_drop_index(self):
         db = self.db
         await db.test.drop_indexes()
@@ -348,7 +347,10 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.test.drop_index(name)
 
         # Drop it again.
-        with self.assertRaises(OperationFailure):
+        if async_client_context.version < Version(8, 3, -1):
+            with self.assertRaises(OperationFailure):
+                await db.test.drop_index(name)
+        else:
             await db.test.drop_index(name)
         self.assertEqual(len(await db.test.index_information()), 2)
         self.assertIn("hello_1", await db.test.index_information())
