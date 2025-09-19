@@ -40,6 +40,7 @@ from test.utils_shared import (
     OvertCommandListener,
     wait_until,
 )
+from test.version import Version
 
 from bson import encode
 from bson.codec_options import CodecOptions
@@ -333,8 +334,6 @@ class TestCollection(IntegrationTest):
         db.test.create_index(["hello", ("world", DESCENDING)])
         db.test.create_index({"hello": 1}.items())  # type:ignore[arg-type]
 
-    # TODO: PYTHON-5491 - remove version max
-    @client_context.require_version_max(8, 0, -1)
     def test_drop_index(self):
         db = self.db
         db.test.drop_indexes()
@@ -346,7 +345,10 @@ class TestCollection(IntegrationTest):
         db.test.drop_index(name)
 
         # Drop it again.
-        with self.assertRaises(OperationFailure):
+        if client_context.version < Version(8, 3, -1):
+            with self.assertRaises(OperationFailure):
+                db.test.drop_index(name)
+        else:
             db.test.drop_index(name)
         self.assertEqual(len(db.test.index_information()), 2)
         self.assertIn("hello_1", db.test.index_information())
