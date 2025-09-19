@@ -45,7 +45,7 @@ def check_min_pymongocrypt() -> None:
     required_version, is_valid = check_for_min_version(pymongocrypt_version, "pymongocrypt")
     if not is_valid:
         raise ConfigurationError(
-            f"client side encryption requires the pymongocrypt>={required_version}, "
+            f"client side encryption requires pymongocrypt>={required_version}, "
             f"found version {pymongocrypt_version}. "
             "Install a compatible version with: "
             "python -m pip install 'pymongo[encryption]'"

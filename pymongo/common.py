@@ -1171,4 +1171,4 @@ def check_for_min_version(package_version: str, package_name: str) -> tuple[str,
     if ";" in requirement:
         requirement = requirement.split(";")[0]
     required_version = requirement[requirement.find(">=") + 2 :]
-    return required_version, package_version > Version.from_string(required_version)
+    return required_version, package_version >= Version.from_string(required_version)
