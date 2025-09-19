@@ -218,6 +218,49 @@ class TestRetryableReads(AsyncIntegrationTest):
         #  Assert that both events occurred on the same mongos.
         assert listener.succeeded_events[0].connection_id == listener.failed_events[0].connection_id
 
+    @async_client_context.require_failCommand_fail_point
+    async def test_retryable_reads_are_retried_on_the_same_implicit_session(self):
+        listener = OvertCommandListener()
+        client = await self.async_rs_or_single_client(
+            directConnection=False,
+            event_listeners=[listener],
+            retryReads=True,
+        )
+
+        await client.t.t.insert_one({"x": 1})
+
+        commands = [
+            ("aggregate", lambda: client.t.t.count_documents({})),
+            ("aggregate", lambda: client.t.t.aggregate([{"$match": {}}])),
+            ("count", lambda: client.t.t.estimated_document_count()),
+            ("distinct", lambda: client.t.t.distinct("x")),
+            ("find", lambda: client.t.t.find_one({})),
+            ("listDatabases", lambda: client.list_databases()),
+            ("listCollections", lambda: client.t.list_collections()),
+            ("listIndexes", lambda: client.t.t.list_indexes()),
+        ]
+
+        for command_name, operation in commands:
+            listener.reset()
+            fail_command = {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 1},
+                "data": {"failCommands": [command_name], "errorCode": 6},
+            }
+
+            async with self.fail_point(fail_command):
+                await operation()
+
+            #  Assert that both events occurred on the same session.
+            command_docs = [
+                event.command
+                for event in listener.started_events
+                if event.command_name == command_name
+            ]
+            self.assertEqual(len(command_docs), 2)
+            self.assertEqual(command_docs[0]["lsid"], command_docs[1]["lsid"])
+            self.assertIsNot(command_docs[0], command_docs[1])
+
 
 if __name__ == "__main__":
     unittest.main()

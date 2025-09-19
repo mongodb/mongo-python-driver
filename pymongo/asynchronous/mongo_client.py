@@ -2048,17 +2048,18 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         retryable = bool(
             retryable and self.options.retry_reads and not (session and session.in_transaction)
         )
-        return await self._retry_internal(
-            func,
-            session,
-            None,
-            operation,
-            is_read=True,
-            address=address,
-            read_pref=read_pref,
-            retryable=retryable,
-            operation_id=operation_id,
-        )
+        async with self._tmp_session(session) as s:
+            return await self._retry_internal(
+                func,
+                s,
+                None,
+                operation,
+                is_read=True,
+                address=address,
+                read_pref=read_pref,
+                retryable=retryable,
+                operation_id=operation_id,
+            )
 
     async def _retryable_write(
         self,
