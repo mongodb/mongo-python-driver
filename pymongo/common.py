@@ -20,7 +20,7 @@ import datetime
 import warnings
 from collections import OrderedDict, abc
 from difflib import get_close_matches
-from importlib.metadata import requires
+from importlib.metadata import requires, version
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -1095,15 +1095,15 @@ def has_c() -> bool:
         return False
 
 
-class Version(tuple):
+class Version(tuple[int]):
     """A class that can be used to compare version strings."""
 
-    def __new__(cls, *version):
+    def __new__(cls, *version: int) -> Version:
         padded_version = cls._padded(version, 4)
         return super().__new__(cls, tuple(padded_version))
 
     @classmethod
-    def _padded(cls, iter, length, padding=0):
+    def _padded(cls, iter: Any, length: int, padding: int = 0) -> list[int]:
         as_list = list(iter)
         if len(as_list) < length:
             for _ in range(length - len(as_list)):
@@ -1111,7 +1111,7 @@ class Version(tuple):
         return as_list
 
     @classmethod
-    def from_string(cls, version_string):
+    def from_string(cls, version_string: str) -> Version:
         mod = 0
         bump_patch_level = False
         if version_string.endswith("+"):
@@ -1147,28 +1147,33 @@ class Version(tuple):
         return Version(*version)
 
     @classmethod
-    def from_version_array(cls, version_array):
+    def from_version_array(cls, version_array: Any) -> Version:
         version = list(version_array)
         if version[-1] < 0:
             version[-1] = -1
         version = cls._padded(version, 3)
         return Version(*version)
 
-    def at_least(self, *other_version):
+    def at_least(self, *other_version: Any) -> bool:
         return self >= Version(*other_version)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ".".join(map(str, self))
 
 
-def check_for_min_version(package_version: str, package_name: str) -> tuple[str, bool]:
-    package_version = Version.from_string(package_version)
+def check_for_min_version(package_name: str) -> tuple[str, str, bool]:
+    """Test whether an installed package is of the desired version."""
+    package_version_str = version(package_name)
+    package_version = Version.from_string(package_version_str)
     # Dependency is expected to be in one of the forms:
     # "pymongocrypt<2.0.0,>=1.13.0; extra == 'encryption'"
     # 'dnspython<3.0.0,>=1.16.0'
     #
-    requirement = [i for i in requires("pymongo") if i.startswith(package_name)][0]  # noqa: RUF015
+    requirements = requires("pymongo")
+    assert requirements is not None
+    requirement = [i for i in requirements if i.startswith(package_name)][0]  # noqa: RUF015
     if ";" in requirement:
         requirement = requirement.split(";")[0]
     required_version = requirement[requirement.find(">=") + 2 :]
-    return required_version, package_version >= Version.from_string(required_version)
+    is_valid = package_version >= Version.from_string(required_version)
+    return package_version_str, required_version, is_valid

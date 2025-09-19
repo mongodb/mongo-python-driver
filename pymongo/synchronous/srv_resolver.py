@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import ipaddress
 import random
-from importlib.metadata import version
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pymongo.common import CONNECT_TIMEOUT, check_for_min_version
@@ -33,8 +32,7 @@ def _have_dnspython() -> bool:
     try:
         import dns  # noqa: F401
 
-        dns_version = version("dnspython")
-        required_version, is_valid = check_for_min_version(dns_version, "dnspython")
+        dns_version, required_version, is_valid = check_for_min_version("dnspython")
         if not is_valid:
             raise RuntimeError(
                 f"pymongo requires dnspython>={required_version}, "

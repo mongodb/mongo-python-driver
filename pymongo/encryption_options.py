@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional, TypedDict
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 
 try:
-    from pymongocrypt import __version__ as pymongocrypt_version  # type:ignore[import-untyped]
+    import pymongocrypt  # type:ignore[import-untyped]  # noqa: F401
 
     # Check for pymongocrypt>=1.10.
     from pymongocrypt import synchronous as _  # noqa: F401
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 def check_min_pymongocrypt() -> None:
     """Raise an appropriate error if the min pymongocrypt is not installed."""
-    required_version, is_valid = check_for_min_version(pymongocrypt_version, "pymongocrypt")
+    pymongocrypt_version, required_version, is_valid = check_for_min_version("pymongocrypt")
     if not is_valid:
         raise ConfigurationError(
             f"client side encryption requires pymongocrypt>={required_version}, "
