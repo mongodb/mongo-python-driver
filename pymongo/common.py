@@ -1095,7 +1095,7 @@ def has_c() -> bool:
         return False
 
 
-class Version(tuple[int]):
+class Version(tuple[int, ...]):
     """A class that can be used to compare version strings."""
 
     def __new__(cls, *version: int) -> Version:
