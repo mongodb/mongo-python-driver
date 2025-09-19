@@ -2577,7 +2577,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd_cursor._maybe_pin_connection(conn)
             return cmd_cursor
 
-        with self._database.client._tmp_session(session, False) as s:
+        with self._database.client._tmp_session(session) as s:
             return self._database.client._retryable_read(
                 _cmd, read_pref, s, operation=_Op.LIST_INDEXES
             )

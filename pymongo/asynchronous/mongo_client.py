@@ -35,7 +35,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
-import traceback
 import warnings
 import weakref
 from collections import defaultdict

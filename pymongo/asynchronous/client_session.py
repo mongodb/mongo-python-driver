@@ -137,7 +137,6 @@ from __future__ import annotations
 
 import collections
 import time
-import traceback
 import uuid
 from collections.abc import Mapping as _Mapping
 from typing import (

@@ -242,6 +242,7 @@ class CommandCursor(Generic[_DocumentType]):
     def _end_session(self) -> None:
         if self._session:
             if self._session.implicit:
+                # print(f"Ending session {self}, session: {self._session}")
                 self._session._end_implicit_session()
                 self._session = None
 
