@@ -1281,7 +1281,6 @@ eventlet = [
     { name = "eventlet" },
 ]
 gevent = [
-    { name = "cffi", version = "2.0.0b1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.14.*'" },
     { name = "gevent" },
 ]
 mockupdb = [
@@ -1335,12 +1334,9 @@ coverage = [
 ]
 dev = [{ name = "pre-commit", specifier = ">=4.0" }]
 eventlet = [{ name = "eventlet" }]
-gevent = [
-    { name = "cffi", marker = "python_full_version == '3.14.*'", specifier = ">=2.0.0b1" },
-    { name = "gevent" },
-]
+gevent = [{ name = "gevent", specifier = ">=20.6.0" }]
 mockupdb = [{ name = "mockupdb", git = "https://github.com/mongodb-labs/mongo-mockup-db?rev=master" }]
-perf = [{ name = "simplejson" }]
+perf = [{ name = "simplejson", specifier = ">=3.17.0" }]
 pip = [{ name = "pip" }]
 typing = [
     { name = "mypy", specifier = "==1.18.1" },
