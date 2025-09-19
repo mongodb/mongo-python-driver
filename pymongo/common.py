@@ -1096,6 +1096,8 @@ def has_c() -> bool:
 
 
 class Version(tuple):
+    """A class that can be used to compare version strings."""
+
     def __new__(cls, *version):
         padded_version = cls._padded(version, 4)
         return super().__new__(cls, tuple(padded_version))
@@ -1161,8 +1163,12 @@ class Version(tuple):
 
 def check_for_min_version(package_version: str, package_name: str) -> tuple[str, bool]:
     package_version = Version.from_string(package_version)
-    requirement = (
-        [i for i in requires("pymongo") if i.startswith(package_name)].next().split(";").next()
-    )
+    # Dependency is expected to be in one of the forms:
+    # "pymongocrypt<2.0.0,>=1.13.0; extra == 'encryption'"
+    # 'dnspython<3.0.0,>=1.16.0'
+    #
+    requirement = [i for i in requires("pymongo") if i.startswith(package_name)][0]  # noqa: RUF015
+    if ";" in requirement:
+        requirement = requirement.split(";")[0]
     required_version = requirement[requirement.find(">=") + 2 :]
     return required_version, package_version > Version.from_string(required_version)
