@@ -49,22 +49,23 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 dev = [
     "pre-commit>=4.0"
 ]
-pip = ["pip>23.0"]
-gevent = ["gevent>=24.2.1"]  # this is the first version with a universal macos wheel.
-eventlet = ["eventlet>0.29"]
+pip = ["pip"]
+# TODO: PYTHON-5464
+gevent = ["gevent", "cffi>=2.0.0b1;python_version=='3.14'"]
+eventlet = ["eventlet"]
 coverage = [
-    "pytest-cov>=6.0",
-    "coverage[toml]>=6.0,<=7.10.6"
+    "pytest-cov",
+    "coverage>=5,<=7.10.6"
 ]
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
 ]
-perf = ["simplejson>3.17"]
+perf = ["simplejson"]
 typing = [
     "mypy==1.18.1",
     "pyright==1.1.405",
-    "typing_extensions>3.10",
-    "pip>23.0"
+    "typing_extensions",
+    "pip"
 ]
 
 # Used to call hatch_build.py

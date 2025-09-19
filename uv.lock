@@ -1271,7 +1271,7 @@ zstd = [
 
 [package.dev-dependencies]
 coverage = [
-    { name = "coverage", extra = ["toml"] },
+    { name = "coverage" },
     { name = "pytest-cov" },
 ]
 dev = [
@@ -1281,6 +1281,7 @@ eventlet = [
     { name = "eventlet" },
 ]
 gevent = [
+    { name = "cffi", version = "2.0.0b1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.14.*'" },
     { name = "gevent" },
 ]
 mockupdb = [
@@ -1329,20 +1330,23 @@ provides-extras = ["aws", "docs", "encryption", "gssapi", "ocsp", "snappy", "tes
 
 [package.metadata.requires-dev]
 coverage = [
-    { name = "coverage", extras = ["toml"], specifier = ">=6.0,<=7.10.6" },
-    { name = "pytest-cov", specifier = ">=6.0" },
+    { name = "coverage", specifier = ">=5,<=7.10.6" },
+    { name = "pytest-cov" },
 ]
 dev = [{ name = "pre-commit", specifier = ">=4.0" }]
-eventlet = [{ name = "eventlet", specifier = ">0.29" }]
-gevent = [{ name = "gevent", specifier = ">=24.2.1" }]
+eventlet = [{ name = "eventlet" }]
+gevent = [
+    { name = "cffi", marker = "python_full_version == '3.14.*'", specifier = ">=2.0.0b1" },
+    { name = "gevent" },
+]
 mockupdb = [{ name = "mockupdb", git = "https://github.com/mongodb-labs/mongo-mockup-db?rev=master" }]
-perf = [{ name = "simplejson", specifier = ">3.17" }]
-pip = [{ name = "pip", specifier = ">23.0" }]
+perf = [{ name = "simplejson" }]
+pip = [{ name = "pip" }]
 typing = [
     { name = "mypy", specifier = "==1.18.1" },
-    { name = "pip", specifier = ">23.0" },
+    { name = "pip" },
     { name = "pyright", specifier = "==1.1.405" },
-    { name = "typing-extensions", specifier = ">3.10" },
+    { name = "typing-extensions" },
 ]
 
 [[package]]
