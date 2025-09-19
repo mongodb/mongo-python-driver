@@ -519,6 +519,19 @@ class AsyncClientContext:
             "Libmongocrypt version must be at least %s" % str(other_version),
         )
 
+    def require_pymongocrypt_min(self, *ver):
+        other_version = Version(*ver)
+        if not _HAVE_PYMONGOCRYPT:
+            version = Version.from_string("0.0.0")
+        else:
+            from pymongocrypt import __version__ as pymongocrypt_version
+
+            version = Version.from_string(pymongocrypt_version)
+        return self._require(
+            lambda: version >= other_version,
+            "PyMongoCrypt version must be at least %s" % str(other_version),
+        )
+
     def require_auth(self, func):
         """Run a test only if the server is running with auth enabled."""
         return self._require(

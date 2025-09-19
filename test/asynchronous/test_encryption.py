@@ -3448,6 +3448,7 @@ class TestExplicitTextEncryptionProse(AsyncEncryptionIntegrationTest):
     @async_client_context.require_no_standalone
     @async_client_context.require_version_min(8, 2, -1)
     @async_client_context.require_libmongocrypt_min(1, 15, 1)
+    @async_client_context.require_pymongocrypt_min(1, 16, 0)
     async def asyncSetUp(self):
         await super().asyncSetUp()
         # Load the file key1-document.json as key1Document.

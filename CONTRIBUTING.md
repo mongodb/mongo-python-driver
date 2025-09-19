@@ -382,6 +382,11 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 - Finally, you can use `just setup-tests --debug-log`.
 - For evergreen patch builds, you can use `evergreen patch --param DEBUG_LOG=1` to enable debug logs for failed tests in the patch.
 
+## Testing minimum dependencies
+
+To run any of the test suites with minimum supported dependencies, pass `--test-min-deps` to
+`just setup-tests`.
+
 ## Adding a new test suite
 
 - If adding new tests files that should only be run for that test suite, add a pytest marker to the file and add

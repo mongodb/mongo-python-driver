@@ -151,6 +151,7 @@ functions:
           - VERSION
           - IS_WIN32
           - REQUIRE_FIPS
+          - TEST_MIN_DEPS
       type: test
     - command: subprocess.exec
       params:

@@ -42,6 +42,10 @@ class Version(tuple):
         elif version_string.endswith("-"):
             version_string = version_string[0:-1]
             mod = -1
+        # Deal with .devX substrings
+        if ".dev" in version_string:
+            version_string = version_string[0 : version_string.find(".dev")]
+            mod = -1
         # Deal with '-rcX' substrings
         if "-rc" in version_string:
             version_string = version_string[0 : version_string.find("-rc")]
