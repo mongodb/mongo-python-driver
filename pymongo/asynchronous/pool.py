@@ -17,7 +17,6 @@ from __future__ import annotations
 import asyncio
 import collections
 import contextlib
-import errno
 import logging
 import os
 import sys
@@ -1036,18 +1035,8 @@ class Pool:
         # errno == errno.ECONNRESET or raised from an OSError that we've created due to
         # a closed connection.
         # If found, set backoff and add error labels.
-        if self.is_sdam or type(error) != AutoReconnect or not len(error.errors):
+        if self.is_sdam or type(error) != AutoReconnect:
             return
-        if hasattr(error.errors, "values"):
-            root_err = next(iter(error.errors.values()))
-        else:
-            root_err = error.errors[0]
-        if isinstance(root_err, ConnectionResetError):
-            if root_err.errno != errno.ECONNRESET:
-                return
-        elif isinstance(root_err, OSError):
-            if str(root_err) != "connection closed":
-                return
         self._backoff += 1
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
