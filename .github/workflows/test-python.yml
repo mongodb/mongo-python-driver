@@ -74,7 +74,7 @@ jobs:
         with:
           version: "${{ matrix.mongodb-version }}"
       - name: Run tests
-        run: uv run --extra test pytest -v
+        run: uv run --extra test pytest -v test/asynchronous/test_session.py test/test_session.py
 
   doctest:
     runs-on: ubuntu-latest
