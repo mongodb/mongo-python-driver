@@ -611,7 +611,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             common.validate_is_mapping("clusteredIndex", clustered_index)
 
         with self._client._tmp_session(session) as s:
-            s.leave_alive = True
+            if s:
+                s.leave_alive = True
             # Skip this check in a transaction where listCollections is not
             # supported.
             if (

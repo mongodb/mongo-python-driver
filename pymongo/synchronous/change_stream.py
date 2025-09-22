@@ -256,7 +256,8 @@ class ChangeStream(Generic[_DocumentType]):
 
     def _create_cursor(self) -> CommandCursor:  # type: ignore[type-arg]
         with self._client._tmp_session(self._session) as s:
-            s.leave_alive = True
+            if s:
+                s.leave_alive = True
             return self._run_aggregation_cmd(session=s)
 
     def _resume(self) -> None:

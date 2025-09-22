@@ -197,7 +197,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        if not self._session.implicit:
+        if self._session and not self._session.implicit:
             return self._session
         return None
 
