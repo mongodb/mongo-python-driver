@@ -1,6 +1,6 @@
 {
   "description": "timeoutMS behaves correctly for retryable operations",
-  "schemaVersion": "1.26",
+  "schemaVersion": "1.9",
   "runOnRequirements": [
     {
       "minServerVersion": "4.0",
@@ -26,10 +26,8 @@
       "client": {
         "id": "client",
         "uriOptions": {
-          "timeoutMS": 100,
-          "minPoolSize": 1
+          "timeoutMS": 100
         },
-        "awaitMinPoolSizeMS": 10000,
         "useMultipleMongoses": false,
         "observeEvents": [
           "commandStartedEvent"

@@ -1,6 +1,6 @@
 {
   "description": "timeoutMS can be configured on a MongoClient",
-  "schemaVersion": "1.26",
+  "schemaVersion": "1.9",
   "runOnRequirements": [
     {
       "minServerVersion": "4.4",
@@ -38,10 +38,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -219,10 +217,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -394,10 +390,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -575,10 +569,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -770,10 +762,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -951,10 +941,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -1132,10 +1120,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -1319,10 +1305,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -1500,10 +1484,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -1681,10 +1663,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -1862,10 +1842,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -2043,10 +2021,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -2218,10 +2194,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -2401,10 +2375,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -2582,10 +2554,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -2763,10 +2733,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -2938,10 +2906,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -3113,10 +3079,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -3294,10 +3258,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -3479,10 +3441,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -3668,10 +3628,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -3849,10 +3807,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -4030,10 +3986,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -4217,10 +4171,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -4408,10 +4360,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -4599,10 +4549,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -4780,10 +4728,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -4967,10 +4913,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -5158,10 +5102,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -5355,10 +5297,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -5542,10 +5482,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
@@ -5739,10 +5677,8 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 250,
-                    "minPoolSize": 1
+                    "timeoutMS": 250
                   },
-                  "awaitMinPoolSizeMS": 10000,
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent"
