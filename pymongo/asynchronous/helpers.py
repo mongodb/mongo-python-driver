@@ -177,11 +177,11 @@ def _retry_overload(func: F) -> F:
                 await retry_policy.record_success(retry=attempt > 0)
                 return res
             except PyMongoError as exc:
-                if not exc.has_error_label("Retryable"):
+                if not exc.has_error_label("RetryableError"):
                     raise
                 attempt += 1
                 delay = 0
-                if exc.has_error_label("SystemOverloaded"):
+                if exc.has_error_label("SystemOverloadedError"):
                     delay = retry_policy.backoff(attempt)
                 if not await retry_policy.should_retry(attempt, delay):
                     raise

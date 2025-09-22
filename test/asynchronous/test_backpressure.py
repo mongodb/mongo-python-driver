@@ -42,7 +42,7 @@ mock_overload_error = {
     "data": {
         "failCommands": ["find", "insert", "update"],
         "errorCode": 462,  # IngressRequestRateLimitExceeded
-        "errorLabels": ["Retryable"],
+        "errorLabels": ["RetryableError"],
     },
 }
 
@@ -67,7 +67,7 @@ class TestBackpressure(AsyncIntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 await self.db.command("find", "t")
 
-        self.assertIn("Retryable", str(error.exception))
+        self.assertIn("RetryableError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_find(self):
@@ -86,7 +86,7 @@ class TestBackpressure(AsyncIntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 await self.db.t.find_one()
 
-        self.assertIn("Retryable", str(error.exception))
+        self.assertIn("RetryableError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_insert_one(self):
@@ -105,12 +105,12 @@ class TestBackpressure(AsyncIntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 await self.db.t.find_one()
 
-        self.assertIn("Retryable", str(error.exception))
+        self.assertIn("RetryableError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_update_many(self):
         # Even though update_many is not a retryable write operation, it will
-        # still be retried via the "Retryable" error label.
+        # still be retried via the "RetryableError" error label.
         await self.db.t.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
@@ -126,7 +126,7 @@ class TestBackpressure(AsyncIntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 await self.db.t.update_many({}, {"$set": {"x": 2}})
 
-        self.assertIn("Retryable", str(error.exception))
+        self.assertIn("RetryableError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_getMore(self):
@@ -140,7 +140,7 @@ class TestBackpressure(AsyncIntegrationTest):
             "data": {
                 "failCommands": ["getMore"],
                 "errorCode": 462,  # IngressRequestRateLimitExceeded
-                "errorLabels": ["Retryable"],
+                "errorLabels": ["RetryableError"],
             },
         }
         cursor = coll.find(batch_size=2)
@@ -157,7 +157,7 @@ class TestBackpressure(AsyncIntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 await cursor.to_list()
 
-        self.assertIn("Retryable", str(error.exception))
+        self.assertIn("RetryableError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_limit_retry_command(self):
@@ -179,7 +179,7 @@ class TestBackpressure(AsyncIntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 await db.command("find", "t")
 
-        self.assertIn("Retryable", str(error.exception))
+        self.assertIn("RetryableError", str(error.exception))
 
 
 class TestRetryPolicy(AsyncPyMongoTestCase):
