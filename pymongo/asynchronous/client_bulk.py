@@ -537,7 +537,7 @@ class _AsyncClientBulk:
                     session._start_retryable_write()
                     self.started_retryable_write = True
                 session._apply_to(cmd, retryable, ReadPreference.PRIMARY, conn)
-                session.leave_alive = True
+                session._leave_alive = True
             conn.send_cluster_time(cmd, session, self.client)
             conn.add_server_api(cmd)
             # CSOT: apply timeout before encoding the command.

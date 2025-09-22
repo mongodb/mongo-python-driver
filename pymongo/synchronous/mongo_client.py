@@ -2102,7 +2102,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # The cursor will be closed later in a different session.
         if cursor_id or conn_mgr:
             self._close_cursor_soon(cursor_id, address, conn_mgr)
-        if session and session._is_implicit and not session.leave_alive:
+        if session and session._implicit and not session._leave_alive:
             session._end_implicit_session()
 
     def _cleanup_cursor_lock(
@@ -2134,7 +2134,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 self._close_cursor_now(cursor_id, address, session=session, conn_mgr=conn_mgr)
         if conn_mgr:
             conn_mgr.close()
-        if session and session._is_implicit and not session.leave_alive:
+        if session and session._implicit and not session._leave_alive:
             session._end_implicit_session()
 
     def _close_cursor_now(
@@ -2285,7 +2285,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 raise
             finally:
                 # Call end_session when we exit this scope.
-                if not s._is_attached_to_cursor:
+                if not s._attached_to_cursor:
                     s.end_session()
         else:
             yield None

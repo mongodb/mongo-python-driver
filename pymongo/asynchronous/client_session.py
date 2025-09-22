@@ -513,7 +513,9 @@ class AsyncClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
+        # Is this session attached to a cursor?
         self._attached_to_cursor = False
+        # Should we leave the session alive when the cursor is closed?
         self._leave_alive = False
 
     async def end_session(self) -> None:
@@ -589,32 +591,6 @@ class AsyncClientSession:
         in this session.
         """
         return self._operation_time
-
-    @property
-    def _is_implicit(self) -> bool:
-        """Whether this session was implicitly created by the driver."""
-        return self._implicit
-
-    @property
-    def _is_attached_to_cursor(self) -> bool:
-        """Whether this session is owned by a cursor."""
-        return self._attached_to_cursor
-
-    @_is_attached_to_cursor.setter
-    def _is_attached_to_cursor(self, value: bool) -> None:
-        self._attached_to_cursor = value
-
-    @property
-    def leave_alive(self) -> bool:
-        """Whether to leave this session alive when it is
-        no longer in use.
-        Typically used for implicit sessions that are used for multiple operations within a single larger operation.
-        """
-        return self._leave_alive
-
-    @leave_alive.setter
-    def leave_alive(self, value: bool) -> None:
-        self._leave_alive = value
 
     def _inherit_option(self, name: str, val: _T) -> _T:
         """Return the inherited TransactionOption value."""
