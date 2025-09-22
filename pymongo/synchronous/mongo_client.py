@@ -2080,7 +2080,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
         """
         with self._tmp_session(session) as s:
-            # print(f"Called retryable write with session = {session!r} and got {s}: {s._server_session!r}")
             return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
 
     def _cleanup_cursor_no_lock(
@@ -2103,7 +2102,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # The cursor will be closed later in a different session.
         if cursor_id or conn_mgr:
             self._close_cursor_soon(cursor_id, address, conn_mgr)
-        if session and session.implicit:
+        if session and session.implicit and not session.leave_alive:
             session._end_implicit_session()
 
     def _cleanup_cursor_lock(
@@ -2135,7 +2134,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 self._close_cursor_now(cursor_id, address, session=session, conn_mgr=conn_mgr)
         if conn_mgr:
             conn_mgr.close()
-        if session and session.implicit:
+        if session and session.implicit and not session.leave_alive:
             session._end_implicit_session()
 
     def _close_cursor_now(
@@ -2287,7 +2286,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             finally:
                 # Call end_session when we exit this scope.
                 if not s.attached_to_cursor:
-                    # print(f"Ending session {s}: {''.join(traceback.format_stack(limit=10))}")
                     s.end_session()
         else:
             yield None

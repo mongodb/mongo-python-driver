@@ -1033,9 +1033,9 @@ class Cursor(Generic[_DocumentType]):
         self._collection.database.client._cleanup_cursor_no_lock(
             cursor_id, address, self._sock_mgr, self._session
         )
-        if self._session:
-            if self._session.implicit:
-                self._session = None
+        if self._session and self._session.implicit:
+            self._session.attached_to_cursor = False
+            self._session = None
         self._sock_mgr = None
 
     def _die_lock(self) -> None:
@@ -1053,9 +1053,9 @@ class Cursor(Generic[_DocumentType]):
             self._sock_mgr,
             self._session,
         )
-        if self._session:
-            if self._session.implicit:
-                self._session = None
+        if self._session and self._session.implicit:
+            self._session.attached_to_cursor = False
+            self._session = None
         self._sock_mgr = None
 
     def close(self) -> None:

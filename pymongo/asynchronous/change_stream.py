@@ -258,6 +258,7 @@ class AsyncChangeStream(Generic[_DocumentType]):
 
     async def _create_cursor(self) -> AsyncCommandCursor:  # type: ignore[type-arg]
         async with self._client._tmp_session(self._session) as s:
+            s.leave_alive = True
             return await self._run_aggregation_cmd(session=s)
 
     async def _resume(self) -> None:

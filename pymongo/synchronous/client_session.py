@@ -537,14 +537,11 @@ class ClientSession:
     def _end_implicit_session(self) -> None:
         # Implicit sessions can't be part of transactions or pinned connections
         if not self._leave_alive and self._server_session is not None:
-            # print(f"Ending session {self}, implicit: {self._implicit}, attached: {self._attached_to_cursor}")
             self._client._return_server_session(self._server_session)
             self._server_session = None
 
     def _check_ended(self) -> None:
         if self._server_session is None:
-            # print(f"Session {self} is already ended")
-            # print(f"Session {self} is already ended, implicit: {self._implicit}, attached: {self._attached_to_cursor}: {''.join(traceback.format_stack())}")
             raise InvalidOperation("Cannot use ended session")
 
     def __enter__(self) -> ClientSession:

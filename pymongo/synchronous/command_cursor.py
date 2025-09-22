@@ -65,7 +65,6 @@ class CommandCursor(Generic[_DocumentType]):
         max_await_time_ms: Optional[int] = None,
         session: Optional[ClientSession] = None,
         comment: Any = None,
-        leave_session_alive: bool = False,
     ) -> None:
         """Create a new command cursor."""
         self._sock_mgr: Any = None
@@ -84,7 +83,6 @@ class CommandCursor(Generic[_DocumentType]):
             self._session.attached_to_cursor = True
         self._killed = self._id == 0
         self._comment = comment
-        self._leave_session_alive = leave_session_alive
         if self._killed:
             self._end_session()
 
@@ -222,9 +220,9 @@ class CommandCursor(Generic[_DocumentType]):
         self._collection.database.client._cleanup_cursor_no_lock(
             cursor_id, address, self._sock_mgr, self._session
         )
-        if self._session:
-            if self._session.implicit:
-                self._session = None
+        if self._session and self._session.implicit:
+            self._session.attached_to_cursor = False
+            self._session = None
         self._sock_mgr = None
 
     def _die_lock(self) -> None:
@@ -236,18 +234,16 @@ class CommandCursor(Generic[_DocumentType]):
             self._sock_mgr,
             self._session,
         )
-        if self._session:
-            if self._session.implicit:
-                self._session = None
+        if self._session and self._session.implicit:
+            self._session.attached_to_cursor = False
+            self._session = None
         self._sock_mgr = None
 
     def _end_session(self) -> None:
-        if self._session and self._session.implicit:
+        if self._session and self._session.implicit and not self._session.leave_alive:
             self._session.attached_to_cursor = False
-            if not self._leave_session_alive:
-                # print(f"Ending session {self}, session: {self._session}")
-                self._session._end_implicit_session()
-                self._session = None
+            self._session._end_implicit_session()
+            self._session = None
 
     def close(self) -> None:
         """Explicitly close / kill this cursor."""
