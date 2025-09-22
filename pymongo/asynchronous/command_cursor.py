@@ -80,7 +80,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         self._timeout = self._collection.database.client.options.timeout
         self._session = session
         if self._session is not None:
-            self._session.attached_to_cursor = True
+            self._session._is_attached_to_cursor = True
         self._killed = self._id == 0
         self._comment = comment
         if self._killed:
@@ -197,7 +197,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        if self._session and not self._session.implicit:
+        if self._session and not self._session._is_implicit:
             return self._session
         return None
 
@@ -220,8 +220,8 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         self._collection.database.client._cleanup_cursor_no_lock(
             cursor_id, address, self._sock_mgr, self._session
         )
-        if self._session and self._session.implicit:
-            self._session.attached_to_cursor = False
+        if self._session and self._session._is_implicit:
+            self._session._is_attached_to_cursor = False
             self._session = None
         self._sock_mgr = None
 
@@ -234,14 +234,14 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             self._sock_mgr,
             self._session,
         )
-        if self._session and self._session.implicit:
-            self._session.attached_to_cursor = False
+        if self._session and self._session._is_implicit:
+            self._session._is_attached_to_cursor = False
             self._session = None
         self._sock_mgr = None
 
     def _end_session(self) -> None:
-        if self._session and self._session.implicit and not self._session.leave_alive:
-            self._session.attached_to_cursor = False
+        if self._session and self._session._is_implicit and not self._session.leave_alive:
+            self._session._is_attached_to_cursor = False
             self._session._end_implicit_session()
             self._session = None
 

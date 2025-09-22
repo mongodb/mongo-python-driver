@@ -590,17 +590,17 @@ class ClientSession:
         return self._operation_time
 
     @property
-    def implicit(self) -> bool:
+    def _is_implicit(self) -> bool:
         """Whether this session was implicitly created by the driver."""
         return self._implicit
 
     @property
-    def attached_to_cursor(self) -> bool:
+    def _is_attached_to_cursor(self) -> bool:
         """Whether this session is owned by a cursor."""
         return self._attached_to_cursor
 
-    @attached_to_cursor.setter
-    def attached_to_cursor(self, value: bool) -> None:
+    @_is_attached_to_cursor.setter
+    def _is_attached_to_cursor(self, value: bool) -> None:
         self._attached_to_cursor = value
 
     @property
