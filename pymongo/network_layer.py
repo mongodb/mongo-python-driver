@@ -270,11 +270,11 @@ class PyMongoBaseProtocol(Protocol):
         self.transport.abort()
         self._resolve_pending(exc)
         self._connection_lost = True
-        self._closing_exception = exc
+        self._closing_exception = exc  # type:ignore[assignment]
 
     def connection_lost(self, exc: Optional[Exception] = None) -> None:
         self._resolve_pending(exc)
-        self._closing_exception = exc
+        self._closing_exception = exc  # type:ignore[assignment]
         if not self._closed.done():
             self._closed.set_result(None)
 

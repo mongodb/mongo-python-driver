@@ -149,7 +149,7 @@ def _raise_connection_failure(
         # 'timed out' appears in all the timeout related SSLErrors raised.
         raise NetworkTimeout(msg) from error
     else:
-        raise AutoReconnect(msg) from error
+        raise AutoReconnect(msg, errors=[error]) from error
 
 
 class _CancellationContext:

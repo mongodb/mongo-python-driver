@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import collections
 import contextlib
+import errno
 import logging
 import os
 import sys
@@ -1030,18 +1031,19 @@ class Pool:
             #     error._add_error_label("SystemOverloadedError")
 
     def _handle_connection_error(self, error: Exception, phase: str) -> None:
-        # Handle system overload condition.  When the base AutoReconnect is
-        # raised and we are not an sdam pool, add to backoff and add the
-        # appropriate error label.
-        if (
-            not self.is_sdam
-            and "connection reset by peer" in str(error).lower()
-            or ("connection closed" in str(error).lower() and self._backoff)
-        ):
-            self._backoff += 1
-            error._add_error_label("SystemOverloadedError")
-            error._add_error_label("RetryableError")
-            print(f"Setting backoff in {phase}:", self._backoff)  # noqa: T201
+        # Handle system overload condition for non-sdam pools.
+        # Look for an AutoReconnect error raise from a ConnectionResetError with
+        # errno == errno.ECONNRESET.  If found, set backoff and add error labels.
+        if self.is_sdam or type(error) != AutoReconnect or not len(error.errors):
+            return
+        if not isinstance(error.errors[0], ConnectionResetError):
+            return
+        if error.errors[0].errno != errno.ECONNRESET:
+            return
+        self._backoff += 1
+        error._add_error_label("SystemOverloadedError")
+        error._add_error_label("RetryableError")
+        print(f"Setting backoff in {phase}:", self._backoff)  # noqa: T201
 
     def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
         """Connect to Mongo and return a new Connection.
