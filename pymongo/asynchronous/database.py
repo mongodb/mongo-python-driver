@@ -611,6 +611,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             common.validate_is_mapping("clusteredIndex", clustered_index)
 
         async with self._client._tmp_session(session) as s:
+            s.leave_alive = True
             # Skip this check in a transaction where listCollections is not
             # supported.
             if (
@@ -705,7 +706,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 AsyncCommandCursor,
                 pipeline,
                 kwargs,
-                session is not None,
                 user_fields={"cursor": {"firstBatch": 1}},
             )
             return await self.client._retryable_read(

@@ -513,6 +513,7 @@ class ClientSession:
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
         self._attached_to_cursor = False
+        self._leave_alive = False
 
     def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -535,7 +536,7 @@ class ClientSession:
 
     def _end_implicit_session(self) -> None:
         # Implicit sessions can't be part of transactions or pinned connections
-        if self._server_session is not None:
+        if not self._leave_alive and self._server_session is not None:
             # print(f"Ending session {self}, implicit: {self._implicit}, attached: {self._attached_to_cursor}")
             self._client._return_server_session(self._server_session)
             self._server_session = None
@@ -604,6 +605,18 @@ class ClientSession:
     @attached_to_cursor.setter
     def attached_to_cursor(self, value: bool) -> None:
         self._attached_to_cursor = value
+
+    @property
+    def leave_alive(self) -> bool:
+        """Whether to leave this session alive when it is
+        no longer in use.
+        Typically used for implicit sessions that are used for multiple operations within a single larger operation.
+        """
+        return self._leave_alive
+
+    @leave_alive.setter
+    def leave_alive(self, value: bool) -> None:
+        self._leave_alive = value
 
     def _inherit_option(self, name: str, val: _T) -> _T:
         """Return the inherited TransactionOption value."""

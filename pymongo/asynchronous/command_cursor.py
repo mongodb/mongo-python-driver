@@ -65,6 +65,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         max_await_time_ms: Optional[int] = None,
         session: Optional[AsyncClientSession] = None,
         comment: Any = None,
+        leave_session_alive: bool = False,
     ) -> None:
         """Create a new command cursor."""
         self._sock_mgr: Any = None
@@ -83,6 +84,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             self._session.attached_to_cursor = True
         self._killed = self._id == 0
         self._comment = comment
+        self._leave_session_alive = leave_session_alive
         if self._killed:
             self._end_session()
 
@@ -240,8 +242,9 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         self._sock_mgr = None
 
     def _end_session(self) -> None:
-        if self._session:
-            if self._session.implicit:
+        if self._session and self._session.implicit:
+            self._session.attached_to_cursor = False
+            if not self._leave_session_alive:
                 # print(f"Ending session {self}, session: {self._session}")
                 self._session._end_implicit_session()
                 self._session = None
