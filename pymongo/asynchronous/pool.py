@@ -1030,20 +1030,24 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-            # Assume all non dns/tcp/timeout errors mean the server rejected the connection due to overload.
-            # if not errorDuringDnsTcp and not timeoutError:
-            #     error._add_error_label("SystemOverloadedError")
-
-    def _handle_connection_error(self, error: Exception, phase: str) -> None:
+    def _handle_connection_error(self, error: BaseException, phase: str) -> None:
         # Handle system overload condition for non-sdam pools.
-        # Look for an AutoReconnect error raise from a ConnectionResetError with
-        # errno == errno.ECONNRESET.  If found, set backoff and add error labels.
+        # Look for an AutoReconnect error raised from a ConnectionResetError with
+        # errno == errno.ECONNRESET or raised from an OSError that we've created due to
+        # a closed connection.
+        # If found, set backoff and add error labels.
         if self.is_sdam or type(error) != AutoReconnect or not len(error.errors):
             return
-        if not isinstance(error.errors[0], ConnectionResetError):
-            return
-        if error.errors[0].errno != errno.ECONNRESET:
-            return
+        if hasattr(error.errors, "values"):
+            root_err = next(iter(error.errors.values()))
+        else:
+            root_err = error.errors[0]
+        if isinstance(root_err, ConnectionResetError):
+            if root_err.errno != errno.ECONNRESET:
+                return
+        elif isinstance(root_err, OSError):
+            if str(root_err) != "connection closed":
+                return
         self._backoff += 1
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
