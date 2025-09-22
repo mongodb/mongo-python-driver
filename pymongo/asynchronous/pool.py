@@ -1029,6 +1029,10 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
+            # Assume all non dns/tcp/timeout errors mean the server rejected the connection due to overload.
+            # if not errorDuringDnsTcp and not timeoutError:
+            #     error._add_error_label("SystemOverloadedError")
+
     def _handle_connection_error(self, error: Exception, phase: str) -> None:
         # Handle system overload condition.  When the base AutoReconnect is
         # raised and we are not an sdam pool, add to backoff and add the
@@ -1039,8 +1043,8 @@ class Pool:
             or ("connection closed" in str(error).lower() and self._backoff)
         ):
             self._backoff += 1
-            error._add_error_label("SystemOverloaded")
-            error._add_error_label("Retryable")
+            error._add_error_label("SystemOverloadedError")
+            error._add_error_label("RetryableError")
             print(f"Setting backoff in {phase}:", self._backoff)  # noqa: T201
 
     async def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> AsyncConnection:

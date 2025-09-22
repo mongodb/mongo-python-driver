@@ -891,7 +891,7 @@ class Topology:
                 await server.reset(service_id)
         elif isinstance(error, ConnectionFailure):
             if isinstance(error, WaitQueueTimeoutError) or error.has_error_label(
-                "SystemOverloaded"
+                "SystemOverloadedError"
             ):
                 return
             # "Client MUST replace the server's description with type Unknown
