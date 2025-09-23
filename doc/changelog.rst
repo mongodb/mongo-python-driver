@@ -1,6 +1,23 @@
 Changelog
 =========
 
+Changes in Version 4.15.2 (2025/XX/YY)
+--------------------------------------
+
+Version 4.15.3 is a bug fix release.
+
+- Removed invalid documents from :class:`bson.errors.InvalidDocument` error messages as
+  doing so may leak sensitive user data.
+  Instead, invalid documents are stored in :attr:`bson.errors.InvalidDocument.document`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.15.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.15.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47293
+
 Changes in Version 4.15.2 (2025/10/01)
 --------------------------------------
 
@@ -15,6 +32,7 @@ See the `PyMongo 4.15.2 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.15.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47186
+
 
 Changes in Version 4.15.1 (2025/09/16)
 --------------------------------------

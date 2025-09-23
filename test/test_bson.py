@@ -1163,7 +1163,7 @@ class TestBSON(unittest.TestCase):
         ):
             encode({"t": Wrapper(1)})
 
-    def test_doc_in_invalid_document_error_message(self):
+    def test_doc_in_invalid_document_error_as_property(self):
         class Wrapper:
             def __init__(self, val):
                 self.val = val
@@ -1173,10 +1173,11 @@ class TestBSON(unittest.TestCase):
 
         self.assertEqual("1", repr(Wrapper(1)))
         doc = {"t": Wrapper(1)}
-        with self.assertRaisesRegex(InvalidDocument, f"Invalid document {doc}"):
+        with self.assertRaisesRegex(InvalidDocument, "Invalid document:") as cm:
             encode(doc)
+        self.assertEqual(cm.exception.document, doc)
 
-    def test_doc_in_invalid_document_error_message_mapping(self):
+    def test_doc_in_invalid_document_error_as_property_mapping(self):
         class MyMapping(abc.Mapping):
             def keys(self):
                 return ["t"]
@@ -1192,6 +1193,11 @@ class TestBSON(unittest.TestCase):
             def __iter__(self):
                 return iter(["t"])
 
+            def __eq__(self, other):
+                if isinstance(other, MyMapping):
+                    return True
+                return False
+
         class Wrapper:
             def __init__(self, val):
                 self.val = val
@@ -1201,8 +1207,9 @@ class TestBSON(unittest.TestCase):
 
         self.assertEqual("1", repr(Wrapper(1)))
         doc = MyMapping()
-        with self.assertRaisesRegex(InvalidDocument, f"Invalid document {doc}"):
+        with self.assertRaisesRegex(InvalidDocument, "Invalid document:") as cm:
             encode(doc)
+        self.assertEqual(cm.exception.document, doc)
 
 
 class TestCodecOptions(unittest.TestCase):
