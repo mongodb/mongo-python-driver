@@ -1,6 +1,15 @@
 Changelog
 =========
 
+Changes in Version 4.16.0 (XXXX/XX/XX)
+--------------------------------------
+
+PyMongo 4.16 brings a number of changes including:
+
+- Removed invalid documents from :class:`bson.errors.InvalidDocument` error messages as
+  doing so may leak sensitive user data.
+  Instead, invalid documents are stored in :attr:`bson.errors.InvalidDocument.document`.
+
 Changes in Version 4.15.1 (2025/09/16)
 --------------------------------------
 
