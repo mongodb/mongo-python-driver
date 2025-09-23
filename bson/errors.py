@@ -44,9 +44,6 @@ class InvalidDocument(BSONError):
         ..versionadded:: 4.16"""
         return self._document
 
-    def _set_document(self, value: Any) -> None:
-        self._document = value
-
 
 class InvalidId(BSONError):
     """Raised when trying to create an ObjectId from invalid data."""
