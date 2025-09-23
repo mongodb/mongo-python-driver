@@ -47,13 +47,13 @@ if [ -f $HOME/.visualStudioEnv.sh ]; then
   SSH_TTY=1 source $HOME/.visualStudioEnv.sh
   set -u
 fi
-uv sync --frozen
+uv sync
 
 echo "Setting up python environment... done."
 
 # Ensure there is a pre-commit hook if there is a git checkout.
 if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
-    uv run --frozen pre-commit install
+    uv run pre-commit install
 fi
 
 popd > /dev/null

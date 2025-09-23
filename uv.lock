@@ -1309,7 +1309,7 @@ requires-dist = [
     { name = "furo", marker = "extra == 'docs'", specifier = "==2025.7.19" },
     { name = "importlib-metadata", marker = "python_full_version < '3.13' and extra == 'test'", specifier = ">=7.0" },
     { name = "pykerberos", marker = "os_name != 'nt' and extra == 'gssapi'" },
-    { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.1.0,<2.0.0" },
+    { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.1.1,<2.0.0" },
     { name = "pymongo-auth-aws", marker = "extra == 'encryption'", specifier = ">=1.1.0,<2.0.0" },
     { name = "pymongocrypt", marker = "extra == 'encryption'", specifier = ">=1.13.0,<2.0.0" },
     { name = "pyopenssl", marker = "extra == 'ocsp'", specifier = ">=17.2.0" },
