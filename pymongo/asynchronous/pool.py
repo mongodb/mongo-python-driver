@@ -1080,7 +1080,7 @@ class Pool:
 
         try:
             networking_interface = await _configured_protocol_interface(
-                self.address, self.opts, context
+                self.address, self.opts, context=context
             )
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:

@@ -1075,7 +1075,9 @@ class Pool:
         context = dict(has_created_socket=False)
 
         try:
-            networking_interface = _configured_socket_interface(self.address, self.opts, context)
+            networking_interface = _configured_socket_interface(
+                self.address, self.opts, context=context
+            )
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             with self.lock:
