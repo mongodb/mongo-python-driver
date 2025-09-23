@@ -1075,8 +1075,13 @@ class Pool:
         if self._backoff:
             await asyncio.sleep(_backoff(self._backoff))
 
+        # Pass a context to determine if we successfully create a configured socket.
+        context = dict(has_created_socket=False)
+
         try:
-            networking_interface = await _configured_protocol_interface(self.address, self.opts)
+            networking_interface = await _configured_protocol_interface(
+                self.address, self.opts, context
+            )
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             async with self.lock:
@@ -1097,7 +1102,8 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
-            self._handle_connection_error(error, "handshake")
+            if context["has_created_socket"]:
+                self._handle_connection_error(error, "handshake")
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
                 _raise_connection_failure(self.address, error, timeout_details=details)
