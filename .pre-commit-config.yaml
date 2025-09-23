@@ -105,12 +105,6 @@ repos:
     # - test/test_client.py:188: te ==> the, be, we, to
     args: ["-L", "fle,fo,infinit,isnt,nin,te,aks"]
 
-- repo: https://github.com/astral-sh/uv-pre-commit
-  # uv version.
-  rev: 0.8.17
-  hooks:
-    - id: uv-lock
-
 - repo: local
   hooks:
   - id: executable-shell
@@ -128,3 +122,14 @@ repos:
     language: python
     require_serial: true
     additional_dependencies: ["shrub.py>=3.10.0", "pyyaml>=6.0.2"]
+
+  - id: uv-lock
+    name: uv-lock
+    entry: uv lock
+    language: python
+    require_serial: true
+    files: ^(uv\.lock|pyproject\.toml|requirements.txt|requirements/.*\.txt)$
+    pass_filenames: false
+    fail_fast: true
+    additional_dependencies:
+      - uv
