@@ -250,6 +250,7 @@ async def _configured_protocol_interface(
     address: _Address,
     options: PoolOptions,
     protocol_kls: type[PyMongoBaseProtocol] = PyMongoProtocol,
+    context: dict[str, bool] | None = None,
 ) -> AsyncNetworkingInterface:
     """Given (host, port) and PoolOptions, return a configured AsyncNetworkingInterface.
 
@@ -260,6 +261,10 @@ async def _configured_protocol_interface(
     sock = await _async_create_connection(address, options)
     ssl_context = options._ssl_context
     timeout = options.socket_timeout
+
+    # Signal that we have created the socket successfully.
+    if context:
+        context["has_created_socket"] = True
 
     if ssl_context is None:
         return AsyncNetworkingInterface(
@@ -374,7 +379,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
 
 
 def _configured_socket_interface(
-    address: _Address, options: PoolOptions, *args: Any
+    address: _Address, options: PoolOptions, *args: Any, context: dict[str, bool] | None = None
 ) -> NetworkingInterface:
     """Given (host, port) and PoolOptions, return a NetworkingInterface wrapping a configured socket.
 
@@ -384,6 +389,10 @@ def _configured_socket_interface(
     """
     sock = _create_connection(address, options)
     ssl_context = options._ssl_context
+
+    # Signal that we have created the socket successfully.
+    if context:
+        context["has_created_socket"] = True
 
     if ssl_context is None:
         sock.settimeout(options.socket_timeout)
