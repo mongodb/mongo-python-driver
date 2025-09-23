@@ -1,0 +1,440 @@
+diff --git a/test/unified-test-format/invalid/entity-client-observeTracingMessages-additionalProperties.json b/test/unified-test-format/invalid/entity-client-observeTracingMessages-additionalProperties.json
+new file mode 100644
+index 00000000..aa8046d2
+--- /dev/null
++++ b/test/unified-test-format/invalid/entity-client-observeTracingMessages-additionalProperties.json
+@@ -0,0 +1,20 @@
++{
++  "description": "entity-client-observeTracingMessages-additionalProperties",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0",
++        "observeTracingMessages": {
++          "foo": "bar"
++        }
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "observeTracingMessages must not have additional properties'",
++      "operations": []
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/entity-client-observeTracingMessages-additionalPropertyType.json b/test/unified-test-format/invalid/entity-client-observeTracingMessages-additionalPropertyType.json
+new file mode 100644
+index 00000000..0b3a65f5
+--- /dev/null
++++ b/test/unified-test-format/invalid/entity-client-observeTracingMessages-additionalPropertyType.json
+@@ -0,0 +1,20 @@
++{
++  "description": "entity-client-observeTracingMessages-additionalPropertyType",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0",
++        "observeTracingMessages": {
++          "enableCommandPayload": 0
++        }
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "observeTracingMessages enableCommandPayload must be boolean",
++      "operations": []
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/entity-client-observeTracingMessages-type.json b/test/unified-test-format/invalid/entity-client-observeTracingMessages-type.json
+new file mode 100644
+index 00000000..de3ef39a
+--- /dev/null
++++ b/test/unified-test-format/invalid/entity-client-observeTracingMessages-type.json
+@@ -0,0 +1,18 @@
++{
++  "description": "entity-client-observeTracingMessages-type",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0",
++        "observeTracingMessages": "foo"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "observeTracingMessages must be an object",
++      "operations": []
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/expectedTracingSpans-additionalProperties.json b/test/unified-test-format/invalid/expectedTracingSpans-additionalProperties.json
+new file mode 100644
+index 00000000..5947a286
+--- /dev/null
++++ b/test/unified-test-format/invalid/expectedTracingSpans-additionalProperties.json
+@@ -0,0 +1,30 @@
++{
++  "description": "expectedTracingSpans-additionalProperties",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "additional property foo not allowed in expectTracingMessages",
++      "operations": [],
++      "expectTracingMessages": {
++        "client": "client0",
++        "ignoreExtraSpans": false,
++        "spans": [
++          {
++            "name": "command",
++            "tags": {
++              "db.system": "mongodb"
++            }
++          }
++        ],
++        "foo": 0
++      }
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/expectedTracingSpans-clientType.json b/test/unified-test-format/invalid/expectedTracingSpans-clientType.json
+new file mode 100644
+index 00000000..2fe7faea
+--- /dev/null
++++ b/test/unified-test-format/invalid/expectedTracingSpans-clientType.json
+@@ -0,0 +1,28 @@
++{
++  "description": "expectedTracingSpans-clientType",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "client type must be string",
++      "operations": [],
++      "expectTracingMessages": {
++        "client": 0,
++        "spans": [
++          {
++            "name": "command",
++            "tags": {
++              "db.system": "mongodb"
++            }
++          }
++        ]
++      }
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/expectedTracingSpans-emptyNestedSpan.json b/test/unified-test-format/invalid/expectedTracingSpans-emptyNestedSpan.json
+new file mode 100644
+index 00000000..8a98d5ba
+--- /dev/null
++++ b/test/unified-test-format/invalid/expectedTracingSpans-emptyNestedSpan.json
+@@ -0,0 +1,29 @@
++{
++  "description": "expectedTracingSpans-emptyNestedSpan",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "nested spans must not have fewer than 1 items'",
++      "operations": [],
++      "expectTracingMessages": {
++        "client": "client0",
++        "spans": [
++          {
++            "name": "command",
++            "tags": {
++              "db.system": "mongodb"
++            },
++            "nested": []
++          }
++        ]
++      }
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/expectedTracingSpans-invalidNestedSpan.json b/test/unified-test-format/invalid/expectedTracingSpans-invalidNestedSpan.json
+new file mode 100644
+index 00000000..79a86744
+--- /dev/null
++++ b/test/unified-test-format/invalid/expectedTracingSpans-invalidNestedSpan.json
+@@ -0,0 +1,31 @@
++{
++  "description": "expectedTracingSpans-invalidNestedSpan",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "nested span must have required property name",
++      "operations": [],
++      "expectTracingMessages": {
++        "client": "client0",
++        "spans": [
++          {
++            "name": "command",
++            "tags": {
++              "db.system": "mongodb"
++            },
++            "nested": [
++              {}
++            ]
++          }
++        ]
++      }
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/expectedTracingSpans-missingPropertyClient.json b/test/unified-test-format/invalid/expectedTracingSpans-missingPropertyClient.json
+new file mode 100644
+index 00000000..2fb1cd5b
+--- /dev/null
++++ b/test/unified-test-format/invalid/expectedTracingSpans-missingPropertyClient.json
+@@ -0,0 +1,27 @@
++{
++  "description": "expectedTracingSpans-missingPropertyClient",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "missing required property client",
++      "operations": [],
++      "expectTracingMessages": {
++        "spans": [
++          {
++            "name": "command",
++            "tags": {
++              "db.system": "mongodb"
++            }
++          }
++        ]
++      }
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/expectedTracingSpans-missingPropertySpans.json b/test/unified-test-format/invalid/expectedTracingSpans-missingPropertySpans.json
+new file mode 100644
+index 00000000..acd10307
+--- /dev/null
++++ b/test/unified-test-format/invalid/expectedTracingSpans-missingPropertySpans.json
+@@ -0,0 +1,20 @@
++{
++  "description": "expectedTracingSpans-missingPropertySpans",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "missing required property spans",
++      "operations": [],
++      "expectTracingMessages": {
++        "client": "client0"
++      }
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedAdditionalProperties.json b/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedAdditionalProperties.json
+new file mode 100644
+index 00000000..17299f86
+--- /dev/null
++++ b/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedAdditionalProperties.json
+@@ -0,0 +1,28 @@
++{
++  "description": "expectedTracingSpans-spanMalformedAdditionalProperties",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "Span must not have additional properties",
++      "operations": [],
++      "expectTracingMessages": {
++        "client": "client0",
++        "spans": [
++          {
++            "name": "foo",
++            "tags": {},
++            "nested": [],
++            "foo": "bar"
++          }
++        ]
++      }
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedMissingName.json b/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedMissingName.json
+new file mode 100644
+index 00000000..0257cd9b
+--- /dev/null
++++ b/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedMissingName.json
+@@ -0,0 +1,27 @@
++{
++  "description": "expectedTracingSpans-spanMalformedMissingName",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "missing required span name",
++      "operations": [],
++      "expectTracingMessages": {
++        "client": "client0",
++        "spans": [
++          {
++            "tags": {
++              "db.system": "mongodb"
++            }
++          }
++        ]
++      }
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedMissingTags.json b/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedMissingTags.json
+new file mode 100644
+index 00000000..a09ca31c
+--- /dev/null
++++ b/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedMissingTags.json
+@@ -0,0 +1,25 @@
++{
++  "description": "expectedTracingSpans-spanMalformedMissingTags",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "missing required span tags",
++      "operations": [],
++      "expectTracingMessages": {
++        "client": "client0",
++        "spans": [
++          {
++            "name": "foo"
++          }
++        ]
++      }
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedNestedMustBeArray.json b/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedNestedMustBeArray.json
+new file mode 100644
+index 00000000..ccff0410
+--- /dev/null
++++ b/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedNestedMustBeArray.json
+@@ -0,0 +1,27 @@
++{
++  "description": "expectedTracingSpans-spanMalformedNestedMustBeArray",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "nested spans must be an array",
++      "operations": [],
++      "expectTracingMessages": {
++        "client": "client0",
++        "spans": [
++          {
++            "name": "foo",
++            "tags": {},
++            "nested": {}
++          }
++        ]
++      }
++    }
++  ]
++}
+diff --git a/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedTagsMustBeObject.json b/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedTagsMustBeObject.json
+new file mode 100644
+index 00000000..72af1c29
+--- /dev/null
++++ b/test/unified-test-format/invalid/expectedTracingSpans-spanMalformedTagsMustBeObject.json
+@@ -0,0 +1,26 @@
++{
++  "description": "expectedTracingSpans-spanMalformedNestedMustBeObject",
++  "schemaVersion": "1.26",
++  "createEntities": [
++    {
++      "client": {
++        "id": "client0"
++      }
++    }
++  ],
++  "tests": [
++    {
++      "description": "span tags must be an object",
++      "operations": [],
++      "expectTracingMessages": {
++        "client": "client0",
++        "spans": [
++          {
++            "name": "foo",
++            "tags": []
++          }
++        ]
++      }
++    }
++  ]
++}
