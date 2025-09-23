@@ -1,0 +1,14 @@
+diff --git a/test/discovery_and_monitoring/unified/serverMonitoringMode.json b/test/discovery_and_monitoring/unified/serverMonitoringMode.json
+index e44fad1b..4b492f7d 100644
+--- a/test/discovery_and_monitoring/unified/serverMonitoringMode.json
++++ b/test/discovery_and_monitoring/unified/serverMonitoringMode.json
+@@ -5,7 +5,8 @@
+     {
+       "topologies": [
+         "single",
+-        "sharded"
++        "sharded",
++        "sharded-replicaset"
+       ],
+       "serverless": "forbid"
+     }
