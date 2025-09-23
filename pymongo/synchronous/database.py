@@ -621,6 +621,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 and name in self._list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
+            if s:
+                s._leave_alive = False
             coll = Collection(
                 self,
                 name,
@@ -1200,9 +1202,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        return [
-            result["name"] for result in self._list_collections_helper(session=session, **kwargs)
-        ]
+        cursor = self._list_collections_helper(session=session, **kwargs)
+        results = [result["name"] for result in cursor]
+
+        cursor.close()
+
+        return results
 
     def list_collection_names(
         self,

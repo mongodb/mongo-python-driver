@@ -621,6 +621,8 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 and name in await self._list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
+            if s:
+                s._leave_alive = False
             coll = AsyncCollection(
                 self,
                 name,
@@ -1206,10 +1208,12 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        return [
-            result["name"]
-            async for result in await self._list_collections_helper(session=session, **kwargs)
-        ]
+        cursor = await self._list_collections_helper(session=session, **kwargs)
+        results = [result["name"] async for result in cursor]
+
+        await cursor.close()
+
+        return results
 
     async def list_collection_names(
         self,
