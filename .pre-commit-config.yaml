@@ -132,4 +132,4 @@ repos:
     pass_filenames: false
     fail_fast: true
     additional_dependencies:
-      - uv
+      - "uv>=0.8.4"
