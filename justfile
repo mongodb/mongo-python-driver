@@ -1,7 +1,5 @@
 # See https://just.systems/man/en/ for instructions
 set shell := ["bash", "-c"]
-# Do not modify the lock file when running justfile commands.
-export UV_FROZEN := "1"
 
 # Commonly used command segments.
 typing_run := "uv run --group typing --extra aws --extra encryption --extra ocsp --extra snappy --extra test --extra zstd"
@@ -16,7 +14,7 @@ default:
 
 [private]
 resync:
- @uv sync --quiet --frozen
+ @uv sync --quiet
 
 install:
    bash .evergreen/scripts/setup-dev-env.sh
