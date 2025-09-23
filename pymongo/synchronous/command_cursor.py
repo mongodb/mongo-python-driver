@@ -240,7 +240,7 @@ class CommandCursor(Generic[_DocumentType]):
         self._sock_mgr = None
 
     def _end_session(self) -> None:
-        if self._session and self._session._implicit and not self._session._leave_alive:
+        if self._session and self._session._implicit:
             self._session._attached_to_cursor = False
             self._session._end_implicit_session()
             self._session = None

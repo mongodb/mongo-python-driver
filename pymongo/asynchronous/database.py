@@ -1208,12 +1208,10 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        cursor = await self._list_collections_helper(session=session, **kwargs)
-        results = [result["name"] async for result in cursor]
-
-        await cursor.close()
-
-        return results
+        return [
+            result["name"]
+            async for result in await self._list_collections_helper(session=session, **kwargs)
+        ]
 
     async def list_collection_names(
         self,

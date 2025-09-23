@@ -1202,12 +1202,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        cursor = self._list_collections_helper(session=session, **kwargs)
-        results = [result["name"] for result in cursor]
-
-        cursor.close()
-
-        return results
+        return [
+            result["name"] for result in self._list_collections_helper(session=session, **kwargs)
+        ]
 
     def list_collection_names(
         self,
