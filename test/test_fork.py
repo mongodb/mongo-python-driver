@@ -34,7 +34,7 @@ from bson.objectid import ObjectId
 )
 @unittest.skipIf(
     is_greenthread_patched(),
-    "gevent and eventlet do not support POSIX-style forking.",
+    "gevent does not support POSIX-style forking.",
 )
 class TestFork(IntegrationTest):
     def test_lock_client(self):

@@ -67,13 +67,7 @@ def handle_perf(start_time: datetime):
 
 
 def handle_green_framework() -> None:
-    if GREEN_FRAMEWORK == "eventlet":
-        import eventlet
-
-        # https://github.com/eventlet/eventlet/issues/401
-        eventlet.sleep()
-        eventlet.monkey_patch()
-    elif GREEN_FRAMEWORK == "gevent":
+    if GREEN_FRAMEWORK == "gevent":
         from gevent import monkey
 
         monkey.patch_all()
