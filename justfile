@@ -49,15 +49,15 @@ typing-pyright: && resync
 
 [group('lint')]
 lint *args="": && resync
-    uv run pre-commit run --all-files {{args}}
+    uvx pre-commit run --all-files {{args}}
 
 [group('lint')]
 lint-manual *args="": && resync
-    uv run pre-commit run --all-files --hook-stage manual {{args}}
+    uvx pre-commit run --all-files --hook-stage manual {{args}}
 
 [group('test')]
 test *args="-v --durations=5 --maxfail=10": && resync
-    uv run --extra test pytest {{args}}
+    uvx --extra test pytest {{args}}
 
 [group('test')]
 run-tests *args: && resync
