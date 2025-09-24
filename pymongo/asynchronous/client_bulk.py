@@ -440,6 +440,8 @@ class _AsyncClientBulk:
     ) -> None:
         """Internal helper for processing the server reply command cursor."""
         if result.get("cursor"):
+            if session:
+                session._leave_alive = True
             coll = AsyncCollection(
                 database=AsyncDatabase(self.client, "admin"),
                 name="$cmd.bulkWrite",
@@ -537,7 +539,6 @@ class _AsyncClientBulk:
                     session._start_retryable_write()
                     self.started_retryable_write = True
                 session._apply_to(cmd, retryable, ReadPreference.PRIMARY, conn)
-                session._leave_alive = True
             conn.send_cluster_time(cmd, session, self.client)
             conn.add_server_api(cmd)
             # CSOT: apply timeout before encoding the command.
