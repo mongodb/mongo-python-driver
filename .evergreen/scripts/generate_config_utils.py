@@ -22,10 +22,10 @@ from shrub.v3.shrub_service import ShrubService
 ##############
 
 ALL_VERSIONS = ["4.2", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
-CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+CPYTHONS = ["3.10", "3.11", "3.12", "3.13", "3.14", "3.14t"]
 PYPYS = ["pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
-MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
+MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-2]]
 BATCHTIME_WEEK = 10080
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
 TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
