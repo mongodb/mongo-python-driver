@@ -2549,7 +2549,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        explicit_session = session is not None
 
         async def _cmd(
             session: Optional[AsyncClientSession],
@@ -2576,13 +2575,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 cursor,
                 conn.address,
                 session=session,
-                explicit_session=explicit_session,
                 comment=cmd.get("comment"),
             )
             await cmd_cursor._maybe_pin_connection(conn)
             return cmd_cursor
 
-        async with self._database.client._tmp_session(session, False) as s:
+        async with self._database.client._tmp_session(session) as s:
             return await self._database.client._retryable_read(
                 _cmd, read_pref, s, operation=_Op.LIST_INDEXES
             )
@@ -2678,7 +2676,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             AsyncCommandCursor,
             pipeline,
             kwargs,
-            explicit_session=session is not None,
             comment=comment,
             user_fields={"cursor": {"firstBatch": 1}},
         )
@@ -2900,7 +2897,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         pipeline: _Pipeline,
         cursor_class: Type[AsyncCommandCursor],  # type: ignore[type-arg]
         session: Optional[AsyncClientSession],
-        explicit_session: bool,
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -2912,7 +2908,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             cursor_class,
             pipeline,
             kwargs,
-            explicit_session,
             let,
             user_fields={"cursor": {"firstBatch": 1}},
         )
@@ -3018,13 +3013,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-        async with self._database.client._tmp_session(session, close=False) as s:
+        async with self._database.client._tmp_session(session) as s:
             return await self._aggregate(
                 _CollectionAggregationCommand,
                 pipeline,
                 AsyncCommandCursor,
                 session=s,
-                explicit_session=session is not None,
                 let=let,
                 comment=comment,
                 **kwargs,
@@ -3065,7 +3059,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             raise InvalidOperation("aggregate_raw_batches does not support auto encryption")
         if comment is not None:
             kwargs["comment"] = comment
-        async with self._database.client._tmp_session(session, close=False) as s:
+        async with self._database.client._tmp_session(session) as s:
             return cast(
                 AsyncRawBatchCursor[_DocumentType],
                 await self._aggregate(
@@ -3073,7 +3067,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                     pipeline,
                     AsyncRawBatchCommandCursor,
                     session=s,
-                    explicit_session=session is not None,
                     **kwargs,
                 ),
             )
