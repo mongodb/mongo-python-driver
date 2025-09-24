@@ -300,12 +300,8 @@ def create_stable_api_variants():
 def create_green_framework_variants():
     variants = []
     host = DEFAULT_HOST
-    for framework in ["eventlet", "gevent"]:
+    for framework in ["gevent"]:
         tasks = [".test-standard .sync"]
-        if framework == "eventlet":
-            # Eventlet has issues with dnspython > 2.0 and newer versions of CPython
-            # https://jira.mongodb.org/browse/PYTHON-5284
-            tasks = [".test-standard .python-3.9 .sync"]
         expansions = dict(GREEN_FRAMEWORK=framework)
         display_name = get_variant_name(f"Green {framework.capitalize()}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)

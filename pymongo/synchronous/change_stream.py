@@ -235,9 +235,7 @@ class ChangeStream(Generic[_DocumentType]):
                         f"response : {result!r}"
                     )
 
-    def _run_aggregation_cmd(
-        self, session: Optional[ClientSession], explicit_session: bool
-    ) -> CommandCursor:  # type: ignore[type-arg]
+    def _run_aggregation_cmd(self, session: Optional[ClientSession]) -> CommandCursor:  # type: ignore[type-arg]
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
         """
@@ -246,7 +244,6 @@ class ChangeStream(Generic[_DocumentType]):
             CommandCursor,
             self._aggregation_pipeline(),
             self._command_options(),
-            explicit_session,
             result_processor=self._process_result,
             comment=self._comment,
         )
@@ -258,8 +255,8 @@ class ChangeStream(Generic[_DocumentType]):
         )
 
     def _create_cursor(self) -> CommandCursor:  # type: ignore[type-arg]
-        with self._client._tmp_session(self._session, close=False) as s:
-            return self._run_aggregation_cmd(session=s, explicit_session=self._session is not None)
+        with self._client._tmp_session(self._session) as s:
+            return self._run_aggregation_cmd(session=s)
 
     def _resume(self) -> None:
         """Reestablish this change stream after a resumable error."""

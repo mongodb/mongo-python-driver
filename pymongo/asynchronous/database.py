@@ -611,6 +611,8 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             common.validate_is_mapping("clusteredIndex", clustered_index)
 
         async with self._client._tmp_session(session) as s:
+            if s and not s.in_transaction:
+                s._leave_alive = True
             # Skip this check in a transaction where listCollections is not
             # supported.
             if (
@@ -619,6 +621,8 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 and name in await self._list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
+            if s:
+                s._leave_alive = False
             coll = AsyncCollection(
                 self,
                 name,
@@ -699,13 +703,12 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-        async with self.client._tmp_session(session, close=False) as s:
+        async with self.client._tmp_session(session) as s:
             cmd = _DatabaseAggregationCommand(
                 self,
                 AsyncCommandCursor,
                 pipeline,
                 kwargs,
-                session is not None,
                 user_fields={"cursor": {"firstBatch": 1}},
             )
             return await self.client._retryable_read(
@@ -1011,7 +1014,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         else:
             command_name = next(iter(command))
 
-        async with self._client._tmp_session(session, close=False) as tmp_session:
+        async with self._client._tmp_session(session) as tmp_session:
             opts = codec_options or DEFAULT_CODEC_OPTIONS
 
             if read_preference is None:
@@ -1043,7 +1046,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                         conn.address,
                         max_await_time_ms=max_await_time_ms,
                         session=tmp_session,
-                        explicit_session=session is not None,
                         comment=comment,
                     )
                     await cmd_cursor._maybe_pin_connection(conn)
@@ -1089,7 +1091,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         )
         cmd = {"listCollections": 1, "cursor": {}}
         cmd.update(kwargs)
-        async with self._client._tmp_session(session, close=False) as tmp_session:
+        async with self._client._tmp_session(session) as tmp_session:
             cursor = (
                 await self._command(conn, cmd, read_preference=read_preference, session=tmp_session)
             )["cursor"]
@@ -1098,7 +1100,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 cursor,
                 conn.address,
                 session=tmp_session,
-                explicit_session=session is not None,
                 comment=cmd.get("comment"),
             )
         await cmd_cursor._maybe_pin_connection(conn)

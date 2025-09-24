@@ -319,14 +319,6 @@ buildvariants:
     tags: []
 
   # Green framework tests
-  - name: green-eventlet-rhel8
-    tasks:
-      - name: .test-standard .python-3.9 .sync
-    display_name: Green Eventlet RHEL8
-    run_on:
-      - rhel87-small
-    expansions:
-      GREEN_FRAMEWORK: eventlet
   - name: green-gevent-rhel8
     tasks:
       - name: .test-standard .sync

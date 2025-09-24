@@ -15,6 +15,8 @@
 """Exceptions raised by the BSON package."""
 from __future__ import annotations
 
+from typing import Any, Optional
+
 
 class BSONError(Exception):
     """Base class for all BSON exceptions."""
@@ -30,6 +32,17 @@ class InvalidStringData(BSONError):
 
 class InvalidDocument(BSONError):
     """Raised when trying to create a BSON object from an invalid document."""
+
+    def __init__(self, message: str, document: Optional[Any] = None) -> None:
+        super().__init__(message)
+        self._document = document
+
+    @property
+    def document(self) -> Any:
+        """The invalid document that caused the error.
+
+        ..versionadded:: 4.16"""
+        return self._document
 
 
 class InvalidId(BSONError):
