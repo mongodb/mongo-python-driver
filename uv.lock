@@ -1253,6 +1253,7 @@ coverage = [
     { name = "coverage", specifier = ">=5,<=7.10.6" },
     { name = "pytest-cov" },
 ]
+dev = []
 gevent = [
     { name = "cffi", marker = "python_full_version == '3.14.*'", specifier = ">=2.0.0b1" },
     { name = "gevent" },
