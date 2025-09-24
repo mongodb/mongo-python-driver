@@ -27,6 +27,7 @@ PYPYS = ["pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-2]]
 BATCHTIME_WEEK = 10080
+BATCHTIME_DAY = 1440
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
 TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
 C_EXTS = ["without_ext", "with_ext"]

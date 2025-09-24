@@ -528,15 +528,8 @@ def gevent_monkey_patched():
         return False
 
 
-def eventlet_monkey_patched():
-    """Check if eventlet's monkey patching is active."""
-    import threading
-
-    return threading.current_thread.__module__ == "eventlet.green.threading"
-
-
 def is_greenthread_patched():
-    return gevent_monkey_patched() or eventlet_monkey_patched()
+    return gevent_monkey_patched()
 
 
 def parse_read_preference(pref):
