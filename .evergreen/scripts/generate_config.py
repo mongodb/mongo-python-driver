@@ -7,6 +7,7 @@ from itertools import product
 from generate_config_utils import (
     ALL_PYTHONS,
     ALL_VERSIONS,
+    BATCHTIME_DAY,
     BATCHTIME_WEEK,
     C_EXTS,
     CPYTHONS,
@@ -126,7 +127,7 @@ def create_free_threaded_variants() -> list[BuildVariant]:
 def create_encryption_variants() -> list[BuildVariant]:
     variants = []
     tags = ["encryption_tag"]
-    batchtime = BATCHTIME_WEEK
+    batchtime = BATCHTIME_DAY
 
     def get_encryption_expansions(encryption):
         expansions = dict(TEST_NAME="encryption")
@@ -183,7 +184,7 @@ def create_load_balancer_variants():
             tasks,
             "Load Balancer",
             host=DEFAULT_HOST,
-            batchtime=BATCHTIME_WEEK,
+            batchtime=BATCHTIME_DAY,
             expansions=expansions,
         )
     ]
@@ -226,7 +227,7 @@ def create_enterprise_auth_variants():
 
 def create_pyopenssl_variants():
     base_name = "PyOpenSSL"
-    batchtime = BATCHTIME_WEEK
+    batchtime = BATCHTIME_DAY
     expansions = dict(SUB_TEST_NAME="pyopenssl")
     variants = []
 
@@ -348,7 +349,7 @@ def create_oidc_auth_variants():
                 tasks,
                 get_variant_name("Auth OIDC", host),
                 host=host,
-                batchtime=BATCHTIME_WEEK,
+                batchtime=BATCHTIME_DAY,
             )
         )
         # Add a specific local test to run on PRs.
@@ -360,7 +361,7 @@ def create_oidc_auth_variants():
                     get_variant_name("Auth OIDC Local", host),
                     tags=["pr"],
                     host=host,
-                    batchtime=BATCHTIME_WEEK,
+                    batchtime=BATCHTIME_DAY,
                 )
             )
     return variants
@@ -425,9 +426,9 @@ def create_coverage_report_variants():
 
 def create_kms_variants():
     tasks = []
-    tasks.append(EvgTaskRef(name="test-gcpkms", batchtime=BATCHTIME_WEEK))
+    tasks.append(EvgTaskRef(name="test-gcpkms", batchtime=BATCHTIME_DAY))
     tasks.append("test-gcpkms-fail")
-    tasks.append(EvgTaskRef(name="test-azurekms", batchtime=BATCHTIME_WEEK))
+    tasks.append(EvgTaskRef(name="test-azurekms", batchtime=BATCHTIME_DAY))
     tasks.append("test-azurekms-fail")
     return [create_variant(tasks, "KMS", host=HOSTS["debian11"])]
 
@@ -442,9 +443,7 @@ def create_backport_pr_variants():
 
 def create_perf_variants():
     host = HOSTS["perf"]
-    return [
-        create_variant([".perf"], "Performance Benchmarks", host=host, batchtime=BATCHTIME_WEEK)
-    ]
+    return [create_variant([".perf"], "Performance Benchmarks", host=host, batchtime=BATCHTIME_DAY)]
 
 
 def create_aws_auth_variants():
@@ -478,7 +477,7 @@ def create_no_server_variants():
 
 
 def create_alternative_hosts_variants():
-    batchtime = BATCHTIME_WEEK
+    batchtime = BATCHTIME_DAY
     variants = []
 
     host = HOSTS["rhel7"]
