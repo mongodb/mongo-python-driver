@@ -18,6 +18,7 @@ resync:
 
 install:
    bash .evergreen/scripts/setup-dev-env.sh
+   uvx pre-commit install
 
 [group('docs')]
 docs: && resync

@@ -51,9 +51,4 @@ uv sync
 
 echo "Setting up python environment... done."
 
-# Ensure there is a pre-commit hook if there is a git checkout.
-if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
-    uvx pre-commit install
-fi
-
 popd > /dev/null
