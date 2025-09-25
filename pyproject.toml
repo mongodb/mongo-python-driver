@@ -46,9 +46,7 @@ Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [dependency-groups]
-dev = [
-    "pre-commit>=4.0"
-]
+dev = []
 pip = ["pip"]
 # TODO: PYTHON-5464
 gevent = ["gevent", "cffi>=2.0.0b1;python_version=='3.14'"]
