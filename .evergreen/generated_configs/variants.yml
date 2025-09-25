@@ -142,17 +142,16 @@ buildvariants:
       - rhel87-small
 
   # Disable test commands tests
-  - name: disable-test-commands-rhel8-python3.9
+  - name: disable-test-commands-rhel8
     tasks:
       - name: .test-standard .server-latest
-    display_name: Disable test commands RHEL8 Python3.9
+    display_name: Disable test commands RHEL8
     run_on:
       - rhel87-small
     expansions:
       AUTH: auth
       SSL: ssl
       DISABLE_TEST_COMMANDS: "1"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Doctests tests
   - name: doctests-rhel8
@@ -491,14 +490,14 @@ buildvariants:
       SUB_TEST_NAME: pyopenssl
 
   # Search index tests
-  - name: search-index-helpers-rhel8-python3.9
+  - name: search-index-helpers-rhel8-python3.10
     tasks:
       - name: .search_index
-    display_name: Search Index Helpers RHEL8 Python3.9
+    display_name: Search Index Helpers RHEL8 Python3.10
     run_on:
       - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
 
   # Server version tests
   - name: mongodb-v4.2

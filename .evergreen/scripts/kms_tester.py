@@ -33,7 +33,7 @@ def _setup_azure_vm(base_env: dict[str, str]) -> None:
     env["AZUREKMS_CMD"] = "sudo apt-get install -y python3-dev build-essential"
     run_command(f"{azure_dir}/run-command.sh", env=env)
 
-    env["AZUREKMS_CMD"] = "bash .evergreen/just.sh setup-tests kms azure-remote"
+    env["AZUREKMS_CMD"] = "NO_EXT=1 bash .evergreen/just.sh setup-tests kms azure-remote"
     run_command(f"{azure_dir}/run-command.sh", env=env)
     LOGGER.info("Setting up Azure VM... done.")
 
@@ -53,7 +53,7 @@ def _setup_gcp_vm(base_env: dict[str, str]) -> None:
     env["GCPKMS_CMD"] = "sudo apt-get install -y python3-dev build-essential"
     run_command(f"{gcp_dir}/run-command.sh", env=env)
 
-    env["GCPKMS_CMD"] = "bash ./.evergreen/just.sh setup-tests kms gcp-remote"
+    env["GCPKMS_CMD"] = "NO_EXT=1 bash ./.evergreen/just.sh setup-tests kms gcp-remote"
     run_command(f"{gcp_dir}/run-command.sh", env=env)
     LOGGER.info("Setting up GCP VM...")
 
@@ -97,6 +97,13 @@ def setup_kms(sub_test_name: str) -> None:
         create_archive()
         if sub_test_target == "azure":
             os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
+
+            # Found using "az vm image list --output table"
+            os.environ[
+                "AZUREKMS_IMAGE"
+            ] = "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
+        else:
+            os.environ["GCPKMS_IMAGEFAMILY"] = "debian-12"
 
         run_command("./setup.sh", cwd=kms_dir)
         base_env = _load_kms_config(sub_test_target)

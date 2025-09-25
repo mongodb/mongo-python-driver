@@ -53,7 +53,7 @@ EXTRAS_MAP = {
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 
 # The python version used for perf tests.
-PERF_PYTHON_VERSION = "3.9.13"
+PERF_PYTHON_VERSION = "3.10.11"
 
 
 def is_set(var: str) -> bool:
@@ -90,6 +90,13 @@ def setup_libmongocrypt():
         distro = get_distro()
         if distro.name.startswith("Debian"):
             target = f"debian{distro.version_id}"
+        elif distro.name.startswith("Ubuntu"):
+            if distro.version_id == "20.04":
+                target = "debian11"
+            elif distro.version_id == "22.04":
+                target = "debian12"
+            elif distro.version_id == "24.04":
+                target = "debian13"
         elif distro.name.startswith("Red Hat"):
             if distro.version_id.startswith("7"):
                 target = "rhel-70-64-bit"
