@@ -261,8 +261,6 @@ partial_branches = ["if (.*and +)*not _use_c( and.*)*:"]
 directory = "htmlcov"
 
 [tool.cibuildwheel]
-# Enable free-threaded support
-free-threaded-support = true
 skip = "pp* *-musllinux*"
 build-frontend = "build"
 test-command = "python {project}/tools/fail_if_no_c.py"
