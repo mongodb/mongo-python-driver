@@ -6,7 +6,7 @@ Changes in Version 4.16.0 (XXXX/XX/XX)
 
 PyMongo 4.16 brings a number of changes including:
 
-.. warning:: PyMongo 4.16 drops support for Python 3.9: Python 3.10+is now required.
+.. warning:: PyMongo 4.16 drops support for Python 3.9: Python 3.10+ is now required.
 
 - Dropped support for Python 3.9.
 - Removed invalid documents from :class:`bson.errors.InvalidDocument` error messages as
