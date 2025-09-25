@@ -80,24 +80,17 @@ jobs:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
         run: python -m cibuildwheel --output-dir wheelhouse
 
-      - name: Build manylinux1 wheels
-        if: ${{ matrix.buildplat[1] == 'manylinux_x86_64' || matrix.buildplat[1] == 'manylinux_i686' }}
-        env:
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
-          CIBW_MANYLINUX_I686_IMAGE: manylinux1
-          CIBW_BUILD: "cp39-${{ matrix.buildplat[1] }} cp39-${{ matrix.buildplat[1] }}"
-        run: python -m cibuildwheel --output-dir wheelhouse
-
       - name: Assert all versions in wheelhouse
         if: ${{ ! startsWith(matrix.buildplat[1], 'macos') }}
         run: |
-          ls wheelhouse/*cp39*.whl
           ls wheelhouse/*cp310*.whl
           ls wheelhouse/*cp311*.whl
           ls wheelhouse/*cp312*.whl
           ls wheelhouse/*cp313*.whl
+          ls wheelhouse/*cp314*.whl
           # Free-threading builds:
           ls wheelhouse/*cp313t*.whl
+          ls wheelhouse/*cp314t*.whl
 
       - uses: actions/upload-artifact@v4
         with:
@@ -118,7 +111,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           # Build sdist on lowest supported Python
-          python-version: '3.9'
+          python-version: "3.10"
 
       - name: Build SDist
         run: |
