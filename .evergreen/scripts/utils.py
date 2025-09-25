@@ -145,7 +145,7 @@ def get_test_options(
     sub_test_name = opts.sub_test_name if require_sub_test_name else ""
     if require_sub_test_name and test_name in SUB_TEST_REQUIRED and not sub_test_name:
         raise ValueError(f"Test '{test_name}' requires a sub_test_name")
-    handle_env_overrides(opts)
+    handle_env_overrides(parser)
     if "auth" in test_name:
         opts.auth = True
         # 'auth_aws ecs' shouldn't have extra auth set.
@@ -158,7 +158,7 @@ def get_test_options(
     return opts, extra_opts
 
 
-def handle_env_overrides(opts: argparse.Namespace) -> None:
+def handle_env_overrides(parser: argparse.ArgumentParser, opts: argparse.Namespace) -> None:
     # Get the options, and then allow environment variable overrides.
     for key in vars(opts):
         if key in OPTION_TO_ENV_VAR:
@@ -166,7 +166,9 @@ def handle_env_overrides(opts: argparse.Namespace) -> None:
         else:
             env_var = key.upper()
         if env_var in os.environ:
-            if env_var == "AUTH":
+            if parser.get_default(key) != getattr(opts, key):
+                LOGGER.info("Overriding env var '%s' with cli option", env_var)
+            elif env_var == "AUTH":
                 opts.auth = os.environ.get("AUTH") == "auth"
             elif env_var == "SSL":
                 ssl_opt = os.environ.get("SSL", "")
