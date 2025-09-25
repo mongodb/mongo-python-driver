@@ -30,13 +30,14 @@ SUB_TEST_NAME = os.environ.get("SUB_TEST_NAME")
 
 
 def list_packages():
-    packages = dict()
+    packages = set()
     for distribution in importlib_metadata.distributions():
-        packages[distribution.name] = distribution
+        if distribution.name:
+            packages.add(distribution.name)
     print("Package             Version     URL")
     print("------------------- ----------- ----------------------------------------------------")
     for name in sorted(packages):
-        distribution = packages[name]
+        distribution = importlib_metadata.distribution(name)
         url = ""
         if distribution.origin is not None:
             url = distribution.origin.url
@@ -136,6 +137,9 @@ def handle_aws_lambda() -> None:
 
 
 def run() -> None:
+    # Add diagnostic for python version.
+    print("Running with python", sys.version)
+
     # List the installed packages.
     list_packages()
 

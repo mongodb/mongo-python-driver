@@ -22,7 +22,7 @@ from shrub.v3.shrub_service import ShrubService
 ##############
 
 ALL_VERSIONS = ["4.2", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
-CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+CPYTHONS = ["3.10", "3.9", "3.11", "3.12", "3.13", "3.14"]
 PYPYS = ["pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
@@ -42,6 +42,7 @@ DISPLAY_LOOKUP = dict(
     sync={"sync": "Sync", "async": "Async"},
     coverage={"1": "cov"},
     no_ext={"1": "No C"},
+    test_min_deps={True: "Min Deps"},
 )
 HOSTS = dict()
 
@@ -202,7 +203,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
                 name = f"Python{value}"
             else:
                 name = f"PyPy{value.replace('pypy', '')}"
-        elif key.lower() in DISPLAY_LOOKUP:
+        elif key.lower() in DISPLAY_LOOKUP and value in DISPLAY_LOOKUP[key.lower()]:
             name = DISPLAY_LOOKUP[key.lower()][value]
         else:
             continue

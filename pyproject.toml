@@ -48,8 +48,7 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 [dependency-groups]
 dev = []
 pip = ["pip"]
-# TODO: PYTHON-5464
-gevent = ["gevent", "cffi>=2.0.0b1;python_version=='3.14'"]
+gevent = ["gevent>=20.6.0"]
 coverage = [
     "pytest-cov",
     "coverage>=5,<=7.10.6"
@@ -57,7 +56,7 @@ coverage = [
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
 ]
-perf = ["simplejson"]
+perf = ["simplejson>=3.17.0"]
 typing = [
     "mypy==1.18.1",
     "pyright==1.1.405",

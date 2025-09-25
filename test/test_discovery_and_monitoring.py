@@ -483,7 +483,7 @@ class TestServerMonitoringMode(IntegrationTest):
 
     def test_rtt_connection_is_disabled_auto(self):
         envs = [
-            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9"},
+            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.10"},
             {"FUNCTIONS_WORKER_RUNTIME": "python"},
             {"K_SERVICE": "gcpservicename"},
             {"FUNCTION_NAME": "gcpfunctionname"},

@@ -1201,7 +1201,6 @@ coverage = [
     { name = "pytest-cov" },
 ]
 gevent = [
-    { name = "cffi", version = "2.0.0b1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.14.*'" },
     { name = "gevent" },
 ]
 mockupdb = [
@@ -1222,10 +1221,10 @@ typing = [
 
 [package.metadata]
 requires-dist = [
-    { name = "certifi", marker = "(os_name == 'nt' and extra == 'encryption') or (sys_platform == 'darwin' and extra == 'encryption')" },
-    { name = "certifi", marker = "(os_name == 'nt' and extra == 'ocsp') or (sys_platform == 'darwin' and extra == 'ocsp')" },
+    { name = "certifi", marker = "(os_name == 'nt' and extra == 'encryption') or (sys_platform == 'darwin' and extra == 'encryption')", specifier = ">=2023.7.22" },
+    { name = "certifi", marker = "(os_name == 'nt' and extra == 'ocsp') or (sys_platform == 'darwin' and extra == 'ocsp')", specifier = ">=2023.7.22" },
     { name = "cryptography", marker = "extra == 'ocsp'", specifier = ">=2.5" },
-    { name = "dnspython", specifier = ">=1.16.0,<3.0.0" },
+    { name = "dnspython", specifier = ">=2.6.1,<3.0.0" },
     { name = "furo", marker = "extra == 'docs'", specifier = "==2025.7.19" },
     { name = "importlib-metadata", marker = "python_full_version < '3.13' and extra == 'test'", specifier = ">=7.0" },
     { name = "pykerberos", marker = "os_name != 'nt' and extra == 'gssapi'" },
@@ -1254,12 +1253,9 @@ coverage = [
     { name = "pytest-cov" },
 ]
 dev = []
-gevent = [
-    { name = "cffi", marker = "python_full_version == '3.14.*'", specifier = ">=2.0.0b1" },
-    { name = "gevent" },
-]
+gevent = [{ name = "gevent", specifier = ">=20.6.0" }]
 mockupdb = [{ name = "mockupdb", git = "https://github.com/mongodb-labs/mongo-mockup-db?rev=master" }]
-perf = [{ name = "simplejson" }]
+perf = [{ name = "simplejson", specifier = ">=3.17.0" }]
 pip = [{ name = "pip" }]
 typing = [
     { name = "mypy", specifier = "==1.18.1" },
