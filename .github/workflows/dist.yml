@@ -70,10 +70,10 @@ jobs:
           platforms: all
 
       - name: Install cibuildwheel
-        # Note: the default manylinux is manylinux2014
+        # Note: the default manylinux is manylinux_2_28
         run: |
           python -m pip install -U pip
-          python -m pip install "cibuildwheel>=2.20,<3"
+          python -m pip install "cibuildwheel>=3.20,<4"
 
       - name: Build wheels
         env:
