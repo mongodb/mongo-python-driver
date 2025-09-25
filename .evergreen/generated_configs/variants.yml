@@ -1,16 +1,5 @@
 buildvariants:
   # Alternative hosts tests
-  - name: openssl-1.0.2-rhel7-v5.0-python3.9
-    tasks:
-      - name: .test-no-toolchain
-    display_name: OpenSSL 1.0.2 RHEL7 v5.0 Python3.9
-    run_on:
-      - rhel79-small
-    batchtime: 1440
-    expansions:
-      VERSION: "5.0"
-      PYTHON_VERSION: "3.9"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: other-hosts-rhel9-fips-latest
     tasks:
       - name: .test-no-toolchain
@@ -178,6 +167,7 @@ buildvariants:
   - name: encryption-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-min-deps
     display_name: Encryption RHEL8
     run_on:
       - rhel87-small
@@ -208,6 +198,7 @@ buildvariants:
   - name: encryption-crypt_shared-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-min-deps
     display_name: Encryption crypt_shared RHEL8
     run_on:
       - rhel87-small

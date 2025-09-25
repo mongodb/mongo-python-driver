@@ -143,7 +143,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     ):
         expansions = get_encryption_expansions(encryption)
         display_name = get_variant_name(encryption, host, **expansions)
-        tasks = [".test-non-standard"]
+        tasks = [".test-non-standard", ".test-min-deps"]
         if host != "rhel8":
             tasks = [".test-non-standard !.pypy"]
         variant = create_variant(
@@ -479,19 +479,6 @@ def create_alternative_hosts_variants():
     batchtime = BATCHTIME_DAY
     variants = []
 
-    host = HOSTS["rhel7"]
-    version = "5.0"
-    variants.append(
-        create_variant(
-            [".test-no-toolchain"],
-            get_variant_name("OpenSSL 1.0.2", host, python="3.9", version=version),
-            host=host,
-            python="3.9",
-            batchtime=batchtime,
-            expansions=dict(VERSION=version, PYTHON_VERSION="3.9"),
-        )
-    )
-
     version = "latest"
     for host_name in OTHER_HOSTS:
         expansions = dict(VERSION="latest")
@@ -527,22 +514,20 @@ def create_aws_lambda_variants():
 
 def create_server_version_tasks():
     tasks = []
-    task_inputs = []
+    task_combos = set()
     # All combinations of topology, auth, ssl, and sync should be tested.
     for (topology, auth, ssl, sync), python in zip_cycle(
         list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
     ):
-        task_inputs.append((topology, auth, ssl, sync, python))
+        task_combos.add((topology, auth, ssl, sync, python))
 
     # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
     for python, sync in product(ALL_PYTHONS, SYNCS):
-        task_input = ("sharded_cluster", "auth", "ssl", sync, python)
-        if task_input not in task_inputs:
-            task_inputs.append(task_input)
+        task_combos.add(("sharded_cluster", "auth", "ssl", sync, python))
 
     # Assemble the tasks.
     seen = set()
-    for topology, auth, ssl, sync, python in task_inputs:
+    for topology, auth, ssl, sync, python in sorted(task_combos):
         combo = f"{topology}-{auth}-{ssl}"
         tags = ["server-version", f"python-{python}", combo, sync]
         if combo in [
@@ -557,7 +542,12 @@ def create_server_version_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python not in PYPYS:
             expansions["COVERAGE"] = "1"
-        name = get_task_name("test-server-version", python=python, sync=sync, **expansions)
+        name = get_task_name(
+            "test-server-version",
+            python=python,
+            sync=sync,
+            **expansions,
+        )
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
@@ -589,15 +579,15 @@ def create_no_toolchain_tasks():
 def create_test_non_standard_tasks():
     """For variants that set a TEST_NAME."""
     tasks = []
-    task_combos = []
+    task_combos = set()
     # For each version and topology, rotate through the CPythons.
     for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
         pr = version == "latest"
-        task_combos.append((version, topology, python, pr))
+        task_combos.add((version, topology, python, pr))
     # For each PyPy and topology, rotate through the the versions.
     for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
-        task_combos.append((version, topology, python, False))
-    for version, topology, python, pr in task_combos:
+        task_combos.add((version, topology, python, False))
+    for version, topology, python, pr in sorted(task_combos):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-non-standard",
@@ -615,6 +605,22 @@ def create_test_non_standard_tasks():
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
+def create_min_deps_tasks():
+    """For variants that support testing with minimum dependencies."""
+    tasks = []
+    for topology in TOPOLOGIES:
+        auth, ssl = get_standard_auth_ssl(topology)
+        tags = ["test-min-deps", f"{topology}-{auth}-{ssl}"]
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
+        test_vars["TEST_MIN_DEPS"] = "1"
+        name = get_task_name("test-min-deps", python=CPYTHONS[0], sync="sync", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
@@ -793,9 +799,12 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
             tags.append("pr")
 
         task_name = get_task_name(
-            f"test-ocsp-{algo}-{base_task_name}", python=python, version=version
+            f"test-ocsp-{algo}-{base_task_name}",
+            python=python,
+            version=version,
         )
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
+
     return tasks
 
 
@@ -1074,6 +1083,7 @@ def create_run_tests_func():
         "VERSION",
         "IS_WIN32",
         "REQUIRE_FIPS",
+        "TEST_MIN_DEPS",
     ]
     args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
     setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
