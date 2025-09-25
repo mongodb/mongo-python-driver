@@ -440,6 +440,8 @@ class _AsyncClientBulk:
     ) -> None:
         """Internal helper for processing the server reply command cursor."""
         if result.get("cursor"):
+            if session:
+                session._leave_alive = True
             coll = AsyncCollection(
                 database=AsyncDatabase(self.client, "admin"),
                 name="$cmd.bulkWrite",
@@ -449,7 +451,6 @@ class _AsyncClientBulk:
                 result["cursor"],
                 conn.address,
                 session=session,
-                explicit_session=session is not None,
                 comment=self.comment,
             )
             await cmd_cursor._maybe_pin_connection(conn)

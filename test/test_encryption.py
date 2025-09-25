@@ -399,7 +399,7 @@ class TestClientSimple(EncryptionIntegrationTest):
     )
     @unittest.skipIf(
         is_greenthread_patched(),
-        "gevent and eventlet do not support POSIX-style forking.",
+        "gevent does not support POSIX-style forking.",
     )
     @client_context.require_sync
     def test_fork(self):

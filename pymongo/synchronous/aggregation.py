@@ -50,7 +50,6 @@ class _AggregationCommand:
         cursor_class: type[CommandCursor[Any]],
         pipeline: _Pipeline,
         options: MutableMapping[str, Any],
-        explicit_session: bool,
         let: Optional[Mapping[str, Any]] = None,
         user_fields: Optional[MutableMapping[str, Any]] = None,
         result_processor: Optional[Callable[[Mapping[str, Any], Connection], None]] = None,
@@ -92,7 +91,6 @@ class _AggregationCommand:
             self._options["cursor"]["batchSize"] = self._batch_size
 
         self._cursor_class = cursor_class
-        self._explicit_session = explicit_session
         self._user_fields = user_fields
         self._result_processor = result_processor
 
@@ -197,7 +195,6 @@ class _AggregationCommand:
             batch_size=self._batch_size or 0,
             max_await_time_ms=self._max_await_time_ms,
             session=session,
-            explicit_session=self._explicit_session,
             comment=self._options.get("comment"),
         )
         cmd_cursor._maybe_pin_connection(conn)

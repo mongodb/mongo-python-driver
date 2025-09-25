@@ -64,7 +64,6 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
         session: Optional[AsyncClientSession] = None,
-        explicit_session: bool = False,
         comment: Any = None,
     ) -> None:
         """Create a new command cursor."""
@@ -80,7 +79,8 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         self._max_await_time_ms = max_await_time_ms
         self._timeout = self._collection.database.client.options.timeout
         self._session = session
-        self._explicit_session = explicit_session
+        if self._session is not None:
+            self._session._attached_to_cursor = True
         self._killed = self._id == 0
         self._comment = comment
         if self._killed:
@@ -197,7 +197,7 @@ class AsyncCommandCursor(Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        if self._explicit_session:
+        if self._session and not self._session._implicit:
             return self._session
         return None
 
@@ -218,9 +218,10 @@ class AsyncCommandCursor(Generic[_DocumentType]):
         """Closes this cursor without acquiring a lock."""
         cursor_id, address = self._prepare_to_die()
         self._collection.database.client._cleanup_cursor_no_lock(
-            cursor_id, address, self._sock_mgr, self._session, self._explicit_session
+            cursor_id, address, self._sock_mgr, self._session
         )
-        if not self._explicit_session:
+        if self._session and self._session._implicit:
+            self._session._attached_to_cursor = False
             self._session = None
         self._sock_mgr = None
 
@@ -232,14 +233,15 @@ class AsyncCommandCursor(Generic[_DocumentType]):
             address,
             self._sock_mgr,
             self._session,
-            self._explicit_session,
         )
-        if not self._explicit_session:
+        if self._session and self._session._implicit:
+            self._session._attached_to_cursor = False
             self._session = None
         self._sock_mgr = None
 
     def _end_session(self) -> None:
-        if self._session and not self._explicit_session:
+        if self._session and self._session._implicit:
+            self._session._attached_to_cursor = False
             self._session._end_implicit_session()
             self._session = None
 
@@ -430,7 +432,6 @@ class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
         session: Optional[AsyncClientSession] = None,
-        explicit_session: bool = False,
         comment: Any = None,
     ) -> None:
         """Create a new cursor / iterator over raw batches of BSON data.
@@ -449,7 +450,6 @@ class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
             batch_size,
             max_await_time_ms,
             session,
-            explicit_session,
             comment,
         )
 

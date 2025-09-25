@@ -513,6 +513,10 @@ class AsyncClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
+        # Is this session attached to a cursor?
+        self._attached_to_cursor = False
+        # Should we leave the session alive when the cursor is closed?
+        self._leave_alive = False
 
     async def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -535,7 +539,7 @@ class AsyncClientSession:
 
     def _end_implicit_session(self) -> None:
         # Implicit sessions can't be part of transactions or pinned connections
-        if self._server_session is not None:
+        if not self._leave_alive and self._server_session is not None:
             self._client._return_server_session(self._server_session)
             self._server_session = None
 
