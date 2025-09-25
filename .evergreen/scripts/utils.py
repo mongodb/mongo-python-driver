@@ -145,7 +145,7 @@ def get_test_options(
     sub_test_name = opts.sub_test_name if require_sub_test_name else ""
     if require_sub_test_name and test_name in SUB_TEST_REQUIRED and not sub_test_name:
         raise ValueError(f"Test '{test_name}' requires a sub_test_name")
-    handle_env_overrides(parser)
+    handle_env_overrides(parser, opts)
     if "auth" in test_name:
         opts.auth = True
         # 'auth_aws ecs' shouldn't have extra auth set.
