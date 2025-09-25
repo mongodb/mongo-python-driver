@@ -51,7 +51,7 @@ pip = ["pip"]
 gevent = ["gevent>=20.6.0"]
 coverage = [
     "pytest-cov",
-    "coverage>=5,<=7.10.6"
+    "coverage>=5,<=7.10.7"
 ]
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
