@@ -2059,7 +2059,7 @@ class TestClient(AsyncIntegrationTest):
     async def test_handshake_01_aws(self):
         await self._test_handshake(
             {
-                "AWS_EXECUTION_ENV": "AWS_Lambda_python3.9",
+                "AWS_EXECUTION_ENV": "AWS_Lambda_python3.10",
                 "AWS_REGION": "us-east-2",
                 "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": "1024",
             },
@@ -2097,7 +2097,7 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_handshake_05_multiple(self):
         await self._test_handshake(
-            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9", "FUNCTIONS_WORKER_RUNTIME": "python"},
+            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.10", "FUNCTIONS_WORKER_RUNTIME": "python"},
             None,
         )
         # Extra cases for other combos.
@@ -2109,13 +2109,16 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_handshake_06_region_too_long(self):
         await self._test_handshake(
-            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9", "AWS_REGION": "a" * 512},
+            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.10", "AWS_REGION": "a" * 512},
             {"name": "aws.lambda"},
         )
 
     async def test_handshake_07_memory_invalid_int(self):
         await self._test_handshake(
-            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9", "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": "big"},
+            {
+                "AWS_EXECUTION_ENV": "AWS_Lambda_python3.10",
+                "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": "big",
+            },
             {"name": "aws.lambda"},
         )
 

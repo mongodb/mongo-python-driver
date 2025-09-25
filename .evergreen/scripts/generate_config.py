@@ -485,11 +485,11 @@ def create_alternative_hosts_variants():
     variants.append(
         create_variant(
             [".test-no-toolchain"],
-            get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0], version=version),
+            get_variant_name("OpenSSL 1.0.2", host, python="3.9", version=version),
             host=host,
-            python=CPYTHONS[0],
+            python="3.9",
             batchtime=batchtime,
-            expansions=dict(VERSION=version, PYTHON_VERSION=CPYTHONS[0]),
+            expansions=dict(VERSION=version, PYTHON_VERSION="3.9"),
         )
     )
 
