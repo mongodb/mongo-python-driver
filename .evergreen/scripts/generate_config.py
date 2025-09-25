@@ -330,10 +330,9 @@ def create_mod_wsgi_variants():
 def create_disable_test_commands_variants():
     host = DEFAULT_HOST
     expansions = dict(AUTH="auth", SSL="ssl", DISABLE_TEST_COMMANDS="1")
-    python = CPYTHONS[0]
-    display_name = get_variant_name("Disable test commands", host, python=python)
+    display_name = get_variant_name("Disable test commands", host)
     tasks = [".test-standard .server-latest"]
-    return [create_variant(tasks, display_name, host=host, python=python, expansions=expansions)]
+    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
 def create_oidc_auth_variants():
