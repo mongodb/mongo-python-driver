@@ -480,19 +480,6 @@ def create_alternative_hosts_variants():
     batchtime = BATCHTIME_DAY
     variants = []
 
-    host = HOSTS["rhel7"]
-    version = "5.0"
-    variants.append(
-        create_variant(
-            [".test-no-toolchain"],
-            get_variant_name("OpenSSL 1.0.2", host, python=CPYTHONS[0], version=version),
-            host=host,
-            python=CPYTHONS[0],
-            batchtime=batchtime,
-            expansions=dict(VERSION=version, PYTHON_VERSION=CPYTHONS[0]),
-        )
-    )
-
     version = "latest"
     for host_name in OTHER_HOSTS:
         expansions = dict(VERSION="latest")
