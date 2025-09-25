@@ -2143,11 +2143,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
         pipeline.append({"$group": {"_id": 1, "n": {"$sum": 1}}})
-        cmd = {"aggregate": self._name, "pipeline": pipeline, "cursor": {}}
         if "hint" in kwargs and not isinstance(kwargs["hint"], str):
             kwargs["hint"] = helpers_shared._index_document(kwargs["hint"])
         collation = validate_collation_or_none(kwargs.pop("collation", None))
-        cmd.update(kwargs)
 
         def _cmd(
             session: Optional[ClientSession],
@@ -2155,6 +2153,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> int:
+            cmd: dict[str, Any] = {"aggregate": self._name, "pipeline": pipeline, "cursor": {}}
+            cmd.update(kwargs)
             result = self._aggregate_one_result(conn, read_preference, cmd, collation, session)
             if not result:
                 return 0
@@ -2546,7 +2546,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        explicit_session = session is not None
 
         def _cmd(
             session: Optional[ClientSession],
@@ -2573,13 +2572,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 cursor,
                 conn.address,
                 session=session,
-                explicit_session=explicit_session,
                 comment=cmd.get("comment"),
             )
             cmd_cursor._maybe_pin_connection(conn)
             return cmd_cursor
 
-        with self._database.client._tmp_session(session, False) as s:
+        with self._database.client._tmp_session(session) as s:
             return self._database.client._retryable_read(
                 _cmd, read_pref, s, operation=_Op.LIST_INDEXES
             )
@@ -2675,7 +2673,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             CommandCursor,
             pipeline,
             kwargs,
-            explicit_session=session is not None,
             comment=comment,
             user_fields={"cursor": {"firstBatch": 1}},
         )
@@ -2893,7 +2890,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         pipeline: _Pipeline,
         cursor_class: Type[CommandCursor],  # type: ignore[type-arg]
         session: Optional[ClientSession],
-        explicit_session: bool,
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -2905,7 +2901,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cursor_class,
             pipeline,
             kwargs,
-            explicit_session,
             let,
             user_fields={"cursor": {"firstBatch": 1}},
         )
@@ -3011,13 +3006,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-        with self._database.client._tmp_session(session, close=False) as s:
+        with self._database.client._tmp_session(session) as s:
             return self._aggregate(
                 _CollectionAggregationCommand,
                 pipeline,
                 CommandCursor,
                 session=s,
-                explicit_session=session is not None,
                 let=let,
                 comment=comment,
                 **kwargs,
@@ -3058,7 +3052,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise InvalidOperation("aggregate_raw_batches does not support auto encryption")
         if comment is not None:
             kwargs["comment"] = comment
-        with self._database.client._tmp_session(session, close=False) as s:
+        with self._database.client._tmp_session(session) as s:
             return cast(
                 RawBatchCursor[_DocumentType],
                 self._aggregate(
@@ -3066,7 +3060,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     pipeline,
                     RawBatchCommandCursor,
                     session=s,
-                    explicit_session=session is not None,
                     **kwargs,
                 ),
             )
@@ -3187,19 +3180,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         if not isinstance(key, str):
             raise TypeError(f"key must be an instance of str, not {type(key)}")
-        cmd = {"distinct": self._name, "key": key}
         if filter is not None:
             if "query" in kwargs:
                 raise ConfigurationError("can't pass both filter and query")
             kwargs["query"] = filter
         collation = validate_collation_or_none(kwargs.pop("collation", None))
-        cmd.update(kwargs)
-        if comment is not None:
-            cmd["comment"] = comment
         if hint is not None:
             if not isinstance(hint, str):
                 hint = helpers_shared._index_document(hint)
-            cmd["hint"] = hint  # type: ignore[assignment]
 
         def _cmd(
             session: Optional[ClientSession],
@@ -3207,6 +3195,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             conn: Connection,
             read_preference: Optional[_ServerMode],
         ) -> list:  # type: ignore[type-arg]
+            cmd = {"distinct": self._name, "key": key}
+            cmd.update(kwargs)
+            if comment is not None:
+                cmd["comment"] = comment
+            if hint is not None:
+                cmd["hint"] = hint  # type: ignore[assignment]
             return (
                 self._command(
                     conn,
@@ -3241,27 +3235,26 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, not {type(return_document)}"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
-        cmd = {"findAndModify": self._name, "query": filter, "new": return_document}
-        if let is not None:
-            common.validate_is_mapping("let", let)
-            cmd["let"] = let
-        cmd.update(kwargs)
-        if projection is not None:
-            cmd["fields"] = helpers_shared._fields_list_to_dict(projection, "projection")
-        if sort is not None:
-            cmd["sort"] = helpers_shared._index_document(sort)
-        if upsert is not None:
-            validate_boolean("upsert", upsert)
-            cmd["upsert"] = upsert
         if hint is not None:
             if not isinstance(hint, str):
                 hint = helpers_shared._index_document(hint)
-
-        write_concern = self._write_concern_for_cmd(cmd, session)
+        write_concern = self._write_concern_for_cmd(kwargs, session)
 
         def _find_and_modify_helper(
             session: Optional[ClientSession], conn: Connection, retryable_write: bool
         ) -> Any:
+            cmd = {"findAndModify": self._name, "query": filter, "new": return_document}
+            if let is not None:
+                common.validate_is_mapping("let", let)
+                cmd["let"] = let
+            cmd.update(kwargs)
+            if projection is not None:
+                cmd["fields"] = helpers_shared._fields_list_to_dict(projection, "projection")
+            if sort is not None:
+                cmd["sort"] = helpers_shared._index_document(sort)
+            if upsert is not None:
+                validate_boolean("upsert", upsert)
+                cmd["upsert"] = upsert
             acknowledged = write_concern.acknowledged
             if array_filters is not None:
                 if not acknowledged:

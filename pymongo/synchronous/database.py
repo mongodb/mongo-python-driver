@@ -611,6 +611,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             common.validate_is_mapping("clusteredIndex", clustered_index)
 
         with self._client._tmp_session(session) as s:
+            if s and not s.in_transaction:
+                s._leave_alive = True
             # Skip this check in a transaction where listCollections is not
             # supported.
             if (
@@ -619,6 +621,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 and name in self._list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
+            if s:
+                s._leave_alive = False
             coll = Collection(
                 self,
                 name,
@@ -699,13 +703,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-        with self.client._tmp_session(session, close=False) as s:
+        with self.client._tmp_session(session) as s:
             cmd = _DatabaseAggregationCommand(
                 self,
                 CommandCursor,
                 pipeline,
                 kwargs,
-                session is not None,
                 user_fields={"cursor": {"firstBatch": 1}},
             )
             return self.client._retryable_read(
@@ -1009,7 +1012,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         else:
             command_name = next(iter(command))
 
-        with self._client._tmp_session(session, close=False) as tmp_session:
+        with self._client._tmp_session(session) as tmp_session:
             opts = codec_options or DEFAULT_CODEC_OPTIONS
 
             if read_preference is None:
@@ -1039,7 +1042,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                         conn.address,
                         max_await_time_ms=max_await_time_ms,
                         session=tmp_session,
-                        explicit_session=session is not None,
                         comment=comment,
                     )
                     cmd_cursor._maybe_pin_connection(conn)
@@ -1085,7 +1087,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         )
         cmd = {"listCollections": 1, "cursor": {}}
         cmd.update(kwargs)
-        with self._client._tmp_session(session, close=False) as tmp_session:
+        with self._client._tmp_session(session) as tmp_session:
             cursor = (
                 self._command(conn, cmd, read_preference=read_preference, session=tmp_session)
             )["cursor"]
@@ -1094,7 +1096,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 cursor,
                 conn.address,
                 session=tmp_session,
-                explicit_session=session is not None,
                 comment=cmd.get("comment"),
             )
         cmd_cursor._maybe_pin_connection(conn)

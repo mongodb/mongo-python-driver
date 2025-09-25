@@ -27,6 +27,7 @@ PYPYS = ["pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080
+BATCHTIME_DAY = 1440
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
 TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
 C_EXTS = ["without_ext", "with_ext"]
@@ -41,6 +42,7 @@ DISPLAY_LOOKUP = dict(
     sync={"sync": "Sync", "async": "Async"},
     coverage={"1": "cov"},
     no_ext={"1": "No C"},
+    test_min_deps={True: "Min Deps"},
 )
 HOSTS = dict()
 
@@ -201,7 +203,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
                 name = f"Python{value}"
             else:
                 name = f"PyPy{value.replace('pypy', '')}"
-        elif key.lower() in DISPLAY_LOOKUP:
+        elif key.lower() in DISPLAY_LOOKUP and value in DISPLAY_LOOKUP[key.lower()]:
             name = DISPLAY_LOOKUP[key.lower()][value]
         else:
             continue
@@ -273,7 +275,7 @@ def generate_yaml(tasks=None, variants=None):
     out = ShrubService.generate_yaml(project)
     # Dedent by two spaces to match what we use in config.yml
     lines = [line[2:] for line in out.splitlines()]
-    print("\n".join(lines))  # noqa: T201
+    print("\n".join(lines))
 
 
 ##################

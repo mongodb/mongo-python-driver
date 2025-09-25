@@ -46,13 +46,9 @@ Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [dependency-groups]
-dev = [
-    "pre-commit>=4.0"
-]
+dev = []
 pip = ["pip"]
-# TODO: PYTHON-5464
-gevent = ["gevent", "cffi>=2.0.0b1;python_version=='3.14'"]
-eventlet = ["eventlet"]
+gevent = ["gevent>=20.6.0"]
 coverage = [
     "pytest-cov",
     "coverage>=5,<=7.10.6"
@@ -60,10 +56,7 @@ coverage = [
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
 ]
-pymongocrypt_source = [
-    "pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
-]
-perf = ["simplejson"]
+perf = ["simplejson>=3.17.0"]
 typing = [
     "mypy==1.18.1",
     "pyright==1.1.405",
@@ -116,15 +109,12 @@ filterwarnings = [
     "module:.*WindowsSelectorEventLoopPolicy:DeprecationWarning",
     "module:.*et_event_loop_policy:DeprecationWarning",
     # TODO: Remove as part of PYTHON-3923.
-    "module:unclosed <eventlet.green.ssl.GreenSSLSocket:ResourceWarning",
     "module:unclosed <socket.socket:ResourceWarning",
     "module:unclosed <ssl.SSLSocket:ResourceWarning",
     "module:unclosed <socket object:ResourceWarning",
     "module:unclosed transport:ResourceWarning",
     # pytest-asyncio known issue: https://github.com/pytest-dev/pytest-asyncio/issues/724
     "module:unclosed event loop:ResourceWarning",
-    # https://github.com/eventlet/eventlet/issues/818
-    "module:please use dns.resolver.Resolver.resolve:DeprecationWarning",
     # https://github.com/dateutil/dateutil/issues/1314
     "module:datetime.datetime.utc:DeprecationWarning",
 ]
@@ -134,7 +124,6 @@ markers = [
     "auth: tests that rely on authentication",
     "ocsp: tests that rely on ocsp",
     "atlas_connect: tests that rely on an atlas connection",
-    "data_lake: tests that rely on atlas data lake",
     "perf: benchmark tests",
     "search_index: search index helper tests",
     "kms: client-side field-level encryption tests using kms",
@@ -239,6 +228,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
 
 [tool.ruff.lint.per-file-ignores]
 "pymongo/__init__.py" = ["E402"]
+".evergreen/scripts/*.py" = ["T201"]
 "test/*.py" = ["PT", "E402", "PLW", "SIM", "E741", "PTH", "S", "B904", "E722", "T201",
     "RET", "ARG", "F405", "B028", "PGH001", "B018", "F403", "RUF015", "E731", "B007",
     "UP031", "F401", "B023", "F811"]

@@ -121,7 +121,6 @@ class ClientContext:
         self.sessions_enabled = False
         self.client = None  # type: ignore
         self.conn_lock = threading.Lock()
-        self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self._fips_enabled = None
         if self.load_balancer:
@@ -199,16 +198,6 @@ class ClientContext:
         self.mongoses = []
         self.connection_attempts = []
         self.client = self._connect(host, port)
-        if self.client is not None:
-            # Return early when connected to dataLake as mongohoused does not
-            # support the getCmdLineOpts command and is tested without TLS.
-            if os.environ.get("TEST_DATA_LAKE"):
-                self.is_data_lake = True
-                self.auth_enabled = True
-                self.client.close()
-                self.client = self._connect(host, port, username=db_user, password=db_pwd)
-                self.connected = True
-                return
 
         if HAVE_SSL and not self.client:
             # Is MongoDB configured for SSL?
@@ -501,14 +490,6 @@ class ClientContext:
             func=func,
         )
 
-    def require_data_lake(self, func):
-        """Run a test only if we are connected to Atlas Data Lake."""
-        return self._require(
-            lambda: self.is_data_lake,
-            "Not connected to Atlas Data Lake on self.pair",
-            func=func,
-        )
-
     def require_version_min(self, *ver):
         """Run a test only if the server version is at least ``version``."""
         other_version = Version(*ver)
@@ -536,6 +517,19 @@ class ClientContext:
         return self._require(
             lambda: version >= other_version,
             "Libmongocrypt version must be at least %s" % str(other_version),
+        )
+
+    def require_pymongocrypt_min(self, *ver):
+        other_version = Version(*ver)
+        if not _HAVE_PYMONGOCRYPT:
+            version = Version.from_string("0.0.0")
+        else:
+            from pymongocrypt import __version__ as pymongocrypt_version
+
+            version = Version.from_string(pymongocrypt_version)
+        return self._require(
+            lambda: version >= other_version,
+            "PyMongoCrypt version must be at least %s" % str(other_version),
         )
 
     def require_auth(self, func):
@@ -1230,21 +1224,6 @@ def teardown():
         garbage.append(f"  gc.get_referrers: {gc.get_referrers(g)!r}")
     if garbage:
         raise AssertionError("\n".join(garbage))
-    c = client_context.client
-    if c:
-        if not client_context.is_data_lake:
-            try:
-                c.drop_database("pymongo-pooling-tests")
-                c.drop_database("pymongo_test")
-                c.drop_database("pymongo_test1")
-                c.drop_database("pymongo_test2")
-                c.drop_database("pymongo_test_mike")
-                c.drop_database("pymongo_test_bernie")
-            except AutoReconnect:
-                # PYTHON-4982
-                if sys.implementation.name.lower() != "pypy":
-                    raise
-        c.close()
     print_running_clients()
 
 
