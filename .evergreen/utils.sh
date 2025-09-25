@@ -6,29 +6,29 @@ find_python3() {
     PYTHON=""
     # Find a suitable toolchain version, if available.
     if [ "$(uname -s)" = "Darwin" ]; then
-        PYTHON="/Library/Frameworks/Python.Framework/Versions/3.9/bin/python3"
+        PYTHON="/Library/Frameworks/Python.Framework/Versions/3.10/bin/python3"
     elif [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
-        PYTHON="C:/python/Python39/python.exe"
+        PYTHON="C:/python/Python310/python.exe"
     else
-        # Prefer our own toolchain, fall back to mongodb toolchain if it has Python 3.9+.
-        if [ -f "/opt/python/3.9/bin/python3" ]; then
+        # Prefer our own toolchain, fall back to mongodb toolchain if it has Python 3.10+.
+        if [ -f "/opt/python/3.10/bin/python3" ]; then
             PYTHON="/opt/python/Current/bin/python3"
-        elif is_python_39 "$(command -v /opt/mongodbtoolchain/v5/bin/python3)"; then
+        elif is_python_310 "$(command -v /opt/mongodbtoolchain/v5/bin/python3)"; then
             PYTHON="/opt/mongodbtoolchain/v5/bin/python3"
-        elif is_python_39 "$(command -v /opt/mongodbtoolchain/v4/bin/python3)"; then
+        elif is_python_310 "$(command -v /opt/mongodbtoolchain/v4/bin/python3)"; then
             PYTHON="/opt/mongodbtoolchain/v4/bin/python3"
-        elif is_python_39 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
+        elif is_python_310 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
             PYTHON="/opt/mongodbtoolchain/v3/bin/python3"
         fi
     fi
-    # Add a fallback system python3 if it is available and Python 3.9+.
+    # Add a fallback system python3 if it is available and Python 3.10+.
     if [ -z "$PYTHON" ]; then
-        if is_python_39 "$(command -v python3)"; then
+        if is_python_310 "$(command -v python3)"; then
             PYTHON="$(command -v python3)"
         fi
     fi
     if [ -z "$PYTHON" ]; then
-        echo "Cannot test without python3.9+ installed!"
+        echo "Cannot test without python3.10+ installed!"
         exit 1
     fi
     echo "$PYTHON"
@@ -99,15 +99,15 @@ testinstall () {
     fi
 }
 
-# Function that returns success if the provided Python binary is version 3.9 or later
+# Function that returns success if the provided Python binary is version 3.10 or later
 # Usage:
-# is_python_39 /path/to/python
+# is_python_310 /path/to/python
 # * param1: Python binary
-is_python_39() {
+is_python_310() {
     if [ -z "$1" ]; then
         return 1
-    elif $1 -c "import sys; exit(sys.version_info[:2] < (3, 9))"; then
-        # runs when sys.version_info[:2] >= (3, 9)
+    elif $1 -c "import sys; exit(sys.version_info[:2] < (3, 10))"; then
+        # runs when sys.version_info[:2] >= (3, 10)
         return 0
     else
         return 1
@@ -131,7 +131,7 @@ get_python_binary() {
     else
         PYTHON="/opt/python/$version/bin/python3"
     fi
-    if is_python_39 "$(command -v $PYTHON)"; then
+    if is_python_310 "$(command -v $PYTHON)"; then
         echo "$PYTHON"
     else
         echo "Could not find suitable python binary for '$version'"  >&2
