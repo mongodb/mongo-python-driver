@@ -30,14 +30,18 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
     print("Done syncing specs")
 
 
-def apply_patches():
+def apply_patches(errored):
     print("Beginning to apply patches")
     subprocess.run(["bash", "./.evergreen/remove-unimplemented-tests.sh"], check=True)  # noqa: S603, S607
-    subprocess.run(
-        ["git apply -R --allow-empty --whitespace=fix ./.evergreen/spec-patch/*"],  # noqa: S607
-        shell=True,  # noqa: S602
-        check=True,
-    )
+    try:
+        subprocess.run(
+            ["git apply -R --allow-empty --whitespace=fix ./.evergreen/spec-patch/*"],  # noqa: S607
+            shell=True,  # noqa: S602
+            check=True,
+            stderr=subprocess.PIPE,
+        )
+    except CalledProcessError as exc:
+        errored["applying patches"] = exc.stderr
 
 
 def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
@@ -85,7 +89,7 @@ def write_summary(errored: dict[str, str], new: list[str], filename: Optional[st
         pr_body += "\n -".join(succeeded)
         pr_body += "\n"
     if len(errored) > 0:
-        pr_body += "\n\nThe following spec syncs encountered errors:\n -"
+        pr_body += "\n\nThe following spec syncs encountered errors:"
         for k, v in errored.items():
             pr_body += f"\n -{k}\n```{v}\n```"
         pr_body += "\n"
@@ -106,7 +110,7 @@ def main(args: Namespace):
     directory = pathlib.Path("./test")
     errored: dict[str, str] = {}
     resync_specs(directory, errored)
-    apply_patches()
+    apply_patches(errored)
     new = check_new_spec_directories(directory)
     write_summary(errored, new, args.filename)
 
