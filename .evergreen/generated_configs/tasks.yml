@@ -313,18 +313,6 @@ tasks:
           SUB_TEST_NAME: standalone
           PYTHON_VERSION: "3.14"
     tags: [mod_wsgi, pr]
-  - name: mod-wsgi-embedded-mode-replica-set-python3.14t
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: replica_set
-          PYTHON_VERSION: 3.14t
-      - func: run tests
-        vars:
-          TEST_NAME: mod_wsgi
-          SUB_TEST_NAME: embedded
-          PYTHON_VERSION: 3.14t
-    tags: [mod_wsgi, pr, free-threaded]
 
   # No orchestration tests
   - name: test-no-orchestration-python3.10

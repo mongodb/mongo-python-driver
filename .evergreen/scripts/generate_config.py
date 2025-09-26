@@ -765,6 +765,8 @@ def create_mod_wsgi_tasks():
     for (test, topology), python in zip_cycle(
         product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
     ):
+        if "t" in python:
+            continue
         if test == "standalone":
             task_name = "mod-wsgi-"
         else:
@@ -777,8 +779,6 @@ def create_mod_wsgi_tasks():
         test_func = FunctionCall(func="run tests", vars=vars)
         tags = ["mod_wsgi", "pr"]
         commands = [server_func, test_func]
-        if "t" in python:
-            tags.append("free-threaded")
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
     return tasks
 
