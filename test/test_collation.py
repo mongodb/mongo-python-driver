@@ -37,7 +37,6 @@ from pymongo.operations import (
     UpdateMany,
     UpdateOne,
 )
-from pymongo.synchronous.helpers import next
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
