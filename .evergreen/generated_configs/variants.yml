@@ -311,7 +311,7 @@ buildvariants:
   # Green framework tests
   - name: green-gevent-rhel8
     tasks:
-      - name: .test-standard .sync
+      - name: .test-standard .sync !.free-threaded
     display_name: Green Gevent RHEL8
     run_on:
       - rhel87-small

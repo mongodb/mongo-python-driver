@@ -302,7 +302,7 @@ def create_green_framework_variants():
     variants = []
     host = DEFAULT_HOST
     for framework in ["gevent"]:
-        tasks = [".test-standard .sync"]
+        tasks = [".test-standard .sync !.free-threaded"]
         expansions = dict(GREEN_FRAMEWORK=framework)
         display_name = get_variant_name(f"Green {framework.capitalize()}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
@@ -540,7 +540,9 @@ def create_server_version_tasks():
                 seen.add(combo)
                 tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
-        if python not in PYPYS:
+        if "t" in python:
+            tags.append("free-threaded")
+        if python not in PYPYS and "t" not in python:
             expansions["COVERAGE"] = "1"
         name = get_task_name(
             "test-server-version",
@@ -596,6 +598,8 @@ def create_test_non_standard_tasks():
             f"{topology}-{auth}-{ssl}",
             auth,
         ]
+        if "t" in python:
+            tags.append("free-threaded")
         if python in PYPYS:
             tags.append("pypy")
         if pr:
@@ -646,6 +650,8 @@ def create_standard_tasks():
             f"{topology}-{auth}-{ssl}",
             sync,
         ]
+        if "t" in python:
+            tags.append("free-threaded")
         if python in PYPYS:
             tags.append("pypy")
         if pr:
@@ -731,6 +737,8 @@ def create_aws_tasks():
                 AWS_ROLE_SESSION_NAME="test",
                 PYTHON_VERSION=python,
             )
+            if "t" in python:
+                tags.append("free-threaded")
             test_func = FunctionCall(func="run tests", vars=test_vars)
             funcs = [server_func, assume_func, test_func]
             tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
@@ -769,6 +777,8 @@ def create_mod_wsgi_tasks():
         test_func = FunctionCall(func="run tests", vars=vars)
         tags = ["mod_wsgi", "pr"]
         commands = [server_func, test_func]
+        if "t" in python:
+            tags.append("free-threaded")
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
     return tasks
 
