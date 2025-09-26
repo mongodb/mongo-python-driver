@@ -411,6 +411,14 @@ a use the ticket number as the "reason" parameter to the decorator, e.g. `@flaky
 When running tests locally (not in CI), the `flaky` decorator will be disabled unless `ENABLE_FLAKY` is set.
 To disable the `flaky` decorator in CI, you can use `evergreen patch --param DISABLE_FLAKY=1`.
 
+## Integration Tests
+
+The `integration_tests` directory has a set of scripts that verify the usage of PyMongo with downstream packages or frameworks.  See the [README](./integration_tests/README.md) for more information.
+
+To run the tests, use `just integration_tests`.
+
+The tests should be able to run with and without SSL enabled.
+
 ## Specification Tests
 
 The MongoDB [specifications repository](https://github.com/mongodb/specifications)

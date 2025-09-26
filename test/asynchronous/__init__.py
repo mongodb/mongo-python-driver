@@ -1243,6 +1243,13 @@ async def async_teardown():
     print_running_clients()
 
 
+@asynccontextmanager
+async def async_simple_test_client():
+    await async_client_context.init()
+    yield async_client_context.client
+    await async_client_context.client.close()
+
+
 def test_cases(suite):
     """Iterator over all TestCases within a TestSuite."""
     for suite_or_case in suite._tests:

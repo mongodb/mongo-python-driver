@@ -72,6 +72,10 @@ setup-tests *args="":
 teardown-tests:
     bash .evergreen/scripts/teardown-tests.sh
 
+[group('test')]
+integration-tests:
+    bash integration_tests/run.sh
+
 [group('server')]
 run-server *args="":
     bash .evergreen/scripts/run-server.sh {{args}}
