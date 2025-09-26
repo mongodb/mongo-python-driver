@@ -6,9 +6,14 @@ Changes in Version 4.16.0 (XXXX/XX/XX)
 
 PyMongo 4.16 brings a number of changes including:
 
+.. warning:: PyMongo 4.16 drops support for Python 3.9: Python 3.10+ is now required.
+
+- Dropped support for Python 3.9.
 - Removed invalid documents from :class:`bson.errors.InvalidDocument` error messages as
   doing so may leak sensitive user data.
   Instead, invalid documents are stored in :attr:`bson.errors.InvalidDocument.document`.
+- PyMongo now requires ``dnspython>=2.6.1``, since ``dnspython`` 1.0 is no longer maintained and is incompatible with
+  Python 3.10+.  The minimum version is ``2.6.1`` to account for `CVE-2023-29483 <https://www.cve.org/CVERecord?id=CVE-2023-29483>`_.
 - Removed support for Eventlet.
   Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
 

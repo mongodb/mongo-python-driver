@@ -1,16 +1,5 @@
 buildvariants:
   # Alternative hosts tests
-  - name: openssl-1.0.2-rhel7-v5.0-python3.10
-    tasks:
-      - name: .test-no-toolchain
-    display_name: OpenSSL 1.0.2 RHEL7 v5.0 Python3.10
-    run_on:
-      - rhel79-small
-    batchtime: 1440
-    expansions:
-      VERSION: "5.0"
-      PYTHON_VERSION: "3.10"
-      PYTHON_BINARY: /opt/python/3.10/bin/python3
   - name: other-hosts-rhel9-fips-latest
     tasks:
       - name: .test-no-toolchain
@@ -153,17 +142,16 @@ buildvariants:
       - rhel87-small
 
   # Disable test commands tests
-  - name: disable-test-commands-rhel8-python3.10
+  - name: disable-test-commands-rhel8
     tasks:
       - name: .test-standard .server-latest
-    display_name: Disable test commands RHEL8 Python3.10
+    display_name: Disable test commands RHEL8
     run_on:
       - rhel87-small
     expansions:
       AUTH: auth
       SSL: ssl
       DISABLE_TEST_COMMANDS: "1"
-      PYTHON_BINARY: /opt/python/3.10/bin/python3
 
   # Doctests tests
   - name: doctests-rhel8
@@ -179,6 +167,7 @@ buildvariants:
   - name: encryption-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-min-deps
     display_name: Encryption RHEL8
     run_on:
       - rhel87-small
@@ -209,6 +198,7 @@ buildvariants:
   - name: encryption-crypt_shared-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-min-deps
     display_name: Encryption crypt_shared RHEL8
     run_on:
       - rhel87-small

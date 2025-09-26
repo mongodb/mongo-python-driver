@@ -26,7 +26,7 @@ jobs:
         uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Install just
         run: uv tool install rust-just
       - name: Install Python dependencies
@@ -56,7 +56,7 @@ jobs:
       matrix:
         # Tests currently only pass on ubuntu on GitHub Actions.
         os: [ubuntu-latest]
-        python-version: ["3.9", "pypy-3.10", "3.13t"]
+        python-version: ["3.10", "pypy-3.10", "3.13t"]
         mongodb-version: ["8.0"]
 
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
@@ -87,7 +87,7 @@ jobs:
         uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Install just
         run: uv tool install rust-just
       - id: setup-mongodb
@@ -112,7 +112,7 @@ jobs:
         uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Install just
         run: uv tool install rust-just
       - name: Install dependencies
@@ -131,7 +131,7 @@ jobs:
         uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Install just
         run: uv tool install rust-just
       - name: Install dependencies
@@ -144,7 +144,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.9", "3.11"]
+        python: ["3.10", "3.11"]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -175,7 +175,7 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
           # Build sdist on lowest supported Python
-          python-version: '3.9'
+          python-version: "3.10"
       - name: Build SDist
         shell: bash
         run: |
@@ -209,7 +209,7 @@ jobs:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
             # Test sdist on lowest supported Python
-            python-version: '3.9'
+            python-version: "3.10"
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
         - name: Run connect test from sdist
@@ -225,7 +225,7 @@ jobs:
       permissions:
         contents: read
       runs-on: ubuntu-latest
-      name: Test using minimum dependencies and supported Python
+      name: Test minimum dependencies and Python
       steps:
         - uses: actions/checkout@v5
           with:
@@ -233,42 +233,15 @@ jobs:
         - name: Install uv
           uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
           with:
-            python-version: '3.9'
+            python-version: "3.10"
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
           with:
             version: "8.0"
-        # Async and our test_dns do not support dnspython 1.X, so we don't run async or dns tests here
         - name: Run tests
           shell: bash
           run: |
             uv venv
             source .venv/bin/activate
-            uv pip install -e ".[test]" --resolution=lowest-direct
-            pytest -v test/test_srv_polling.py
-
-  test_minimum_for_async:
-      permissions:
-        contents: read
-      runs-on: ubuntu-latest
-      name: Test async's minimum dependencies and Python
-      steps:
-        - uses: actions/checkout@v5
-          with:
-            persist-credentials: false
-        - name: Install uv
-          uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v5
-          with:
-            python-version: '3.9'
-        - id: setup-mongodb
-          uses: mongodb-labs/drivers-evergreen-tools@master
-          with:
-            version: "8.0"
-        # The lifetime kwarg we use in srv resolution was added to the async resolver API in dnspython 2.1.0
-        - name: Run tests
-          shell: bash
-          run: |
-            uv venv
-            source .venv/bin/activate
-            uv pip install -e ".[test]" --resolution=lowest-direct dnspython==2.1.0 --force-reinstall
+            uv pip install -e ".[test]" --resolution=lowest-direct --force-reinstall
             pytest -v test/test_srv_polling.py test/test_dns.py test/asynchronous/test_srv_polling.py test/asynchronous/test_dns.py

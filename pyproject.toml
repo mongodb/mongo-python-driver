@@ -35,6 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Database",
     "Typing :: Typed",
 ]
@@ -46,12 +47,9 @@ Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [dependency-groups]
-dev = [
-    "pre-commit>=4.0"
-]
+dev = []
 pip = ["pip"]
-# TODO: PYTHON-5464
-gevent = ["gevent", "cffi>=2.0.0b1;python_version=='3.14'"]
+gevent = ["gevent>=20.6.0"]
 coverage = [
     "pytest-cov",
     "coverage>=5,<=7.10.6"
@@ -59,7 +57,7 @@ coverage = [
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
 ]
-perf = ["simplejson"]
+perf = ["simplejson>=3.17.0"]
 typing = [
     "mypy==1.18.1",
     "pyright==1.1.405",
@@ -263,8 +261,6 @@ partial_branches = ["if (.*and +)*not _use_c( and.*)*:"]
 directory = "htmlcov"
 
 [tool.cibuildwheel]
-# Enable free-threaded support
-free-threaded-support = true
 skip = "pp* *-musllinux*"
 build-frontend = "build"
 test-command = "python {project}/tools/fail_if_no_c.py"

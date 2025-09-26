@@ -41,7 +41,6 @@ import pytest
 
 from pymongo.daemon import _spawn_daemon
 from pymongo.synchronous.collection import Collection
-from pymongo.synchronous.helpers import next
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 
 try:
@@ -3430,6 +3429,7 @@ class TestExplicitTextEncryptionProse(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(8, 2, -1)
     @client_context.require_libmongocrypt_min(1, 15, 1)
+    @client_context.require_pymongocrypt_min(1, 16, 0)
     def setUp(self):
         super().setUp()
         # Load the file key1-document.json as key1Document.

@@ -21,7 +21,6 @@ from test.asynchronous import AsyncIntegrationTest, async_client_context, unitte
 from test.utils_shared import EventListener, OvertCommandListener
 from typing import Any
 
-from pymongo.asynchronous.helpers import anext
 from pymongo.collation import (
     Collation,
     CollationAlternate,
