@@ -53,7 +53,7 @@ EXTRAS_MAP = {
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 
 # The python version used for perf tests.
-PERF_PYTHON_VERSION = "3.9.13"
+PERF_PYTHON_VERSION = "3.10.11"
 
 
 def is_set(var: str) -> bool:
@@ -90,6 +90,13 @@ def setup_libmongocrypt():
         distro = get_distro()
         if distro.name.startswith("Debian"):
             target = f"debian{distro.version_id}"
+        elif distro.name.startswith("Ubuntu"):
+            if distro.version_id == "20.04":
+                target = "debian11"
+            elif distro.version_id == "22.04":
+                target = "debian12"
+            elif distro.version_id == "24.04":
+                target = "debian13"
         elif distro.name.startswith("Red Hat"):
             if distro.version_id.startswith("7"):
                 target = "rhel-70-64-bit"
@@ -160,7 +167,6 @@ def handle_test_env() -> None:
 
     write_env("PIP_QUIET")  # Quiet by default.
     write_env("PIP_PREFER_BINARY")  # Prefer binary dists by default.
-    write_env("UV_FROZEN")  # Do not modify lock files.
 
     # Set an environment variable for the test name and sub test name.
     write_env(f"TEST_{test_name.upper()}")
@@ -177,6 +183,9 @@ def handle_test_env() -> None:
 
     if group := GROUP_MAP.get(test_name, ""):
         UV_ARGS.append(f"--group {group}")
+
+    if opts.test_min_deps:
+        UV_ARGS.append("--resolution=lowest-direct")
 
     if test_name == "auth_oidc":
         from oidc_tester import setup_oidc
@@ -214,18 +223,8 @@ def handle_test_env() -> None:
                 if key in os.environ:
                     write_env(key, os.environ[key])
 
-    if test_name == "data_lake":
-        # Stop any running mongo-orchestration which might be using the port.
-        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh")
-        run_command(f"bash {DRIVERS_TOOLS}/.evergreen/atlas_data_lake/setup.sh")
-        AUTH = "auth"
-
     if AUTH != "noauth":
-        if test_name == "data_lake":
-            config = read_env(f"{DRIVERS_TOOLS}/.evergreen/atlas_data_lake/secrets-export.sh")
-            DB_USER = config["ADL_USERNAME"]
-            DB_PASSWORD = config["ADL_PASSWORD"]
-        elif test_name == "auth_oidc":
+        if test_name == "auth_oidc":
             DB_USER = config["OIDC_ADMIN_USER"]
             DB_PASSWORD = config["OIDC_ADMIN_PWD"]
         elif test_name == "search_index":
@@ -243,7 +242,7 @@ def handle_test_env() -> None:
     if is_set("MONGODB_URI"):
         write_env("PYMONGO_MUST_CONNECT", "true")
 
-    if is_set("DISABLE_TEST_COMMANDS") or opts.disable_test_commands:
+    if opts.disable_test_commands:
         write_env("PYMONGO_DISABLE_TEST_COMMANDS", "1")
 
     if test_name == "enterprise_auth":
@@ -355,8 +354,10 @@ def handle_test_env() -> None:
         if not (ROOT / "libmongocrypt").exists():
             setup_libmongocrypt()
 
-        # TODO: Test with 'pip install pymongocrypt'
-        UV_ARGS.append("--group pymongocrypt_source")
+        if not opts.test_min_deps:
+            UV_ARGS.append(
+                "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
+            )
 
         # Use the nocrypto build to avoid dependency issues with older windows/python versions.
         BASE = ROOT / "libmongocrypt/nocrypto"
@@ -385,7 +386,7 @@ def handle_test_env() -> None:
     if sub_test_name == "pyopenssl":
         UV_ARGS.append("--extra ocsp")
 
-    if is_set("TEST_CRYPT_SHARED") or opts.crypt_shared:
+    if opts.crypt_shared:
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
         CRYPT_SHARED_DIR = Path(config["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
@@ -455,14 +456,14 @@ def handle_test_env() -> None:
 
     # Add coverage if requested.
     # Only cover CPython. PyPy reports suspiciously low coverage.
-    if (is_set("COVERAGE") or opts.cov) and platform.python_implementation() == "CPython":
+    if opts.cov and platform.python_implementation() == "CPython":
         # Keep in sync with combine-coverage.sh.
         # coverage >=5 is needed for relative_files=true.
         UV_ARGS.append("--group coverage")
         TEST_ARGS = f"{TEST_ARGS} --cov"
         write_env("COVERAGE")
 
-    if is_set("GREEN_FRAMEWORK") or opts.green_framework:
+    if opts.green_framework:
         framework = opts.green_framework or os.environ["GREEN_FRAMEWORK"]
         UV_ARGS.append(f"--group {framework}")
 

@@ -138,13 +138,11 @@ def _raise_connection_failure(
         msg = msg_prefix + msg
     if "configured timeouts" not in msg:
         msg += format_timeout_details(timeout_details)
-    if isinstance(error, socket.timeout):
-        raise NetworkTimeout(msg) from error
-    elif isinstance(error, SSLErrors) and "timed out" in str(error):
-        # Eventlet does not distinguish TLS network timeouts from other
-        # SSLErrors (https://github.com/eventlet/eventlet/issues/692).
-        # Luckily, we can work around this limitation because the phrase
-        # 'timed out' appears in all the timeout related SSLErrors raised.
+    if (
+        isinstance(error, socket.timeout)
+        or isinstance(error, SSLErrors)
+        and "timed out" in str(error)
+    ):
         raise NetworkTimeout(msg) from error
     else:
         raise AutoReconnect(msg) from error

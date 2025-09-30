@@ -37,7 +37,6 @@ from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import _csot, helpers_shared
-from pymongo.asynchronous.helpers import anext
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
@@ -138,10 +137,9 @@ class AsyncCursor(Generic[_DocumentType]):
 
         if session:
             self._session = session
-            self._explicit_session = True
+            self._session._attached_to_cursor = True
         else:
             self._session = None
-            self._explicit_session = False
 
         spec: Mapping[str, Any] = filter or {}
         validate_is_mapping("filter", spec)
@@ -150,7 +148,7 @@ class AsyncCursor(Generic[_DocumentType]):
         if not isinstance(limit, int):
             raise TypeError(f"limit must be an instance of int, not {type(limit)}")
         validate_boolean("no_cursor_timeout", no_cursor_timeout)
-        if no_cursor_timeout and not self._explicit_session:
+        if no_cursor_timeout and self._session and self._session._implicit:
             warnings.warn(
                 "use an explicit session with no_cursor_timeout=True "
                 "otherwise the cursor may still timeout after "
@@ -283,7 +281,7 @@ class AsyncCursor(Generic[_DocumentType]):
     def _clone(self, deepcopy: bool = True, base: Optional[AsyncCursor] = None) -> AsyncCursor:  # type: ignore[type-arg]
         """Internal clone helper."""
         if not base:
-            if self._explicit_session:
+            if self._session and not self._session._implicit:
                 base = self._clone_base(self._session)
             else:
                 base = self._clone_base(None)
@@ -945,7 +943,7 @@ class AsyncCursor(Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        if self._explicit_session:
+        if self._session and not self._session._implicit:
             return self._session
         return None
 
@@ -1034,9 +1032,10 @@ class AsyncCursor(Generic[_DocumentType]):
 
         cursor_id, address = self._prepare_to_die(already_killed)
         self._collection.database.client._cleanup_cursor_no_lock(
-            cursor_id, address, self._sock_mgr, self._session, self._explicit_session
+            cursor_id, address, self._sock_mgr, self._session
         )
-        if not self._explicit_session:
+        if self._session and self._session._implicit:
+            self._session._attached_to_cursor = False
             self._session = None
         self._sock_mgr = None
 
@@ -1054,9 +1053,9 @@ class AsyncCursor(Generic[_DocumentType]):
             address,
             self._sock_mgr,
             self._session,
-            self._explicit_session,
         )
-        if not self._explicit_session:
+        if self._session and self._session._implicit:
+            self._session._attached_to_cursor = False
             self._session = None
         self._sock_mgr = None
 

@@ -33,7 +33,6 @@ TEST_SUITE_MAP = {
     "atlas_connect": "atlas_connect",
     "auth_aws": "auth_aws",
     "auth_oidc": "auth_oidc",
-    "data_lake": "data_lake",
     "default": "",
     "default_async": "default_async",
     "default_sync": "default",
@@ -57,10 +56,12 @@ NO_RUN_ORCHESTRATION = [
     "auth_oidc",
     "atlas_connect",
     "aws_lambda",
-    "data_lake",
     "mockupdb",
     "ocsp",
 ]
+
+# Mapping of env variables to options
+OPTION_TO_ENV_VAR = {"cov": "COVERAGE", "crypt_shared": "TEST_CRYPT_SHARED"}
 
 
 def get_test_options(
@@ -96,6 +97,9 @@ def get_test_options(
     )
     parser.add_argument("--auth", action="store_true", help="Whether to add authentication.")
     parser.add_argument("--ssl", action="store_true", help="Whether to add TLS configuration.")
+    parser.add_argument(
+        "--test-min-deps", action="store_true", help="Test against minimum dependency versions"
+    )
 
     # Add the test modifiers.
     if require_sub_test_name:
@@ -106,7 +110,7 @@ def get_test_options(
         parser.add_argument(
             "--green-framework",
             nargs=1,
-            choices=["eventlet", "gevent"],
+            choices=["gevent"],
             help="Optional green framework to test against.",
         )
         parser.add_argument(
@@ -129,24 +133,51 @@ def get_test_options(
         opts, extra_opts = parser.parse_args(), []
     else:
         opts, extra_opts = parser.parse_known_args()
-    if opts.verbose:
-        LOGGER.setLevel(logging.DEBUG)
-    elif opts.quiet:
-        LOGGER.setLevel(logging.WARNING)
+
+    # Convert list inputs to strings.
+    for name in vars(opts):
+        value = getattr(opts, name)
+        if isinstance(value, list):
+            setattr(opts, name, value[0])
 
     # Handle validation and environment variable overrides.
     test_name = opts.test_name
     sub_test_name = opts.sub_test_name if require_sub_test_name else ""
     if require_sub_test_name and test_name in SUB_TEST_REQUIRED and not sub_test_name:
         raise ValueError(f"Test '{test_name}' requires a sub_test_name")
-    if "auth" in test_name or os.environ.get("AUTH") == "auth":
+    handle_env_overrides(parser, opts)
+    if "auth" in test_name:
         opts.auth = True
         # 'auth_aws ecs' shouldn't have extra auth set.
         if test_name == "auth_aws" and sub_test_name == "ecs":
             opts.auth = False
-    if os.environ.get("SSL") == "ssl":
-        opts.ssl = True
+    if opts.verbose:
+        LOGGER.setLevel(logging.DEBUG)
+    elif opts.quiet:
+        LOGGER.setLevel(logging.WARNING)
     return opts, extra_opts
+
+
+def handle_env_overrides(parser: argparse.ArgumentParser, opts: argparse.Namespace) -> None:
+    # Get the options, and then allow environment variable overrides.
+    for key in vars(opts):
+        if key in OPTION_TO_ENV_VAR:
+            env_var = OPTION_TO_ENV_VAR[key]
+        else:
+            env_var = key.upper()
+        if env_var in os.environ:
+            if parser.get_default(key) != getattr(opts, key):
+                LOGGER.info("Overriding env var '%s' with cli option", env_var)
+            elif env_var == "AUTH":
+                opts.auth = os.environ.get("AUTH") == "auth"
+            elif env_var == "SSL":
+                ssl_opt = os.environ.get("SSL", "")
+                opts.ssl = ssl_opt and ssl_opt.lower() != "nossl"
+            elif isinstance(getattr(opts, key), bool):
+                if os.environ[env_var]:
+                    setattr(opts, key, True)
+            else:
+                setattr(opts, key, os.environ[env_var])
 
 
 def read_env(path: Path | str) -> dict[str, str]:

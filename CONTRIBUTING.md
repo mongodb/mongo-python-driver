@@ -16,7 +16,7 @@ be of interest or that has already been addressed.
 
 ## Supported Interpreters
 
-PyMongo supports CPython 3.9+ and PyPy3.10+. Language features not
+PyMongo supports CPython 3.10+ and PyPy3.10+. Language features not
 supported by all interpreters can not be used.
 
 ## Style Guide
@@ -355,13 +355,6 @@ Note: these tests can only be run from an Evergreen Linux host that has the Pyth
 The `mode` can be `standalone` or `embedded`.  For the `replica_set` version of the tests, use
 `TOPOLOGY=replica_set just run-server`.
 
-### Atlas Data Lake tests.
-
-You must have `docker` or `podman` installed locally.
-
-- Run `just setup-tests data_lake`.
-- Run `just run-tests`.
-
 ### OCSP tests
 
 - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
@@ -388,6 +381,11 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 - Set `DEBUG_LOG=1` and run `just setup-tests`, `just-test`, or `pytest` to enable debug logs only for failed tests.
 - Finally, you can use `just setup-tests --debug-log`.
 - For evergreen patch builds, you can use `evergreen patch --param DEBUG_LOG=1` to enable debug logs for failed tests in the patch.
+
+## Testing minimum dependencies
+
+To run any of the test suites with minimum supported dependencies, pass `--test-min-deps` to
+`just setup-tests`.
 
 ## Adding a new test suite
 

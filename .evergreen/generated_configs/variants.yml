@@ -1,23 +1,12 @@
 buildvariants:
   # Alternative hosts tests
-  - name: openssl-1.0.2-rhel7-v5.0-python3.9
-    tasks:
-      - name: .test-no-toolchain
-    display_name: OpenSSL 1.0.2 RHEL7 v5.0 Python3.9
-    run_on:
-      - rhel79-small
-    batchtime: 10080
-    expansions:
-      VERSION: "5.0"
-      PYTHON_VERSION: "3.9"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
   - name: other-hosts-rhel9-fips-latest
     tasks:
       - name: .test-no-toolchain
     display_name: Other hosts RHEL9-FIPS latest
     run_on:
       - rhel92-fips
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       VERSION: latest
       NO_EXT: "1"
@@ -29,7 +18,7 @@ buildvariants:
     display_name: Other hosts RHEL8-zseries latest
     run_on:
       - rhel8-zseries-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       VERSION: latest
       NO_EXT: "1"
@@ -40,7 +29,7 @@ buildvariants:
     display_name: Other hosts RHEL8-POWER8 latest
     run_on:
       - rhel8-power-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       VERSION: latest
       NO_EXT: "1"
@@ -51,7 +40,7 @@ buildvariants:
     display_name: Other hosts RHEL8-arm64 latest
     run_on:
       - rhel82-arm64-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       VERSION: latest
       NO_EXT: "1"
@@ -62,7 +51,7 @@ buildvariants:
     display_name: Other hosts Amazon2023 latest
     run_on:
       - amazon2023-arm64-latest-large-m8g
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       VERSION: latest
       NO_EXT: "1"
@@ -77,17 +66,6 @@ buildvariants:
       - rhel87-small
     expansions:
       TEST_NAME: atlas_connect
-    tags: [pr]
-
-  # Atlas data lake tests
-  - name: atlas-data-lake-ubuntu-22
-    tasks:
-      - name: .test-no-orchestration
-    display_name: Atlas Data Lake Ubuntu-22
-    run_on:
-      - ubuntu2204-small
-    expansions:
-      TEST_NAME: data_lake
     tags: [pr]
 
   # Aws auth tests
@@ -164,17 +142,16 @@ buildvariants:
       - rhel87-small
 
   # Disable test commands tests
-  - name: disable-test-commands-rhel8-python3.9
+  - name: disable-test-commands-rhel8
     tasks:
       - name: .test-standard .server-latest
-    display_name: Disable test commands RHEL8 Python3.9
+    display_name: Disable test commands RHEL8
     run_on:
       - rhel87-small
     expansions:
       AUTH: auth
       SSL: ssl
       DISABLE_TEST_COMMANDS: "1"
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
 
   # Doctests tests
   - name: doctests-rhel8
@@ -190,10 +167,11 @@ buildvariants:
   - name: encryption-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-min-deps
     display_name: Encryption RHEL8
     run_on:
       - rhel87-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       TEST_NAME: encryption
     tags: [encryption_tag]
@@ -203,7 +181,7 @@ buildvariants:
     display_name: Encryption macOS
     run_on:
       - macos-14
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       TEST_NAME: encryption
     tags: [encryption_tag]
@@ -213,17 +191,18 @@ buildvariants:
     display_name: Encryption Win64
     run_on:
       - windows-64-vsMulti-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       TEST_NAME: encryption
     tags: [encryption_tag]
   - name: encryption-crypt_shared-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-min-deps
     display_name: Encryption crypt_shared RHEL8
     run_on:
       - rhel87-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       TEST_NAME: encryption
       TEST_CRYPT_SHARED: "true"
@@ -234,7 +213,7 @@ buildvariants:
     display_name: Encryption crypt_shared macOS
     run_on:
       - macos-14
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       TEST_NAME: encryption
       TEST_CRYPT_SHARED: "true"
@@ -245,7 +224,7 @@ buildvariants:
     display_name: Encryption crypt_shared Win64
     run_on:
       - windows-64-vsMulti-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       TEST_NAME: encryption
       TEST_CRYPT_SHARED: "true"
@@ -256,7 +235,7 @@ buildvariants:
     display_name: Encryption PyOpenSSL RHEL8
     run_on:
       - rhel87-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       TEST_NAME: encryption
       SUB_TEST_NAME: pyopenssl
@@ -330,14 +309,6 @@ buildvariants:
     tags: []
 
   # Green framework tests
-  - name: green-eventlet-rhel8
-    tasks:
-      - name: .test-standard .python-3.9 .sync
-    display_name: Green Eventlet RHEL8
-    run_on:
-      - rhel87-small
-    expansions:
-      GREEN_FRAMEWORK: eventlet
   - name: green-gevent-rhel8
     tasks:
       - name: .test-standard .sync
@@ -359,10 +330,10 @@ buildvariants:
   - name: kms
     tasks:
       - name: test-gcpkms
-        batchtime: 10080
+        batchtime: 1440
       - name: test-gcpkms-fail
       - name: test-azurekms
-        batchtime: 10080
+        batchtime: 1440
       - name: test-azurekms-fail
     display_name: KMS
     run_on:
@@ -379,7 +350,7 @@ buildvariants:
     display_name: Load Balancer
     run_on:
       - rhel87-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       TEST_NAME: load_balancer
 
@@ -453,14 +424,14 @@ buildvariants:
     display_name: Auth OIDC Ubuntu-22
     run_on:
       - ubuntu2204-small
-    batchtime: 10080
+    batchtime: 1440
   - name: auth-oidc-local-ubuntu-22
     tasks:
       - name: "!.auth_oidc_remote .auth_oidc"
     display_name: Auth OIDC Local Ubuntu-22
     run_on:
       - ubuntu2204-small
-    batchtime: 10080
+    batchtime: 1440
     tags: [pr]
   - name: auth-oidc-macos
     tasks:
@@ -468,14 +439,14 @@ buildvariants:
     display_name: Auth OIDC macOS
     run_on:
       - macos-14
-    batchtime: 10080
+    batchtime: 1440
   - name: auth-oidc-win64
     tasks:
       - name: "!.auth_oidc_remote .auth_oidc"
     display_name: Auth OIDC Win64
     run_on:
       - windows-64-vsMulti-small
-    batchtime: 10080
+    batchtime: 1440
 
   # Perf tests
   - name: performance-benchmarks
@@ -484,7 +455,7 @@ buildvariants:
     display_name: Performance Benchmarks
     run_on:
       - rhel90-dbx-perf-large
-    batchtime: 10080
+    batchtime: 1440
 
   # Pyopenssl tests
   - name: pyopenssl-rhel8
@@ -494,7 +465,7 @@ buildvariants:
     display_name: PyOpenSSL RHEL8
     run_on:
       - rhel87-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       SUB_TEST_NAME: pyopenssl
   - name: pyopenssl-macos
@@ -504,7 +475,7 @@ buildvariants:
     display_name: PyOpenSSL macOS
     run_on:
       - rhel87-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       SUB_TEST_NAME: pyopenssl
   - name: pyopenssl-win64
@@ -514,19 +485,19 @@ buildvariants:
     display_name: PyOpenSSL Win64
     run_on:
       - rhel87-small
-    batchtime: 10080
+    batchtime: 1440
     expansions:
       SUB_TEST_NAME: pyopenssl
 
   # Search index tests
-  - name: search-index-helpers-rhel8-python3.9
+  - name: search-index-helpers-rhel8-python3.10
     tasks:
       - name: .search_index
-    display_name: Search Index Helpers RHEL8 Python3.9
+    display_name: Search Index Helpers RHEL8 Python3.10
     run_on:
       - rhel87-small
     expansions:
-      PYTHON_BINARY: /opt/python/3.9/bin/python3
+      PYTHON_BINARY: /opt/python/3.10/bin/python3
 
   # Server version tests
   - name: mongodb-v4.2

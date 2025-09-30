@@ -231,7 +231,6 @@ converted_tests = [
     "test_cursor.py",
     "test_custom_types.py",
     "test_database.py",
-    "test_data_lake.py",
     "test_discovery_and_monitoring.py",
     "test_dns.py",
     "test_encryption.py",

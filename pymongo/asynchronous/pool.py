@@ -628,7 +628,7 @@ class AsyncConnection:
         # signals and throws KeyboardInterrupt into the current frame on the
         # main thread.
         #
-        # But in Gevent and Eventlet, the polling mechanism (epoll, kqueue,
+        # But in Gevent, the polling mechanism (epoll, kqueue,
         # ..) is called in Python code, which experiences the signal as a
         # KeyboardInterrupt from the start, rather than as an initial
         # socket.error, so we catch that, close the socket, and reraise it.

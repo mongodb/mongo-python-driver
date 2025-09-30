@@ -40,7 +40,6 @@ from typing import Any, Dict, Mapping, Optional
 import pytest
 
 from pymongo.asynchronous.collection import AsyncCollection
-from pymongo.asynchronous.helpers import anext
 from pymongo.daemon import _spawn_daemon
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 
@@ -399,7 +398,7 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
     )
     @unittest.skipIf(
         is_greenthread_patched(),
-        "gevent and eventlet do not support POSIX-style forking.",
+        "gevent does not support POSIX-style forking.",
     )
     @async_client_context.require_sync
     async def test_fork(self):
@@ -3448,6 +3447,7 @@ class TestExplicitTextEncryptionProse(AsyncEncryptionIntegrationTest):
     @async_client_context.require_no_standalone
     @async_client_context.require_version_min(8, 2, -1)
     @async_client_context.require_libmongocrypt_min(1, 15, 1)
+    @async_client_context.require_pymongocrypt_min(1, 16, 0)
     async def asyncSetUp(self):
         await super().asyncSetUp()
         # Load the file key1-document.json as key1Document.

@@ -20,6 +20,7 @@ import datetime
 import warnings
 from collections import OrderedDict, abc
 from difflib import get_close_matches
+from importlib.metadata import requires, version
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -1092,3 +1093,91 @@ def has_c() -> bool:
         return True
     except ImportError:
         return False
+
+
+class Version(tuple[int, ...]):
+    """A class that can be used to compare version strings."""
+
+    def __new__(cls, *version: int) -> Version:
+        padded_version = cls._padded(version, 4)
+        return super().__new__(cls, tuple(padded_version))
+
+    @classmethod
+    def _padded(cls, iter: Any, length: int, padding: int = 0) -> list[int]:
+        as_list = list(iter)
+        if len(as_list) < length:
+            for _ in range(length - len(as_list)):
+                as_list.append(padding)
+        return as_list
+
+    @classmethod
+    def from_string(cls, version_string: str) -> Version:
+        mod = 0
+        bump_patch_level = False
+        if version_string.endswith("+"):
+            version_string = version_string[0:-1]
+            mod = 1
+        elif version_string.endswith("-pre-"):
+            version_string = version_string[0:-5]
+            mod = -1
+        elif version_string.endswith("-"):
+            version_string = version_string[0:-1]
+            mod = -1
+        # Deal with .devX substrings
+        if ".dev" in version_string:
+            version_string = version_string[0 : version_string.find(".dev")]
+            mod = -1
+        # Deal with '-rcX' substrings
+        if "-rc" in version_string:
+            version_string = version_string[0 : version_string.find("-rc")]
+            mod = -1
+        # Deal with git describe generated substrings
+        elif "-" in version_string:
+            version_string = version_string[0 : version_string.find("-")]
+            mod = -1
+            bump_patch_level = True
+
+        version = [int(part) for part in version_string.split(".")]
+        version = cls._padded(version, 3)
+        # Make from_string and from_version_array agree. For example:
+        # MongoDB Enterprise > db.runCommand('buildInfo').versionArray
+        # [ 3, 2, 1, -100 ]
+        # MongoDB Enterprise > db.runCommand('buildInfo').version
+        # 3.2.0-97-g1ef94fe
+        if bump_patch_level:
+            version[-1] += 1
+        version.append(mod)
+
+        return Version(*version)
+
+    @classmethod
+    def from_version_array(cls, version_array: Any) -> Version:
+        version = list(version_array)
+        if version[-1] < 0:
+            version[-1] = -1
+        version = cls._padded(version, 3)
+        return Version(*version)
+
+    def at_least(self, *other_version: Any) -> bool:
+        return self >= Version(*other_version)
+
+    def __str__(self) -> str:
+        return ".".join(map(str, self))
+
+
+def check_for_min_version(package_name: str) -> tuple[str, str, bool]:
+    """Test whether an installed package is of the desired version."""
+    package_version_str = version(package_name)
+    package_version = Version.from_string(package_version_str)
+    # Dependency is expected to be in one of the forms:
+    # "pymongocrypt<2.0.0,>=1.13.0; extra == 'encryption'"
+    # 'dnspython<3.0.0,>=1.16.0'
+    #
+    requirements = requires("pymongo")
+    assert requirements is not None
+    requirement = [i for i in requirements if i.startswith(package_name)][0]  # noqa: RUF015
+    if ";" in requirement:
+        requirement = requirement.split(";")[0]
+    required_version = requirement[requirement.find(">=") + 2 :]
+    is_valid = package_version >= Version.from_string(required_version)
+    return package_version_str, required_version, is_valid
