@@ -70,10 +70,10 @@ jobs:
           platforms: all
 
       - name: Install cibuildwheel
-        # Note: the default manylinux is manylinux2014
+        # Note: the default manylinux is manylinux_2_28
         run: |
           python -m pip install -U pip
-          python -m pip install "cibuildwheel>=2.20,<3"
+          python -m pip install "cibuildwheel>=3.2.0,<4"
 
       - name: Build wheels
         env:
@@ -87,7 +87,6 @@ jobs:
           CIBW_MANYLINUX_I686_IMAGE: manylinux1
           CIBW_BUILD: "cp39-${{ matrix.buildplat[1] }} cp39-${{ matrix.buildplat[1] }}"
         run: python -m cibuildwheel --output-dir wheelhouse
-
       - name: Assert all versions in wheelhouse
         if: ${{ ! startsWith(matrix.buildplat[1], 'macos') }}
         run: |
@@ -96,8 +95,9 @@ jobs:
           ls wheelhouse/*cp311*.whl
           ls wheelhouse/*cp312*.whl
           ls wheelhouse/*cp313*.whl
+          ls wheelhouse/*cp314*.whl
           # Free-threading builds:
-          ls wheelhouse/*cp313t*.whl
+          ls wheelhouse/*cp314t*.whl
 
       - uses: actions/upload-artifact@v4
         with:
