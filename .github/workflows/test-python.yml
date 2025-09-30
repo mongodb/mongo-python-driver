@@ -14,6 +14,9 @@ defaults:
   run:
     shell: bash -eux {0}
 
+permissions:
+  contents: read
+
 jobs:
 
   static:
@@ -162,6 +165,36 @@ jobs:
       - name: Run typecheck
         run: |
           just typing
+
+  integration_tests:
+    runs-on: ubuntu-latest
+    name: Integration Tests
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v5
+        with:
+          enable-cache: true
+          python-version: "3.10"
+      - name: Install just
+        run: uv tool install rust-just
+      - name: Install dependencies
+        run: |
+          just install
+      - id: setup-mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@master
+      - name: Run tests
+        run:  |
+          just integration-tests
+      - id: setup-mongodb-ssl
+        uses: mongodb-labs/drivers-evergreen-tools@master
+        with:
+          ssl: true
+      - name: Run tests
+        run: |
+          just integration-tests
 
   make_sdist:
     runs-on: ubuntu-latest

@@ -1227,6 +1227,13 @@ def teardown():
     print_running_clients()
 
 
+@contextmanager
+def simple_test_client():
+    client_context.init()
+    yield client_context.client
+    client_context.client.close()
+
+
 def test_cases(suite):
     """Iterator over all TestCases within a TestSuite."""
     for suite_or_case in suite._tests:
