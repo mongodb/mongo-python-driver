@@ -16,8 +16,7 @@ in this release.
 
 .. _PyMongo 4.15.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47186
 
-
-Changes in Version 4.15.1 (2025/09/11)
+Changes in Version 4.15.1 (2025/09/16)
 --------------------------------------
 
 Version 4.15.1 is a bug fix release.
