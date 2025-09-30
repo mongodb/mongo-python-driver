@@ -177,7 +177,7 @@ jobs:
         uses: astral-sh/setup-uv@557e51de59eb14aaaba2ed9621916900a91d50c6 # v5
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Install just
         run: uv tool install rust-just
       - name: Install dependencies
