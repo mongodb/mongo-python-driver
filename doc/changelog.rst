@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 4.15.2 (2025/XX/YY)
+--------------------------------------
+
+Version 4.15.2 is a bug fix release.
+
+- Add wheels for Python 3.14 and 3.14t that were missing from 4.15.0 release.  Drop the 3.13t wheel.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.15.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.15.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47186
+
 Changes in Version 4.15.1 (2025/09/16)
 --------------------------------------
 
