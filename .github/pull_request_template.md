@@ -1,4 +1,5 @@
 <!-- Thanks for contributing! -->
+[Issue Key](https://jira.mongodb.org/browse/%7BISSUE_KEY%7D)
 ## Summary
 <!-- What conceptually is this PR introducing? If context is already provided from the JIRA ticket, still place it in the
 Pull Request as you should not make the reviewer do digging for a basic summary. -->
@@ -7,7 +8,7 @@ Pull Request as you should not make the reviewer do digging for a basic summary.
 <!-- What changes did you make to the code? What new APIs (public or private) were added, removed, or edited to generate
 the desired outcome explained in the above summary? -->
 
-## Test Plan
+## Testing Plan
 <!-- How did you test the code? If you added unit tests, you can say that. If you didn’t introduce unit tests, explain why.
 All code should be tested in some way – so please list what your validation strategy was. -->
 
