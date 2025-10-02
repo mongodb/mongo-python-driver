@@ -84,7 +84,7 @@ pygments_style = "sphinx"
 # so those link results in a 404.
 # wiki.centos.org has been flaky.
 # sourceforge.net is giving a 403 error, but is still accessible from the browser.
-# links to release notes in jira give 401 error: unauthorized.
+# Links to release notes in jira give 401 error: unauthorized. PYTHON-5585
 linkcheck_ignore = [
     "https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.md#requesting-an-immediate-check",
     "https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback",
