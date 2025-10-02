@@ -19,7 +19,7 @@ import ipaddress
 import random
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from pymongo.common import CONNECT_TIMEOUT, check_for_min_version
+from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
 if TYPE_CHECKING:
@@ -31,14 +31,6 @@ _IS_SYNC = True
 def _have_dnspython() -> bool:
     try:
         import dns  # noqa: F401
-
-        dns_version, required_version, is_valid = check_for_min_version("dnspython")
-        if not is_valid:
-            raise RuntimeError(
-                f"pymongo requires dnspython>={required_version}, "
-                f"found version {dns_version}. "
-                "Install a compatible version with pip"
-            )
 
         return True
     except ImportError:
@@ -79,8 +71,6 @@ class _SrvResolver:
         srv_service_name: str,
         srv_max_hosts: int = 0,
     ):
-        # Ensure the version of dnspython is compatible.
-        _have_dnspython()
         self.__fqdn = fqdn
         self.__srv = srv_service_name
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT

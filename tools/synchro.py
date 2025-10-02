@@ -131,6 +131,7 @@ replacements = {
     "async_create_barrier": "create_barrier",
     "async_barrier_wait": "barrier_wait",
     "async_joinall": "joinall",
+    "async_simple_test_client": "simple_test_client",
     "_async_create_connection": "_create_connection",
     "pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts": "pymongo.synchronous.srv_resolver._SrvResolver.get_hosts",
     "dns.asyncresolver.resolve": "dns.resolver.resolve",
