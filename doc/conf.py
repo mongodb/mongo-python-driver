@@ -95,6 +95,10 @@ linkcheck_ignore = [
 # Allow for flaky links.
 linkcheck_retries = 3
 
+# Avoid unauthorized links causing build failures: PYTHON-5585
+linkcheck_allow_unauthorized = True
+
+
 # -- Options for extensions ----------------------------------------------------
 autoclass_content = "init"
 
