@@ -22,7 +22,7 @@ Changes in Version 4.15.2 (2025/10/01)
 
 Version 4.15.2 is a bug fix release.
 
-- Add wheels for Python 3.14 and 3.14t that were missing from 4.15.0 release.  Drop the 3.13t wheel.
+- Add wheels for Python 3.14 and 3.14t that were missing from 4.15.0 release. Drop the 3.13t wheel.
 
 Issues Resolved
 ...............
