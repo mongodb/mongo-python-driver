@@ -203,6 +203,7 @@ def create_enterprise_auth_variants():
         expansions = dict(TEST_NAME="enterprise_auth", AUTH="auth")
         display_name = get_variant_name("Auth Enterprise", host)
         tasks = [".test-non-standard .auth !.free-threaded"]
+        # https://jira.mongodb.org/browse/PYTHON-5586
         if host == "macos":
             tasks = [".test-non-standard !.pypy .auth !.free-threaded"]
         if host == "win64":
