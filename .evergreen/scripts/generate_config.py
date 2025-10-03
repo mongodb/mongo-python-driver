@@ -109,21 +109,6 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
     return variants
 
 
-def create_free_threaded_variants() -> list[BuildVariant]:
-    variants = []
-    for host_name in ("rhel8", "macos", "macos-arm64", "win64"):
-        python = "3.14t"
-        tasks = [".free-threading"]
-        tags = []
-        if host_name == "rhel8":
-            tags.append("pr")
-        host = HOSTS[host_name]
-        display_name = get_variant_name("Free-threaded", host, python=python)
-        variant = create_variant(tasks, display_name, tags=tags, python=python, host=host)
-        variants.append(variant)
-    return variants
-
-
 def create_encryption_variants() -> list[BuildVariant]:
     variants = []
     tags = ["encryption_tag"]
@@ -724,6 +709,8 @@ def create_aws_tasks():
         server_func = FunctionCall(func="run server", vars=server_vars)
         assume_func = FunctionCall(func="assume ec2 role")
         tags = [*base_tags, f"auth-aws-{test_type}"]
+        if "t" in python:
+            tags.append("free-threaded")
         name = get_task_name(f"{base_name}-{test_type}", python=python)
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
@@ -940,15 +927,6 @@ def create_ocsp_tasks():
             tasks.extend(new_tasks)
 
     return tasks
-
-
-def create_free_threading_tasks():
-    vars = dict(VERSION="8.0", TOPOLOGY="replica_set")
-    server_func = FunctionCall(func="run server", vars=vars)
-    test_func = FunctionCall(func="run tests")
-    task_name = "test-free-threading"
-    tags = ["free-threading"]
-    return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
 
 
 ##############

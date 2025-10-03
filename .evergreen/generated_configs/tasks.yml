@@ -73,7 +73,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
           PYTHON_VERSION: 3.14t
-    tags: [auth-aws, auth-aws-session-creds]
+    tags: [auth-aws, auth-aws-session-creds, free-threaded]
   - name: test-auth-aws-rapid-web-identity-python3.14
     commands:
       - func: run server
@@ -140,16 +140,6 @@ tasks:
       - func: download and merge coverage
     depends_on: [{ name: .server-version, variant: .coverage_tag, status: "*", patch_optional: true }]
     tags: [coverage, pr]
-
-  # Free threading tests
-  - name: test-free-threading
-    commands:
-      - func: run server
-        vars:
-          VERSION: "8.0"
-          TOPOLOGY: replica_set
-      - func: run tests
-    tags: [free-threading]
 
   # Getdata tests
   - name: getdata

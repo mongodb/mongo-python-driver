@@ -270,44 +270,6 @@ buildvariants:
       TEST_NAME: enterprise_auth
       AUTH: auth
 
-  # Free threaded tests
-  - name: free-threaded-rhel8-python3.14t
-    tasks:
-      - name: .free-threading
-    display_name: Free-threaded RHEL8 Python3.14t
-    run_on:
-      - rhel87-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.14t/bin/python3
-    tags: [pr]
-  - name: free-threaded-macos-python3.14t
-    tasks:
-      - name: .free-threading
-    display_name: Free-threaded macOS Python3.14t
-    run_on:
-      - macos-14
-    expansions:
-      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.14/bin/python3t
-    tags: []
-  - name: free-threaded-macos-arm64-python3.14t
-    tasks:
-      - name: .free-threading
-    display_name: Free-threaded macOS Arm64 Python3.14t
-    run_on:
-      - macos-14-arm64
-    expansions:
-      PYTHON_BINARY: /Library/Frameworks/PythonT.Framework/Versions/3.14/bin/python3t
-    tags: []
-  - name: free-threaded-win64-python3.14t
-    tasks:
-      - name: .free-threading
-    display_name: Free-threaded Win64 Python3.14t
-    run_on:
-      - windows-64-vsMulti-small
-    expansions:
-      PYTHON_BINARY: C:/python/Python314/python3.14t.exe
-    tags: []
-
   # Green framework tests
   - name: green-gevent-rhel8
     tasks:
