@@ -1657,26 +1657,28 @@ void handle_invalid_doc_error(PyObject* dict) {
     }
 
     if (evalue && PyErr_GivenExceptionMatches(etype, InvalidDocument)) {
-        PyObject *msg = PyObject_Str(evalue);
+        msg = PyObject_Str(evalue);
         if (msg) {
             const char * msg_utf8 = PyUnicode_AsUTF8(msg);
             if (msg_utf8 == NULL) {
                 goto cleanup;
             }
-            PyObject *new_msg = PyUnicode_FromFormat("Invalid document: %s", msg_utf8);
+            new_msg = PyUnicode_FromFormat("Invalid document: %s", msg_utf8);
             if (new_msg == NULL) {
                 goto cleanup;
             }
             // Add doc to the error instance as a property.
-            PyObject *new_evalue = PyObject_CallFunctionObjArgs(InvalidDocument, new_msg, dict, NULL);
+            new_evalue = PyObject_CallFunctionObjArgs(InvalidDocument, new_msg, dict, NULL);
             Py_DECREF(evalue);
             Py_DECREF(etype);
             etype = InvalidDocument;
             InvalidDocument = NULL;
             if (new_evalue) {
                 evalue = new_evalue;
+                new_evalue = NULL;
             } else {
                 evalue = msg;
+                msg = NULL;
             }
         }
         PyErr_NormalizeException(&etype, &evalue, &etrace);
