@@ -120,9 +120,17 @@ is_python_310() {
 get_python_binary() {
     version=$1
     if [ "$(uname -s)" = "Darwin" ]; then
-        PYTHON="/Library/Frameworks/Python.Framework/Versions/$version/bin/python3"
+        if [[ "$version" == *"t"* ]]; then
+            binary_name="python3t"
+            framework_dir="PythonT"
+        else
+            binary_name="python3"
+            framework_dir="Python"
+        fi
+        version=$(echo "$version" | sed 's/t//g')
+        PYTHON="/Library/Frameworks/$framework_dir.Framework/Versions/$version/bin/$binary_name"
     elif [ "Windows_NT" = "${OS:-}" ]; then
-        version=$(echo $version | cut -d. -f1,2 | sed 's/\.//g')
+        version=$(echo $version | cut -d. -f1,2 | sed 's/\.//g; s/t//g')
         if [ -n "${IS_WIN32:-}" ]; then
             PYTHON="C:/python/32/Python$version/python.exe"
         else

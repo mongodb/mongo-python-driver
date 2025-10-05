@@ -103,7 +103,7 @@ if sys.platform != "win32":
 
         while sent < len(buf):
             try:
-                sent += sock.send(view[sent:])  # type:ignore[arg-type]
+                sent += sock.send(view[sent:])
             except BLOCKING_IO_ERRORS as exc:
                 fd = sock.fileno()
                 # Check for closed socket.

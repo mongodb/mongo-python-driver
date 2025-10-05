@@ -109,21 +109,6 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
     return variants
 
 
-def create_free_threaded_variants() -> list[BuildVariant]:
-    variants = []
-    for host_name in ("rhel8", "macos", "macos-arm64", "win64"):
-        python = "3.14t"
-        tasks = [".free-threading"]
-        tags = []
-        if host_name == "rhel8":
-            tags.append("pr")
-        host = HOSTS[host_name]
-        display_name = get_variant_name("Free-threaded", host, python=python)
-        variant = create_variant(tasks, display_name, tags=tags, python=python, host=host)
-        variants.append(variant)
-    return variants
-
-
 def create_encryption_variants() -> list[BuildVariant]:
     variants = []
     tags = ["encryption_tag"]
@@ -217,8 +202,11 @@ def create_enterprise_auth_variants():
     for host in ["rhel8", "macos", "win64"]:
         expansions = dict(TEST_NAME="enterprise_auth", AUTH="auth")
         display_name = get_variant_name("Auth Enterprise", host)
-        tasks = [".test-non-standard .auth"]
-        if host != "rhel8":
+        tasks = [".test-non-standard .auth !.free-threaded"]
+        # https://jira.mongodb.org/browse/PYTHON-5586
+        if host == "macos":
+            tasks = [".test-non-standard !.pypy .auth !.free-threaded"]
+        if host == "win64":
             tasks = [".test-non-standard !.pypy .auth"]
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
@@ -302,7 +290,7 @@ def create_green_framework_variants():
     variants = []
     host = DEFAULT_HOST
     for framework in ["gevent"]:
-        tasks = [".test-standard .sync"]
+        tasks = [".test-standard .sync !.free-threaded"]
         expansions = dict(GREEN_FRAMEWORK=framework)
         display_name = get_variant_name(f"Green {framework.capitalize()}", host)
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
@@ -540,7 +528,9 @@ def create_server_version_tasks():
                 seen.add(combo)
                 tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
-        if python not in PYPYS:
+        if "t" in python:
+            tags.append("free-threaded")
+        if python not in PYPYS and "t" not in python:
             expansions["COVERAGE"] = "1"
         name = get_task_name(
             "test-server-version",
@@ -596,6 +586,8 @@ def create_test_non_standard_tasks():
             f"{topology}-{auth}-{ssl}",
             auth,
         ]
+        if "t" in python:
+            tags.append("free-threaded")
         if python in PYPYS:
             tags.append("pypy")
         if pr:
@@ -646,6 +638,8 @@ def create_standard_tasks():
             f"{topology}-{auth}-{ssl}",
             sync,
         ]
+        if "t" in python:
+            tags.append("free-threaded")
         if python in PYPYS:
             tags.append("pypy")
         if pr:
@@ -716,6 +710,8 @@ def create_aws_tasks():
         server_func = FunctionCall(func="run server", vars=server_vars)
         assume_func = FunctionCall(func="assume ec2 role")
         tags = [*base_tags, f"auth-aws-{test_type}"]
+        if "t" in python:
+            tags.append("free-threaded")
         name = get_task_name(f"{base_name}-{test_type}", python=python)
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
@@ -731,6 +727,8 @@ def create_aws_tasks():
                 AWS_ROLE_SESSION_NAME="test",
                 PYTHON_VERSION=python,
             )
+            if "t" in python:
+                tags.append("free-threaded")
             test_func = FunctionCall(func="run tests", vars=test_vars)
             funcs = [server_func, assume_func, test_func]
             tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
@@ -757,6 +755,8 @@ def create_mod_wsgi_tasks():
     for (test, topology), python in zip_cycle(
         product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
     ):
+        if "t" in python:
+            continue
         if test == "standalone":
             task_name = "mod-wsgi-"
         else:
@@ -928,15 +928,6 @@ def create_ocsp_tasks():
             tasks.extend(new_tasks)
 
     return tasks
-
-
-def create_free_threading_tasks():
-    vars = dict(VERSION="8.0", TOPOLOGY="replica_set")
-    server_func = FunctionCall(func="run server", vars=vars)
-    test_func = FunctionCall(func="run tests")
-    task_name = "test-free-threading"
-    tags = ["free-threading"]
-    return [EvgTask(name=task_name, tags=tags, commands=[server_func, test_func])]
 
 
 ##############
