@@ -39,7 +39,7 @@ jobs:
       - name: Make sure the lock file is up to date
         run: |
           env
-          uv lock
+          uv lock --no-config
       - name: Run linters
         run: |
           just lint-manual
