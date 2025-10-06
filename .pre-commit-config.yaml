@@ -125,7 +125,7 @@ repos:
 
   - id: uv-lock
     name: uv-lock
-    entry: uv lock
+    entry: python -m uv lock
     language: python
     require_serial: true
     files: ^(uv\.lock|pyproject\.toml|requirements.txt|requirements/.*\.txt)$
