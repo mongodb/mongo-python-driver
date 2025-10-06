@@ -37,7 +37,9 @@ jobs:
           just install
 
       - name: Make sure the lock file is up to date
-        run: uv lock
+        run: |
+          env
+          uv lock
       - name: Run linters
         run: |
           just lint-manual
