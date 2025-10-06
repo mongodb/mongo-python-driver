@@ -17,7 +17,7 @@ if [ -f $HERE/test-env.sh ]; then
 fi
 
 # Ensure dependencies are installed.
-bash $HERE/install-dependencies.sh
+# bash $HERE/install-dependencies.sh
 
 # Get the appropriate UV_PYTHON.
 . $ROOT/.evergreen/utils.sh
