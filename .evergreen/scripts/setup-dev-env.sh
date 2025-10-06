@@ -7,7 +7,10 @@ HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 ROOT=$(dirname "$(dirname $HERE)")
 pushd $ROOT > /dev/null
 
-exit 0
+# Bail early if running on GitHub Actions.
+if [ -n "${GITHUB_ACTION:-}" ]; then
+  exit 0
+fi
 
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
