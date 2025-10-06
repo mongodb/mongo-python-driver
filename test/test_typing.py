@@ -69,7 +69,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, PyMongoTestCase, client_context
 
-from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
+from bson import CodecOptions, ObjectId, decode, decode_all, decode_file_iter, decode_iter, encode
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import ASCENDING, MongoClient
@@ -140,6 +140,32 @@ class TestPymongo(IntegrationTest):
         cursor = self.coll.find()
         docs = to_list(cursor)
         self.assertTrue(docs)
+
+    def test_district(self) -> None:
+        self.coll.delete_many({})
+        self.coll.insert_many(
+            [
+                {"_id": None},
+                {"_id": 0},
+                {"_id": ""},
+                {"_id": ObjectId()},
+                {"_id": True},
+            ]
+        )
+
+        def collection_distinct(
+            collection: Collection,
+        ) -> list[None | int | str | ObjectId | bool]:
+            return collection.distinct("_id")
+
+        def cursor_distinct(
+            collection: Collection,
+        ) -> list[None | int | str | ObjectId | bool]:
+            cursor = collection.find()
+            return cursor.distinct("_id")
+
+        collection_distinct(self.coll)
+        cursor_distinct(self.coll)
 
     @only_type_check
     def test_bulk_write(self) -> None:
