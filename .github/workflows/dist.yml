@@ -99,7 +99,7 @@ jobs:
 
   make_sdist:
     name: Make SDist
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
         with:
