@@ -36,5 +36,3 @@ All code should be tested in some way – so please list what your validation st
 
 ## Focus Areas for Reviewer (optional)
 <!-- List any complex portion of code you believe needs additional scrutiny and explain why. -->
-
-<!-- See also: https://docs.google.com/document/d/1Z-z6BDIBJ9G4fn4MBb7Ql5A1NiSY6nsLfEE3KuU_Btw/edit?tab=t.exaie3tsb7gl#heading=h.asd8fqlsyzb6 -->
