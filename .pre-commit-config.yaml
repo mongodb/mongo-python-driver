@@ -125,7 +125,7 @@ repos:
 
   - id: uv-lock
     name: uv-lock
-    entry: uv lock
+    entry: bash ./tools/update-locks.sh
     language: python
     require_serial: true
     files: ^(uv\.lock|pyproject\.toml|requirements.txt|requirements/.*\.txt)$
