@@ -7,6 +7,8 @@ HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 ROOT=$(dirname "$(dirname $HERE)")
 pushd $ROOT > /dev/null
 
+exit 0
+
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
@@ -17,7 +19,7 @@ if [ -f $HERE/test-env.sh ]; then
 fi
 
 # Ensure dependencies are installed.
-# bash $HERE/install-dependencies.sh
+bash $HERE/install-dependencies.sh
 
 # Get the appropriate UV_PYTHON.
 . $ROOT/.evergreen/utils.sh
@@ -29,8 +31,8 @@ if [ -z "${PYTHON_BINARY:-}" ]; then
       PYTHON_BINARY=$(find_python3)
     fi
 fi
-# export UV_PYTHON=${PYTHON_BINARY}
-# echo "Using python $UV_PYTHON"
+export UV_PYTHON=${PYTHON_BINARY}
+echo "Using python $UV_PYTHON"
 
 # Add the default install path to the path if needed.
 if [ -z "${PYMONGO_BIN_DIR:-}" ]; then

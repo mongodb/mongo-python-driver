@@ -17,7 +17,7 @@ resync:
  @uv sync --quiet
 
 install:
-   #    bash .evergreen/scripts/setup-dev-env.sh
+   bash .evergreen/scripts/setup-dev-env.sh
    uvx pre-commit install
 
 [group('docs')]
