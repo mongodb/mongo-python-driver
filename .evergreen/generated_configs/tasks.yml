@@ -4766,3 +4766,351 @@ tasks:
       - standalone-noauth-nossl
       - noauth
       - pypy
+
+  # Test standard auth tests
+  - name: test-standard-auth-v4.2-python3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.2"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.2"
+          PYTHON_VERSION: "3.10"
+    tags:
+      - test-standard-auth
+      - server-4.2
+      - python-3.10
+      - sharded_cluster-auth-ssl
+      - auth
+  - name: test-standard-auth-v4.2-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.2"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.2"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-standard-auth
+      - server-4.2
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - auth
+      - pypy
+  - name: test-standard-auth-v4.4-python3.11-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.4"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.4"
+          PYTHON_VERSION: "3.11"
+    tags:
+      - test-standard-auth
+      - server-4.4
+      - python-3.11
+      - sharded_cluster-auth-ssl
+      - auth
+  - name: test-standard-auth-v4.4-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.4"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "4.4"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-standard-auth
+      - server-4.4
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - auth
+      - pypy
+  - name: test-standard-auth-v5.0-python3.12-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "5.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "5.0"
+          PYTHON_VERSION: "3.12"
+    tags:
+      - test-standard-auth
+      - server-5.0
+      - python-3.12
+      - sharded_cluster-auth-ssl
+      - auth
+  - name: test-standard-auth-v5.0-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "5.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "5.0"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-standard-auth
+      - server-5.0
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - auth
+      - pypy
+  - name: test-standard-auth-v6.0-python3.13-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "6.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "6.0"
+          PYTHON_VERSION: "3.13"
+    tags:
+      - test-standard-auth
+      - server-6.0
+      - python-3.13
+      - sharded_cluster-auth-ssl
+      - auth
+  - name: test-standard-auth-v6.0-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "6.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "6.0"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-standard-auth
+      - server-6.0
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - auth
+      - pypy
+  - name: test-standard-auth-v7.0-python3.14t-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "7.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "7.0"
+          PYTHON_VERSION: 3.14t
+    tags:
+      - test-standard-auth
+      - server-7.0
+      - python-3.14t
+      - sharded_cluster-auth-ssl
+      - auth
+      - free-threaded
+  - name: test-standard-auth-v7.0-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "7.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "7.0"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-standard-auth
+      - server-7.0
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - auth
+      - pypy
+  - name: test-standard-auth-v8.0-python3.14-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "8.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "8.0"
+          PYTHON_VERSION: "3.14"
+    tags:
+      - test-standard-auth
+      - server-8.0
+      - python-3.14
+      - sharded_cluster-auth-ssl
+      - auth
+  - name: test-standard-auth-v8.0-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "8.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "8.0"
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-standard-auth
+      - server-8.0
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - auth
+      - pypy
+  - name: test-standard-auth-latest-python3.11-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+          PYTHON_VERSION: "3.11"
+    tags:
+      - test-standard-auth
+      - server-latest
+      - python-3.11
+      - sharded_cluster-auth-ssl
+      - auth
+      - pr
+  - name: test-standard-auth-latest-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-standard-auth
+      - server-latest
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - auth
+      - pypy
+  - name: test-standard-auth-rapid-python3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: rapid
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: rapid
+          PYTHON_VERSION: "3.10"
+    tags:
+      - test-standard-auth
+      - server-rapid
+      - python-3.10
+      - sharded_cluster-auth-ssl
+      - auth
+  - name: test-standard-auth-rapid-pypy3.10-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: rapid
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: rapid
+          PYTHON_VERSION: pypy3.10
+    tags:
+      - test-standard-auth
+      - server-rapid
+      - python-pypy3.10
+      - sharded_cluster-auth-ssl
+      - auth
+      - pypy

@@ -574,7 +574,7 @@ def create_test_non_standard_tasks():
     for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
         pr = version == "latest"
         task_combos.add((version, topology, python, pr))
-    # For each PyPy and topology, rotate through the the versions.
+    # For each PyPy and topology, rotate through the MongoDB versions.
     for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
         task_combos.add((version, topology, python, False))
     for version, topology, python, pr in sorted(task_combos):
@@ -594,6 +594,46 @@ def create_test_non_standard_tasks():
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         name = get_task_name("test-non-standard", python=python, **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
+        test_vars["PYTHON_VERSION"] = python
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
+def create_test_standard_auth_tasks():
+    """We only use auth on sharded clusters"""
+    tasks = []
+    task_combos = set()
+    # Rotate through the CPython and MongoDB versions
+    for (version, topology), python in zip_cycle(
+        list(product(ALL_VERSIONS, ["sharded_cluster"])), CPYTHONS
+    ):
+        pr = version == "latest"
+        task_combos.add((version, topology, python, pr))
+    # Rotate through each PyPy and MongoDB versions.
+    for (python, topology), version in zip_cycle(
+        list(product(PYPYS, ["sharded_cluster"])), ALL_VERSIONS
+    ):
+        task_combos.add((version, topology, python, False))
+    for version, topology, python, pr in sorted(task_combos):
+        auth, ssl = get_standard_auth_ssl(topology)
+        tags = [
+            "test-standard-auth",
+            f"server-{version}",
+            f"python-{python}",
+            f"{topology}-{auth}-{ssl}",
+            auth,
+        ]
+        if "t" in python:
+            tags.append("free-threaded")
+        if python in PYPYS:
+            tags.append("pypy")
+        if pr:
+            tags.append("pr")
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
+        name = get_task_name("test-standard-auth", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python
