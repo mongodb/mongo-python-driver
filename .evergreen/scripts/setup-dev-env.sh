@@ -29,8 +29,8 @@ if [ -z "${PYTHON_BINARY:-}" ]; then
       PYTHON_BINARY=$(find_python3)
     fi
 fi
-export UV_PYTHON=${PYTHON_BINARY}
-echo "Using python $UV_PYTHON"
+# export UV_PYTHON=${PYTHON_BINARY}
+# echo "Using python $UV_PYTHON"
 
 # Add the default install path to the path if needed.
 if [ -z "${PYMONGO_BIN_DIR:-}" ]; then

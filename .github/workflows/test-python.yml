@@ -31,9 +31,6 @@ jobs:
           enable-cache: true
           python-version: "3.10"
 
-      - name: Make sure the lock file is up to date
-        run: |
-          uv lock
       - name: Install just
         run: uv tool install rust-just
       - name: Install Python dependencies
