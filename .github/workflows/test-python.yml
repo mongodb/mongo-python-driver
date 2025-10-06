@@ -38,7 +38,7 @@ jobs:
 
       - name: Make sure the lock file is up to date
         run: |
-          uv lock -v
+          uv lock --no-cache
       - name: Run linters
         run: |
           just lint-manual
