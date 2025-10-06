@@ -30,13 +30,11 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.10"
-
       - name: Install just
         run: uv tool install rust-just
       - name: Install Python dependencies
         run: |
           just install
-
       - name: Run linters
         run: |
           just lint-manual
