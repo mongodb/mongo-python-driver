@@ -35,6 +35,9 @@ jobs:
       - name: Install Python dependencies
         run: |
           just install
+
+      - name: Make sure the lock file is up to date
+        run: uv lock
       - name: Run linters
         run: |
           just lint-manual
