@@ -141,7 +141,7 @@ class TestPymongo(IntegrationTest):
         docs = to_list(cursor)
         self.assertTrue(docs)
 
-    def test_district(self) -> None:
+    def test_distinct(self) -> None:
         self.coll.delete_many({})
         self.coll.insert_many(
             [
