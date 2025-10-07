@@ -1064,7 +1064,7 @@ class AsyncCursor(Generic[_DocumentType]):
         """Explicitly close / kill this cursor."""
         await self._die_lock()
 
-    async def distinct(self, key: str) -> list[str]:
+    async def distinct(self, key: str) -> list[Any]:
         """Get a list of distinct values for `key` among all documents
         in the result set of this query.
 

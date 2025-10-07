@@ -1062,7 +1062,7 @@ class Cursor(Generic[_DocumentType]):
         """Explicitly close / kill this cursor."""
         self._die_lock()
 
-    def distinct(self, key: str) -> list[str]:
+    def distinct(self, key: str) -> list[Any]:
         """Get a list of distinct values for `key` among all documents
         in the result set of this query.
 
