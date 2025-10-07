@@ -71,7 +71,7 @@ buildvariants:
   # Aws auth tests
   - name: auth-aws-ubuntu-20
     tasks:
-      - name: .auth-aws
+      - name: .auth-aws !.auth-aws-ecs
     display_name: Auth AWS Ubuntu-20
     run_on:
       - ubuntu2004-small
