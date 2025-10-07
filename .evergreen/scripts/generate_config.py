@@ -438,7 +438,8 @@ def create_aws_auth_variants():
 
     for host_name in ["ubuntu20", "win64", "macos"]:
         expansions = dict()
-        tasks = [".auth-aws"]
+        # PYTHON-5604 - we need to skip ECS tests for now.
+        tasks = [".auth-aws !.auth-aws-ecs"]
         tags = []
         if host_name == "macos":
             tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2"]
