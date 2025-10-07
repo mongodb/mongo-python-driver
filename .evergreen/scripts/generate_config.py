@@ -470,7 +470,8 @@ def create_alternative_hosts_variants():
 
     version = "latest"
     for host_name in OTHER_HOSTS:
-        expansions = dict(VERSION="latest")
+        # Use explicit Python 3.11 binary on the host since the default python3 is 3.9.
+        expansions = dict(VERSION="latest", PYTHON_BINARY="/usr/bin/python3.11")
         handle_c_ext(C_EXTS[0], expansions)
         host = HOSTS[host_name]
         tags = []
