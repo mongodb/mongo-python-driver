@@ -58,7 +58,7 @@ lint-manual *args="": && resync
 
 [group('test')]
 test *args="-v --durations=5 --maxfail=10": && resync
-    uvx --extra test pytest {{args}}
+    uv run --extra test pytest {{args}}
 
 [group('test')]
 run-tests *args: && resync

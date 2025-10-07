@@ -202,12 +202,12 @@ def create_enterprise_auth_variants():
     for host in ["rhel8", "macos", "win64"]:
         expansions = dict(TEST_NAME="enterprise_auth", AUTH="auth")
         display_name = get_variant_name("Auth Enterprise", host)
-        tasks = [".test-non-standard .auth !.free-threaded"]
+        tasks = [".test-standard-auth .auth !.free-threaded"]
         # https://jira.mongodb.org/browse/PYTHON-5586
         if host == "macos":
-            tasks = [".test-non-standard !.pypy .auth !.free-threaded"]
+            tasks = [".test-standard-auth !.pypy .auth !.free-threaded"]
         if host == "win64":
-            tasks = [".test-non-standard !.pypy .auth"]
+            tasks = [".test-standard-auth !.pypy .auth"]
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants
@@ -438,7 +438,8 @@ def create_aws_auth_variants():
 
     for host_name in ["ubuntu20", "win64", "macos"]:
         expansions = dict()
-        tasks = [".auth-aws"]
+        # PYTHON-5604 - we need to skip ECS tests for now.
+        tasks = [".auth-aws !.auth-aws-ecs"]
         tags = []
         if host_name == "macos":
             tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2"]
@@ -469,7 +470,8 @@ def create_alternative_hosts_variants():
 
     version = "latest"
     for host_name in OTHER_HOSTS:
-        expansions = dict(VERSION="latest")
+        # Use explicit Python 3.11 binary on the host since the default python3 is 3.9.
+        expansions = dict(VERSION="latest", PYTHON_BINARY="/usr/bin/python3.11")
         handle_c_ext(C_EXTS[0], expansions)
         host = HOSTS[host_name]
         tags = []
@@ -574,7 +576,7 @@ def create_test_non_standard_tasks():
     for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
         pr = version == "latest"
         task_combos.add((version, topology, python, pr))
-    # For each PyPy and topology, rotate through the the versions.
+    # For each PyPy and topology, rotate through the MongoDB versions.
     for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
         task_combos.add((version, topology, python, False))
     for version, topology, python, pr in sorted(task_combos):
@@ -594,6 +596,46 @@ def create_test_non_standard_tasks():
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         name = get_task_name("test-non-standard", python=python, **expansions)
+        server_func = FunctionCall(func="run server", vars=expansions)
+        test_vars = expansions.copy()
+        test_vars["PYTHON_VERSION"] = python
+        test_func = FunctionCall(func="run tests", vars=test_vars)
+        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+    return tasks
+
+
+def create_test_standard_auth_tasks():
+    """We only use auth on sharded clusters"""
+    tasks = []
+    task_combos = set()
+    # Rotate through the CPython and MongoDB versions
+    for (version, topology), python in zip_cycle(
+        list(product(ALL_VERSIONS, ["sharded_cluster"])), CPYTHONS
+    ):
+        pr = version == "latest"
+        task_combos.add((version, topology, python, pr))
+    # Rotate through each PyPy and MongoDB versions.
+    for (python, topology), version in zip_cycle(
+        list(product(PYPYS, ["sharded_cluster"])), ALL_VERSIONS
+    ):
+        task_combos.add((version, topology, python, False))
+    for version, topology, python, pr in sorted(task_combos):
+        auth, ssl = get_standard_auth_ssl(topology)
+        tags = [
+            "test-standard-auth",
+            f"server-{version}",
+            f"python-{python}",
+            f"{topology}-{auth}-{ssl}",
+            auth,
+        ]
+        if "t" in python:
+            tags.append("free-threaded")
+        if python in PYPYS:
+            tags.append("pypy")
+        if pr:
+            tags.append("pr")
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
+        name = get_task_name("test-standard-auth", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["PYTHON_VERSION"] = python

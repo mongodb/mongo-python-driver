@@ -9,6 +9,7 @@ buildvariants:
     batchtime: 1440
     expansions:
       VERSION: latest
+      PYTHON_BINARY: /usr/bin/python3.11
       NO_EXT: "1"
       REQUIRE_FIPS: "1"
     tags: []
@@ -21,6 +22,7 @@ buildvariants:
     batchtime: 1440
     expansions:
       VERSION: latest
+      PYTHON_BINARY: /usr/bin/python3.11
       NO_EXT: "1"
     tags: []
   - name: other-hosts-rhel8-power8-latest
@@ -32,6 +34,7 @@ buildvariants:
     batchtime: 1440
     expansions:
       VERSION: latest
+      PYTHON_BINARY: /usr/bin/python3.11
       NO_EXT: "1"
     tags: []
   - name: other-hosts-rhel8-arm64-latest
@@ -43,6 +46,7 @@ buildvariants:
     batchtime: 1440
     expansions:
       VERSION: latest
+      PYTHON_BINARY: /usr/bin/python3.11
       NO_EXT: "1"
     tags: []
   - name: other-hosts-amazon2023-latest
@@ -54,6 +58,7 @@ buildvariants:
     batchtime: 1440
     expansions:
       VERSION: latest
+      PYTHON_BINARY: /usr/bin/python3.11
       NO_EXT: "1"
     tags: [pr]
 
@@ -71,7 +76,7 @@ buildvariants:
   # Aws auth tests
   - name: auth-aws-ubuntu-20
     tasks:
-      - name: .auth-aws
+      - name: .auth-aws !.auth-aws-ecs
     display_name: Auth AWS Ubuntu-20
     run_on:
       - ubuntu2004-small
@@ -244,7 +249,7 @@ buildvariants:
   # Enterprise auth tests
   - name: auth-enterprise-rhel8
     tasks:
-      - name: .test-non-standard .auth !.free-threaded
+      - name: .test-standard-auth .auth !.free-threaded
     display_name: Auth Enterprise RHEL8
     run_on:
       - rhel87-small
@@ -253,7 +258,7 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-macos
     tasks:
-      - name: .test-non-standard !.pypy .auth !.free-threaded
+      - name: .test-standard-auth !.pypy .auth !.free-threaded
     display_name: Auth Enterprise macOS
     run_on:
       - macos-14
@@ -262,7 +267,7 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-win64
     tasks:
-      - name: .test-non-standard !.pypy .auth
+      - name: .test-standard-auth !.pypy .auth
     display_name: Auth Enterprise Win64
     run_on:
       - windows-64-vsMulti-small
