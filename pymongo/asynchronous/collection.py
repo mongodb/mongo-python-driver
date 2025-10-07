@@ -3150,7 +3150,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Optional[Any] = None,
         hint: Optional[_IndexKeyHint] = None,
         **kwargs: Any,
-    ) -> list[str]:
+    ) -> list[Any]:
         """Get a list of distinct values for `key` among all documents
         in this collection.
 
