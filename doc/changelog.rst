@@ -8,8 +8,8 @@ Version 4.15.3 is a bug fix release.
 
 - Fixed a memory leak when raising :class:`bson.errors.InvalidDocument` with C extensions.
 - Fixed the return type of the  :meth:`~pymongo.asynchronous.collection.AsyncCollection.distinct`,
-  :meth:`~pymongo.synchronous.collection.Collection.distinct`, :meth:`pymongo.synchronous.cursor.Cursor.distinct` and
-  :meth:`pymongo.asynchronous.cursor.AsyncCursor.distinct` methods.
+  :meth:`~pymongo.synchronous.collection.Collection.distinct`, :meth:`pymongo.asynchronous.cursor.AsyncCursor.distinct`,
+  and :meth:`pymongo.asynchronous.cursor.AsyncCursor.distinct` methods.
 
 Issues Resolved
 ...............
