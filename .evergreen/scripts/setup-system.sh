@@ -17,7 +17,7 @@ if [ -z "${CI:-}" ]; then
     set +u
     SSH_TTY=1 source $HOME/.visualStudioEnv.sh
     set -u
-  if
+  fi
   bash $HERE/setup-dev-env.sh evergreen
 fi
 

@@ -9,7 +9,7 @@ pushd $ROOT > /dev/null
 
 # Set up the uv environment if we're running on evergreen.
 if [ "${1:-}" == "evergreen" ]; then
-  bash $HERE/scripts/setup-uv-python.sh
+  bash $HERE/setup-uv-python.sh
 fi
 
 # Source the env files to pick up common variables.
