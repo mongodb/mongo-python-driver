@@ -10,6 +10,18 @@ source .evergreen/scripts/env.sh
 bash $DRIVERS_TOOLS/.evergreen/setup.sh
 popd
 
+# Run spawn host-specific tasks.
+if [ -z "${CI:-}" ]; then
+  # Set up build utilities on Windows.
+  if [ -f $HOME/.visualStudioEnv.sh ]; then
+    set +u
+    SSH_TTY=1 source $HOME/.visualStudioEnv.sh
+    set -u
+  if
+  bash $HERE/setup-uv-python.sh
+  bash $HERE/setup-dev-env.sh
+fi
+
 # Enable core dumps if enabled on the machine
 # Copied from https://github.com/mongodb/mongo/blob/master/etc/evergreen.yml
 if [ -f /proc/self/coredump_filter ]; then
@@ -36,14 +48,6 @@ if [ "$(uname -s)" = "Darwin" ]; then
         ulimit -c unlimited
     fi
 fi
-
-# Set up visual studio env on Windows spawn hosts.
-if [ -z "CI" ] && [ -f $HOME/.visualStudioEnv.sh ]; then
-  set +u
-  SSH_TTY=1 source $HOME/.visualStudioEnv.sh
-  set -u
-fi
-
 
 if [ -w /etc/hosts ]; then
   SUDO=""
