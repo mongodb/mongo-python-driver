@@ -23,7 +23,11 @@
     {
       "client": {
         "id": "failPointClient",
-        "useMultipleMongoses": false
+        "useMultipleMongoses": false,
+        "uriOptions": {
+          "socketTimeoutMS": 500,
+          "connectTimeoutMS": 500
+        }
       }
     },
     {
