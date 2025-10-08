@@ -47,3 +47,5 @@ if [ -z "${UV_PYTHON:-}" ]; then
     echo "UV_PYTHON=$UV_PYTHON" >> $HERE/test-env.sh
   fi
 fi
+
+popd > /dev/null
