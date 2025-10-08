@@ -438,8 +438,7 @@ def create_aws_auth_variants():
 
     for host_name in ["ubuntu20", "win64", "macos"]:
         expansions = dict()
-        # PYTHON-5604 - we need to skip ECS tests for now.
-        tasks = [".auth-aws !.auth-aws-ecs"]
+        tasks = [".auth-aws"]
         tags = []
         if host_name == "macos":
             tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2"]
@@ -1099,10 +1098,10 @@ def create_run_tests_func():
         "AWS_SECRET_ACCESS_KEY",
         "AWS_SESSION_TOKEN",
         "COVERAGE",
+        "PYTHON_VERSION",
         "PYTHON_BINARY",
         "LIBMONGOCRYPT_URL",
         "MONGODB_URI",
-        "PYTHON_VERSION",
         "DISABLE_TEST_COMMANDS",
         "GREEN_FRAMEWORK",
         "NO_EXT",

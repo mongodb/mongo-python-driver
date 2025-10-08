@@ -194,7 +194,7 @@ the pages will re-render and the browser will automatically refresh.
 
 -   Run `just install` to set a local virtual environment, or you can manually
     create a virtual environment and run `pytest` directly.  If you want to use a specific
-    version of Python, remove the `.venv` folder and set `PYTHON_BINARY` before running `just install`.
+    version of Python, set `UV_PYTHON` before running `just install`.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
     [`run-orchestration.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-orchestration.sh).  Run `$DRIVERS_TOOLS/evergreen/run-orchestration.sh -h`
@@ -335,7 +335,7 @@ Locally you can run:
 
 - Run `just run-server`.
 - Run `just setup-tests`.
-- Run `UV_PYTHON=3.13t just run-tests`.
+- Run `UV_PYTHON=3.14t just run-tests`.
 
 ### AWS Lambda tests
 

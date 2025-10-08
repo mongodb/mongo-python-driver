@@ -133,41 +133,15 @@ def create_variant(
     *,
     version: str | None = None,
     host: Host | str | None = None,
-    python: str | None = None,
     expansions: dict | None = None,
     **kwargs: Any,
 ) -> BuildVariant:
     expansions = expansions and expansions.copy() or dict()
     if version:
         expansions["VERSION"] = version
-    if python:
-        expansions["PYTHON_BINARY"] = get_python_binary(python, host)
     return create_variant_generic(
         tasks, display_name, version=version, host=host, expansions=expansions, **kwargs
     )
-
-
-def get_python_binary(python: str, host: Host) -> str:
-    """Get the appropriate python binary given a python version and host."""
-    name = host.name
-    if name in ["win64", "win32"]:
-        if name == "win32":
-            base = "C:/python/32"
-        else:
-            base = "C:/python"
-        python_dir = python.replace(".", "").replace("t", "")
-        return f"{base}/Python{python_dir}/python{python}.exe"
-
-    if name in ["rhel8", "ubuntu22", "ubuntu20", "rhel7"]:
-        return f"/opt/python/{python}/bin/python3"
-
-    if name in ["macos", "macos-arm64"]:
-        bin_name = "python3t" if "t" in python else "python3"
-        python_dir = python.replace("t", "")
-        framework_dir = "PythonT" if "t" in python else "Python"
-        return f"/Library/Frameworks/{framework_dir}.Framework/Versions/{python_dir}/bin/{bin_name}"
-
-    raise ValueError(f"no match found for python {python} on {name}")
 
 
 def get_versions_from(min_version: str) -> list[str]:

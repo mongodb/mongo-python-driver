@@ -8,7 +8,6 @@ echo "Setting up system..."
 bash .evergreen/scripts/configure-env.sh
 source .evergreen/scripts/env.sh
 bash $DRIVERS_TOOLS/.evergreen/setup.sh
-bash .evergreen/scripts/install-dependencies.sh
 popd
 
 # Enable core dumps if enabled on the machine
@@ -37,6 +36,14 @@ if [ "$(uname -s)" = "Darwin" ]; then
         ulimit -c unlimited
     fi
 fi
+
+# Set up visual studio env on Windows spawn hosts.
+if [ -z "CI" ] && [ -f $HOME/.visualStudioEnv.sh ]; then
+  set +u
+  SSH_TTY=1 source $HOME/.visualStudioEnv.sh
+  set -u
+fi
+
 
 if [ -w /etc/hosts ]; then
   SUDO=""

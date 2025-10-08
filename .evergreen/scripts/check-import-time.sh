@@ -11,11 +11,10 @@ pushd $HERE/../.. >/dev/null
 BASE_SHA="$1"
 HEAD_SHA="$2"
 
-. .evergreen/utils.sh
-
-if [ -z "${PYTHON_BINARY:-}" ]; then
-    PYTHON_BINARY=$(find_python3)
-fi
+# Set up the virtual env.
+bash setup-dev-env.sh
+uv venv --seed
+source .venv/bin/activate
 
 # Use the previous commit if this was not a PR run.
 if [ "$BASE_SHA" == "$HEAD_SHA" ]; then
@@ -24,7 +23,6 @@ fi
 
 function get_import_time() {
     local log_file
-    createvirtualenv "$PYTHON_BINARY" import-venv
     python -m pip install -q ".[aws,encryption,gssapi,ocsp,snappy,zstd]"
     # Import once to cache modules
     python -c "import pymongo"

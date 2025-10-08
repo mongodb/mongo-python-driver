@@ -76,7 +76,7 @@ buildvariants:
   # Aws auth tests
   - name: auth-aws-ubuntu-20
     tasks:
-      - name: .auth-aws !.auth-aws-ecs
+      - name: .auth-aws
     display_name: Auth AWS Ubuntu-20
     run_on:
       - ubuntu2004-small
@@ -463,8 +463,6 @@ buildvariants:
     display_name: Search Index Helpers RHEL8 Python3.10
     run_on:
       - rhel87-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.10/bin/python3
 
   # Server version tests
   - name: mongodb-v4.2

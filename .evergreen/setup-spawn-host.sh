@@ -16,4 +16,5 @@ rsync -az -e ssh --exclude '.git' --filter=':- .gitignore' -r . $target:$remote_
 echo "Copying files to $target... done"
 
 ssh $target $remote_dir/.evergreen/scripts/setup-system.sh
-ssh $target "cd $remote_dir && PYTHON_BINARY=${PYTHON_BINARY:-} .evergreen/scripts/setup-dev-env.sh"
+ssh $target "cd $remote_dir && PYTHON_VERSION=${PYTHON_VERSION:-} .evergreen/scripts/setup-uv-python.sh"
+ssh $target "cd $remote_dir && .evergreen/scripts/setup-dev-env.sh"
