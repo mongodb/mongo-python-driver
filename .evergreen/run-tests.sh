@@ -37,6 +37,7 @@ cleanup_tests() {
 trap "cleanup_tests" SIGINT ERR
 
 # Start the test runner.
+set -x
 uv run ${UV_ARGS} --reinstall-package pymongo .evergreen/scripts/run_tests.py "$@"
 
 cleanup_tests
