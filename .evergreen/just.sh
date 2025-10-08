@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eu
+set -eux
 
 bash .evergreen/scripts/setup-uv-python.sh
 . .evergreen/scripts/setup-dev-env.sh
