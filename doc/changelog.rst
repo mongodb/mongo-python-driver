@@ -17,6 +17,24 @@ PyMongo 4.16 brings a number of changes including:
 - Removed support for Eventlet.
   Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
 
+Changes in Version 4.15.3 (2025/10/07)
+--------------------------------------
+
+Version 4.15.3 is a bug fix release.
+
+- Fixed a memory leak when raising :class:`bson.errors.InvalidDocument` with C extensions.
+- Fixed the return type of the  :meth:`~pymongo.asynchronous.collection.AsyncCollection.distinct`,
+  :meth:`~pymongo.synchronous.collection.Collection.distinct`, :meth:`pymongo.asynchronous.cursor.AsyncCursor.distinct`,
+  and :meth:`pymongo.asynchronous.cursor.AsyncCursor.distinct` methods.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.15.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.15.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47293
+
 Changes in Version 4.15.2 (2025/10/01)
 --------------------------------------
 
