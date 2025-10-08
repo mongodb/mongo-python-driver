@@ -40,6 +40,7 @@ trap "cleanup_tests" SIGINT ERR
 if [ -n "${UV_PYTHON:-}" ]; then
   echo "Using UV_PYTHON=$UV_PYTHON"
 fi
+set -x
 uv run ${UV_ARGS} -v --reinstall-package pymongo .evergreen/scripts/run_tests.py "$@"
 
 cleanup_tests
