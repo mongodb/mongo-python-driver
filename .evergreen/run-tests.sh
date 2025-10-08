@@ -39,9 +39,8 @@ trap "cleanup_tests" SIGINT ERR
 # Start the test runner.
 if [ -n "${UV_PYTHON:-}" ]; then
   echo "Using UV_PYTHON=$UV_PYTHON"
-  /opt/python/3.14/bin/python3 -V
 fi
 set -x
-uv run ${UV_ARGS} -v --reinstall-package pymongo .evergreen/scripts/run_tests.py "$@"
+uv run ${UV_ARGS} --python $UV_PYTHON --reinstall-package pymongo .evergreen/scripts/run_tests.py "$@"
 
 cleanup_tests
