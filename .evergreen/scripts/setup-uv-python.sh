@@ -22,6 +22,7 @@ if [ -z "${UV_PYTHON:-}" ]; then
   if [ -n "${PYTHON_BINARY:-}" ]; then
     echo "UV_PYTHON=$PYTHON_BINARY" >> $HERE/env.sh
   elif [ -n "${PYTHON_VERSION:-}" ]; then
+    version=$PYTHON_VERSION
     if [ "$(uname -s)" = "Darwin" ]; then
         if [[ "$version" == *"t"* ]]; then
             binary_name="python3t"
