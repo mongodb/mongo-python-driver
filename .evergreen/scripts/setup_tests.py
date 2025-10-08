@@ -6,7 +6,6 @@ import os
 import platform
 import shutil
 import stat
-import sys
 import tarfile
 from pathlib import Path
 from urllib import request
@@ -463,11 +462,6 @@ def handle_test_env() -> None:
         UV_ARGS.append("--group coverage")
         TEST_ARGS = f"{TEST_ARGS} --cov"
         write_env("COVERAGE")
-
-    # TODO: remove as part of PYTHON-5561
-    if test_name in ["encryption", "oscp"]:
-        if sys.implementation.name.lower() == "pypy" and sys.version_info < (3, 11):
-            UV_ARGS.append("--with cryptography<46")
 
     if opts.green_framework:
         framework = opts.green_framework or os.environ["GREEN_FRAMEWORK"]

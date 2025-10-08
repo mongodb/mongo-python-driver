@@ -128,7 +128,8 @@ def create_encryption_variants() -> list[BuildVariant]:
     ):
         expansions = get_encryption_expansions(encryption)
         display_name = get_variant_name(encryption, host, **expansions)
-        tasks = [".test-non-standard", ".test-min-deps"]
+        # TODO: PYTHON-5612
+        tasks = [".test-non-standard !.pypy", ".test-min-deps"]
         if host != "rhel8":
             tasks = [".test-non-standard !.pypy"]
         variant = create_variant(
@@ -147,7 +148,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     expansions = get_encryption_expansions(encryption)
     display_name = get_variant_name(encryption, host, **expansions)
     variant = create_variant(
-        [".test-non-standard"],
+        [".test-non-standard !.pypy"],  # TODO: PYTHON-5612
         display_name,
         host=host,
         expansions=expansions,
