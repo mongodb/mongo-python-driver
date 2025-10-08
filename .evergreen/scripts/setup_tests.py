@@ -152,6 +152,11 @@ def handle_test_env() -> None:
     SSL = "ssl" if opts.ssl else "nossl"
     TEST_ARGS = ""
 
+    import sys
+
+    print(os.environ["UV_PYTHON"])
+    sys.exit(1)
+
     # Start compiling the args we'll pass to uv.
     UV_ARGS = ["--extra test --no-group dev"]
 
