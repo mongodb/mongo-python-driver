@@ -6,6 +6,7 @@ import os
 import platform
 import shutil
 import stat
+import sys
 import tarfile
 from pathlib import Path
 from urllib import request
@@ -152,13 +153,12 @@ def handle_test_env() -> None:
     SSL = "ssl" if opts.ssl else "nossl"
     TEST_ARGS = ""
 
-    import sys
-
-    print(os.environ["UV_PYTHON"])
-    sys.exit(1)
-
     # Start compiling the args we'll pass to uv.
     UV_ARGS = ["--extra test --no-group dev"]
+
+    # TODO: remove as part of PYTHON-5561
+    if sys.implementation.name.lower() == "pypy" and sys.version_info < (3, 11):
+        UV_ARGS.append("--with cryptography<46")
 
     test_title = test_name
     if sub_test_name:
