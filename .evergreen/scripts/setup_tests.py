@@ -157,8 +157,9 @@ def handle_test_env() -> None:
     UV_ARGS = ["--extra test --no-group dev"]
 
     # TODO: remove as part of PYTHON-5561
-    if sys.implementation.name.lower() == "pypy" and sys.version_info < (3, 11):
-        UV_ARGS.append("--with cryptography<46")
+    if test_name in ["encryption", "oscp"]:
+        if sys.implementation.name.lower() == "pypy" and sys.version_info < (3, 11):
+            UV_ARGS.append("--with cryptography<46")
 
     test_title = test_name
     if sub_test_name:
