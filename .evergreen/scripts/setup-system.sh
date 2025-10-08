@@ -18,8 +18,7 @@ if [ -z "${CI:-}" ]; then
     SSH_TTY=1 source $HOME/.visualStudioEnv.sh
     set -u
   if
-  bash $HERE/setup-uv-python.sh
-  bash $HERE/setup-dev-env.sh
+  bash $HERE/setup-dev-env.sh evergreen
 fi
 
 # Enable core dumps if enabled on the machine
