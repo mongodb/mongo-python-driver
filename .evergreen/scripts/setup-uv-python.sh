@@ -20,7 +20,7 @@ fi
 # Translate PYTHON_BINARY/PYTHON_VERSION to UV_PYTHON.
 if [ -z "${UV_PYTHON:-}" ]; then
   if [ -n "${PYTHON_BINARY:-}" ]; then
-    echo "UV_PYTHON=$PYTHON_BINARY" >> $HERE/test-env.sh
+    echo "UV_PYTHON=$PYTHON_BINARY" >> $HERE/env.sh
   elif [ -n "${PYTHON_VERSION:-}" ]; then
     if [ "$(uname -s)" = "Darwin" ]; then
         if [[ "$version" == *"t"* ]]; then
@@ -44,7 +44,7 @@ if [ -z "${UV_PYTHON:-}" ]; then
     else
         UV_PYTHON="${PYTHON_VERSION}"
     fi
-    echo "UV_PYTHON=$UV_PYTHON" >> $HERE/test-env.sh
+    echo "UV_PYTHON=$UV_PYTHON" >> $HERE/env.sh
   fi
 fi
 

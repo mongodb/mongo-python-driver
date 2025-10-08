@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install the necessary dependencies.
-set -eu
+set -eux
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
@@ -30,7 +30,7 @@ fi
 
 # Ensure just is installed.
 if ! command -v just &>/dev/null; then
-  uv tool install just
+  uv tool install rust-just
 fi
 
 popd > /dev/null
