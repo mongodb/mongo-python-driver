@@ -28,16 +28,6 @@
     },
     {
       "client": {
-        "id": "failPointClientTimeout",
-        "useMultipleMongoses": false,
-        "uriOptions": {
-          "socketTimeoutMS": 500,
-          "connectTimeoutMS": 500
-        }
-      }
-    },
-    {
-      "client": {
         "id": "singleClient",
         "useMultipleMongoses": false,
         "uriOptions": {
@@ -412,7 +402,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClientTimeout",
+            "client": "failPointClient",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
@@ -423,7 +413,8 @@
                   "getMore"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 1000
+                "blockTimeMS": 1000,
+                "appName": "lbSDAMErrorTestClient"
               }
             }
           }
