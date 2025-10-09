@@ -19,6 +19,10 @@ fi
 # Now we can safely enable xtrace
 set -o xtrace
 
+# Install a c compiler.
+apt-get -qq update  < /dev/null > /dev/null
+apt-get -q install -y build-essential
+
 export SET_XTRACE_ON=1
 cd src
 rm -rf .venv
