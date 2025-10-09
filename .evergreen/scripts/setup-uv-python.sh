@@ -1,6 +1,6 @@
 #!/bin/bash
 # Set up the UV_PYTHON variable.
-set -eu
+set -eux
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
