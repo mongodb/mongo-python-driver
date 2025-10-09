@@ -134,10 +134,10 @@ functions:
           - AWS_SECRET_ACCESS_KEY
           - AWS_SESSION_TOKEN
           - COVERAGE
-          - PYTHON_VERSION
           - PYTHON_BINARY
           - LIBMONGOCRYPT_URL
           - MONGODB_URI
+          - PYTHON_VERSION
           - DISABLE_TEST_COMMANDS
           - GREEN_FRAMEWORK
           - NO_EXT

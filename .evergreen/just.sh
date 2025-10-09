@@ -3,5 +3,4 @@ set -eu
 
 . .evergreen/scripts/setup-dev-env.sh ensure-uv
 
-env
 just "$@"

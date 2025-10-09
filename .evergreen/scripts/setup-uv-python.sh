@@ -18,34 +18,34 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
+set -x
+
 # Translate PYTHON_BINARY/PYTHON_VERSION to UV_PYTHON.
 if [ -z "${UV_PYTHON:-}" ]; then
   if [ -n "${PYTHON_BINARY:-}" ]; then
     _python=$PYTHON_BINARY
 
   elif [ -n "${PYTHON_VERSION:-}" ]; then
-    version=$PYTHON_VERSION
+    _python=$PYTHON_VERSION
     if [ "$(uname -s)" = "Darwin" ]; then
-        if [[ "$version" == *"t"* ]]; then
+        if [[ "$_python" == *"t"* ]]; then
             binary_name="python3t"
             framework_dir="PythonT"
         else
             binary_name="python3"
             framework_dir="Python"
         fi
-        version=$(echo "$version" | sed 's/t//g')
-        _python="/Library/Frameworks/$framework_dir.Framework/Versions/$version/bin/$binary_name"
+        _python=$(echo "$_python" | sed 's/t//g')
+        _python="/Library/Frameworks/$framework_dir.Framework/Versions/$_python/bin/$binary_name"
     elif [ "Windows_NT" = "${OS:-}" ]; then
-        version=$(echo $version | cut -d. -f1,2 | sed 's/\.//g; s/t//g')
+        _python=$(echo $_python | cut -d. -f1,2 | sed 's/\.//g; s/t//g')
         if [ -n "${IS_WIN32:-}" ]; then
-            _python="C:/python/32/Python$version/python.exe"
+            _python="C:/python/32/Python$_python/python.exe"
         else
-            _python="C:/python/Python$version/python.exe"
+            _python="C:/python/Python$_python/python.exe"
         fi
-    elif [ -d "/opt/python/$version/bin" ]; then
-        _python="/opt/python/$version/bin/python3"
-    else
-        _python="${PYTHON_VERSION}"
+    elif [ -d "/opt/python/$_python/bin" ]; then
+        _python="/opt/python/$_python/bin/python3"
     fi
   fi
   echo "export UV_PYTHON=$_python" >> $HERE/env.sh
