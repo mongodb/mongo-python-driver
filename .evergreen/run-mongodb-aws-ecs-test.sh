@@ -23,5 +23,6 @@ export SET_XTRACE_ON=1
 cd src
 rm -rf .venv
 rm -f .evergreen/scripts/test-env.sh || true
+rm -f .evergreen/scripts/env.sh || true
 bash ./.evergreen/just.sh setup-tests auth_aws ecs-remote
 bash .evergreen/just.sh run-tests
