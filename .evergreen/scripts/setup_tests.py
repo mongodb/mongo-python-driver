@@ -154,10 +154,6 @@ def handle_test_env() -> None:
     # Start compiling the args we'll pass to uv.
     UV_ARGS = ["--extra test --no-group dev"]
 
-    # If UV_PYTHON is set, add it to args.
-    if is_set("UV_PYTHON"):
-        UV_ARGS.extend(["--python", os.environ["UV_PYTHON"]])
-
     test_title = test_name
     if sub_test_name:
         test_title += f" {sub_test_name}"
