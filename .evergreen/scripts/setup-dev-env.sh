@@ -6,7 +6,7 @@ HERE=$(dirname ${BASH_SOURCE:-$0})
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 ROOT=$(dirname "$(dirname $HERE)")
 
-# Set up the uv environment if we're running on evergreen.
+# Set up the uv environment if indicated.
 if [ "${1:-}" == "ensure-uv" ]; then
   bash $HERE/setup-uv-python.sh
 fi
@@ -24,8 +24,8 @@ fi
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
-# Only run the next part if not running on CI.
-if [ -z "${CI:-}" ]; then
+# Only run the next part if not running on CI and there is a git checkout.
+if [ -z "${CI:-}" ] && [ -f $HERE/.git ]; then
   # Add the default install path to the path if needed.
   if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
     export PATH="$PATH:$HOME/.local/bin"
