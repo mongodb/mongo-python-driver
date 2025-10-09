@@ -12,7 +12,7 @@ BASE_SHA="$1"
 HEAD_SHA="$2"
 
 # Set up the virtual env.
-bash $HERE/setup-dev-env.sh
+. $HERE/setup-dev-env.sh
 uv venv --seed
 source .venv/bin/activate
 
