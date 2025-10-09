@@ -18,8 +18,6 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
-set -x
-
 # Translate PYTHON_BINARY/PYTHON_VERSION to UV_PYTHON.
 if [ -z "${UV_PYTHON:-}" ]; then
   if [ -n "${PYTHON_BINARY:-}" ]; then
@@ -48,5 +46,5 @@ if [ -z "${UV_PYTHON:-}" ]; then
         _python="/opt/python/$_python/bin/python3"
     fi
   fi
-  echo "export UV_PYTHON=$_python" >> $HERE/env.sh
+  export UV_PYTHON="$_version"
 fi

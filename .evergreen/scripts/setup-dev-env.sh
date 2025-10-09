@@ -6,11 +6,6 @@ HERE=$(dirname ${BASH_SOURCE:-$0})
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 ROOT=$(dirname "$(dirname $HERE)")
 
-# Set up the uv environment if indicated.
-if [ "${1:-}" == "ensure-uv" ]; then
-  bash $HERE/setup-uv-python.sh
-fi
-
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
@@ -23,6 +18,9 @@ fi
 
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
+
+# Handle the value for UV_PYTHON.
+. $HERE/setup-uv-python.sh
 
 # Only run the next part if not running on CI.
 if [ -z "${CI:-}" ]; then
