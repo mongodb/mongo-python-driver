@@ -32,6 +32,8 @@
         "useMultipleMongoses": false,
         "uriOptions": {
           "appname": "lbSDAMErrorTestClient",
+          "socketTimeoutMS": 500,
+          "connectTimeoutMS": 500,
           "retryWrites": false
         },
         "observeEvents": [
@@ -64,7 +66,9 @@
         "id": "multiClient",
         "useMultipleMongoses": true,
         "uriOptions": {
-          "retryWrites": false
+          "retryWrites": false,
+           "socketTimeoutMS": 500,
+           "connectTimeoutMS": 500
         },
         "observeEvents": [
           "connectionCreatedEvent",
@@ -282,7 +286,8 @@
                   "isMaster",
                   "hello"
                 ],
-                "closeConnection": true,
+                "blockConnection": true,
+                "blockTimeMS": 1000,
                 "appName": "lbSDAMErrorTestClient"
               }
             }
@@ -345,7 +350,8 @@
                 "failCommands": [
                   "saslContinue"
                 ],
-                "closeConnection": true,
+                "blockConnection": true,
+                "blockTimeMS": 1000,
                 "appName": "lbSDAMErrorTestClient"
               }
             }
@@ -406,7 +412,8 @@
                 "failCommands": [
                   "getMore"
                 ],
-                "closeConnection": true
+                "closeConnection": true,
+                "appName": "lbSDAMErrorTestClient"
               }
             }
           }

@@ -256,6 +256,7 @@ class PyMongoBaseProtocol(Protocol):
         self._timeout = timeout
         self._closed = asyncio.get_running_loop().create_future()
         self._connection_lost = False
+        self._closing_exception = None
 
     def settimeout(self, timeout: float | None) -> None:
         self._timeout = timeout
@@ -269,9 +270,11 @@ class PyMongoBaseProtocol(Protocol):
         self.transport.abort()
         self._resolve_pending(exc)
         self._connection_lost = True
+        self._closing_exception = exc  # type:ignore[assignment]
 
     def connection_lost(self, exc: Optional[Exception] = None) -> None:
         self._resolve_pending(exc)
+        self._closing_exception = exc  # type:ignore[assignment]
         if not self._closed.done():
             self._closed.set_result(None)
 
@@ -335,8 +338,11 @@ class PyMongoProtocol(PyMongoBaseProtocol, BufferedProtocol):
         if self._done_messages:
             message = await self._done_messages.popleft()
         else:
-            if self.transport and self.transport.is_closing():
-                raise OSError("connection is already closed")
+            if self._closed.done():
+                if self._closing_exception:
+                    raise self._closing_exception
+                else:
+                    raise OSError("connection closed")
             read_waiter = asyncio.get_running_loop().create_future()
             self._pending_messages.append(read_waiter)
             try:
@@ -474,6 +480,7 @@ class PyMongoProtocol(PyMongoBaseProtocol, BufferedProtocol):
                 else:
                     msg.set_exception(exc)
             self._done_messages.append(msg)
+        self._pending_messages.clear()
 
 
 class PyMongoKMSProtocol(PyMongoBaseProtocol):
