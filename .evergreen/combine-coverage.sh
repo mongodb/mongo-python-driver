@@ -6,7 +6,7 @@
 set -eu
 
 # Set up the virtual env.
-bash setup-dev-env.sh
+bash .evergreen/scripts/setup-dev-env.sh
 uv sync --group coverage
 source .venv/bin/activate
 
