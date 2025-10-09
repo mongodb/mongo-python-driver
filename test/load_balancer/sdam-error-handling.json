@@ -412,8 +412,7 @@
                 "failCommands": [
                   "getMore"
                 ],
-                "blockConnection": true,
-                "blockTimeMS": 1000,
+                "closeConnection": true,
                 "appName": "lbSDAMErrorTestClient"
               }
             }
