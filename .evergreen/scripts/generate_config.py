@@ -469,13 +469,14 @@ def create_alternative_hosts_variants():
 
     version = "latest"
     for host_name in OTHER_HOSTS:
-        # Use explicit Python 3.11 binary on the host since the default python3 is 3.9.
-        expansions = dict(VERSION="latest", PYTHON_BINARY="/usr/bin/python3.11")
+        expansions = dict(VERSION="latest")
         handle_c_ext(C_EXTS[0], expansions)
         host = HOSTS[host_name]
         tags = []
         if "fips" in host_name.lower():
             expansions["REQUIRE_FIPS"] = "1"
+            # Use explicit Python 3.11 binary on the host since the default python3 is 3.9.
+            expansions["PYTHON_BINARY"] = "/usr/bin/python3.11"
         if "amazon" in host_name.lower():
             tags.append("pr")
         variants.append(

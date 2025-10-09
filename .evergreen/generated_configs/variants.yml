@@ -9,9 +9,9 @@ buildvariants:
     batchtime: 1440
     expansions:
       VERSION: latest
-      PYTHON_BINARY: /usr/bin/python3.11
       NO_EXT: "1"
       REQUIRE_FIPS: "1"
+      PYTHON_BINARY: /usr/bin/python3.11
     tags: []
   - name: other-hosts-rhel8-zseries-latest
     tasks:
@@ -22,7 +22,6 @@ buildvariants:
     batchtime: 1440
     expansions:
       VERSION: latest
-      PYTHON_BINARY: /usr/bin/python3.11
       NO_EXT: "1"
     tags: []
   - name: other-hosts-rhel8-power8-latest
@@ -34,7 +33,6 @@ buildvariants:
     batchtime: 1440
     expansions:
       VERSION: latest
-      PYTHON_BINARY: /usr/bin/python3.11
       NO_EXT: "1"
     tags: []
   - name: other-hosts-rhel8-arm64-latest
@@ -46,7 +44,6 @@ buildvariants:
     batchtime: 1440
     expansions:
       VERSION: latest
-      PYTHON_BINARY: /usr/bin/python3.11
       NO_EXT: "1"
     tags: []
   - name: other-hosts-amazon2023-latest
@@ -58,7 +55,6 @@ buildvariants:
     batchtime: 1440
     expansions:
       VERSION: latest
-      PYTHON_BINARY: /usr/bin/python3.11
       NO_EXT: "1"
     tags: [pr]
 
