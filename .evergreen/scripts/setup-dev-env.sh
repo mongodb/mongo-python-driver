@@ -1,13 +1,13 @@
 #!/bin/bash
 # Set up development environment.
-set -eux
+set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 ROOT=$(dirname "$(dirname $HERE)")
 
 # Set up the uv environment if we're running on evergreen.
-if [ "${1:-}" == "evergreen" ]; then
+if [ "${1:-}" == "ensure-uv" ]; then
   bash $HERE/setup-uv-python.sh
 fi
 
@@ -37,7 +37,7 @@ if [ -z "${CI:-}" ]; then
   fi
 
   (
-    cd $ROOT && uv sync --quiet
+    cd $ROOT && uv sync
   )
 
   if ! command -v pre-commit &>/dev/null; then

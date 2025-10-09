@@ -18,7 +18,7 @@ if [ -z "${CI:-}" ]; then
     SSH_TTY=1 source $HOME/.visualStudioEnv.sh
     set -u
   fi
-  bash $HERE/setup-dev-env.sh evergreen
+  bash $HERE/setup-dev-env.sh ensure-uv
 fi
 
 # Enable core dumps if enabled on the machine
