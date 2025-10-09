@@ -5,7 +5,6 @@ set -eux
 HERE=$(dirname ${BASH_SOURCE:-$0})
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 ROOT=$(dirname "$(dirname $HERE)")
-pushd $ROOT > /dev/null
 
 # Set up the uv environment if we're running on evergreen.
 if [ "${1:-}" == "evergreen" ]; then
@@ -37,7 +36,9 @@ if [ -z "${CI:-}" ]; then
     export PYMONGO_C_EXT_MUST_BUILD=1
   fi
 
-  uv sync --quiet
+  (
+    cd $ROOT && uv sync --quiet
+  )
 
   if ! command -v pre-commit &>/dev/null; then
     uv tool install pre-commit
@@ -47,5 +48,3 @@ if [ -z "${CI:-}" ]; then
     uvx pre-commit install
   fi
 fi
-
-popd > /dev/null

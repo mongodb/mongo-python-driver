@@ -1,11 +1,9 @@
 #!/bin/bash
 # Set up the UV_PYTHON variable.
-set -eux
+set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
-ROOT=$(dirname "$(dirname $HERE)")
-pushd $ROOT > /dev/null
 
 # Source the env files to pick up common variables.
 if [ -f $HERE/env.sh ]; then
@@ -48,5 +46,3 @@ if [ -z "${UV_PYTHON:-}" ]; then
     echo "UV_PYTHON=$UV_PYTHON" >> $HERE/env.sh
   fi
 fi
-
-popd > /dev/null
