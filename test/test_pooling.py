@@ -29,6 +29,7 @@ from pymongo import MongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _create_lock
+from pymongo.read_preferences import ReadPreference
 
 sys.path[0:0] = [""]
 
@@ -510,6 +511,39 @@ class TestPooling(_TestPoolingBase):
             "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 500.0ms)",
             str(error.exception),
         )
+
+    @client_context.require_failCommand_appName
+    def test_pool_backpressure_preserves_existing_connections(self):
+        client = self.rs_or_single_client()
+        coll = client.pymongo_test.t
+        pool = get_pool(client)
+        coll.insert_many([{"x": 1} for _ in range(10)])
+        t = SocketGetter(self.c, pool)
+        t.start()
+        while t.state != "connection":
+            time.sleep(0.1)
+
+        assert not t.sock.conn_closed()
+
+        # Mock a session establishment overload.
+        mock_connection_fail = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "closeConnection": True,
+            },
+        }
+
+        with self.fail_point(mock_connection_fail):
+            coll.find_one({})
+
+        # Make sure the existing socket was not affected.
+        assert not t.sock.conn_closed()
+
+        # Cleanup
+        t.release_conn()
+        t.join()
+        pool.close()
 
 
 class TestPoolMaxSize(_TestPoolingBase):

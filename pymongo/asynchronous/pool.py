@@ -19,6 +19,8 @@ import collections
 import contextlib
 import logging
 import os
+import socket
+import ssl
 import sys
 import time
 import weakref
@@ -52,10 +54,12 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     DocumentTooLarge,
     ExecutionTimeout,
     InvalidOperation,
+    NetworkTimeout,
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
     WaitQueueTimeoutError,
+    _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers_shared import _get_timeout_details, format_timeout_details
@@ -769,8 +773,8 @@ class Pool:
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
         self._max_connecting_cond = _async_create_condition(self.lock)
-        self._max_connecting = self.opts.max_connecting
         self._pending = 0
+        self._max_connecting = self.opts.max_connecting
         self._client_id = client_id
         if self.enabled_for_cmap:
             assert self.opts._event_listeners is not None
@@ -1003,6 +1007,21 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
+    def _handle_connection_error(self, error: BaseException) -> None:
+        # Handle system overload condition for non-sdam pools.
+        # Look for errors of type AutoReconnect and add error labels if appropriate.
+        if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
+            return
+        assert isinstance(error, AutoReconnect)  # Appease type checker.
+        # If the original error was a DNS, certificate, or SSL error, ignore it.
+        if isinstance(error.__cause__, (_CertificateError, SSLErrors, socket.gaierror)):
+            # End of file errors are excluded, because the server may have disconnected
+            # during the handshake.
+            if not isinstance(error.__cause__, (ssl.SSLEOFError, ssl.SSLZeroReturnError)):
+                return
+        error._add_error_label("SystemOverloadedError")
+        error._add_error_label("RetryableError")
+
     async def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> AsyncConnection:
         """Connect to Mongo and return a new AsyncConnection.
 
@@ -1054,10 +1073,10 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
+            self._handle_connection_error(error)
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
                 _raise_connection_failure(self.address, error, timeout_details=details)
-
             raise
 
         conn = AsyncConnection(networking_interface, self, self.address, conn_id, self.is_sdam)  # type: ignore[arg-type]
@@ -1066,18 +1085,22 @@ class Pool:
             self.active_contexts.discard(tmp_context)
         if tmp_context.cancelled:
             conn.cancel_context.cancel()
+        completed_hello = False
         try:
             if not self.is_sdam:
                 await conn.hello()
+                completed_hello = True
                 self.is_writable = conn.is_writable
             if handler:
                 handler.contribute_socket(conn, completed_handshake=False)
 
             await conn.authenticate()
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException:
+        except BaseException as e:
             async with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
+            if not completed_hello:
+                self._handle_connection_error(e)
             await conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
@@ -1406,8 +1429,8 @@ class Pool:
         :class:`~pymongo.errors.AutoReconnect` exceptions on server
         hiccups, etc. We only check if the socket was closed by an external
         error if it has been > 1 second since the socket was checked into the
-        pool, to keep performance reasonable - we can't avoid AutoReconnects
-        completely anyway.
+        pool to keep performance reasonable -
+        we can't avoid AutoReconnects completely anyway.
         """
         idle_time_seconds = conn.idle_time_seconds()
         # If socket is idle, open a new one.
@@ -1418,8 +1441,9 @@ class Pool:
             await conn.close_conn(ConnectionClosedReason.IDLE)
             return True
 
-        if self._check_interval_seconds is not None and (
-            self._check_interval_seconds == 0 or idle_time_seconds > self._check_interval_seconds
+        check_interval_seconds = self._check_interval_seconds
+        if check_interval_seconds is not None and (
+            check_interval_seconds == 0 or idle_time_seconds > check_interval_seconds
         ):
             if conn.conn_closed():
                 await conn.close_conn(ConnectionClosedReason.ERROR)

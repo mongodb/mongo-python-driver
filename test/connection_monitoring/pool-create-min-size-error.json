@@ -9,15 +9,13 @@
   ],
   "failPoint": {
     "configureFailPoint": "failCommand",
-    "mode": {
-      "times": 50
-    },
+    "mode": "alwaysOn",
     "data": {
       "failCommands": [
         "isMaster",
         "hello"
       ],
-      "closeConnection": true,
+      "errorCode": 91,
       "appName": "poolCreateMinSizeErrorTest"
     }
   },

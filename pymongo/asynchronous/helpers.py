@@ -16,11 +16,9 @@
 from __future__ import annotations
 
 import asyncio
-import builtins
 import functools
 import random
 import socket
-import time
 import time as time  # noqa: PLC0414 # needed in sync version
 from typing import (
     Any,
@@ -77,8 +75,8 @@ def _handle_reauth(func: F) -> F:
     return cast(F, inner)
 
 
-_MAX_RETRIES = 3
-_BACKOFF_INITIAL = 0.05
+_MAX_RETRIES = 5
+_BACKOFF_INITIAL = 0.1
 _BACKOFF_MAX = 10
 # DRIVERS-3240 will determine these defaults.
 DEFAULT_RETRY_TOKEN_CAPACITY = 1000.0

@@ -888,7 +888,9 @@ class Topology:
                 # Clear the pool.
                 server.reset(service_id)
         elif isinstance(error, ConnectionFailure):
-            if isinstance(error, WaitQueueTimeoutError):
+            if isinstance(error, WaitQueueTimeoutError) or (
+                error.has_error_label("SystemOverloadedError")
+            ):
                 return
             # "Client MUST replace the server's description with type Unknown
             # ... MUST NOT request an immediate check of the server."
