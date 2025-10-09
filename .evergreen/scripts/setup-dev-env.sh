@@ -24,8 +24,8 @@ fi
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
-# Only run the next part if not running on CI and there is a git checkout.
-if [ -z "${CI:-}" ] && [ -f $HERE/.git ]; then
+# Only run the next part if not running on CI.
+if [ -z "${CI:-}" ]; then
   # Add the default install path to the path if needed.
   if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
     export PATH="$PATH:$HOME/.local/bin"
@@ -40,11 +40,14 @@ if [ -z "${CI:-}" ] && [ -f $HERE/.git ]; then
     cd $ROOT && uv sync
   )
 
-  if ! command -v pre-commit &>/dev/null; then
-    uv tool install pre-commit
-  fi
+  # Only set up pre-commit if we are in a git checkout.
+  if [ -f $HERE/.git ]; then
+    if ! command -v pre-commit &>/dev/null; then
+      uv tool install pre-commit
+    fi
 
-  if [ ! -f .git/hooks/pre-commit ]; then
-    uvx pre-commit install
+    if [ ! -f .git/hooks/pre-commit ]; then
+      uvx pre-commit install
+    fi
   fi
 fi
