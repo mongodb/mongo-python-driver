@@ -32,7 +32,7 @@ jobs:
           python-version: "3.10"
       - name: Install Python dependencies
         run: |
-          uvx just install
+          uvx --with rust-just just install
       - name: Run linters
         run: |
           just lint-manual
@@ -94,7 +94,7 @@ jobs:
         with:
           version: "8.0"
       - name: Install dependencies
-        run: uvx just install
+        run: uvx --with rust-just just install
       - name: Run tests
         run:  |
           just setup-tests doctest
@@ -113,7 +113,7 @@ jobs:
           enable-cache: true
           python-version: "3.10"
       - name: Install dependencies
-        run: uvx just install
+        run: uvx --with rust-just just install
       - name: Build docs
         run: just docs
 
@@ -130,7 +130,7 @@ jobs:
           enable-cache: true
           python-version: "3.10"
       - name: Install dependencies
-        run: uvx just install
+        run: uvx --with rust-just just install
       - name: Build docs
         run: just docs-linkcheck
 
@@ -151,7 +151,7 @@ jobs:
           python-version: "${{matrix.python}}"
       - name: Install dependencies
         run: |
-          uvx just install
+          uvx --with rust-just just install
       - name: Run typecheck
         run: |
           just typing
@@ -170,7 +170,7 @@ jobs:
           python-version: "3.10"
       - name: Install dependencies
         run: |
-          uvx just install
+          uvx --with rust-just just install
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
       - name: Run tests
