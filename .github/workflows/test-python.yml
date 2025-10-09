@@ -30,9 +30,11 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.10"
+      - name: Install just
+        run: uv tool install rust-just
       - name: Install Python dependencies
         run: |
-          uvx --with rust-just just install
+          just install
       - name: Run linters
         run: |
           just lint-manual
@@ -89,12 +91,14 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.10"
+      - name: Install just
+        run: uv tool install rust-just
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
           version: "8.0"
       - name: Install dependencies
-        run: uvx --with rust-just just install
+        run: just install
       - name: Run tests
         run:  |
           just setup-tests doctest
@@ -112,8 +116,10 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.10"
+      - name: Install just
+        run: uv tool install rust-just
       - name: Install dependencies
-        run: uvx --with rust-just just install
+        run: just install
       - name: Build docs
         run: just docs
 
@@ -129,8 +135,10 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.10"
+      - name: Install just
+        run: uv tool install rust-just
       - name: Install dependencies
-        run: uvx --with rust-just just install
+        run: just install
       - name: Build docs
         run: just docs-linkcheck
 
@@ -149,9 +157,11 @@ jobs:
         with:
           enable-cache: true
           python-version: "${{matrix.python}}"
+      - name: Install just
+        run: uv tool install rust-just
       - name: Install dependencies
         run: |
-          uvx --with rust-just just install
+          just install
       - name: Run typecheck
         run: |
           just typing
@@ -168,9 +178,11 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.10"
+      - name: Install just
+        run: uv tool install rust-just
       - name: Install dependencies
         run: |
-          uvx --with rust-just just install
+          just install
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
       - name: Run tests
