@@ -1025,7 +1025,7 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def _handle_connection_error(self, error: BaseException, phase: str) -> None:
+    def _handle_connection_error(self, error: BaseException, phase: str, conn_id: int) -> None:
         # Handle system overload condition for non-sdam pools.
         # Look for an AutoReconnect error raised from a ConnectionResetError with
         # errno == errno.ECONNRESET or raised from an OSError that we've created due to
@@ -1036,7 +1036,18 @@ class Pool:
         self._backoff += 1
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
-        print(f"Setting backoff in {phase}:", self._backoff)  # noqa: T201
+        # Log the pool backoff message.
+        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _CONNECTION_LOGGER,
+                message=_ConnectionStatusMessage.POOL_BACKOFF,
+                clientId=self._client_id,
+                serverHost=self.address[0],
+                serverPort=self.address[1],
+                driverConnectionId=conn_id,
+                reason=_verbose_connection_error_reason(ConnectionClosedReason.POOL_BACKOFF),
+                error=ConnectionClosedReason.POOL_BACKOFF,
+            )
 
     def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
         """Connect to Mongo and return a new Connection.
@@ -1099,7 +1110,7 @@ class Pool:
                     error=ConnectionClosedReason.ERROR,
                 )
             if context["has_created_socket"]:
-                self._handle_connection_error(error, "handshake")
+                self._handle_connection_error(error, "handshake", conn_id)
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
                 _raise_connection_failure(self.address, error, timeout_details=details)
@@ -1123,7 +1134,7 @@ class Pool:
         except BaseException as e:
             with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
-            self._handle_connection_error(e, "hello")
+            self._handle_connection_error(e, "hello", conn_id)
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
