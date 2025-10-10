@@ -167,7 +167,7 @@ buildvariants:
   # Encryption tests
   - name: encryption-rhel8
     tasks:
-      - name: .test-non-standard
+      - name: .test-non-standard !.pypy
       - name: .test-min-deps
     display_name: Encryption RHEL8
     run_on:
@@ -198,7 +198,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-crypt_shared-rhel8
     tasks:
-      - name: .test-non-standard
+      - name: .test-non-standard !.pypy
       - name: .test-min-deps
     display_name: Encryption crypt_shared RHEL8
     run_on:
@@ -232,7 +232,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8
     tasks:
-      - name: .test-non-standard
+      - name: .test-non-standard !.pypy
     display_name: Encryption PyOpenSSL RHEL8
     run_on:
       - rhel87-small
