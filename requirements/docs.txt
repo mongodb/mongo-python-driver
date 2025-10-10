@@ -4,3 +4,4 @@ readthedocs-sphinx-search~=0.3
 sphinxcontrib-shellcheck>=1,<2
 sphinx-autobuild>=2020.9.1
 furo==2025.7.19
+numpy>=2.0
