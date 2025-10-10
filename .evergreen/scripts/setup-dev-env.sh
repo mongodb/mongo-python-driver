@@ -38,6 +38,13 @@ if [ -z "${CI:-}" ]; then
     cd $ROOT && uv sync
   )
 
+  # Set up build utilities on Windows spawn hosts.
+  if [ -f $HOME/.visualStudioEnv.sh ]; then
+    set +u
+    SSH_TTY=1 source $HOME/.visualStudioEnv.sh
+    set -u
+  fi
+
   # Only set up pre-commit if we are in a git checkout.
   if [ -f $HERE/.git ]; then
     if ! command -v pre-commit &>/dev/null; then

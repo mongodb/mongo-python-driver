@@ -12,13 +12,7 @@ popd
 
 # Run spawn host-specific tasks.
 if [ -z "${CI:-}" ]; then
-  # Set up build utilities on Windows.
-  if [ -f $HOME/.visualStudioEnv.sh ]; then
-    set +u
-    SSH_TTY=1 source $HOME/.visualStudioEnv.sh
-    set -u
-  fi
-  bash $HERE/setup-dev-env.sh ensure-uv
+  bash $HERE/setup-dev-env.sh
 fi
 
 # Enable core dumps if enabled on the machine

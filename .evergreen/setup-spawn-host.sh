@@ -15,4 +15,4 @@ echo "Copying files to $target..."
 rsync -az -e ssh --exclude '.git' --filter=':- .gitignore' -r . $target:$remote_dir
 echo "Copying files to $target... done"
 
-ssh $target "PYTHON_VERSION=${PYTHON_VERSION:-} $remote_dir/.evergreen/scripts/setup-system.sh"
+ssh $target "$remote_dir/.evergreen/scripts/setup-system.sh"

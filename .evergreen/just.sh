@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eu
 
-. .evergreen/scripts/setup-dev-env.sh ensure-uv
+. .evergreen/scripts/setup-dev-env.sh
 
 just "$@"
