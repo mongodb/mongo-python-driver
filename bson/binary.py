@@ -246,7 +246,7 @@ class BinaryVector:
 
     def __init__(
         self,
-        data: Union[Sequence[float | int], np.ndarray],
+        data: Union[Sequence[float | int], npt.NDArray[np.number]],
         dtype: BinaryVectorDtype,
         padding: int = 0,
     ):
