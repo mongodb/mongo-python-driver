@@ -487,6 +487,7 @@ class Binary(bytes):
             vector = vector.data  # type: ignore
 
         padding = 0 if padding is None else padding
+        assert isinstance(dtype, BinaryVectorDtype)
         metadata = struct.pack("<sB", dtype.value, padding)
 
         if isinstance(vector, np.ndarray):
