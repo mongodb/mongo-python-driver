@@ -71,6 +71,14 @@ from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset, utc
 
+_NUMPY_AVAILABLE = False
+try:
+    import numpy as np
+
+    _NUMPY_AVAILABLE = True
+except ImportError:
+    np = None  # type: ignore
+
 
 class NotADict(abc.MutableMapping):
     """Non-dict type that implements the mapping protocol."""
@@ -734,6 +742,60 @@ class TestBSON(unittest.TestCase):
         self.assertIsInstance(bin, Binary)
         transformed = bin.as_uuid(UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(id, transformed)
+
+    @unittest.skipIf(not _NUMPY_AVAILABLE, "numpy optional-dependency not installed.")
+    def test_vector_from_numpy(self):
+        """Follows test_vector except for input type numpy.ndarray"""
+        # Simple data values could be treated as any of our BinaryVectorDtypes
+        arr = np.array([2, 3])
+        # INT8
+        binary_vector_int8 = Binary.from_vector(arr, BinaryVectorDtype.INT8)
+        # as_vector
+        vector = binary_vector_int8.as_vector()
+        assert isinstance(vector, BinaryVector)
+        assert vector.data == arr.tolist()
+        # as_numpy_vector
+        vector_np = binary_vector_int8.as_numpy_vector()
+        assert isinstance(vector_np, BinaryVector)
+        assert np.all(vector.data == arr)
+        # PACKED_BIT
+        binary_vector_uint8 = Binary.from_vector(arr, BinaryVectorDtype.PACKED_BIT)
+        # as_vector
+        vector = binary_vector_uint8.as_vector()
+        assert isinstance(vector, BinaryVector)
+        assert vector.data == arr.tolist()
+        # as_numpy_vector
+        vector_np = binary_vector_uint8.as_numpy_vector()
+        assert isinstance(vector_np, BinaryVector)
+        assert np.all(vector_np.data == arr)
+        # FLOAT32
+        binary_vector_float32 = Binary.from_vector(arr, BinaryVectorDtype.FLOAT32)
+        # as_vector
+        vector = binary_vector_float32.as_vector()
+        assert isinstance(vector, BinaryVector)
+        assert vector.data == arr.tolist()
+        # as_numpy_vector
+        vector_np = binary_vector_float32.as_numpy_vector()
+        assert isinstance(vector_np, BinaryVector)
+        assert np.all(vector_np.data == arr)
+
+        # Invalid cases
+        with self.assertRaises(ValueError):
+            Binary.from_vector(np.array([-1]), BinaryVectorDtype.PACKED_BIT)
+        with self.assertRaises(ValueError):
+            Binary.from_vector(np.array([128]), BinaryVectorDtype.PACKED_BIT)
+        with self.assertRaises(ValueError):
+            Binary.from_vector(np.array([-198]), BinaryVectorDtype.INT8)
+
+        # Unexpected cases
+        # Creating a vector of INT8 from a list of doubles will be caught by struct.pack
+        # Numpy's default behavior is to cast to the type requested.
+        list_floats = [-1.1, 1.1]
+        cast_bin = Binary.from_vector(np.array(list_floats), BinaryVectorDtype.INT8)
+        vector = cast_bin.as_vector()
+        vector_np = cast_bin.as_numpy_vector()
+        assert vector.data != list_floats
+        assert vector.data == vector_np.data.tolist() == [-1, 1]
 
     def test_vector(self):
         """Tests of subtype 9"""
