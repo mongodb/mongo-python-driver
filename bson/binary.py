@@ -599,15 +599,15 @@ class Binary(bytes):
             raise ImportError("Converting binary to numpy.ndarray requires numpy to be installed.")
         dtype, padding = struct.unpack_from("<sB", self, 0)
         dtype = BinaryVectorDtype(dtype)
-        match dtype:
-            case BinaryVectorDtype.INT8:
-                data = np.frombuffer(self[2:], dtype="int8")
-            case BinaryVectorDtype.FLOAT32:
-                data = np.frombuffer(self[2:], dtype="float32")
-            case BinaryVectorDtype.PACKED_BIT:
-                data = np.frombuffer(self[2:], dtype="uint8")
-            case _:
-                raise ValueError(f"Unsupported dtype code: {dtype!r}")
+
+        if dtype == BinaryVectorDtype.INT8:
+            data = np.frombuffer(self[2:], dtype="int8")
+        elif dtype == BinaryVectorDtype.FLOAT32:
+            data = np.frombuffer(self[2:], dtype="float32")
+        elif dtype == BinaryVectorDtype.PACKED_BIT:
+            data = np.frombuffer(self[2:], dtype="uint8")
+        else:
+            raise ValueError(f"Unsupported dtype code: {dtype!r}")
         return BinaryVector(data, dtype, padding)
 
     def __getnewargs__(self) -> Tuple[bytes, int]:  # type: ignore[override]
