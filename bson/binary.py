@@ -69,6 +69,7 @@ if TYPE_CHECKING:
 _NUMPY_AVAILABLE = False
 try:
     import numpy as np
+    import numpy.typing as npt
 
     _NUMPY_AVAILABLE = True
 except ImportError:
@@ -446,7 +447,7 @@ class Binary(bytes):
     @overload
     def from_vector(
         cls: Type[Binary],
-        vector: np.ndarray,
+        vector: npt.NDArray[np.number],
         dtype: BinaryVectorDtype,
         padding: int = 0,
     ) -> Binary:
@@ -455,7 +456,7 @@ class Binary(bytes):
     @classmethod
     def from_vector(
         cls: Type[Binary],
-        vector: Union[BinaryVector, list[int], list[float], np.ndarray],
+        vector: Union[BinaryVector, list[int], list[float], npt.NDArray[np.number]],
         dtype: Optional[BinaryVectorDtype] = None,
         padding: Optional[int] = None,
     ) -> Binary:
@@ -638,7 +639,7 @@ class Binary(bytes):
 
 
 def _numpy_vector_to_bytes(
-    vector: np.ndarray,
+    vector: npt.NDArray[np.number],
     dtype: BinaryVectorDtype,
 ) -> bytes:
     if not _NUMPY_AVAILABLE:
