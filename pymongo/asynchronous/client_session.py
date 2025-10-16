@@ -143,8 +143,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     AsyncContextManager,
+    Awaitable,
     Callable,
-    Coroutine,
     Mapping,
     MutableMapping,
     NoReturn,
@@ -604,7 +604,7 @@ class AsyncClientSession:
 
     async def with_transaction(
         self,
-        callback: Callable[[AsyncClientSession], Coroutine[Any, Any, _T]],
+        callback: Callable[[AsyncClientSession], Awaitable[_T]],
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
