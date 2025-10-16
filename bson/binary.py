@@ -491,7 +491,7 @@ class Binary(bytes):
         assert isinstance(dtype, BinaryVectorDtype)
         metadata = struct.pack("<sB", dtype.value, padding)
 
-        if isinstance(vector, np.ndarray):
+        if _NUMPY_AVAILABLE and isinstance(vector, np.ndarray):
             data = _numpy_vector_to_bytes(vector, dtype)
         else:
             if dtype == BinaryVectorDtype.INT8:  # pack ints in [-128, 127] as signed int8
