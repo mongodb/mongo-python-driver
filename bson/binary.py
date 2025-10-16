@@ -256,7 +256,7 @@ class BinaryVector:
         :param padding: The number of bits in the final byte that are to be ignored
           when a vector element's size is less than a byte
           and the length of the vector is not a multiple of 8.
-          (This is equivalent to a negative value of `count` in
+          (Padding is equivalent to a negative value of `count` in
           `numpy.unpackbits <https://numpy.org/doc/stable/reference/generated/numpy.unpackbits.html>`_)
         """
         self.data = data
