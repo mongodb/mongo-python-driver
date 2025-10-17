@@ -19,6 +19,7 @@ from __future__ import annotations
 import array
 import collections
 import datetime
+import importlib.util
 import mmap
 import os
 import pickle
@@ -71,13 +72,7 @@ from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset, utc
 
-_NUMPY_AVAILABLE = False
-try:
-    import numpy as np
-
-    _NUMPY_AVAILABLE = True
-except ImportError:
-    np = None  # type: ignore
+_NUMPY_AVAILABLE = importlib.util.find_spec("numpy") is not None
 
 
 class NotADict(abc.MutableMapping):
@@ -883,6 +878,8 @@ class TestBSON(unittest.TestCase):
     def test_vector_from_numpy(self):
         """Follows test_vector except for input type numpy.ndarray"""
         # Simple data values could be treated as any of our BinaryVectorDtypes
+        import numpy as np
+
         arr = np.array([2, 3])
         # INT8
         binary_vector_int8 = Binary.from_vector(arr, BinaryVectorDtype.INT8)
