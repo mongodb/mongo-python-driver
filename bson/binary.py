@@ -486,7 +486,10 @@ class Binary(bytes):
             vector = vector.data  # type: ignore
 
         padding = 0 if padding is None else padding
-        assert isinstance(dtype, BinaryVectorDtype)
+        if not isinstance(dtype, BinaryVectorDtype):
+            raise TypeError(
+                "dtype must be a bson.BinaryVectorDtype, such as BinaryVectorDtype.FLOAT32"
+            )
         metadata = struct.pack("<sB", dtype.value, padding)
 
         if _NUMPY_AVAILABLE and isinstance(vector, np.ndarray):
@@ -643,10 +646,10 @@ def _numpy_vector_to_bytes(
     if not _NUMPY_AVAILABLE:
         raise ImportError("Converting numpy.ndarray to binary requires numpy to be installed.")
 
-    assert isinstance(vector, np.ndarray)
-    assert (
-        vector.ndim == 1
-    ), "from_numpy_vector only supports 1D arrays as it creates a single vector."
+    if not isinstance(vector, np.ndarray):
+        raise TypeError("Vector must be a numpy array.")
+    if vector.ndim != 1:
+        raise ValueError("from_numpy_vector only supports 1D arrays as it creates a single vector.")
 
     if dtype == BinaryVectorDtype.FLOAT32:
         vector = vector.astype(np.dtype("float32"), copy=False)
