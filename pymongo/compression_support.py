@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import sys
 import warnings
 from typing import Any, Iterable, Optional, Union
 
@@ -44,7 +45,10 @@ def _have_zlib() -> bool:
 
 def _have_zstd() -> bool:
     try:
-        import zstandard  # noqa: F401
+        if sys.version_info >= (3, 14):
+            from compression import zstd
+        else:
+            from backports import zstd  # noqa: F401
 
         return True
     except ImportError:
@@ -79,11 +83,18 @@ def validate_compressors(dummy: Any, value: Union[str, Iterable[str]]) -> list[s
             )
         elif compressor == "zstd" and not _have_zstd():
             compressors.remove(compressor)
-            warnings.warn(
-                "Wire protocol compression with zstandard is not available. "
-                "You must install the zstandard module for zstandard support.",
-                stacklevel=2,
-            )
+            if sys.version_info >= (3, 14):
+                warnings.warn(
+                    "Wire protocol compression with zstandard is not available. "
+                    "The compression.zstd module is not available.",
+                    stacklevel=2,
+                )
+            else:
+                warnings.warn(
+                    "Wire protocol compression with zstandard is not available. "
+                    "You must install the backports.zstd module for zstandard support.",
+                    stacklevel=2,
+                )
     return compressors
 
 
@@ -144,12 +155,12 @@ class ZstdContext:
 
     @staticmethod
     def compress(data: bytes) -> bytes:
-        # ZstdCompressor is not thread safe.
-        # TODO: Use a pool?
+        if sys.version_info >= (3, 14):
+            from compression import zstd
+        else:
+            from backports import zstd
 
-        import zstandard
-
-        return zstandard.ZstdCompressor().compress(data)
+        return zstd.compress(data)
 
 
 def decompress(data: bytes | memoryview, compressor_id: int) -> bytes:
@@ -166,10 +177,11 @@ def decompress(data: bytes | memoryview, compressor_id: int) -> bytes:
 
         return zlib.decompress(data)
     elif compressor_id == ZstdContext.compressor_id:
-        # ZstdDecompressor is not thread safe.
-        # TODO: Use a pool?
-        import zstandard
+        if sys.version_info >= (3, 14):
+            from compression import zstd
+        else:
+            from backports import zstd
 
-        return zstandard.ZstdDecompressor().decompress(data)
+        return zstd.decompress(data)
     else:
         raise ValueError("Unknown compressorId %d" % (compressor_id,))
