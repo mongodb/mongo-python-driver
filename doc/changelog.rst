@@ -17,6 +17,22 @@ PyMongo 4.16 brings a number of changes including:
 - Removed support for Eventlet.
   Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
 
+Changes in Version 4.15.4 (2025/10/21)
+--------------------------------------
+
+Version 4.15.4 is a bug fix release.
+
+- Relaxed the callback type of :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.with_transaction` to allow the broader Awaitable type rather than only Coroutine objects.
+- Added the missing Python 3.14 trove classifier to the package metadata.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.15.4 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.15.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47237
+
 Changes in Version 4.15.3 (2025/10/07)
 --------------------------------------
 
