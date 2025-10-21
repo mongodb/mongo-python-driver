@@ -37,7 +37,7 @@ if [ -z "${UV_PYTHON:-}" ]; then
         _python=$(echo "$_python" | sed 's/t//g')
         _python="/Library/Frameworks/$framework_dir.Framework/Versions/$_python/bin/$binary_name"
     elif [ "Windows_NT" = "${OS:-}" ]; then
-        _python=$(echo $_python | cut -d. -f1,2 | sed 's/\.//g; s/t//g')
+        _python=$(echo $_python | cut -d. -f1,2 | sed 's/\.//g')
         if [ -n "${IS_WIN32:-}" ]; then
             _python="C:/python/32/Python$_python/python.exe"
         else
