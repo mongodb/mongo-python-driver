@@ -122,8 +122,10 @@ def handle_aws_lambda() -> None:
         target = ROOT / "test/lambda/mongodb" / dname
         shutil.rmtree(target, ignore_errors=True)
         shutil.copytree(ROOT / dname, target)
+        print("******", target, os.listdir(target))
     # Remove the original so files from the lambda directory.
     for so_path in before_sos:
+        print("removing file", so_path)
         (ROOT / "test/lambda/mongodb" / so_path).unlink()
     # Remove the new so files from the ROOT directory.
     for dname in dirs:
