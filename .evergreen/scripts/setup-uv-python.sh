@@ -47,6 +47,5 @@ if [ -z "${UV_PYTHON:-}" ]; then
         _python="/opt/python/$_python/bin/python3"
     fi
   fi
-  exit 1
   export UV_PYTHON="$_python"
 fi
