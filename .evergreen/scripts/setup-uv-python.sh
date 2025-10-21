@@ -20,6 +20,7 @@ fi
 
 # Translate PYTHON_BINARY/PYTHON_VERSION to UV_PYTHON.
 if [ -z "${UV_PYTHON:-}" ]; then
+  set -x
   if [ -n "${PYTHON_BINARY:-}" ]; then
     _python=$PYTHON_BINARY
 
