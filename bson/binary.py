@@ -625,13 +625,29 @@ class Binary(bytes):
 
         dtype, padding = struct.unpack_from("<sB", self, 0)
         dtype = BinaryVectorDtype(dtype)
+        n_bytes = len(self) - 2
 
         if dtype == BinaryVectorDtype.INT8:
             data = np.frombuffer(self[2:], dtype="int8")
         elif dtype == BinaryVectorDtype.FLOAT32:
+            if n_bytes % 4:
+                raise ValueError(
+                    "Corrupt data. N bytes for a float32 vector must be a multiple of 4."
+                )
             data = np.frombuffer(self[2:], dtype="float32")
         elif dtype == BinaryVectorDtype.PACKED_BIT:
+            # data packed as uint8
+            if padding and not n_bytes:
+                raise ValueError("Corrupt data. Vector has a padding P, but no data.")
+            if padding > 7 or padding < 0:
+                raise ValueError(f"Corrupt data. Padding ({padding}) must be between 0 and 7.")
             data = np.frombuffer(self[2:], dtype="uint8")
+            if padding and np.unpackbits(data[-1])[-padding:].sum() > 0:
+                warnings.warn(
+                    "Vector has a padding P, but bits in the final byte lower than P are non-zero. For pymongo>=5.0, they must be zero.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
         else:
             raise ValueError(f"Unsupported dtype code: {dtype!r}")
         return BinaryVector(data, dtype, padding)
