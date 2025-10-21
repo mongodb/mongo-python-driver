@@ -6,6 +6,7 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: aws_lambda
+          PYTHON_VERSION: "3.10"
     tags: [aws_lambda]
 
   # Aws tests
@@ -2385,6 +2386,7 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: search_index
+          PYTHON_VERSION: "3.10"
     tags: [search_index]
 
   # Server version tests

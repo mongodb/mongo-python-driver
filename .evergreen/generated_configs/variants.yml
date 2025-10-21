@@ -453,10 +453,10 @@ buildvariants:
       SUB_TEST_NAME: pyopenssl
 
   # Search index tests
-  - name: search-index-helpers-rhel8-python3.10
+  - name: search-index-helpers-rhel8
     tasks:
       - name: .search_index
-    display_name: Search Index Helpers RHEL8 Python3.10
+    display_name: Search Index Helpers RHEL8
     run_on:
       - rhel87-small
 

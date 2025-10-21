@@ -356,12 +356,10 @@ def create_oidc_auth_variants():
 
 def create_search_index_variants():
     host = DEFAULT_HOST
-    python = CPYTHONS[0]
     return [
         create_variant(
             [".search_index"],
-            get_variant_name("Search Index Helpers", host, python=python),
-            python=python,
+            get_variant_name("Search Index Helpers", host),
             host=host,
         )
     ]
@@ -852,7 +850,7 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
 
 def create_aws_lambda_tasks():
     assume_func = FunctionCall(func="assume ec2 role")
-    vars = dict(TEST_NAME="aws_lambda")
+    vars = dict(TEST_NAME="aws_lambda", PYTHON_VERSION=CPYTHONS[0])
     test_func = FunctionCall(func="run tests", vars=vars)
     task_name = "test-aws-lambda-deployed"
     tags = ["aws_lambda"]
@@ -863,7 +861,7 @@ def create_aws_lambda_tasks():
 def create_search_index_tasks():
     assume_func = FunctionCall(func="assume ec2 role")
     server_func = FunctionCall(func="run server", vars=dict(TEST_NAME="search_index"))
-    vars = dict(TEST_NAME="search_index")
+    vars = dict(TEST_NAME="search_index", PYTHON_VERSION=CPYTHONS[0])
     test_func = FunctionCall(func="run tests", vars=vars)
     task_name = "test-search-index-helpers"
     tags = ["search_index"]
