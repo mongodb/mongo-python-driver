@@ -59,7 +59,7 @@ jobs:
       matrix:
         # Tests currently only pass on ubuntu on GitHub Actions.
         os: [ubuntu-latest]
-        python-version: ["3.10", "pypy-3.10", "3.13t"]
+        python-version: ["3.10", "pypy-3.11", "3.13t"]
         mongodb-version: ["8.0"]
 
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
