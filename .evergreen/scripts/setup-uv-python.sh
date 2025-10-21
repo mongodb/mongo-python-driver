@@ -38,7 +38,7 @@ if [ -z "${UV_PYTHON:-}" ]; then
         _python="/Library/Frameworks/$framework_dir.Framework/Versions/$_python/bin/$binary_name"
     elif [ "Windows_NT" = "${OS:-}" ]; then
         _python=$(echo $_python | cut -d. -f1,2 | sed 's/\.//g; s/t//g')
-        if [[ "$_python" == *"t"* ]]; then
+        if [[ "$PYTHON_VERSION" == *"t"* ]]; then
           _exe="python${PYTHON_VERSION}t.exe"
         else
           _exe="python.exe"
