@@ -6,7 +6,6 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: aws_lambda
-          PYTHON_VERSION: "3.10"
     tags: [aws_lambda]
 
   # Aws tests

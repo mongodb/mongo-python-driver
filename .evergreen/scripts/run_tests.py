@@ -106,10 +106,11 @@ def handle_aws_lambda() -> None:
     env["TEST_LAMBDA_DIRECTORY"] = str(target_dir)
     env.setdefault("AWS_REGION", "us-east-1")
     dirs = ["pymongo", "gridfs", "bson"]
-    # Store the original .so files.
-    before_sos = []
+    # Remove the original .so files.
     for dname in dirs:
-        before_sos.extend(f"{f.parent.name}/{f.name}" for f in (ROOT / dname).glob("*.so"))
+        so_paths = [f"{f.parent.name}/{f.name}" for f in (ROOT / dname).glob("*.so")]
+        for so_path in list(so_paths):
+            Path(so_path).unlink()
     # Build the c extensions.
     docker = which("docker") or which("podman")
     if not docker:
@@ -122,17 +123,11 @@ def handle_aws_lambda() -> None:
         target = ROOT / "test/lambda/mongodb" / dname
         shutil.rmtree(target, ignore_errors=True)
         shutil.copytree(ROOT / dname, target)
-        print("******", target, os.listdir(target))
-    # Remove the original so files from the lambda directory.
-    for so_path in before_sos:
-        print("removing file", so_path)
-        (ROOT / "test/lambda/mongodb" / so_path).unlink()
     # Remove the new so files from the ROOT directory.
     for dname in dirs:
         so_paths = [f"{f.parent.name}/{f.name}" for f in (ROOT / dname).glob("*.so")]
         for so_path in list(so_paths):
-            if so_path not in before_sos:
-                Path(so_path).unlink()
+            Path(so_path).unlink()
 
     script_name = "run-deployed-lambda-aws-tests.sh"
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/aws_lambda/{script_name}", env=env)

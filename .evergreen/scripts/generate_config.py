@@ -850,7 +850,7 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
 
 def create_aws_lambda_tasks():
     assume_func = FunctionCall(func="assume ec2 role")
-    vars = dict(TEST_NAME="aws_lambda", PYTHON_VERSION=CPYTHONS[0])
+    vars = dict(TEST_NAME="aws_lambda")
     test_func = FunctionCall(func="run tests", vars=vars)
     task_name = "test-aws-lambda-deployed"
     tags = ["aws_lambda"]
