@@ -53,9 +53,7 @@
                 "failCommands": [
                   "saslContinue"
                 ],
-                "closeConnection": false,
-                "blockConnection": true,
-                "blockTimeMS": 1000,
+                "errorCode": 18,
                 "appName": "authNetworkErrorTest"
               }
             }

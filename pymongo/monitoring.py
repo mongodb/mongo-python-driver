@@ -914,6 +914,28 @@ class PoolClosedEvent(_PoolEvent):
     __slots__ = ()
 
 
+class PoolBackoffEvent(_PoolEvent):
+    """Published when a Connection Pool is backing off.
+
+    :param address: The address (host, port) pair of the server this Pool is
+       attempting to connect to.
+    :param attempt: The backoff attempt number.
+
+    .. versionadded:: 4.16
+    """
+
+    __slots__ = ("__attempt",)
+
+    def __init__(self, address: _Address, attempt: int) -> None:
+        super().__init__(address)
+        self.__attempt = attempt
+
+    @property
+    def attempt(self) -> Optional[ObjectId]:
+        """The backoff attempt number."""
+        return self.__attempt
+
+
 class ConnectionClosedReason:
     """An enum that defines values for `reason` on a
     :class:`ConnectionClosedEvent`.
@@ -1824,6 +1846,15 @@ class _EventListeners:
     def publish_pool_closed(self, address: _Address) -> None:
         """Publish a :class:`PoolClosedEvent` to all pool listeners."""
         event = PoolClosedEvent(address)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.pool_closed(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_pool_backoutt(self, address: _Address, attempt: int) -> None:
+        """Publish a :class:`PoolBackoffEvent` to all pool listeners."""
+        event = PoolBackoffEvent(address, attempt)
         for subscriber in self.__cmap_listeners:
             try:
                 subscriber.pool_closed(event)

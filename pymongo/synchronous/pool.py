@@ -49,6 +49,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     DocumentTooLarge,
     ExecutionTimeout,
     InvalidOperation,
+    NetworkTimeout,
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
@@ -721,6 +722,7 @@ class PoolState:
     PAUSED = 1
     READY = 2
     CLOSED = 3
+    BACKOFF = 4
 
 
 # Do *not* explicitly inherit from object or Jython won't call __del__
@@ -789,6 +791,7 @@ class Pool:
         self._pending = 0
         self._client_id = client_id
         self._backoff = 0
+        self._backoff_connection_time = -1
         if self.enabled_for_cmap:
             assert self.opts._event_listeners is not None
             self.opts._event_listeners.publish_pool_created(
@@ -815,6 +818,9 @@ class Pool:
     def ready(self) -> None:
         # Take the lock to avoid the race condition described in PYTHON-2699.
         with self.lock:
+            # Do not set the pool as ready if in backoff.
+            if self._backoff:
+                return
             if self.state != PoolState.READY:
                 self.state = PoolState.READY
                 if self.enabled_for_cmap:
@@ -844,7 +850,7 @@ class Pool:
         with self.size_cond:
             if self.closed:
                 return
-            # Clear the backoff state.
+            # Clear the backoff amount.
             self._backoff = 0
             if self.opts.pause_enabled and pause and not self.opts.load_balanced:
                 old_state, self.state = self.state, PoolState.PAUSED
@@ -1025,26 +1031,34 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def _handle_connection_error(self, error: BaseException, phase: str, conn_id: int) -> None:
+    def _handle_connection_error(self, error: BaseException, phase: str) -> None:
         # Handle system overload condition for non-sdam pools.
-        # Look for an AutoReconnect error raised from a ConnectionResetError with
-        # errno == errno.ECONNRESET or raised from an OSError that we've created due to
-        # a closed connection.
+        # Look for an AutoReconnect or NetworkTimeout error.
         # If found, set backoff and add error labels.
-        if self.is_sdam or type(error) != AutoReconnect:
+        if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
             return
-        self._backoff += 1
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
+        self.backoff()
+
+    def backoff(self):
+        """Set/increase backoff mode."""
+        self._backoff += 1
+        if self.state != PoolState.BACKOFF:
+            self.state = PoolState.BACKOFF
+        if self.enabled_for_cmap:
+            assert self.opts._event_listeners is not None
+            self.opts._event_listeners.publish_pool_backoff(self.address, self._backoff)
+        self._backoff_connection_time = _backoff(self._backoff) + time.monotonic()
+
         # Log the pool backoff message.
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.POOL_BACKOFF,
+                message=_ConnectionStatusMessage.POOL_BACKOFF % self._backoff,
                 clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
-                driverConnectionId=conn_id,
                 reason=_verbose_connection_error_reason(ConnectionClosedReason.POOL_BACKOFF),
                 error=ConnectionClosedReason.POOL_BACKOFF,
             )
@@ -1078,10 +1092,6 @@ class Pool:
                 driverConnectionId=conn_id,
             )
 
-        # Apply backoff if applicable.
-        if self._backoff:
-            time.sleep(_backoff(self._backoff))
-
         # Pass a context to determine if we successfully create a configured socket.
         context = dict(has_created_socket=False)
 
@@ -1110,7 +1120,7 @@ class Pool:
                     error=ConnectionClosedReason.ERROR,
                 )
             if context["has_created_socket"]:
-                self._handle_connection_error(error, "handshake", conn_id)
+                self._handle_connection_error(error, "handshake")
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
                 _raise_connection_failure(self.address, error, timeout_details=details)
@@ -1134,7 +1144,7 @@ class Pool:
         except BaseException as e:
             with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
-            self._handle_connection_error(e, "hello", conn_id)
+            self._handle_connection_error(e, "hello")
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
@@ -1142,7 +1152,10 @@ class Pool:
             handler.client._topology.receive_cluster_time(conn._cluster_time)
 
         # Clear the backoff state.
-        self._backoff = 0
+        if self._backoff:
+            self._backoff = 0
+            self.ready()
+
         return conn
 
     @contextlib.contextmanager
@@ -1338,6 +1351,9 @@ class Pool:
                     if self._perished(conn):
                         conn = None
                         continue
+                # See if we need to wait for the backoff period.
+                elif self._backoff and (self._backoff_connection_time < time.monotonic()):
+                    continue
                 else:  # We need to create a new connection
                     try:
                         conn = self.connect(handler=handler)
