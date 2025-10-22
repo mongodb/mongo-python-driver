@@ -23,7 +23,7 @@ from shrub.v3.shrub_service import ShrubService
 
 ALL_VERSIONS = ["4.2", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
 CPYTHONS = ["3.10", "3.11", "3.12", "3.13", "3.14t", "3.14"]
-PYPYS = ["pypy3.10"]
+PYPYS = ["pypy3.11"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080
