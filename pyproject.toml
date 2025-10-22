@@ -7,7 +7,8 @@ name = "pymongo"
 dynamic = ["version", "dependencies", "optional-dependencies"]
 description = "PyMongo - the Official MongoDB Python driver"
 readme = "README.md"
-license = {file="LICENSE"}
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.9"
 authors = [
     { name = "The MongoDB Python Team" },
@@ -22,7 +23,6 @@ keywords = [
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX",
