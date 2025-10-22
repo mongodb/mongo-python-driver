@@ -20,7 +20,7 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
     tags: [auth-aws, auth-aws-regular]
   - name: test-auth-aws-5.0-assume-role-python3.11
     commands:
@@ -33,7 +33,7 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: assume-role
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
     tags: [auth-aws, auth-aws-assume-role]
   - name: test-auth-aws-6.0-ec2-python3.12
     commands:
@@ -46,7 +46,7 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ec2
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
     tags: [auth-aws, auth-aws-ec2]
   - name: test-auth-aws-7.0-env-creds-python3.13
     commands:
@@ -59,7 +59,7 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: env-creds
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
     tags: [auth-aws, auth-aws-env-creds]
   - name: test-auth-aws-8.0-session-creds-python3.14t
     commands:
@@ -72,7 +72,7 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: session-creds
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
     tags: [auth-aws, auth-aws-session-creds, free-threaded]
   - name: test-auth-aws-rapid-web-identity-python3.14
     commands:
@@ -85,7 +85,7 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
     tags: [auth-aws, auth-aws-web-identity]
   - name: test-auth-aws-rapid-web-identity-session-name-python3.14
     commands:
@@ -99,7 +99,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           AWS_ROLE_SESSION_NAME: test
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
     tags: [auth-aws, auth-aws-web-identity]
   - name: test-auth-aws-latest-ecs-python3.10
     commands:
@@ -112,7 +112,7 @@ tasks:
         vars:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: ecs
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
     tags: [auth-aws, auth-aws-ecs]
 
   # Backport pr tests
@@ -248,60 +248,60 @@ tasks:
       - func: run server
         vars:
           TOPOLOGY: replica_set
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: standalone
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
     tags: [mod_wsgi, pr]
   - name: mod-wsgi-embedded-mode-replica-set-python3.11
     commands:
       - func: run server
         vars:
           TOPOLOGY: replica_set
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
     tags: [mod_wsgi, pr]
   - name: mod-wsgi-replica-set-python3.12
     commands:
       - func: run server
         vars:
           TOPOLOGY: replica_set
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: standalone
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
     tags: [mod_wsgi, pr]
   - name: mod-wsgi-embedded-mode-replica-set-python3.13
     commands:
       - func: run server
         vars:
           TOPOLOGY: replica_set
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
     tags: [mod_wsgi, pr]
   - name: mod-wsgi-embedded-mode-replica-set-python3.14
     commands:
       - func: run server
         vars:
           TOPOLOGY: replica_set
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
       - func: run tests
         vars:
           TEST_NAME: mod_wsgi
           SUB_TEST_NAME: embedded
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
     tags: [mod_wsgi, pr]
 
   # No orchestration tests
@@ -310,21 +310,21 @@ tasks:
       - func: assume ec2 role
       - func: run tests
         vars:
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
     tags: [test-no-orchestration, python-3.10]
   - name: test-no-orchestration-python3.14
     commands:
       - func: assume ec2 role
       - func: run tests
         vars:
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
     tags: [test-no-orchestration, python-3.14]
   - name: test-no-orchestration-pypy3.10
     commands:
       - func: assume ec2 role
       - func: run tests
         vars:
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags: [test-no-orchestration, python-pypy3.10]
 
   # No toolchain tests
@@ -379,7 +379,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v5.0-python3.10
@@ -389,7 +389,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v6.0-python3.10
@@ -399,7 +399,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v7.0-python3.10
@@ -409,7 +409,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v8.0-python3.10
@@ -419,7 +419,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-rapid-python3.10
@@ -429,7 +429,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-latest-python3.14
@@ -439,7 +439,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v4.4-python3.10
@@ -449,7 +449,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v5.0-python3.10
@@ -459,7 +459,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v6.0-python3.10
@@ -469,7 +469,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v7.0-python3.10
@@ -479,7 +479,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v8.0-python3.10
@@ -489,7 +489,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-rapid-python3.10
@@ -499,7 +499,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-latest-python3.14
@@ -509,7 +509,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v4.4-python3.10
@@ -519,7 +519,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v5.0-python3.10
@@ -529,7 +529,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v6.0-python3.10
@@ -539,7 +539,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v7.0-python3.10
@@ -549,7 +549,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v8.0-python3.10
@@ -559,7 +559,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-rapid-python3.10
@@ -569,7 +569,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-latest-python3.14
@@ -579,7 +579,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v4.4-python3.10
@@ -589,7 +589,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v5.0-python3.10
@@ -599,7 +599,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v6.0-python3.10
@@ -609,7 +609,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v7.0-python3.10
@@ -619,7 +619,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v8.0-python3.10
@@ -629,7 +629,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-rapid-python3.10
@@ -639,7 +639,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-latest-python3.14
@@ -649,7 +649,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-soft-fail-v4.4-python3.10
@@ -659,7 +659,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-soft-fail-v5.0-python3.10
@@ -669,7 +669,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-soft-fail-v6.0-python3.10
@@ -679,7 +679,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-soft-fail-v7.0-python3.10
@@ -689,7 +689,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-soft-fail-v8.0-python3.10
@@ -699,7 +699,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-soft-fail-rapid-python3.10
@@ -709,7 +709,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-soft-fail-latest-python3.14
@@ -719,7 +719,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-valid-cert-server-staples-v4.4-python3.10
@@ -729,7 +729,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags:
       - ocsp
@@ -743,7 +743,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags:
       - ocsp
@@ -757,7 +757,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags:
       - ocsp
@@ -771,7 +771,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags:
       - ocsp
@@ -785,7 +785,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags:
       - ocsp
@@ -799,7 +799,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags:
       - ocsp
@@ -813,7 +813,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags:
       - ocsp
@@ -827,7 +827,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags:
       - ocsp
@@ -841,7 +841,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags:
       - ocsp
@@ -855,7 +855,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags:
       - ocsp
@@ -869,7 +869,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags:
       - ocsp
@@ -883,7 +883,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags:
       - ocsp
@@ -897,7 +897,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags:
       - ocsp
@@ -911,7 +911,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags:
       - ocsp
@@ -925,7 +925,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags:
       - ocsp
@@ -939,7 +939,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags:
       - ocsp
@@ -953,7 +953,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags:
       - ocsp
@@ -967,7 +967,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags:
       - ocsp
@@ -981,7 +981,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags:
       - ocsp
@@ -995,7 +995,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags:
       - ocsp
@@ -1009,7 +1009,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags:
       - ocsp
@@ -1023,7 +1023,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags:
       - ocsp
@@ -1037,7 +1037,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags:
       - ocsp
@@ -1051,7 +1051,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags:
       - ocsp
@@ -1065,7 +1065,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags:
       - ocsp
@@ -1079,7 +1079,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags:
       - ocsp
@@ -1093,7 +1093,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags:
       - ocsp
@@ -1107,7 +1107,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags:
       - ocsp
@@ -1121,7 +1121,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10
@@ -1131,7 +1131,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10
@@ -1141,7 +1141,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10
@@ -1151,7 +1151,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10
@@ -1161,7 +1161,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10
@@ -1171,7 +1171,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.14
@@ -1181,7 +1181,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10
@@ -1191,7 +1191,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10
@@ -1201,7 +1201,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10
@@ -1211,7 +1211,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10
@@ -1221,7 +1221,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10
@@ -1231,7 +1231,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10
@@ -1241,7 +1241,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.14
@@ -1251,7 +1251,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v4.4-python3.10
@@ -1261,7 +1261,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v5.0-python3.10
@@ -1271,7 +1271,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v6.0-python3.10
@@ -1281,7 +1281,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v7.0-python3.10
@@ -1291,7 +1291,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v8.0-python3.10
@@ -1301,7 +1301,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-rapid-python3.10
@@ -1311,7 +1311,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-latest-python3.14
@@ -1321,7 +1321,7 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v4.4-python3.10
@@ -1331,7 +1331,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v5.0-python3.10
@@ -1341,7 +1341,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v6.0-python3.10
@@ -1351,7 +1351,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v7.0-python3.10
@@ -1361,7 +1361,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v8.0-python3.10
@@ -1371,7 +1371,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-rapid-python3.10
@@ -1381,7 +1381,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-latest-python3.14
@@ -1391,7 +1391,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v4.4-python3.10
@@ -1401,7 +1401,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v5.0-python3.10
@@ -1411,7 +1411,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v6.0-python3.10
@@ -1421,7 +1421,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v7.0-python3.10
@@ -1431,7 +1431,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v8.0-python3.10
@@ -1441,7 +1441,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-rapid-python3.10
@@ -1451,7 +1451,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-latest-python3.14
@@ -1461,7 +1461,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v4.4-python3.10
@@ -1471,7 +1471,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v5.0-python3.10
@@ -1481,7 +1481,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v6.0-python3.10
@@ -1491,7 +1491,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v7.0-python3.10
@@ -1501,7 +1501,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v8.0-python3.10
@@ -1511,7 +1511,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-rapid-python3.10
@@ -1521,7 +1521,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-latest-python3.14
@@ -1531,7 +1531,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v4.4-python3.10
@@ -1541,7 +1541,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v5.0-python3.10
@@ -1551,7 +1551,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v6.0-python3.10
@@ -1561,7 +1561,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v7.0-python3.10
@@ -1571,7 +1571,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v8.0-python3.10
@@ -1581,7 +1581,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-rapid-python3.10
@@ -1591,7 +1591,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-latest-python3.14
@@ -1601,7 +1601,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-soft-fail-v4.4-python3.10
@@ -1611,7 +1611,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-soft-fail-v5.0-python3.10
@@ -1621,7 +1621,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-soft-fail-v6.0-python3.10
@@ -1631,7 +1631,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-soft-fail-v7.0-python3.10
@@ -1641,7 +1641,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-soft-fail-v8.0-python3.10
@@ -1651,7 +1651,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-soft-fail-rapid-python3.10
@@ -1661,7 +1661,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-soft-fail-latest-python3.14
@@ -1671,7 +1671,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-valid-cert-server-staples-v4.4-python3.10
@@ -1681,7 +1681,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags:
       - ocsp
@@ -1695,7 +1695,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags:
       - ocsp
@@ -1709,7 +1709,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags:
       - ocsp
@@ -1723,7 +1723,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags:
       - ocsp
@@ -1737,7 +1737,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags:
       - ocsp
@@ -1751,7 +1751,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags:
       - ocsp
@@ -1765,7 +1765,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags:
       - ocsp
@@ -1779,7 +1779,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags:
       - ocsp
@@ -1793,7 +1793,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags:
       - ocsp
@@ -1807,7 +1807,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags:
       - ocsp
@@ -1821,7 +1821,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags:
       - ocsp
@@ -1835,7 +1835,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags:
       - ocsp
@@ -1849,7 +1849,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags:
       - ocsp
@@ -1863,7 +1863,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags:
       - ocsp
@@ -1877,7 +1877,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags:
       - ocsp
@@ -1891,7 +1891,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags:
       - ocsp
@@ -1905,7 +1905,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags:
       - ocsp
@@ -1919,7 +1919,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags:
       - ocsp
@@ -1933,7 +1933,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags:
       - ocsp
@@ -1947,7 +1947,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags:
       - ocsp
@@ -1961,7 +1961,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags:
       - ocsp
@@ -1975,7 +1975,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags:
       - ocsp
@@ -1989,7 +1989,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags:
       - ocsp
@@ -2003,7 +2003,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags:
       - ocsp
@@ -2017,7 +2017,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags:
       - ocsp
@@ -2031,7 +2031,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags:
       - ocsp
@@ -2045,7 +2045,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags:
       - ocsp
@@ -2059,7 +2059,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags:
       - ocsp
@@ -2073,7 +2073,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10
@@ -2083,7 +2083,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10
@@ -2093,7 +2093,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10
@@ -2103,7 +2103,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10
@@ -2113,7 +2113,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10
@@ -2123,7 +2123,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.14
@@ -2133,7 +2133,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10
@@ -2143,7 +2143,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10
@@ -2153,7 +2153,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10
@@ -2163,7 +2163,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10
@@ -2173,7 +2173,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10
@@ -2183,7 +2183,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10
@@ -2193,7 +2193,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.14
@@ -2203,7 +2203,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v4.4-python3.10
@@ -2213,7 +2213,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v5.0-python3.10
@@ -2223,7 +2223,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v6.0-python3.10
@@ -2233,7 +2233,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v7.0-python3.10
@@ -2243,7 +2243,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v8.0-python3.10
@@ -2253,7 +2253,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-rapid-python3.10
@@ -2263,7 +2263,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-latest-python3.14
@@ -2273,7 +2273,7 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
 
@@ -2385,7 +2385,7 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: search_index
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
     tags: [search_index]
 
   # Server version tests
@@ -2401,7 +2401,7 @@ tasks:
           AUTH: auth
           SSL: nossl
           TOPOLOGY: replica_set
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2423,7 +2423,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: replica_set
           COVERAGE: "1"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2444,7 +2444,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           COVERAGE: "1"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2465,7 +2465,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           COVERAGE: "1"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2486,7 +2486,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: replica_set
           COVERAGE: "1"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2508,7 +2508,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: replica_set
           COVERAGE: "1"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2528,7 +2528,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2549,7 +2549,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           COVERAGE: "1"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2570,7 +2570,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2589,7 +2589,7 @@ tasks:
           AUTH: auth
           SSL: nossl
           TOPOLOGY: sharded_cluster
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2611,7 +2611,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2633,7 +2633,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2654,7 +2654,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2675,7 +2675,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2696,7 +2696,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2715,7 +2715,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2735,7 +2735,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2756,7 +2756,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2778,7 +2778,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2799,7 +2799,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2820,7 +2820,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2841,7 +2841,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2860,7 +2860,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2880,7 +2880,7 @@ tasks:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2901,7 +2901,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2922,7 +2922,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2943,7 +2943,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           COVERAGE: "1"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -2962,7 +2962,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -2983,7 +2983,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           COVERAGE: "1"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -3004,7 +3004,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           COVERAGE: "1"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -3025,7 +3025,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: standalone
           COVERAGE: "1"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -3046,7 +3046,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: standalone
           COVERAGE: "1"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -3067,7 +3067,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           COVERAGE: "1"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -3087,7 +3087,7 @@ tasks:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -3109,7 +3109,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: standalone
           COVERAGE: "1"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_async
     tags:
       - server-version
@@ -3128,7 +3128,7 @@ tasks:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: standalone
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
           TEST_NAME: default_sync
     tags:
       - server-version
@@ -3152,7 +3152,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "4.2"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3174,7 +3174,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "4.2"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3196,7 +3196,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.2"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3218,7 +3218,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.2"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3241,7 +3241,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.2"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3263,7 +3263,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.2"
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3286,7 +3286,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "4.4"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3308,7 +3308,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "4.4"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3330,7 +3330,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.4"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3352,7 +3352,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.4"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3375,7 +3375,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.4"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3397,7 +3397,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.4"
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3420,7 +3420,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "5.0"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3442,7 +3442,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "5.0"
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3465,7 +3465,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "5.0"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3487,7 +3487,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "5.0"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3509,7 +3509,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "5.0"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3531,7 +3531,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "6.0"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3553,7 +3553,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "6.0"
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3576,7 +3576,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "6.0"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3598,7 +3598,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "6.0"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3620,7 +3620,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "6.0"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3642,7 +3642,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "7.0"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3664,7 +3664,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "7.0"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3686,7 +3686,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "7.0"
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3709,7 +3709,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "7.0"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3731,7 +3731,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "7.0"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -3754,7 +3754,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "8.0"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3776,7 +3776,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "8.0"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3798,7 +3798,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "8.0"
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3821,7 +3821,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "8.0"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3843,7 +3843,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "8.0"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3866,7 +3866,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3889,7 +3889,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3912,7 +3912,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: latest
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3935,7 +3935,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: latest
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3958,7 +3958,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: latest
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_async
     tags:
       - test-standard
@@ -3981,7 +3981,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: rapid
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -4003,7 +4003,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: rapid
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -4026,7 +4026,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: rapid
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -4048,7 +4048,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: rapid
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -4070,7 +4070,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: rapid
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_sync
     tags:
       - test-standard
@@ -4094,7 +4094,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "4.2"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
     tags:
       - test-non-standard
       - server-4.2
@@ -4115,7 +4115,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.2"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
     tags:
       - test-non-standard
       - server-4.2
@@ -4136,7 +4136,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.2"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-non-standard
       - server-4.2
@@ -4157,7 +4157,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.2"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-non-standard
       - server-4.2
@@ -4179,7 +4179,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "4.4"
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
     tags:
       - test-non-standard
       - server-4.4
@@ -4201,7 +4201,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "4.4"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-non-standard
       - server-4.4
@@ -4223,7 +4223,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.4"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
     tags:
       - test-non-standard
       - server-4.4
@@ -4244,7 +4244,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.4"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
     tags:
       - test-non-standard
       - server-4.4
@@ -4265,7 +4265,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "5.0"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
     tags:
       - test-non-standard
       - server-5.0
@@ -4286,7 +4286,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "5.0"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
     tags:
       - test-non-standard
       - server-5.0
@@ -4307,7 +4307,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "5.0"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-non-standard
       - server-5.0
@@ -4329,7 +4329,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "5.0"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-non-standard
       - server-5.0
@@ -4350,7 +4350,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "6.0"
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
     tags:
       - test-non-standard
       - server-6.0
@@ -4372,7 +4372,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "6.0"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
     tags:
       - test-non-standard
       - server-6.0
@@ -4393,7 +4393,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "6.0"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
     tags:
       - test-non-standard
       - server-6.0
@@ -4414,7 +4414,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "6.0"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-non-standard
       - server-6.0
@@ -4436,7 +4436,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "7.0"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
     tags:
       - test-non-standard
       - server-7.0
@@ -4457,7 +4457,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "7.0"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-non-standard
       - server-7.0
@@ -4479,7 +4479,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "7.0"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
     tags:
       - test-non-standard
       - server-7.0
@@ -4500,7 +4500,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "7.0"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-non-standard
       - server-7.0
@@ -4521,7 +4521,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "8.0"
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
     tags:
       - test-non-standard
       - server-8.0
@@ -4543,7 +4543,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "8.0"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
     tags:
       - test-non-standard
       - server-8.0
@@ -4564,7 +4564,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "8.0"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-non-standard
       - server-8.0
@@ -4586,7 +4586,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "8.0"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
     tags:
       - test-non-standard
       - server-8.0
@@ -4607,7 +4607,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
     tags:
       - test-non-standard
       - server-latest
@@ -4630,7 +4630,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-non-standard
       - server-latest
@@ -4652,7 +4652,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: latest
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
     tags:
       - test-non-standard
       - server-latest
@@ -4674,7 +4674,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: latest
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
     tags:
       - test-non-standard
       - server-latest
@@ -4696,7 +4696,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: rapid
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
     tags:
       - test-non-standard
       - server-rapid
@@ -4717,7 +4717,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: rapid
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
     tags:
       - test-non-standard
       - server-rapid
@@ -4738,7 +4738,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: rapid
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-non-standard
       - server-rapid
@@ -4759,7 +4759,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: rapid
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-non-standard
       - server-rapid
@@ -4783,7 +4783,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.2"
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-standard-auth
       - server-4.2
@@ -4804,7 +4804,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.2"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-standard-auth
       - server-4.2
@@ -4826,7 +4826,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.4"
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
     tags:
       - test-standard-auth
       - server-4.4
@@ -4847,7 +4847,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.4"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-standard-auth
       - server-4.4
@@ -4869,7 +4869,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "5.0"
-          PYTHON_VERSION: "3.12"
+          TOOLCHAIN_VERSION: "3.12"
     tags:
       - test-standard-auth
       - server-5.0
@@ -4890,7 +4890,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "5.0"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-standard-auth
       - server-5.0
@@ -4912,7 +4912,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "6.0"
-          PYTHON_VERSION: "3.13"
+          TOOLCHAIN_VERSION: "3.13"
     tags:
       - test-standard-auth
       - server-6.0
@@ -4933,7 +4933,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "6.0"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-standard-auth
       - server-6.0
@@ -4955,7 +4955,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "7.0"
-          PYTHON_VERSION: 3.14t
+          TOOLCHAIN_VERSION: 3.14t
     tags:
       - test-standard-auth
       - server-7.0
@@ -4977,7 +4977,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "7.0"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-standard-auth
       - server-7.0
@@ -4999,7 +4999,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "8.0"
-          PYTHON_VERSION: "3.14"
+          TOOLCHAIN_VERSION: "3.14"
     tags:
       - test-standard-auth
       - server-8.0
@@ -5020,7 +5020,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "8.0"
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-standard-auth
       - server-8.0
@@ -5042,7 +5042,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: latest
-          PYTHON_VERSION: "3.11"
+          TOOLCHAIN_VERSION: "3.11"
     tags:
       - test-standard-auth
       - server-latest
@@ -5064,7 +5064,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: latest
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-standard-auth
       - server-latest
@@ -5086,7 +5086,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: rapid
-          PYTHON_VERSION: "3.10"
+          TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-standard-auth
       - server-rapid
@@ -5107,7 +5107,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: rapid
-          PYTHON_VERSION: pypy3.10
+          TOOLCHAIN_VERSION: pypy3.10
     tags:
       - test-standard-auth
       - server-rapid

@@ -18,14 +18,11 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
-# Translate PYTHON_BINARY/PYTHON_VERSION to UV_PYTHON.
 if [ -z "${UV_PYTHON:-}" ]; then
   set -x
-  if [ -n "${PYTHON_BINARY:-}" ]; then
-    _python=$PYTHON_BINARY
-
-  elif [ -n "${PYTHON_VERSION:-}" ]; then
-    _python=$PYTHON_VERSION
+  # Translate a TOOLCHAIN_VERSION to UV_PYTHON.
+  if [ -n "${TOOLCHAIN_VERSION:-}" ]; then
+    _python=$TOOLCHAIN_VERSION
     if [ "$(uname -s)" = "Darwin" ]; then
         if [[ "$_python" == *"t"* ]]; then
             binary_name="python3t"
@@ -38,8 +35,8 @@ if [ -z "${UV_PYTHON:-}" ]; then
         _python="/Library/Frameworks/$framework_dir.Framework/Versions/$_python/bin/$binary_name"
     elif [ "Windows_NT" = "${OS:-}" ]; then
         _python=$(echo $_python | cut -d. -f1,2 | sed 's/\.//g; s/t//g')
-        if [[ "$PYTHON_VERSION" == *"t"* ]]; then
-          _exe="python${PYTHON_VERSION}.exe"
+        if [[ "$TOOLCHAIN_VERSION" == *"t"* ]]; then
+          _exe="python${TOOLCHAIN_VERSION}.exe"
         else
           _exe="python.exe"
         fi
