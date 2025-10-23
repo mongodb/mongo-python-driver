@@ -52,6 +52,7 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
     ConnectionCreatedEvent,
     ConnectionReadyEvent,
+    PoolBackoffEvent,
     PoolClearedEvent,
     PoolClosedEvent,
     PoolCreatedEvent,
@@ -75,6 +76,7 @@ OBJECT_TYPES = {
     "ConnectionPoolReady": PoolReadyEvent,
     "ConnectionPoolCleared": PoolClearedEvent,
     "ConnectionPoolClosed": PoolClosedEvent,
+    "ConnectionPoolBackoff": PoolBackoffEvent,
     # Error types.
     "PoolClosedError": _PoolClosedError,
     "WaitQueueTimeoutError": WaitQueueTimeoutError,

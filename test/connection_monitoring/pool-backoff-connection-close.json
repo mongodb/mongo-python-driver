@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "style": "integration",
+  "description": "pool enters backoff on connection close",
+  "runOn": [
+    {
+      "minServerVersion": "4.9.0"
+    }
+  ],
+  "failPoint": {
+    "configureFailPoint": "failCommand",
+    "mode": {
+      "times": 1
+    },
+    "data": {
+      "failCommands": [
+        "isMaster",
+        "hello"
+      ],
+      "closeConnection": true
+    }
+  },
+  "poolOptions": {
+    "minPoolSize": 0
+  },
+  "operations": [
+    {
+      "name": "ready"
+    },
+    {
+      "name": "start",
+      "target": "thread1"
+    },
+    {
+      "name": "checkOut",
+      "thread": "thread1"
+    },
+    {
+      "name": "waitForEvent",
+      "event": "ConnectionCreated",
+      "count": 1
+    },
+    {
+      "name": "waitForEvent",
+      "event": "ConnectionCheckOutFailed",
+      "count": 1
+    }
+  ],
+  "events": [
+    {
+      "type": "ConnectionCheckOutStarted"
+    },
+    {
+      "type": "ConnectionCreated"
+    },
+    {
+      "type": "ConnectionClosed"
+    },
+    {
+      "type": "ConnectionPoolBackoff"
+    },
+    {
+      "type": "ConnectionCheckOutFailed"
+    }
+  ],
+  "ignore": [
+    "ConnectionCheckedIn",
+    "ConnectionCheckedOut",
+    "ConnectionPoolCreated",
+    "ConnectionPoolReady"
+  ]
+}

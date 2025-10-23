@@ -518,6 +518,343 @@
           ]
         }
       ]
+    },
+    {
+      "description": "Connection enters backoff on closed connection",
+      "runOnRequirements": [
+        {
+          "auth": true,
+          "minServerVersion": "4.4"
+        }
+      ],
+      "operations": [
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "client": {
+                  "id": "client",
+                  "uriOptions": {
+                    "retryReads": true,
+                    "appname": "clientAppName",
+                    "heartbeatFrequencyMS": 10000
+                  },
+                  "observeLogMessages": {
+                    "connection": "debug"
+                  }
+                }
+              },
+              {
+                "database": {
+                  "id": "database0",
+                  "client": "client",
+                  "databaseName": "ci-tests"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "failPointClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "saslContinue"
+                ],
+                "closeConnection": true,
+                "appName": "clientAppName"
+              }
+            }
+          }
+        },
+        {
+          "object": "database0",
+          "name": "runCommand",
+          "arguments": {
+            "command": {
+              "find": "test"
+            },
+            "commandName": "find"
+          }
+        }
+      ],
+      "expectLogMessages": [
+        {
+          "client": "client",
+          "messages": [
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection pool created",
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection pool ready",
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection checkout started",
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection created",
+                "driverConnectionId": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection closed",
+                "driverConnectionId": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                },
+                "reason": "An error occurred while using the connection",
+                "error": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection pool backoff attempt number 1",
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                },
+                "reason": "Connection pool is in backoff",
+                "error": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection checkout failed",
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                },
+                "reason": "An error occurred while trying to establish a new connection",
+                "error": {
+                  "$$exists": true
+                },
+                "durationMS": {
+                  "$$type": [
+                    "double",
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection checkout started",
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection created",
+                "driverConnectionId": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+{
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection ready",
+                "driverConnectionId": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                },
+                "durationMS": {
+                  "$$type": [
+                    "double",
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection checked out",
+                "driverConnectionId": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                },
+                "durationMS": {
+                  "$$type": [
+                    "double",
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection checked in",
+                "driverConnectionId": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -42,7 +42,7 @@ class _ConnectionStatusMessage(str, enum.Enum):
     POOL_READY = "Connection pool ready"
     POOL_CLOSED = "Connection pool closed"
     POOL_CLEARED = "Connection pool cleared"
-    POOL_BACKOFF = "Connection pool backoff attempt number {%s}"
+    POOL_BACKOFF = "Connection pool backoff attempt number %s"
 
     CONN_CREATED = "Connection created"
     CONN_READY = "Connection ready"

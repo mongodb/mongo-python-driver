@@ -64,6 +64,7 @@ from pymongo.monitoring import (
     ConnectionClosedEvent,
     ConnectionCreatedEvent,
     ConnectionReadyEvent,
+    PoolBackoffEvent,
     PoolClearedEvent,
     PoolClosedEvent,
     PoolCreatedEvent,
@@ -618,6 +619,9 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual.interrupt_connections, bool)
         elif name == "poolClosedEvent":
             self.test.assertIsInstance(actual, PoolClosedEvent)
+        elif name == "poolBackoffEvent":
+            self.test.assertIsInstance(actual, PoolBackoffEvent)
+            self.test.assertIsInstance(actual.attempt, int)
         elif name == "connectionCreatedEvent":
             self.test.assertIsInstance(actual, ConnectionCreatedEvent)
         elif name == "connectionReadyEvent":

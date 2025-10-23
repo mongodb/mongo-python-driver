@@ -1153,7 +1153,6 @@ class Pool:
 
         # Clear the backoff state.
         if self._backoff:
-            self._backoff = 0
             self.ready()
 
         return conn
@@ -1238,7 +1237,7 @@ class Pool:
             self.checkin(conn)
 
     def _raise_if_not_ready(self, checkout_started_time: float, emit_event: bool) -> None:
-        if self.state != PoolState.READY:
+        if self.state not in (PoolState.READY, PoolState.BACKOFF):
             if emit_event:
                 duration = time.monotonic() - checkout_started_time
                 if self.enabled_for_cmap:
