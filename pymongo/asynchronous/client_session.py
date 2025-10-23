@@ -473,8 +473,8 @@ _UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(  # 
 # This limit is non-configurable and was chosen to be twice the 60 second
 # default value of MongoDB's `transactionLifetimeLimitSeconds` parameter.
 _WITH_TRANSACTION_RETRY_TIME_LIMIT = 120
-_BACKOFF_MAX = 1
-_BACKOFF_INITIAL = 0.050  # 50ms initial backoff
+_BACKOFF_MAX = 0.500  # 500ms max backoff
+_BACKOFF_INITIAL = 0.001  # 1ms initial backoff
 
 
 def _within_time_limit(start_time: float) -> bool:
@@ -518,6 +518,7 @@ class AsyncClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
+        self._transaction_retry_backoffs: list[float] = []
 
     async def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -705,10 +706,12 @@ class AsyncClientSession:
         """
         start_time = time.monotonic()
         retry = 0
+        self._transaction_retry_backoffs = []
         while True:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
-                backoff = jitter * min(_BACKOFF_INITIAL * (2**retry), _BACKOFF_MAX)
+                backoff = jitter * min(_BACKOFF_INITIAL * (1.25**retry), _BACKOFF_MAX)
+                self._transaction_retry_backoffs.append(backoff)
                 await asyncio.sleep(backoff)
             retry += 1
             await self.start_transaction(
