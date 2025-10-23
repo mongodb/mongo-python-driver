@@ -518,6 +518,7 @@ class AsyncClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
+        self._transaction_retry_backoffs: list[float] = []
 
     async def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -705,10 +706,12 @@ class AsyncClientSession:
         """
         start_time = time.monotonic()
         retry = 0
+        self._transaction_retry_backoffs = []
         while True:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
                 backoff = jitter * min(_BACKOFF_INITIAL * (1.25**retry), _BACKOFF_MAX)
+                self._transaction_retry_backoffs.append(backoff)
                 await asyncio.sleep(backoff)
             retry += 1
             await self.start_transaction(
