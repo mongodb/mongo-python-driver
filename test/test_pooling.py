@@ -524,7 +524,7 @@ class TestPooling(_TestPoolingBase):
             conn.conn.close()
 
         # Enable backoff.
-        cx_pool._backoff = 1
+        cx_pool.backoff()
 
         # Swap pool's address with a bad one.
         address, cx_pool.address = cx_pool.address, ("foo.com", 1234)

@@ -71,8 +71,8 @@
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent",
-                    "serverDescriptionChangedEvent",
-                    "poolClearedEvent"
+                    "poolBackoffEvent",
+                    "poolReadyEvent"
                   ],
                   "uriOptions": {
                     "retryWrites": false,
@@ -111,9 +111,6 @@
                 "_id": 4
               }
             ]
-          },
-          "expectError": {
-            "isError": true
           }
         },
         {
@@ -122,11 +119,7 @@
           "arguments": {
             "client": "client",
             "event": {
-              "serverDescriptionChangedEvent": {
-                "newDescription": {
-                  "type": "Unknown"
-                }
-              }
+              "poolBackoffEvent": {}
             },
             "count": 1
           }
@@ -137,47 +130,7 @@
           "arguments": {
             "client": "client",
             "event": {
-              "poolClearedEvent": {}
-            },
-            "count": 1
-          }
-        },
-        {
-          "name": "insertMany",
-          "object": "collection",
-          "arguments": {
-            "documents": [
-              {
-                "_id": 5
-              },
-              {
-                "_id": 6
-              }
-            ]
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "serverDescriptionChangedEvent": {
-                "newDescription": {
-                  "type": "Unknown"
-                }
-              }
-            },
-            "count": 1
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "poolClearedEvent": {}
+              "poolReadyEvent": {}
             },
             "count": 1
           }
@@ -194,10 +147,10 @@
                   "insert": "auth-network-timeout-error",
                   "documents": [
                     {
-                      "_id": 5
+                      "_id": 3
                     },
                     {
-                      "_id": 6
+                      "_id": 4
                     }
                   ]
                 },
@@ -220,10 +173,10 @@
               "_id": 2
             },
             {
-              "_id": 5
+              "_id": 3
             },
             {
-              "_id": 6
+              "_id": 4
             }
           ]
         }
