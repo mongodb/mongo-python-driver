@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import time
 from io import BytesIO
 from test.utils_spec_runner import SpecRunner
 
@@ -48,7 +49,11 @@ from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous import client_session
-from pymongo.synchronous.client_session import TransactionOptions
+from pymongo.synchronous.client_session import (
+    _BACKOFF_MAX,
+    TransactionOptions,
+    _set_backoff_initial,
+)
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor
 
@@ -600,6 +605,40 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.assertFalse(s.in_transaction)
             s.with_transaction(callback)
             self.assertFalse(s.in_transaction)
+
+    @client_context.require_test_commands
+    @client_context.require_transactions
+    def test_transaction_backoff(self):
+        client = client_context.client
+        coll = client[self.db.name].test
+        # set fail point to trigger transaction failure and trigger backoff
+        self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 3},
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 24,
+                },
+            }
+        )
+        self.addCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
+
+        start = time.monotonic()
+
+        def callback(session):
+            coll.insert_one({}, session=session)
+
+        total_backoff = 0
+        with self.client.start_session() as s:
+            s.with_transaction(callback)
+            self.assertEqual(len(s._transaction_retry_backoffs), 3)
+            for backoff in s._transaction_retry_backoffs:
+                self.assertGreater(backoff, 0)
+                total_backoff += backoff
+
+        end = time.monotonic()
+        self.assertGreaterEqual(end - start, total_backoff)
 
 
 class TestOptionsInsideTransactionProse(TransactionsBase):
