@@ -37,7 +37,7 @@
   ],
   "tests": [
     {
-      "description": "Backoff and fail after network connection error during authentication",
+      "description": "Backoff and fail after network connection errors during authentication",
       "operations": [
         {
           "name": "failPoint",
@@ -72,7 +72,7 @@
                     "commandStartedEvent",
                     "poolBackoffEvent",
                     "poolReadyEvent",
-                    "poolClearEvent"
+                    "poolClearedEvent"
                   ],
                   "uriOptions": {
                     "retryWrites": false,
@@ -145,6 +145,155 @@
             },
             {
               "poolBackoffEvent": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Backoff and clear the pool after network failures followed by server error",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 6
+              },
+              "data": {
+                "failCommands": [
+                  "saslContinue"
+                ],
+                "appName": "authNetworkErrorFailTest",
+                "closeConnection": true
+              }
+            }
+          }
+        },
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "client": {
+                  "id": "client",
+                  "useMultipleMongoses": false,
+                  "observeEvents": [
+                    "commandStartedEvent",
+                    "poolBackoffEvent",
+                    "poolReadyEvent",
+                    "poolClearedEvent"
+                  ],
+                  "uriOptions": {
+                    "retryWrites": false,
+                    "appname": "authNetworkErrorFailTest"
+                  }
+                }
+              },
+              {
+                "database": {
+                  "id": "database",
+                  "client": "client",
+                  "databaseName": "sdam-tests"
+                }
+              },
+              {
+                "collection": {
+                  "id": "collection",
+                  "database": "database",
+                  "collectionName": "auth-network-error-fail"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "insertMany",
+          "object": "collection",
+          "arguments": {
+            "documents": [
+              {
+                "_id": 3
+              },
+              {
+                "_id": 4
+              }
+            ]
+          },
+          "expectError": {
+            "isError": true
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "saslContinue"
+                ],
+                "appName": "authNetworkErrorFailTest",
+                "errorCode": 18
+              }
+            }
+          }
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "document": {
+              "_id": 3
+            }
+          },
+          "expectError": {
+            "isError": true
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client",
+          "eventType": "command",
+          "events": []
+        },
+        {
+          "client": "client",
+          "eventType": "cmap",
+          "events": [
+            {
+              "poolReadyEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+                        {
+              "poolBackoffEvent": {}
+            },
+                        {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolClearedEvent": {}
             }
           ]
         }

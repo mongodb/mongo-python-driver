@@ -72,7 +72,7 @@
                     "commandStartedEvent",
                     "poolBackoffEvent",
                     "poolReadyEvent",
-                    "poolClearEvent"
+                    "poolClearedEvent"
                   ],
                   "uriOptions": {
                     "retryWrites": false,
