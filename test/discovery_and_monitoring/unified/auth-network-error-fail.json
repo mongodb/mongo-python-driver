@@ -1,0 +1,166 @@
+{
+  "description": "auth-network-error-fail",
+  "schemaVersion": "1.4",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4",
+      "auth": true,
+      "serverless": "forbid",
+      "topologies": [
+        "single",
+        "replicaset",
+        "sharded"
+      ]
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "setupClient",
+        "useMultipleMongoses": false
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "auth-network-error-fail",
+      "databaseName": "sdam-tests",
+      "documents": [
+        {
+          "_id": 1
+        },
+        {
+          "_id": 2
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "Backoff and fail after network connection error during authentication",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 6
+              },
+              "data": {
+                "failCommands": [
+                  "saslContinue"
+                ],
+                "appName": "authNetworkErrorFailTest",
+                "closeConnection": true
+              }
+            }
+          }
+        },
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "client": {
+                  "id": "client",
+                  "useMultipleMongoses": false,
+                  "observeEvents": [
+                    "commandStartedEvent",
+                    "poolBackoffEvent",
+                    "poolReadyEvent",
+                    "poolClearEvent"
+                  ],
+                  "uriOptions": {
+                    "retryWrites": false,
+                    "appname": "authNetworkErrorFailTest"
+                  }
+                }
+              },
+              {
+                "database": {
+                  "id": "database",
+                  "client": "client",
+                  "databaseName": "sdam-tests"
+                }
+              },
+              {
+                "collection": {
+                  "id": "collection",
+                  "database": "database",
+                  "collectionName": "auth-network-error-fail"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "insertMany",
+          "object": "collection",
+          "arguments": {
+            "documents": [
+              {
+                "_id": 3
+              },
+              {
+                "_id": 4
+              }
+            ]
+          },
+          "expectError": {
+            "isError": true
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client",
+          "eventType": "command",
+          "events": []
+        },
+        {
+          "client": "client",
+          "eventType": "cmap",
+          "events": [
+            {
+              "poolReadyEvent": {}
+            },
+            {
+              "poolBackoffEvent": {
+                "attempt": 1
+              }
+            },
+            {
+              "poolBackoffEvent": {
+                "attempt": 2
+              }
+            },
+                        {
+              "poolBackoffEvent": {
+                "attempt": 3
+              }
+            },
+                        {
+              "poolBackoffEvent": {
+                "attempt": 4
+              }
+            },
+            {
+              "poolBackoffEvent": {
+                "attempt": 5
+              }
+            },
+            {
+              "poolBackoffEvent": {
+                "attempt": 6
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
