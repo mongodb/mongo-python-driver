@@ -1333,7 +1333,9 @@ class Pool:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
                     while not (self.conns or self._pending < self.max_connecting):
                         timeout = deadline - time.monotonic() if deadline else None
-                        if self._backoff and (self._backoff_connection_time > time.monotonic()):
+                        if self._backoff:
+                            if self._backoff_connection_time < time.monotonic():
+                                break
                             timeout = 0.01
                         if not _cond_wait(self._max_connecting_cond, timeout):
                             # Check whether we should continue to wait for the backoff condition.
