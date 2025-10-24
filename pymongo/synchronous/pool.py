@@ -1309,14 +1309,7 @@ class Pool:
             self._raise_if_not_ready(checkout_started_time, emit_event=True)
             while not (self.requests < self.max_pool_size):
                 timeout = deadline - time.monotonic() if deadline else None
-                if self._backoff and (self._backoff_connection_time > time.monotonic()):
-                    timeout = 0.01
                 if not _cond_wait(self.size_cond, timeout):
-                    # Check whether we should continue to wait for the backoff condition.
-                    if self._backoff and deadline is None or deadline < time.monotonic():
-                        if self._backoff_connection_time > time.monotonic():
-                            continue
-                        break
                     # Timed out, notify the next thread to ensure a
                     # timeout doesn't consume the condition.
                     if self.requests < self.max_pool_size:
@@ -1335,12 +1328,19 @@ class Pool:
                 incremented = True
             while conn is None:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
-                # to be checked back into the pool.
+                # to be checked back into the pool OR for the backoff period to expire.
                 with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
                     while not (self.conns or self._pending < self.max_connecting):
                         timeout = deadline - time.monotonic() if deadline else None
+                        if self._backoff and (self._backoff_connection_time > time.monotonic()):
+                            timeout = 0.01
                         if not _cond_wait(self._max_connecting_cond, timeout):
+                            # Check whether we should continue to wait for the backoff condition.
+                            if self._backoff and deadline is None or deadline < time.monotonic():
+                                if self._backoff_connection_time > time.monotonic():
+                                    continue
+                                break
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
                             if self.conns or self._pending < self.max_connecting:
