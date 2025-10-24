@@ -943,7 +943,7 @@ class PoolBackoffEvent(_PoolEvent):
         self.__duration_ms = duration_ms
 
     @property
-    def duration_ms(self) -> Optional[ObjectId]:
+    def duration_ms(self) -> int:
         """The backoff duration in ms."""
         return self.__duration_ms
 

@@ -793,7 +793,7 @@ class Pool:
         self._pending = 0
         self._client_id = client_id
         self._backoff = 0
-        self._backoff_connection_time = -1
+        self._backoff_connection_time = 0.0
         if self.enabled_for_cmap:
             assert self.opts._event_listeners is not None
             self.opts._event_listeners.publish_pool_created(
@@ -1041,11 +1041,11 @@ class Pool:
         # If found, set backoff and add error labels.
         if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
             return
-        error._add_error_label("SystemOverloadedError")
-        error._add_error_label("RetryableError")
+        error._add_error_label("SystemOverloadedError")  # type:ignore[attr-defined]
+        error._add_error_label("RetryableError")  # type:ignore[attr-defined]
         self.backoff()
 
-    def backoff(self):
+    def backoff(self) -> None:
         """Set/increase backoff mode."""
         self._backoff += 1
         backoff_duration_sec = _backoff(self._backoff)
@@ -1346,7 +1346,7 @@ class Pool:
                             timeout = 0.01
                         if not await _async_cond_wait(self._max_connecting_cond, timeout):
                             # Check whether we should continue to wait for the backoff condition.
-                            if self._backoff and deadline is None or deadline < time.monotonic():
+                            if self._backoff and (deadline is None or deadline < time.monotonic()):
                                 if self._backoff_connection_time > time.monotonic():
                                     continue
                                 break
