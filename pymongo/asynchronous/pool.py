@@ -1313,7 +1313,14 @@ class Pool:
             self._raise_if_not_ready(checkout_started_time, emit_event=True)
             while not (self.requests < self.max_pool_size):
                 timeout = deadline - time.monotonic() if deadline else None
+                if self._backoff and (self._backoff_connection_time > time.monotonic()):
+                    timeout = 0.01
                 if not await _async_cond_wait(self.size_cond, timeout):
+                    # Check whether we should continue to wait for the backoff condition.
+                    if self._backoff and deadline is None or deadline < time.monotonic():
+                        if self._backoff_connection_time > time.monotonic():
+                            continue
+                        break
                     # Timed out, notify the next thread to ensure a
                     # timeout doesn't consume the condition.
                     if self.requests < self.max_pool_size:
@@ -1355,7 +1362,7 @@ class Pool:
                         conn = None
                         continue
                 # See if we need to wait for the backoff period.
-                elif self._backoff and (self._backoff_connection_time < time.monotonic()):
+                elif self._backoff and (self._backoff_connection_time > time.monotonic()):
                     continue
                 else:  # We need to create a new connection
                     try:
