@@ -194,6 +194,22 @@ def create_compression_variants():
                 expansions=expansions,
             )
         )
+    # Add explicit tests with compression.zstd support on linux.
+    host = HOSTS["ubuntu22"]
+    expansions = dict(COMPRESSOR="ztsd")
+    tasks = [
+        ".test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14",
+        ".test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14t",
+    ]
+    display_name = get_variant_name(f"Compression {compressor}", host)
+    variants.append(
+        create_variant(
+            tasks,
+            display_name,
+            host=host,
+            expansions=expansions,
+        )
+    )
     return variants
 
 
