@@ -37,7 +37,7 @@
   ],
   "tests": [
     {
-      "description": "Reset server and pool after network timeout error during authentication",
+      "description": "Backoff and retry after network timeout error during authentication",
       "operations": [
         {
           "name": "failPoint",
@@ -47,14 +47,13 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 1
+                "times": 2
               },
               "data": {
                 "failCommands": [
                   "saslContinue"
                 ],
-                "blockConnection": true,
-                "blockTimeMS": 500,
+                "closeConnection": true,
                 "appName": "authNetworkTimeoutErrorTest"
               }
             }
@@ -72,7 +71,8 @@
                   "observeEvents": [
                     "commandStartedEvent",
                     "poolBackoffEvent",
-                    "poolReadyEvent"
+                    "poolReadyEvent",
+                    "poolClearEvent"
                   ],
                   "uriOptions": {
                     "retryWrites": false,
@@ -119,7 +119,22 @@
           "arguments": {
             "client": "client",
             "event": {
-              "poolBackoffEvent": {}
+              "poolBackoffEvent": {
+                "attempt": 1
+              }
+            },
+            "count": 1
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "poolBackoffEvent": {
+                "attempt": 2
+              }
             },
             "count": 1
           }

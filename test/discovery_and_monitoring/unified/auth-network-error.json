@@ -37,7 +37,7 @@
   ],
   "tests": [
     {
-      "description": "Reset server and pool after network error during authentication",
+      "description": "Backoff and retry after network connection error during authentication",
       "operations": [
         {
           "name": "failPoint",
@@ -47,13 +47,13 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 1
+                "times": 2
               },
               "data": {
                 "failCommands": [
                   "saslContinue"
                 ],
-                "errorCode": 18,
+                "closeConnection": true,
                 "appName": "authNetworkErrorTest"
               }
             }
@@ -70,14 +70,15 @@
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent",
-                    "serverDescriptionChangedEvent",
-                    "poolClearedEvent"
+                    "poolBackoffEvent",
+                    "poolReadyEvent",
+                    "poolClearEvent"
                   ],
                   "uriOptions": {
                     "retryWrites": false,
-                    "socketTimeoutMS": 500,
-                    "connectTimeoutMS": 500,
-                    "appname": "authNetworkErrorTest"
+                    "appname": "authNetworkErrorTest",
+                    "connectTimeoutMS": 250,
+                    "socketTimeoutMS": 250
                   }
                 }
               },
@@ -110,9 +111,6 @@
                 "_id": 4
               }
             ]
-          },
-          "expectError": {
-            "isError": true
           }
         },
         {
@@ -121,62 +119,9 @@
           "arguments": {
             "client": "client",
             "event": {
-              "serverDescriptionChangedEvent": {
-                "newDescription": {
-                  "type": "Unknown"
-                }
+              "poolBackoffEvent": {
+                "attempt": 1
               }
-            },
-            "count": 1
-          }
-        },
-        {
-          "name": "waitForEvent",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "poolClearedEvent": {}
-            },
-            "count": 1
-          }
-        },
-        {
-          "name": "insertMany",
-          "object": "collection",
-          "arguments": {
-            "documents": [
-              {
-                "_id": 5
-              },
-              {
-                "_id": 6
-              }
-            ]
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "serverDescriptionChangedEvent": {
-                "newDescription": {
-                  "type": "Unknown"
-                }
-              }
-            },
-            "count": 1
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "poolClearedEvent": {}
             },
             "count": 1
           }
@@ -193,10 +138,10 @@
                   "insert": "auth-network-error",
                   "documents": [
                     {
-                      "_id": 5
+                      "_id": 3
                     },
                     {
-                      "_id": 6
+                      "_id": 4
                     }
                   ]
                 },
@@ -219,10 +164,10 @@
               "_id": 2
             },
             {
-              "_id": 5
+              "_id": 3
             },
             {
-              "_id": 6
+              "_id": 4
             }
           ]
         }
