@@ -119,9 +119,7 @@
           "arguments": {
             "client": "client",
             "event": {
-              "poolBackoffEvent": {
-                "attempt": 1
-              }
+              "poolBackoffEvent": {}
             },
             "count": 1
           }

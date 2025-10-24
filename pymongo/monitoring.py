@@ -931,21 +931,21 @@ class PoolBackoffEvent(_PoolEvent):
 
     :param address: The address (host, port) pair of the server this Pool is
        attempting to connect to.
-    :param attempt: The backoff attempt number.
+    :param duration_ms: The backoff duration in ms.
 
     .. versionadded:: 4.16
     """
 
-    __slots__ = ("__attempt",)
+    __slots__ = ("__duration_ms",)
 
-    def __init__(self, address: _Address, attempt: int) -> None:
+    def __init__(self, address: _Address, duration_ms: int) -> None:
         super().__init__(address)
-        self.__attempt = attempt
+        self.__duration_ms = duration_ms
 
     @property
-    def attempt(self) -> Optional[ObjectId]:
-        """The backoff attempt number."""
-        return self.__attempt
+    def duration_ms(self) -> Optional[ObjectId]:
+        """The backoff duration in ms."""
+        return self.__duration_ms
 
 
 class ConnectionClosedReason:

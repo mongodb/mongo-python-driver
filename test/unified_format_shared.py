@@ -621,7 +621,7 @@ class MatchEvaluatorUtil:
             self.test.assertIsInstance(actual, PoolClosedEvent)
         elif name == "poolBackoffEvent":
             self.test.assertIsInstance(actual, PoolBackoffEvent)
-            self.test.assertIsInstance(actual.attempt, int)
+            self.test.assertIsInstance(actual.duration_ms, int)
         elif name == "connectionCreatedEvent":
             self.test.assertIsInstance(actual, ConnectionCreatedEvent)
         elif name == "connectionReadyEvent":

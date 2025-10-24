@@ -129,34 +129,22 @@
               "poolReadyEvent": {}
             },
             {
-              "poolBackoffEvent": {
-                "attempt": 1
-              }
+              "poolBackoffEvent": {}
             },
             {
-              "poolBackoffEvent": {
-                "attempt": 2
-              }
+              "poolBackoffEvent": {}
             },
                         {
-              "poolBackoffEvent": {
-                "attempt": 3
-              }
+              "poolBackoffEvent": {}
             },
                         {
-              "poolBackoffEvent": {
-                "attempt": 4
-              }
+              "poolBackoffEvent": {}
             },
             {
-              "poolBackoffEvent": {
-                "attempt": 5
-              }
+              "poolBackoffEvent": {}
             },
             {
-              "poolBackoffEvent": {
-                "attempt": 6
-              }
+              "poolBackoffEvent": {}
             }
           ]
         }

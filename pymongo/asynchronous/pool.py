@@ -1048,18 +1048,20 @@ class Pool:
     def backoff(self):
         """Set/increase backoff mode."""
         self._backoff += 1
+        backoff_duration_sec = _backoff(self._backoff)
+        backoff_duration_ms = int(backoff_duration_sec * 1000)
         if self.state != PoolState.BACKOFF:
             self.state = PoolState.BACKOFF
         if self.enabled_for_cmap:
             assert self.opts._event_listeners is not None
-            self.opts._event_listeners.publish_pool_backoff(self.address, self._backoff)
-        self._backoff_connection_time = _backoff(self._backoff) + time.monotonic()
+            self.opts._event_listeners.publish_pool_backoff(self.address, backoff_duration_ms)
+        self._backoff_connection_time = backoff_duration_sec + time.monotonic()
 
         # Log the pool backoff message.
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.POOL_BACKOFF % self._backoff,
+                message=_ConnectionStatusMessage.POOL_BACKOFF % backoff_duration_ms,
                 clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
