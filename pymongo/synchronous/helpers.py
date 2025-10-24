@@ -172,18 +172,22 @@ def _retry_overload(func: F) -> F:
         retry_policy = self._retry_policy
         attempt = 0
         while True:
+            print("in retry overload", attempt, func, args, kwargs)
             try:
                 res = func(self, *args, **kwargs)
                 retry_policy.record_success(retry=attempt > 0)
+                print("finished retry overload", attempt, func, args, kwargs)
                 return res
             except PyMongoError as exc:
                 if not exc.has_error_label("RetryableError"):
+                    print("retry overload no retryable overload", attempt, func, args, kwargs)
                     raise
                 attempt += 1
                 delay = 0
                 if exc.has_error_label("SystemOverloadedError"):
                     delay = retry_policy.backoff(attempt)
                 if not retry_policy.should_retry(attempt, delay):
+                    print("bailing on the retry", attempt, func, args, kwargs)
                     raise
 
                 # Implement exponential backoff on retry.

@@ -1041,6 +1041,7 @@ class Pool:
         # If found, set backoff and add error labels.
         if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
             return
+        print("handling connection error", id(self))
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
         self.backoff()
@@ -1326,6 +1327,7 @@ class Pool:
         conn = None
         incremented = False
         emitted_event = False
+
         try:
             async with self.lock:
                 self.active_sockets += 1
@@ -1337,7 +1339,17 @@ class Pool:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
                     while not (self.conns or self._pending < self.max_connecting):
                         timeout = deadline - time.monotonic() if deadline else None
+                        if self._backoff and (self._backoff_connection_time > time.monotonic()):
+                            timeout = 0.01
                         if not await _async_cond_wait(self._max_connecting_cond, timeout):
+                            # Check whether we should continue to wait for the backoff condition.
+                            if self._backoff and deadline is None or deadline < time.monotonic():
+                                print("looping?", id(self))
+                                if self._backoff_connection_time > time.monotonic():
+                                    print("continue", id(self))
+                                    continue
+                                print("break", id(self))
+                                break
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
                             if self.conns or self._pending < self.max_connecting:
@@ -1345,7 +1357,6 @@ class Pool:
                             emitted_event = True
                             self._raise_wait_queue_timeout(checkout_started_time)
                         self._raise_if_not_ready(checkout_started_time, emit_event=False)
-
                     try:
                         conn = self.conns.popleft()
                     except IndexError:
@@ -1355,17 +1366,22 @@ class Pool:
                         conn = None
                         continue
                 # See if we need to wait for the backoff period.
-                elif self._backoff and (self._backoff_connection_time < time.monotonic()):
+                elif self._backoff and (self._backoff_connection_time > time.monotonic()):
+                    print("wat", id(self))
                     continue
                 else:  # We need to create a new connection
+                    print("trying a connection", id(self))
                     try:
                         conn = await self.connect(handler=handler)
                     finally:
+                        print("finished trying a connection", id(self))
                         async with self._max_connecting_cond:
                             self._pending -= 1
                             self._max_connecting_cond.notify()
+
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException:
+        except BaseException as e:
+            print("got an exception", e, id(self))
             if conn:
                 # We checked out a socket but authentication failed.
                 await conn.close_conn(ConnectionClosedReason.ERROR)
@@ -1393,9 +1409,12 @@ class Pool:
                         error=ConnectionCheckOutFailedReason.CONN_ERROR,
                         durationMS=duration,
                     )
+            print("raising the exception", id(self))
             raise
 
         conn.active = True
+        if self._backoff:
+            print("finished get_conn", id(self))
         return conn
 
     async def checkin(self, conn: AsyncConnection) -> None:
