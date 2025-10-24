@@ -691,9 +691,12 @@
               "level": "debug",
               "component": "connection",
               "data": {
-                "message": "Connection pool backoff attempt number 1",
+                "message": "Connection pool backoff",
                 "serverHost": {
                   "$$type": "string"
+                },
+                "durationMS": {
+                   "$$type": "int"
                 },
                 "serverPort": {
                   "$$type": [

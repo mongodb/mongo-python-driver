@@ -1057,10 +1057,11 @@ class Pool:
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.POOL_BACKOFF % backoff_duration_ms,
+                message=_ConnectionStatusMessage.POOL_BACKOFF,
                 clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
+                durationMS=backoff_duration_ms,
                 reason=_verbose_connection_error_reason(ConnectionClosedReason.POOL_BACKOFF),
                 error=ConnectionClosedReason.POOL_BACKOFF,
             )
