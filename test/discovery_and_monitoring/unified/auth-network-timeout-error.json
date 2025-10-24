@@ -121,18 +121,7 @@
             "event": {
               "poolBackoffEvent": {}
             },
-            "count": 1
-          }
-        },
-        {
-          "name": "waitForEvent",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "poolBackoffEvent": {}
-            },
-            "count": 1
+            "count": 2
           }
         },
         {

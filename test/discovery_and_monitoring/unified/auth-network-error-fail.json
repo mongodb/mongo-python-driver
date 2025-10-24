@@ -113,40 +113,17 @@
           "expectError": {
             "isError": true
           }
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "eventType": "command",
-          "events": []
         },
         {
-          "client": "client",
-          "eventType": "cmap",
-          "events": [
-            {
-              "poolReadyEvent": {}
-            },
-            {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
               "poolBackoffEvent": {}
             },
-            {
-              "poolBackoffEvent": {}
-            },
-                        {
-              "poolBackoffEvent": {}
-            },
-                        {
-              "poolBackoffEvent": {}
-            },
-            {
-              "poolBackoffEvent": {}
-            },
-            {
-              "poolBackoffEvent": {}
-            }
-          ]
+            "count": 5
+          }
         }
       ]
     },
@@ -229,6 +206,17 @@
           }
         },
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "poolBackoffEvent": {}
+            },
+            "count": 5
+          }
+        },
+        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -259,43 +247,17 @@
           "expectError": {
             "isError": true
           }
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "eventType": "command",
-          "events": []
         },
         {
-          "client": "client",
-          "eventType": "cmap",
-          "events": [
-            {
-              "poolReadyEvent": {}
-            },
-            {
-              "poolBackoffEvent": {}
-            },
-            {
-              "poolBackoffEvent": {}
-            },
-                        {
-              "poolBackoffEvent": {}
-            },
-                        {
-              "poolBackoffEvent": {}
-            },
-            {
-              "poolBackoffEvent": {}
-            },
-            {
-              "poolBackoffEvent": {}
-            },
-            {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
               "poolClearedEvent": {}
-            }
-          ]
+            },
+            "count": 1
+          }
         }
       ]
     }
