@@ -847,10 +847,13 @@ class Pool:
         pause: bool = True,
         service_id: Optional[ObjectId] = None,
         interrupt_connections: bool = False,
+        from_server_description: bool = False,
     ) -> None:
         old_state = self.state
         async with self.size_cond:
             if self.closed:
+                return
+            if from_server_description and self.state == PoolState.BACKOFF:
                 return
             # Clear the backoff amount.
             self._backoff = 0
@@ -951,10 +954,16 @@ class Pool:
                 _socket.update_is_writable(self.is_writable)  # type: ignore[arg-type]
 
     async def reset(
-        self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
+        self,
+        service_id: Optional[ObjectId] = None,
+        interrupt_connections: bool = False,
+        from_server_description: bool = False,
     ) -> None:
         await self._reset(
-            close=False, service_id=service_id, interrupt_connections=interrupt_connections
+            close=False,
+            service_id=service_id,
+            interrupt_connections=interrupt_connections,
+            from_server_description=from_server_description,
         )
 
     async def reset_without_pause(self) -> None:

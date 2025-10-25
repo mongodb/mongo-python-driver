@@ -1,0 +1,200 @@
+{
+  "description": "heartbeat-failure-does-not-clear-backoff-pool",
+  "schemaVersion": "1.4",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4",
+      "serverless": "forbid",
+      "topologies": [
+        "single",
+        "replicaset",
+        "sharded"
+      ]
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "setupClient",
+        "useMultipleMongoses": false
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "heartbeat-backoff-error",
+      "databaseName": "sdam-tests",
+      "documents": [
+        {
+          "_id": 1
+        },
+        {
+          "_id": 2
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "A heartbeat failure during backoff should not clear the pool",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "alwaysOn",
+              "data": {
+                "failCommands": [
+                  "saslContinue"
+                ],
+                "appName": "heartbeatBackoffFailTest",
+                "closeConnection": true
+              }
+            }
+          }
+        },
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "client": {
+                  "id": "client",
+                  "useMultipleMongoses": false,
+                  "observeEvents": [
+                    "commandStartedEvent",
+                    "poolBackoffEvent",
+                    "poolReadyEvent",
+                    "poolClearedEvent",
+                    "serverHeartbeatFailedEvent",
+                    "serverHeartbeatSucceededEvent"
+                  ],
+                  "uriOptions": {
+                    "retryWrites": false,
+                    "appname": "heartbeatBackoffFailTest"
+                  }
+                }
+              },
+              {
+                "database": {
+                  "id": "database",
+                  "client": "client",
+                  "databaseName": "sdam-tests"
+                }
+              },
+              {
+                "collection": {
+                  "id": "collection",
+                  "database": "database",
+                  "collectionName": "heartbeat-backoff-error"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "insertMany",
+          "object": "collection",
+          "arguments": {
+            "documents": [
+              {
+                "_id": 3
+              },
+              {
+                "_id": 4
+              }
+            ]
+          },
+          "expectError": {
+            "isError": true
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "alwaysOn",
+              "data": {
+                "failCommands": [
+                  "isMaster",
+                  "hello"
+                ],
+                "appName": "heartbeatBackoffFailTest",
+                "closeConnection": true
+              }
+            }
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "serverHeartbeatFailedEvent": {}
+            },
+            "count": 1
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "off"
+            }
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "serverHeartbeatSucceededEvent": {}
+            },
+            "count": 1
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client",
+          "eventType": "cmap",
+          "events": [
+            {
+              "poolReadyEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
