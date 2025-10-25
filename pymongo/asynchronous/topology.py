@@ -555,7 +555,9 @@ class Topology:
         if reset_pool:
             server = self._servers.get(server_description.address)
             if server:
-                await server.pool.reset(interrupt_connections=interrupt_connections)
+                await server.pool.reset(
+                    interrupt_connections=interrupt_connections, from_server_description=True
+                )
 
     async def _process_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new seedlist on an opened topology.

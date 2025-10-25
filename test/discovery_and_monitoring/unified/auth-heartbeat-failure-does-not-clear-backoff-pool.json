@@ -1,10 +1,9 @@
 {
-  "description": "auth-network-error",
+  "description": "heartbeat-failure-does-not-clear-backoff-pool",
   "schemaVersion": "1.4",
   "runOnRequirements": [
     {
       "minServerVersion": "4.4",
-      "auth": true,
       "serverless": "forbid",
       "topologies": [
         "single",
@@ -23,7 +22,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "auth-network-error",
+      "collectionName": "heartbeat-backoff-error",
       "databaseName": "sdam-tests",
       "documents": [
         {
@@ -37,7 +36,7 @@
   ],
   "tests": [
     {
-      "description": "Backoff and retry after network connection error during authentication",
+      "description": "A heartbeat failure during backoff should not clear the pool",
       "operations": [
         {
           "name": "failPoint",
@@ -46,15 +45,13 @@
             "client": "setupClient",
             "failPoint": {
               "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 2
-              },
+              "mode": "alwaysOn",
               "data": {
                 "failCommands": [
                   "saslContinue"
                 ],
-                "closeConnection": true,
-                "appName": "authNetworkErrorTest"
+                "appName": "heartbeatBackoffFailTest",
+                "closeConnection": true
               }
             }
           }
@@ -72,13 +69,13 @@
                     "commandStartedEvent",
                     "poolBackoffEvent",
                     "poolReadyEvent",
-                    "poolClearedEvent"
+                    "poolClearedEvent",
+                    "serverHeartbeatFailedEvent",
+                    "serverHeartbeatSucceededEvent"
                   ],
                   "uriOptions": {
                     "retryWrites": false,
-                    "appname": "authNetworkErrorTest",
-                    "connectTimeoutMS": 250,
-                    "socketTimeoutMS": 250
+                    "appname": "heartbeatBackoffFailTest"
                   }
                 }
               },
@@ -93,7 +90,7 @@
                 "collection": {
                   "id": "collection",
                   "database": "database",
-                  "collectionName": "auth-network-error"
+                  "collectionName": "heartbeat-backoff-error"
                 }
               }
             ]
@@ -111,6 +108,28 @@
                 "_id": 4
               }
             ]
+          },
+          "expectError": {
+            "isError": true
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "alwaysOn",
+              "data": {
+                "failCommands": [
+                  "isMaster",
+                  "hello"
+                ],
+                "appName": "heartbeatBackoffFailTest",
+                "closeConnection": true
+              }
+            }
           }
         },
         {
@@ -119,53 +138,59 @@
           "arguments": {
             "client": "client",
             "event": {
-              "poolBackoffEvent": {}
+              "serverHeartbeatFailedEvent": {}
             },
-            "count": 2
+            "count": 1
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "off"
+            }
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "serverHeartbeatSucceededEvent": {}
+            },
+            "count": 1
           }
         }
       ],
       "expectEvents": [
         {
           "client": "client",
-          "eventType": "command",
+          "eventType": "cmap",
           "events": [
             {
-              "commandStartedEvent": {
-                "command": {
-                  "insert": "auth-network-error",
-                  "documents": [
-                    {
-                      "_id": 3
-                    },
-                    {
-                      "_id": 4
-                    }
-                  ]
-                },
-                "commandName": "insert",
-                "databaseName": "sdam-tests"
-              }
-            }
-          ]
-        }
-      ],
-      "outcome": [
-        {
-          "collectionName": "auth-network-error",
-          "databaseName": "sdam-tests",
-          "documents": [
-            {
-              "_id": 1
+              "poolReadyEvent": {}
             },
             {
-              "_id": 2
+              "poolBackoffEvent": {}
             },
             {
-              "_id": 3
+              "poolBackoffEvent": {}
             },
             {
-              "_id": 4
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
             }
           ]
         }

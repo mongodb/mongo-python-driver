@@ -15,17 +15,13 @@
         "isMaster",
         "hello"
       ],
-      "closeConnection": false,
-      "blockConnection": true,
-      "blockTimeMS": 1000,
+      "errorCode": 18,
       "appName": "poolCreateMinSizeErrorTest"
     }
   },
   "poolOptions": {
     "minPoolSize": 1,
     "backgroundThreadIntervalMS": 50,
-    "socketTimeoutMS": 500,
-    "connectTimeoutMS": 500,
     "appName": "poolCreateMinSizeErrorTest"
   },
   "operations": [

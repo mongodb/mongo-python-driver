@@ -37,7 +37,7 @@
   ],
   "tests": [
     {
-      "description": "Reset server and pool after network timeout error during authentication",
+      "description": "Backoff and retry after network timeout error during authentication",
       "operations": [
         {
           "name": "failPoint",
@@ -47,14 +47,13 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 1
+                "times": 2
               },
               "data": {
                 "failCommands": [
                   "saslContinue"
                 ],
-                "blockConnection": true,
-                "blockTimeMS": 500,
+                "closeConnection": true,
                 "appName": "authNetworkTimeoutErrorTest"
               }
             }
@@ -71,7 +70,8 @@
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent",
-                    "serverDescriptionChangedEvent",
+                    "poolBackoffEvent",
+                    "poolReadyEvent",
                     "poolClearedEvent"
                   ],
                   "uriOptions": {
@@ -111,9 +111,6 @@
                 "_id": 4
               }
             ]
-          },
-          "expectError": {
-            "isError": true
           }
         },
         {
@@ -122,13 +119,9 @@
           "arguments": {
             "client": "client",
             "event": {
-              "serverDescriptionChangedEvent": {
-                "newDescription": {
-                  "type": "Unknown"
-                }
-              }
+              "poolBackoffEvent": {}
             },
-            "count": 1
+            "count": 2
           }
         },
         {
@@ -137,47 +130,7 @@
           "arguments": {
             "client": "client",
             "event": {
-              "poolClearedEvent": {}
-            },
-            "count": 1
-          }
-        },
-        {
-          "name": "insertMany",
-          "object": "collection",
-          "arguments": {
-            "documents": [
-              {
-                "_id": 5
-              },
-              {
-                "_id": 6
-              }
-            ]
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "serverDescriptionChangedEvent": {
-                "newDescription": {
-                  "type": "Unknown"
-                }
-              }
-            },
-            "count": 1
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "poolClearedEvent": {}
+              "poolReadyEvent": {}
             },
             "count": 1
           }
@@ -194,10 +147,10 @@
                   "insert": "auth-network-timeout-error",
                   "documents": [
                     {
-                      "_id": 5
+                      "_id": 3
                     },
                     {
-                      "_id": 6
+                      "_id": 4
                     }
                   ]
                 },
@@ -220,10 +173,10 @@
               "_id": 2
             },
             {
-              "_id": 5
+              "_id": 3
             },
             {
-              "_id": 6
+              "_id": 4
             }
           ]
         }

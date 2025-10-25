@@ -137,6 +137,9 @@ Connection monitoring and pooling events are also available. For example::
         def pool_closed(self, event):
             logging.info("[pool {0.address}] pool closed".format(event))
 
+        def pool_backoff(self, event):
+            logging.info("[pool {0.address}] pool backoff attempt {0.event}".format(event))
+
         def connection_created(self, event):
             logging.info("[pool {0.address}][connection #{0.connection_id}] "
                          "connection created".format(event))
@@ -302,6 +305,15 @@ class ConnectionPoolListener(_EventListener):
         Emitted when a connection Pool is closed.
 
         :param event: An instance of :class:`PoolClosedEvent`.
+        """
+        raise NotImplementedError
+
+    def pool_backoff(self, event: PoolBackoffEvent) -> None:
+        """Abstract method to handle a `PoolBackoffEvent`.
+
+        Emitted when a connection Pool is in backoff.
+
+        :param event: An instance of :class:`PoolBackoffEvent`.
         """
         raise NotImplementedError
 
@@ -912,6 +924,28 @@ class PoolClosedEvent(_PoolEvent):
     """
 
     __slots__ = ()
+
+
+class PoolBackoffEvent(_PoolEvent):
+    """Published when a Connection Pool is backing off.
+
+    :param address: The address (host, port) pair of the server this Pool is
+       attempting to connect to.
+    :param duration_ms: The backoff duration in ms.
+
+    .. versionadded:: 4.16
+    """
+
+    __slots__ = ("__duration_ms",)
+
+    def __init__(self, address: _Address, duration_ms: int) -> None:
+        super().__init__(address)
+        self.__duration_ms = duration_ms
+
+    @property
+    def duration_ms(self) -> int:
+        """The backoff duration in ms."""
+        return self.__duration_ms
 
 
 class ConnectionClosedReason:
@@ -1827,6 +1861,15 @@ class _EventListeners:
         for subscriber in self.__cmap_listeners:
             try:
                 subscriber.pool_closed(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_pool_backoff(self, address: _Address, attempt: int) -> None:
+        """Publish a :class:`PoolBackoffEvent` to all pool listeners."""
+        event = PoolBackoffEvent(address, attempt)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.pool_backoff(event)
             except Exception:
                 _handle_exception()
 

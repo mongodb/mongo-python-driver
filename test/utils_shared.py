@@ -48,6 +48,7 @@ from pymongo.monitoring import (
     ConnectionClosedEvent,
     ConnectionCreatedEvent,
     ConnectionReadyEvent,
+    PoolBackoffEvent,
     PoolClearedEvent,
     PoolClosedEvent,
     PoolCreatedEvent,
@@ -140,6 +141,10 @@ class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
 
     def pool_closed(self, event):
         assert isinstance(event, PoolClosedEvent)
+        self.add_event(event)
+
+    def pool_backoff(self, event):
+        assert isinstance(event, PoolBackoffEvent)
         self.add_event(event)
 
 
