@@ -322,6 +322,14 @@ def translate_coroutine_types(lines: list[str]) -> list[str]:
             index = lines.index(type)
             new = type.replace(old, res.group(3))
             lines[index] = new
+    coroutine_types = [line for line in lines if "Awaitable[" in line]
+    for type in coroutine_types:
+        res = re.search(r"Awaitable\[([A-z]+)\]", type)
+        if res:
+            old = res[0]
+            index = lines.index(type)
+            new = type.replace(old, res.group(1))
+            lines[index] = new
     return lines
 
 
