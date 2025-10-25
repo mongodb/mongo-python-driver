@@ -1169,6 +1169,7 @@ class Pool:
 
         # Clear the backoff state.
         if self._backoff:
+            self._backoff = 0
             await self.ready()
 
         return conn
