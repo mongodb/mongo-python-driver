@@ -26,7 +26,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v6
         with:
           enable-cache: true
           python-version: "3.10"
@@ -68,7 +68,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v6
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -87,7 +87,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v6
         with:
           enable-cache: true
           python-version: "3.10"
@@ -112,7 +112,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v6
         with:
           enable-cache: true
           python-version: "3.10"
@@ -131,7 +131,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v6
         with:
           enable-cache: true
           python-version: "3.10"
@@ -153,7 +153,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v6
         with:
           enable-cache: true
           python-version: "${{matrix.python}}"
@@ -174,7 +174,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v6
         with:
           enable-cache: true
           python-version: "3.10"
@@ -214,7 +214,7 @@ jobs:
         run: |
           pip install build
           python -m build --sdist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: "sdist"
           path: dist/*.tar.gz
@@ -226,7 +226,7 @@ jobs:
       timeout-minutes: 20
       steps:
         - name: Download sdist
-          uses: actions/download-artifact@v5
+          uses: actions/download-artifact@v6
           with:
             path: sdist/
         - name: Unpack SDist
@@ -264,7 +264,7 @@ jobs:
           with:
             persist-credentials: false
         - name: Install uv
-          uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+          uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v6
           with:
             python-version: "3.10"
         - id: setup-mongodb
