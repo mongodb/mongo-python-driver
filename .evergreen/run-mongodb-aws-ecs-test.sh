@@ -19,20 +19,14 @@ fi
 # Now we can safely enable xtrace
 set -o xtrace
 
-# Install python with pip.
-PYTHON_VER="python3.10"
+# Install a c compiler.
 apt-get -qq update  < /dev/null > /dev/null
-apt-get -q install -y software-properties-common
-# Use openpgp to avoid gpg key timeout.
-mkdir -p $HOME/.gnupg
-echo "keyserver keys.openpgp.org" >> $HOME/.gnupg/gpg.conf
-add-apt-repository -y 'ppa:deadsnakes/ppa'
-apt-get -qq install $PYTHON_VER $PYTHON_VER-venv build-essential $PYTHON_VER-dev -y  < /dev/null > /dev/null
+apt-get -q install -y build-essential
 
-export PYTHON_BINARY=$PYTHON_VER
 export SET_XTRACE_ON=1
 cd src
 rm -rf .venv
 rm -f .evergreen/scripts/test-env.sh || true
+rm -f .evergreen/scripts/env.sh || true
 bash ./.evergreen/just.sh setup-tests auth_aws ecs-remote
 bash .evergreen/just.sh run-tests

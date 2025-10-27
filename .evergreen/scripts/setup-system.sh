@@ -8,8 +8,12 @@ echo "Setting up system..."
 bash .evergreen/scripts/configure-env.sh
 source .evergreen/scripts/env.sh
 bash $DRIVERS_TOOLS/.evergreen/setup.sh
-bash .evergreen/scripts/install-dependencies.sh
 popd
+
+# Run spawn host-specific tasks.
+if [ -z "${CI:-}" ]; then
+  bash $HERE/setup-dev-env.sh
+fi
 
 # Enable core dumps if enabled on the machine
 # Copied from https://github.com/mongodb/mongo/blob/master/etc/evergreen.yml

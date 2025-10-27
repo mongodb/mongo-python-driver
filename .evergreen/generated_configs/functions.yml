@@ -101,8 +101,8 @@ functions:
           - AUTH
           - SSL
           - ORCHESTRATION_FILE
-          - PYTHON_BINARY
-          - PYTHON_VERSION
+          - UV_PYTHON
+          - TOOLCHAIN_VERSION
           - STORAGE_ENGINE
           - REQUIRE_API_VERSION
           - DRIVERS_TOOLS
@@ -134,10 +134,10 @@ functions:
           - AWS_SECRET_ACCESS_KEY
           - AWS_SESSION_TOKEN
           - COVERAGE
-          - PYTHON_BINARY
+          - UV_PYTHON
           - LIBMONGOCRYPT_URL
           - MONGODB_URI
-          - PYTHON_VERSION
+          - TOOLCHAIN_VERSION
           - DISABLE_TEST_COMMANDS
           - GREEN_FRAMEWORK
           - NO_EXT

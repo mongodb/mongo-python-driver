@@ -356,12 +356,10 @@ def create_oidc_auth_variants():
 
 def create_search_index_variants():
     host = DEFAULT_HOST
-    python = CPYTHONS[0]
     return [
         create_variant(
             [".search_index"],
-            get_variant_name("Search Index Helpers", host, python=python),
-            python=python,
+            get_variant_name("Search Index Helpers", host),
             host=host,
         )
     ]
@@ -438,8 +436,7 @@ def create_aws_auth_variants():
 
     for host_name in ["ubuntu20", "win64", "macos"]:
         expansions = dict()
-        # PYTHON-5604 - we need to skip ECS tests for now.
-        tasks = [".auth-aws !.auth-aws-ecs"]
+        tasks = [".auth-aws"]
         tags = []
         if host_name == "macos":
             tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2"]
@@ -477,7 +474,7 @@ def create_alternative_hosts_variants():
         if "fips" in host_name.lower():
             expansions["REQUIRE_FIPS"] = "1"
             # Use explicit Python 3.11 binary on the host since the default python3 is 3.9.
-            expansions["PYTHON_BINARY"] = "/usr/bin/python3.11"
+            expansions["UV_PYTHON"] = "/usr/bin/python3.11"
         if "amazon" in host_name.lower():
             tags.append("pr")
         variants.append(
@@ -543,7 +540,7 @@ def create_server_version_tasks():
         )
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
-        test_vars["PYTHON_VERSION"] = python
+        test_vars["TOOLCHAIN_VERSION"] = python
         test_vars["TEST_NAME"] = f"default_{sync}"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
@@ -599,7 +596,7 @@ def create_test_non_standard_tasks():
         name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
-        test_vars["PYTHON_VERSION"] = python
+        test_vars["TOOLCHAIN_VERSION"] = python
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
@@ -639,7 +636,7 @@ def create_test_standard_auth_tasks():
         name = get_task_name("test-standard-auth", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
-        test_vars["PYTHON_VERSION"] = python
+        test_vars["TOOLCHAIN_VERSION"] = python
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
@@ -691,7 +688,7 @@ def create_standard_tasks():
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
-        test_vars["PYTHON_VERSION"] = python
+        test_vars["TOOLCHAIN_VERSION"] = python
         test_vars["TEST_NAME"] = f"default_{sync}"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
@@ -707,7 +704,7 @@ def create_no_orchestration_tasks():
         ]
         name = get_task_name("test-no-orchestration", python=python)
         assume_func = FunctionCall(func="assume ec2 role")
-        test_vars = dict(PYTHON_VERSION=python)
+        test_vars = dict(TOOLCHAIN_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         commands = [assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=commands))
@@ -756,7 +753,7 @@ def create_aws_tasks():
         if "t" in python:
             tags.append("free-threaded")
         name = get_task_name(f"{base_name}-{test_type}", python=python)
-        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, PYTHON_VERSION=python)
+        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, TOOLCHAIN_VERSION=python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [server_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
@@ -768,7 +765,7 @@ def create_aws_tasks():
                 TEST_NAME="auth_aws",
                 SUB_TEST_NAME="web-identity",
                 AWS_ROLE_SESSION_NAME="test",
-                PYTHON_VERSION=python,
+                TOOLCHAIN_VERSION=python,
             )
             if "t" in python:
                 tags.append("free-threaded")
@@ -806,9 +803,11 @@ def create_mod_wsgi_tasks():
             task_name = "mod-wsgi-embedded-mode-"
         task_name += topology.replace("_", "-")
         task_name = get_task_name(task_name, python=python)
-        server_vars = dict(TOPOLOGY=topology, PYTHON_VERSION=python)
+        server_vars = dict(TOPOLOGY=topology, TOOLCHAIN_VERSION=python)
         server_func = FunctionCall(func="run server", vars=server_vars)
-        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0], PYTHON_VERSION=python)
+        vars = dict(
+            TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0], TOOLCHAIN_VERSION=python
+        )
         test_func = FunctionCall(func="run tests", vars=vars)
         tags = ["mod_wsgi", "pr"]
         commands = [server_func, test_func]
@@ -830,7 +829,7 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
             ORCHESTRATION_FILE=file_name,
             OCSP_SERVER_TYPE=server_type,
             TEST_NAME="ocsp",
-            PYTHON_VERSION=python,
+            TOOLCHAIN_VERSION=python,
             VERSION=version,
         )
         test_func = FunctionCall(func="run tests", vars=vars)
@@ -864,7 +863,7 @@ def create_aws_lambda_tasks():
 def create_search_index_tasks():
     assume_func = FunctionCall(func="assume ec2 role")
     server_func = FunctionCall(func="run server", vars=dict(TEST_NAME="search_index"))
-    vars = dict(TEST_NAME="search_index")
+    vars = dict(TEST_NAME="search_index", TOOLCHAIN_VERSION=CPYTHONS[0])
     test_func = FunctionCall(func="run tests", vars=vars)
     task_name = "test-search-index-helpers"
     tags = ["search_index"]
@@ -1075,8 +1074,8 @@ def create_run_server_func():
         "AUTH",
         "SSL",
         "ORCHESTRATION_FILE",
-        "PYTHON_BINARY",
-        "PYTHON_VERSION",
+        "UV_PYTHON",
+        "TOOLCHAIN_VERSION",
         "STORAGE_ENGINE",
         "REQUIRE_API_VERSION",
         "DRIVERS_TOOLS",
@@ -1100,10 +1099,10 @@ def create_run_tests_func():
         "AWS_SECRET_ACCESS_KEY",
         "AWS_SESSION_TOKEN",
         "COVERAGE",
-        "PYTHON_BINARY",
+        "UV_PYTHON",
         "LIBMONGOCRYPT_URL",
         "MONGODB_URI",
-        "PYTHON_VERSION",
+        "TOOLCHAIN_VERSION",
         "DISABLE_TEST_COMMANDS",
         "GREEN_FRAMEWORK",
         "NO_EXT",

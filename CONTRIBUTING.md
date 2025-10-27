@@ -194,7 +194,7 @@ the pages will re-render and the browser will automatically refresh.
 
 -   Run `just install` to set a local virtual environment, or you can manually
     create a virtual environment and run `pytest` directly.  If you want to use a specific
-    version of Python, remove the `.venv` folder and set `PYTHON_BINARY` before running `just install`.
+    version of Python, set `UV_PYTHON` before running `just install`.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
     [`run-orchestration.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-orchestration.sh).  Run `$DRIVERS_TOOLS/evergreen/run-orchestration.sh -h`
@@ -335,7 +335,7 @@ Locally you can run:
 
 - Run `just run-server`.
 - Run `just setup-tests`.
-- Run `UV_PYTHON=3.13t just run-tests`.
+- Run `UV_PYTHON=3.14t just run-tests`.
 
 ### AWS Lambda tests
 
@@ -399,6 +399,16 @@ To run any of the test suites with minimum supported dependencies, pass `--test-
 - If there are any special test considerations, including not running `pytest` at all, handle it in `.evergreen/scripts/run_tests.py`.
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
 - Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
+- There are some considerations about the Python version used in the test:
+    - If a specific version of Python is needed in a task that is running on variants with a toolchain, use
+``TOOLCHAIN_VERSION`` (e.g. `TOOLCHAIN_VERSION=3.10`).  The actual path lookup needs to be done on the host, since
+tasks are host-agnostic.
+    - If a specific Python binary is needed (for example on the FIPS host), set `UV_PYTHON=/path/to/python`.
+    - If a specific Python version is needed and the toolchain will not be available, use `UV_PYTHON` (e.g. `UV_PYTHON=3.11`).
+    - The default if neither ``TOOLCHAIN_VERSION`` or ``UV_PYTHON`` is set is to use UV to install the minimum
+      supported version of Python and use that.  This ensures a consistent behavior across host types that do not
+      have the Python toolchain (e.g. Azure VMs), by having a known version of Python with the build headers (`Python.h`)
+      needed to build the C extensions.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
