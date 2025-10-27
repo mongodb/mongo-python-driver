@@ -60,10 +60,8 @@ test *args="-v --durations=5 --maxfail=10": && resync
     uv run --extra test python -m pytest {{args}}
 
 [group('test')]
-test-bson *args="-v --durations=5 --maxfail=10": && resync
+test-numpy *args="-v --durations=5 --maxfail=10": && resync
     uv run --extra test --with numpy python -m pytest test/test_bson.py
-
-
 
 [group('test')]
 run-tests *args: && resync
