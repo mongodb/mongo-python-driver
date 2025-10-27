@@ -481,7 +481,7 @@ class Binary(bytes):
         padding = 0 if padding is None else padding
         if not isinstance(dtype, BinaryVectorDtype):
             raise TypeError(
-                "dtype must be a bson.BinaryVectorDtype, such as BinaryVectorDtype.FLOAT32"
+                "dtype must be a bson.BinaryVectorDtype of BinaryVectorDType.INT8, PACKED_BIT, FLOAT32"
             )
         metadata = struct.pack("<sB", dtype.value, padding)
 
