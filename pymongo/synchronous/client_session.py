@@ -475,6 +475,11 @@ _BACKOFF_MAX = 0.500  # 500ms max backoff
 _BACKOFF_INITIAL = 0.001  # 1ms initial backoff
 
 
+def _set_backoff_initial(seconds: float) -> None:
+    global _BACKOFF_INITIAL  # noqa: PLW0603
+    _BACKOFF_INITIAL = seconds
+
+
 def _within_time_limit(start_time: float) -> bool:
     """Are we within the with_transaction retry limit?"""
     return time.monotonic() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
@@ -516,7 +521,6 @@ class ClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
-        self._transaction_retry_backoffs: list[float] = []
 
     def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -704,12 +708,10 @@ class ClientSession:
         """
         start_time = time.monotonic()
         retry = 0
-        self._transaction_retry_backoffs = []
         while True:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
                 backoff = jitter * min(_BACKOFF_INITIAL * (1.25**retry), _BACKOFF_MAX)
-                self._transaction_retry_backoffs.append(backoff)
                 time.sleep(backoff)
             retry += 1
             self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
