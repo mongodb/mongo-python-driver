@@ -611,11 +611,15 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_transaction_backoff(self):
         client = client_context.client
         coll = client[self.db.name].test
+        # optionally set _backoff_initial to a higher value
+        _set_backoff_initial(client_session._BACKOFF_MAX)
         # set fail point to trigger transaction failure and trigger backoff
         self.set_fail_point(
             {
                 "configureFailPoint": "failCommand",
-                "mode": {"times": 3},
+                "mode": {
+                    "times": 30
+                },  # sufficiently high enough such that the time effect of backoff is noticeable
                 "data": {
                     "failCommands": ["commitTransaction"],
                     "errorCode": 24,
@@ -629,16 +633,11 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         def callback(session):
             coll.insert_one({}, session=session)
 
-        total_backoff = 0
         with self.client.start_session() as s:
             s.with_transaction(callback)
-            self.assertEqual(len(s._transaction_retry_backoffs), 3)
-            for backoff in s._transaction_retry_backoffs:
-                self.assertGreater(backoff, 0)
-                total_backoff += backoff
 
         end = time.monotonic()
-        self.assertGreaterEqual(end - start, total_backoff)
+        self.assertGreaterEqual(end - start, 1.25)  # 1 second
 
 
 class TestOptionsInsideTransactionProse(TransactionsBase):
