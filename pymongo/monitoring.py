@@ -931,16 +931,23 @@ class PoolBackoffEvent(_PoolEvent):
 
     :param address: The address (host, port) pair of the server this Pool is
        attempting to connect to.
+    :param attempt: The backoff attempt.
     :param duration_ms: The backoff duration in ms.
 
     .. versionadded:: 4.16
     """
 
-    __slots__ = ("__duration_ms",)
+    __slots__ = ("__attempt", "__duration_ms")
 
-    def __init__(self, address: _Address, duration_ms: int) -> None:
+    def __init__(self, address: _Address, attempt: int, duration_ms: int) -> None:
         super().__init__(address)
+        self.__attempt = attempt
         self.__duration_ms = duration_ms
+
+    @property
+    def attempt(self) -> int:
+        """The backoff attempt."""
+        return self.__attempt
 
     @property
     def duration_ms(self) -> int:
@@ -1864,9 +1871,9 @@ class _EventListeners:
             except Exception:
                 _handle_exception()
 
-    def publish_pool_backoff(self, address: _Address, attempt: int) -> None:
+    def publish_pool_backoff(self, address: _Address, attempt: int, duration_ms: int) -> None:
         """Publish a :class:`PoolBackoffEvent` to all pool listeners."""
-        event = PoolBackoffEvent(address, attempt)
+        event = PoolBackoffEvent(address, attempt, duration_ms)
         for subscriber in self.__cmap_listeners:
             try:
                 subscriber.pool_backoff(event)

@@ -1,5 +1,5 @@
 {
-  "description": "auth-network-error",
+  "description": "auth-network-timeout-error",
   "schemaVersion": "1.4",
   "runOnRequirements": [
     {
@@ -23,7 +23,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "auth-network-error",
+      "collectionName": "auth-network-timeout-error",
       "databaseName": "sdam-tests",
       "documents": [
         {
@@ -37,7 +37,7 @@
   ],
   "tests": [
     {
-      "description": "Reset server and pool after network error during authentication",
+      "description": "Backoff and retry after network timeout error during authentication",
       "operations": [
         {
           "name": "failPoint",
@@ -47,14 +47,14 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 1
+                "times": 2
               },
               "data": {
                 "failCommands": [
                   "saslContinue"
                 ],
                 "closeConnection": true,
-                "appName": "authNetworkErrorTest"
+                "appName": "authNetworkTimeoutErrorTest"
               }
             }
           }
@@ -70,12 +70,15 @@
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent",
-                    "serverDescriptionChangedEvent",
+                    "poolBackoffEvent",
+                    "poolReadyEvent",
                     "poolClearedEvent"
                   ],
                   "uriOptions": {
                     "retryWrites": false,
-                    "appname": "authNetworkErrorTest"
+                    "appname": "authNetworkTimeoutErrorTest",
+                    "connectTimeoutMS": 250,
+                    "socketTimeoutMS": 250
                   }
                 }
               },
@@ -90,7 +93,7 @@
                 "collection": {
                   "id": "collection",
                   "database": "database",
-                  "collectionName": "auth-network-error"
+                  "collectionName": "auth-network-timeout-error"
                 }
               }
             ]
@@ -108,9 +111,6 @@
                 "_id": 4
               }
             ]
-          },
-          "expectError": {
-            "isError": true
           }
         },
         {
@@ -119,13 +119,9 @@
           "arguments": {
             "client": "client",
             "event": {
-              "serverDescriptionChangedEvent": {
-                "newDescription": {
-                  "type": "Unknown"
-                }
-              }
+              "poolBackoffEvent": {}
             },
-            "count": 1
+            "count": 2
           }
         },
         {
@@ -134,47 +130,7 @@
           "arguments": {
             "client": "client",
             "event": {
-              "poolClearedEvent": {}
-            },
-            "count": 1
-          }
-        },
-        {
-          "name": "insertMany",
-          "object": "collection",
-          "arguments": {
-            "documents": [
-              {
-                "_id": 5
-              },
-              {
-                "_id": 6
-              }
-            ]
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "serverDescriptionChangedEvent": {
-                "newDescription": {
-                  "type": "Unknown"
-                }
-              }
-            },
-            "count": 1
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "poolClearedEvent": {}
+              "poolReadyEvent": {}
             },
             "count": 1
           }
@@ -188,13 +144,13 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "auth-network-error",
+                  "insert": "auth-network-timeout-error",
                   "documents": [
                     {
-                      "_id": 5
+                      "_id": 3
                     },
                     {
-                      "_id": 6
+                      "_id": 4
                     }
                   ]
                 },
@@ -207,7 +163,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "auth-network-error",
+          "collectionName": "auth-network-timeout-error",
           "databaseName": "sdam-tests",
           "documents": [
             {
@@ -217,10 +173,10 @@
               "_id": 2
             },
             {
-              "_id": 5
+              "_id": 3
             },
             {
-              "_id": 6
+              "_id": 4
             }
           ]
         }

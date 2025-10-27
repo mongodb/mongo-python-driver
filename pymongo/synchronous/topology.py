@@ -53,6 +53,7 @@ from pymongo.logger import (
     _SDAMStatusMessage,
     _ServerSelectionStatusMessage,
 )
+from pymongo.pool import PoolState
 from pymongo.pool_options import PoolOptions
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (
@@ -485,7 +486,7 @@ class Topology:
             server_description.is_server_type_known and new_td.topology_type == TOPOLOGY_TYPE.Single
         ):
             server = self._servers.get(server_description.address)
-            if server:
+            if server and server.pool.state != PoolState.BACKOFF:
                 server.pool.ready()
 
         suppress_event = sd_old == server_description
@@ -555,9 +556,7 @@ class Topology:
         if reset_pool:
             server = self._servers.get(server_description.address)
             if server:
-                server.pool.reset(
-                    interrupt_connections=interrupt_connections, from_server_description=True
-                )
+                server.pool.reset(interrupt_connections=interrupt_connections)
 
     def _process_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new seedlist on an opened topology.

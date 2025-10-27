@@ -818,8 +818,7 @@ class Pool:
     def ready(self) -> None:
         # Take the lock to avoid the race condition described in PYTHON-2699.
         with self.lock:
-            # Do not set the pool as ready if in backoff.
-            if self._backoff:
+            if self.state == PoolState.BACKOFF:
                 return
             if self.state != PoolState.READY:
                 self.state = PoolState.READY
@@ -845,13 +844,10 @@ class Pool:
         pause: bool = True,
         service_id: Optional[ObjectId] = None,
         interrupt_connections: bool = False,
-        from_server_description: bool = False,
     ) -> None:
         old_state = self.state
         with self.size_cond:
             if self.closed:
-                return
-            if from_server_description and self.state == PoolState.BACKOFF:
                 return
             # Clear the backoff amount.
             self._backoff = 0
@@ -952,16 +948,12 @@ class Pool:
                 _socket.update_is_writable(self.is_writable)  # type: ignore[arg-type]
 
     def reset(
-        self,
-        service_id: Optional[ObjectId] = None,
-        interrupt_connections: bool = False,
-        from_server_description: bool = False,
+        self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
     ) -> None:
         self._reset(
             close=False,
             service_id=service_id,
             interrupt_connections=interrupt_connections,
-            from_server_description=from_server_description,
         )
 
     def reset_without_pause(self) -> None:
@@ -1054,15 +1046,18 @@ class Pool:
 
     def backoff(self) -> None:
         """Set/increase backoff mode."""
-        self._backoff += 1
-        backoff_duration_sec = _backoff(self._backoff)
-        backoff_duration_ms = int(backoff_duration_sec * 1000)
-        if self.state != PoolState.BACKOFF:
-            self.state = PoolState.BACKOFF
-        if self.enabled_for_cmap:
-            assert self.opts._event_listeners is not None
-            self.opts._event_listeners.publish_pool_backoff(self.address, backoff_duration_ms)
-        self._backoff_connection_time = backoff_duration_sec + time.monotonic()
+        with self.lock:
+            self._backoff += 1
+            backoff_duration_sec = _backoff(self._backoff)
+            backoff_duration_ms = int(backoff_duration_sec * 1000)
+            if self.state != PoolState.BACKOFF:
+                self.state = PoolState.BACKOFF
+            if self.enabled_for_cmap:
+                assert self.opts._event_listeners is not None
+                self.opts._event_listeners.publish_pool_backoff(
+                    self.address, self._backoff, backoff_duration_ms
+                )
+            self._backoff_connection_time = backoff_duration_sec + time.monotonic()
 
         # Log the pool backoff message.
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
@@ -1072,6 +1067,7 @@ class Pool:
                 clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
+                attempt=self._backoff,
                 durationMS=backoff_duration_ms,
                 reason=_verbose_connection_error_reason(ConnectionClosedReason.POOL_BACKOFF),
                 error=ConnectionClosedReason.POOL_BACKOFF,
@@ -1146,9 +1142,11 @@ class Pool:
             self.active_contexts.discard(tmp_context)
         if tmp_context.cancelled:
             conn.cancel_context.cancel()
+        has_completed_hello = False
         try:
             if not self.is_sdam:
                 conn.hello()
+                has_completed_hello = True
                 self.is_writable = conn.is_writable
             if handler:
                 handler.contribute_socket(conn, completed_handshake=False)
@@ -1158,7 +1156,8 @@ class Pool:
         except BaseException as e:
             with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
-            self._handle_connection_error(e, "hello")
+            if not has_completed_hello:
+                self._handle_connection_error(e, "hello")
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
