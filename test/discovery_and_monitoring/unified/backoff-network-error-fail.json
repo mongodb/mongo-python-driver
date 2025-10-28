@@ -202,9 +202,7 @@
             "client": "setupClient",
             "failPoint": {
               "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 6
-              },
+              "mode": "always",
               "data": {
                 "failCommands": [
                   "isMaster",
@@ -242,6 +240,17 @@
               "poolBackoffEvent": {}
             },
             "count": 5
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "off"
+            }
           }
         },
         {

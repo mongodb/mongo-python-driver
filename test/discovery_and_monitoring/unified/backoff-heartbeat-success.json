@@ -50,7 +50,6 @@
                   "observeEvents": [
                     "commandStartedEvent",
                     "poolBackoffEvent",
-                    "poolReadyEvent",
                     "poolClearedEvent",
                     "serverHeartbeatFailedEvent",
                     "serverHeartbeatSucceededEvent"
@@ -154,9 +153,6 @@
           "client": "client",
           "eventType": "cmap",
           "events": [
-            {
-              "poolReadyEvent": {}
-            },
             {
               "poolBackoffEvent": {}
             },

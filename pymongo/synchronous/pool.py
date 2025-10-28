@@ -1353,8 +1353,9 @@ class Pool:
                             timeout = 0.01
                         if not _cond_wait(self._max_connecting_cond, timeout):
                             # Check whether we should continue to wait for the backoff condition.
-                            if self._backoff and (deadline is None or deadline < time.monotonic()):
-                                if self._backoff_connection_time > time.monotonic():
+                            curr_time = time.monotonic()
+                            if self._backoff and (deadline is None or curr_time < deadline):
+                                if self._backoff_connection_time > curr_time:
                                     continue
                                 break
                             # Timed out, notify the next thread to ensure a

@@ -515,7 +515,7 @@ class TestPooling(_TestPoolingBase):
     def test_pool_check_backoff(self):
         # Test that Pool recovers from two connection failures in a row.
         # This exercises code at the end of Pool._check().
-        cx_pool = self.create_pool(max_pool_size=1, connect_timeout=1, wait_queue_timeout=1)
+        cx_pool = self.create_pool(max_pool_size=1, connect_timeout=1, wait_queue_timeout=10)
         self.addCleanup(cx_pool.close)
 
         with cx_pool.checkout() as conn:
