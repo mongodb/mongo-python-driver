@@ -96,9 +96,7 @@
             "client": "setupClient",
             "failPoint": {
               "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 6
-              },
+              "mode": "alwaysOn",
               "data": {
                 "failCommands": [
                   "isMaster",
