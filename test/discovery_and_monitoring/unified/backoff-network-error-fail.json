@@ -38,6 +38,17 @@
     {
       "description": "Backoff and fail after network connection errors during connection establishment",
       "operations": [
+          {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "off"
+            }
+          }
+        },
         {
           "name": "createEntities",
           "object": "testRunner",
@@ -141,7 +152,17 @@
     {
       "description": "Backoff and clear the pool after network failures followed by server error",
       "operations": [
-        
+          {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "off"
+            }
+          }
+        },
         {
           "name": "createEntities",
           "object": "testRunner",

@@ -56,7 +56,7 @@
                   ],
                   "uriOptions": {
                     "retryWrites": false,
-                    "heartbeatFrequencyMS": 5000,
+                    "heartbeatFrequencyMS": 10000,
                     "appname": "heartbeatBackoffFailTest"
                   }
                 }
