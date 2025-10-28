@@ -302,7 +302,7 @@
           "name": "waitForEvent",
           "object": "testRunner",
           "arguments": {
-            "client": "client",
+            "client": "singleClient",
             "event": {
               "poolBackoffEvent": {}
             },
