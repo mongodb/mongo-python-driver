@@ -202,7 +202,7 @@
             "client": "setupClient",
             "failPoint": {
               "configureFailPoint": "failCommand",
-              "mode": "always",
+              "mode": "alwaysOn",
               "data": {
                 "failCommands": [
                   "isMaster",

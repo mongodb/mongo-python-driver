@@ -1346,17 +1346,16 @@ class Pool:
                 with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
                     while not (self.conns or self._pending < self.max_connecting):
-                        timeout = deadline - time.monotonic() if deadline else None
+                        curr_time = time.monotonic()
+                        timeout = deadline - curr_time if deadline else None
                         if self._backoff:
-                            if self._backoff_connection_time < time.monotonic():
+                            if self._backoff_connection_time < curr_time:
                                 break
-                            timeout = 0.01
+                            if deadline is None or deadline > self._backoff_connection_time:
+                                timeout = self._backoff_connection_time - curr_time
                         if not _cond_wait(self._max_connecting_cond, timeout):
-                            # Check whether we should continue to wait for the backoff condition.
-                            curr_time = time.monotonic()
-                            if self._backoff and (deadline is None or curr_time < deadline):
-                                if self._backoff_connection_time > curr_time:
-                                    continue
+                            # Check whether a backoff period has expired.
+                            if self._backoff and time.monotonic() > self._backoff_connection_time:
                                 break
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
@@ -1374,9 +1373,6 @@ class Pool:
                     if self._perished(conn):
                         conn = None
                         continue
-                # See if we need to wait for the backoff period.
-                elif self._backoff and (self._backoff_connection_time > time.monotonic()):
-                    continue
                 else:  # We need to create a new connection
                     try:
                         conn = self.connect(handler=handler)
