@@ -265,10 +265,11 @@
               },
               "data": {
                 "failCommands": [
-                  "saslContinue"
+                  "hello",
+                  "isMaster"
                 ],
                 "appName": "authNetworkErrorFailTest",
-                "errorCode": 18
+                "errorCode": 1
               }
             }
           }
