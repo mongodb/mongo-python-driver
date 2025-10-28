@@ -1,10 +1,9 @@
 {
-  "description": "auth-network-error-fail",
+  "description": "backoff-network-error-fail",
   "schemaVersion": "1.4",
   "runOnRequirements": [
     {
       "minServerVersion": "4.4",
-      "auth": true,
       "serverless": "forbid",
       "topologies": [
         "single",
@@ -23,7 +22,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "auth-network-error-fail",
+      "collectionName": "backoff-network-error-fail",
       "databaseName": "sdam-tests",
       "documents": [
         {
@@ -37,28 +36,8 @@
   ],
   "tests": [
     {
-      "description": "Backoff and fail after network connection errors during authentication",
+      "description": "Backoff and fail after network connection errors during connection establishment",
       "operations": [
-        {
-          "name": "failPoint",
-          "object": "testRunner",
-          "arguments": {
-            "client": "setupClient",
-            "failPoint": {
-              "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 6
-              },
-              "data": {
-                "failCommands": [
-                  "saslContinue"
-                ],
-                "appName": "authNetworkErrorFailTest",
-                "closeConnection": true
-              }
-            }
-          }
-        },
         {
           "name": "createEntities",
           "object": "testRunner",
@@ -69,6 +48,7 @@
                   "id": "client",
                   "useMultipleMongoses": false,
                   "observeEvents": [
+                    "serverHeartbeatSucceededEvent",
                     "commandStartedEvent",
                     "poolBackoffEvent",
                     "poolReadyEvent",
@@ -76,6 +56,7 @@
                   ],
                   "uriOptions": {
                     "retryWrites": false,
+                    "heartbeatFrequencyMS": 100000,
                     "appname": "authNetworkErrorFailTest"
                   }
                 }
@@ -91,10 +72,42 @@
                 "collection": {
                   "id": "collection",
                   "database": "database",
-                  "collectionName": "auth-network-error-fail"
+                  "collectionName": "backoff-network-error-fail"
                 }
               }
             ]
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "serverHeartbeatSucceededEvent": {}
+            },
+            "count": 1
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 6
+              },
+              "data": {
+                "failCommands": [
+                  "isMaster",
+                  "hello"
+                ],
+                "appName": "authNetworkErrorFailTest",
+                "closeConnection": true
+              }
+            }
           }
         },
         {
@@ -130,26 +143,7 @@
     {
       "description": "Backoff and clear the pool after network failures followed by server error",
       "operations": [
-        {
-          "name": "failPoint",
-          "object": "testRunner",
-          "arguments": {
-            "client": "setupClient",
-            "failPoint": {
-              "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 6
-              },
-              "data": {
-                "failCommands": [
-                  "saslContinue"
-                ],
-                "appName": "authNetworkErrorFailTest",
-                "closeConnection": true
-              }
-            }
-          }
-        },
+        
         {
           "name": "createEntities",
           "object": "testRunner",
@@ -160,6 +154,7 @@
                   "id": "client",
                   "useMultipleMongoses": false,
                   "observeEvents": [
+                    "serverHeartbeatSucceededEvent",
                     "commandStartedEvent",
                     "poolBackoffEvent",
                     "poolReadyEvent",
@@ -167,6 +162,7 @@
                   ],
                   "uriOptions": {
                     "retryWrites": false,
+                    "heartbeatFrequencyMS": 100000,
                     "appname": "authNetworkErrorFailTest"
                   }
                 }
@@ -182,10 +178,42 @@
                 "collection": {
                   "id": "collection",
                   "database": "database",
-                  "collectionName": "auth-network-error-fail"
+                  "collectionName": "backoff-network-error-fail"
                 }
               }
             ]
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "serverHeartbeatSucceededEvent": {}
+            },
+            "count": 1
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 6
+              },
+              "data": {
+                "failCommands": [
+                  "isMaster",
+                  "hello"
+                ],
+                "appName": "authNetworkErrorFailTest",
+                "closeConnection": true
+              }
+            }
           }
         },
         {

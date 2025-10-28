@@ -1,10 +1,9 @@
 {
-  "description": "backoff-network-timeout-error",
+  "description": "heartbeat-success-backoff",
   "schemaVersion": "1.4",
   "runOnRequirements": [
     {
       "minServerVersion": "4.4",
-      "auth": true,
       "serverless": "forbid",
       "topologies": [
         "single",
@@ -23,7 +22,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "backoff-network-timeout-error",
+      "collectionName": "heartbeat-backoff-success",
       "databaseName": "sdam-tests",
       "documents": [
         {
@@ -37,7 +36,7 @@
   ],
   "tests": [
     {
-      "description": "Backoff and retry after network timeout error during connection establishment",
+      "description": "A heartbeat success during backoff not mark the pool as ready",
       "operations": [
         {
           "name": "createEntities",
@@ -49,18 +48,17 @@
                   "id": "client",
                   "useMultipleMongoses": false,
                   "observeEvents": [
-                    "serverHeartbeatSucceededEvent",
                     "commandStartedEvent",
                     "poolBackoffEvent",
                     "poolReadyEvent",
-                    "poolClearedEvent"
+                    "poolClearedEvent",
+                    "serverHeartbeatFailedEvent",
+                    "serverHeartbeatSucceededEvent"
                   ],
                   "uriOptions": {
                     "retryWrites": false,
-                    "heartbeatFrequencyMS": 100000,
-                    "appname": "authNetworkTimeoutErrorTest",
-                    "connectTimeoutMS": 250,
-                    "socketTimeoutMS": 250
+                    "heartbeatFrequencyMS": 5000,
+                    "appname": "heartbeatBackoffFailTest"
                   }
                 }
               },
@@ -75,7 +73,7 @@
                 "collection": {
                   "id": "collection",
                   "database": "database",
-                  "collectionName": "backoff-network-timeout-error"
+                  "collectionName": "heartbeat-backoff-success"
                 }
               }
             ]
@@ -99,16 +97,14 @@
             "client": "setupClient",
             "failPoint": {
               "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 2
-              },
+              "mode": "alwaysOn",
               "data": {
                 "failCommands": [
                   "isMaster",
                   "hello"
                 ],
-                "closeConnection": true,
-                "appName": "authNetworkTimeoutErrorTest"
+                "appName": "heartbeatBackoffFailTest",
+                "closeConnection": true
               }
             }
           }
@@ -125,6 +121,20 @@
                 "_id": 4
               }
             ]
+          },
+          "expectError": {
+            "isError": true
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "off"
+            }
           }
         },
         {
@@ -133,18 +143,7 @@
           "arguments": {
             "client": "client",
             "event": {
-              "poolBackoffEvent": {}
-            },
-            "count": 2
-          }
-        },
-        {
-          "name": "waitForEvent",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "poolReadyEvent": {}
+              "serverHeartbeatSucceededEvent": {}
             },
             "count": 1
           }
@@ -153,44 +152,28 @@
       "expectEvents": [
         {
           "client": "client",
-          "eventType": "command",
+          "eventType": "cmap",
           "events": [
             {
-              "commandStartedEvent": {
-                "command": {
-                  "insert": "backoff-network-timeout-error",
-                  "documents": [
-                    {
-                      "_id": 3
-                    },
-                    {
-                      "_id": 4
-                    }
-                  ]
-                },
-                "commandName": "insert",
-                "databaseName": "sdam-tests"
-              }
-            }
-          ]
-        }
-      ],
-      "outcome": [
-        {
-          "collectionName": "backoff-network-timeout-error",
-          "databaseName": "sdam-tests",
-          "documents": [
-            {
-              "_id": 1
+              "poolReadyEvent": {}
             },
             {
-              "_id": 2
+              "poolBackoffEvent": {}
             },
             {
-              "_id": 3
+              "poolBackoffEvent": {}
             },
             {
-              "_id": 4
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
+            },
+            {
+              "poolBackoffEvent": {}
             }
           ]
         }

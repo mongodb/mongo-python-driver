@@ -539,8 +539,11 @@
                   "uriOptions": {
                     "retryReads": true,
                     "appname": "clientAppName",
-                    "heartbeatFrequencyMS": 10000
+                    "heartbeatFrequencyMS": 5000
                   },
+                  "observeEvents": [
+                    "serverHeartbeatSucceededEvent"
+                  ],
                   "observeLogMessages": {
                     "connection": "debug"
                   }
@@ -557,6 +560,17 @@
           }
         },
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "serverHeartbeatSucceededEvent": {}
+            },
+            "count": 1
+          }
+        },
+        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -568,7 +582,8 @@
               },
               "data": {
                 "failCommands": [
-                  "saslContinue"
+                  "isMaster",
+                  "hello"
                 ],
                 "closeConnection": true,
                 "appName": "clientAppName"
