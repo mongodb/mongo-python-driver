@@ -282,7 +282,7 @@
                   "isMaster",
                   "hello"
                 ],
-                "errorCode": 18,
+                "closeConnection": true,
                 "appName": "lbSDAMErrorTestClient"
               }
             }
@@ -297,7 +297,7 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ],
@@ -345,7 +345,7 @@
                 "failCommands": [
                   "saslContinue"
                 ],
-                "errorCode": 18,
+                "closeConnection": true,
                 "appName": "lbSDAMErrorTestClient"
               }
             }
@@ -406,8 +406,7 @@
                 "failCommands": [
                   "getMore"
                 ],
-                "closeConnection": true,
-                "appName": "lbSDAMErrorTestClient"
+                "closeConnection": true
               }
             }
           }
