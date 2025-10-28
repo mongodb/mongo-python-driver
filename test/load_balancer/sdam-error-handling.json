@@ -42,9 +42,7 @@
           "connectionCheckedInEvent",
           "connectionClosedEvent",
           "poolClearedEvent",
-          "poolBackoffEvent",
-          "serverHeartbeatSucceededEvent",
-          "serverHeartbeatFailedEvent"
+          "poolBackoffEvent"
         ]
       }
     },
@@ -270,17 +268,6 @@
         }
       ],
       "operations": [
-        {
-          "name": "waitForEvent",
-          "object": "testRunner",
-          "arguments": {
-            "client": "singleClient",
-            "event": {
-              "serverHeartbeatSucceededEvent": {}
-            },
-            "count": 1
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
