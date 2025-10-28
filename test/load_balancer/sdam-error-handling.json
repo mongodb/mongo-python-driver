@@ -324,14 +324,20 @@
               }
             },
             {
+              "poolBackoffEvent": {
+                "attempt": 1
+              }
+            },
+            {
               "connectionCheckOutFailedEvent": {
                 "reason": "connectionError"
               }
             },
             {
-              "poolBackoffEvent": {
-                "attempt": 1
-              }
+              "connectionCreatedEvent": {}
+            },
+            {
+              "connectionReadyEvent": {}
             },
             {
               "connectionCheckedOutEvent": {}
