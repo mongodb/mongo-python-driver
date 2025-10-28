@@ -132,9 +132,24 @@
           "arguments": {
             "client": "client",
             "event": {
-              "poolBackoffEvent": {}
+              "poolBackoffEvent": {
+                "attempt": 1
+              }
             },
-            "count": 2
+            "count": 1
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "poolBackoffEvent": {
+                "attempt": 2
+              }
+            },
+             "count": 1
           }
         }
       ],

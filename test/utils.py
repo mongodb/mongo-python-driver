@@ -240,6 +240,7 @@ class MockPool:
         self.opts = options
         self.operation_count = 0
         self.conns = []
+        self.state = 0
 
     def stale_generation(self, gen, service_id):
         return self.gen.stale(gen, service_id)

@@ -713,6 +713,9 @@
                 "durationMS": {
                    "$$type": "int"
                 },
+                "attempt": {
+                   "$$type": "int"
+                },
                 "serverPort": {
                   "$$type": [
                     "int",
