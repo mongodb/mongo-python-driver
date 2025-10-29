@@ -888,7 +888,7 @@ class TestBSON(unittest.TestCase):
         assert isinstance(vector, BinaryVector)
         assert vector.data == arr.tolist()
         # as_numpy_vector
-        vector_np = binary_vector_int8.as_numpy_vector()
+        vector_np = binary_vector_int8.as_vector(return_numpy=True)
         assert isinstance(vector_np, BinaryVector)
         assert np.all(vector.data == arr)
         # PACKED_BIT
@@ -898,7 +898,7 @@ class TestBSON(unittest.TestCase):
         assert isinstance(vector, BinaryVector)
         assert vector.data == arr.tolist()
         # as_numpy_vector
-        vector_np = binary_vector_uint8.as_numpy_vector()
+        vector_np = binary_vector_uint8.as_vector(return_numpy=True)
         assert isinstance(vector_np, BinaryVector)
         assert np.all(vector_np.data == arr)
         # FLOAT32
@@ -908,7 +908,7 @@ class TestBSON(unittest.TestCase):
         assert isinstance(vector, BinaryVector)
         assert vector.data == arr.tolist()
         # as_numpy_vector
-        vector_np = binary_vector_float32.as_numpy_vector()
+        vector_np = binary_vector_float32.as_vector(return_numpy=True)
         assert isinstance(vector_np, BinaryVector)
         assert np.all(vector_np.data == arr)
 
@@ -926,7 +926,7 @@ class TestBSON(unittest.TestCase):
         list_floats = [-1.1, 1.1]
         cast_bin = Binary.from_vector(np.array(list_floats), BinaryVectorDtype.INT8)
         vector = cast_bin.as_vector()
-        vector_np = cast_bin.as_numpy_vector()
+        vector_np = cast_bin.as_vector(return_numpy=True)
         assert vector.data != list_floats
         assert vector.data == vector_np.data.tolist() == [-1, 1]
 
