@@ -38,17 +38,6 @@
     {
       "description": "Backoff and fail after network connection errors during connection establishment",
       "operations": [
-          {
-          "name": "failPoint",
-          "object": "testRunner",
-          "arguments": {
-            "client": "setupClient",
-            "failPoint": {
-              "configureFailPoint": "failCommand",
-              "mode": "off"
-            }
-          }
-        },
         {
           "name": "createEntities",
           "object": "testRunner",
@@ -68,7 +57,7 @@
                   "uriOptions": {
                     "retryWrites": false,
                     "heartbeatFrequencyMS": 100000,
-                    "appname": "authNetworkErrorFailTest"
+                    "appname": "backoffNetworkErrorFailTest"
                   }
                 }
               },
@@ -113,7 +102,7 @@
                   "isMaster",
                   "hello"
                 ],
-                "appName": "authNetworkErrorFailTest",
+                "appName": "backoffNetworkErrorFailTest",
                 "closeConnection": true
               }
             }
@@ -152,17 +141,6 @@
     {
       "description": "Backoff and clear the pool after network failures followed by server error",
       "operations": [
-          {
-          "name": "failPoint",
-          "object": "testRunner",
-          "arguments": {
-            "client": "setupClient",
-            "failPoint": {
-              "configureFailPoint": "failCommand",
-              "mode": "off"
-            }
-          }
-        },
         {
           "name": "createEntities",
           "object": "testRunner",
@@ -182,7 +160,7 @@
                   "uriOptions": {
                     "retryWrites": false,
                     "heartbeatFrequencyMS": 100000,
-                    "appname": "authNetworkErrorFailTest"
+                    "appname": "backoffNetworkErrorFailClearTest"
                   }
                 }
               },
@@ -197,7 +175,7 @@
                 "collection": {
                   "id": "collection",
                   "database": "database",
-                  "collectionName": "backoff-network-error-fail"
+                  "collectionName": "backoff-network-error-fail-clear"
                 }
               }
             ]
@@ -227,7 +205,7 @@
                   "isMaster",
                   "hello"
                 ],
-                "appName": "authNetworkErrorFailTest",
+                "appName": "backoffNetworkErrorFailClearTest",
                 "closeConnection": true
               }
             }
@@ -287,7 +265,7 @@
                   "hello",
                   "isMaster"
                 ],
-                "appName": "authNetworkErrorFailTest",
+                "appName": "backoffNetworkErrorFailClearTest",
                 "errorCode": 1
               }
             }

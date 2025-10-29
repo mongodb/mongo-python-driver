@@ -56,7 +56,7 @@
                   ],
                   "uriOptions": {
                     "retryWrites": false,
-                    "appname": "authNetworkErrorTest",
+                    "appname": "backoffNetworkErrorTest",
                     "heartbeatFrequencyMS": 100000,
                     "connectTimeoutMS": 250,
                     "socketTimeoutMS": 250
@@ -107,7 +107,7 @@
                   "hello"
                 ],
                 "closeConnection": true,
-                "appName": "authNetworkErrorTest"
+                "appName": "backoffNetworkErrorTest"
               }
             }
           }

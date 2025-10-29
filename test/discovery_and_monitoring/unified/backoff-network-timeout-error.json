@@ -4,7 +4,7 @@
   "runOnRequirements": [
     {
       "minServerVersion": "4.4",
-      "auth": true,
+      "backoff": true,
       "serverless": "forbid",
       "topologies": [
         "single",
@@ -58,7 +58,7 @@
                   "uriOptions": {
                     "retryWrites": false,
                     "heartbeatFrequencyMS": 100000,
-                    "appname": "authNetworkTimeoutErrorTest",
+                    "appname": "backoffNetworkTimeoutErrorTest",
                     "connectTimeoutMS": 250,
                     "socketTimeoutMS": 250
                   }
@@ -108,7 +108,7 @@
                   "hello"
                 ],
                 "closeConnection": true,
-                "appName": "authNetworkTimeoutErrorTest"
+                "appName": "backoffNetworkTimeoutErrorTest"
               }
             }
           }
