@@ -56,7 +56,8 @@
                   ],
                   "uriOptions": {
                     "retryWrites": false,
-                    "heartbeatFrequencyMS": 100000,
+                    "heartbeatFrequencyMS": 10000,
+                    "serverMonitoringMode": "poll",
                     "appname": "backoffNetworkErrorFailTest"
                   }
                 }
@@ -159,7 +160,8 @@
                   ],
                   "uriOptions": {
                     "retryWrites": false,
-                    "heartbeatFrequencyMS": 100000,
+                    "heartbeatFrequencyMS": 10000,
+                    "serverMonitoringMode": "poll",
                     "appname": "backoffNetworkErrorFailClearTest"
                   }
                 }

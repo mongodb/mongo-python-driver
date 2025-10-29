@@ -57,7 +57,8 @@
                   "uriOptions": {
                     "retryWrites": false,
                     "appname": "backoffNetworkErrorTest",
-                    "heartbeatFrequencyMS": 100000,
+                    "heartbeatFrequencyMS": 10000,
+                    "serverMonitoringMode": "poll",
                     "connectTimeoutMS": 250,
                     "socketTimeoutMS": 250
                   }

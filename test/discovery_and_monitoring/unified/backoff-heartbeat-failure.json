@@ -57,6 +57,7 @@
                   "uriOptions": {
                     "retryWrites": false,
                     "heartbeatFrequencyMS": 10000,
+                    "serverMonitoringMode": "poll",
                     "appname": "heartbeatBackoffFailTest"
                   }
                 }

@@ -57,7 +57,8 @@
                   "uriOptions": {
                     "retryWrites": false,
                     "heartbeatFrequencyMS": 5000,
-                    "appname": "heartbeatBackoffFailTest"
+                    "serverMonitoringMode": "poll",
+                    "appname": "heartbeatBackoffSuccessTest"
                   }
                 }
               },
@@ -102,7 +103,7 @@
                   "isMaster",
                   "hello"
                 ],
-                "appName": "heartbeatBackoffFailTest",
+                "appName": "heartbeatBackoffSuccessTest",
                 "closeConnection": true
               }
             }
