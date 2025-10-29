@@ -1384,10 +1384,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         for reason, flaky_test in flaky_tests:
             if re.match(flaky_test.lower(), self.id().lower()) is not None:
                 func_name = self.id()
-                options = dict(
-                    reason=reason, reset_func=self.setUp, func_name=func_name, max_runs=3
-                )
+                options = dict(reason=reason, reset_func=self.setUp, func_name=func_name)
                 if "csot" in func_name.lower():
+                    options["max_runs"] = 3
                     options["affects_cpython_linux"] = True
                 decorator = flaky(**options)
                 decorator(self._run_scenario)(spec, uri)
