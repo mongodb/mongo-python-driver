@@ -297,13 +297,13 @@ tasks:
         vars:
           PYTHON_VERSION: "3.14"
     tags: [test-no-orchestration, python-3.14]
-  - name: test-no-orchestration-pypy3.10
+  - name: test-no-orchestration-pypy3.11
     commands:
       - func: assume ec2 role
       - func: run tests
         vars:
-          PYTHON_VERSION: pypy3.10
-    tags: [test-no-orchestration, python-pypy3.10]
+          PYTHON_VERSION: pypy3.11
+    tags: [test-no-orchestration, python-pypy3.11]
 
   # No toolchain tests
   - name: test-no-toolchain-sync-noauth-nossl-standalone
@@ -2492,7 +2492,7 @@ tasks:
       - python-3.14
       - standalone-noauth-ssl
       - async
-  - name: test-server-version-pypy3.10-sync-noauth-nossl-standalone
+  - name: test-server-version-pypy3.11-sync-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -2504,11 +2504,11 @@ tasks:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
           TEST_NAME: default_sync
     tags:
       - server-version
-      - python-pypy3.10
+      - python-pypy3.11
       - standalone-noauth-nossl
       - sync
       - pr
@@ -2639,7 +2639,7 @@ tasks:
       - python-3.14
       - replica_set-noauth-ssl
       - sync
-  - name: test-server-version-pypy3.10-async-noauth-ssl-replica-set
+  - name: test-server-version-pypy3.11-async-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -2651,11 +2651,11 @@ tasks:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
           TEST_NAME: default_async
     tags:
       - server-version
-      - python-pypy3.10
+      - python-pypy3.11
       - replica_set-noauth-ssl
       - async
   - name: test-server-version-python3.9-sync-noauth-nossl-replica-set-cov
@@ -2788,7 +2788,7 @@ tasks:
       - python-3.14
       - sharded_cluster-auth-nossl
       - async
-  - name: test-server-version-pypy3.10-sync-noauth-ssl-sharded-cluster
+  - name: test-server-version-pypy3.11-sync-noauth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -2800,11 +2800,11 @@ tasks:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
           TEST_NAME: default_sync
     tags:
       - server-version
-      - python-pypy3.10
+      - python-pypy3.11
       - sharded_cluster-noauth-ssl
       - sync
   - name: test-server-version-python3.9-async-noauth-ssl-sharded-cluster-cov
@@ -3080,7 +3080,7 @@ tasks:
       - python-3.14
       - sharded_cluster-auth-ssl
       - async
-  - name: test-server-version-pypy3.10-sync-auth-ssl-sharded-cluster
+  - name: test-server-version-pypy3.11-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -3092,14 +3092,14 @@ tasks:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
           TEST_NAME: default_sync
     tags:
       - server-version
-      - python-pypy3.10
+      - python-pypy3.11
       - sharded_cluster-auth-ssl
       - sync
-  - name: test-server-version-pypy3.10-async-auth-ssl-sharded-cluster
+  - name: test-server-version-pypy3.11-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -3111,11 +3111,11 @@ tasks:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
           TEST_NAME: default_async
     tags:
       - server-version
-      - python-pypy3.10
+      - python-pypy3.11
       - sharded_cluster-auth-ssl
       - async
 
@@ -3186,7 +3186,7 @@ tasks:
       - python-3.11
       - sharded_cluster-auth-ssl
       - sync
-  - name: test-standard-v4.2-pypy3.10-sync-auth-ssl-sharded-cluster
+  - name: test-standard-v4.2-pypy3.11-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -3200,12 +3200,12 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.2"
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
           TEST_NAME: default_sync
     tags:
       - test-standard
       - server-4.2
-      - python-pypy3.10
+      - python-pypy3.11
       - sharded_cluster-auth-ssl
       - sync
       - pypy
@@ -3319,7 +3319,7 @@ tasks:
       - python-3.11
       - sharded_cluster-auth-ssl
       - async
-  - name: test-standard-v4.4-pypy3.10-async-auth-ssl-sharded-cluster
+  - name: test-standard-v4.4-pypy3.11-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -3333,12 +3333,12 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.4"
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
           TEST_NAME: default_async
     tags:
       - test-standard
       - server-4.4
-      - python-pypy3.10
+      - python-pypy3.11
       - sharded_cluster-auth-ssl
       - async
       - pypy
@@ -3694,7 +3694,7 @@ tasks:
       - python-3.11
       - standalone-noauth-nossl
       - sync
-  - name: test-standard-v7.0-pypy3.10-sync-noauth-nossl-standalone
+  - name: test-standard-v7.0-pypy3.11-sync-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -3708,12 +3708,12 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "7.0"
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
           TEST_NAME: default_sync
     tags:
       - test-standard
       - server-7.0
-      - python-pypy3.10
+      - python-pypy3.11
       - standalone-noauth-nossl
       - sync
       - pypy
@@ -3805,7 +3805,7 @@ tasks:
       - python-3.11
       - standalone-noauth-nossl
       - async
-  - name: test-standard-v8.0-pypy3.10-async-noauth-nossl-standalone
+  - name: test-standard-v8.0-pypy3.11-async-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -3819,12 +3819,12 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "8.0"
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
           TEST_NAME: default_async
     tags:
       - test-standard
       - server-8.0
-      - python-pypy3.10
+      - python-pypy3.11
       - standalone-noauth-nossl
       - async
       - pypy
@@ -3851,7 +3851,7 @@ tasks:
       - replica_set-noauth-ssl
       - async
       - pr
-  - name: test-standard-latest-pypy3.10-async-noauth-ssl-replica-set
+  - name: test-standard-latest-pypy3.11-async-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -3865,12 +3865,12 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
           TEST_NAME: default_async
     tags:
       - test-standard
       - server-latest
-      - python-pypy3.10
+      - python-pypy3.11
       - replica_set-noauth-ssl
       - async
       - pypy
@@ -3965,7 +3965,7 @@ tasks:
       - python-3.11
       - replica_set-noauth-ssl
       - sync
-  - name: test-standard-rapid-pypy3.10-sync-noauth-ssl-replica-set
+  - name: test-standard-rapid-pypy3.11-sync-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -3979,12 +3979,12 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: rapid
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
           TEST_NAME: default_sync
     tags:
       - test-standard
       - server-rapid
-      - python-pypy3.10
+      - python-pypy3.11
       - replica_set-noauth-ssl
       - sync
       - pypy
@@ -4563,7 +4563,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - pr
-  - name: test-non-standard-v4.2-pypy3.10-noauth-nossl-standalone
+  - name: test-non-standard-v4.2-pypy3.11-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -4577,15 +4577,15 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.2"
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
     tags:
       - test-non-standard
       - server-4.2
-      - python-pypy3.10
+      - python-pypy3.11
       - standalone-noauth-nossl
       - noauth
       - pypy
-  - name: test-non-standard-v4.4-pypy3.10-noauth-ssl-replica-set
+  - name: test-non-standard-v4.4-pypy3.11-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -4599,15 +4599,15 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "4.4"
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
     tags:
       - test-non-standard
       - server-4.4
-      - python-pypy3.10
+      - python-pypy3.11
       - replica_set-noauth-ssl
       - noauth
       - pypy
-  - name: test-non-standard-v5.0-pypy3.10-auth-ssl-sharded-cluster
+  - name: test-non-standard-v5.0-pypy3.11-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -4621,15 +4621,15 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "5.0"
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
     tags:
       - test-non-standard
       - server-5.0
-      - python-pypy3.10
+      - python-pypy3.11
       - sharded_cluster-auth-ssl
       - auth
       - pypy
-  - name: test-non-standard-v6.0-pypy3.10-noauth-nossl-standalone
+  - name: test-non-standard-v6.0-pypy3.11-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -4643,15 +4643,15 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "6.0"
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
     tags:
       - test-non-standard
       - server-6.0
-      - python-pypy3.10
+      - python-pypy3.11
       - standalone-noauth-nossl
       - noauth
       - pypy
-  - name: test-non-standard-v7.0-pypy3.10-noauth-ssl-replica-set
+  - name: test-non-standard-v7.0-pypy3.11-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -4665,15 +4665,15 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "7.0"
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
     tags:
       - test-non-standard
       - server-7.0
-      - python-pypy3.10
+      - python-pypy3.11
       - replica_set-noauth-ssl
       - noauth
       - pypy
-  - name: test-non-standard-v8.0-pypy3.10-auth-ssl-sharded-cluster
+  - name: test-non-standard-v8.0-pypy3.11-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
@@ -4687,15 +4687,15 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "8.0"
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
     tags:
       - test-non-standard
       - server-8.0
-      - python-pypy3.10
+      - python-pypy3.11
       - sharded_cluster-auth-ssl
       - auth
       - pypy
-  - name: test-non-standard-rapid-pypy3.10-noauth-nossl-standalone
+  - name: test-non-standard-rapid-pypy3.11-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -4709,15 +4709,15 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: rapid
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
     tags:
       - test-non-standard
       - server-rapid
-      - python-pypy3.10
+      - python-pypy3.11
       - standalone-noauth-nossl
       - noauth
       - pypy
-  - name: test-non-standard-latest-pypy3.10-noauth-ssl-replica-set
+  - name: test-non-standard-latest-pypy3.11-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -4731,11 +4731,11 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
-          PYTHON_VERSION: pypy3.10
+          PYTHON_VERSION: pypy3.11
     tags:
       - test-non-standard
       - server-latest
-      - python-pypy3.10
+      - python-pypy3.11
       - replica_set-noauth-ssl
       - noauth
       - pypy
