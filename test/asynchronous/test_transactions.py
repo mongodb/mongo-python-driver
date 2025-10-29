@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import sys
 import time
 from io import BytesIO
@@ -45,6 +46,7 @@ from pymongo.asynchronous.client_session import (
 )
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
+from pymongo.asynchronous.helpers import anext
 from pymongo.errors import (
     AutoReconnect,
     CollectionInvalid,
@@ -620,11 +622,9 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
 
     @async_client_context.require_test_commands
     @async_client_context.require_transactions
-    async def test_transaction_backoff(self):
+    async def test_transaction_backoff_is_random(self):
         client = async_client_context.client
         coll = client[self.db.name].test
-        # optionally set _backoff_initial to a higher value
-        _set_backoff_initial(client_session._BACKOFF_MAX)
         # set fail point to trigger transaction failure and trigger backoff
         await self.set_fail_point(
             {
@@ -651,7 +651,51 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             await s.with_transaction(callback)
 
         end = time.monotonic()
-        self.assertGreaterEqual(end - start, 1.25)  # 1 second
+        self.assertLess(end - start, 5)  # backoff alone is ~3.5 seconds
+
+    @async_client_context.require_test_commands
+    @async_client_context.require_transactions
+    async def test_transaction_backoff(self):
+        client = async_client_context.client
+        coll = client[self.db.name].test
+        # patch random to make it deterministic
+        _original_random_random = random.random
+
+        def always_one():
+            return 1
+
+        random.random = always_one
+        # set fail point to trigger transaction failure and trigger backoff
+        await self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {
+                    "times": 30
+                },  # sufficiently high enough such that the time effect of backoff is noticeable
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 24,
+                },
+            }
+        )
+        self.addAsyncCleanup(
+            self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"}
+        )
+
+        start = time.monotonic()
+
+        async def callback(session):
+            await coll.insert_one({}, session=session)
+
+        async with self.client.start_session() as s:
+            await s.with_transaction(callback)
+
+        end = time.monotonic()
+        self.assertGreaterEqual(
+            end - start, 3.5629515313825695
+        )  # sum of backoffs is 3.5629515313825695
+
+        random.random = _original_random_random
 
 
 class TestOptionsInsideTransactionProse(AsyncTransactionsBase):

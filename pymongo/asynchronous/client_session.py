@@ -481,6 +481,11 @@ def _within_time_limit(start_time: float) -> bool:
     return time.monotonic() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
 
 
+def _would_exceed_time_limit(start_time: float, backoff: float) -> bool:
+    """Is the backoff within the with_transaction retry limit?"""
+    return time.monotonic() + backoff - start_time >= _WITH_TRANSACTION_RETRY_TIME_LIMIT
+
+
 _T = TypeVar("_T")
 
 if TYPE_CHECKING:
@@ -708,12 +713,13 @@ class AsyncClientSession:
         """
         start_time = time.monotonic()
         retry = 0
-        self._transaction_retry_backoffs = []
+        last_error = None
         while True:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
                 backoff = jitter * min(_BACKOFF_INITIAL * (1.25**retry), _BACKOFF_MAX)
-                self._transaction_retry_backoffs.append(backoff)
+                if _would_exceed_time_limit(start_time, backoff):
+                    raise last_error
                 await asyncio.sleep(backoff)
             retry += 1
             await self.start_transaction(
@@ -723,6 +729,7 @@ class AsyncClientSession:
                 ret = await callback(self)
             # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
             except BaseException as exc:
+                last_error = exc
                 if self.in_transaction:
                     await self.abort_transaction()
                 if (
