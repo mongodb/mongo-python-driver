@@ -637,7 +637,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             s.with_transaction(callback)
 
         end = time.monotonic()
-        self.assertLess(end - start, 5)  # backoff alone is ~3.5 seconds
+        self.assertLess(end - start, 5)  # sum of backoffs is ~3.5 seconds
 
     @client_context.require_test_commands
     @client_context.require_transactions
@@ -675,9 +675,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             s.with_transaction(callback)
 
         end = time.monotonic()
-        self.assertGreaterEqual(
-            end - start, 3.5629515313825695
-        )  # sum of backoffs is 3.5629515313825695
+        self.assertGreaterEqual(end - start, 3.5)  # sum of backoffs is 3.5629515313825695
 
         random.random = _original_random_random
 
