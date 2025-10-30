@@ -430,7 +430,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.22")
+    SCHEMA_VERSION = Version.from_string("1.28")
     RUN_ON_LOAD_BALANCER = True
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes
