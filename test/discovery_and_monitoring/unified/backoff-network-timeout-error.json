@@ -1,6 +1,6 @@
 {
   "description": "backoff-network-timeout-error",
-  "schemaVersion": "1.4",
+  "schemaVersion": "1.28",
   "runOnRequirements": [
     {
       "minServerVersion": "4.4",
