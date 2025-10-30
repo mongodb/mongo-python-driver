@@ -711,12 +711,13 @@ class ClientSession:
         """
         start_time = time.monotonic()
         retry = 0
-        last_error = None
+        last_error: Optional[BaseException] = None
         while True:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
                 backoff = jitter * min(_BACKOFF_INITIAL * (1.25**retry), _BACKOFF_MAX)
                 if _would_exceed_time_limit(start_time, backoff):
+                    assert last_error is not None
                     raise last_error
                 time.sleep(backoff)
             retry += 1
