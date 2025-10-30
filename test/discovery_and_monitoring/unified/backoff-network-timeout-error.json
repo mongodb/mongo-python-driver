@@ -4,7 +4,6 @@
   "runOnRequirements": [
     {
       "minServerVersion": "4.4",
-      "backoff": true,
       "serverless": "forbid",
       "topologies": [
         "single",
