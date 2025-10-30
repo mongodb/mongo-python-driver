@@ -1,6 +1,6 @@
 {
   "description": "state change errors are correctly handled",
-  "schemaVersion": "1.4",
+  "schemaVersion": "1.28",
   "runOnRequirements": [
     {
       "topologies": [
