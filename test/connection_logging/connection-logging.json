@@ -711,10 +711,10 @@
                   "$$type": "string"
                 },
                 "durationMS": {
-                   "$$type": "int"
+                  "$$type": "int"
                 },
                 "attempt": {
-                   "$$type": "int"
+                  "$$type": "int"
                 },
                 "serverPort": {
                   "$$type": [
@@ -793,7 +793,7 @@
                 }
               }
             },
-{
+            {
               "level": "debug",
               "component": "connection",
               "data": {
