@@ -127,6 +127,17 @@
           }
         },
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "poolBackoffEvent": {}
+            },
+            "count": 1
+          }
+        },
+        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -147,32 +158,6 @@
             },
             "count": 1
           }
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "eventType": "cmap",
-          "events": [
-            {
-              "poolBackoffEvent": {}
-            },
-            {
-              "poolBackoffEvent": {}
-            },
-            {
-              "poolBackoffEvent": {}
-            },
-            {
-              "poolBackoffEvent": {}
-            },
-            {
-              "poolBackoffEvent": {}
-            },
-            {
-              "poolBackoffEvent": {}
-            }
-          ]
         }
       ]
     }

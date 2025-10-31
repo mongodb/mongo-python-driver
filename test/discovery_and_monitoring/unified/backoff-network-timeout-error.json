@@ -100,7 +100,7 @@
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
-                "times": 2
+                "times": 1
               },
               "data": {
                 "failCommands": [
@@ -125,6 +125,9 @@
                 "_id": 4
               }
             ]
+          },
+          "expectError": {
+            "isError": true
           }
         },
         {
@@ -135,7 +138,7 @@
             "event": {
               "poolBackoffEvent": {}
             },
-            "count": 2
+            "count": 1
           }
         },
         {
@@ -148,51 +151,6 @@
             },
             "count": 1
           }
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "eventType": "command",
-          "events": [
-            {
-              "commandStartedEvent": {
-                "command": {
-                  "insert": "backoff-network-timeout-error",
-                  "documents": [
-                    {
-                      "_id": 3
-                    },
-                    {
-                      "_id": 4
-                    }
-                  ]
-                },
-                "commandName": "insert",
-                "databaseName": "sdam-tests"
-              }
-            }
-          ]
-        }
-      ],
-      "outcome": [
-        {
-          "collectionName": "backoff-network-timeout-error",
-          "databaseName": "sdam-tests",
-          "documents": [
-            {
-              "_id": 1
-            },
-            {
-              "_id": 2
-            },
-            {
-              "_id": 3
-            },
-            {
-              "_id": 4
-            }
-          ]
         }
       ]
     }

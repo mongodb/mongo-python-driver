@@ -1054,6 +1054,9 @@ class Pool:
             backoff_duration_ms = int(backoff_duration_sec * 1000)
             if self.state != PoolState.BACKOFF:
                 self.state = PoolState.BACKOFF
+                # Cancel other pending connections.
+                for context in self.active_contexts:
+                    context.cancel()
             if self.enabled_for_cmap:
                 assert self.opts._event_listeners is not None
                 self.opts._event_listeners.publish_pool_backoff(
@@ -1083,10 +1086,6 @@ class Pool:
         Note that the pool does not keep a reference to the socket -- you
         must call checkin() when you're done with it.
         """
-        # Mark whether we were in ready state before starting the process, to
-        # handle the case of multiple pending connections.
-        was_ready = self.state == PoolState.READY
-
         async with self.lock:
             conn_id = self.next_connection_id
             self.next_connection_id += 1
@@ -1135,9 +1134,7 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
-            if context["has_created_socket"] and not (
-                was_ready and self.state == PoolState.BACKOFF
-            ):
+            if context["has_created_socket"]:
                 await self._handle_connection_error(error, "handshake")
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
@@ -1164,7 +1161,7 @@ class Pool:
         except BaseException as e:
             async with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
-            if not has_completed_hello and not (was_ready and self.state == PoolState.BACKOFF):
+            if not has_completed_hello:
                 await self._handle_connection_error(e, "hello")
             await conn.close_conn(ConnectionClosedReason.ERROR)
             raise

@@ -127,6 +127,23 @@
           }
         },
         {
+          "name": "insertMany",
+          "object": "collection",
+          "arguments": {
+            "documents": [
+              {
+                "_id": 3
+              },
+              {
+                "_id": 4
+              }
+            ]
+          },
+          "expectError": {
+            "isError": true
+          }
+        },
+        {
           "name": "waitForEvent",
           "object": "testRunner",
           "arguments": {
@@ -134,7 +151,7 @@
             "event": {
               "poolBackoffEvent": {}
             },
-            "count": 5
+            "count": 1
           }
         }
       ]
@@ -238,7 +255,7 @@
             "event": {
               "poolBackoffEvent": {}
             },
-            "count": 5
+            "count": 1
           }
         },
         {

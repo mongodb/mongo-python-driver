@@ -125,6 +125,9 @@
                 "_id": 4
               }
             ]
+          },
+          "expectError": {
+            "isError": true
           }
         },
         {
@@ -139,64 +142,6 @@
             },
             "count": 1
           }
-        },
-        {
-          "name": "waitForEvent",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "poolBackoffEvent": {
-                "attempt": 2
-              }
-            },
-            "count": 1
-          }
-        }
-      ],
-      "expectEvents": [
-        {
-          "client": "client",
-          "eventType": "command",
-          "events": [
-            {
-              "commandStartedEvent": {
-                "command": {
-                  "insert": "backoff-network-error",
-                  "documents": [
-                    {
-                      "_id": 3
-                    },
-                    {
-                      "_id": 4
-                    }
-                  ]
-                },
-                "commandName": "insert",
-                "databaseName": "sdam-tests"
-              }
-            }
-          ]
-        }
-      ],
-      "outcome": [
-        {
-          "collectionName": "backoff-network-error",
-          "databaseName": "sdam-tests",
-          "documents": [
-            {
-              "_id": 1
-            },
-            {
-              "_id": 2
-            },
-            {
-              "_id": 3
-            },
-            {
-              "_id": 4
-            }
-          ]
         }
       ]
     }
