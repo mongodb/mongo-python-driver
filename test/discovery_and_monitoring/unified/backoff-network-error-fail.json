@@ -1,0 +1,328 @@
+{
+  "description": "backoff-network-error-fail",
+  "schemaVersion": "1.28",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4",
+      "serverless": "forbid",
+      "supportsPoolBackoff": true,
+      "topologies": [
+        "single",
+        "replicaset",
+        "sharded"
+      ]
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "setupClient",
+        "useMultipleMongoses": false
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "backoff-network-error-fail",
+      "databaseName": "sdam-tests",
+      "documents": [
+        {
+          "_id": 1
+        },
+        {
+          "_id": 2
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "Backoff and fail after network connection errors during connection establishment",
+      "operations": [
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "client": {
+                  "id": "client",
+                  "useMultipleMongoses": false,
+                  "observeEvents": [
+                    "serverHeartbeatSucceededEvent",
+                    "commandStartedEvent",
+                    "poolBackoffEvent",
+                    "poolReadyEvent",
+                    "poolClearedEvent"
+                  ],
+                  "uriOptions": {
+                    "retryWrites": false,
+                    "heartbeatFrequencyMS": 10000,
+                    "serverMonitoringMode": "poll",
+                    "appname": "backoffNetworkErrorFailTest"
+                  }
+                }
+              },
+              {
+                "database": {
+                  "id": "database",
+                  "client": "client",
+                  "databaseName": "sdam-tests"
+                }
+              },
+              {
+                "collection": {
+                  "id": "collection",
+                  "database": "database",
+                  "collectionName": "backoff-network-error-fail"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "serverHeartbeatSucceededEvent": {}
+            },
+            "count": 1
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "alwaysOn",
+              "data": {
+                "failCommands": [
+                  "isMaster",
+                  "hello"
+                ],
+                "appName": "backoffNetworkErrorFailTest",
+                "closeConnection": true
+              }
+            }
+          }
+        },
+        {
+          "name": "insertMany",
+          "object": "collection",
+          "arguments": {
+            "documents": [
+              {
+                "_id": 3
+              },
+              {
+                "_id": 4
+              }
+            ]
+          },
+          "expectError": {
+            "isError": true,
+            "errorLabelsContain": [
+              "SystemOverloadedError",
+              "RetryableError"
+            ]
+          }
+        },
+        {
+          "name": "insertMany",
+          "object": "collection",
+          "arguments": {
+            "documents": [
+              {
+                "_id": 3
+              },
+              {
+                "_id": 4
+              }
+            ]
+          },
+          "expectError": {
+            "isError": true
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "poolBackoffEvent": {}
+            },
+            "count": 1
+          }
+        }
+      ]
+    },
+    {
+      "description": "Backoff and clear the pool after network failures followed by server error",
+      "operations": [
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "client": {
+                  "id": "client",
+                  "useMultipleMongoses": false,
+                  "observeEvents": [
+                    "serverHeartbeatSucceededEvent",
+                    "commandStartedEvent",
+                    "poolBackoffEvent",
+                    "poolReadyEvent",
+                    "poolClearedEvent"
+                  ],
+                  "uriOptions": {
+                    "retryWrites": false,
+                    "heartbeatFrequencyMS": 10000,
+                    "serverMonitoringMode": "poll",
+                    "appname": "backoffNetworkErrorFailClearTest"
+                  }
+                }
+              },
+              {
+                "database": {
+                  "id": "database",
+                  "client": "client",
+                  "databaseName": "sdam-tests"
+                }
+              },
+              {
+                "collection": {
+                  "id": "collection",
+                  "database": "database",
+                  "collectionName": "backoff-network-error-fail-clear"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "serverHeartbeatSucceededEvent": {}
+            },
+            "count": 1
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "alwaysOn",
+              "data": {
+                "failCommands": [
+                  "isMaster",
+                  "hello"
+                ],
+                "appName": "backoffNetworkErrorFailClearTest",
+                "closeConnection": true
+              }
+            }
+          }
+        },
+        {
+          "name": "insertMany",
+          "object": "collection",
+          "arguments": {
+            "documents": [
+              {
+                "_id": 3
+              },
+              {
+                "_id": 4
+              }
+            ]
+          },
+          "expectError": {
+            "isError": true,
+            "errorLabelsContain": [
+              "SystemOverloadedError",
+              "RetryableError"
+            ]
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "poolBackoffEvent": {}
+            },
+            "count": 1
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": "off"
+            }
+          }
+        },
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "setupClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "hello",
+                  "isMaster"
+                ],
+                "appName": "backoffNetworkErrorFailClearTest",
+                "errorCode": 1
+              }
+            }
+          }
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "document": {
+              "_id": 3
+            }
+          },
+          "expectError": {
+            "isError": true
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "poolClearedEvent": {}
+            },
+            "count": 1
+          }
+        }
+      ]
+    }
+  ]
+}

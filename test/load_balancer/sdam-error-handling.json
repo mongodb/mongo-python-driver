@@ -1,6 +1,6 @@
 {
   "description": "state change errors are correctly handled",
-  "schemaVersion": "1.4",
+  "schemaVersion": "1.28",
   "runOnRequirements": [
     {
       "topologies": [
@@ -32,8 +32,6 @@
         "useMultipleMongoses": false,
         "uriOptions": {
           "appname": "lbSDAMErrorTestClient",
-          "socketTimeoutMS": 500,
-          "connectTimeoutMS": 500,
           "retryWrites": false
         },
         "observeEvents": [
@@ -43,7 +41,8 @@
           "connectionCheckOutFailedEvent",
           "connectionCheckedInEvent",
           "connectionClosedEvent",
-          "poolClearedEvent"
+          "poolClearedEvent",
+          "poolBackoffEvent"
         ]
       }
     },
@@ -66,9 +65,7 @@
         "id": "multiClient",
         "useMultipleMongoses": true,
         "uriOptions": {
-          "retryWrites": false,
-           "socketTimeoutMS": 500,
-           "connectTimeoutMS": 500
+          "retryWrites": false
         },
         "observeEvents": [
           "connectionCreatedEvent",
@@ -264,7 +261,7 @@
       ]
     },
     {
-      "description": "errors during the initial connection hello are ignored",
+      "description": "errors during the initial connection hello trigger backoff",
       "runOnRequirements": [
         {
           "minServerVersion": "4.4.7"
@@ -286,8 +283,7 @@
                   "isMaster",
                   "hello"
                 ],
-                "blockConnection": true,
-                "blockTimeMS": 1000,
+                "closeConnection": true,
                 "appName": "lbSDAMErrorTestClient"
               }
             }
@@ -300,9 +296,17 @@
             "document": {
               "x": 1
             }
-          },
-          "expectError": {
-            "isClientError": true
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "singleClient",
+            "event": {
+              "poolBackoffEvent": {}
+            },
+            "count": 1
           }
         }
       ],
@@ -320,9 +324,26 @@
               }
             },
             {
+              "poolBackoffEvent": {
+                "attempt": 1
+              }
+            },
+            {
               "connectionCheckOutFailedEvent": {
                 "reason": "connectionError"
               }
+            },
+            {
+              "connectionCreatedEvent": {}
+            },
+            {
+              "connectionReadyEvent": {}
+            },
+            {
+              "connectionCheckedOutEvent": {}
+            },
+            {
+              "connectionCheckedInEvent": {}
             }
           ]
         }
@@ -350,8 +371,7 @@
                 "failCommands": [
                   "saslContinue"
                 ],
-                "blockConnection": true,
-                "blockTimeMS": 1000,
+                "closeConnection": true,
                 "appName": "lbSDAMErrorTestClient"
               }
             }
@@ -412,8 +432,7 @@
                 "failCommands": [
                   "getMore"
                 ],
-                "closeConnection": true,
-                "appName": "lbSDAMErrorTestClient"
+                "closeConnection": true
               }
             }
           }

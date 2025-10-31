@@ -37,7 +37,7 @@ project.
 
 Feature Requests / Feedback
 ---------------------------
-Use our `feedback engine <https://feedback.mongodb.com/forums/924286-drivers>`_
+Use our `feedback engine <https://feedback.mongodb.com/?category=7548141816650747033>`_
 to send us feature requests and general feedback about PyMongo.
 
 Contributing

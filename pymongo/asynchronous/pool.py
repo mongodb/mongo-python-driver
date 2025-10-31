@@ -52,6 +52,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     DocumentTooLarge,
     ExecutionTimeout,
     InvalidOperation,
+    NetworkTimeout,
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
@@ -723,6 +724,7 @@ class PoolState:
     PAUSED = 1
     READY = 2
     CLOSED = 3
+    BACKOFF = 4
 
 
 # Do *not* explicitly inherit from object or Jython won't call __del__
@@ -791,6 +793,7 @@ class Pool:
         self._pending = 0
         self._client_id = client_id
         self._backoff = 0
+        self._backoff_connection_time = 0.0
         if self.enabled_for_cmap:
             assert self.opts._event_listeners is not None
             self.opts._event_listeners.publish_pool_created(
@@ -817,6 +820,8 @@ class Pool:
     async def ready(self) -> None:
         # Take the lock to avoid the race condition described in PYTHON-2699.
         async with self.lock:
+            if self.state == PoolState.BACKOFF:
+                return
             if self.state != PoolState.READY:
                 self.state = PoolState.READY
                 if self.enabled_for_cmap:
@@ -846,7 +851,7 @@ class Pool:
         async with self.size_cond:
             if self.closed:
                 return
-            # Clear the backoff state.
+            # Clear the backoff amount.
             self._backoff = 0
             if self.opts.pause_enabled and pause and not self.opts.load_balanced:
                 old_state, self.state = self.state, PoolState.PAUSED
@@ -948,7 +953,9 @@ class Pool:
         self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
     ) -> None:
         await self._reset(
-            close=False, service_id=service_id, interrupt_connections=interrupt_connections
+            close=False,
+            service_id=service_id,
+            interrupt_connections=interrupt_connections,
         )
 
     async def reset_without_pause(self) -> None:
@@ -1029,17 +1036,34 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def _handle_connection_error(self, error: BaseException, phase: str, conn_id: int) -> None:
+    async def _handle_connection_error(self, error: BaseException, phase: str) -> None:
         # Handle system overload condition for non-sdam pools.
-        # Look for an AutoReconnect error raised from a ConnectionResetError with
-        # errno == errno.ECONNRESET or raised from an OSError that we've created due to
-        # a closed connection.
+        # Look for an AutoReconnect or NetworkTimeout error.
         # If found, set backoff and add error labels.
-        if self.is_sdam or type(error) != AutoReconnect:
+        if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
             return
-        self._backoff += 1
-        error._add_error_label("SystemOverloadedError")
-        error._add_error_label("RetryableError")
+        error._add_error_label("SystemOverloadedError")  # type:ignore[attr-defined]
+        error._add_error_label("RetryableError")  # type:ignore[attr-defined]
+        await self.backoff()
+
+    async def backoff(self) -> None:
+        """Set/increase backoff mode."""
+        async with self.lock:
+            self._backoff += 1
+            backoff_duration_sec = _backoff(self._backoff)
+            backoff_duration_ms = int(backoff_duration_sec * 1000)
+            if self.state != PoolState.BACKOFF:
+                self.state = PoolState.BACKOFF
+                # Cancel other pending connections.
+                for context in self.active_contexts:
+                    context.cancel()
+            if self.enabled_for_cmap:
+                assert self.opts._event_listeners is not None
+                self.opts._event_listeners.publish_pool_backoff(
+                    self.address, self._backoff, backoff_duration_ms
+                )
+            self._backoff_connection_time = backoff_duration_sec + time.monotonic()
+
         # Log the pool backoff message.
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
@@ -1048,7 +1072,8 @@ class Pool:
                 clientId=self._client_id,
                 serverHost=self.address[0],
                 serverPort=self.address[1],
-                driverConnectionId=conn_id,
+                attempt=self._backoff,
+                durationMS=backoff_duration_ms,
                 reason=_verbose_connection_error_reason(ConnectionClosedReason.POOL_BACKOFF),
                 error=ConnectionClosedReason.POOL_BACKOFF,
             )
@@ -1082,10 +1107,6 @@ class Pool:
                 driverConnectionId=conn_id,
             )
 
-        # Apply backoff if applicable.
-        if self._backoff:
-            await asyncio.sleep(_backoff(self._backoff))
-
         # Pass a context to determine if we successfully create a configured socket.
         context = dict(has_created_socket=False)
 
@@ -1114,7 +1135,7 @@ class Pool:
                     error=ConnectionClosedReason.ERROR,
                 )
             if context["has_created_socket"]:
-                self._handle_connection_error(error, "handshake", conn_id)
+                await self._handle_connection_error(error, "handshake")
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
                 _raise_connection_failure(self.address, error, timeout_details=details)
@@ -1126,9 +1147,11 @@ class Pool:
             self.active_contexts.discard(tmp_context)
         if tmp_context.cancelled:
             conn.cancel_context.cancel()
+        has_completed_hello = False
         try:
             if not self.is_sdam:
                 await conn.hello()
+                has_completed_hello = True
                 self.is_writable = conn.is_writable
             if handler:
                 handler.contribute_socket(conn, completed_handshake=False)
@@ -1138,7 +1161,8 @@ class Pool:
         except BaseException as e:
             async with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
-            self._handle_connection_error(e, "hello", conn_id)
+            if not has_completed_hello:
+                await self._handle_connection_error(e, "hello")
             await conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
@@ -1146,7 +1170,10 @@ class Pool:
             await handler.client._topology.receive_cluster_time(conn._cluster_time)
 
         # Clear the backoff state.
-        self._backoff = 0
+        if self._backoff:
+            self._backoff = 0
+            await self.ready()
+
         return conn
 
     @contextlib.asynccontextmanager
@@ -1229,7 +1256,7 @@ class Pool:
             await self.checkin(conn)
 
     def _raise_if_not_ready(self, checkout_started_time: float, emit_event: bool) -> None:
-        if self.state != PoolState.READY:
+        if self.state not in (PoolState.READY, PoolState.BACKOFF):
             if emit_event:
                 duration = time.monotonic() - checkout_started_time
                 if self.enabled_for_cmap:
@@ -1320,12 +1347,21 @@ class Pool:
                 incremented = True
             while conn is None:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
-                # to be checked back into the pool.
+                # to be checked back into the pool OR for the backoff period to expire.
                 async with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
                     while not (self.conns or self._pending < self.max_connecting):
-                        timeout = deadline - time.monotonic() if deadline else None
+                        curr_time = time.monotonic()
+                        timeout = deadline - curr_time if deadline else None
+                        if self._backoff:
+                            if self._backoff_connection_time < curr_time:
+                                break
+                            if deadline is None or deadline > self._backoff_connection_time:
+                                timeout = self._backoff_connection_time - curr_time
                         if not await _async_cond_wait(self._max_connecting_cond, timeout):
+                            # Check whether a backoff period has expired.
+                            if self._backoff and time.monotonic() > self._backoff_connection_time:
+                                break
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
                             if self.conns or self._pending < self.max_connecting:

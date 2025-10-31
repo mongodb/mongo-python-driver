@@ -157,6 +157,11 @@ async def is_run_on_requirement_satisfied(requirement):
         min_version_satisfied = Version.from_string("4.2") <= server_version
         csfle_satisfied = _HAVE_PYMONGOCRYPT and min_version_satisfied
 
+    pool_backoff_statisfied = True
+    req_pool_backoff = requirement.get("supportsPoolBackoff")
+    if req_pool_backoff is False:
+        pool_backoff_statisfied = False
+
     return (
         topology_satisfied
         and min_version_satisfied
@@ -164,6 +169,7 @@ async def is_run_on_requirement_satisfied(requirement):
         and params_satisfied
         and auth_satisfied
         and csfle_satisfied
+        and pool_backoff_statisfied
     )
 
 
@@ -430,7 +436,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.22")
+    SCHEMA_VERSION = Version.from_string("1.28")
     RUN_ON_LOAD_BALANCER = True
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes

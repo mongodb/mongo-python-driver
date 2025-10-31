@@ -1,5 +1,5 @@
 {
-  "description": "auth-network-timeout-error",
+  "description": "auth-network-error",
   "schemaVersion": "1.4",
   "runOnRequirements": [
     {
@@ -23,7 +23,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "auth-network-timeout-error",
+      "collectionName": "auth-network-error",
       "databaseName": "sdam-tests",
       "documents": [
         {
@@ -37,7 +37,7 @@
   ],
   "tests": [
     {
-      "description": "Reset server and pool after network timeout error during authentication",
+      "description": "Reset server and pool after network error during authentication",
       "operations": [
         {
           "name": "failPoint",
@@ -53,9 +53,8 @@
                 "failCommands": [
                   "saslContinue"
                 ],
-                "blockConnection": true,
-                "blockTimeMS": 500,
-                "appName": "authNetworkTimeoutErrorTest"
+                "closeConnection": true,
+                "appName": "authNetworkErrorTest"
               }
             }
           }
@@ -76,9 +75,7 @@
                   ],
                   "uriOptions": {
                     "retryWrites": false,
-                    "appname": "authNetworkTimeoutErrorTest",
-                    "connectTimeoutMS": 250,
-                    "socketTimeoutMS": 250
+                    "appname": "authNetworkErrorTest"
                   }
                 }
               },
@@ -93,7 +90,7 @@
                 "collection": {
                   "id": "collection",
                   "database": "database",
-                  "collectionName": "auth-network-timeout-error"
+                  "collectionName": "auth-network-error"
                 }
               }
             ]
@@ -191,7 +188,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "auth-network-timeout-error",
+                  "insert": "auth-network-error",
                   "documents": [
                     {
                       "_id": 5
@@ -210,7 +207,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "auth-network-timeout-error",
+          "collectionName": "auth-network-error",
           "databaseName": "sdam-tests",
           "documents": [
             {

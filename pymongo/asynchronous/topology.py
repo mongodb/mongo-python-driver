@@ -57,6 +57,7 @@ from pymongo.logger import (
     _SDAMStatusMessage,
     _ServerSelectionStatusMessage,
 )
+from pymongo.pool import PoolState
 from pymongo.pool_options import PoolOptions
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (
@@ -485,7 +486,7 @@ class Topology:
             server_description.is_server_type_known and new_td.topology_type == TOPOLOGY_TYPE.Single
         ):
             server = self._servers.get(server_description.address)
-            if server:
+            if server and server.pool.state != PoolState.BACKOFF:
                 await server.pool.ready()
 
         suppress_event = sd_old == server_description
