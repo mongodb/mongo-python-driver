@@ -5,6 +5,7 @@
     {
       "minServerVersion": "4.4",
       "serverless": "forbid",
+      "supportsPoolBackoff": true,
       "topologies": [
         "single",
         "replicaset",
@@ -123,7 +124,11 @@
             ]
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "errorLabelsContain": [
+              "SystemOverloadedError",
+              "RetryableError"
+            ]
           }
         },
         {
