@@ -1,12 +1,12 @@
 {
   "description": "state change errors are correctly handled",
-  "schemaVersion": "1.4",
+  "schemaVersion": "1.28",
   "runOnRequirements": [
     {
       "topologies": [
         "load-balanced"
       ],
-      "poolBackoff": false
+      "poolBackoff": true
     }
   ],
   "_yamlAnchors": {
@@ -42,7 +42,8 @@
           "connectionCheckOutFailedEvent",
           "connectionCheckedInEvent",
           "connectionClosedEvent",
-          "poolClearedEvent"
+          "poolClearedEvent",
+          "poolBackoffEvent"
         ]
       }
     },
@@ -261,7 +262,7 @@
       ]
     },
     {
-      "description": "errors during the initial connection hello are ignored",
+      "description": "errors during the initial connection hello trigger backoff",
       "runOnRequirements": [
         {
           "minServerVersion": "4.4.7"
@@ -296,9 +297,17 @@
             "document": {
               "x": 1
             }
-          },
-          "expectError": {
-            "isClientError": true
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "singleClient",
+            "event": {
+              "poolBackoffEvent": {}
+            },
+            "count": 1
           }
         }
       ],
@@ -316,9 +325,26 @@
               }
             },
             {
+              "poolBackoffEvent": {
+                "attempt": 1
+              }
+            },
+            {
               "connectionCheckOutFailedEvent": {
                 "reason": "connectionError"
               }
+            },
+            {
+              "connectionCreatedEvent": {}
+            },
+            {
+              "connectionReadyEvent": {}
+            },
+            {
+              "connectionCheckedOutEvent": {}
+            },
+            {
+              "connectionCheckedInEvent": {}
             }
           ]
         }
@@ -374,9 +400,6 @@
               "connectionCreatedEvent": {}
             },
             {
-              "poolClearedEvent": {}
-            },
-            {
               "connectionClosedEvent": {
                 "reason": "error"
               }
@@ -385,6 +408,9 @@
               "connectionCheckOutFailedEvent": {
                 "reason": "connectionError"
               }
+            },
+            {
+              "poolClearedEvent": {}
             }
           ]
         }

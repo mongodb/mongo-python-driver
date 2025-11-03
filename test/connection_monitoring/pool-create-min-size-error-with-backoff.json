@@ -5,20 +5,18 @@
   "runOn": [
     {
       "minServerVersion": "4.9.0",
-      "poolBackoff": false
+      "poolBackoff": true
     }
   ],
   "failPoint": {
     "configureFailPoint": "failCommand",
-    "mode": {
-      "times": 50
-    },
+    "mode": "alwaysOn",
     "data": {
       "failCommands": [
         "isMaster",
         "hello"
       ],
-      "closeConnection": true,
+      "errorCode": 18,
       "appName": "poolCreateMinSizeErrorTest"
     }
   },
@@ -51,14 +49,14 @@
       "address": 42
     },
     {
-      "type": "ConnectionPoolCleared",
-      "address": 42
-    },
-    {
       "type": "ConnectionClosed",
       "address": 42,
       "connectionId": 42,
       "reason": "error"
+    },
+    {
+      "type": "ConnectionPoolCleared",
+      "address": 42
     }
   ],
   "ignore": [

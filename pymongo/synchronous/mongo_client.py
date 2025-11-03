@@ -2792,7 +2792,10 @@ class _ClientConnectionRetryable(Generic[T]):
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
-                        always_retryable = exc.has_error_label("RetryableError") and self._retryable
+                        always_retryable = (
+                            exc.has_error_label("RetryableError")
+                            and self._client._options.retry_reads
+                        )
                         overloaded = exc.has_error_label("SystemOverloadedError")
                         if not always_retryable and (
                             self._is_not_eligible_for_retry()
@@ -2816,7 +2819,8 @@ class _ClientConnectionRetryable(Generic[T]):
                         exc_to_check = exc.error
                     retryable_write_label = exc_to_check.has_error_label("RetryableWriteError")
                     always_retryable = (
-                        exc_to_check.has_error_label("RetryableError") and self._retryable
+                        exc_to_check.has_error_label("RetryableError")
+                        and self._client._options.retry_writes
                     )
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                     if not self._retryable and not always_retryable:

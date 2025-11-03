@@ -157,7 +157,7 @@ def is_run_on_requirement_satisfied(requirement):
         csfle_satisfied = _HAVE_PYMONGOCRYPT and min_version_satisfied
 
     pool_backoff_statisfied = True
-    req_pool_backoff = requirement.get("supportsPoolBackoff")
+    req_pool_backoff = requirement.get("poolBackoff")
     if req_pool_backoff is False:
         pool_backoff_statisfied = False
 

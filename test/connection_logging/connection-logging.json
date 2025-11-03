@@ -523,7 +523,8 @@
       "description": "Connection enters backoff on closed connection",
       "runOnRequirements": [
         {
-          "minServerVersion": "4.4"
+          "minServerVersion": "4.4",
+          "poolBackoff": true
         }
       ],
       "operations": [

@@ -32,6 +32,7 @@ from test.utils_shared import (
     async_wait_until,
     camel_to_snake,
 )
+from test.version import Version
 
 from bson.objectid import ObjectId
 from bson.son import SON
@@ -145,6 +146,10 @@ class AsyncTestCMAP(AsyncIntegrationTest):
         """Run the 'ready' operation."""
         await self.pool.ready()
 
+    async def backoff(self, op):
+        """Run the 'backoff' operation."""
+        await self.pool.backoff()
+
     async def clear(self, op):
         """Run the 'clear' operation."""
         if "interruptInUseConnections" in op:
@@ -223,6 +228,20 @@ class AsyncTestCMAP(AsyncIntegrationTest):
         self.assertIn(scenario_def["style"], ["unit", "integration"])
         self.listener = CMAPListener()
         self._ops: list = []
+
+        if "runOn" in test:
+            for run_reqs in test["runOn"]:
+                if "minServerVersion" in run_reqs:
+                    other_version = Version.from_string(run_reqs["minServerVersion"])
+                    if async_client_context.version < other_version:
+                        self.skipTest(f"Server version must be at least {other_version}")
+                if "maxServerVersion" in run_reqs:
+                    other_version = Version.from_string(run_reqs["maxServerVersion"])
+                    if async_client_context.version > other_version:
+                        self.skipTest(f"Server version must be at most {other_version}")
+                if "poolBackoff" in run_reqs:
+                    if run_reqs["poolBackoff"] is False:
+                        self.skipTest("We support poolBackoff")
 
         # Configure the fail point before creating the client.
         if "failPoint" in test:
