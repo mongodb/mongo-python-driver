@@ -274,7 +274,9 @@
             "client": "failPointClient",
             "failPoint": {
               "configureFailPoint": "failCommand",
-              "mode": "alwaysOn",
+              "mode": {
+                "times": 1
+              },
               "data": {
                 "failCommands": [
                   "isMaster",
@@ -294,9 +296,7 @@
               "x": 1
             }
           },
-          "expectError": {
-            "isClientError": true
-          }
+          "ignoreResultAndError": true
         }
       ],
       "expectEvents": [
@@ -371,9 +371,6 @@
               "connectionCreatedEvent": {}
             },
             {
-              "poolClearedEvent": {}
-            },
-            {
               "connectionClosedEvent": {
                 "reason": "error"
               }
@@ -382,6 +379,9 @@
               "connectionCheckOutFailedEvent": {
                 "reason": "connectionError"
               }
+            },
+            {
+              "poolClearedEvent": {}
             }
           ]
         }

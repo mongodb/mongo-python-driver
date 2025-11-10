@@ -15,13 +15,16 @@
         "isMaster",
         "hello"
       ],
-      "closeConnection": true,
+      "blockConnection": true,
+      "blockTimeMS": 1000,
       "appName": "poolCreateMinSizeErrorTest"
     }
   },
   "poolOptions": {
     "minPoolSize": 1,
     "backgroundThreadIntervalMS": 50,
+    "socketTimeoutMS": 500,
+    "connectTimeoutMS": 500,
     "appName": "poolCreateMinSizeErrorTest"
   },
   "operations": [
@@ -48,14 +51,14 @@
       "address": 42
     },
     {
-      "type": "ConnectionPoolCleared",
-      "address": 42
-    },
-    {
       "type": "ConnectionClosed",
       "address": 42,
       "connectionId": 42,
       "reason": "error"
+    },
+    {
+      "type": "ConnectionPoolCleared",
+      "address": 42
     }
   ],
   "ignore": [

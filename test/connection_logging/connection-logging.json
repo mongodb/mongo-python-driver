@@ -450,22 +450,6 @@
               "level": "debug",
               "component": "connection",
               "data": {
-                "message": "Connection pool cleared",
-                "serverHost": {
-                  "$$type": "string"
-                },
-                "serverPort": {
-                  "$$type": [
-                    "int",
-                    "long"
-                  ]
-                }
-              }
-            },
-            {
-              "level": "debug",
-              "component": "connection",
-              "data": {
                 "message": "Connection closed",
                 "driverConnectionId": {
                   "$$type": [
@@ -509,6 +493,22 @@
                 "durationMS": {
                   "$$type": [
                     "double",
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "connection",
+              "data": {
+                "message": "Connection pool cleared",
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
                     "int",
                     "long"
                   ]
