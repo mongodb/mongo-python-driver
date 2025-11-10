@@ -274,9 +274,7 @@
             "client": "failPointClient",
             "failPoint": {
               "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 1
-              },
+              "mode": "alwaysOn",
               "data": {
                 "failCommands": [
                   "isMaster",
