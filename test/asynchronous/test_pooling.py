@@ -29,7 +29,6 @@ from pymongo import AsyncMongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _async_create_lock
-from pymongo.read_preferences import ReadPreference
 
 sys.path[0:0] = [""]
 
@@ -513,77 +512,6 @@ class TestPooling(_TestPoolingBase):
             "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 500.0ms)",
             str(error.exception),
         )
-
-    async def test_pool_check_backoff(self):
-        # Test that Pool recovers from two connection failures in a row.
-        # This exercises code at the end of Pool._check().
-        cx_pool = await self.create_pool(max_pool_size=1, connect_timeout=1, wait_queue_timeout=1)
-        self.addAsyncCleanup(cx_pool.close)
-
-        async with cx_pool.checkout() as conn:
-            # Simulate a closed socket without telling the Connection it's
-            # closed.
-            await conn.conn.close()
-
-        # Enable backoff.
-        cx_pool._backoff = 1
-
-        # Swap pool's address with a bad one.
-        address, cx_pool.address = cx_pool.address, ("foo.com", 1234)
-        with self.assertRaises(AutoReconnect):
-            async with cx_pool.checkout():
-                pass
-
-        # Back to normal, semaphore was correctly released.
-        cx_pool.address = address
-        async with cx_pool.checkout():
-            pass
-
-    @async_client_context.require_failCommand_appName
-    async def test_pool_backoff_preserves_existing_connections(self):
-        client = await self.async_rs_or_single_client()
-        coll = self.db.t
-        pool = await async_get_pool(client)
-        await coll.insert_many([{"x": 1} for _ in range(10)])
-        t = SocketGetter(self.c, pool)
-        await t.start()
-        while t.state != "connection":
-            await asyncio.sleep(0.1)
-
-        assert not t.sock.conn_closed()
-
-        # Mock a session establishment overload.
-        mock_connection_fail = {
-            "configureFailPoint": "failCommand",
-            "mode": {"times": 1},
-            "data": {
-                "closeConnection": True,
-            },
-        }
-
-        async with self.fail_point(mock_connection_fail):
-            await coll.find_one({})
-
-        # Make sure the pool is out of backoff state.
-        assert pool._backoff == 0
-
-        # Make sure the existing socket was not affected.
-        assert not t.sock.conn_closed()
-
-        # Cleanup
-        await t.release_conn()
-        await t.join()
-        await pool.close()
-
-    async def test_pool_backoff_limits_maxConnecting(self):
-        client = await self.async_rs_or_single_client(maxConnecting=10)
-        pool = await async_get_pool(client)
-        assert pool.max_connecting == 10
-        pool._backoff = 1
-        assert pool.max_connecting == 1
-        pool._backoff = 0
-        assert pool.max_connecting == 10
-        await client.close()
 
 
 class TestPoolMaxSize(_TestPoolingBase):

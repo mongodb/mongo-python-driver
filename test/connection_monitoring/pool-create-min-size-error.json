@@ -9,23 +9,21 @@
   ],
   "failPoint": {
     "configureFailPoint": "failCommand",
-    "mode": "alwaysOn",
+    "mode": {
+      "times": 50
+    },
     "data": {
       "failCommands": [
         "isMaster",
         "hello"
       ],
-      "closeConnection": false,
-      "blockConnection": true,
-      "blockTimeMS": 1000,
+      "closeConnection": true,
       "appName": "poolCreateMinSizeErrorTest"
     }
   },
   "poolOptions": {
     "minPoolSize": 1,
     "backgroundThreadIntervalMS": 50,
-    "socketTimeoutMS": 500,
-    "connectTimeoutMS": 500,
     "appName": "poolCreateMinSizeErrorTest"
   },
   "operations": [
