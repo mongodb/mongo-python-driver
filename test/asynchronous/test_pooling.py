@@ -515,7 +515,7 @@ class TestPooling(_TestPoolingBase):
         )
 
     @async_client_context.require_failCommand_appName
-    async def test_pool_backoff_preserves_existing_connections(self):
+    async def test_pool_backpressure_preserves_existing_connections(self):
         client = await self.async_rs_or_single_client()
         coll = self.db.t
         pool = await async_get_pool(client)

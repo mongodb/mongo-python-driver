@@ -513,7 +513,7 @@ class TestPooling(_TestPoolingBase):
         )
 
     @client_context.require_failCommand_appName
-    def test_pool_backoff_preserves_existing_connections(self):
+    def test_pool_backpressure_preserves_existing_connections(self):
         client = self.rs_or_single_client()
         coll = self.db.t
         pool = get_pool(client)
