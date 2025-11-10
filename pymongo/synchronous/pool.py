@@ -787,6 +787,7 @@ class Pool:
         # Also used for: clearing the wait queue
         self._max_connecting_cond = _create_condition(self.lock)
         self._pending = 0
+        self._max_connecting = self.opts.max_connecting
         self._client_id = client_id
         if self.enabled_for_cmap:
             assert self.opts._event_listeners is not None
@@ -989,7 +990,7 @@ class Pool:
                 with self._max_connecting_cond:
                     # If maxConnecting connections are already being created
                     # by this pool then try again later instead of waiting.
-                    if self._pending >= self.opts.max_connecting:
+                    if self._pending >= self._max_connecting:
                         return
                     self._pending += 1
                     incremented = True
@@ -1295,12 +1296,12 @@ class Pool:
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
-                    while not (self.conns or self._pending < self.opts.max_connecting):
+                    while not (self.conns or self._pending < self._max_connecting):
                         timeout = deadline - time.monotonic() if deadline else None
                         if not _cond_wait(self._max_connecting_cond, timeout):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
-                            if self.conns or self._pending < self.max_connecting:
+                            if self.conns or self._pending < self._max_connecting:
                                 self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout(checkout_started_time)
