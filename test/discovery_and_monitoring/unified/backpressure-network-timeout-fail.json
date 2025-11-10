@@ -49,7 +49,6 @@
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "serverHeartbeatSucceededEvent",
-                    "commandStartedEvent",
                     "poolReadyEvent",
                     "poolClearedEvent"
                   ],
@@ -58,6 +57,7 @@
                     "heartbeatFrequencyMS": 10000,
                     "appname": "backpressureNetworkTimeoutErrorTest",
                     "serverMonitoringMode": "poll",
+                    "directConnection": true,
                     "connectTimeoutMS": 250,
                     "socketTimeoutMS": 250
                   }
