@@ -37,7 +37,7 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
-from pymongo.asynchronous.helpers import _backoff, _handle_reauth
+from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.asynchronous.network import command
 from pymongo.common import (
     MAX_BSON_SIZE,
@@ -790,7 +790,6 @@ class Pool:
         self._max_connecting_cond = _async_create_condition(self.lock)
         self._pending = 0
         self._client_id = client_id
-        self._backoff = 0
         if self.enabled_for_cmap:
             assert self.opts._event_listeners is not None
             self.opts._event_listeners.publish_pool_created(
@@ -846,8 +845,6 @@ class Pool:
         async with self.size_cond:
             if self.closed:
                 return
-            # Clear the backoff state.
-            self._backoff = 0
             if self.opts.pause_enabled and pause and not self.opts.load_balanced:
                 old_state, self.state = self.state, PoolState.PAUSED
             self.gen.inc(service_id)
@@ -930,11 +927,6 @@ class Pool:
                 for conn in sockets:
                     await conn.close_conn(ConnectionClosedReason.STALE)
 
-    @property
-    def max_connecting(self) -> int:
-        """The current max connecting limit for the pool."""
-        return 1 if self._backoff else self.opts.max_connecting
-
     async def update_is_writable(self, is_writable: Optional[bool]) -> None:
         """Updates the is_writable attribute on all sockets currently in the
         Pool.
@@ -1001,7 +993,7 @@ class Pool:
                 async with self._max_connecting_cond:
                     # If maxConnecting connections are already being created
                     # by this pool then try again later instead of waiting.
-                    if self._pending >= self.max_connecting:
+                    if self._pending >= self.opts.max_connecting:
                         return
                     self._pending += 1
                     incremented = True
@@ -1034,24 +1026,11 @@ class Pool:
         # Look for an AutoReconnect error raised from a ConnectionResetError with
         # errno == errno.ECONNRESET or raised from an OSError that we've created due to
         # a closed connection.
-        # If found, set backoff and add error labels.
+        # If found, add error labels.
         if self.is_sdam or type(error) != AutoReconnect:
             return
-        self._backoff += 1
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
-        # Log the pool backoff message.
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.POOL_BACKOFF,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-                driverConnectionId=conn_id,
-                reason=_verbose_connection_error_reason(ConnectionClosedReason.POOL_BACKOFF),
-                error=ConnectionClosedReason.POOL_BACKOFF,
-            )
 
     async def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> AsyncConnection:
         """Connect to Mongo and return a new AsyncConnection.
@@ -1081,10 +1060,6 @@ class Pool:
                 serverPort=self.address[1],
                 driverConnectionId=conn_id,
             )
-
-        # Apply backoff if applicable.
-        if self._backoff:
-            await asyncio.sleep(_backoff(self._backoff))
 
         # Pass a context to determine if we successfully create a configured socket.
         context = dict(has_created_socket=False)
@@ -1126,9 +1101,11 @@ class Pool:
             self.active_contexts.discard(tmp_context)
         if tmp_context.cancelled:
             conn.cancel_context.cancel()
+        completed_hello = False
         try:
             if not self.is_sdam:
                 await conn.hello()
+                completed_hello = True
                 self.is_writable = conn.is_writable
             if handler:
                 handler.contribute_socket(conn, completed_handshake=False)
@@ -1138,15 +1115,14 @@ class Pool:
         except BaseException as e:
             async with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
-            self._handle_connection_error(e, "hello", conn_id)
+            if not completed_hello:
+                self._handle_connection_error(e, "hello", conn_id)
             await conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
         if handler:
             await handler.client._topology.receive_cluster_time(conn._cluster_time)
 
-        # Clear the backoff state.
-        self._backoff = 0
         return conn
 
     @contextlib.asynccontextmanager
@@ -1323,7 +1299,7 @@ class Pool:
                 # to be checked back into the pool.
                 async with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
-                    while not (self.conns or self._pending < self.max_connecting):
+                    while not (self.conns or self._pending < self.opts.max_connecting):
                         timeout = deadline - time.monotonic() if deadline else None
                         if not await _async_cond_wait(self._max_connecting_cond, timeout):
                             # Timed out, notify the next thread to ensure a
@@ -1469,7 +1445,7 @@ class Pool:
         :class:`~pymongo.errors.AutoReconnect` exceptions on server
         hiccups, etc. We only check if the socket was closed by an external
         error if it has been > 1 second since the socket was checked into the
-        pool, or we are in backoff mode, to keep performance reasonable -
+        pool to keep performance reasonable -
         we can't avoid AutoReconnects completely anyway.
         """
         idle_time_seconds = conn.idle_time_seconds()
@@ -1482,8 +1458,6 @@ class Pool:
             return True
 
         check_interval_seconds = self._check_interval_seconds
-        if self._backoff:
-            check_interval_seconds = 0
         if check_interval_seconds is not None and (
             check_interval_seconds == 0 or idle_time_seconds > check_interval_seconds
         ):
