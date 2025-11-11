@@ -1030,8 +1030,8 @@ class Pool:
         # If found, add error labels.
         if self.is_sdam or type(error) != AutoReconnect:
             return
-        error._add_error_label("SystemOverloadedError")
-        error._add_error_label("RetryableError")
+        # error._add_error_label("SystemOverloadedError")
+        # error._add_error_label("RetryableError")
 
     async def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> AsyncConnection:
         """Connect to Mongo and return a new AsyncConnection.
