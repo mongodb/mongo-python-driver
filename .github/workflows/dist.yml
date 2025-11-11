@@ -100,7 +100,7 @@ jobs:
 
   make_sdist:
     name: Make SDist
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v5
         with:
