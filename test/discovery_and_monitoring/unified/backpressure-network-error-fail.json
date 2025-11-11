@@ -158,10 +158,10 @@
           "ignoreExtraEvents": false,
           "events": [
             {
-            "serverHeartbeatSucceededEvent": {}
+              "serverHeartbeatSucceededEvent": {}
             },
             {
-            "serverDescriptionChangedEvent": {}
+              "serverDescriptionChangedEvent": {}
             }
           ]
         }
