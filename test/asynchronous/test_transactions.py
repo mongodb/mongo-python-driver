@@ -15,6 +15,7 @@
 """Execute Transactions Spec tests."""
 from __future__ import annotations
 
+import asyncio
 import sys
 from io import BytesIO
 from test.asynchronous.utils_spec_runner import AsyncSpecRunner
@@ -468,6 +469,17 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
 
         async with self.client.start_session() as s:
             self.assertEqual(await s.with_transaction(callback2), "Foo")
+
+    @async_client_context.require_transactions
+    @async_client_context.require_async
+    async def test_callback_awaitable_no_coroutine(self):
+        def callback(_):
+            future = asyncio.Future()
+            future.set_result("Foo")
+            return future
+
+        async with self.client.start_session() as s:
+            self.assertEqual(await s.with_transaction(callback), "Foo")
 
     @async_client_context.require_transactions
     async def test_callback_not_retried_after_timeout(self):
