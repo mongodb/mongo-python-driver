@@ -49,6 +49,7 @@
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "serverHeartbeatSucceededEvent",
+                    "serverDescriptionChangedEvent",
                     "poolReadyEvent",
                     "poolClearedEvent"
                   ],
@@ -87,6 +88,17 @@
             "client": "client",
             "event": {
               "serverHeartbeatSucceededEvent": {}
+            },
+            "count": 1
+          }
+        },
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "serverDescriptionChangedEvent": {}
             },
             "count": 1
           }
@@ -139,6 +151,19 @@
           "events": [
             {
               "poolReadyEvent": {}
+            }
+          ]
+        },
+        {
+          "client": "client",
+          "eventType": "sdam",
+          "ignoreExtraEvents": false,
+          "events": [
+            {
+            "serverHeartbeatSucceededEvent": {}
+            },
+            {
+            "serverDescriptionChangedEvent": {}
             }
           ]
         }

@@ -1018,12 +1018,9 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def _handle_connection_error(self, error: BaseException, phase: str, conn_id: int) -> None:
+    def _handle_connection_error(self, error: BaseException) -> None:
         # Handle system overload condition for non-sdam pools.
-        # Look for an AutoReconnect error raised from a ConnectionResetError with
-        # errno == errno.ECONNRESET or raised from an OSError that we've created due to
-        # a closed connection.
-        # If found, add error labels.
+        # Look for errors of type AutoReconnect and add error labels if appropriate.
         if self.is_sdam or type(error) != AutoReconnect:
             return
         error._add_error_label("SystemOverloadedError")
@@ -1058,13 +1055,8 @@ class Pool:
                 driverConnectionId=conn_id,
             )
 
-        # Pass a context to determine if we successfully create a configured socket.
-        context = dict(has_created_socket=False)
-
         try:
-            networking_interface = _configured_socket_interface(
-                self.address, self.opts, context=context
-            )
+            networking_interface = _configured_socket_interface(self.address, self.opts)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             with self.lock:
@@ -1085,8 +1077,7 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
-            if context["has_created_socket"]:
-                self._handle_connection_error(error, "handshake", conn_id)
+            self._handle_connection_error(error)
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
                 _raise_connection_failure(self.address, error, timeout_details=details)
@@ -1113,7 +1104,7 @@ class Pool:
             with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
             if not completed_hello:
-                self._handle_connection_error(e, "hello", conn_id)
+                self._handle_connection_error(e)
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
