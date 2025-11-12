@@ -890,7 +890,6 @@ class Topology:
         elif isinstance(error, ConnectionFailure):
             if isinstance(error, WaitQueueTimeoutError) or (
                 error.has_error_label("SystemOverloadedError")
-                and error.has_error_label("RetryableError")
             ):
                 return
             # "Client MUST replace the server's description with type Unknown
