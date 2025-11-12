@@ -1024,6 +1024,7 @@ class Pool:
         # Look for errors of type AutoReconnect and add error labels if appropriate.
         if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
             return
+        assert isinstance(error, AutoReconnect)  # Appease type checker.
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
 
