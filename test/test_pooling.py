@@ -515,7 +515,7 @@ class TestPooling(_TestPoolingBase):
     @client_context.require_failCommand_appName
     def test_pool_backpressure_preserves_existing_connections(self):
         client = self.rs_or_single_client()
-        coll = self.db.t
+        coll = client.pymongo_test.t
         pool = get_pool(client)
         coll.insert_many([{"x": 1} for _ in range(10)])
         t = SocketGetter(self.c, pool)

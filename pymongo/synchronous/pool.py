@@ -49,6 +49,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     DocumentTooLarge,
     ExecutionTimeout,
     InvalidOperation,
+    NetworkTimeout,
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
@@ -1021,7 +1022,7 @@ class Pool:
     def _handle_connection_error(self, error: BaseException) -> None:
         # Handle system overload condition for non-sdam pools.
         # Look for errors of type AutoReconnect and add error labels if appropriate.
-        if self.is_sdam or type(error) != AutoReconnect:
+        if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
             return
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
