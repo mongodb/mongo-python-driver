@@ -15,7 +15,9 @@
 """Execute Transactions Spec tests."""
 from __future__ import annotations
 
+import random
 import sys
+import time
 from io import BytesIO
 from test.utils_spec_runner import SpecRunner
 
@@ -47,7 +49,11 @@ from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous import client_session
-from pymongo.synchronous.client_session import TransactionOptions
+from pymongo.synchronous.client_session import (
+    _BACKOFF_MAX,
+    TransactionOptions,
+    _set_backoff_initial,
+)
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.helpers import next
@@ -589,6 +595,68 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.assertFalse(s.in_transaction)
             s.with_transaction(callback)
             self.assertFalse(s.in_transaction)
+
+    @client_context.require_test_commands
+    @client_context.require_transactions
+    def test_transaction_backoff(self):
+        client = client_context.client
+        coll = client[self.db.name].test
+        # patch random to make it deterministic
+        _original_random_random = random.random
+
+        def always_one():
+            return 1
+
+        def always_zero():
+            return 0
+
+        random.random = always_zero
+        # set fail point to trigger transaction failure and trigger backoff
+        self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {
+                    "times": 13
+                },  # sufficiently high enough such that the time effect of backoff is noticeable
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 24,
+                },
+            }
+        )
+        self.addCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
+
+        def callback(session):
+            coll.insert_one({}, session=session)
+
+        start = time.monotonic()
+        with self.client.start_session() as s:
+            s.with_transaction(callback)
+        end = time.monotonic()
+        no_backoff_time = end - start
+
+        random.random = always_one
+        # set fail point to trigger transaction failure and trigger backoff
+        self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {
+                    "times": 13
+                },  # sufficiently high enough such that the time effect of backoff is noticeable
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 24,
+                },
+            }
+        )
+        self.addCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
+        start = time.monotonic()
+        with self.client.start_session() as s:
+            s.with_transaction(callback)
+        end = time.monotonic()
+        self.assertLess(abs(end - start - (no_backoff_time + 2.2)), 1)  # sum of 13 backoffs is 2.2
+
+        random.random = _original_random_random
 
 
 class TestOptionsInsideTransactionProse(TransactionsBase):
