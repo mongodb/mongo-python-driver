@@ -471,7 +471,7 @@ _UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(  # 
 # default value of MongoDB's `transactionLifetimeLimitSeconds` parameter.
 _WITH_TRANSACTION_RETRY_TIME_LIMIT = 120
 _BACKOFF_MAX = 0.500  # 500ms max backoff
-_BACKOFF_INITIAL = 0.001  # 1ms initial backoff
+_BACKOFF_INITIAL = 0.005  # 5ms initial backoff
 
 
 def _within_time_limit(start_time: float) -> bool:
@@ -715,7 +715,7 @@ class ClientSession:
         while True:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
-                backoff = jitter * min(_BACKOFF_INITIAL * (1.25**retry), _BACKOFF_MAX)
+                backoff = jitter * min(_BACKOFF_INITIAL * (1.5**retry), _BACKOFF_MAX)
                 if _would_exceed_time_limit(start_time, backoff):
                     assert last_error is not None
                     raise last_error

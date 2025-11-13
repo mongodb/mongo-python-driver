@@ -622,39 +622,6 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
 
     @async_client_context.require_test_commands
     @async_client_context.require_transactions
-    async def test_transaction_backoff_is_random(self):
-        client = async_client_context.client
-        coll = client[self.db.name].test
-        # set fail point to trigger transaction failure and trigger backoff
-        await self.set_fail_point(
-            {
-                "configureFailPoint": "failCommand",
-                "mode": {
-                    "times": 30
-                },  # sufficiently high enough such that the time effect of backoff is noticeable
-                "data": {
-                    "failCommands": ["commitTransaction"],
-                    "errorCode": 24,
-                },
-            }
-        )
-        self.addAsyncCleanup(
-            self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"}
-        )
-
-        start = time.monotonic()
-
-        async def callback(session):
-            await coll.insert_one({}, session=session)
-
-        async with self.client.start_session() as s:
-            await s.with_transaction(callback)
-
-        end = time.monotonic()
-        self.assertLess(end - start, 3.5)  # sum of 30 backoffs are 3.5629515313825695
-
-    @async_client_context.require_test_commands
-    @async_client_context.require_transactions
     async def test_transaction_backoff(self):
         client = async_client_context.client
         coll = client[self.db.name].test
@@ -664,13 +631,16 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
         def always_one():
             return 1
 
-        random.random = always_one
+        def always_zero():
+            return 0
+
+        random.random = always_zero
         # set fail point to trigger transaction failure and trigger backoff
         await self.set_fail_point(
             {
                 "configureFailPoint": "failCommand",
                 "mode": {
-                    "times": 30
+                    "times": 13
                 },  # sufficiently high enough such that the time effect of backoff is noticeable
                 "data": {
                     "failCommands": ["commitTransaction"],
@@ -682,16 +652,37 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"}
         )
 
-        start = time.monotonic()
-
         async def callback(session):
             await coll.insert_one({}, session=session)
 
+        start = time.monotonic()
         async with self.client.start_session() as s:
             await s.with_transaction(callback)
-
         end = time.monotonic()
-        self.assertGreaterEqual(end - start, 3.5)  # sum of 30 backoffs are 3.5629515313825695
+        no_backoff_time = end - start
+
+        random.random = always_one
+        # set fail point to trigger transaction failure and trigger backoff
+        await self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {
+                    "times": 13
+                },  # sufficiently high enough such that the time effect of backoff is noticeable
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 24,
+                },
+            }
+        )
+        self.addAsyncCleanup(
+            self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"}
+        )
+        start = time.monotonic()
+        async with self.client.start_session() as s:
+            await s.with_transaction(callback)
+        end = time.monotonic()
+        self.assertLess(abs(end - start - (no_backoff_time + 2.2)), 1)  # sum of 13 backoffs is 2.2
 
         random.random = _original_random_random
 
