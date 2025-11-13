@@ -139,7 +139,8 @@ python -m pip install "pymongo[snappy]"
 ```
 
 Wire protocol compression with zstandard requires
-[zstandard](https://pypi.org/project/zstandard):
+[backports.zstd](https://pypi.org/project/backports.zstd)
+when used with Python versions before 3.14:
 
 ```bash
 python -m pip install "pymongo[zstd]"

@@ -1,1 +1,1 @@
-zstandard
+backports.zstd>=1.0.0;python_version<'3.14'

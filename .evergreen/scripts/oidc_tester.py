@@ -89,7 +89,7 @@ def test_oidc_send_to_remote(sub_test_name: str) -> None:
         env[f"{upper_name}OIDC_DRIVERS_TAR_FILE"] = TMP_DRIVER_FILE
         env[
             f"{upper_name}OIDC_TEST_CMD"
-        ] = f"NO_EXT=1 OIDC_ENV={sub_test_name} ./.evergreen/run-mongodb-oidc-test.sh"
+        ] = f"OIDC_ENV={sub_test_name} ./.evergreen/run-mongodb-oidc-test.sh"
     elif sub_test_name in K8S_NAMES:
         env["K8S_DRIVERS_TAR_FILE"] = TMP_DRIVER_FILE
         env["K8S_TEST_CMD"] = "OIDC_ENV=k8s ./.evergreen/run-mongodb-oidc-test.sh"

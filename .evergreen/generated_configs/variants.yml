@@ -11,7 +11,7 @@ buildvariants:
       VERSION: latest
       NO_EXT: "1"
       REQUIRE_FIPS: "1"
-      PYTHON_BINARY: /usr/bin/python3.11
+      UV_PYTHON: /usr/bin/python3.11
     tags: []
   - name: other-hosts-rhel8-zseries-latest
     tasks:
@@ -72,7 +72,7 @@ buildvariants:
   # Aws auth tests
   - name: auth-aws-ubuntu-20
     tasks:
-      - name: .auth-aws !.auth-aws-ecs
+      - name: .auth-aws
     display_name: Auth AWS Ubuntu-20
     run_on:
       - ubuntu2004-small
@@ -133,6 +133,15 @@ buildvariants:
       - rhel87-small
     expansions:
       COMPRESSOR: zstd
+  - name: compression-zstd-ubuntu-22
+    tasks:
+      - name: .test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14
+      - name: .test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14t
+    display_name: Compression zstd Ubuntu-22
+    run_on:
+      - ubuntu2204-small
+    expansions:
+      COMPRESSOR: ztsd
 
   # Coverage report tests
   - name: coverage-report
@@ -453,14 +462,12 @@ buildvariants:
       SUB_TEST_NAME: pyopenssl
 
   # Search index tests
-  - name: search-index-helpers-rhel8-python3.10
+  - name: search-index-helpers-rhel8
     tasks:
       - name: .search_index
-    display_name: Search Index Helpers RHEL8 Python3.10
+    display_name: Search Index Helpers RHEL8
     run_on:
       - rhel87-small
-    expansions:
-      PYTHON_BINARY: /opt/python/3.10/bin/python3
 
   # Server version tests
   - name: mongodb-v4.2
