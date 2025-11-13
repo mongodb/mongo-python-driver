@@ -108,7 +108,7 @@
         },
         {
           "name": "assertCollectionExists",
-          "object": "coll",
+          "object": "testRunner",
           "arguments": {
             "databaseName": "default",
             "collectionName": "encryptedCollection"
@@ -248,7 +248,7 @@
         },
         {
           "name": "assertIndexExists",
-          "object": "coll",
+          "object": "testRunner",
           "arguments": {
             "databaseName": "default",
             "collectionName": "encryptedCollection",
