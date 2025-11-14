@@ -27,6 +27,7 @@ from test.helpers import ConcurrentRunner
 from test.utils import flaky
 from test.utils_shared import delay
 
+from pymongo.errors import ConnectionFailure
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
 from pymongo.synchronous.pool import Connection
@@ -485,7 +486,7 @@ class TestPoolBackpressure(IntegrationTest):
         def target():
             try:
                 client.test.test.find_one({"$where": delay(0.1)})
-            except OperationFailure:
+            except ConnectionFailure:
                 pass
 
         # Warm the pool with 10 tasks so there are existing connections.
