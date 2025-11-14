@@ -450,7 +450,7 @@ class TestPoolManagement(IntegrationTest):
 
 
 class TestPoolBackpressure(IntegrationTest):
-    # @client_context.require_version_min(8, 0, 0)
+    @client_context.require_version_min(7, 0, 0)
     def test_connection_pool_is_not_cleared(self):
         listener = CMAPListener()
 

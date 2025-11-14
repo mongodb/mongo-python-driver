@@ -452,7 +452,7 @@ class TestPoolManagement(AsyncIntegrationTest):
 
 
 class TestPoolBackpressure(AsyncIntegrationTest):
-    # @async_client_context.require_version_min(8, 0, 0)
+    @async_client_context.require_version_min(7, 0, 0)
     async def test_connection_pool_is_not_cleared(self):
         listener = CMAPListener()
 
