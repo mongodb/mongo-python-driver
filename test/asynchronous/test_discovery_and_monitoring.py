@@ -486,7 +486,7 @@ class TestPoolBackpressure(AsyncIntegrationTest):
         # Run a regex operation to slow down the query.
         async def target():
             try:
-                await client.test.test.find_one({"$where": delay(0.1)})
+                await client.test.test.find_one({"$where": delay(0.2)})
             except OperationFailure:
                 pass
 
