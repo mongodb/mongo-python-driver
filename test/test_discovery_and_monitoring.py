@@ -463,7 +463,7 @@ class TestPoolBackpressure(IntegrationTest):
         admin_client.admin.command(
             "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
         )
-        admin_client.admin.command("setParameter", 1, ingressConnectionEstablishmentRatePerSec=30)
+        admin_client.admin.command("setParameter", 1, ingressConnectionEstablishmentRatePerSec=10)
         admin_client.admin.command(
             "setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1
         )
