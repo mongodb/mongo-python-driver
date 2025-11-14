@@ -25,6 +25,7 @@ from asyncio import StreamReader, StreamWriter
 from pathlib import Path
 from test.helpers import ConcurrentRunner
 from test.utils import flaky
+from test.utils_shared import delay
 
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
@@ -476,15 +477,10 @@ class TestPoolBackpressure(IntegrationTest):
 
         self.addCleanup(teardown)
 
-        # Seed the collection with a document for us to query with a regex.
-        client.test.test.delete_many({})
-        client.test.test.insert_one({"str0": "abcdefg"})
-
         # Run a regex operation to slow down the query.
         def target():
-            query = {"str0": {"$regex": "abcd"}}
             try:
-                client.test.test.find_one(query)
+                client.test.test.find_one({"$where": delay(0.1)})
             except OperationFailure:
                 pass
 

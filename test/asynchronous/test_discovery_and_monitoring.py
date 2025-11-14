@@ -25,6 +25,7 @@ from asyncio import StreamReader, StreamWriter
 from pathlib import Path
 from test.asynchronous.helpers import ConcurrentRunner
 from test.asynchronous.utils import flaky
+from test.utils_shared import delay
 
 from pymongo.asynchronous.pool import AsyncConnection
 from pymongo.operations import _Op
@@ -482,15 +483,10 @@ class TestPoolBackpressure(AsyncIntegrationTest):
 
         self.addAsyncCleanup(teardown)
 
-        # Seed the collection with a document for us to query with a regex.
-        await client.test.test.delete_many({})
-        await client.test.test.insert_one({"str0": "abcdefg"})
-
         # Run a regex operation to slow down the query.
         async def target():
-            query = {"str0": {"$regex": "abcd"}}
             try:
-                await client.test.test.find_one(query)
+                await client.test.test.find_one({"$where": delay(0.1)})
             except OperationFailure:
                 pass
 
@@ -499,18 +495,18 @@ class TestPoolBackpressure(AsyncIntegrationTest):
         for _ in range(10):
             tasks.append(ConcurrentRunner(target=target))
         for t in tasks:
-            t.start()
+            await t.start()
         for t in tasks:
-            t.join()
+            await t.join()
 
         # Run 100 parallel operations that contend for connections.
         tasks = []
         for _ in range(100):
             tasks.append(ConcurrentRunner(target=target))
         for t in tasks:
-            t.start()
+            await t.start()
         for t in tasks:
-            t.join()
+            await t.join()
 
         # Verify there were at least 10 connection checkout failed event but no pool cleared events.
         self.assertGreater(len(listener.events_by_type(ConnectionCheckOutFailedEvent)), 10)
