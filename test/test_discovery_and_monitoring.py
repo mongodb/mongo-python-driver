@@ -480,7 +480,7 @@ class TestPoolBackpressure(IntegrationTest):
         # Run a regex operation to slow down the query.
         def target():
             try:
-                client.test.test.find_one({"$where": delay(0.2)})
+                client.test.test.find_one({"$where": delay(0.05)})
             except OperationFailure:
                 pass
 
