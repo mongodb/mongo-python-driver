@@ -70,7 +70,12 @@ from pymongo.errors import (
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers_shared import _check_command_response, _check_write_command_response
-from pymongo.monitoring import ServerHeartbeatFailedEvent, ServerHeartbeatStartedEvent
+from pymongo.monitoring import (
+    ConnectionCheckOutFailedEvent,
+    PoolClearedEvent,
+    ServerHeartbeatFailedEvent,
+    ServerHeartbeatStartedEvent,
+)
 from pymongo.server_description import SERVER_TYPE, ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE
 
@@ -444,6 +449,66 @@ class TestPoolManagement(AsyncIntegrationTest):
             self.assertLessEqual(max(latencies), close_delay * 5.0)
         finally:
             AsyncConnection.close_conn = original_close
+
+
+class TestPoolBackpressure(AsyncIntegrationTest):
+    # @async_client_context.require_version_min(8, 0, 0)
+    async def test_connection_pool_is_not_cleared(self):
+        listener = CMAPListener()
+
+        # Create a client that listens to CMAP events, with maxConnecting=100.
+        client = await self.async_rs_or_single_client(maxConnecting=100, event_listeners=[listener])
+
+        # Use an admin client for test setup and teardown to enable and disable the ingress rate limiter.
+        admin_client = self.client
+        await admin_client.admin.command(
+            "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
+        )
+        await admin_client.admin.command(
+            "setParameter", 1, ingressConnectionEstablishmentRatePerSec=30
+        )
+        await admin_client.admin.command(
+            "setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1
+        )
+        await admin_client.admin.command(
+            "setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1
+        )
+
+        # Disable the ingress rate limiter on teardown.
+        async def teardown():
+            await admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
+            )
+
+        self.addAsyncCleanup(teardown)
+
+        # Seed the collection with a document for us to query with a regex.
+        await client.test.test.delete_many({})
+        await client.test.test.insert_one({"str0": "abcdefg"})
+
+        # Run a regex operation to slow down the query.
+        async def target():
+            query = {"str0": {"$regex": "abcd"}}
+            try:
+                await client.test.test.find_one(query)
+            except OperationFailure:
+                pass
+
+        # Warm the pool with 10 tasks so there are existing connections.
+        tasks = []
+        for i in range(10):
+            tasks.append(asyncio.create_task(target()))
+        await asyncio.wait(tasks)
+
+        # Run 100 parallel operations that contend for connections.
+        tasks = []
+        for i in range(100):
+            tasks.append(asyncio.create_task(target()))
+        await asyncio.wait(tasks)
+
+        # Verify there were at least 10 connection checkout failed event but no pool cleared events.
+        self.assertGreater(len(listener.events_by_type(ConnectionCheckOutFailedEvent)), 10)
+        self.assertEqual(len(listener.events_by_type(PoolClearedEvent)), 0)
 
 
 class TestServerMonitoringMode(AsyncIntegrationTest):
