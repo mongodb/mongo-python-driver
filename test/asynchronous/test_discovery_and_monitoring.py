@@ -467,7 +467,7 @@ class TestPoolBackpressure(AsyncIntegrationTest):
             "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
         )
         await admin_client.admin.command(
-            "setParameter", 1, ingressConnectionEstablishmentRatePerSec=10
+            "setParameter", 1, ingressConnectionEstablishmentRatePerSec=20
         )
         await admin_client.admin.command(
             "setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1
