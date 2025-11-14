@@ -483,10 +483,14 @@ class TestPoolBackpressure(AsyncIntegrationTest):
 
         self.addAsyncCleanup(teardown)
 
-        # Run a regex operation to slow down the query.
+        # Make sure the collection has at least one document.
+        await client.test.test.delete_many({})
+        await client.test.test.insert_one({})
+
+        # Run a slow operation to tie up the connection.
         async def target():
             try:
-                await client.test.test.find_one({"$where": delay(0.05)})
+                await client.test.test.find_one({"$where": delay(0.1)})
             except OperationFailure:
                 pass
 
