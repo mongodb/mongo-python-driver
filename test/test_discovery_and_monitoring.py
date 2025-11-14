@@ -490,15 +490,21 @@ class TestPoolBackpressure(IntegrationTest):
 
         # Warm the pool with 10 tasks so there are existing connections.
         tasks = []
-        for i in range(10):
-            tasks.append(asyncio.create_task(target()))
-        asyncio.wait(tasks)
+        for _ in range(10):
+            tasks.append(ConcurrentRunner(target=target))
+        for t in tasks:
+            t.start()
+        for t in tasks:
+            t.join()
 
         # Run 100 parallel operations that contend for connections.
         tasks = []
-        for i in range(100):
-            tasks.append(asyncio.create_task(target()))
-        asyncio.wait(tasks)
+        for _ in range(100):
+            tasks.append(ConcurrentRunner(target=target))
+        for t in tasks:
+            t.start()
+        for t in tasks:
+            t.join()
 
         # Verify there were at least 10 connection checkout failed event but no pool cleared events.
         self.assertGreater(len(listener.events_by_type(ConnectionCheckOutFailedEvent)), 10)
