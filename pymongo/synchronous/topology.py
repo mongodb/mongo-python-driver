@@ -866,6 +866,8 @@ class Topology:
             # as Unknown and request an immediate check of the server.
             # Otherwise, we clear the connection pool, mark the server as
             # Unknown and request an immediate check of the server.
+            if error.has_error_label("SystemOverloadedError"):
+                return
             if hasattr(error, "code"):
                 err_code = error.code
             else:

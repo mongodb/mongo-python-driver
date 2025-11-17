@@ -1,9 +1,9 @@
 {
-  "description": "backpressure-network-timeout-error",
-  "schemaVersion": "1.17",
+  "description": "backpressure hello-command-error",
+  "schemaVersion": "1.4",
   "runOnRequirements": [
     {
-      "minServerVersion": "4.4",
+      "minServerVersion": "4.4.7",
       "serverless": "forbid",
       "topologies": [
         "single",
@@ -22,21 +22,14 @@
   ],
   "initialData": [
     {
-      "collectionName": "backpressure-network-timeout-error",
+      "collectionName": "backpressure hello-command-error",
       "databaseName": "sdam-tests",
-      "documents": [
-        {
-          "_id": 1
-        },
-        {
-          "_id": 2
-        }
-      ]
+      "documents": []
     }
   ],
   "tests": [
     {
-      "description": "apply backpressure on network timeout error during connection establishment",
+      "description": "hello command error with backpressure label does not clear the pool",
       "operations": [
         {
           "name": "createEntities",
@@ -49,18 +42,16 @@
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "serverHeartbeatSucceededEvent",
-                    "serverDescriptionChangedEvent",
+                    "poolClearedEvent",
                     "poolReadyEvent",
-                    "poolClearedEvent"
+                    "commandStartedEvent"
                   ],
                   "uriOptions": {
                     "retryWrites": false,
                     "heartbeatFrequencyMS": 10000,
-                    "appname": "backpressureNetworkTimeoutErrorTest",
                     "serverMonitoringMode": "poll",
                     "directConnection": true,
-                    "connectTimeoutMS": 250,
-                    "socketTimeoutMS": 250
+                    "appname": "backpressureCommandErrorHandshakeTest"
                   }
                 }
               },
@@ -75,7 +66,7 @@
                 "collection": {
                   "id": "collection",
                   "database": "database",
-                  "collectionName": "backpressure-network-timeout-error"
+                  "collectionName": "backpressure hello-command-error"
                 }
               }
             ]
@@ -93,17 +84,6 @@
           }
         },
         {
-          "name": "waitForEvent",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "serverDescriptionChangedEvent": {}
-            },
-            "count": 1
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -113,12 +93,15 @@
               "mode": "alwaysOn",
               "data": {
                 "failCommands": [
-                  "isMaster",
-                  "hello"
+                  "hello",
+                  "isMaster"
                 ],
-                "blockConnection": true,
-                "blockTimeMS": 500,
-                "appName": "backpressureNetworkTimeoutErrorTest"
+                "appName": "backpressureCommandErrorHandshakeTest",
+                "closeConnection": false,
+                "errorCode": 9001,
+                "errorLabels": [
+                  "SystemOverloadedError"
+                ]
               }
             }
           }
@@ -129,19 +112,15 @@
           "arguments": {
             "documents": [
               {
-                "_id": 3
+                "_id": 1
               },
               {
-                "_id": 4
+                "_id": 2
               }
             ]
           },
           "expectError": {
-            "isError": true,
-            "errorLabelsContain": [
-              "SystemOverloadedError",
-              "RetryableError"
-            ]
+            "isError": true
           }
         }
       ],
@@ -162,9 +141,6 @@
           "events": [
             {
               "serverHeartbeatSucceededEvent": {}
-            },
-            {
-              "serverDescriptionChangedEvent": {}
             }
           ]
         }
