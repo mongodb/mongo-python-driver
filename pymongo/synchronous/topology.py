@@ -866,8 +866,6 @@ class Topology:
             # as Unknown and request an immediate check of the server.
             # Otherwise, we clear the connection pool, mark the server as
             # Unknown and request an immediate check of the server.
-            if error.has_error_label("SystemOverloadedError"):
-                return
             if hasattr(error, "code"):
                 err_code = error.code
             else:
@@ -885,6 +883,9 @@ class Topology:
                 server.request_check()
             elif not err_ctx.completed_handshake:
                 # Unknown command error during the connection handshake.
+                # Ignore if it has the backpressure error label applied.
+                if error.has_error_label("SystemOverloadedError"):
+                    return
                 if not self._settings.load_balanced:
                     self._process_change(ServerDescription(address, error=error))
                 # Clear the pool.
