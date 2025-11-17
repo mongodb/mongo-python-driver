@@ -284,8 +284,7 @@
                   "isMaster",
                   "hello"
                 ],
-                "blockConnection": true,
-                "blockTimeMS": 1000,
+                "errorCode": 11600,
                 "appName": "lbSDAMErrorTestClient"
               }
             }
