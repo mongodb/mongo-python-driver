@@ -885,13 +885,11 @@ class Topology:
                 server.request_check()
             elif not err_ctx.completed_handshake:
                 # Unknown command error during the connection handshake.
-                # Ignore if it has the backpressure error label applied.
-                if error.has_error_label("SystemOverloadedError"):
-                    return
                 if not self._settings.load_balanced:
                     await self._process_change(ServerDescription(address, error=error))
-                # Clear the pool.
-                await server.reset(service_id)
+                # Clear the pool if the backpressure label was not applied.
+                if not error.has_error_label("SystemOverloadedError"):
+                    await server.reset(service_id)
         elif isinstance(error, ConnectionFailure):
             if isinstance(error, WaitQueueTimeoutError) or (
                 error.has_error_label("SystemOverloadedError")
