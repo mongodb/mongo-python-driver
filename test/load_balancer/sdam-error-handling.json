@@ -299,7 +299,7 @@
             }
           },
           "expectError": {
-            "isClientError": true
+            "isError": true
           }
         }
       ],
