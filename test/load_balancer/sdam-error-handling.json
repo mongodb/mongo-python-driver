@@ -32,9 +32,7 @@
         "useMultipleMongoses": false,
         "uriOptions": {
           "appname": "lbSDAMErrorTestClient",
-          "retryWrites": false,
-           "socketTimeoutMS": 500,
-           "connectTimeoutMS": 500
+          "retryWrites": false
         },
         "observeEvents": [
           "connectionCreatedEvent",
