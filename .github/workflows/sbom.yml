@@ -44,7 +44,7 @@ jobs:
           uv sync --all-groups
 
       - name: Generate SBOM
-        run: npx @cyclonedx/cdxgen -t python --python-path .venv/bin/python -o sbom.json
+        run: npx @cyclonedx/cdxgen -t python --python-path .venv/bin/python --json-pretty -o sbom.json
         env:
           FETCH_LICENSE: true
 
