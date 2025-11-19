@@ -20,6 +20,7 @@ import contextlib
 import logging
 import os
 import socket
+import ssl
 import sys
 import time
 import weakref
@@ -1029,7 +1030,10 @@ class Pool:
         assert isinstance(error, AutoReconnect)  # Appease type checker.
         # If the original error was a DNS, certificate, or SSL error, ignore it.
         if isinstance(error.__cause__, (_CertificateError, SSLErrors, socket.gaierror)):
-            return
+            # End of file errors are excluded, because the server may have disconnected
+            # during the handshake.
+            if not isinstance(error.__cause__, ssl.SSLEOFError):
+                return
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
 
