@@ -3,11 +3,12 @@ name: Generate SBOM
 # This workflow uses cdxgen and publishes an sbom.json artifact.
 # It runs on manual trigger or when package files change on main branch,
 # and creates a PR with the updated SBOM.
+# Internal documentation: go/sbom-scope
 
 on:
   workflow_dispatch: {}
   push:
-    branches: ['main', 'sbom-test']
+    branches: ['main']
     paths:
       - 'pyproject.toml'
       - 'uv.lock'
