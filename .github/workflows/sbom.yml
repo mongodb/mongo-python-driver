@@ -1,0 +1,90 @@
+name: Generate SBOM
+
+# This workflow uses cdxgen and publishes an sbom.json artifact.
+# It runs on manual trigger or when package files change on main branch,
+# and creates a PR with the updated SBOM.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: ['main', 'sbom']
+    paths:
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'requirements.txt'
+      - 'requirements/**/*.txt'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sbom:
+    name: Generate SBOM and Create PR
+    runs-on: ubuntu-latest
+    concurrency:
+      group: sbom-${{ github.ref }}
+      cancel-in-progress: false
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Sync dependencies
+        run: |
+          uv venv .venv
+          uv sync --all-groups
+
+      - name: Generate SBOM
+        run: npx @cyclonedx/cdxgen -t python --python-path .venv/bin/python -o sbom.json
+        env:
+          FETCH_LICENSE: true
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+          if-no-files-found: error
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: Update SBOM after dependency changes'
+          branch: auto-update-sbom-${{ github.run_id }}
+          delete-branch: true
+          title: 'chore: Update SBOM'
+          body: |
+            ## Automated SBOM Update
+            
+            This PR was automatically generated because dependency manifest files changed.
+            
+            ### Changes
+            - Updated `sbom.json` to reflect current dependencies
+            
+            ### Verification
+            The SBOM was generated using cdxgen with the current Python environment.
+            
+            ### Triggered by
+            - Commit: ${{ github.sha }}
+            - Workflow run: ${{ github.run_id }}
+            
+            ---
+            _This PR was created automatically by the [SBOM workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})_
+          labels: |
+            sbom
+            automated
+            dependencies
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf .venv
