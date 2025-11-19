@@ -19,6 +19,7 @@ import collections
 import contextlib
 import logging
 import os
+import socket
 import sys
 import time
 import weakref
@@ -1026,8 +1027,8 @@ class Pool:
         if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
             return
         assert isinstance(error, AutoReconnect)  # Appease type checker.
-        # If the original error was a certificate or SSL error, ignore it.
-        if isinstance(error.__cause__, (_CertificateError, SSLErrors)):
+        # If the original error was a DNS, certificate, or SSL error, ignore it.
+        if isinstance(error.__cause__, (_CertificateError, SSLErrors, socket.gaierror)):
             return
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
