@@ -57,6 +57,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     OperationFailure,
     PyMongoError,
     WaitQueueTimeoutError,
+    _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers_shared import _get_timeout_details, format_timeout_details
@@ -1029,6 +1030,9 @@ class Pool:
         if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
             return
         assert isinstance(error, AutoReconnect)  # Appease type checker.
+        # If the original error was a certificate or SSL error, ignore it.
+        if isinstance(error.__cause__, (_CertificateError, SSLErrors)):
+            return
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
 
