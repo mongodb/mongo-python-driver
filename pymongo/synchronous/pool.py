@@ -1032,7 +1032,7 @@ class Pool:
         if isinstance(error.__cause__, (_CertificateError, SSLErrors, socket.gaierror)):
             # End of file errors are excluded, because the server may have disconnected
             # during the handshake.
-            if not isinstance(error.__cause__, ssl.SSLEOFError):
+            if not isinstance(error.__cause__, (ssl.SSLEOFError, ssl.SSLZeroReturnError)):
                 print("Ignoring root error", error.__cause__, type(error.__cause__))  # noqa: T201
                 return
         error._add_error_label("SystemOverloadedError")
