@@ -1,6 +1,6 @@
 {
-  "description": "backpressure-pool-not-cleared-on-min-pool-size-population-error",
-  "schemaVersion": "1.4",
+  "description": "backpressure-server-description-unchanged-on-min-pool-size-population-error",
+  "schemaVersion": "1.17",
   "runOnRequirements": [
     {
       "minServerVersion": "4.4",
@@ -20,7 +20,7 @@
   ],
   "tests": [
     {
-      "description": "Pool is not cleared on handshake error during minPoolSize population",
+      "description": "the server description is not changed on handshake error during minPoolSize population",
       "operations": [
         {
           "name": "createEntities",
@@ -32,10 +32,7 @@
                   "id": "client",
                   "observeEvents": [
                     "serverDescriptionChangedEvent",
-                    "connectionCreatedEvent",
-                    "poolClearedEvent",
-                    "connectionClosedEvent",
-                    "connectionReadyEvent"
+                    "connectionClosedEvent"
                   ],
                   "uriOptions": {
                     "appname": "authErrorTest",
@@ -96,19 +93,10 @@
       "expectEvents": [
         {
           "client": "client",
-          "eventType": "cmap",
+          "eventType": "sdam",
           "events": [
             {
-              "connectionCreatedEvent": {}
-            },
-            {
-              "connectionReadyEvent": {}
-            },
-            {
-              "connectionCreatedEvent": {}
-            },
-            {
-              "connectionClosedEvent": {}
+              "serverDescriptionChangedEvent": {}
             }
           ]
         }
