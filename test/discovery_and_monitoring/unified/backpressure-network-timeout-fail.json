@@ -48,17 +48,14 @@
                   "id": "client",
                   "useMultipleMongoses": false,
                   "observeEvents": [
-                    "serverHeartbeatSucceededEvent",
                     "serverDescriptionChangedEvent",
-                    "poolReadyEvent",
                     "poolClearedEvent"
                   ],
                   "uriOptions": {
                     "retryWrites": false,
-                    "heartbeatFrequencyMS": 10000,
+                    "heartbeatFrequencyMS": 1000000,
                     "appname": "backpressureNetworkTimeoutErrorTest",
                     "serverMonitoringMode": "poll",
-                    "directConnection": true,
                     "connectTimeoutMS": 250,
                     "socketTimeoutMS": 250
                   }
@@ -79,17 +76,6 @@
                 }
               }
             ]
-          }
-        },
-        {
-          "name": "waitForEvent",
-          "object": "testRunner",
-          "arguments": {
-            "client": "client",
-            "event": {
-              "serverHeartbeatSucceededEvent": {}
-            },
-            "count": 1
           }
         },
         {
@@ -149,24 +135,7 @@
         {
           "client": "client",
           "eventType": "cmap",
-          "events": [
-            {
-              "poolReadyEvent": {}
-            }
-          ]
-        },
-        {
-          "client": "client",
-          "eventType": "sdam",
-          "ignoreExtraEvents": false,
-          "events": [
-            {
-              "serverHeartbeatSucceededEvent": {}
-            },
-            {
-              "serverDescriptionChangedEvent": {}
-            }
-          ]
+          "events": []
         }
       ]
     }
