@@ -42,7 +42,7 @@ jobs:
           source .venv/bin/activate
           pip install -r requirements.txt
           pip install .
-          npx cdxgen -t python --exclude "uv.lock" --exclude "requirements/**" --exclude "requirements.txt" --spec-version 1.5 --json-pretty -o sbom.json
+          npx @cyclonedx/cdxgen -t python --exclude "uv.lock" --exclude "requirements/**" --exclude "requirements.txt" --spec-version 1.5 --no-validate --json-pretty -o sbom.json
         env:
           FETCH_LICENSE: true
 
