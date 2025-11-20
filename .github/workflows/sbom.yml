@@ -24,7 +24,7 @@ jobs:
     concurrency:
       group: sbom-${{ github.ref }}
       cancel-in-progress: false
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -63,19 +63,19 @@ jobs:
           title: 'chore: Update SBOM'
           body: |
             ## Automated SBOM Update
-            
+
             This PR was automatically generated because dependency manifest files changed.
-            
+
             ### Changes
             - Updated `sbom.json` to reflect current dependencies
-            
+
             ### Verification
             The SBOM was generated using cdxgen with the current Python environment.
-            
+
             ### Triggered by
             - Commit: ${{ github.sha }}
             - Workflow run: ${{ github.run_id }}
-            
+
             ---
             _This PR was created automatically by the [SBOM workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})_
           labels: |
