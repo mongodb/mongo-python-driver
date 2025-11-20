@@ -461,24 +461,21 @@ class TestPoolBackpressure(AsyncIntegrationTest):
         # Create a client that listens to CMAP events, with maxConnecting=100.
         client = await self.async_rs_or_single_client(maxConnecting=100, event_listeners=[listener])
 
-        # Use an admin client for test setup and teardown to enable and disable the ingress rate limiter.
-        admin_client = self.client
-        await admin_client.admin.command(
+        # Enable the ingress rate limiter.
+        await client.admin.command(
             "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
         )
-        await admin_client.admin.command(
-            "setParameter", 1, ingressConnectionEstablishmentRatePerSec=20
-        )
-        await admin_client.admin.command(
+        await client.admin.command("setParameter", 1, ingressConnectionEstablishmentRatePerSec=20)
+        await client.admin.command(
             "setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1
         )
-        await admin_client.admin.command(
-            "setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1
-        )
+        await client.admin.command("setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1)
 
         # Disable the ingress rate limiter on teardown.
+        # Sleep for 1 second before disabling to avoid the rate limiter.
         async def teardown():
-            await admin_client.admin.command(
+            await asyncio.sleep(1)
+            await client.admin.command(
                 "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
             )
 
@@ -494,15 +491,6 @@ class TestPoolBackpressure(AsyncIntegrationTest):
                 await client.test.test.find_one({"$where": delay(0.1)})
             except ConnectionFailure:
                 pass
-
-        # Warm the pool with 10 tasks so there are existing connections.
-        tasks = []
-        for _ in range(10):
-            tasks.append(ConcurrentRunner(target=target))
-        for t in tasks:
-            await t.start()
-        for t in tasks:
-            await t.join()
 
         # Run 100 parallel operations that contend for connections.
         tasks = []
