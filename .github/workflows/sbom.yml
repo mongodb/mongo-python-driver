@@ -11,9 +11,7 @@ on:
     branches: ['master']
     paths:
       - 'pyproject.toml'
-      - 'uv.lock'
       - 'requirements.txt'
-      - 'requirements/**/*.txt'
 
 permissions:
   contents: write
@@ -33,19 +31,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          enable-cache: true
           python-version: "3.10"
 
-      - name: Sync dependencies
-        run: |
-          uv venv .venv
-          uv sync --all-groups
-
       - name: Generate SBOM
-        run: npx @cyclonedx/cdxgen -t python --python-path .venv/bin/python --json-pretty -o sbom.json
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+          pip install .
+          npx cdxgen -t python --exclude "uv.lock" --exclude "requirements/**" --exclude "requirements.txt" --spec-version 1.5 --json-pretty -o sbom.json
         env:
           FETCH_LICENSE: true
 
