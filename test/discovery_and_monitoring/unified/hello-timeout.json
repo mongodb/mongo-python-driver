@@ -176,7 +176,7 @@
                   "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent",
-                    "serverHeartbeatSucceededEvent",
+                    "serverDescriptionChangedEvent",
                     "poolClearedEvent"
                   ],
                   "uriOptions": {
