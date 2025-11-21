@@ -41,7 +41,7 @@ rm $PYMONGO/test/index_management/index-rawdata.json
 rm $PYMONGO/test/collection_management/modifyCollection-*.json
 
 # PYTHON-5248 - Remove support for MongoDB 4.0
-find /$PYMONGO /test -type f -name 'pre-42-*.json' -delete
+find /$PYMONGO/test -type f -name 'pre-42-*.json' -delete
 
 # PYTHON-3359 - Remove Database and Collection level timeout override
 rm $PYMONGO/test/csot/override-collection-timeoutMS.json
