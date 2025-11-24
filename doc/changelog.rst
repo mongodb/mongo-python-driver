@@ -8,6 +8,14 @@ Version 4.15.5 is a bug fix release.
 
 - Fixed a bug that could cause ``AutoReconnect("connection pool paused")`` errors when cursors fetched more documents from the database after SDAM heartbeat failures.
 
+Issues Resolved
+...............
+
+See the `PyMongo 4.15.5 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.15.5 release notes in JIRA: <>
+
 Changes in Version 4.15.4 (2025/10/21)
 --------------------------------------
 
