@@ -440,7 +440,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.configure_fail_point(client, command_args)
 
     @client_context.require_transactions
-    def test_callback_raises_custom_error(self):
+    def test_1_callback_raises_custom_error(self):
         class _MyException(Exception):
             pass
 
@@ -452,7 +452,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
                 s.with_transaction(raise_error)
 
     @client_context.require_transactions
-    def test_callback_returns_value(self):
+    def test_2_callback_returns_value(self):
         def callback(_):
             return "Foo"
 
@@ -480,7 +480,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.assertEqual(s.with_transaction(callback), "Foo")
 
     @client_context.require_transactions
-    def test_callback_not_retried_after_timeout(self):
+    def test_3_1_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -508,7 +508,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
     @client_context.require_test_commands
     @client_context.require_transactions
-    def test_callback_not_retried_after_commit_timeout(self):
+    def test_3_2_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -540,7 +540,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
     @client_context.require_test_commands
     @client_context.require_transactions
-    def test_commit_not_retried_after_timeout(self):
+    def test_3_3_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -610,10 +610,12 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
     @client_context.require_test_commands
     @client_context.require_transactions
-    def test_transaction_backoff(self):
+    def test_4_retry_backoff_is_enforced(self):
         client = client_context.client
         coll = client[self.db.name].test
-        # patch random to make it deterministic
+        # patch random to make it deterministic -- once to effectively have
+        # no backoff and the second time with "max" backoff (always waiting the longest
+        # possible time)
         _original_random_random = random.random
 
         def always_one():
@@ -627,12 +629,10 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         self.set_fail_point(
             {
                 "configureFailPoint": "failCommand",
-                "mode": {
-                    "times": 13
-                },  # sufficiently high enough such that the time effect of backoff is noticeable
+                "mode": {"times": 13},
                 "data": {
                     "failCommands": ["commitTransaction"],
-                    "errorCode": 24,
+                    "errorCode": 251,
                 },
             }
         )
@@ -657,7 +657,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
                 },  # sufficiently high enough such that the time effect of backoff is noticeable
                 "data": {
                     "failCommands": ["commitTransaction"],
-                    "errorCode": 24,
+                    "errorCode": 251,
                 },
             }
         )

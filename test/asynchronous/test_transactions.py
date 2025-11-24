@@ -448,7 +448,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             await self.configure_fail_point(client, command_args)
 
     @async_client_context.require_transactions
-    async def test_callback_raises_custom_error(self):
+    async def test_1_callback_raises_custom_error(self):
         class _MyException(Exception):
             pass
 
@@ -460,7 +460,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
                 await s.with_transaction(raise_error)
 
     @async_client_context.require_transactions
-    async def test_callback_returns_value(self):
+    async def test_2_callback_returns_value(self):
         async def callback(_):
             return "Foo"
 
@@ -488,7 +488,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             self.assertEqual(await s.with_transaction(callback), "Foo")
 
     @async_client_context.require_transactions
-    async def test_callback_not_retried_after_timeout(self):
+    async def test_3_1_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -516,7 +516,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
 
     @async_client_context.require_test_commands
     @async_client_context.require_transactions
-    async def test_callback_not_retried_after_commit_timeout(self):
+    async def test_3_2_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -550,7 +550,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
 
     @async_client_context.require_test_commands
     @async_client_context.require_transactions
-    async def test_commit_not_retried_after_timeout(self):
+    async def test_3_3_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -622,10 +622,12 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
 
     @async_client_context.require_test_commands
     @async_client_context.require_transactions
-    async def test_transaction_backoff(self):
+    async def test_4_retry_backoff_is_enforced(self):
         client = async_client_context.client
         coll = client[self.db.name].test
-        # patch random to make it deterministic
+        # patch random to make it deterministic -- once to effectively have
+        # no backoff and the second time with "max" backoff (always waiting the longest
+        # possible time)
         _original_random_random = random.random
 
         def always_one():
@@ -639,12 +641,10 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
         await self.set_fail_point(
             {
                 "configureFailPoint": "failCommand",
-                "mode": {
-                    "times": 13
-                },  # sufficiently high enough such that the time effect of backoff is noticeable
+                "mode": {"times": 13},
                 "data": {
                     "failCommands": ["commitTransaction"],
-                    "errorCode": 24,
+                    "errorCode": 251,
                 },
             }
         )
@@ -671,7 +671,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
                 },  # sufficiently high enough such that the time effect of backoff is noticeable
                 "data": {
                     "failCommands": ["commitTransaction"],
-                    "errorCode": 24,
+                    "errorCode": 251,
                 },
             }
         )
