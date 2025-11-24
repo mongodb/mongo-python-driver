@@ -14,7 +14,7 @@ Issues Resolved
 See the `PyMongo 4.15.5 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 4.15.5 release notes in JIRA: <>
+.. _PyMongo 4.15.5 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47640
 
 Changes in Version 4.15.4 (2025/10/21)
 --------------------------------------
