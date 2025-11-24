@@ -1033,7 +1033,6 @@ class Pool:
             # End of file errors are excluded, because the server may have disconnected
             # during the handshake.
             if not isinstance(error.__cause__, (ssl.SSLEOFError, ssl.SSLZeroReturnError)):
-                print("Ignoring root error", error.__cause__, type(error.__cause__))  # noqa: T201
                 return
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
