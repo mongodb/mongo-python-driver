@@ -1,11 +1,159 @@
 {
-    "metadata": {
-      "timestamp": "2024-05-02T17:36:12.698229+00:00"
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:f91a87bf-a37f-4c1e-805f-142f60b2c960",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-11-20T21:30:34Z",
+    "tools": {
+      "components": [
+        {
+          "group": "@cyclonedx",
+          "name": "cdxgen",
+          "version": "11.11.0",
+          "purl": "pkg:npm/%40cyclonedx/cdxgen@11.11.0",
+          "type": "application",
+          "bom-ref": "pkg:npm/@cyclonedx/cdxgen@11.11.0",
+          "author": "OWASP Foundation",
+          "publisher": "OWASP Foundation"
+        }
+      ]
     },
-    "components": [],
-    "serialNumber": "urn:uuid:9876a8a6-060e-486f-b128-910aecf0fe7b",
-    "version": 1,
-    "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
-    "bomFormat": "CycloneDX",
-    "specVersion": "1.5"
-  }
+    "authors": [
+      {
+        "name": "OWASP Foundation"
+      }
+    ],
+    "lifecycles": [
+      {
+        "phase": "build"
+      }
+    ],
+    "component": {
+      "name": "pymongo",
+      "description": "PyMongo - the Official MongoDB Python driver",
+      "authors": [
+        {
+          "name": "The MongoDB Python Team"
+        }
+      ],
+      "tags": [
+        "bson",
+        "gridfs",
+        "mongo",
+        "mongodb",
+        "pymongo"
+      ],
+      "properties": [
+        {
+          "name": "cdx:pypi:requiresPython",
+          "value": ">=3.9"
+        },
+        {
+          "name": "SrcFile",
+          "value": "/home/runner/work/mongo-python-driver/mongo-python-driver/pyproject.toml"
+        }
+      ],
+      "type": "application",
+      "bom-ref": "pkg:pypi/pymongo@latest",
+      "purl": "pkg:pypi/pymongo@latest",
+      "version": "latest",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "url": "https://opensource.org/licenses/Apache-2.0"
+          }
+        }
+      ]
+    },
+    "properties": [
+      {
+        "name": "cdx:bom:componentTypes",
+        "value": "pypi"
+      },
+      {
+        "name": "cdx:bom:componentSrcFiles",
+        "value": "pyproject.toml"
+      }
+    ]
+  },
+  "components": [
+    {
+      "group": "",
+      "name": "pymongo",
+      "version": "latest",
+      "purl": "pkg:pypi/pymongo@latest",
+      "type": "library",
+      "bom-ref": "pkg:pypi/pymongo@latest",
+      "properties": [
+        {
+          "name": "SrcFile",
+          "value": "pyproject.toml"
+        }
+      ],
+      "evidence": {
+        "identity": {
+          "field": "purl",
+          "confidence": 1,
+          "methods": [
+            {
+              "technique": "instrumentation",
+              "confidence": 1,
+              "value": "/home/runner/work/mongo-python-driver/mongo-python-driver/.venv"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "author": "Bob Halley <halley@dnspython.org>",
+      "group": "",
+      "name": "dnspython",
+      "version": "2.8.0",
+      "description": "DNS toolkit",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC",
+            "url": "https://opensource.org/licenses/ISC"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/dnspython@2.8.0",
+      "type": "library",
+      "bom-ref": "pkg:pypi/dnspython@2.8.0",
+      "properties": [
+        {
+          "name": "SrcFile",
+          "value": "pyproject.toml"
+        }
+      ],
+      "evidence": {
+        "identity": {
+          "field": "purl",
+          "confidence": 1,
+          "methods": [
+            {
+              "technique": "instrumentation",
+              "confidence": 1,
+              "value": "/home/runner/work/mongo-python-driver/mongo-python-driver/.venv"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:pypi/dnspython@2.8.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pypi/pymongo@latest",
+      "dependsOn": [
+        "pkg:pypi/dnspython@2.8.0"
+      ]
+    }
+  ]
+}

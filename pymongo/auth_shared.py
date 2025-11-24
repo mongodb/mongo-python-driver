@@ -159,6 +159,8 @@ def _build_credentials_tuple(
             "localhost",
             "127.0.0.1",
             "::1",
+            "*.mongo.com",
+            "*.mongodbgov.net",
         ]
         allowed_hosts = properties.get("ALLOWED_HOSTS", default_allowed)
         if properties.get("ALLOWED_HOSTS", None) is not None and human_callback is None:

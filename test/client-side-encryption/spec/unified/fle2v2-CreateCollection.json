@@ -554,7 +554,7 @@
         },
         {
           "name": "assertIndexNotExists",
-          "object": "db",
+          "object": "testRunner",
           "arguments": {
             "databaseName": "default",
             "collectionName": "encryptedCollection",
