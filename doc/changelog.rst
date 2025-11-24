@@ -17,6 +17,12 @@ PyMongo 4.16 brings a number of changes including:
 - Removed support for Eventlet.
   Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
 - Use Zstandard support from the standard library for Python 3.14+, and use ``backports.zstd`` for older versions.
+
+Changes in Version 4.15.5 (2025/XX/XX)
+--------------------------------------
+
+Version 4.15.5 is a bug fix release.
+
 - Fixed a bug that could cause ``AutoReconnect("connection pool paused")`` errors when cursors fetched more documents from the database after SDAM heartbeat failures.
 
 Changes in Version 4.15.4 (2025/10/21)
