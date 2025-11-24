@@ -322,7 +322,7 @@ class TopologyDescription:
         if address:
             # Ignore selectors when explicit address is requested.
             description = self.server_descriptions().get(address)
-            return [description] if description else []
+            return [description] if description and description.is_server_type_known else []
 
         # Primary selection fast path.
         if self.topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary and type(selector) is Primary:
