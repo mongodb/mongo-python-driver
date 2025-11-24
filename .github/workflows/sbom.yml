@@ -1,6 +1,6 @@
 name: Generate SBOM
 
-# This workflow uses cdxgen and publishes an sbom.json artifact.
+# This workflow uses cyclonedx-py and publishes an sbom.json artifact.
 # It runs on manual trigger or when package files change on main branch,
 # and creates a PR with the updated SBOM.
 # Internal documentation: go/sbom-scope
@@ -42,9 +42,26 @@ jobs:
           source .venv/bin/activate
           pip install -r requirements.txt
           pip install .
-          npx @cyclonedx/cdxgen -t python --exclude "uv.lock" --exclude "requirements/**" --exclude "requirements.txt" --spec-version 1.5 --no-validate --json-pretty -o sbom.json
-        env:
-          FETCH_LICENSE: true
+          pip uninstall -y pip setuptools
+          deactivate
+          python -m venv .venv-sbom
+          source .venv-sbom/bin/activate
+          pip install cyclonedx-bom==7.2.1
+          cyclonedx-py environment --spec-version 1.5 --output-format JSON --output-file sbom.json .venv
+          # Add PURL for pymongo (local package doesn't get PURL automatically)
+          jq '(.components[] | select(.name == "pymongo" and .purl == null)) |= (. + {purl: ("pkg:pypi/pymongo@" + .version)})' sbom.json > sbom.tmp.json && mv sbom.tmp.json sbom.json
+
+      - name: Download CycloneDX CLI
+        run: |
+          curl -L -s -o /tmp/cyclonedx "https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.29.1/cyclonedx-linux-x64"
+          chmod +x /tmp/cyclonedx
+
+      - name: Validate SBOM
+        run: /tmp/cyclonedx validate --input-file sbom.json --fail-on-errors
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf .venv .venv-sbom
 
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
@@ -70,7 +87,7 @@ jobs:
             - Updated `sbom.json` to reflect current dependencies
 
             ### Verification
-            The SBOM was generated using cdxgen with the current Python environment.
+            The SBOM was generated using cyclonedx-py v7.2.1 with the current Python environment.
 
             ### Triggered by
             - Commit: ${{ github.sha }}
@@ -82,7 +99,3 @@ jobs:
             sbom
             automated
             dependencies
-
-      - name: Cleanup
-        if: always()
-        run: rm -rf .venv
