@@ -4768,6 +4768,14 @@ tasks:
       - noauth
       - pypy
 
+  # Test numpy tests
+  - name: test-numpy
+    commands:
+      - func: run test numpy
+        vars:
+          TEST_NAME: test_numpy
+    tags: [binary, vector]
+
   # Test standard auth tests
   - name: test-standard-auth-v4.2-python3.10-auth-ssl-sharded-cluster
     commands:

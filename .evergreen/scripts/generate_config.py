@@ -323,6 +323,38 @@ def create_disable_test_commands_variants():
     return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
+def create_test_numpy_tasks():
+    vars = dict(TEST_NAME="test_numpy")
+    test_func = FunctionCall(func="run test numpy", vars=vars)
+    task_name = "test-numpy"
+    tags = ["binary", "vector"]
+    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
+
+
+def create_test_numpy_variants() -> list[BuildVariant]:
+    variants = []
+    base_display_name = "Test Numpy"
+
+    # Test a subset on each of the other platforms.
+    for host_name in ("rhel8", "macos", "macos-arm64", "win64", "win32"):
+        tasks = [".test-numpy"]
+        # MacOS arm64 only works on server versions 6.0+
+        if host_name == "macos-arm64":
+            tasks = [
+                f".test-numpy !.pypy .server-{version}" for version in get_versions_from("6.0")
+            ]
+        host = HOSTS[host_name]
+        tags = ["binary-vector"]
+        expansions = dict()
+        if host_name == "win32":
+            expansions["IS_WIN32"] = "1"
+        display_name = get_variant_name(base_display_name, host)
+        variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
+        variants.append(variant)
+
+    return variants
+
+
 def create_oidc_auth_variants():
     variants = []
     for host_name in ["ubuntu22", "macos", "win64"]:
@@ -1174,3 +1206,6 @@ mod = sys.modules[__name__]
 write_variants_to_file(mod)
 write_tasks_to_file(mod)
 write_functions_to_file(mod)
+
+# TODO - Create a new variant here that drives run-test
+#   Workfromrove
