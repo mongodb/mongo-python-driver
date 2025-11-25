@@ -39,14 +39,9 @@ from bson import encode
 from bson.raw_bson import RawBSONDocument
 from pymongo import WriteConcern, _csot
 from pymongo.asynchronous import client_session
-from pymongo.asynchronous.client_session import (
-    _BACKOFF_MAX,
-    TransactionOptions,
-    _set_backoff_initial,
-)
+from pymongo.asynchronous.client_session import TransactionOptions
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
-from pymongo.asynchronous.helpers import anext
 from pymongo.errors import (
     AutoReconnect,
     CollectionInvalid,
