@@ -16,7 +16,9 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import sys
+import time
 from io import BytesIO
 from test.asynchronous.utils_spec_runner import AsyncSpecRunner
 
@@ -441,7 +443,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             await self.configure_fail_point(client, command_args)
 
     @async_client_context.require_transactions
-    async def test_callback_raises_custom_error(self):
+    async def test_1_callback_raises_custom_error(self):
         class _MyException(Exception):
             pass
 
@@ -453,7 +455,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
                 await s.with_transaction(raise_error)
 
     @async_client_context.require_transactions
-    async def test_callback_returns_value(self):
+    async def test_2_callback_returns_value(self):
         async def callback(_):
             return "Foo"
 
@@ -481,7 +483,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             self.assertEqual(await s.with_transaction(callback), "Foo")
 
     @async_client_context.require_transactions
-    async def test_callback_not_retried_after_timeout(self):
+    async def test_3_1_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -509,7 +511,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
 
     @async_client_context.require_test_commands
     @async_client_context.require_transactions
-    async def test_callback_not_retried_after_commit_timeout(self):
+    async def test_3_2_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -543,7 +545,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
 
     @async_client_context.require_test_commands
     @async_client_context.require_transactions
-    async def test_commit_not_retried_after_timeout(self):
+    async def test_3_3_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -612,6 +614,72 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             self.assertFalse(s.in_transaction)
             await s.with_transaction(callback)
             self.assertFalse(s.in_transaction)
+
+    @async_client_context.require_test_commands
+    @async_client_context.require_transactions
+    async def test_4_retry_backoff_is_enforced(self):
+        client = async_client_context.client
+        coll = client[self.db.name].test
+        # patch random to make it deterministic -- once to effectively have
+        # no backoff and the second time with "max" backoff (always waiting the longest
+        # possible time)
+        _original_random_random = random.random
+
+        def always_one():
+            return 1
+
+        def always_zero():
+            return 0
+
+        random.random = always_zero
+        # set fail point to trigger transaction failure and trigger backoff
+        await self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 13},
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 251,
+                },
+            }
+        )
+        self.addAsyncCleanup(
+            self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"}
+        )
+
+        async def callback(session):
+            await coll.insert_one({}, session=session)
+
+        start = time.monotonic()
+        async with self.client.start_session() as s:
+            await s.with_transaction(callback)
+        end = time.monotonic()
+        no_backoff_time = end - start
+
+        random.random = always_one
+        # set fail point to trigger transaction failure and trigger backoff
+        await self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {
+                    "times": 13
+                },  # sufficiently high enough such that the time effect of backoff is noticeable
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 251,
+                },
+            }
+        )
+        self.addAsyncCleanup(
+            self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"}
+        )
+        start = time.monotonic()
+        async with self.client.start_session() as s:
+            await s.with_transaction(callback)
+        end = time.monotonic()
+        self.assertLess(abs(end - start - (no_backoff_time + 2.2)), 1)  # sum of 13 backoffs is 2.2
+
+        random.random = _original_random_random
 
 
 class TestOptionsInsideTransactionProse(AsyncTransactionsBase):

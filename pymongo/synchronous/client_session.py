@@ -470,13 +470,18 @@ _UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(  # 
 # This limit is non-configurable and was chosen to be twice the 60 second
 # default value of MongoDB's `transactionLifetimeLimitSeconds` parameter.
 _WITH_TRANSACTION_RETRY_TIME_LIMIT = 120
-_BACKOFF_MAX = 1
-_BACKOFF_INITIAL = 0.050  # 50ms initial backoff
+_BACKOFF_MAX = 0.500  # 500ms max backoff
+_BACKOFF_INITIAL = 0.005  # 5ms initial backoff
 
 
 def _within_time_limit(start_time: float) -> bool:
     """Are we within the with_transaction retry limit?"""
     return time.monotonic() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
+
+
+def _would_exceed_time_limit(start_time: float, backoff: float) -> bool:
+    """Is the backoff within the with_transaction retry limit?"""
+    return time.monotonic() + backoff - start_time >= _WITH_TRANSACTION_RETRY_TIME_LIMIT
 
 
 _T = TypeVar("_T")
@@ -706,10 +711,14 @@ class ClientSession:
         """
         start_time = time.monotonic()
         retry = 0
+        last_error: Optional[BaseException] = None
         while True:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
-                backoff = jitter * min(_BACKOFF_INITIAL * (2**retry), _BACKOFF_MAX)
+                backoff = jitter * min(_BACKOFF_INITIAL * (1.5**retry), _BACKOFF_MAX)
+                if _would_exceed_time_limit(start_time, backoff):
+                    assert last_error is not None
+                    raise last_error
                 time.sleep(backoff)
             retry += 1
             self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
@@ -717,6 +726,7 @@ class ClientSession:
                 ret = callback(self)
             # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
             except BaseException as exc:
+                last_error = exc
                 if self.in_transaction:
                     self.abort_transaction()
                 if (
