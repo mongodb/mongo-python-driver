@@ -331,9 +331,7 @@
                   "uriOptions": {
                     "retryReads": false,
                     "appname": "clientAppName",
-                    "heartbeatFrequencyMS": 10000,
-                    "socketTimeoutMS": 500,
-                    "connectTimeoutMS": 500
+                    "heartbeatFrequencyMS": 10000
                   },
                   "observeLogMessages": {
                     "connection": "debug"
@@ -357,9 +355,7 @@
                 "failCommands": [
                   "saslContinue"
                 ],
-                "closeConnection": false,
-                "blockConnection": true,
-                "blockTimeMS": 1000,
+                "closeConnection": true,
                 "appName": "clientAppName"
               }
             }
