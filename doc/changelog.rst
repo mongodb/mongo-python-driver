@@ -20,6 +20,13 @@ PyMongo 4.16 brings a number of changes including:
 - Fixed return type annotation for ``find_one_and_*`` methods on :class:`~pymongo.asynchronous.collection.AsyncCollection`
   and :class:`~pymongo.synchronous.collection.Collection` to include ``None``.
 
+Changes in Version 4.15.5 (2025/XX/XX)
+--------------------------------------
+
+Version 4.15.5 is a bug fix release.
+
+- Fixed a bug that could cause ``AutoReconnect("connection pool paused")`` errors when cursors fetched more documents from the database after SDAM heartbeat failures.
+
 Changes in Version 4.15.4 (2025/10/21)
 --------------------------------------
 
