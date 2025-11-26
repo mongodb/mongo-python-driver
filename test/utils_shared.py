@@ -377,7 +377,50 @@ def oid_generated_on_process(oid):
 
 
 def delay(sec):
-    return """function() { sleep(%f * 1000); return true; }""" % sec
+    """Along with a ``$where`` operator, this triggers an arbitrarily long-running
+    operation on the server.
+
+    This can be useful in time-sensitive tests (e.g., timeouts, signals).
+    Note that you must have at least one document in the collection or the
+    server may decide not to sleep at all.
+
+    Example
+    -------
+
+    .. code-block:: python
+
+        db.coll.insert_one({"x": 1})
+        db.test.find_one({"x": 1})
+        # {'x': 1, '_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
+
+        # The following will wait 2.5 seconds before returning.
+        db.test.find_one({"$where": delay(2.5)})
+        # {'x': 1, '_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
+
+    Using ``delay`` to provoke a KeyboardInterrupt
+    ----------------------------------------------
+
+    .. code-block:: python
+
+        import signal
+
+        # Raise KeyboardInterrupt in 1 second
+        def sigalarm(num, frame):
+            raise KeyboardInterrupt
+
+
+        signal.signal(signal.SIGALRM, sigalarm)
+        signal.alarm(1)
+
+        raised = False
+        try:
+            clxn.find_one({"$where": delay(1.5)})
+        except KeyboardInterrupt:
+            raised = True
+
+        assert raised
+    """
+    return "function() { sleep(%f * 1000); return true; }" % sec
 
 
 def camel_to_snake(camel):
