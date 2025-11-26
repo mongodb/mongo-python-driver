@@ -377,6 +377,43 @@ def oid_generated_on_process(oid):
 
 
 def delay(sec):
+    """Along with a ``$where`` operator, this returns a JavaScript function that
+    triggers an arbitrarily long-running operation on the MongoDB server.
+
+    This can be useful in many time-sensitive situations, such as testing
+    client-side timeouts and signal handling.
+
+    Note that you must have at least one matching document in the collection,
+    otherwise the server may choose not to invoke the ``$where`` function.
+
+    Examples
+    --------
+    Insert a document and verify a normal find:
+
+    >>> db.coll.insert_one({'x': 1})
+    >>> db.coll.find_one({'x': 1})['x']
+    1
+
+    The following will wait 2.5 seconds before returning:
+
+    >>> db.coll.find_one({'$where': delay(2.5)})['x']
+    1
+
+    Use ``delay`` to trigger a KeyboardInterrupt while the server is working:
+
+    >>> import signal
+    >>> def sigalarm(num, frame):
+    ...     raise KeyboardInterrupt
+    >>> signal.signal(signal.SIGALRM, sigalarm)
+    >>> signal.alarm(1)
+
+    >>> raised = False
+    >>> try:
+    ...     db.coll.find_one({"$where": delay(1.5)})
+    ... except KeyboardInterrupt:
+    ...     raised = True
+    >>> assert raised
+    """
     return """function() { sleep(%f * 1000); return true; }""" % sec
 
 
