@@ -701,7 +701,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.9
 
         .. _aggregation pipeline:
-            https://mongodb.com/docs/manual/reference/operator/aggregation-pipeline
+            https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
 
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
