@@ -145,6 +145,9 @@ async def got_app_error(topology, app_error):
         raise AssertionError
     except (AutoReconnect, NotPrimaryError, OperationFailure) as e:
         if when == "beforeHandshakeCompletes":
+            # The pool would have added the SystemOverloadedError in this case.
+            if isinstance(e, AutoReconnect):
+                e._add_error_label("SystemOverloadedError")
             completed_handshake = False
         elif when == "afterHandshakeCompletes":
             completed_handshake = True
