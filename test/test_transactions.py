@@ -16,7 +16,9 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import sys
+import time
 from io import BytesIO
 from test.utils_spec_runner import SpecRunner
 
@@ -433,7 +435,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.configure_fail_point(client, command_args)
 
     @client_context.require_transactions
-    def test_callback_raises_custom_error(self):
+    def test_1_callback_raises_custom_error(self):
         class _MyException(Exception):
             pass
 
@@ -445,7 +447,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
                 s.with_transaction(raise_error)
 
     @client_context.require_transactions
-    def test_callback_returns_value(self):
+    def test_2_callback_returns_value(self):
         def callback(_):
             return "Foo"
 
@@ -473,7 +475,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.assertEqual(s.with_transaction(callback), "Foo")
 
     @client_context.require_transactions
-    def test_callback_not_retried_after_timeout(self):
+    def test_3_1_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -501,7 +503,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
     @client_context.require_test_commands
     @client_context.require_transactions
-    def test_callback_not_retried_after_commit_timeout(self):
+    def test_3_2_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -533,7 +535,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
     @client_context.require_test_commands
     @client_context.require_transactions
-    def test_commit_not_retried_after_timeout(self):
+    def test_3_3_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -600,6 +602,68 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.assertFalse(s.in_transaction)
             s.with_transaction(callback)
             self.assertFalse(s.in_transaction)
+
+    @client_context.require_test_commands
+    @client_context.require_transactions
+    def test_4_retry_backoff_is_enforced(self):
+        client = client_context.client
+        coll = client[self.db.name].test
+        # patch random to make it deterministic -- once to effectively have
+        # no backoff and the second time with "max" backoff (always waiting the longest
+        # possible time)
+        _original_random_random = random.random
+
+        def always_one():
+            return 1
+
+        def always_zero():
+            return 0
+
+        random.random = always_zero
+        # set fail point to trigger transaction failure and trigger backoff
+        self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 13},
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 251,
+                },
+            }
+        )
+        self.addCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
+
+        def callback(session):
+            coll.insert_one({}, session=session)
+
+        start = time.monotonic()
+        with self.client.start_session() as s:
+            s.with_transaction(callback)
+        end = time.monotonic()
+        no_backoff_time = end - start
+
+        random.random = always_one
+        # set fail point to trigger transaction failure and trigger backoff
+        self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {
+                    "times": 13
+                },  # sufficiently high enough such that the time effect of backoff is noticeable
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 251,
+                },
+            }
+        )
+        self.addCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
+        start = time.monotonic()
+        with self.client.start_session() as s:
+            s.with_transaction(callback)
+        end = time.monotonic()
+        self.assertLess(abs(end - start - (no_backoff_time + 2.2)), 1)  # sum of 13 backoffs is 2.2
+
+        random.random = _original_random_random
 
 
 class TestOptionsInsideTransactionProse(TransactionsBase):
