@@ -511,7 +511,9 @@ class Binary(bytes):
                     "Failed to create binary from vector. Check type. If numpy array, numpy must be installed."
                 ) from exc
             if not isinstance(vector, np.ndarray):
-                raise TypeError("Vector must be a numpy array.")
+                raise TypeError(
+                    "Could not create Binary. Vector must be a BinaryVector, list[int], list[float] or numpy ndarray."
+                )
             if vector.ndim != 1:
                 raise ValueError(
                     "from_numpy_vector only supports 1D arrays as it creates a single vector."
