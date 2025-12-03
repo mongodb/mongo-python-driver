@@ -4771,9 +4771,7 @@ tasks:
   # Test numpy tests
   - name: test-numpy
     commands:
-      - func: run test numpy
-        vars:
-          TEST_NAME: test_numpy
+      - func: test numpy
     tags: [binary, vector]
 
   # Test standard auth tests

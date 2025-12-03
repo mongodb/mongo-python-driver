@@ -324,8 +324,7 @@ def create_disable_test_commands_variants():
 
 
 def create_test_numpy_tasks():
-    vars = dict(TEST_NAME="test_numpy")
-    test_func = FunctionCall(func="run test numpy", vars=vars)
+    test_func = FunctionCall(func="test numpy")
     task_name = "test-numpy"
     tags = ["binary", "vector"]
     return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
@@ -337,12 +336,7 @@ def create_test_numpy_variants() -> list[BuildVariant]:
 
     # Test a subset on each of the other platforms.
     for host_name in ("rhel8", "macos", "macos-arm64", "win64", "win32"):
-        tasks = [".test-numpy"]
-        # MacOS arm64 only works on server versions 6.0+
-        if host_name == "macos-arm64":
-            tasks = [
-                f".test-numpy !.pypy .server-{version}" for version in get_versions_from("6.0")
-            ]
+        tasks = ["test-numpy"]
         host = HOSTS[host_name]
         tags = ["binary-vector"]
         expansions = dict()
@@ -1156,6 +1150,11 @@ def create_run_tests_func():
     return "run tests", [setup_cmd, test_cmd]
 
 
+def create_test_numpy_func():
+    test_cmd = get_subprocess_exec(args=[".evergreen/just.sh", "test-numpy"])
+    return "test numpy", [test_cmd]
+
+
 def create_cleanup_func():
     cmd = get_subprocess_exec(args=[".evergreen/scripts/cleanup.sh"])
     return "cleanup", [cmd]
@@ -1206,6 +1205,3 @@ mod = sys.modules[__name__]
 write_variants_to_file(mod)
 write_tasks_to_file(mod)
 write_functions_to_file(mod)
-
-# TODO - Create a new variant here that drives run-test
-#   Workfromrove
