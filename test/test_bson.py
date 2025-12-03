@@ -890,6 +890,7 @@ class TestBSON(unittest.TestCase):
         # as_numpy_vector
         vector_np = binary_vector_int8.as_vector(return_numpy=True)
         assert isinstance(vector_np, BinaryVector)
+        assert isinstance(vector_np.data, np.ndarray)
         assert np.all(vector.data == arr)
         # PACKED_BIT
         binary_vector_uint8 = Binary.from_vector(arr, BinaryVectorDtype.PACKED_BIT)
@@ -900,6 +901,7 @@ class TestBSON(unittest.TestCase):
         # as_numpy_vector
         vector_np = binary_vector_uint8.as_vector(return_numpy=True)
         assert isinstance(vector_np, BinaryVector)
+        assert isinstance(vector_np.data, np.ndarray)
         assert np.all(vector_np.data == arr)
         # FLOAT32
         binary_vector_float32 = Binary.from_vector(arr, BinaryVectorDtype.FLOAT32)
@@ -910,6 +912,7 @@ class TestBSON(unittest.TestCase):
         # as_numpy_vector
         vector_np = binary_vector_float32.as_vector(return_numpy=True)
         assert isinstance(vector_np, BinaryVector)
+        assert isinstance(vector_np.data, np.ndarray)
         assert np.all(vector_np.data == arr)
 
         # Invalid cases
