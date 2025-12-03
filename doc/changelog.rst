@@ -16,7 +16,34 @@ PyMongo 4.16 brings a number of changes including:
   Python 3.10+.  The minimum version is ``2.6.1`` to account for `CVE-2023-29483 <https://www.cve.org/CVERecord?id=CVE-2023-29483>`_.
 - Removed support for Eventlet.
   Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
-- Added support for NumPy 1D-arrays in BSON Binary Vectors.
+- Use Zstandard support from the standard library for Python 3.14+, and use ``backports.zstd`` for older versions.
+- Fixed return type annotation for ``find_one_and_*`` methods on :class:`~pymongo.asynchronous.collection.AsyncCollection`
+  and :class:`~pymongo.synchronous.collection.Collection` to include ``None``.
+- Added support for NumPy 1D-arrays in :class:`bson.binary.BinaryVector`.
+
+Changes in Version 4.15.5 (2025/XX/XX)
+--------------------------------------
+
+Version 4.15.5 is a bug fix release.
+
+- Fixed a bug that could cause ``AutoReconnect("connection pool paused")`` errors when cursors fetched more documents from the database after SDAM heartbeat failures.
+
+Changes in Version 4.15.4 (2025/10/21)
+--------------------------------------
+
+Version 4.15.4 is a bug fix release.
+
+- Relaxed the callback type of :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.with_transaction` to allow the broader Awaitable type rather than only Coroutine objects.
+- Added the missing Python 3.14 trove classifier to the package metadata.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.15.4 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.15.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47237
+>>>>>>> master
 
 Changes in Version 4.15.3 (2025/10/07)
 --------------------------------------

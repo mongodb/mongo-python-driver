@@ -46,7 +46,7 @@ jobs:
 
     steps:
       - name: Checkout pymongo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -61,7 +61,7 @@ jobs:
 
       - name: Set up QEMU
         if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
         with:
           # setup-qemu-action by default uses `tonistiigi/binfmt:latest` image,
           # which is out of date. This causes seg faults during build.
@@ -91,7 +91,7 @@ jobs:
           # Free-threading builds:
           ls wheelhouse/*cp314t*.whl
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: wheel-${{ matrix.buildplat[1] }}
           path: ./wheelhouse/*.whl
@@ -101,7 +101,7 @@ jobs:
     name: Make SDist
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -124,7 +124,7 @@ jobs:
           cd ..
           python -c "from pymongo import has_c; assert has_c()"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: "sdist"
           path: ./dist/*.tar.gz
@@ -135,13 +135,13 @@ jobs:
     name: Download Wheels
     steps:
       - name: Download all workflow run artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
       - name: Flatten directory
         working-directory: .
         run: |
           find . -mindepth 2 -type f -exec mv {} . \;
           find . -type d -empty -delete
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: all-dist-${{ github.run_id }}
           path: "./*"

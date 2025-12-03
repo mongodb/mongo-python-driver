@@ -387,6 +387,11 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 To run any of the test suites with minimum supported dependencies, pass `--test-min-deps` to
 `just setup-tests`.
 
+## Testing time-dependent operations
+
+- `test.utils_shared.delay` - One can trigger an arbitrarily long-running operation on the server using this delay utility
+  in combination with a `$where` operation. Use this to test behaviors around timeouts or signals.
+
 ## Adding a new test suite
 
 - If adding new tests files that should only be run for that test suite, add a pytest marker to the file and add

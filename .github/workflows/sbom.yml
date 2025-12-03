@@ -1,0 +1,101 @@
+name: Generate SBOM
+
+# This workflow uses cyclonedx-py and publishes an sbom.json artifact.
+# It runs on manual trigger or when package files change on main branch,
+# and creates a PR with the updated SBOM.
+# Internal documentation: go/sbom-scope
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: ['master']
+    paths:
+      - 'pyproject.toml'
+      - 'requirements.txt'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sbom:
+    name: Generate SBOM and Create PR
+    runs-on: ubuntu-latest
+    concurrency:
+      group: sbom-${{ github.ref }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Generate SBOM
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+          pip install .
+          pip uninstall -y pip setuptools
+          deactivate
+          python -m venv .venv-sbom
+          source .venv-sbom/bin/activate
+          pip install cyclonedx-bom==7.2.1
+          cyclonedx-py environment --spec-version 1.5 --output-format JSON --output-file sbom.json .venv
+          # Add PURL for pymongo (local package doesn't get PURL automatically)
+          jq '(.components[] | select(.name == "pymongo" and .purl == null)) |= (. + {purl: ("pkg:pypi/pymongo@" + .version)})' sbom.json > sbom.tmp.json && mv sbom.tmp.json sbom.json
+
+      - name: Download CycloneDX CLI
+        run: |
+          curl -L -s -o /tmp/cyclonedx "https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.29.1/cyclonedx-linux-x64"
+          chmod +x /tmp/cyclonedx
+
+      - name: Validate SBOM
+        run: /tmp/cyclonedx validate --input-file sbom.json --fail-on-errors
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf .venv .venv-sbom
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: sbom
+          path: sbom.json
+          if-no-files-found: error
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@84ae59a2cdc2258d6fa0732dd66352dddae2a412
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: Update SBOM after dependency changes'
+          branch: auto-update-sbom-${{ github.run_id }}
+          delete-branch: true
+          title: 'chore: Update SBOM'
+          body: |
+            ## Automated SBOM Update
+
+            This PR was automatically generated because dependency manifest files changed.
+
+            ### Changes
+            - Updated `sbom.json` to reflect current dependencies
+
+            ### Verification
+            The SBOM was generated using cyclonedx-py v7.2.1 with the current Python environment.
+
+            ### Triggered by
+            - Commit: ${{ github.sha }}
+            - Workflow run: ${{ github.run_id }}
+
+            ---
+            _This PR was created automatically by the [SBOM workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})_
+          labels: |
+            sbom
+            automated
+            dependencies

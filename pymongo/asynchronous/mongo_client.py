@@ -422,8 +422,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             with the server. Currently supported options are "snappy", "zlib"
             and "zstd". Support for snappy requires the
             `python-snappy <https://pypi.org/project/python-snappy/>`_ package.
-            zlib support requires the Python standard library zlib module. zstd
-            requires the `zstandard <https://pypi.org/project/zstandard/>`_
+            zlib support requires the Python standard library zlib module. For
+            Python before 3.14 zstd requires the `backports.zstd <https://pypi.org/project/backports.zstd/>`_
             package. By default no compression is used. Compression support
             must also be enabled on the server. MongoDB 3.6+ supports snappy
             and zlib compression. MongoDB 4.2+ adds support for zstd.

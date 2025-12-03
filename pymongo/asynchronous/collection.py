@@ -3310,7 +3310,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> _DocumentType:
+    ) -> Optional[_DocumentType]:
         """Finds a single document and deletes it, returning the document.
 
           >>> await db.test.count_documents({'x': 1})
@@ -3319,6 +3319,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
           {'x': 1, '_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
           >>> await db.test.count_documents({'x': 1})
           1
+
+        Returns ``None`` if no document matches the filter.
+
+          >>> await db.test.find_one_and_delete({'_exists': False})
 
         If multiple documents match *filter*, a *sort* can be applied.
 
@@ -3402,9 +3406,21 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> _DocumentType:
+    ) -> Optional[_DocumentType]:
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
+
+          >>> await db.test.find_one({'x': 1})
+          {'_id': 0, 'x': 1}
+          >>> await db.test.find_one_and_replace({'x': 1}, {'y': 2})
+          {'_id': 0, 'x': 1}
+          >>> await db.test.find_one({'x': 1})
+          >>> await db.test.find_one({'y': 2})
+          {'_id': 0, 'y': 2}
+
+        Returns ``None`` if no document matches the filter.
+
+          >>> await db.test.find_one_and_replace({'_exists': False}, {'x': 1})
 
         The :meth:`find_one_and_replace` method differs from
         :meth:`find_one_and_update` by replacing the document matched by
@@ -3510,13 +3526,17 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> _DocumentType:
+    ) -> Optional[_DocumentType]:
         """Finds a single document and updates it, returning either the
         original or the updated document.
 
+          >>> await db.test.find_one({'_id': 665})
+          {'_id': 665, 'done': False, 'count': 25}
           >>> await db.test.find_one_and_update(
           ...    {'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
-          {'_id': 665, 'done': False, 'count': 25}}
+          {'_id': 665, 'done': False, 'count': 25}
+          >>> await db.test.find_one({'_id': 665})
+          {'_id': 665, 'done': True, 'count': 26}
 
         Returns ``None`` if no document matches the filter.
 
