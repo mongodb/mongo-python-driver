@@ -269,6 +269,7 @@ class AsyncConnection:
         cmd = self.hello_cmd()
         performing_handshake = not self.performed_handshake
         awaitable = False
+        cmd["backpressure"] = True
         if performing_handshake:
             self.performed_handshake = True
             cmd["client"] = self.opts.metadata
