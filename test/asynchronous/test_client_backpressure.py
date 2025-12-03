@@ -16,6 +16,10 @@ from __future__ import annotations
 import os
 import pathlib
 import sys
+from time import perf_counter
+from unittest.mock import patch
+
+from pymongo.errors import OperationFailure
 
 sys.path[0:0] = [""]
 
@@ -41,9 +45,56 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         self.listener.reset()
+        self.app_name = self.__class__.__name__.lower()
         self.client = await self.async_rs_or_single_client(
-            event_listeners=[self.listener], retryWrites=False
+            event_listeners=[self.listener], retryWrites=False, appName=self.app_name
         )
+
+    @patch("random.random")
+    async def test_01_operation_retry_uses_exponential_backoff(self, random_func):
+        # Drivers should test that retries do not occur immediately when a SystemOverloadedError is encountered.
+
+        # 1. let `client` be a `MongoClient`
+        client = self.client
+
+        # 2. let `collection` be a collection
+        collection = client.test.test
+
+        # 3. Now, run transactions without backoff:
+
+        # a. Configure the random number generator used for jitter to always return `0` -- this effectively disables backoff.
+        random_func.return_value = 0
+
+        # b. Configure the following failPoint:
+        fail_point = dict(
+            mode="alwaysOn",
+            data=dict(
+                failCommands=["insert"],
+                errorCode=2,
+                errorLabels=["SystemOverloadedError", "RetryableError"],
+                appName=self.app_name,
+            ),
+        )
+        async with self.fail_point(fail_point):
+            # c. Execute the following command. Expect that the command errors. Measure the duration of the command execution.
+            start0 = perf_counter()
+            with self.assertRaises(OperationFailure):
+                await collection.insert_one({"a": 1})
+            end0 = perf_counter()
+
+            # d. Configure the random number generator used for jitter to always return `1`.
+            random_func.return_value = 1
+
+            # e. Execute step c again.
+            start1 = perf_counter()
+            with self.assertRaises(OperationFailure):
+                await collection.insert_one({"a": 1})
+            end1 = perf_counter()
+
+            # f. Compare the two time between the two runs.
+            # The sum of 5 backoffs is 3.1 seconds. There is a 1-second window to account for potential variance between the two
+            # runs.
+            self.assertTrue(abs((end1 - start1) - (end0 - start0 + 3.1)) < 1)
 
 
 # Location of JSON test specifications.
