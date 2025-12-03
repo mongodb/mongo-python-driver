@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import os
+import pathlib
 import sys
 
 sys.path[0:0] = [""]
@@ -43,8 +44,11 @@ class TestClientBackpressure(IntegrationTest):
         self.client = self.rs_or_single_client(event_listeners=[self.listener], retryWrites=False)
 
 
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "client-backpressure")
-
+# Location of JSON test specifications.
+if _IS_SYNC:
+    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "client-backpressure")
+else:
+    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "client-backpressure")
 
 globals().update(
     generate_test_classes(
