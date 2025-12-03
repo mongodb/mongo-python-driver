@@ -339,6 +339,32 @@ def create_disable_test_commands_variants():
     return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
+def create_test_numpy_tasks():
+    test_func = FunctionCall(func="test numpy")
+    task_name = "test-numpy"
+    tags = ["binary", "vector"]
+    return [EvgTask(name=task_name, tags=tags, commands=[test_func])]
+
+
+def create_test_numpy_variants() -> list[BuildVariant]:
+    variants = []
+    base_display_name = "Test Numpy"
+
+    # Test a subset on each of the other platforms.
+    for host_name in ("rhel8", "macos", "macos-arm64", "win64", "win32"):
+        tasks = ["test-numpy"]
+        host = HOSTS[host_name]
+        tags = ["binary-vector"]
+        expansions = dict()
+        if host_name == "win32":
+            expansions["IS_WIN32"] = "1"
+        display_name = get_variant_name(base_display_name, host)
+        variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
+        variants.append(variant)
+
+    return variants
+
+
 def create_oidc_auth_variants():
     variants = []
     for host_name in ["ubuntu22", "macos", "win64"]:
@@ -1138,6 +1164,11 @@ def create_run_tests_func():
     setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
     test_cmd = get_subprocess_exec(args=[".evergreen/just.sh", "run-tests"])
     return "run tests", [setup_cmd, test_cmd]
+
+
+def create_test_numpy_func():
+    test_cmd = get_subprocess_exec(args=[".evergreen/just.sh", "test-numpy"])
+    return "test numpy", [test_cmd]
 
 
 def create_cleanup_func():
