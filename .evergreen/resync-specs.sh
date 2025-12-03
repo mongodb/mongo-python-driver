@@ -94,6 +94,9 @@ do
     change-streams|change_streams)
       cpjson change-streams/tests/ change_streams/
       ;;
+    client-backpressure|client_backpressure)
+      cpjson client-backpressure/tests client-backpressure
+      ;;
     client-side-encryption|csfle|fle)
       cpjson client-side-encryption/tests/ client-side-encryption/spec
       cpjson client-side-encryption/corpus/ client-side-encryption/corpus
