@@ -248,6 +248,8 @@ functions:
           - .evergreen/just.sh
           - test-numpy
         working_dir: src
+        include_expansions_in_env:
+          - TOOLCHAIN_VERSION
       type: test
 
   # Upload coverage

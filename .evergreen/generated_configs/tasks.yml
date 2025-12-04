@@ -4769,9 +4769,23 @@ tasks:
       - pypy
 
   # Test numpy tests
-  - name: test-numpy
+  - name: test-numpy py3.10
     commands:
       - func: test numpy
+        vars:
+          TOOLCHAIN_VERSION: "3.10"
+    tags: [binary, vector]
+  - name: test-numpy py3.14
+    commands:
+      - func: test numpy
+        vars:
+          TOOLCHAIN_VERSION: "3.14"
+    tags: [binary, vector]
+  - name: test-numpy pypy3.11
+    commands:
+      - func: test numpy
+        vars:
+          TOOLCHAIN_VERSION: pypy3.11
     tags: [binary, vector]
 
   # Test standard auth tests
