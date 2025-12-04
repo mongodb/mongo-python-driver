@@ -20,7 +20,6 @@ from collections import abc
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncContextManager,
     Callable,
     Coroutine,
     Generic,
@@ -58,7 +57,6 @@ from pymongo.asynchronous.cursor import (
     AsyncCursor,
     AsyncRawBatchCursor,
 )
-from pymongo.asynchronous.helpers import _retry_overload
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import (
@@ -573,11 +571,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         await change_stream._initialize_cursor()
         return change_stream
 
-    async def _conn_for_writes(
-        self, session: Optional[AsyncClientSession], operation: str
-    ) -> AsyncContextManager[AsyncConnection]:
-        return await self._database.client._conn_for_writes(session, operation)
-
     async def _command(
         self,
         conn: AsyncConnection,
@@ -654,7 +647,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             if "size" in options:
                 options["size"] = float(options["size"])
             cmd.update(options)
-        async with await self._conn_for_writes(session, operation=_Op.CREATE) as conn:
+
+        async def inner(
+            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+        ) -> None:
             if qev2_required and conn.max_wire_version < 21:
                 raise ConfigurationError(
                     "Driver support of Queryable Encryption is incompatible with server. "
@@ -670,6 +666,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 collation=collation,
                 session=session,
             )
+
+        await self.database.client._retryable_write(False, inner, session, _Op.CREATE)
 
     async def _create(
         self,
@@ -2229,7 +2227,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         return await self._create_indexes(indexes, session, **kwargs)
 
     @_csot.apply
-    @_retry_overload
     async def _create_indexes(
         self, indexes: Sequence[IndexModel], session: Optional[AsyncClientSession], **kwargs: Any
     ) -> list[str]:
@@ -2243,7 +2240,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             command (like maxTimeMS) can be passed as keyword arguments.
         """
         names = []
-        async with await self._conn_for_writes(session, operation=_Op.CREATE_INDEXES) as conn:
+
+        async def inner(
+            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+        ) -> list[str]:
             supports_quorum = conn.max_wire_version >= 9
 
             def gen_indexes() -> Iterator[Mapping[str, Any]]:
@@ -2272,7 +2272,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 write_concern=self._write_concern_for(session),
                 session=session,
             )
-        return names
+            return names
+
+        return await self.database.client._retryable_write(
+            False, inner, session, _Op.CREATE_INDEXES
+        )
 
     async def create_index(
         self,
@@ -2474,7 +2478,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         await self._drop_index(index_or_name, session, comment, **kwargs)
 
     @_csot.apply
-    @_retry_overload
     async def _drop_index(
         self,
         index_or_name: _IndexKeyHint,
@@ -2493,7 +2496,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        async with await self._conn_for_writes(session, operation=_Op.DROP_INDEXES) as conn:
+
+        async def inner(
+            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+        ) -> None:
             await self._command(
                 conn,
                 cmd,
@@ -2502,6 +2508,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 write_concern=self._write_concern_for(session),
                 session=session,
             )
+
+        await self.database.client._retryable_write(False, inner, session, _Op.DROP_INDEXES)
 
     async def list_indexes(
         self,
@@ -2766,16 +2774,21 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd = {"createSearchIndexes": self.name, "indexes": list(gen_indexes())}
         cmd.update(kwargs)
 
-        async with await self._conn_for_writes(
-            session, operation=_Op.CREATE_SEARCH_INDEXES
-        ) as conn:
+        async def inner(
+            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+        ) -> list[str]:
             resp = await self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                session=session,
             )
             return [index["name"] for index in resp["indexesCreated"]]
+
+        return self.database.client._retryable_write(
+            False, inner, session, _Op.CREATE_SEARCH_INDEXES
+        )
 
     async def drop_search_index(
         self,
@@ -2802,14 +2815,20 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        async with await self._conn_for_writes(session, operation=_Op.DROP_SEARCH_INDEXES) as conn:
+
+        async def inner(
+            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+        ) -> None:
             await self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 allowable_errors=["ns not found", 26],
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                session=session,
             )
+
+        return self.database.client._retryable_write(False, inner, session, _Op.DROP_SEARCH_INDEXES)
 
     async def update_search_index(
         self,
@@ -2838,14 +2857,20 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        async with await self._conn_for_writes(session, operation=_Op.UPDATE_SEARCH_INDEX) as conn:
+
+        async def inner(
+            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+        ) -> None:
             await self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 allowable_errors=["ns not found", 26],
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                session=session,
             )
+
+        return self.database.client._retryable_write(False, inner, session, _Op.UPDATE_SEARCH_INDEX)
 
     async def options(
         self,
@@ -3075,7 +3100,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             )
 
     @_csot.apply
-    @_retry_overload
     async def rename(
         self,
         new_name: str,
@@ -3127,17 +3151,21 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         write_concern = self._write_concern_for_cmd(cmd, session)
+        client = self._database.client
 
-        async with await self._conn_for_writes(session, operation=_Op.RENAME) as conn:
-            async with self._database.client._tmp_session(session) as s:
-                return await conn.command(
-                    "admin",
-                    cmd,
-                    write_concern=write_concern,
-                    parse_write_concern_error=True,
-                    session=s,
-                    client=self._database.client,
-                )
+        async def inner(
+            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+        ) -> MutableMapping[str, Any]:
+            return await conn.command(
+                "admin",
+                cmd,
+                write_concern=write_concern,
+                parse_write_concern_error=True,
+                session=session,
+                client=client,
+            )
+
+        return client._retryable_write(False, inner, session, _Op.RENAME)
 
     async def distinct(
         self,

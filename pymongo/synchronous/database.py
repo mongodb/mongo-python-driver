@@ -43,7 +43,6 @@ from pymongo.synchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.synchronous.change_stream import DatabaseChangeStream
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.helpers import _retry_overload
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
@@ -479,7 +478,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         return change_stream
 
     @_csot.apply
-    @_retry_overload
     def create_collection(
         self,
         name: str,
@@ -822,7 +820,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @_csot.apply
-    @_retry_overload
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -935,12 +932,15 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        with self._client._conn_for_reads(read_preference, session, operation=command_name) as (
-            connection,
-            read_preference,
-        ):
+
+        def inner(
+            session: Optional[ClientSession],
+            _server: Server,
+            conn: Connection,
+            read_preference: _ServerMode,
+        ) -> Union[dict[str, Any], _CodecDocumentType]:
             return self._command(
-                connection,
+                conn,
                 command,
                 value,
                 check,
@@ -951,8 +951,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 **kwargs,
             )
 
+        return self._client._retryable_read(
+            inner, read_preference, session, command_name, None, False
+        )
+
     @_csot.apply
-    @_retry_overload
     def cursor_command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1019,15 +1022,17 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         with self._client._tmp_session(session) as tmp_session:
             opts = codec_options or DEFAULT_CODEC_OPTIONS
-
             if read_preference is None:
                 read_preference = (
                     tmp_session and tmp_session._txn_read_preference()
                 ) or ReadPreference.PRIMARY
-            with self._client._conn_for_reads(read_preference, tmp_session, command_name) as (
-                conn,
-                read_preference,
-            ):
+
+            def inner(
+                session: Optional[ClientSession],
+                _server: Server,
+                conn: Connection,
+                read_preference: _ServerMode,
+            ) -> CommandCursor[_DocumentType]:
                 response = self._command(
                     conn,
                     command,
@@ -1036,7 +1041,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                     None,
                     read_preference,
                     opts,
-                    session=tmp_session,
+                    session=session,
                     **kwargs,
                 )
                 coll = self.get_collection("$cmd", read_preference=read_preference)
@@ -1046,13 +1051,17 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                         response["cursor"],
                         conn.address,
                         max_await_time_ms=max_await_time_ms,
-                        session=tmp_session,
+                        session=session,
                         comment=comment,
                     )
                     cmd_cursor._maybe_pin_connection(conn)
                     return cmd_cursor
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
+
+            return self.client._retryable_read(
+                inner, read_preference, tmp_session, command_name, False
+            )
 
     def _retryable_read_command(
         self,
@@ -1252,9 +1261,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
 
-        with self._client._conn_for_writes(session, operation=_Op.DROP) as connection:
+        def inner(
+            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+        ) -> dict[str, Any]:
             return self._command(
-                connection,
+                conn,
                 command,
                 allowable_errors=["ns not found", 26],
                 write_concern=self._write_concern_for(session),
@@ -1262,8 +1273,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
+        return self.client._retryable_write(False, inner, session, _Op.DROP)
+
     @_csot.apply
-    @_retry_overload
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection[_DocumentTypeArg]],

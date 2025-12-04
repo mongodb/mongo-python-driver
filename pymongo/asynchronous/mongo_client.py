@@ -69,7 +69,6 @@ from pymongo.asynchronous.client_bulk import _AsyncClientBulk
 from pymongo.asynchronous.client_session import _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import (
-    _retry_overload,
     _RetryPolicy,
     _TokenBucket,
 )
@@ -2403,7 +2402,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return [doc["name"] async for doc in res]
 
     @_csot.apply
-    @_retry_overload
     async def drop_database(
         self,
         name_or_database: Union[str, database.AsyncDatabase[_DocumentTypeArg]],
@@ -2446,15 +2444,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 f"name_or_database must be an instance of str or a AsyncDatabase, not {type(name)}"
             )
 
-        async with await self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
-            await self[name]._command(
-                conn,
-                {"dropDatabase": 1, "comment": comment},
-                read_preference=ReadPreference.PRIMARY,
-                write_concern=self._write_concern_for(session),
-                parse_write_concern_error=True,
-                session=session,
-            )
+        return await self[name].command(
+            {"dropDatabase": 1, "comment": comment},
+            read_preference=ReadPreference.PRIMARY,
+            write_concern=self._write_concern_for(session),
+            parse_write_concern_error=True,
+            session=session,
+        )
 
     @_csot.apply
     async def bulk_write(

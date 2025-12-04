@@ -112,7 +112,6 @@ from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.helpers import (
-    _retry_overload,
     _RetryPolicy,
     _TokenBucket,
 )
@@ -2393,7 +2392,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return [doc["name"] for doc in res]
 
     @_csot.apply
-    @_retry_overload
     def drop_database(
         self,
         name_or_database: Union[str, database.Database[_DocumentTypeArg]],
@@ -2436,15 +2434,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 f"name_or_database must be an instance of str or a Database, not {type(name)}"
             )
 
-        with self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
-            self[name]._command(
-                conn,
-                {"dropDatabase": 1, "comment": comment},
-                read_preference=ReadPreference.PRIMARY,
-                write_concern=self._write_concern_for(session),
-                parse_write_concern_error=True,
-                session=session,
-            )
+        return self[name].command(
+            {"dropDatabase": 1, "comment": comment},
+            read_preference=ReadPreference.PRIMARY,
+            write_concern=self._write_concern_for(session),
+            parse_write_concern_error=True,
+            session=session,
+        )
 
     @_csot.apply
     def bulk_write(
