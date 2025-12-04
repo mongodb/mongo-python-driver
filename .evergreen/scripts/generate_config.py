@@ -341,8 +341,8 @@ def create_disable_test_commands_variants():
 
 def create_test_numpy_tasks():
     tasks = []
-    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
-        tags = ["binary", "vector", f"python-{python}"]
+    for python in MIN_MAX_PYTHON:
+        tags = ["binary", "vector", f"python-{python}", "test-numpy"]
         task_name = get_task_name("test-numpy", python=python)
         test_func = FunctionCall(func="test numpy", vars=dict(TOOLCHAIN_VERSION=python))
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))

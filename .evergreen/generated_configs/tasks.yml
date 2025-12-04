@@ -4774,19 +4774,21 @@ tasks:
       - func: test numpy
         vars:
           TOOLCHAIN_VERSION: "3.10"
-    tags: [binary, vector, python-3.10]
+    tags:
+      - binary
+      - vector
+      - python-3.10
+      - test-numpy
   - name: test-numpy-python3.14
     commands:
       - func: test numpy
         vars:
           TOOLCHAIN_VERSION: "3.14"
-    tags: [binary, vector, python-3.14]
-  - name: test-numpy-pypy3.11
-    commands:
-      - func: test numpy
-        vars:
-          TOOLCHAIN_VERSION: pypy3.11
-    tags: [binary, vector, python-pypy3.11]
+    tags:
+      - binary
+      - vector
+      - python-3.14
+      - test-numpy
 
   # Test standard auth tests
   - name: test-standard-auth-v4.2-python3.10-auth-ssl-sharded-cluster
