@@ -2434,7 +2434,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 f"name_or_database must be an instance of str or a Database, not {type(name)}"
             )
 
-        return self[name].command(
+        self[name].command(
             {"dropDatabase": 1, "comment": comment},
             read_preference=ReadPreference.PRIMARY,
             write_concern=self._write_concern_for(session),

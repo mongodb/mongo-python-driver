@@ -2786,7 +2786,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             )
             return [index["name"] for index in resp["indexesCreated"]]
 
-        return self.database.client._retryable_write(
+        return await self.database.client._retryable_write(
             False, inner, session, _Op.CREATE_SEARCH_INDEXES
         )
 
@@ -2828,7 +2828,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return self.database.client._retryable_write(False, inner, session, _Op.DROP_SEARCH_INDEXES)
+        await self.database.client._retryable_write(False, inner, session, _Op.DROP_SEARCH_INDEXES)
 
     async def update_search_index(
         self,
@@ -2870,7 +2870,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return self.database.client._retryable_write(False, inner, session, _Op.UPDATE_SEARCH_INDEX)
+        await self.database.client._retryable_write(False, inner, session, _Op.UPDATE_SEARCH_INDEX)
 
     async def options(
         self,
@@ -3165,7 +3165,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 client=client,
             )
 
-        return client._retryable_write(False, inner, session, _Op.RENAME)
+        return await client._retryable_write(False, inner, session, _Op.RENAME)
 
     async def distinct(
         self,

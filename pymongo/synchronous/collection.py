@@ -2823,7 +2823,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return self.database.client._retryable_write(False, inner, session, _Op.DROP_SEARCH_INDEXES)
+        self.database.client._retryable_write(False, inner, session, _Op.DROP_SEARCH_INDEXES)
 
     def update_search_index(
         self,
@@ -2865,7 +2865,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return self.database.client._retryable_write(False, inner, session, _Op.UPDATE_SEARCH_INDEX)
+        self.database.client._retryable_write(False, inner, session, _Op.UPDATE_SEARCH_INDEX)
 
     def options(
         self,

@@ -1060,7 +1060,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                     raise InvalidOperation("Command does not return a cursor.")
 
             return await self.client._retryable_read(
-                inner, read_preference, tmp_session, command_name, False
+                inner, read_preference, tmp_session, command_name, None, False
             )
 
     async def _retryable_read_command(
