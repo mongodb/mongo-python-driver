@@ -51,6 +51,7 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
         )
 
     @patch("random.random")
+    @async_client_context.require_failCommand_appName
     async def test_01_operation_retry_uses_exponential_backoff(self, random_func):
         # Drivers should test that retries do not occur immediately when a SystemOverloadedError is encountered.
 

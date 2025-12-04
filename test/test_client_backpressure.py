@@ -51,6 +51,7 @@ class TestClientBackpressure(IntegrationTest):
         )
 
     @patch("random.random")
+    @client_context.require_failCommand_appName
     def test_01_operation_retry_uses_exponential_backoff(self, random_func):
         # Drivers should test that retries do not occur immediately when a SystemOverloadedError is encountered.
 
