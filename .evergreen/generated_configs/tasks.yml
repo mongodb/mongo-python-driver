@@ -4769,24 +4769,24 @@ tasks:
       - pypy
 
   # Test numpy tests
-  - name: test-numpy py3.10
+  - name: test-numpy-python3.10
     commands:
       - func: test numpy
         vars:
           TOOLCHAIN_VERSION: "3.10"
-    tags: [binary, vector]
-  - name: test-numpy py3.14
+    tags: [binary, vector, python-3.10]
+  - name: test-numpy-python3.14
     commands:
       - func: test numpy
         vars:
           TOOLCHAIN_VERSION: "3.14"
-    tags: [binary, vector]
-  - name: test-numpy pypy3.11
+    tags: [binary, vector, python-3.14]
+  - name: test-numpy-pypy3.11
     commands:
       - func: test numpy
         vars:
           TOOLCHAIN_VERSION: pypy3.11
-    tags: [binary, vector]
+    tags: [binary, vector, python-pypy3.11]
 
   # Test standard auth tests
   - name: test-standard-auth-v4.2-python3.10-auth-ssl-sharded-cluster

@@ -342,10 +342,9 @@ def create_disable_test_commands_variants():
 def create_test_numpy_tasks():
     tasks = []
     for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
-        name = python if python.startswith("pypy") else f"py{python}"
-        task_name = f"test-numpy {name}"
+        tags = ["binary", "vector", f"python-{python}"]
+        task_name = get_task_name("test-numpy", python=python)
         test_func = FunctionCall(func="test numpy", vars=dict(TOOLCHAIN_VERSION=python))
-        tags = ["binary", "vector"]
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
 
@@ -356,9 +355,9 @@ def create_test_numpy_variants() -> list[BuildVariant]:
 
     # Test a subset on each of the other platforms.
     for host_name in ("rhel8", "macos", "macos-arm64", "win64", "win32"):
-        tasks = ["test-numpy"]
+        tasks = [".test-numpy"]
         host = HOSTS[host_name]
-        tags = ["binary-vector"]
+        tags = ["binary", "vector"]
         expansions = dict()
         if host_name == "win32":
             expansions["IS_WIN32"] = "1"
