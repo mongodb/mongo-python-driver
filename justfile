@@ -1,7 +1,5 @@
 # See https://just.systems/man/en/ for instructions
 set shell := ["bash", "-c"]
-# Do not modify the lock file when running justfile commands.
-export UV_FROZEN := "1"
 
 # Commonly used command segments.
 typing_run := "uv run --group typing --extra aws --extra encryption --extra ocsp --extra snappy --extra test --extra zstd"
@@ -16,7 +14,7 @@ default:
 
 [private]
 resync:
- @uv sync --quiet --frozen
+ @uv sync --quiet
 
 install:
    bash .evergreen/scripts/setup-dev-env.sh
@@ -50,12 +48,12 @@ typing-pyright: && resync
     {{typing_run}} pyright -p strict_pyrightconfig.json test/test_typing_strict.py
 
 [group('lint')]
-lint: && resync
-    uv run pre-commit run --all-files
+lint *args="": && resync
+    uvx pre-commit run --all-files {{args}}
 
 [group('lint')]
-lint-manual: && resync
-    uv run pre-commit run --all-files --hook-stage manual
+lint-manual *args="": && resync
+    uvx pre-commit run --all-files --hook-stage manual {{args}}
 
 [group('test')]
 test *args="-v --durations=5 --maxfail=10": && resync
@@ -72,6 +70,10 @@ setup-tests *args="":
 [group('test')]
 teardown-tests:
     bash .evergreen/scripts/teardown-tests.sh
+
+[group('test')]
+integration-tests:
+    bash integration_tests/run.sh
 
 [group('server')]
 run-server *args="":
