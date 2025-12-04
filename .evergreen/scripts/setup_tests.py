@@ -117,9 +117,10 @@ def setup_libmongocrypt():
     LOGGER.info(f"Fetching {url}...")
     with request.urlopen(request.Request(url), timeout=15.0) as response:  # noqa: S310
         if response.status == 200:
-            fileobj = io.BytesIO(response.read())
-        with tarfile.open("libmongocrypt.tar.gz", fileobj=fileobj) as fid:
-            fid.extractall(Path.cwd() / "libmongocrypt")
+            with Path("libmongocrypt.tar.gz").open("wb") as f:
+                f.write(response.read())
+            Path("libmongocrypt").mkdir()
+            run_command("tar -xzf libmongocrypt.tar.gz -C libmongocrypt")
     LOGGER.info(f"Fetching {url}... done.")
 
     run_command("ls -la libmongocrypt")
