@@ -358,6 +358,8 @@ def create_test_numpy_variants() -> list[BuildVariant]:
         tasks = [".test-numpy"]
         host = HOSTS[host_name]
         tags = ["binary", "vector"]
+        if host_name == "rhel8":
+            tags.append("pr")
         expansions = dict()
         if host_name == "win32":
             expansions["IS_WIN32"] = "1"
@@ -1169,14 +1171,7 @@ def create_run_tests_func():
     return "run tests", [setup_cmd, test_cmd]
 
 
-def create_test_numpy_func_default():
-    """No python version selection"""
-    test_cmd = get_subprocess_exec(args=[".evergreen/just.sh", "test-numpy"])
-    return "test numpy default", [test_cmd]
-
-
 def create_test_numpy_func():
-    """Adding TOOLCHAIN_VERSION to environment gets picked up in just.sh"""
     includes = ["TOOLCHAIN_VERSION"]
     test_cmd = get_subprocess_exec(
         include_expansions_in_env=includes, args=[".evergreen/just.sh", "test-numpy"]

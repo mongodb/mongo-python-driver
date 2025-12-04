@@ -629,7 +629,7 @@ buildvariants:
     display_name: Test Numpy RHEL8
     run_on:
       - rhel87-small
-    tags: [binary, vector]
+    tags: [binary, vector, pr]
   - name: test-numpy-macos
     tasks:
       - name: .test-numpy
