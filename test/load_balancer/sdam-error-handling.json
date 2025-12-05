@@ -282,7 +282,7 @@
                   "isMaster",
                   "hello"
                 ],
-                "errorCode": 11600,
+                "closeConnection": true,
                 "appName": "lbSDAMErrorTestClient"
               }
             }
@@ -297,7 +297,7 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ],
