@@ -44,7 +44,6 @@ in this release.
 
 .. _PyMongo 4.15.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47237
 
-
 Changes in Version 4.15.3 (2025/10/07)
 --------------------------------------
 
