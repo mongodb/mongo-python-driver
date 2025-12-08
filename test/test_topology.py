@@ -733,23 +733,6 @@ class TestMultiServerTopology(TopologyTest):
         self.assertNotIn(("a", 27017), t.description.server_descriptions())
         self.assertEqual(t.description.topology_type_name, "Unknown")
 
-    def test_filtered_server_selection(self):
-        s1 = Server(ServerDescription(("localhost", 27017)), pool=object(), monitor=object())  # type: ignore[arg-type]
-        s2 = Server(ServerDescription(("localhost2", 27017)), pool=object(), monitor=object())  # type: ignore[arg-type]
-        servers = [s1, s2]
-
-        result = _filter_servers(servers, deprioritized_servers=[s2])
-        self.assertEqual(result, [s1])
-
-        result = _filter_servers(servers, deprioritized_servers=[s1, s2])
-        self.assertEqual(result, servers)
-
-        result = _filter_servers(servers, deprioritized_servers=[])
-        self.assertEqual(result, servers)
-
-        result = _filter_servers(servers)
-        self.assertEqual(result, servers)
-
 
 def wait_for_primary(topology):
     """Wait for a Topology to discover a writable server.

@@ -404,7 +404,6 @@ class Topology:
             operation_id,
             deprioritized_servers,
         )
-        servers = _filter_servers(servers, deprioritized_servers)
         if len(servers) == 1:
             return servers[0]
         server1, server2 = random.sample(servers, 2)
@@ -1127,16 +1126,3 @@ def _is_stale_server_description(current_sd: ServerDescription, new_sd: ServerDe
     if current_tv["processId"] != new_tv["processId"]:
         return False
     return current_tv["counter"] > new_tv["counter"]
-
-
-def _filter_servers(
-    candidates: list[Server], deprioritized_servers: Optional[list[Server]] = None
-) -> list[Server]:
-    """Filter out deprioritized servers from a list of server candidates."""
-    if not deprioritized_servers:
-        return candidates
-
-    filtered = [server for server in candidates if server not in deprioritized_servers]
-
-    # If not possible to pick a prioritized server, return the original list
-    return filtered or candidates
