@@ -21,6 +21,7 @@ import sys
 import threading
 from test.utils import set_fail_point
 
+from pymongo import ReadPreference
 from pymongo.errors import OperationFailure
 
 sys.path[0:0] = [""]
@@ -182,6 +183,44 @@ class TestRetryableReads(IntegrationTest):
         #  Assert that both events occurred on different mongos.
         assert listener.failed_events[0].connection_id != listener.failed_events[1].connection_id
 
+    @client_context.require_replica_set
+    @client_context.require_failCommand_fail_point
+    def test_retryable_reads_are_retried_on_a_different_replica_when_one_is_available(self):
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {"failCommands": ["find"], "errorCode": 6},
+        }
+
+        replica_clients = []
+
+        for node in client_context.nodes:
+            client = self.rs_or_single_client(*node, directConnection=True)
+            set_fail_point(client, fail_command)
+            replica_clients.append(client)
+
+        listener = OvertCommandListener()
+        client = self.rs_or_single_client(
+            event_listeners=[listener],
+            retryReads=True,
+            directConnection=False,
+            readPreference="secondaryPreferred",
+        )
+
+        with self.assertRaises(OperationFailure):
+            client.t.t.find_one({})
+
+        # Disable failpoints on each node
+        for client in replica_clients:
+            fail_command["mode"] = "off"
+            set_fail_point(client, fail_command)
+
+        self.assertEqual(len(listener.failed_events), 2)
+        self.assertEqual(len(listener.succeeded_events), 0)
+
+        #  Assert that both events occurred on different nodes.
+        assert listener.failed_events[0].connection_id != listener.failed_events[1].connection_id
+
     @client_context.require_multiple_mongoses
     @client_context.require_failCommand_fail_point
     def test_retryable_reads_are_retried_on_the_same_mongos_when_no_others_are_available(self):
@@ -214,6 +253,36 @@ class TestRetryableReads(IntegrationTest):
         self.assertEqual(len(listener.succeeded_events), 1)
 
         #  Assert that both events occurred on the same mongos.
+        assert listener.succeeded_events[0].connection_id == listener.failed_events[0].connection_id
+
+    @client_context.require_replica_set
+    @client_context.require_failCommand_fail_point
+    def test_retryable_reads_are_retried_on_the_same_replica_when_no_others_are_available(self):
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {"failCommands": ["find"], "errorCode": 6},
+        }
+
+        node_client = self.rs_or_single_client(*list(client_context.nodes)[0])
+        set_fail_point(node_client, fail_command)
+
+        listener = OvertCommandListener()
+        client = self.rs_or_single_client(
+            event_listeners=[listener],
+            retryReads=True,
+        )
+
+        client.t.t.find_one({})
+
+        # Disable failpoints
+        fail_command["mode"] = "off"
+        set_fail_point(node_client, fail_command)
+
+        self.assertEqual(len(listener.failed_events), 1)
+        self.assertEqual(len(listener.succeeded_events), 1)
+
+        #  Assert that both events occurred on the same node.
         assert listener.succeeded_events[0].connection_id == listener.failed_events[0].connection_id
 
     @client_context.require_failCommand_fail_point

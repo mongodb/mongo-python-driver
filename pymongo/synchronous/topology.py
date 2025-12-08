@@ -265,6 +265,7 @@ class Topology:
         server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
         operation_id: Optional[int] = None,
+        deprioritized_servers: Optional[list[Server]] = None,
     ) -> list[Server]:
         """Return a list of Servers matching selector, or time out.
 
@@ -292,7 +293,12 @@ class Topology:
 
         with self._lock:
             server_descriptions = self._select_servers_loop(
-                selector, server_timeout, operation, operation_id, address
+                selector,
+                server_timeout,
+                operation,
+                operation_id,
+                address,
+                deprioritized_servers=deprioritized_servers,
             )
 
             return [
@@ -306,6 +312,7 @@ class Topology:
         operation: str,
         operation_id: Optional[int],
         address: Optional[_Address],
+        deprioritized_servers: Optional[list[Server]] = None,
     ) -> list[ServerDescription]:
         """select_servers() guts. Hold the lock when calling this."""
         now = time.monotonic()
@@ -324,7 +331,12 @@ class Topology:
             )
 
         server_descriptions = self._description.apply_selector(
-            selector, address, custom_selector=self._settings.server_selector
+            selector,
+            address,
+            custom_selector=self._settings.server_selector,
+            deprioritized_servers=[server.description for server in deprioritized_servers]
+            if deprioritized_servers
+            else None,
         )
 
         while not server_descriptions:
@@ -385,7 +397,12 @@ class Topology:
         operation_id: Optional[int] = None,
     ) -> Server:
         servers = self.select_servers(
-            selector, operation, server_selection_timeout, address, operation_id
+            selector,
+            operation,
+            server_selection_timeout,
+            address,
+            operation_id,
+            deprioritized_servers,
         )
         servers = _filter_servers(servers, deprioritized_servers)
         if len(servers) == 1:

@@ -85,6 +85,7 @@ class TopologyDescription:
         self._server_descriptions = server_descriptions
         self._max_set_version = max_set_version
         self._max_election_id = max_election_id
+        self._candidate_servers = list(self._server_descriptions.values())
 
         # The heartbeat_frequency is used in staleness estimates.
         self._topology_settings = topology_settings
@@ -249,6 +250,11 @@ class TopologyDescription:
         return [s for s in self._server_descriptions.values() if s.is_readable]
 
     @property
+    def candidate_servers(self) -> list[ServerDescription]:
+        """List of Servers excluding deprioritized servers."""
+        return self._candidate_servers
+
+    @property
     def common_wire_version(self) -> Optional[int]:
         """Minimum of all servers' max wire versions, or None."""
         servers = self.known_servers
@@ -283,11 +289,24 @@ class TopologyDescription:
             if (cast(float, s.round_trip_time) - fastest) <= threshold
         ]
 
+    def _filter_servers(
+        self, deprioritized_servers: Optional[list[ServerDescription]] = None
+    ) -> None:
+        """Filter out deprioritized servers from a list of server candidates."""
+        if not deprioritized_servers:
+            self._candidate_servers = self.known_servers
+        else:
+            filtered = [
+                server for server in self.known_servers if server not in deprioritized_servers
+            ]
+            self._candidate_servers = filtered or self.known_servers
+
     def apply_selector(
         self,
         selector: Any,
         address: Optional[_Address] = None,
         custom_selector: Optional[_ServerSelector] = None,
+        deprioritized_servers: Optional[list[ServerDescription]] = None,
     ) -> list[ServerDescription]:
         """List of servers matching the provided selector(s).
 
@@ -324,9 +343,10 @@ class TopologyDescription:
             description = self.server_descriptions().get(address)
             return [description] if description and description.is_server_type_known else []
 
+        self._filter_servers(deprioritized_servers)
         # Primary selection fast path.
         if self.topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary and type(selector) is Primary:
-            for sd in self._server_descriptions.values():
+            for sd in self._candidate_servers:
                 if sd.server_type == SERVER_TYPE.RSPrimary:
                     sds = [sd]
                     if custom_selector:
