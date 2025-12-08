@@ -2825,7 +2825,8 @@ class _ClientConnectionRetryable(Generic[T]):
                     if self._last_error is None:
                         self._last_error = exc
 
-                self._deprioritized_servers.append(self._server)
+                if self._server is not None:
+                    self._deprioritized_servers.append(self._server)
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
@@ -2867,9 +2868,7 @@ class _ClientConnectionRetryable(Generic[T]):
             self._session,
             self._operation,
             address=self._address,
-            deprioritized_servers=self._deprioritized_servers
-            if self._deprioritized_servers
-            else None,
+            deprioritized_servers=self._deprioritized_servers,
             operation_id=self._operation_id,
         )
 
