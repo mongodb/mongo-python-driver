@@ -2867,7 +2867,9 @@ class _ClientConnectionRetryable(Generic[T]):
             self._session,
             self._operation,
             address=self._address,
-            deprioritized_servers=self._deprioritized_servers,
+            deprioritized_servers=self._deprioritized_servers
+            if self._deprioritized_servers
+            else None,
             operation_id=self._operation_id,
         )
 
