@@ -38,7 +38,7 @@ from pymongo.synchronous.monitor import Monitor
 from pymongo.synchronous.pool import PoolOptions
 from pymongo.synchronous.server import Server
 from pymongo.synchronous.settings import TopologySettings
-from pymongo.synchronous.topology import Topology, _ErrorContext, _filter_servers
+from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE
 
 
