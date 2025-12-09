@@ -303,32 +303,32 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
     tags: [test-min-support]
-  - name: test-min-support-pypy3.11-standalone-noauth-nossl
+  - name: test-min-support-pypy3.10-standalone-noauth-nossl
     commands:
       - func: run server
       - func: run tests
         vars:
-          UV_PYTHON: pypy3.11
+          UV_PYTHON: pypy3.10
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
     tags: [test-min-support]
-  - name: test-min-support-pypy3.11-replica-set-noauth-ssl
+  - name: test-min-support-pypy3.10-replica-set-noauth-ssl
     commands:
       - func: run server
       - func: run tests
         vars:
-          UV_PYTHON: pypy3.11
+          UV_PYTHON: pypy3.10
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
     tags: [test-min-support]
-  - name: test-min-support-pypy3.11-sharded-cluster-auth-ssl
+  - name: test-min-support-pypy3.10-sharded-cluster-auth-ssl
     commands:
       - func: run server
       - func: run tests
         vars:
-          UV_PYTHON: pypy3.11
+          UV_PYTHON: pypy3.10
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
