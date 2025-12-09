@@ -352,6 +352,14 @@ class TopologyDescription:
                     if custom_selector:
                         sds = custom_selector(sds)
                     return sds
+            # All primaries are deprioritized
+            if deprioritized_servers:
+                for sd in deprioritized_servers:
+                    if sd.server_type == SERVER_TYPE.RSPrimary:
+                        sds = [sd]
+                        if custom_selector:
+                            sds = custom_selector(sds)
+                        return sds
             # No primary found, return an empty list.
             return []
 
@@ -359,6 +367,11 @@ class TopologyDescription:
         # Ignore read preference for sharded clusters.
         if self.topology_type != TOPOLOGY_TYPE.Sharded:
             selection = selector(selection)
+            # No suitable servers found, apply preference again but include deprioritized servers.
+            if not selection and deprioritized_servers:
+                self._filter_servers(None)
+                selection = Selection.from_topology_description(self)
+                selection = selector(selection)
 
         # Apply custom selector followed by localThresholdMS.
         if custom_selector is not None and selection:
