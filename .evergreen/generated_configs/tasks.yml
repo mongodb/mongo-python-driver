@@ -242,6 +242,98 @@ tasks:
           TEST_MIN_DEPS: "1"
     tags: [test-min-deps, sharded_cluster-auth-ssl]
 
+  # Min support tests
+  - name: test-min-support-python3.9
+    commands:
+      - func: run server
+      - func: run tests
+        vars:
+          UV_PYTHON: "3.9"
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+    tags: [test-min-support]
+  - name: test-min-support-python3.9
+    commands:
+      - func: run server
+      - func: run tests
+        vars:
+          UV_PYTHON: "3.9"
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+    tags: [test-min-support]
+  - name: test-min-support-python3.9
+    commands:
+      - func: run server
+      - func: run tests
+        vars:
+          UV_PYTHON: "3.9"
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+    tags: [test-min-support]
+  - name: test-min-support-pypy3.9
+    commands:
+      - func: run server
+      - func: run tests
+        vars:
+          UV_PYTHON: pypy3.9
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+    tags: [test-min-support]
+  - name: test-min-support-pypy3.9
+    commands:
+      - func: run server
+      - func: run tests
+        vars:
+          UV_PYTHON: pypy3.9
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+    tags: [test-min-support]
+  - name: test-min-support-pypy3.9
+    commands:
+      - func: run server
+      - func: run tests
+        vars:
+          UV_PYTHON: pypy3.9
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+    tags: [test-min-support]
+  - name: test-min-support-pypy3.11
+    commands:
+      - func: run server
+      - func: run tests
+        vars:
+          UV_PYTHON: pypy3.11
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+    tags: [test-min-support]
+  - name: test-min-support-pypy3.11
+    commands:
+      - func: run server
+      - func: run tests
+        vars:
+          UV_PYTHON: pypy3.11
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+    tags: [test-min-support]
+  - name: test-min-support-pypy3.11
+    commands:
+      - func: run server
+      - func: run tests
+        vars:
+          UV_PYTHON: pypy3.11
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+    tags: [test-min-support]
+
   # Mod wsgi tests
   - name: mod-wsgi-replica-set-python3.10
     commands:

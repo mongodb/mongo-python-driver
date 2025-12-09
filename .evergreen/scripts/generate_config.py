@@ -502,6 +502,12 @@ def create_aws_auth_variants():
     return variants
 
 
+def create_min_support_variants():
+    host = HOSTS["rhel8"]
+    name = get_variant_name("Min Support", host=host)
+    return [create_variant([".test-min-support"], name, host=host)]
+
+
 def create_no_server_variants():
     host = HOSTS["rhel8"]
     name = get_variant_name("No server", host=host)
@@ -894,6 +900,22 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         )
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
 
+    return tasks
+
+
+def create_min_support_tasks():
+    server_func = FunctionCall(func="run server")
+    from generate_config_utils import MIN_SUPPORT_VERSIONS
+
+    tasks = []
+    for python, topology in product(MIN_SUPPORT_VERSIONS, TOPOLOGIES):
+        auth, ssl = get_standard_auth_ssl(topology)
+        vars = dict(UV_PYTHON=python, AUTH=auth, SSL=ssl, TOPOLOGY=topology)
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = get_task_name("test-min-support", python=python)
+        tags = ["test-min-support"]
+        commands = [server_func, test_func]
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
     return tasks
 
 
