@@ -912,7 +912,9 @@ def create_min_support_tasks():
         auth, ssl = get_standard_auth_ssl(topology)
         vars = dict(UV_PYTHON=python, AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         test_func = FunctionCall(func="run tests", vars=vars)
-        task_name = get_task_name("test-min-support", python=python)
+        task_name = get_task_name(
+            "test-min-support", python=python, topology=topology, auth=auth, ssl=ssl
+        )
         tags = ["test-min-support"]
         commands = [server_func, test_func]
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
