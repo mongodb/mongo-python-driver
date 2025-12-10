@@ -97,22 +97,14 @@
       "outcome": {
         "servers": {
           "a:27017": {
-            "type": "RSPrimary",
-            "setName": "rs",
-            "topologyVersion": {
-              "processId": {
-                "$oid": "000000000000000000000001"
-              },
-              "counter": {
-                "$numberLong": "1"
-              }
-            },
+            "type": "Unknown",
+            "topologyVersion": null,
             "pool": {
-              "generation": 0
+              "generation": 1
             }
           }
         },
-        "topologyType": "ReplicaSetWithPrimary",
+        "topologyType": "ReplicaSetNoPrimary",
         "logicalSessionTimeoutMinutes": null,
         "setName": "rs"
       }
