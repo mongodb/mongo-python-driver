@@ -296,8 +296,11 @@ class TopologyDescription:
         if not deprioritized_servers:
             self._candidate_servers = self.known_servers
         else:
+            deprioritized_addresses = {sd.address for sd in deprioritized_servers}
             filtered = [
-                server for server in self.known_servers if server not in deprioritized_servers
+                server
+                for server in self.known_servers
+                if server.address not in deprioritized_addresses
             ]
             self._candidate_servers = filtered or self.known_servers
 
