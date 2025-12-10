@@ -487,6 +487,7 @@ results into the patch file.
 For example: the imaginary, unimplemented PYTHON-1234 ticket has associated spec test changes. To add those changes to `PYTHON-1234.patch`), do the following:
 ```bash
 git diff HEAD~1 path/to/file >> .evergreen/spec-patch/PYTHON-1234.patch
+```
 
 #### Running Locally
 Both `resync-all-specs.sh` and `resync-all-specs.py` can be run locally (and won't generate a PR).
