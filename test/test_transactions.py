@@ -18,7 +18,6 @@ from __future__ import annotations
 import asyncio
 import sys
 from io import BytesIO
-from test.utils_spec_runner import SpecRunner
 
 from gridfs.synchronous.grid_file import GridFS, GridFSBucket
 from pymongo.server_selectors import writable_server_selector
@@ -61,15 +60,8 @@ _IS_SYNC = True
 UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
-class TransactionsBase(SpecRunner):
-    def maybe_skip_scenario(self, test):
-        super().maybe_skip_scenario(test)
-        if (
-            "secondary" in self.id()
-            and not client_context.is_mongos
-            and not client_context.has_secondaries
-        ):
-            raise unittest.SkipTest("No secondaries")
+class TransactionsBase(IntegrationTest):
+    pass
 
 
 class TestTransactions(TransactionsBase):

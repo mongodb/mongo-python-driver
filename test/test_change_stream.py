@@ -757,8 +757,8 @@ class ProseSpecTestsMixin:
 class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
     dbs: list
 
-    @client_context.require_version_min(4, 2, 0)
-    @client_context.require_change_streams
+    @client_context.require_version_min(4, 2, 0)  # type:ignore[untyped-decorator]
+    @client_context.require_change_streams  # type:ignore[untyped-decorator]
     def setUp(self) -> None:
         super().setUp()
         self.dbs = [self.db, self.client.pymongo_test_2]
@@ -817,8 +817,8 @@ class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
 
 
 class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
-    @client_context.require_version_min(4, 2, 0)
-    @client_context.require_change_streams
+    @client_context.require_version_min(4, 2, 0)  # type:ignore[untyped-decorator]
+    @client_context.require_change_streams  # type:ignore[untyped-decorator]
     def setUp(self) -> None:
         super().setUp()
 
