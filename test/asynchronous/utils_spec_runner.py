@@ -595,12 +595,6 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         """
         await self.run_operations(sessions, collection, test["operations"])
 
-    def parse_client_options(self, opts):
-        """Allow encryption spec to override a clientOptions parsing."""
-        # Convert test['clientOptions'] to dict to avoid a Jython bug using
-        # "**" with ScenarioDict.
-        return dict(opts)
-
     async def setup_scenario(self, scenario_def):
         """Allow specs to override a test's setup."""
         db_name = self.get_scenario_db_name(scenario_def)
@@ -647,7 +641,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
         pool_listener = CMAPListener()
         server_listener = ServerAndTopologyEventListener()
         # Create a new client, to avoid interference from pooled sessions.
-        client_options = self.parse_client_options(test["clientOptions"])
+        client_options = test["clientOptions"]
         use_multi_mongos = test["useMultipleMongoses"]
         host = None
         if use_multi_mongos:

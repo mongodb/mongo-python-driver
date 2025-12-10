@@ -1298,8 +1298,6 @@ def _batched_write_command_impl(
 
     # Start of payload
     buf.seek(-1, 2)
-    # Work around some Jython weirdness.
-    buf.truncate()
     try:
         buf.write(_OP_MAP[operation])
     except KeyError:
