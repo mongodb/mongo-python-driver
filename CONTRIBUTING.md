@@ -524,8 +524,10 @@ Use this generated file as a starting point for the completed conversion.
 
 The script is used like so: `python tools/convert_test_to_async.py [test_file.py]`
 
-## Generating a flame graph using py-spy
+## CPU profiling
+
 To profile a test script and generate a flame graph, follow these steps:
+
 1. Install `py-spy` if you haven't already:
    ```bash
    pip install py-spy
@@ -535,6 +537,26 @@ To profile a test script and generate a flame graph, follow these steps:
    (Note: on macOS you will need to run this command using `sudo` to allow `py-spy` to attach to the Python process.)
 4. If you need to include native code (for example the C extensions), profiling should be done on a Linux system, as macOS and Windows do not support the `--native` option of `py-spy`.
    Creating an ubuntu Evergreen spawn host and using `scp` to copy the flamegraph `.svg` file back to your local machine is the best way to do this.
+5. You can then view the flamegraph using an SVG viewer like a browser.
+
+## Memory profiling
+
+To test for a memory leak or any memory-related issues, the current best tool is [memray](https://bloomberg.github.io/memray/overview.html).
+In order to include code from our C extensions, it must be run in native mode, on Linux.
+To do so, either spin up an Ubuntu docker container or an Ubuntu Evergreen spawn host.
+
+From the spawn host or Ubuntu image, do the following:
+
+1. Install `memray` if you haven't already:
+   ```bash
+   pip install memray
+   ```
+2. Inside your test script, perform any required setup and then loop over the code you want to profile for improved sampling.
+3. Run memray with the script under test with the `--native` flag, e.g. `python -m memray run --native -o test.bin <path/to/script>`.
+4. Generate the flamegraph with `python -m memray flamegraph -o test.html test.bin`.
+   See the [docs](https://bloomberg.github.io/memray/flamegraph.html) for more options.
+5. Then, from the host computer, use either scp or docker cp to copy the flamegraph, e.g. `scp ubuntu@ec2-3-82-52-49.compute-1.amazonaws.com:/home/ubuntu/test.html .`.
+6. You can then view the flamegraph html in a browser.
 
 ## Dependabot updates
 
