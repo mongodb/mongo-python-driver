@@ -233,7 +233,7 @@ class EncryptionIntegrationTest(IntegrationTest):
     """Base class for encryption integration tests."""
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    @client_context.require_version_min(4, 2, -1)
+    @client_context.require_version_min(4, 2, -1)  # type:ignore[untyped-decorator]
     def setUp(self) -> None:
         super().setUp()
 

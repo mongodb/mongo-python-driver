@@ -233,7 +233,7 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
     """Base class for encryption integration tests."""
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    @async_client_context.require_version_min(4, 2, -1)
+    @async_client_context.require_version_min(4, 2, -1)  # type:ignore[untyped-decorator]
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
 

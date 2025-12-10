@@ -482,7 +482,7 @@ class AsyncClientContext:
     async def drop_user(self, dbname, user):
         await self.client[dbname].command("dropUser", user, writeConcern={"w": self.w})
 
-    def require_connection(self, func):
+    def require_connection(self, func: Any) -> Any:
         """Run a test only if we can connect to MongoDB."""
         return self._require(
             lambda: True,  # _require checks if we're connected
@@ -552,7 +552,7 @@ class AsyncClientContext:
             lambda: not self.fips_enabled, "Test cannot run on a FIPS-enabled host", func=func
         )
 
-    def require_replica_set(self, func):
+    def require_replica_set(self, func: Any) -> Any:
         """Run a test only if the client is connected to a replica set."""
         return self._require(lambda: self.is_rs, "Not connected to a replica set", func=func)
 
@@ -687,7 +687,7 @@ class AsyncClientContext:
             lambda: self.test_commands_enabled, "Test commands must be enabled", func=func
         )
 
-    def require_failCommand_fail_point(self, func):
+    def require_failCommand_fail_point(self, func: Any) -> Any:
         """Run a test only if the server supports the failCommand fail
         point.
         """
