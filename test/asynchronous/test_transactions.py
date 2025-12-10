@@ -18,7 +18,6 @@ from __future__ import annotations
 import asyncio
 import sys
 from io import BytesIO
-from test.asynchronous.utils_spec_runner import AsyncSpecRunner
 
 from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
 from pymongo.asynchronous.pool import PoolState
@@ -61,15 +60,8 @@ _IS_SYNC = False
 UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
-class AsyncTransactionsBase(AsyncSpecRunner):
-    def maybe_skip_scenario(self, test):
-        super().maybe_skip_scenario(test)
-        if (
-            "secondary" in self.id()
-            and not async_client_context.is_mongos
-            and not async_client_context.has_secondaries
-        ):
-            raise unittest.SkipTest("No secondaries")
+class AsyncTransactionsBase(AsyncIntegrationTest):
+    pass
 
 
 class TestTransactions(AsyncTransactionsBase):
