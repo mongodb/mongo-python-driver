@@ -144,7 +144,7 @@ disallow_any_generics = true
 
 [[tool.mypy.overrides]]
 module = ["test.*"]
-disable_error_code = ["type-arg", "no-untyped-def", "no-untyped-call"]
+disable_error_code = ["type-arg", "no-untyped-def", "no-untyped-call", "untyped-decorator"]
 
 [[tool.mypy.overrides]]
 module = ["service_identity.*"]
