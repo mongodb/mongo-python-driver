@@ -19,6 +19,7 @@ from __future__ import annotations
 import array
 import collections
 import datetime
+import importlib.util
 import mmap
 import os
 import pickle
@@ -70,6 +71,8 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset, utc
+
+_NUMPY_AVAILABLE = importlib.util.find_spec("numpy") is not None
 
 
 class NotADict(abc.MutableMapping):
@@ -870,6 +873,65 @@ class TestBSON(unittest.TestCase):
         self.assertNotEqual(
             BinaryVector([1], BinaryVectorDtype.INT8), BinaryVector([2], BinaryVectorDtype.INT8)
         )
+
+    @unittest.skipIf(not _NUMPY_AVAILABLE, "numpy optional-dependency not installed.")
+    def test_vector_from_numpy(self):
+        """Follows test_vector except for input type numpy.ndarray"""
+        # Simple data values could be treated as any of our BinaryVectorDtypes
+        import numpy as np
+
+        arr = np.array([2, 3])
+        # INT8
+        binary_vector_int8 = Binary.from_vector(arr, BinaryVectorDtype.INT8)
+        # as_vector
+        vector = binary_vector_int8.as_vector()
+        assert isinstance(vector, BinaryVector)
+        assert vector.data == arr.tolist()
+        # as_numpy_vector
+        vector_np = binary_vector_int8.as_vector(return_numpy=True)
+        assert isinstance(vector_np, BinaryVector)
+        assert isinstance(vector_np.data, np.ndarray)
+        assert np.all(vector.data == arr)
+        # PACKED_BIT
+        binary_vector_uint8 = Binary.from_vector(arr, BinaryVectorDtype.PACKED_BIT)
+        # as_vector
+        vector = binary_vector_uint8.as_vector()
+        assert isinstance(vector, BinaryVector)
+        assert vector.data == arr.tolist()
+        # as_numpy_vector
+        vector_np = binary_vector_uint8.as_vector(return_numpy=True)
+        assert isinstance(vector_np, BinaryVector)
+        assert isinstance(vector_np.data, np.ndarray)
+        assert np.all(vector_np.data == arr)
+        # FLOAT32
+        binary_vector_float32 = Binary.from_vector(arr, BinaryVectorDtype.FLOAT32)
+        # as_vector
+        vector = binary_vector_float32.as_vector()
+        assert isinstance(vector, BinaryVector)
+        assert vector.data == arr.tolist()
+        # as_numpy_vector
+        vector_np = binary_vector_float32.as_vector(return_numpy=True)
+        assert isinstance(vector_np, BinaryVector)
+        assert isinstance(vector_np.data, np.ndarray)
+        assert np.all(vector_np.data == arr)
+
+        # Invalid cases
+        with self.assertRaises(ValueError):
+            Binary.from_vector(np.array([-1]), BinaryVectorDtype.PACKED_BIT)
+        with self.assertRaises(ValueError):
+            Binary.from_vector(np.array([128]), BinaryVectorDtype.PACKED_BIT)
+        with self.assertRaises(ValueError):
+            Binary.from_vector(np.array([-198]), BinaryVectorDtype.INT8)
+
+        # Unexpected cases
+        # Creating a vector of INT8 from a list of doubles will be caught by struct.pack
+        # Numpy's default behavior is to cast to the type requested.
+        list_floats = [-1.1, 1.1]
+        cast_bin = Binary.from_vector(np.array(list_floats), BinaryVectorDtype.INT8)
+        vector = cast_bin.as_vector()
+        vector_np = cast_bin.as_vector(return_numpy=True)
+        assert vector.data != list_floats
+        assert vector.data == vector_np.data.tolist() == [-1, 1]
 
     def test_unicode_regex(self):
         """Tests we do not get a segfault for C extension on unicode RegExs.

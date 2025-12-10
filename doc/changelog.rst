@@ -19,6 +19,7 @@ PyMongo 4.16 brings a number of changes including:
 - Use Zstandard support from the standard library for Python 3.14+, and use ``backports.zstd`` for older versions.
 - Fixed return type annotation for ``find_one_and_*`` methods on :class:`~pymongo.asynchronous.collection.AsyncCollection`
   and :class:`~pymongo.synchronous.collection.Collection` to include ``None``.
+- Added support for NumPy 1D-arrays in :class:`bson.binary.BinaryVector`.
 
 Changes in Version 4.15.5 (2025/XX/XX)
 --------------------------------------
