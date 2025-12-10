@@ -111,7 +111,7 @@ class Topology:
         self._publish_tp = self._listeners is not None and self._listeners.enabled_for_topology
 
         # Create events queue if there are publishers.
-        self._events = None
+        self._events: queue.Queue[Any] | None = None
         self.__events_executor: Any = None
 
         if self._publish_server or self._publish_tp:
@@ -126,6 +126,7 @@ class Topology:
 
         if self._publish_tp:
             assert self._events is not None
+            assert self._listeners is not None
             self._events.put((self._listeners.publish_topology_opened, (self._topology_id,)))
         self._settings = topology_settings
         topology_description = TopologyDescription(
@@ -143,6 +144,7 @@ class Topology:
         )
         if self._publish_tp:
             assert self._events is not None
+            assert self._listeners is not None
             self._events.put(
                 (
                     self._listeners.publish_topology_description_changed,
@@ -161,6 +163,7 @@ class Topology:
         for seed in topology_settings.seeds:
             if self._publish_server:
                 assert self._events is not None
+                assert self._listeners is not None
                 self._events.put((self._listeners.publish_server_opened, (seed, self._topology_id)))
             if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
@@ -491,6 +494,7 @@ class Topology:
         suppress_event = sd_old == server_description
         if self._publish_server and not suppress_event:
             assert self._events is not None
+            assert self._listeners is not None
             self._events.put(
                 (
                     self._listeners.publish_server_description_changed,
@@ -503,6 +507,7 @@ class Topology:
 
         if self._publish_tp and not suppress_event:
             assert self._events is not None
+            assert self._listeners is not None
             self._events.put(
                 (
                     self._listeners.publish_topology_description_changed,
@@ -570,6 +575,7 @@ class Topology:
 
         if self._publish_tp:
             assert self._events is not None
+            assert self._listeners is not None
             self._events.put(
                 (
                     self._listeners.publish_topology_description_changed,
@@ -723,6 +729,7 @@ class Topology:
         # Publish only after releasing the lock.
         if self._publish_tp:
             assert self._events is not None
+            assert self._listeners is not None
             self._description = TopologyDescription(
                 TOPOLOGY_TYPE.Unknown,
                 {},
