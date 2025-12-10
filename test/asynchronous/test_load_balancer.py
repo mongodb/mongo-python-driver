@@ -36,6 +36,8 @@ from test.utils_shared import (
     create_async_event,
 )
 
+from pymongo.asynchronous.helpers import anext
+
 _IS_SYNC = False
 
 pytestmark = pytest.mark.load_balancer

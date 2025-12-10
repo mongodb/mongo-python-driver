@@ -114,6 +114,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
+from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.pool import (
     Connection,

@@ -47,6 +47,7 @@ from gridfs.asynchronous.grid_file import (
 )
 from gridfs.errors import NoFile
 from pymongo import AsyncMongoClient
+from pymongo.asynchronous.helpers import anext
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress
 

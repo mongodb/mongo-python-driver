@@ -36,6 +36,8 @@ from test.utils_shared import (
     wait_until,
 )
 
+from pymongo.synchronous.helpers import next
+
 _IS_SYNC = True
 
 pytestmark = pytest.mark.load_balancer

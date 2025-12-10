@@ -51,6 +51,7 @@ from pymongo.synchronous import client_session
 from pymongo.synchronous.client_session import TransactionOptions
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor
+from pymongo.synchronous.helpers import next
 
 _IS_SYNC = True
 
