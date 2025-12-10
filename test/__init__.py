@@ -638,7 +638,7 @@ class ClientContext:
             lambda: self.load_balancer, "Must be connected to a load balancer", func=func
         )
 
-    def require_no_load_balancer(self, func):
+    def require_no_load_balancer(self, func: Any) -> Any:
         """Run a test only if the client is not connected to a load balancer."""
         return self._require(
             lambda: not self.load_balancer, "Must not be connected to a load balancer", func=func
