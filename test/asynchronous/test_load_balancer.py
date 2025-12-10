@@ -30,7 +30,7 @@ import pytest
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import (
     async_wait_until,
     create_async_event,
@@ -40,14 +40,8 @@ _IS_SYNC = False
 
 pytestmark = pytest.mark.load_balancer
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "load_balancer")
-else:
-    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "load_balancer")
-
 # Generate unified tests.
-globals().update(generate_test_classes(_TEST_PATH, module=__name__))
+globals().update(generate_test_classes(get_test_path("load_balancer"), module=__name__))
 
 
 class TestLB(AsyncIntegrationTest):

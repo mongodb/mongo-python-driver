@@ -22,19 +22,12 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 
 _IS_SYNC = False
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "sessions")
-else:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "sessions")
-
-
 # Generate unified tests.
-globals().update(generate_test_classes(TEST_PATH, module=__name__))
+globals().update(generate_test_classes(get_test_path("sessions"), module=__name__))
 
 if __name__ == "__main__":
     unittest.main()

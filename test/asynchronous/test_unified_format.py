@@ -21,18 +21,18 @@ from typing import Any
 sys.path[0:0] = [""]
 
 from test import UnitTest, unittest
-from test.asynchronous.unified_format import MatchEvaluatorUtil, generate_test_classes
+from test.asynchronous.unified_format import (
+    MatchEvaluatorUtil,
+    generate_test_classes,
+    get_test_path,
+)
 
 from bson import ObjectId
 
 _IS_SYNC = False
 
 # Location of JSON test specifications.
-if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "unified-test-format")
-else:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "unified-test-format")
-
+TEST_PATH = get_test_path("unified-test-format")
 
 globals().update(
     generate_test_classes(

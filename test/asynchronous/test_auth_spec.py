@@ -27,7 +27,7 @@ import pytest
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 
 from pymongo import AsyncMongoClient
 from pymongo.auth_oidc_shared import OIDCCallback
@@ -35,8 +35,7 @@ from pymongo.auth_oidc_shared import OIDCCallback
 pytestmark = pytest.mark.auth
 
 _IS_SYNC = False
-
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "auth")
+_TEST_PATH = get_test_path("auth")
 
 
 class TestAuthSpec(AsyncPyMongoTestCase):

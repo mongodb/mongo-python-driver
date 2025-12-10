@@ -16,7 +16,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 
 sys.path[0:0] = [""]
 
@@ -27,15 +27,8 @@ from pymongo.server_api import ServerApi
 
 _IS_SYNC = False
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "versioned-api")
-else:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "versioned-api")
-
-
 # Generate unified tests.
-globals().update(generate_test_classes(TEST_PATH, module=__name__))
+globals().update(generate_test_classes(get_test_path("versioned-api"), module=__name__))
 
 
 class TestServerApiIntegration(AsyncIntegrationTest):
