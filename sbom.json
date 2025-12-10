@@ -92,7 +92,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2025-11-24T16:21:47.249880+00:00",
+    "timestamp": "2025-12-10T16:38:03.445443+00:00",
     "tools": {
       "components": [
         {
@@ -189,12 +189,12 @@
           ],
           "name": "cyclonedx-python-lib",
           "type": "library",
-          "version": "11.5.0"
+          "version": "11.6.0"
         }
       ]
     }
   },
-  "serialNumber": "urn:uuid:7a19d697-d41e-4e88-b953-4bccb5d79937",
+  "serialNumber": "urn:uuid:458647cb-39f5-40c7-9785-6b8061561b91",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
