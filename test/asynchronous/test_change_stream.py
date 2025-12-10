@@ -771,8 +771,8 @@ class ProseSpecTestsMixin:
 class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
     dbs: list
 
-    @async_client_context.require_version_min(4, 2, 0)
-    @async_client_context.require_change_streams
+    @async_client_context.require_version_min(4, 2, 0)  # type:ignore[untyped-decorator]
+    @async_client_context.require_change_streams  # type:ignore[untyped-decorator]
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         self.dbs = [self.db, self.client.pymongo_test_2]
@@ -831,8 +831,8 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
 
 
 class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
-    @async_client_context.require_version_min(4, 2, 0)
-    @async_client_context.require_change_streams
+    @async_client_context.require_version_min(4, 2, 0)  # type:ignore[untyped-decorator]
+    @async_client_context.require_change_streams  # type:ignore[untyped-decorator]
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
 

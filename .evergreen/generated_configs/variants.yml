@@ -621,3 +621,42 @@ buildvariants:
       - rhel87-small
     expansions:
       STORAGE_ENGINE: inmemory
+
+  # Test numpy tests
+  - name: test-numpy-rhel8
+    tasks:
+      - name: .test-numpy
+    display_name: Test Numpy RHEL8
+    run_on:
+      - rhel87-small
+    tags: [binary, vector, pr]
+  - name: test-numpy-macos
+    tasks:
+      - name: .test-numpy
+    display_name: Test Numpy macOS
+    run_on:
+      - macos-14
+    tags: [binary, vector]
+  - name: test-numpy-macos-arm64
+    tasks:
+      - name: .test-numpy
+    display_name: Test Numpy macOS Arm64
+    run_on:
+      - macos-14-arm64
+    tags: [binary, vector]
+  - name: test-numpy-win64
+    tasks:
+      - name: .test-numpy
+    display_name: Test Numpy Win64
+    run_on:
+      - windows-64-vsMulti-small
+    tags: [binary, vector]
+  - name: test-numpy-win32
+    tasks:
+      - name: .test-numpy
+    display_name: Test Numpy Win32
+    run_on:
+      - windows-64-vsMulti-small
+    expansions:
+      IS_WIN32: "1"
+    tags: [binary, vector]
