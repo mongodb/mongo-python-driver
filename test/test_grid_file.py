@@ -49,7 +49,7 @@ from gridfs.synchronous.grid_file import (
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress
-from pymongo.synchronous.helpers import next
+from pymongo.synchronous.helpers import iter, next
 
 _IS_SYNC = True
 
