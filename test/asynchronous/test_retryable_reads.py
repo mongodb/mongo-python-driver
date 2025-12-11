@@ -21,7 +21,6 @@ import sys
 import threading
 from test.asynchronous.utils import async_set_fail_point
 
-from pymongo import ReadPreference
 from pymongo.errors import OperationFailure
 
 sys.path[0:0] = [""]
