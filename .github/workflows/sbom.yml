@@ -10,7 +10,6 @@ on:
   push:
     branches: ['master']
     paths:
-      - 'pyproject.toml'
       - 'requirements.txt'
 
 permissions:
