@@ -37,7 +37,7 @@
       }
     ]
   },
-    "deprioritized_servers": [
+  "deprioritized_servers": [
     {
       "address": "b:27017",
       "avg_rtt_ms": 5,

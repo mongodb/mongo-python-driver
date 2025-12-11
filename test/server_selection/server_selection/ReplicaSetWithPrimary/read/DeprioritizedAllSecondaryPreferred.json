@@ -31,7 +31,7 @@
   "operation": "read",
   "read_preference": {
     "mode": "SecondaryPreferred",
-        "tag_sets": [
+    "tag_sets": [
       {}
     ]
   },
