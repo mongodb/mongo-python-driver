@@ -1357,7 +1357,7 @@ requires-dist = [
     { name = "backports-zstd", marker = "python_full_version < '3.14' and extra == 'zstd'", specifier = ">=1.0.0" },
     { name = "certifi", marker = "(os_name == 'nt' and extra == 'encryption') or (sys_platform == 'darwin' and extra == 'encryption')", specifier = ">=2023.7.22" },
     { name = "certifi", marker = "(os_name == 'nt' and extra == 'ocsp') or (sys_platform == 'darwin' and extra == 'ocsp')", specifier = ">=2023.7.22" },
-    { name = "cryptography", marker = "extra == 'ocsp'", specifier = ">=37.0.1" },
+    { name = "cryptography", marker = "extra == 'ocsp'", specifier = ">=42.0.0" },
     { name = "dnspython", specifier = ">=2.6.1,<3.0.0" },
     { name = "furo", marker = "extra == 'docs'", specifier = "==2025.9.25" },
     { name = "importlib-metadata", marker = "python_full_version < '3.13' and extra == 'test'", specifier = ">=7.0" },
@@ -1365,7 +1365,7 @@ requires-dist = [
     { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.1.0,<2.0.0" },
     { name = "pymongo-auth-aws", marker = "extra == 'encryption'", specifier = ">=1.1.0,<2.0.0" },
     { name = "pymongocrypt", marker = "extra == 'encryption'", specifier = ">=1.13.0,<2.0.0" },
-    { name = "pyopenssl", marker = "extra == 'ocsp'", specifier = ">=20.0.1" },
+    { name = "pyopenssl", marker = "extra == 'ocsp'", specifier = ">=23.2.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.2" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.24.0" },
     { name = "python-snappy", marker = "extra == 'snappy'", specifier = ">=0.6.0" },
@@ -1386,7 +1386,7 @@ coverage = [
     { name = "pytest-cov", specifier = ">=4.0.0" },
 ]
 dev = []
-gevent = [{ name = "gevent", specifier = ">=21.8" }]
+gevent = [{ name = "gevent", specifier = ">=21.12" }]
 mockupdb = [{ name = "mockupdb", git = "https://github.com/mongodb-labs/mongo-mockup-db?rev=master" }]
 perf = [{ name = "simplejson", specifier = ">=3.17.0" }]
 pip = [{ name = "pip", specifier = ">=20.2" }]
