@@ -25,6 +25,7 @@ from test.utils import get_pool, is_mongos
 from typing import Any, Iterable, no_type_check
 
 from pymongo.synchronous.database import Database
+from pymongo.synchronous.helpers import next
 
 sys.path[0:0] = [""]
 

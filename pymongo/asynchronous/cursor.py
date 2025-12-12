@@ -37,6 +37,7 @@ from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import _csot, helpers_shared
+from pymongo.asynchronous.helpers import anext
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,

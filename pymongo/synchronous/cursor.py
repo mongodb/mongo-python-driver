@@ -55,6 +55,7 @@ from pymongo.message import (
     _RawBatchQuery,
 )
 from pymongo.response import PinnedResponse
+from pymongo.synchronous.helpers import next
 from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
 from pymongo.write_concern import validate_boolean
 

@@ -100,6 +100,7 @@ from pymongo.errors import (
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.synchronous import encryption
 from pymongo.synchronous.encryption import Algorithm, ClientEncryption, QueryType
+from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 

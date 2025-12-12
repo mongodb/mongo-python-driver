@@ -51,6 +51,7 @@ from pymongo.operations import _IndexList
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.cursor import Cursor, CursorType
+from pymongo.synchronous.helpers import next
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True

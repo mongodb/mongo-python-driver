@@ -42,6 +42,7 @@ from pymongo import CursorType, DeleteOne, InsertOne, UpdateOne, monitoring
 from pymongo.errors import AutoReconnect, NotPrimaryError, OperationFailure
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.helpers import next
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True

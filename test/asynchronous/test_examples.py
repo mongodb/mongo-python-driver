@@ -29,6 +29,7 @@ from test.asynchronous import AsyncIntegrationTest, async_client_context, unitte
 from test.utils_shared import async_wait_until
 
 import pymongo
+from pymongo.asynchronous.helpers import anext
 from pymongo.errors import ConnectionFailure, OperationFailure
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference

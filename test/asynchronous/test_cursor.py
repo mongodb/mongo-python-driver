@@ -46,6 +46,7 @@ from bson.code import Code
 from bson.raw_bson import RawBSONDocument
 from pymongo import ASCENDING, DESCENDING
 from pymongo.asynchronous.cursor import AsyncCursor, CursorType
+from pymongo.asynchronous.helpers import anext
 from pymongo.collation import Collation
 from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure, PyMongoError
 from pymongo.operations import _IndexList

@@ -25,6 +25,7 @@ from test.asynchronous.utils import async_get_pool, async_is_mongos
 from typing import Any, Iterable, no_type_check
 
 from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.helpers import anext
 
 sys.path[0:0] = [""]
 

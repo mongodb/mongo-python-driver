@@ -42,6 +42,7 @@ from pymongo import helpers_shared
 from pymongo.asynchronous import auth
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.errors import (
     CollectionInvalid,

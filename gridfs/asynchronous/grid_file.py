@@ -46,6 +46,7 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.helpers import anext
 from pymongo.common import validate_string
 from pymongo.errors import (
     BulkWriteError,

@@ -16,7 +16,9 @@
 from __future__ import annotations
 
 import asyncio
+import builtins
 import socket
+import sys
 from typing import (
     Any,
     Callable,
@@ -84,3 +86,17 @@ def _getaddrinfo(
         return loop.getaddrinfo(host, port, **kwargs)  # type: ignore[return-value]
     else:
         return socket.getaddrinfo(host, port, **kwargs)
+
+
+if sys.version_info >= (3, 10):
+    next = builtins.next
+    iter = builtins.iter
+else:
+
+    def next(cls: Any) -> Any:
+        """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#next."""
+        return cls.__next__()
+
+    def iter(cls: Any) -> Any:
+        """Compatibility function until we drop 3.9 support: https://docs.python.org/3/library/functions.html#next."""
+        return cls.__iter__()

@@ -83,6 +83,7 @@ jobs:
       - name: Assert all versions in wheelhouse
         if: ${{ ! startsWith(matrix.buildplat[1], 'macos') }}
         run: |
+          ls wheelhouse/*cp39*.whl
           ls wheelhouse/*cp310*.whl
           ls wheelhouse/*cp311*.whl
           ls wheelhouse/*cp312*.whl
@@ -110,7 +111,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           # Build sdist on lowest supported Python
-          python-version: "3.10"
+          python-version: "3.9"
 
       - name: Build SDist
         run: |

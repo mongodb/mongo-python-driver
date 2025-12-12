@@ -42,6 +42,7 @@ from test.utils_shared import (
 from test.version import Version
 
 from bson.son import SON
+from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.message import _maybe_add_read_preference
