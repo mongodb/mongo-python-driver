@@ -34,16 +34,16 @@ class Selection:
 
     @classmethod
     def from_topology_description(cls, topology_description: TopologyDescription) -> Selection:
-        known_servers = topology_description.known_servers
+        candidate_servers = topology_description.candidate_servers
         primary = None
-        for sd in known_servers:
+        for sd in candidate_servers:
             if sd.server_type == SERVER_TYPE.RSPrimary:
                 primary = sd
                 break
 
         return Selection(
             topology_description,
-            topology_description.known_servers,
+            topology_description.candidate_servers,
             topology_description.common_wire_version,
             primary,
         )
