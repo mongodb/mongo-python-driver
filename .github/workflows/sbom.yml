@@ -8,12 +8,12 @@ name: Generate SBOM
 on:
   workflow_dispatch: {}
   push:
-    branches: ["master"]
+    branches: ['master']
     paths:
-      - "requirements.txt"
-      - "requirements/**.txt"
-      - "!requirements/docs.txt"
-      - "!requirements/test.txt"
+      - 'requirements.txt'
+      - 'requirements/**.txt'
+      - '!requirements/docs.txt'
+      - '!requirements/test.txt'
 
 permissions:
   contents: write
@@ -77,10 +77,10 @@ jobs:
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: Update SBOM after dependency changes"
+          commit-message: 'chore: Update SBOM after dependency changes'
           branch: auto-update-sbom-${{ github.run_id }}
           delete-branch: true
-          title: "chore: Update SBOM"
+          title: 'Automation: Update SBOM'
           body: |
             ## Automated SBOM Update
 
