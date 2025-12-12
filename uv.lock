@@ -1357,7 +1357,7 @@ requires-dist = [
     { name = "backports-zstd", marker = "python_full_version < '3.14' and extra == 'zstd'", specifier = ">=1.0.0" },
     { name = "certifi", marker = "(os_name == 'nt' and extra == 'encryption') or (sys_platform == 'darwin' and extra == 'encryption')", specifier = ">=2023.7.22" },
     { name = "certifi", marker = "(os_name == 'nt' and extra == 'ocsp') or (sys_platform == 'darwin' and extra == 'ocsp')", specifier = ">=2023.7.22" },
-    { name = "cryptography", marker = "extra == 'ocsp'", specifier = ">=35.0" },
+    { name = "cryptography", marker = "extra == 'ocsp'", specifier = ">=3.2" },
     { name = "dnspython", specifier = ">=2.6.1,<3.0.0" },
     { name = "furo", marker = "extra == 'docs'", specifier = "==2025.9.25" },
     { name = "importlib-metadata", marker = "python_full_version < '3.13' and extra == 'test'", specifier = ">=7.0" },
@@ -1383,7 +1383,7 @@ provides-extras = ["aws", "docs", "encryption", "gssapi", "ocsp", "snappy", "tes
 [package.metadata.requires-dev]
 coverage = [
     { name = "coverage", specifier = ">=5,<=7.10.6" },
-    { name = "pytest-cov" },
+    { name = "pytest-cov", specifier = ">=2.10.0" },
 ]
 dev = []
 gevent = [{ name = "gevent", specifier = ">=20.6.0" }]

@@ -51,7 +51,7 @@ dev = []
 pip = ["pip"]
 gevent = ["gevent>=20.6.0"]
 coverage = [
-    "pytest-cov",
+    "pytest-cov>=2.10.0",
     "coverage>=5,<=7.10.6"
 ]
 mockupdb = [
