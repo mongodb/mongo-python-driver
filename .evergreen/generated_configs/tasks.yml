@@ -9,7 +9,7 @@ tasks:
     tags: [aws_lambda]
 
   # Aws tests
-  - name: test-auth-aws-4.4-regular-python3.10
+  - name: test-auth-aws-4.4-regular-python3.10-min-deps
     commands:
       - func: run server
         vars:
@@ -21,6 +21,7 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: regular
           TOOLCHAIN_VERSION: "3.10"
+          TEST_MIN_DEPS: "1"
     tags: [auth-aws, auth-aws-regular]
   - name: test-auth-aws-5.0-assume-role-python3.11
     commands:
@@ -198,50 +199,6 @@ tasks:
           SUB_TEST_NAME: azure-fail
     tags: [pr]
 
-  # Min deps tests
-  - name: test-min-deps-python3.10-sync-noauth-nossl-standalone
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          TEST_MIN_DEPS: "1"
-    tags: [test-min-deps, standalone-noauth-nossl]
-  - name: test-min-deps-python3.10-sync-noauth-ssl-replica-set
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          TEST_MIN_DEPS: "1"
-    tags: [test-min-deps, replica_set-noauth-ssl]
-  - name: test-min-deps-python3.10-sync-auth-ssl-sharded-cluster
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          TEST_MIN_DEPS: "1"
-    tags: [test-min-deps, sharded_cluster-auth-ssl]
-
   # Mod wsgi tests
   - name: mod-wsgi-replica-set-python3.10
     commands:
@@ -305,12 +262,13 @@ tasks:
     tags: [mod_wsgi, pr]
 
   # No orchestration tests
-  - name: test-no-orchestration-python3.10
+  - name: test-no-orchestration-python3.10-min-deps
     commands:
       - func: assume ec2 role
       - func: run tests
         vars:
           TOOLCHAIN_VERSION: "3.10"
+          TEST_MIN_DEPS: "1"
     tags: [test-no-orchestration, python-3.10]
   - name: test-no-orchestration-python3.14
     commands:
@@ -372,7 +330,7 @@ tasks:
     tags: [test-no-toolchain, sharded_cluster-auth-ssl]
 
   # Ocsp tests
-  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -381,8 +339,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
-  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -391,8 +350,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
-  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -401,8 +361,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
-  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -411,8 +372,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
-  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -421,8 +383,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -431,6 +394,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-latest-python3.14
     commands:
@@ -442,7 +406,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
-  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -451,8 +415,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
-  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -461,8 +426,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
-  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -471,8 +437,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
-  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -481,8 +448,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
-  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -491,8 +459,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -501,6 +470,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-latest-python3.14
     commands:
@@ -512,7 +482,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -521,8 +491,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -531,8 +502,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -541,8 +513,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -551,8 +524,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -561,8 +535,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -571,6 +546,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-latest-python3.14
     commands:
@@ -582,7 +558,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -591,8 +567,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -601,8 +578,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -611,8 +589,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -621,8 +600,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -631,8 +611,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -641,6 +622,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-latest-python3.14
     commands:
@@ -652,7 +634,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
-  - name: test-ocsp-ecdsa-soft-fail-v4.4-python3.10
+  - name: test-ocsp-ecdsa-soft-fail-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -661,8 +643,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
-  - name: test-ocsp-ecdsa-soft-fail-v5.0-python3.10
+  - name: test-ocsp-ecdsa-soft-fail-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -671,8 +654,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
-  - name: test-ocsp-ecdsa-soft-fail-v6.0-python3.10
+  - name: test-ocsp-ecdsa-soft-fail-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -681,8 +665,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
-  - name: test-ocsp-ecdsa-soft-fail-v7.0-python3.10
+  - name: test-ocsp-ecdsa-soft-fail-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -691,8 +676,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
-  - name: test-ocsp-ecdsa-soft-fail-v8.0-python3.10
+  - name: test-ocsp-ecdsa-soft-fail-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -701,8 +687,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-soft-fail-rapid-python3.10
+  - name: test-ocsp-ecdsa-soft-fail-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -711,6 +698,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-soft-fail-latest-python3.14
     commands:
@@ -722,7 +710,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
-  - name: test-ocsp-ecdsa-valid-cert-server-staples-v4.4-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -731,12 +719,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "4.4"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-valid-cert-server-staples-v5.0-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-staples-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -745,12 +734,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "5.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-valid-cert-server-staples-v6.0-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-staples-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -759,12 +749,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "6.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-valid-cert-server-staples-v7.0-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-staples-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -773,12 +764,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "7.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-valid-cert-server-staples-v8.0-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-staples-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -787,12 +779,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-valid-cert-server-staples-rapid-python3.10
+  - name: test-ocsp-ecdsa-valid-cert-server-staples-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -801,6 +794,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -820,7 +814,7 @@ tasks:
       - ocsp-ecdsa
       - latest
       - ocsp-staple
-  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v4.4-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -829,12 +823,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "4.4"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v5.0-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -843,12 +838,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "5.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v6.0-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -857,12 +853,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "6.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v7.0-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -871,12 +868,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "7.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v8.0-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -885,12 +883,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-invalid-cert-server-staples-rapid-python3.10
+  - name: test-ocsp-ecdsa-invalid-cert-server-staples-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -899,6 +898,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -918,7 +918,7 @@ tasks:
       - ocsp-ecdsa
       - latest
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v4.4-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -927,12 +927,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "4.4"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v5.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -941,12 +942,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "5.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v6.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -955,12 +957,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "6.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v7.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -969,12 +972,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "7.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v8.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -983,12 +987,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-rapid-python3.10
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -997,6 +1002,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -1016,7 +1022,7 @@ tasks:
       - ocsp-ecdsa
       - latest
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v4.4-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1025,12 +1031,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "4.4"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v5.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1039,12 +1046,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "5.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v6.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1053,12 +1061,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "6.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v7.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1067,12 +1076,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "7.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v8.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1081,12 +1091,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-rapid-python3.10
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1095,6 +1106,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -1114,7 +1126,7 @@ tasks:
       - ocsp-ecdsa
       - latest
       - ocsp-staple
-  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1123,8 +1135,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
-  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1133,8 +1146,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
-  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1143,8 +1157,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
-  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1153,8 +1168,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
-  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1163,8 +1179,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1173,6 +1190,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.14
     commands:
@@ -1184,7 +1202,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
-  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1193,8 +1211,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
-  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1203,8 +1222,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
-  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1213,8 +1233,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
-  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1223,8 +1244,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
-  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1233,8 +1255,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1243,6 +1266,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.14
     commands:
@@ -1254,7 +1278,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
-  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1263,8 +1287,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
-  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1273,8 +1298,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
-  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1283,8 +1309,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
-  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1293,8 +1320,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
-  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1303,8 +1331,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1313,6 +1342,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-latest-python3.14
     commands:
@@ -1324,7 +1354,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
-  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1333,8 +1363,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
-  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1343,8 +1374,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
-  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1353,8 +1385,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
-  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1363,8 +1396,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
-  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1373,8 +1407,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1383,6 +1418,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-latest-python3.14
     commands:
@@ -1394,7 +1430,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
-  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1403,8 +1439,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
-  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1413,8 +1450,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
-  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1423,8 +1461,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
-  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1433,8 +1472,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
-  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1443,8 +1483,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1453,6 +1494,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-latest-python3.14
     commands:
@@ -1464,7 +1506,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
-  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1473,8 +1515,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
-  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1483,8 +1526,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
-  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1493,8 +1537,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
-  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1503,8 +1548,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
-  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1513,8 +1559,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1523,6 +1570,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-latest-python3.14
     commands:
@@ -1534,7 +1582,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1543,8 +1591,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1553,8 +1602,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1563,8 +1613,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1573,8 +1624,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1583,8 +1635,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1593,6 +1646,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-latest-python3.14
     commands:
@@ -1604,7 +1658,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
-  - name: test-ocsp-rsa-soft-fail-v4.4-python3.10
+  - name: test-ocsp-rsa-soft-fail-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1613,8 +1667,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
-  - name: test-ocsp-rsa-soft-fail-v5.0-python3.10
+  - name: test-ocsp-rsa-soft-fail-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1623,8 +1678,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
-  - name: test-ocsp-rsa-soft-fail-v6.0-python3.10
+  - name: test-ocsp-rsa-soft-fail-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1633,8 +1689,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
-  - name: test-ocsp-rsa-soft-fail-v7.0-python3.10
+  - name: test-ocsp-rsa-soft-fail-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1643,8 +1700,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
-  - name: test-ocsp-rsa-soft-fail-v8.0-python3.10
+  - name: test-ocsp-rsa-soft-fail-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1653,8 +1711,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-soft-fail-rapid-python3.10
+  - name: test-ocsp-rsa-soft-fail-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1663,6 +1722,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-soft-fail-latest-python3.14
     commands:
@@ -1674,7 +1734,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
-  - name: test-ocsp-rsa-valid-cert-server-staples-v4.4-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1683,12 +1743,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "4.4"
       - ocsp-staple
-  - name: test-ocsp-rsa-valid-cert-server-staples-v5.0-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-staples-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1697,12 +1758,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "5.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-valid-cert-server-staples-v6.0-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-staples-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1711,12 +1773,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "6.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-valid-cert-server-staples-v7.0-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-staples-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1725,12 +1788,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "7.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-valid-cert-server-staples-v8.0-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-staples-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1739,12 +1803,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-valid-cert-server-staples-rapid-python3.10
+  - name: test-ocsp-rsa-valid-cert-server-staples-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1753,6 +1818,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
@@ -1772,7 +1838,7 @@ tasks:
       - ocsp-rsa
       - latest
       - ocsp-staple
-  - name: test-ocsp-rsa-invalid-cert-server-staples-v4.4-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1781,12 +1847,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "4.4"
       - ocsp-staple
-  - name: test-ocsp-rsa-invalid-cert-server-staples-v5.0-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-staples-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1795,12 +1862,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "5.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-invalid-cert-server-staples-v6.0-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-staples-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1809,12 +1877,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "6.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-invalid-cert-server-staples-v7.0-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-staples-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1823,12 +1892,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "7.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-invalid-cert-server-staples-v8.0-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-staples-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1837,12 +1907,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-invalid-cert-server-staples-rapid-python3.10
+  - name: test-ocsp-rsa-invalid-cert-server-staples-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1851,6 +1922,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
@@ -1870,7 +1942,7 @@ tasks:
       - ocsp-rsa
       - latest
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v4.4-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1879,12 +1951,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "4.4"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v5.0-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1893,12 +1966,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "5.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v6.0-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1907,12 +1981,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "6.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v7.0-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1921,12 +1996,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "7.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v8.0-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1935,12 +2011,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-rapid-python3.10
+  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1949,6 +2026,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
@@ -1968,7 +2046,7 @@ tasks:
       - ocsp-rsa
       - latest
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v4.4-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1977,12 +2055,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "4.4"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v5.0-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -1991,12 +2070,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "5.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v6.0-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2005,12 +2085,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "6.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v7.0-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2019,12 +2100,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "7.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v8.0-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2033,12 +2115,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-rapid-python3.10
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2047,6 +2130,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
@@ -2066,7 +2150,7 @@ tasks:
       - ocsp-rsa
       - latest
       - ocsp-staple
-  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2075,8 +2159,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
-  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2085,8 +2170,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
-  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2095,8 +2181,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
-  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2105,8 +2192,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
-  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2115,8 +2203,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2125,6 +2214,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.14
     commands:
@@ -2136,7 +2226,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
-  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2145,8 +2235,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
-  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2155,8 +2246,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
-  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2165,8 +2257,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
-  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2175,8 +2268,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
-  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2185,8 +2279,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2195,6 +2290,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.14
     commands:
@@ -2206,7 +2302,7 @@ tasks:
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
-  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v4.4-python3.10
+  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2215,8 +2311,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
-  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v5.0-python3.10
+  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2225,8 +2322,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
-  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v6.0-python3.10
+  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2235,8 +2333,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
-  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v7.0-python3.10
+  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2245,8 +2344,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
-  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v8.0-python3.10
+  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2255,8 +2355,9 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-rapid-python3.10
+  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-rapid-python3.10-min-deps
     commands:
       - func: run tests
         vars:
@@ -2265,6 +2366,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.10"
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-latest-python3.14
     commands:
@@ -2494,19 +2596,21 @@ tasks:
       - replica_set-noauth-nossl
       - async
       - pr
-  - name: test-server-version-python3.10-sync-noauth-nossl-replica-set-cov
+  - name: test-server-version-python3.10-sync-noauth-nossl-replica-set-min-deps-cov
     commands:
       - func: run server
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: replica_set
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: replica_set
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
@@ -2597,19 +2701,21 @@ tasks:
       - sharded_cluster-auth-nossl
       - sync
       - free-threaded
-  - name: test-server-version-python3.10-async-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.10-async-auth-ssl-sharded-cluster-min-deps-cov
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
@@ -2742,19 +2848,21 @@ tasks:
       - python-pypy3.11
       - sharded_cluster-auth-ssl
       - async
-  - name: test-server-version-python3.10-sync-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.10-sync-auth-ssl-sharded-cluster-min-deps-cov
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
@@ -2929,19 +3037,21 @@ tasks:
       - python-3.11
       - sharded_cluster-noauth-nossl
       - sync
-  - name: test-server-version-python3.10-async-noauth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.10-async-noauth-ssl-sharded-cluster-min-deps-cov
     commands:
       - func: run server
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: sharded_cluster
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: sharded_cluster
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
@@ -3032,19 +3142,21 @@ tasks:
       - python-3.11
       - standalone-auth-ssl
       - async
-  - name: test-server-version-python3.10-sync-auth-ssl-standalone-cov
+  - name: test-server-version-python3.10-sync-auth-ssl-standalone-min-deps-cov
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: standalone
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: standalone
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
@@ -3053,19 +3165,21 @@ tasks:
       - python-3.10
       - standalone-auth-ssl
       - sync
-  - name: test-server-version-python3.10-async-noauth-nossl-standalone-cov
+  - name: test-server-version-python3.10-async-noauth-nossl-standalone-min-deps-cov
     commands:
       - func: run server
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
+          TEST_MIN_DEPS: "1"
           COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
@@ -3227,7 +3341,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - sync
       - pypy
-  - name: test-standard-v4.2-python3.10-sync-noauth-nossl-standalone
+  - name: test-standard-v4.2-python3.10-sync-noauth-nossl-standalone-min-deps
     commands:
       - func: run server
         vars:
@@ -3235,12 +3349,14 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.2"
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.2"
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
@@ -3361,7 +3477,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - async
       - pypy
-  - name: test-standard-v4.4-python3.10-async-noauth-nossl-standalone
+  - name: test-standard-v4.4-python3.10-async-noauth-nossl-standalone-min-deps
     commands:
       - func: run server
         vars:
@@ -3369,12 +3485,14 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.4"
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
@@ -3406,7 +3524,7 @@ tasks:
       - standalone-noauth-nossl
       - async
       - free-threaded
-  - name: test-standard-v5.0-python3.10-sync-noauth-ssl-replica-set
+  - name: test-standard-v5.0-python3.10-sync-noauth-ssl-replica-set-min-deps
     commands:
       - func: run server
         vars:
@@ -3414,12 +3532,14 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
@@ -3517,7 +3637,7 @@ tasks:
       - python-3.13
       - standalone-noauth-nossl
       - sync
-  - name: test-standard-v6.0-python3.10-async-noauth-ssl-replica-set
+  - name: test-standard-v6.0-python3.10-async-noauth-ssl-replica-set-min-deps
     commands:
       - func: run server
         vars:
@@ -3525,12 +3645,14 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "6.0"
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
@@ -3650,7 +3772,7 @@ tasks:
       - python-3.13
       - replica_set-noauth-ssl
       - sync
-  - name: test-standard-v7.0-python3.10-sync-auth-ssl-sharded-cluster
+  - name: test-standard-v7.0-python3.10-sync-auth-ssl-sharded-cluster-min-deps
     commands:
       - func: run server
         vars:
@@ -3658,12 +3780,14 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
@@ -3762,7 +3886,7 @@ tasks:
       - python-3.13
       - replica_set-noauth-ssl
       - async
-  - name: test-standard-v8.0-python3.10-async-auth-ssl-sharded-cluster
+  - name: test-standard-v8.0-python3.10-async-auth-ssl-sharded-cluster-min-deps
     commands:
       - func: run server
         vars:
@@ -3770,12 +3894,14 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "8.0"
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
@@ -4122,7 +4248,7 @@ tasks:
       - python-3.12
       - sharded_cluster-auth-ssl
       - auth
-  - name: test-non-standard-v4.2-python3.10-noauth-nossl-standalone
+  - name: test-non-standard-v4.2-python3.10-noauth-nossl-standalone-min-deps
     commands:
       - func: run server
         vars:
@@ -4130,12 +4256,14 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.2"
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.2"
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-non-standard
@@ -4315,7 +4443,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - pypy
-  - name: test-non-standard-v5.0-python3.10-noauth-nossl-standalone
+  - name: test-non-standard-v5.0-python3.10-noauth-nossl-standalone-min-deps
     commands:
       - func: run server
         vars:
@@ -4323,12 +4451,14 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "5.0"
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-non-standard
@@ -4486,7 +4616,7 @@ tasks:
       - python-3.12
       - sharded_cluster-auth-ssl
       - auth
-  - name: test-non-standard-v7.0-python3.10-noauth-nossl-standalone
+  - name: test-non-standard-v7.0-python3.10-noauth-nossl-standalone-min-deps
     commands:
       - func: run server
         vars:
@@ -4494,12 +4624,14 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-non-standard
@@ -4724,7 +4856,7 @@ tasks:
       - python-3.12
       - sharded_cluster-auth-ssl
       - auth
-  - name: test-non-standard-rapid-python3.10-noauth-nossl-standalone
+  - name: test-non-standard-rapid-python3.10-noauth-nossl-standalone-min-deps
     commands:
       - func: run server
         vars:
@@ -4732,12 +4864,14 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-non-standard
@@ -4791,7 +4925,7 @@ tasks:
       - test-numpy
 
   # Test standard auth tests
-  - name: test-standard-auth-v4.2-python3.10-auth-ssl-sharded-cluster
+  - name: test-standard-auth-v4.2-python3.10-auth-ssl-sharded-cluster-min-deps
     commands:
       - func: run server
         vars:
@@ -4799,12 +4933,14 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.2"
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "4.2"
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-standard-auth
@@ -5094,7 +5230,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - pypy
-  - name: test-standard-auth-rapid-python3.10-auth-ssl-sharded-cluster
+  - name: test-standard-auth-rapid-python3.10-auth-ssl-sharded-cluster-min-deps
     commands:
       - func: run server
         vars:
@@ -5102,12 +5238,14 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: rapid
+          TEST_MIN_DEPS: "1"
           TOOLCHAIN_VERSION: "3.10"
     tags:
       - test-standard-auth

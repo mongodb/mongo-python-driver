@@ -177,7 +177,6 @@ buildvariants:
   - name: encryption-rhel8
     tasks:
       - name: .test-non-standard
-      - name: .test-min-deps
     display_name: Encryption RHEL8
     run_on:
       - rhel87-small
@@ -208,7 +207,6 @@ buildvariants:
   - name: encryption-crypt_shared-rhel8
     tasks:
       - name: .test-non-standard
-      - name: .test-min-deps
     display_name: Encryption crypt_shared RHEL8
     run_on:
       - rhel87-small
