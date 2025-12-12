@@ -1389,12 +1389,12 @@ dev = []
 gevent = [{ name = "gevent", specifier = ">=20.6.0" }]
 mockupdb = [{ name = "mockupdb", git = "https://github.com/mongodb-labs/mongo-mockup-db?rev=master" }]
 perf = [{ name = "simplejson", specifier = ">=3.17.0" }]
-pip = [{ name = "pip" }]
+pip = [{ name = "pip", specifier = ">=20.2" }]
 typing = [
     { name = "mypy", specifier = "==1.19.0" },
-    { name = "pip" },
+    { name = "pip", specifier = ">=20.2" },
     { name = "pyright", specifier = "==1.1.407" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", specifier = ">=3.7.4.2" },
 ]
 
 [[package]]

@@ -48,7 +48,7 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [dependency-groups]
 dev = []
-pip = ["pip"]
+pip = ["pip>=20.2"]
 gevent = ["gevent>=20.6.0"]
 coverage = [
     "pytest-cov>=2.10.0",
@@ -61,8 +61,8 @@ perf = ["simplejson>=3.17.0"]
 typing = [
     "mypy==1.19.0",
     "pyright==1.1.407",
-    "typing_extensions",
-    "pip"
+    "typing_extensions>=3.7.4.2",
+    "pip>=20.2"
 ]
 
 # Used to call hatch_build.py
