@@ -794,7 +794,7 @@ def create_aws_tasks():
         if "t" in python:
             tags.append("free-threaded")
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, TOOLCHAIN_VERSION=python)
-        if python == ALL_PYTHONS[0]:
+        if python == ALL_PYTHONS[0] and test_type != "ecs":
             test_vars["TEST_MIN_DEPS"] = "1"
         name = get_task_name(f"{base_name}-{test_type}", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
