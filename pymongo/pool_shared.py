@@ -237,8 +237,7 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
     else:
         # This likely means we tried to connect to an IPv6 only
         # host with an OS/kernel or Python interpreter that doesn't
-        # support IPv6. The test case is Jython2.5.1 which doesn't
-        # support IPv6 at all.
+        # support IPv6.
         raise OSError("getaddrinfo failed")
 
 
@@ -418,8 +417,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
     else:
         # This likely means we tried to connect to an IPv6 only
         # host with an OS/kernel or Python interpreter that doesn't
-        # support IPv6. The test case is Jython2.5.1 which doesn't
-        # support IPv6 at all.
+        # support IPv6.
         raise OSError("getaddrinfo failed")
 
 
