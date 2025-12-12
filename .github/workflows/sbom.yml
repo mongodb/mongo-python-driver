@@ -64,7 +64,7 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: rm -rf .venv .venv-sbom
+        run: rm -rf .venv .venv-sbom sbom-requirements.txt
 
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v5
