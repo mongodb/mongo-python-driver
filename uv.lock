@@ -1330,7 +1330,7 @@ zstd = [
 
 [package.dev-dependencies]
 coverage = [
-    { name = "coverage" },
+    { name = "coverage", extra = ["toml"] },
     { name = "pytest-cov" },
 ]
 gevent = [
@@ -1382,7 +1382,7 @@ provides-extras = ["aws", "docs", "encryption", "gssapi", "ocsp", "snappy", "tes
 
 [package.metadata.requires-dev]
 coverage = [
-    { name = "coverage", specifier = ">=5,<=7.10.6" },
+    { name = "coverage", extras = ["toml"], specifier = ">=5,<=7.10.6" },
     { name = "pytest-cov", specifier = ">=2.10.0" },
 ]
 dev = []
