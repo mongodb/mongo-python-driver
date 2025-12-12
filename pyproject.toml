@@ -49,7 +49,7 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 [dependency-groups]
 dev = []
 pip = ["pip>=20.2"]
-gevent = ["gevent>=20.6.0"]
+gevent = ["gevent>=21.8"]
 coverage = [
     "pytest-cov>=4.0.0",
     "coverage[toml]>=5,<=7.10.6"

@@ -8,5 +8,5 @@
 certifi>=2023.7.22;os.name=='nt' or sys_platform=='darwin'
 pyopenssl>=20.0.1
 requests>=2.23.0,<3.0
-cryptography>=3.2
+cryptography>=37.0.1
 service_identity>=18.1.0
