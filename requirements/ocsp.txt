@@ -9,4 +9,4 @@ certifi>=2023.7.22;os.name=='nt' or sys_platform=='darwin'
 pyopenssl>=23.2.0
 requests>=2.23.0,<3.0
 cryptography>=42.0.0
-service_identity>=18.1.0
+service_identity>=23.1.0
