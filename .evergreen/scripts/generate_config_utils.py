@@ -171,7 +171,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
         display_name = f"{display_name}{sep}{version}"
     for key, value in kwargs.items():
         name = value
-        if key.lower() == "python":
+        if key.lower() in ["python", "toolchain_version"]:
             if not value.startswith("pypy"):
                 name = f"Python{value}"
             else:
