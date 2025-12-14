@@ -934,6 +934,11 @@ def create_perf_tasks():
             task_name += "-async"
         tags = ["perf"]
         commands = [server_func, test_func, attach_func, send_func]
+        if ssl == "ssl" and sync == "sync":
+            tags.append("pr")
+            comment_vars = dict(TASK_NAME=task_name)
+            comment_func = FunctionCall(func="create perf comment", vars=comment_vars)
+            commands.append(comment_func)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
     return tasks
 
@@ -1223,6 +1228,22 @@ def create_send_dashboard_data_func():
         ),
     ]
     return "send dashboard data", cmds
+
+
+def create_perf_comment_func():
+    includes = [
+        "version_id",
+        "revision",
+        "github_commit",
+        "project",
+        "TASK_NAME",
+    ]
+    cmds = [
+        get_subprocess_exec(
+            include_expansions_in_env=includes, args=[".evergreen/scripts/perf-pr-comment.sh"]
+        )
+    ]
+    return "create perf comment", cmds
 
 
 mod = sys.modules[__name__]

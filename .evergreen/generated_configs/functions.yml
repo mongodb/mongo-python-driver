@@ -85,6 +85,22 @@ functions:
       params:
         directory: src
 
+  # Perf comment
+  create perf comment:
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/scripts/perf-pr-comment.sh
+        working_dir: src
+        include_expansions_in_env:
+          - version_id
+          - revision
+          - github_commit
+          - project
+          - TASK_NAME
+      type: test
+
   # Run server
   run server:
     - command: subprocess.exec

@@ -2334,7 +2334,10 @@ tasks:
           SUB_TEST_NAME: sync
       - func: attach benchmark test results
       - func: send dashboard data
-    tags: [perf]
+      - func: create perf comment
+        vars:
+          TASK_NAME: perf-8.0-standalone-ssl
+    tags: [perf, pr]
   - name: perf-8.0-standalone-ssl-async
     commands:
       - func: run server
