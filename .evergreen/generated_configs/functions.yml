@@ -99,6 +99,7 @@ functions:
           - github_commit
           - project
           - TASK_NAME
+          - DRIVERS_TOOLS
       type: test
 
   # Run server

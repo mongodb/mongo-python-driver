@@ -1231,13 +1231,7 @@ def create_send_dashboard_data_func():
 
 
 def create_perf_comment_func():
-    includes = [
-        "version_id",
-        "revision",
-        "github_commit",
-        "project",
-        "TASK_NAME",
-    ]
+    includes = ["version_id", "revision", "github_commit", "project", "TASK_NAME", "DRIVERS_TOOLS"]
     cmds = [
         get_subprocess_exec(
             include_expansions_in_env=includes, args=[".evergreen/scripts/perf-pr-comment.sh"]
