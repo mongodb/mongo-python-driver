@@ -3,10 +3,10 @@
 
 set -eu
 
-VERSION_ID=${version_id}
-BASE_SHA=${revision}
-HEAD_SHA=${github_commit}
-PROJECT=${project}
+export VERSION_ID=${version_id}
+export BASE_SHA=${revision}
+export HEAD_SHA=${github_commit}
+export PROJECT=${project}
 
 if [ "${PROJECT}" != "mongo-python-driver" ]; then
   echo "Skipping PR Perf comment"
