@@ -936,9 +936,10 @@ def create_perf_tasks():
         commands = [server_func, test_func, attach_func, send_func]
         if ssl == "ssl" and sync == "sync":
             tags.append("pr")
+            assume_func = FunctionCall(func="assume ec2 role")
             comment_vars = dict(TASK_NAME=task_name)
             comment_func = FunctionCall(func="create perf comment", vars=comment_vars)
-            commands.append(comment_func)
+            commands.extend([assume_func, comment_func])
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
     return tasks
 
@@ -1231,7 +1232,17 @@ def create_send_dashboard_data_func():
 
 
 def create_perf_comment_func():
-    includes = ["version_id", "revision", "github_commit", "project", "TASK_NAME", "DRIVERS_TOOLS"]
+    includes = [
+        "version_id",
+        "revision",
+        "github_commit",
+        "project",
+        "TASK_NAME",
+        "DRIVERS_TOOLS",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+    ]
     cmds = [
         get_subprocess_exec(
             include_expansions_in_env=includes, args=[".evergreen/scripts/perf-pr-comment.sh"]

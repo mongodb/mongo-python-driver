@@ -2334,6 +2334,7 @@ tasks:
           SUB_TEST_NAME: sync
       - func: attach benchmark test results
       - func: send dashboard data
+      - func: assume ec2 role
       - func: create perf comment
         vars:
           TASK_NAME: perf-8.0-standalone-ssl
