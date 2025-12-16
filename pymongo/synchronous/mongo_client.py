@@ -2813,7 +2813,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     retryable_write_label = exc_to_check.has_error_label("RetryableWriteError")
                     always_retryable = exc_to_check.has_error_label(
                         "RetryableError"
-                    ) and exc.has_error_label("SystemOverloadedError")
+                    ) and exc_to_check.has_error_label("SystemOverloadedError")
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                     if not self._retryable and not always_retryable:
                         raise
