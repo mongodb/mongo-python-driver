@@ -2786,7 +2786,9 @@ class _ClientConnectionRetryable(Generic[T]):
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
-                        always_retryable = exc.has_error_label("RetryableError")
+                        always_retryable = exc.has_error_label(
+                            "RetryableError"
+                        ) and exc.has_error_label("SystemOverloadedError")
                         overloaded = exc.has_error_label("SystemOverloadedError")
                         if not always_retryable and (
                             self._is_not_eligible_for_retry()
@@ -2809,7 +2811,9 @@ class _ClientConnectionRetryable(Generic[T]):
                     ):
                         exc_to_check = exc.error
                     retryable_write_label = exc_to_check.has_error_label("RetryableWriteError")
-                    always_retryable = exc_to_check.has_error_label("RetryableError")
+                    always_retryable = exc_to_check.has_error_label(
+                        "RetryableError"
+                    ) and exc.has_error_label("SystemOverloadedError")
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                     if not self._retryable and not always_retryable:
                         raise
@@ -2837,15 +2841,14 @@ class _ClientConnectionRetryable(Generic[T]):
                     self._deprioritized_servers.append(self._server)
 
                 self._always_retryable = always_retryable
-                if always_retryable:
+                if overloaded:
                     delay = self._retry_policy.backoff(self._attempt_number) if overloaded else 0
                     if not self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
                             raise
-                    if overloaded:
-                        time.sleep(delay)
+                    time.sleep(delay)
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
