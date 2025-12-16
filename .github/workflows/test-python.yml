@@ -208,7 +208,7 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
           # Build sdist on lowest supported Python
-          python-version: "3.10"
+          python-version: "3.9"
       - name: Build SDist
         shell: bash
         run: |
@@ -242,7 +242,7 @@ jobs:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
             # Test sdist on lowest supported Python
-            python-version: "3.10"
+            python-version: "3.9"
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
         - name: Run connect test from sdist
@@ -266,7 +266,7 @@ jobs:
         - name: Install uv
           uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7
           with:
-            python-version: "3.10"
+            python-version: "3.9"
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
           with:

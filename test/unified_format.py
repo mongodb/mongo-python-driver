@@ -102,6 +102,7 @@ from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.encryption import ClientEncryption
+from pymongo.synchronous.helpers import next
 from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern

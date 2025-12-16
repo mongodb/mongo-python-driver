@@ -51,6 +51,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous import auth
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.database import Database
+from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 

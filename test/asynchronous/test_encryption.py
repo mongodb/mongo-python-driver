@@ -84,6 +84,7 @@ from bson.son import SON
 from pymongo import ReadPreference
 from pymongo.asynchronous import encryption
 from pymongo.asynchronous.encryption import Algorithm, AsyncClientEncryption, QueryType
+from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.cursor_shared import CursorType
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts, TextOpts

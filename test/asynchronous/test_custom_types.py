@@ -53,6 +53,7 @@ from bson.errors import InvalidDocument
 from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
 from pymongo.asynchronous.collection import ReturnDocument
+from pymongo.asynchronous.helpers import anext
 from pymongo.errors import DuplicateKeyError
 from pymongo.message import _CursorAddress
 
