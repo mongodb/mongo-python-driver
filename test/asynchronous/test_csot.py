@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 from test.asynchronous.utils import flaky
 
 import pymongo
@@ -31,14 +31,8 @@ from pymongo.errors import PyMongoError
 
 _IS_SYNC = False
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "csot")
-else:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "csot")
-
 # Generate unified tests.
-globals().update(generate_test_classes(TEST_PATH, module=__name__))
+globals().update(generate_test_classes(get_test_path("csot"), module=__name__))
 
 
 class TestCSOT(AsyncIntegrationTest):

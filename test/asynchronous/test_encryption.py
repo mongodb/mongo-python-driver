@@ -53,7 +53,7 @@ from test import (
     unittest,
 )
 from test.asynchronous.test_bulk import AsyncBulkTestBase
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 from test.helpers_shared import (
     ALL_KMS_PROVIDERS,
     AWS_CREDS,
@@ -273,11 +273,7 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
 
 
 # Location of JSON test files.
-if _IS_SYNC:
-    BASE = os.path.join(pathlib.Path(__file__).resolve().parent, "client-side-encryption")
-else:
-    BASE = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "client-side-encryption")
-
+BASE = get_test_path("client-side-encryption")
 SPEC_PATH = os.path.join(BASE, "spec")
 
 OPTS = CodecOptions()
