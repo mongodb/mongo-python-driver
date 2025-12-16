@@ -17,12 +17,9 @@ from __future__ import annotations
 
 import errno
 import select
-import sys
 from typing import Any, Optional, cast
 
-# PYTHON-2320: Jython does not fully support poll on SSL sockets,
-# https://bugs.jython.org/issue2900
-_HAVE_POLL = hasattr(select, "poll") and not sys.platform.startswith("java")
+_HAVE_POLL = hasattr(select, "poll")
 _SelectError = getattr(select, "error", OSError)
 
 
