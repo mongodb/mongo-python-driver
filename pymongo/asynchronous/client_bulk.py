@@ -569,6 +569,7 @@ class _AsyncClientBulk:
                         and "errorLabels" in error.details
                         and isinstance(error.details["errorLabels"], list)
                         and "RetryableError" in error.details["errorLabels"]
+                        and "SystemOverloadedError" in error.details["errorLabels"]
                     )
 
                     # Synthesize the full bulk result without modifying the
