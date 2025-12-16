@@ -68,6 +68,7 @@
                     "heartbeatFrequencyMS": 10000,
                     "appname": "SDAMminPoolSizeError",
                     "minPoolSize": 10,
+                    "serverMonitoringMode": "poll",
                     "serverSelectionTimeoutMS": 1000
                   }
                 }
