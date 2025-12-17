@@ -717,7 +717,10 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         self._encryption = AsyncExplicitEncrypter(
             self._io_callbacks,
             _create_mongocrypt_options(
-                kms_providers=kms_providers, schema_map=None, key_expiration_ms=key_expiration_ms
+                kms_providers=kms_providers,
+                schema_map=None,
+                key_expiration_ms=key_expiration_ms,
+                bypass_encryption=True,  # Don't load crypt_shared
             ),
         )
         # Use the same key vault collection as the callback.
