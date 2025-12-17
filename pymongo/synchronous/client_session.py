@@ -412,7 +412,7 @@ class _Transaction:
     def starting(self) -> bool:
         return self.state == _TxnState.STARTING
 
-    def set_starting(self):
+    def set_starting(self) -> None:
         self.state = _TxnState.STARTING
 
     @property
