@@ -2777,10 +2777,10 @@ class _ClientConnectionRetryable(Generic[T]):
             try:
                 res = await self._read() if self._is_read else await self._write()
                 await self._retry_policy.record_success(self._attempt_number > 0)
-                # Track whether the transaction has completed command.
+                # Track whether the transaction has completed a command.
                 # If we need to apply backpressure to the first command,
                 # we will need to revert back to starting state.
-                if self._session.in_transaction:
+                if self._session is not None and self._session.in_transaction:
                     self._session._transaction.has_completed_command = True
                 return res
             except ServerSelectionTimeoutError:
@@ -2796,7 +2796,6 @@ class _ClientConnectionRetryable(Generic[T]):
                 always_retryable = False
                 overloaded = False
                 exc_to_check = exc
-
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
@@ -2820,11 +2819,11 @@ class _ClientConnectionRetryable(Generic[T]):
 
                         # Revert back to starting state if we're in a transaction but haven't completed the first
                         # command.
-                        if (
-                            self._session.in_transaction
-                            and not self._session._transaction.has_completed_command
-                        ):
-                            self._session._transaction.set_starting()
+                        if self._session is not None and self._session.in_transaction:
+                            if not self._session._transaction.has_completed_command:
+                                self._session._transaction.set_starting()
+                    else:
+                        raise
 
                 # Specialized catch on write operation
                 if not self._is_read:
@@ -2860,11 +2859,9 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._last_error = exc
                     # Revert back to starting state if we're in a transaction but haven't completed the first
                     # command.
-                    if (
-                        self._session.in_transaction
-                        and not self._session._transaction.has_completed_command
-                    ):
-                        self._session._transaction.set_starting()
+                    if self._session is not None and self._session.in_transaction:
+                        if not self._session._transaction.has_completed_command:
+                            self._session._transaction.set_starting()
 
                 if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
                     self._deprioritized_servers.append(self._server)
