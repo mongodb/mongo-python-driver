@@ -714,10 +714,12 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
             None, key_vault_coll, None, opts
         )
+
+        # Pass bypass_encryption=True to skip loading crypt_shared.
         self._encryption = AsyncExplicitEncrypter(
             self._io_callbacks,
             _create_mongocrypt_options(
-                kms_providers=kms_providers, schema_map=None, key_expiration_ms=key_expiration_ms
+                kms_providers=kms_providers, schema_map=None, key_expiration_ms=key_expiration_ms, bypass_encryption=True
             ),
         )
         # Use the same key vault collection as the callback.
