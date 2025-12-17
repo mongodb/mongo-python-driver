@@ -40,38 +40,6 @@
         "id": "session0",
         "client": "client0"
       }
-    },
-    {
-      "client": {
-        "id": "client1",
-        "useMultipleMongoses": false,
-        "uriOptions": {
-          "retryWrites": false
-        },
-        "observeEvents": [
-          "commandStartedEvent"
-        ]
-      }
-    },
-    {
-      "database": {
-        "id": "database1",
-        "client": "client1",
-        "databaseName": "transaction-tests"
-      }
-    },
-    {
-      "collection": {
-        "id": "collection1",
-        "database": "database1",
-        "collectionName": "test"
-      }
-    },
-    {
-      "session": {
-        "id": "session1",
-        "client": "client1"
-      }
     }
   ],
   "initialData": [
@@ -89,7 +57,7 @@
           "object": "testRunner",
           "name": "failPoint",
           "arguments": {
-            "client": "client1",
+            "client": "client0",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": {
@@ -109,14 +77,14 @@
           }
         },
         {
-          "object": "session1",
+          "object": "session0",
           "name": "startTransaction"
         },
         {
-          "object": "collection1",
+          "object": "collection0",
           "name": "insertOne",
           "arguments": {
-            "session": "session1",
+            "session": "session0",
             "document": {
               "_id": 1
             }
@@ -130,13 +98,13 @@
           }
         },
         {
-          "object": "session1",
+          "object": "session0",
           "name": "abortTransaction"
         }
       ],
       "expectEvents": [
         {
-          "client": "client1",
+          "client": "client0",
           "events": [
             {
               "commandStartedEvent": {
@@ -152,7 +120,7 @@
                     "$$exists": false
                   },
                   "lsid": {
-                    "$$sessionLsid": "session1"
+                    "$$sessionLsid": "session0"
                   },
                   "txnNumber": {
                     "$numberLong": "1"
@@ -172,7 +140,7 @@
                 "command": {
                   "abortTransaction": 1,
                   "lsid": {
-                    "$$sessionLsid": "session1"
+                    "$$sessionLsid": "session0"
                   },
                   "txnNumber": {
                     "$numberLong": "1"
@@ -194,7 +162,7 @@
                 "command": {
                   "abortTransaction": 1,
                   "lsid": {
-                    "$$sessionLsid": "session1"
+                    "$$sessionLsid": "session0"
                   },
                   "txnNumber": {
                     "$numberLong": "1"
@@ -216,7 +184,7 @@
                 "command": {
                   "abortTransaction": 1,
                   "lsid": {
-                    "$$sessionLsid": "session1"
+                    "$$sessionLsid": "session0"
                   },
                   "txnNumber": {
                     "$numberLong": "1"
@@ -251,7 +219,7 @@
           "object": "testRunner",
           "name": "failPoint",
           "arguments": {
-            "client": "client1",
+            "client": "client0",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -269,14 +237,14 @@
           }
         },
         {
-          "object": "session1",
+          "object": "session0",
           "name": "startTransaction"
         },
         {
-          "object": "collection1",
+          "object": "collection0",
           "name": "insertOne",
           "arguments": {
-            "session": "session1",
+            "session": "session0",
             "document": {
               "_id": 1
             }
@@ -290,13 +258,13 @@
           }
         },
         {
-          "object": "session1",
+          "object": "session0",
           "name": "abortTransaction"
         }
       ],
       "expectEvents": [
         {
-          "client": "client1",
+          "client": "client0",
           "events": [
             {
               "commandStartedEvent": {
@@ -312,7 +280,7 @@
                     "$$exists": false
                   },
                   "lsid": {
-                    "$$sessionLsid": "session1"
+                    "$$sessionLsid": "session0"
                   },
                   "txnNumber": {
                     "$numberLong": "1"
@@ -332,7 +300,7 @@
                 "command": {
                   "abortTransaction": 1,
                   "lsid": {
-                    "$$sessionLsid": "session1"
+                    "$$sessionLsid": "session0"
                   },
                   "txnNumber": {
                     "$numberLong": "1"

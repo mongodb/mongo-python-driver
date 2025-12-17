@@ -40,38 +40,6 @@
         "id": "session0",
         "client": "client0"
       }
-    },
-    {
-      "client": {
-        "id": "client1",
-        "useMultipleMongoses": false,
-        "uriOptions": {
-          "retryWrites": false
-        },
-        "observeEvents": [
-          "commandStartedEvent"
-        ]
-      }
-    },
-    {
-      "database": {
-        "id": "database1",
-        "client": "client1",
-        "databaseName": "transaction-tests"
-      }
-    },
-    {
-      "collection": {
-        "id": "collection1",
-        "database": "database1",
-        "collectionName": "test"
-      }
-    },
-    {
-      "session": {
-        "id": "session1",
-        "client": "client1"
-      }
     }
   ],
   "initialData": [
