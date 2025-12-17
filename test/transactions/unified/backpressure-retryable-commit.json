@@ -3,15 +3,10 @@
   "schemaVersion": "1.4",
   "runOnRequirements": [
     {
-      "minServerVersion": "4.0",
-      "topologies": [
-        "replicaset"
-      ]
-    },
-    {
-      "minServerVersion": "4.1.8",
+      "minServerVersion": "4.4",
       "topologies": [
         "sharded",
+        "replicaset",
         "load-balanced"
       ]
     }
