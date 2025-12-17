@@ -2777,6 +2777,8 @@ class _ClientConnectionRetryable(Generic[T]):
             try:
                 res = await self._read() if self._is_read else await self._write()
                 await self._retry_policy.record_success(self._attempt_number > 0)
+                if self._session._starting_transaction:
+                    self._session._transaction.set_in_progress()
                 return res
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
