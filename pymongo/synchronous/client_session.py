@@ -404,6 +404,7 @@ class _Transaction:
         self.recovery_token = None
         self.attempt = 0
         self.client = client
+        self.has_completed_command = False
 
     def active(self) -> bool:
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
@@ -411,8 +412,8 @@ class _Transaction:
     def starting(self) -> bool:
         return self.state == _TxnState.STARTING
 
-    def set_in_progress(self):
-        self.state = _TxnState.IN_PROGRESS
+    def set_starting(self):
+        self.state = _TxnState.STARTING
 
     @property
     def pinned_conn(self) -> Optional[Connection]:
@@ -1063,6 +1064,8 @@ class ClientSession:
                 )
 
             if self._transaction.state == _TxnState.STARTING:
+                # First command begins a new transaction.
+                self._transaction.state = _TxnState.IN_PROGRESS
                 command["startTransaction"] = True
 
                 assert self._transaction.opts
