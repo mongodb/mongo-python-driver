@@ -1,5 +1,6 @@
 #!/bin/bash
 # Generate a PR comment with the perf report
+#shellcheck disable=SC2154
 
 set -eu
 
