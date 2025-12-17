@@ -2825,8 +2825,6 @@ class _ClientConnectionRetryable(Generic[T]):
                             and not self._session._transaction.has_completed_command
                         ):
                             self._session._transaction.set_starting()
-                        else:
-                            raise
 
                 # Specialized catch on write operation
                 if not self._is_read:
@@ -2867,8 +2865,6 @@ class _ClientConnectionRetryable(Generic[T]):
                         and not self._session._transaction.has_completed_command
                     ):
                         self._session._transaction.set_starting()
-                    else:
-                        raise
 
                 if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
                     self._deprioritized_servers.append(self._server)
