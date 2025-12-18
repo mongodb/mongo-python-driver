@@ -238,9 +238,7 @@
             "client": "client0",
             "failPoint": {
               "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 5
-              },
+              "mode": "alwaysOn",
               "data": {
                 "failCommands": [
                   "commitTransaction"
@@ -277,7 +275,10 @@
         },
         {
           "object": "session0",
-          "name": "commitTransaction"
+          "name": "commitTransaction",
+          "expectError": {
+            "isError": true
+          }
         }
       ],
       "expectEvents": [
@@ -367,11 +368,7 @@
         {
           "collectionName": "test",
           "databaseName": "transaction-tests",
-          "documents": [
-            {
-              "_id": 1
-            }
-          ]
+          "documents": []
         }
       ]
     }
