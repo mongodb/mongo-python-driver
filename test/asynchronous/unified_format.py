@@ -29,6 +29,7 @@ import time
 import traceback
 from collections import defaultdict
 from inspect import iscoroutinefunction
+from pathlib import Path
 from test.asynchronous import (
     AsyncIntegrationTest,
     async_client_context,
@@ -77,6 +78,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.encryption import AsyncClientEncryption
+from pymongo.asynchronous.helpers import anext
 from pymongo.driver_info import DriverInfo
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
@@ -1564,6 +1566,14 @@ _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS = {
 }
 
 
+def get_test_path(*args):
+    if _IS_SYNC:
+        root_dir = Path(__file__).resolve().parent
+    else:
+        root_dir = Path(__file__).resolve().parent.parent
+    return os.path.join(root_dir, *args)
+
+
 def generate_test_classes(
     test_path,
     module=__name__,
@@ -1596,10 +1606,12 @@ def generate_test_classes(
 
         return base
 
+    found_any = False
     for dirpath, _, filenames in os.walk(test_path):
         dirname = os.path.split(dirpath)[-1]
 
         for filename in filenames:
+            found_any = True
             fpath = os.path.join(dirpath, filename)
             with open(fpath) as scenario_stream:
                 # Use tz_aware=False to match how CodecOptions decodes
@@ -1636,5 +1648,8 @@ def generate_test_classes(
                 if bypass_test_generation_errors:
                     continue
                 raise
+
+    if not found_any:
+        raise ValueError(f"No test files found in {test_path}")
 
     return test_klasses

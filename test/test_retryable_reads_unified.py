@@ -22,21 +22,15 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.unified_format import generate_test_classes
+from test.unified_format import generate_test_classes, get_test_path
 
 _IS_SYNC = True
-
-# Location of JSON test specifications.
-if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "retryable_reads/unified")
-else:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "retryable_reads/unified")
 
 # Generate unified tests.
 # PyMongo does not support MapReduce, ListDatabaseObjects or ListCollectionObjects.
 globals().update(
     generate_test_classes(
-        TEST_PATH,
+        get_test_path("retryable_reads", "unified"),
         module=__name__,
         expected_failures=["ListDatabaseObjects .*", "ListCollectionObjects .*", "MapReduce .*"],
     )

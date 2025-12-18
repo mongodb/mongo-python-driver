@@ -35,7 +35,7 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import (
     AllowListEventListener,
     EventListener,
@@ -48,6 +48,7 @@ from bson.binary import ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY, STANDARD, Binar
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
+from pymongo.asynchronous.helpers import anext
 from pymongo.errors import (
     InvalidOperation,
     OperationFailure,
@@ -1143,12 +1144,9 @@ class TestAllLegacyScenarios(AsyncIntegrationTest):
         self.listener.reset()
 
 
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "change_streams")
-
-
 globals().update(
     generate_test_classes(
-        os.path.join(_TEST_PATH, "unified"),
+        get_test_path("change_streams", "unified"),
         module=__name__,
     )
 )

@@ -40,6 +40,7 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import CursorType, DeleteOne, InsertOne, UpdateOne, monitoring
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
+from pymongo.asynchronous.helpers import anext
 from pymongo.errors import AutoReconnect, NotPrimaryError, OperationFailure
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
