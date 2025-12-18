@@ -232,7 +232,14 @@
         {
           "collectionName": "test",
           "databaseName": "transaction-tests",
-          "documents": []
+          "documents": [
+            {
+              "_id": 1
+            },
+            {
+              "_id": 2
+            }
+          ]
         }
       ]
     },

@@ -25,7 +25,7 @@
     },
     {
       "client": {
-        "id": "failPointClient",
+        "id": "fail_point_client",
         "useMultipleMongoses": false
       }
     },
@@ -44,6 +44,9 @@
       }
     }
   ],
+  "_yamlAnchors": {
+    "bulkWriteInsertNamespace": "retryable-writes-tests.coll"
+  },
   "initialData": [
     {
       "collectionName": "coll",
@@ -68,7 +71,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -92,7 +95,8 @@
             "filter": {}
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -171,7 +175,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -192,7 +196,8 @@
           "object": "client",
           "name": "listDatabaseNames",
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -271,7 +276,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -295,7 +300,8 @@
             "pipeline": []
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -379,7 +385,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -413,7 +419,8 @@
             ]
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -492,7 +499,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -523,7 +530,8 @@
             ]
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -602,7 +610,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -626,7 +634,8 @@
             "filter": {}
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -705,7 +714,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -729,7 +738,8 @@
             "filter": {}
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -808,7 +818,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -835,7 +845,8 @@
             "commandName": "ping"
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -914,7 +925,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -938,7 +949,8 @@
             "pipeline": []
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -1017,7 +1029,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -1041,7 +1053,8 @@
             "pipeline": []
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -1120,7 +1133,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -1144,7 +1157,8 @@
             "filter": {}
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -1223,7 +1237,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -1244,7 +1258,8 @@
           "object": "collection",
           "name": "estimatedDocumentCount",
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -1323,7 +1338,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -1348,7 +1363,8 @@
             "filter": {}
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -1427,7 +1443,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -1451,7 +1467,8 @@
             "filter": {}
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -1530,7 +1547,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -1554,7 +1571,8 @@
             "filter": {}
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -1633,7 +1651,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -1654,7 +1672,8 @@
           "object": "collection",
           "name": "listIndexes",
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -1733,7 +1752,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -1754,7 +1773,8 @@
           "object": "collection",
           "name": "listIndexNames",
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -1833,7 +1853,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -1857,7 +1877,8 @@
             "pipeline": []
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -1936,7 +1957,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -1963,7 +1984,8 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -2042,7 +2064,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -2071,7 +2093,8 @@
             ]
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -2150,7 +2173,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -2174,7 +2197,8 @@
             "filter": {}
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -2253,7 +2277,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -2277,7 +2301,8 @@
             "filter": {}
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -2356,7 +2381,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -2383,7 +2408,8 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -2462,7 +2488,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -2491,7 +2517,8 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -2570,7 +2597,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -2599,7 +2626,8 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -2678,7 +2706,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -2702,7 +2730,8 @@
             "filter": {}
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -2781,7 +2810,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -2808,7 +2837,8 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -2887,7 +2917,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -2916,7 +2946,8 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -2995,7 +3026,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -3028,7 +3059,8 @@
             ]
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -3107,7 +3139,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -3134,7 +3166,8 @@
             "name": "x_11"
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -3213,7 +3246,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -3237,7 +3270,8 @@
             "name": "x_11"
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],
@@ -3316,7 +3350,7 @@
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
-            "client": "failPointClient",
+            "client": "fail_point_client",
             "failPoint": {
               "configureFailPoint": "failCommand",
               "mode": "alwaysOn",
@@ -3337,7 +3371,8 @@
           "object": "collection",
           "name": "dropIndexes",
           "expectError": {
-            "isError": true
+            "isError": true,
+            "isClientError": false
           }
         }
       ],

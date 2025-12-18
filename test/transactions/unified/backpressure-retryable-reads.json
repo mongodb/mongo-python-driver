@@ -213,13 +213,6 @@
             }
           ]
         }
-      ],
-      "outcome": [
-        {
-          "collectionName": "test",
-          "databaseName": "transaction-tests",
-          "documents": []
-        }
       ]
     },
     {
@@ -328,13 +321,6 @@
               }
             }
           ]
-        }
-      ],
-      "outcome": [
-        {
-          "collectionName": "test",
-          "databaseName": "transaction-tests",
-          "documents": []
         }
       ]
     }
