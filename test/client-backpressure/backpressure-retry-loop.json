@@ -31,7 +31,7 @@
     },
     {
       "database": {
-        "id": "database",
+        "id": "internal_db",
         "client": "internal_client",
         "databaseName": "retryable-writes-tests"
       }
@@ -39,7 +39,7 @@
     {
       "collection": {
         "id": "retryable-writes-tests",
-        "database": "database",
+        "database": "internal_db",
         "collectionName": "coll"
       }
     },
