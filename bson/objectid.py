@@ -15,7 +15,6 @@
 """Tools for working with MongoDB ObjectIds."""
 from __future__ import annotations
 
-import binascii
 import datetime
 import os
 import struct
@@ -234,7 +233,7 @@ class ObjectId:
             self.__id = oid
 
     def __str__(self) -> str:
-        return binascii.hexlify(self.__id).decode()
+        return self.__id.hex()
 
     def __repr__(self) -> str:
         return f"ObjectId('{self!s}')"
