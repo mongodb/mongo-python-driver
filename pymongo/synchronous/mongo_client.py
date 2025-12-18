@@ -2814,8 +2814,10 @@ class _ClientConnectionRetryable(Generic[T]):
                             and self._session is not None
                             and self._session.in_transaction
                         ):
-                            if not self._session._transaction.has_completed_command:
-                                self._session._transaction.set_starting()
+                            transaction = self._session._transaction
+                            if not transaction.has_completed_command:
+                                transaction.set_starting()
+                            transaction.attempt = 0
                     else:
                         raise
 
@@ -2854,8 +2856,10 @@ class _ClientConnectionRetryable(Generic[T]):
                     # Revert back to starting state if we're in a transaction but haven't completed the first
                     # command.
                     if overloaded and self._session is not None and self._session.in_transaction:
-                        if not self._session._transaction.has_completed_command:
-                            self._session._transaction.set_starting()
+                        transaction = self._session._transaction
+                        if not transaction.has_completed_command:
+                            transaction.set_starting()
+                        transaction.attempt = 0
 
                 if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
                     self._deprioritized_servers.append(self._server)
