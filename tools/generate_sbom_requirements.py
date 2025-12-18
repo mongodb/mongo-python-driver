@@ -6,6 +6,7 @@ Concatenate requirements files into sbom-requirements.txt at repository root.
 - Excludes docs.txt and test.txt in the requirements folder
 - Writes output to sbom-requirements.txt (overwrites)
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -59,7 +60,7 @@ def write_combined_req_files(root: Path, files: list[Path], outname: str) -> Pat
         raise RuntimeError(f"Failed to write {outpath}: {e}") from e
 
 
-def main():
+def main() -> None:
     root = Path(__file__).parent.parent.resolve()
 
     files = collect_files(root)
