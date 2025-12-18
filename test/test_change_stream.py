@@ -35,7 +35,7 @@ from test import (
     client_context,
     unittest,
 )
-from test.unified_format import generate_test_classes
+from test.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import (
     AllowListEventListener,
     EventListener,
@@ -55,6 +55,7 @@ from pymongo.errors import (
 from pymongo.message import _CursorAddress
 from pymongo.read_concern import ReadConcern
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.helpers import next
 from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
@@ -1123,12 +1124,9 @@ class TestAllLegacyScenarios(IntegrationTest):
         self.listener.reset()
 
 
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "change_streams")
-
-
 globals().update(
     generate_test_classes(
-        os.path.join(_TEST_PATH, "unified"),
+        get_test_path("change_streams", "unified"),
         module=__name__,
     )
 )

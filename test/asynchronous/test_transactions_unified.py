@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test import client_context, unittest
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 
 _IS_SYNC = False
 
@@ -31,25 +31,13 @@ def setUpModule():
     pass
 
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "transactions/unified")
-else:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "transactions/unified")
+# Generate unified tests.
+globals().update(generate_test_classes(get_test_path("transactions/unified"), module=__name__))
 
 # Generate unified tests.
-globals().update(generate_test_classes(TEST_PATH, module=__name__))
-
-# Location of JSON test specifications for transactions-convenient-api.
-if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "transactions-convenient-api/unified")
-else:
-    TEST_PATH = os.path.join(
-        Path(__file__).resolve().parent.parent, "transactions-convenient-api/unified"
-    )
-
-# Generate unified tests.
-globals().update(generate_test_classes(TEST_PATH, module=__name__))
+globals().update(
+    generate_test_classes(get_test_path("transactions-convenient-api/unified"), module=__name__)
+)
 
 if __name__ == "__main__":
     unittest.main()

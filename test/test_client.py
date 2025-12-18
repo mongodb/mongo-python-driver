@@ -114,6 +114,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
+from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.pool import (
     Connection,
@@ -1039,9 +1040,6 @@ class TestClient(IntegrationTest):
             coll.count_documents({})
 
     def test_close_kills_cursors(self):
-        if sys.platform.startswith("java"):
-            # We can't figure out how to make this test reliable with Jython.
-            raise SkipTest("Can't test with Jython")
         test_client = self.rs_or_single_client()
         # Kill any cursors possibly queued up by previous tests.
         gc.collect()
@@ -1061,7 +1059,7 @@ class TestClient(IntegrationTest):
         cursor = coll.aggregate([], batchSize=10)
         self.assertTrue(bool(next(cursor)))
         del cursor
-        # Required for PyPy, Jython and other Python implementations that
+        # Required for PyPy and other Python implementations that
         # don't use reference counting garbage collection.
         gc.collect()
 
@@ -1415,12 +1413,6 @@ class TestClient(IntegrationTest):
 
     @client_context.require_sync
     def test_interrupt_signal(self):
-        if sys.platform.startswith("java"):
-            # We can't figure out how to raise an exception on a thread that's
-            # blocked on a socket, whether that's the main thread or a worker,
-            # without simply killing the whole thread in Jython. This suggests
-            # PYTHON-294 can't actually occur in Jython.
-            raise SkipTest("Can't test interrupts in Jython")
         if is_greenthread_patched():
             raise SkipTest("Can't reliably test interrupts with green threads")
 

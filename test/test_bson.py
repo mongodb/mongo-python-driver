@@ -135,10 +135,6 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(InvalidBSON, decode, data)
 
     def check_encode_then_decode(self, doc_class=dict, decoder=decode, encoder=encode):
-        # Work around http://bugs.jython.org/issue1728
-        if sys.platform.startswith("java"):
-            doc_class = SON
-
         def helper(doc):
             self.assertEqual(doc, (decoder(encoder(doc_class(doc)))))
             self.assertEqual(doc, decoder(encoder(doc)))

@@ -11,6 +11,9 @@ on:
     branches: ['master']
     paths:
       - 'requirements.txt'
+      - 'requirements/**.txt'
+      - '!requirements/docs.txt'
+      - '!requirements/test.txt'
 
 permissions:
   contents: write
@@ -39,7 +42,8 @@ jobs:
         run: |
           python -m venv .venv
           source .venv/bin/activate
-          pip install -r requirements.txt
+          python tools/generate_sbom_requirements.py
+          pip install -r sbom-requirements.txt
           pip install .
           pip uninstall -y pip setuptools
           deactivate
@@ -60,23 +64,23 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: rm -rf .venv .venv-sbom
+        run: rm -rf .venv .venv-sbom sbom-requirements.txt
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: sbom
           path: sbom.json
           if-no-files-found: error
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
+        uses: peter-evans/create-pull-request@98357b18bf14b5342f975ff684046ec3b2a07725
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: 'chore: Update SBOM after dependency changes'
           branch: auto-update-sbom-${{ github.run_id }}
           delete-branch: true
-          title: 'chore: Update SBOM'
+          title: 'Automation: Update SBOM'
           body: |
             ## Automated SBOM Update
 

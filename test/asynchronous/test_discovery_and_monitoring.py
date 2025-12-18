@@ -40,7 +40,7 @@ from test.asynchronous import (
     unittest,
 )
 from test.asynchronous.pymongo_mocks import DummyMonitor
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 from test.asynchronous.utils import (
     async_get_pool,
 )
@@ -76,14 +76,7 @@ from pymongo.topology_description import TOPOLOGY_TYPE
 
 _IS_SYNC = False
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    SDAM_PATH = os.path.join(Path(__file__).resolve().parent, "discovery_and_monitoring")
-else:
-    SDAM_PATH = os.path.join(
-        Path(__file__).resolve().parent.parent,
-        "discovery_and_monitoring",
-    )
+SDAM_PATH = get_test_path("discovery_and_monitoring")
 
 
 async def create_mock_topology(uri, monitor_class=DummyMonitor):

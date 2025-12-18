@@ -324,6 +324,14 @@ buildvariants:
     expansions:
       TEST_NAME: load_balancer
 
+  # Min support tests
+  - name: min-support-rhel8
+    tasks:
+      - name: .test-min-support
+    display_name: Min Support RHEL8
+    run_on:
+      - rhel87-small
+
   # Mockupdb tests
   - name: mockupdb-rhel8
     tasks:

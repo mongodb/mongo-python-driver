@@ -39,6 +39,7 @@ from pymongo.asynchronous import client_session
 from pymongo.asynchronous.client_session import TransactionOptions
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
+from pymongo.asynchronous.helpers import anext
 from pymongo.errors import (
     AutoReconnect,
     CollectionInvalid,

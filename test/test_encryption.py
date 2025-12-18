@@ -65,7 +65,7 @@ from test.helpers_shared import (
     LOCAL_MASTER_KEY,
 )
 from test.test_bulk import BulkTestBase
-from test.unified_format import generate_test_classes
+from test.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import (
     AllowListEventListener,
     OvertCommandListener,
@@ -100,6 +100,7 @@ from pymongo.errors import (
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.synchronous import encryption
 from pymongo.synchronous.encryption import Algorithm, ClientEncryption, QueryType
+from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
@@ -273,11 +274,7 @@ class EncryptionIntegrationTest(IntegrationTest):
 
 
 # Location of JSON test files.
-if _IS_SYNC:
-    BASE = os.path.join(pathlib.Path(__file__).resolve().parent, "client-side-encryption")
-else:
-    BASE = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "client-side-encryption")
-
+BASE = get_test_path("client-side-encryption")
 SPEC_PATH = os.path.join(BASE, "spec")
 
 OPTS = CodecOptions()
