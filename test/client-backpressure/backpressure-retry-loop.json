@@ -58,6 +58,13 @@
       }
     }
   ],
+  "initialData": [
+    {
+      "collectionName": "coll",
+      "databaseName": "retryable-writes-tests",
+      "documents": []
+    }
+  ],
   "_yamlAnchors": {
     "bulWriteInsertNamespace": "retryable-writes-tests.coll"
   },
@@ -65,13 +72,6 @@
     {
       "description": "client.listDatabases retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -155,13 +155,6 @@
       "description": "client.listDatabaseNames retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -240,13 +233,6 @@
     {
       "description": "client.createChangeStream retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -334,13 +320,6 @@
         }
       ],
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -434,13 +413,6 @@
       "description": "database.aggregate retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -530,13 +502,6 @@
       "description": "database.listCollections retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -619,13 +584,6 @@
       "description": "database.listCollectionNames retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -707,13 +665,6 @@
     {
       "description": "database.runCommand retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -800,13 +751,6 @@
       "description": "database.createChangeStream retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -888,13 +832,6 @@
     {
       "description": "collection.aggregate retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -978,13 +915,6 @@
       "description": "collection.countDocuments retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -1067,13 +997,6 @@
       "description": "collection.estimatedDocumentCount retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -1152,13 +1075,6 @@
     {
       "description": "collection.distinct retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -1243,13 +1159,6 @@
       "description": "collection.find retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -1331,13 +1240,6 @@
     {
       "description": "collection.findOne retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -1421,13 +1323,6 @@
       "description": "collection.listIndexes retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -1507,13 +1402,6 @@
       "description": "collection.listIndexNames retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -1592,13 +1480,6 @@
     {
       "description": "collection.createChangeStream retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -1681,13 +1562,6 @@
     {
       "description": "collection.insertOne retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -1773,13 +1647,6 @@
     {
       "description": "collection.insertMany retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -1868,13 +1735,6 @@
       "description": "collection.deleteOne retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -1957,13 +1817,6 @@
       "description": "collection.deleteMany retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -2045,13 +1898,6 @@
     {
       "description": "collection.replaceOne retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -2137,13 +1983,6 @@
     {
       "description": "collection.updateOne retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -2232,13 +2071,6 @@
       "description": "collection.updateMany retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -2326,13 +2158,6 @@
       "description": "collection.findOneAndDelete retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -2414,13 +2239,6 @@
     {
       "description": "collection.findOneAndReplace retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -2506,13 +2324,6 @@
     {
       "description": "collection.findOneAndUpdate retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -2600,13 +2411,6 @@
     {
       "description": "collection.bulkWrite retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",
@@ -2699,13 +2503,6 @@
       "description": "collection.createIndex retries using operation loop",
       "operations": [
         {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
-        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -2790,13 +2587,6 @@
     {
       "description": "collection.dropIndex retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "object": "retryable-writes-tests",
           "name": "createIndex",
@@ -2889,13 +2679,6 @@
     {
       "description": "collection.dropIndexes retries using operation loop",
       "operations": [
-        {
-          "object": "retryable-writes-tests",
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {}
-          }
-        },
         {
           "name": "failPoint",
           "object": "testRunner",

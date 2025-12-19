@@ -1,6 +1,11 @@
 {
   "description": "getMore-retries-backpressure",
   "schemaVersion": "1.3",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4"
+    }
+  ],
   "createEntities": [
     {
       "client": {
