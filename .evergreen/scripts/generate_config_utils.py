@@ -43,7 +43,7 @@ DISPLAY_LOOKUP = dict(
     sync={"sync": "Sync", "async": "Async"},
     coverage={"1": "cov"},
     no_ext={"1": "No C"},
-    test_min_deps={True: "Min Deps"},
+    test_min_deps={"1": "Min Deps"},
 )
 HOSTS = dict()
 
@@ -172,7 +172,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
         display_name = f"{display_name}{sep}{version}"
     for key, value in kwargs.items():
         name = value
-        if key.lower() == "python":
+        if key.lower() in ["python", "toolchain_version"]:
             if not value.startswith("pypy"):
                 name = f"Python{value}"
             else:
