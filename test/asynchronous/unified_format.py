@@ -330,11 +330,11 @@ class EntityMapUtil:
             client = await self.test.async_rs_or_single_client(**kwargs)
             await client.aconnect()
             # Wait for pool to be populated.
-            if "awaitMinPoolSize" in spec:
+            if "awaitMinPoolSizeMS" in spec:
                 pool = await async_get_pool(client)
                 t0 = time.monotonic()
                 while True:
-                    if (time.monotonic() - t0) > spec["awaitMinPoolSize"] * 1000:
+                    if (time.monotonic() - t0) > spec["awaitMinPoolSizeMS"] * 1000:
                         raise ValueError("Test timed out during awaitMinPoolSize")
                     async with pool.lock:
                         if len(pool.conns) + pool.active_sockets >= pool.opts.min_pool_size:
@@ -1562,7 +1562,7 @@ class UnifiedSpecTestMeta(type):
                 if re.search(fail_pattern, description):
                     test_method = unittest.expectedFailure(test_method)
                     break
-
+            print(test_name)
             setattr(cls, test_name, test_method)
 
 
