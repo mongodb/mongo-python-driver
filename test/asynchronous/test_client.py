@@ -2398,7 +2398,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
         client = self.async_rs_or_single_client()
         self.addCleanup(client.close)
         coll = client.pymongo_test.test
-        pool = async_get_pool(client)
+        pool = async_get_pool(client)  # type:ignore
 
         # Patch the pool to delay the connect method.
         def delayed_connect(*args, **kwargs):
