@@ -1562,7 +1562,6 @@ class UnifiedSpecTestMeta(type):
                 if re.search(fail_pattern, description):
                     test_method = unittest.expectedFailure(test_method)
                     break
-            print(test_name)
             setattr(cls, test_name, test_method)
 
 
