@@ -50,4 +50,7 @@ rm $PYMONGO/test/csot/override-database-timeoutMS.json
 # PYTHON-2943 - Socks5 Proxy Support
 rm $PYMONGO/test/uri_options/proxy-options.json
 
+# PYTHON-5517 - Avoid clearing the connection pool when the server connection rate limiter triggers
+rm $PYMONGO/test/discovery_and_monitoring/unified/backpressure-*.json
+
 echo "Done removing unimplemented tests"
