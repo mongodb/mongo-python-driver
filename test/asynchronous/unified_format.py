@@ -336,8 +336,10 @@ class EntityMapUtil:
                 while True:
                     if (time.monotonic() - t0) > spec["awaitMinPoolSize"] * 1000:
                         raise ValueError("Test timed out during awaitMinPoolSize")
-                    if len(pool.conns) + pool.active_sockets >= pool.opts.min_pool_size:
-                        break
+                    async with pool.lock:
+                        if len(pool.conns) + pool.active_sockets >= pool.opts.min_pool_size:
+                            break
+                    await asyncio.sleep(0.1)
             self[spec["id"]] = client
             return
         elif entity_type == "database":
