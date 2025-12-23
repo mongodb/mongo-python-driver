@@ -34,19 +34,19 @@ from pymongo.lock import _create_lock
 from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import any_server_selector, writable_server_selector
-from pymongo.synchronous.pool import _CancellationContext, _PoolGeneration
+from pymongo.synchronous.pool import Pool, _CancellationContext, _PoolGeneration
 
 _IS_SYNC = True
 
 
-def get_pool(client):
+def get_pool(client: MongoClient) -> Pool:
     """Get the standalone, primary, or mongos pool."""
     topology = client._get_topology()
     server = topology._select_server(writable_server_selector, _Op.TEST)
     return server.pool
 
 
-def get_pools(client):
+def get_pools(client: MongoClient) -> list[Pool]:
     """Get all pools."""
     return [
         server.pool

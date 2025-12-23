@@ -7,6 +7,7 @@ rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-application-error.j
 rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-checkout-error.json  # PYTHON-4918
 rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-min-pool-size-error.json  # PYTHON-4918
 rm $PYMONGO/test/client-side-encryption/spec/unified/client-bulkWrite-qe.json  # PYTHON-4929
+rm $PYMONGO/test/sessions/snapshot-sessions.json # PYTHON-5559
 
 # Python doesn't implement DRIVERS-3064
 rm $PYMONGO/test/collection_management/listCollections-rawdata.json
@@ -49,5 +50,8 @@ rm $PYMONGO/test/csot/override-database-timeoutMS.json
 
 # PYTHON-2943 - Socks5 Proxy Support
 rm $PYMONGO/test/uri_options/proxy-options.json
+
+# PYTHON-5517 - Avoid clearing the connection pool when the server connection rate limiter triggers
+rm $PYMONGO/test/discovery_and_monitoring/unified/backpressure-*.json
 
 echo "Done removing unimplemented tests"

@@ -328,6 +328,17 @@ class EntityMapUtil:
                 kwargs["h"] = uri
             client = self.test.rs_or_single_client(**kwargs)
             client._connect()
+            # Wait for pool to be populated.
+            if "awaitMinPoolSizeMS" in spec:
+                pool = get_pool(client)
+                t0 = time.monotonic()
+                while True:
+                    if (time.monotonic() - t0) > spec["awaitMinPoolSizeMS"] * 1000:
+                        raise ValueError("Test timed out during awaitMinPoolSize")
+                    with pool.lock:
+                        if len(pool.conns) + pool.active_sockets >= pool.opts.min_pool_size:
+                            break
+                    time.sleep(0.1)
             self[spec["id"]] = client
             return
         elif entity_type == "database":
@@ -462,7 +473,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.25")
+    SCHEMA_VERSION = Version.from_string("1.26")
     RUN_ON_LOAD_BALANCER = True
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes
@@ -1536,7 +1547,6 @@ class UnifiedSpecTestMeta(type):
                 if re.search(fail_pattern, description):
                     test_method = unittest.expectedFailure(test_method)
                     break
-
             setattr(cls, test_name, test_method)
 
 
