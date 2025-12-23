@@ -2353,7 +2353,7 @@ class TestExhaustCursor(IntegrationTest):
         client = self.rs_or_single_client()
         self.addCleanup(client.close)
         coll = client.pymongo_test.test
-        pool = get_pool(client)
+        pool = get_pool(client)  # type:ignore
 
         # Patch the pool to delay the connect method.
         def delayed_connect(*args, **kwargs):
