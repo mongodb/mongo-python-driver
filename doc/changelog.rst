@@ -18,7 +18,7 @@ PyMongo 4.16 brings a number of changes including:
   and :class:`~pymongo.synchronous.collection.Collection` to include ``None``.
 - Added support for NumPy 1D-arrays in :class:`bson.binary.BinaryVector`.
 
-Changes in Version 4.15.5 (2025/XX/XX)
+Changes in Version 4.15.5 (2025/12/02)
 --------------------------------------
 
 Version 4.15.5 is a bug fix release.
