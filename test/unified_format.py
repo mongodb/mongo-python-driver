@@ -1445,7 +1445,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 read_concern=ReadConcern(level="local"),
             )
 
-            if expected_documents:
+            if expected_documents is not None:
                 sorted_expected_documents = sorted(expected_documents, key=lambda doc: doc["_id"])
                 actual_documents = coll.find({}, sort=[("_id", ASCENDING)]).to_list()
                 self.assertListEqual(sorted_expected_documents, actual_documents)
