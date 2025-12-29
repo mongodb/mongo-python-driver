@@ -1,6 +1,6 @@
 {
   "description": "timeoutMS behaves correctly for non-tailable cursors",
-  "schemaVersion": "1.26",
+  "schemaVersion": "1.9",
   "runOnRequirements": [
     {
       "minServerVersion": "4.4"
@@ -17,10 +17,8 @@
       "client": {
         "id": "client",
         "uriOptions": {
-          "timeoutMS": 200,
-          "minPoolSize": 1
+          "timeoutMS": 200
         },
-        "awaitMinPoolSizeMS": 10000,
         "useMultipleMongoses": false,
         "observeEvents": [
           "commandStartedEvent"
