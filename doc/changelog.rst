@@ -17,6 +17,9 @@ PyMongo 4.16 brings a number of changes including:
 - Fixed return type annotation for ``find_one_and_*`` methods on :class:`~pymongo.asynchronous.collection.AsyncCollection`
   and :class:`~pymongo.synchronous.collection.Collection` to include ``None``.
 - Added support for NumPy 1D-arrays in :class:`bson.binary.BinaryVector`.
+- Prevented :class:`~pymongo.encryption.ClientEncryption` from loading the crypt
+  shared library to fix "MongoCryptError: An existing crypt_shared library is
+  loaded by the application" unless the linked library search path is set.
 
 Changes in Version 4.15.5 (2025/12/02)
 --------------------------------------
