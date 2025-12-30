@@ -383,7 +383,6 @@ class JSONOptions(_BASE_CLASS):
         )
 
     def _options_dict(self) -> dict[Any, Any]:
-        # TODO: PYTHON-2442 use _asdict() instead
         options_dict = super()._options_dict()
         options_dict.update(
             {
@@ -393,6 +392,7 @@ class JSONOptions(_BASE_CLASS):
                 "json_mode": self.json_mode,
             }
         )
+        return options_dict
         return options_dict
 
     def with_options(self, **kwargs: Any) -> JSONOptions:
