@@ -393,7 +393,6 @@ class JSONOptions(_BASE_CLASS):
             }
         )
         return options_dict
-        return options_dict
 
     def with_options(self, **kwargs: Any) -> JSONOptions:
         """
