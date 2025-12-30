@@ -273,8 +273,7 @@ if TYPE_CHECKING:
         def _arguments_repr(self) -> str:
             ...
 
-        def _options_dict(self) -> dict[Any, Any]:
-            ...
+
 
         # NamedTuple API
         @classmethod
@@ -483,7 +482,7 @@ else:
 
             .. versionadded:: 3.5
             """
-            opts = self._options_dict()
+            opts = self._asdict()
             opts.update(kwargs)
             return CodecOptions(**opts)
 
