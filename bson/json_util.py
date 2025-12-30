@@ -382,8 +382,6 @@ class JSONOptions(_BASE_CLASS):
             )
         )
 
-
-
     def with_options(self, **kwargs: Any) -> JSONOptions:
         """
         Make a copy of this JSONOptions, overriding some options::

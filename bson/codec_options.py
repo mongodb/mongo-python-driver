@@ -273,8 +273,6 @@ if TYPE_CHECKING:
         def _arguments_repr(self) -> str:
             ...
 
-
-
         # NamedTuple API
         @classmethod
         def _make(cls, obj: Iterable[Any]) -> CodecOptions[_DocumentType]:
@@ -464,8 +462,6 @@ else:
                     self.datetime_conversion,
                 )
             )
-
-
 
         def __repr__(self) -> str:
             return f"{self.__class__.__name__}({self._arguments_repr()})"
