@@ -466,9 +466,7 @@ else:
                 )
             )
 
-        def _options_dict(self) -> dict[str, Any]:
-            """Dictionary of the arguments used to create this object."""
-            return self._asdict()
+
 
         def __repr__(self) -> str:
             return f"{self.__class__.__name__}({self._arguments_repr()})"
