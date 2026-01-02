@@ -34,12 +34,17 @@ def apply_patches(errored):
     print("Beginning to apply patches")
     subprocess.run(["bash", "./.evergreen/remove-unimplemented-tests.sh"], check=True)  # noqa: S603, S607
     try:
-        subprocess.run(
-            ["git apply -R --allow-empty --whitespace=fix ./.evergreen/spec-patch/*"],  # noqa: S607
-            shell=True,  # noqa: S602
-            check=True,
-            stderr=subprocess.PIPE,
-        )
+        # Avoid shell=True by passing arguments as a list.
+        # Note: glob expansion doesn't work in shell=False, so we use a list of files.
+        import glob
+
+        patches = glob.glob("./.evergreen/spec-patch/*")
+        if patches:
+            subprocess.run(
+                ["git", "apply", "-R", "--allow-empty", "--whitespace=fix"] + patches,
+                check=True,
+                stderr=subprocess.PIPE,
+            )
     except CalledProcessError as exc:
         errored["applying patches"] = exc.stderr
 
@@ -76,14 +81,21 @@ def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
 def write_summary(errored: dict[str, str], new: list[str], filename: Optional[str]) -> None:
     """Generate the PR description"""
     pr_body = ""
+    # Avoid shell=True and complex pipes by using Python to process git output
     process = subprocess.run(
-        ["git diff --name-only | awk -F'/' '{print $2}' | sort | uniq"],  # noqa: S607
-        shell=True,  # noqa: S602
+        ["git", "diff", "--name-only"],
         capture_output=True,
         text=True,
         check=True,
     )
-    succeeded = process.stdout.strip().split()
+    changed_files = process.stdout.strip().splitlines()
+    succeeded_set = set()
+    for f in changed_files:
+        parts = f.split("/")
+        if len(parts) > 1:
+            succeeded_set.add(parts[1])
+    succeeded = sorted(list(succeeded_set))
+
     if len(succeeded) > 0:
         pr_body += "The following specs were changed:\n -"
         pr_body += "\n -".join(succeeded)
