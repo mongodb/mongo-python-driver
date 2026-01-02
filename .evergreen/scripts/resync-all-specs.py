@@ -6,7 +6,6 @@ import pathlib
 import subprocess
 from argparse import Namespace
 from subprocess import CalledProcessError
-from typing import Optional
 
 
 def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
@@ -19,8 +18,8 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
         if spec.name in ["asynchronous"]:
             continue
         try:
-            subprocess.run(
-                ["bash", "./.evergreen/resync-specs.sh", spec.name],  # noqa: S603, S607
+            subprocess.run(  # noqa: S603
+                ["bash", "./.evergreen/resync-specs.sh", spec.name],  # noqa: S607
                 capture_output=True,
                 text=True,
                 check=True,
@@ -32,16 +31,24 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
 
 def apply_patches(errored):
     print("Beginning to apply patches")
-    subprocess.run(["bash", "./.evergreen/remove-unimplemented-tests.sh"], check=True)  # noqa: S603, S607
+    subprocess.run(
+        ["bash", "./.evergreen/remove-unimplemented-tests.sh"],  # noqa: S607
+        check=True,
+    )
     try:
         # Avoid shell=True by passing arguments as a list.
         # Note: glob expansion doesn't work in shell=False, so we use a list of files.
-        import glob
-
-        patches = glob.glob("./.evergreen/spec-patch/*")
+        patches = [str(p) for p in pathlib.Path("./.evergreen/spec-patch/").glob("*")]
         if patches:
-            subprocess.run(
-                ["git", "apply", "-R", "--allow-empty", "--whitespace=fix"] + patches,
+            subprocess.run(  # noqa: S603
+                [  # noqa: S607
+                    "git",
+                    "apply",
+                    "-R",
+                    "--allow-empty",
+                    "--whitespace=fix",
+                    *patches,
+                ],
                 check=True,
                 stderr=subprocess.PIPE,
             )
@@ -59,7 +66,11 @@ def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
         and (pathlib.Path(entry.path) / "tests").is_dir()
         and len(list(os.scandir(pathlib.Path(entry.path) / "tests"))) > 1
     }
-    test_set = {entry.name.replace("-", "_") for entry in os.scandir(directory) if entry.is_dir()}
+    test_set = {
+        entry.name.replace("-", "_")
+        for entry in os.scandir(directory)
+        if entry.is_dir()
+    }
     known_mappings = {
         "ocsp_support": "ocsp",
         "client_side_operations_timeout": "csot",
@@ -78,12 +89,14 @@ def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
     return list(spec_set - test_set)
 
 
-def write_summary(errored: dict[str, str], new: list[str], filename: Optional[str]) -> None:
+def write_summary(
+    errored: dict[str, str], new: list[str], filename: str | None
+) -> None:
     """Generate the PR description"""
     pr_body = ""
     # Avoid shell=True and complex pipes by using Python to process git output
     process = subprocess.run(
-        ["git", "diff", "--name-only"],
+        ["git", "diff", "--name-only"],  # noqa: S607
         capture_output=True,
         text=True,
         check=True,
@@ -94,7 +107,7 @@ def write_summary(errored: dict[str, str], new: list[str], filename: Optional[st
         parts = f.split("/")
         if len(parts) > 1:
             succeeded_set.add(parts[1])
-    succeeded = sorted(list(succeeded_set))
+    succeeded = sorted(succeeded_set)
 
     if len(succeeded) > 0:
         pr_body += "The following specs were changed:\n -"
@@ -132,7 +145,9 @@ if __name__ == "__main__":
         description="Python Script to resync all specs and generate summary for PR."
     )
     parser.add_argument(
-        "--filename", help="Name of file for the summary to be written into.", default=None
+        "--filename",
+        help="Name of file for the summary to be written into.",
+        default=None,
     )
     args = parser.parse_args()
     main(args)
