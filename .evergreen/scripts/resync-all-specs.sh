@@ -8,6 +8,9 @@ SRC_URL="https://github.com/mongodb/specifications.git"
 SPEC_SRC="$(realpath "../specifications")"
 SCRIPT="$(realpath "./.evergreen/resync-specs.sh")"
 
+
+aws sts get-caller-identity
+
 # Clone the spec repo if the directory does not exist
 if [[ ! -d $SPEC_SRC ]]; then
   git clone $SRC_URL $SPEC_SRC
