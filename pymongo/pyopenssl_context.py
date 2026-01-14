@@ -35,7 +35,7 @@ from OpenSSL import crypto as _crypto
 from pymongo.errors import ConfigurationError as _ConfigurationError
 from pymongo.errors import _CertificateError  # type:ignore[attr-defined]
 from pymongo.ocsp_cache import _OCSPCache
-from pymongo.ocsp_support import _load_trusted_ca_certs, _ocsp_callback
+from pymongo.ocsp_support import _ocsp_callback
 from pymongo.socket_checker import SocketChecker as _SocketChecker
 from pymongo.socket_checker import _errno_from_exception
 from pymongo.write_concern import validate_boolean
@@ -322,10 +322,6 @@ class SSLContext:
         ssl.CERT_NONE.
         """
         self._ctx.load_verify_locations(cafile, capath)
-        # Manually load the CA certs when get_verified_chain is not available (pyopenssl<20).
-        if not hasattr(_SSL.Connection, "get_verified_chain"):
-            assert cafile is not None
-            self._callback_data.trusted_ca_certs = _load_trusted_ca_certs(cafile)
 
     def _load_certifi(self) -> None:
         """Attempt to load CA certs from certifi."""

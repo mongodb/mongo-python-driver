@@ -33,7 +33,7 @@ from test.utils_selection_tests_shared import (
 from test.utils_shared import parse_read_preference
 
 from bson import json_util
-from pymongo.common import HEARTBEAT_FREQUENCY
+from pymongo.common import HEARTBEAT_FREQUENCY, clean_node
 from pymongo.errors import AutoReconnect, ConfigurationError
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
@@ -95,12 +95,21 @@ def create_test(scenario_def):
         # "Eligible servers" is defined in the server selection spec as
         # the set of servers matching both the ReadPreference's mode
         # and tag sets.
-        top_latency = create_topology(scenario_def)
+        top_suitable = create_topology(scenario_def, local_threshold_ms=1000000)
 
         # "In latency window" is defined in the server selection
         # spec as the subset of suitable_servers that falls within the
         # allowable latency window.
-        top_suitable = create_topology(scenario_def, local_threshold_ms=1000000)
+        top_latency = create_topology(scenario_def)
+
+        top_suitable_deprioritized_servers = [
+            top_suitable.get_server_by_address(clean_node(server["address"]))
+            for server in scenario_def.get("deprioritized_servers", [])
+        ]
+        top_latency_deprioritized_servers = [
+            top_latency.get_server_by_address(clean_node(server["address"]))
+            for server in scenario_def.get("deprioritized_servers", [])
+        ]
 
         # Create server selector.
         if scenario_def.get("operation") == "write":
@@ -120,18 +129,38 @@ def create_test(scenario_def):
         # Select servers.
         if not scenario_def.get("suitable_servers"):
             with self.assertRaises(AutoReconnect):
-                top_suitable.select_server(pref, _Op.TEST, server_selection_timeout=0)
+                top_suitable.select_server(
+                    pref,
+                    _Op.TEST,
+                    server_selection_timeout=0,
+                    deprioritized_servers=top_suitable_deprioritized_servers,
+                )
 
             return
 
         if not scenario_def["in_latency_window"]:
             with self.assertRaises(AutoReconnect):
-                top_latency.select_server(pref, _Op.TEST, server_selection_timeout=0)
+                top_latency.select_server(
+                    pref,
+                    _Op.TEST,
+                    server_selection_timeout=0,
+                    deprioritized_servers=top_latency_deprioritized_servers,
+                )
 
             return
 
-        actual_suitable_s = top_suitable.select_servers(pref, _Op.TEST, server_selection_timeout=0)
-        actual_latency_s = top_latency.select_servers(pref, _Op.TEST, server_selection_timeout=0)
+        actual_suitable_s = top_suitable.select_servers(
+            pref,
+            _Op.TEST,
+            server_selection_timeout=0,
+            deprioritized_servers=top_suitable_deprioritized_servers,
+        )
+        actual_latency_s = top_latency.select_servers(
+            pref,
+            _Op.TEST,
+            server_selection_timeout=0,
+            deprioritized_servers=top_latency_deprioritized_servers,
+        )
 
         expected_suitable_servers = {}
         for server in scenario_def["suitable_servers"]:

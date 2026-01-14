@@ -239,6 +239,19 @@ functions:
         working_dir: src
       type: test
 
+  # Test numpy
+  test numpy:
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/just.sh
+          - test-numpy
+        working_dir: src
+        include_expansions_in_env:
+          - TOOLCHAIN_VERSION
+      type: test
+
   # Upload coverage
   upload coverage:
     - command: ec2.assume_role

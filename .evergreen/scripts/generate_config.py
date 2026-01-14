@@ -128,7 +128,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     ):
         expansions = get_encryption_expansions(encryption)
         display_name = get_variant_name(encryption, host, **expansions)
-        tasks = [".test-non-standard", ".test-min-deps"]
+        tasks = [".test-non-standard"]
         if host != "rhel8":
             tasks = [".test-non-standard !.pypy"]
         variant = create_variant(
@@ -339,6 +339,37 @@ def create_disable_test_commands_variants():
     return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
+def create_test_numpy_tasks():
+    tasks = []
+    for python in MIN_MAX_PYTHON:
+        tags = ["binary", "vector", f"python-{python}", "test-numpy"]
+        task_name = get_task_name("test-numpy", python=python)
+        test_func = FunctionCall(func="test numpy", vars=dict(TOOLCHAIN_VERSION=python))
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
+    return tasks
+
+
+def create_test_numpy_variants() -> list[BuildVariant]:
+    variants = []
+    base_display_name = "Test Numpy"
+
+    # Test a subset on each of the other platforms.
+    for host_name in ("rhel8", "macos", "macos-arm64", "win64", "win32"):
+        tasks = [".test-numpy"]
+        host = HOSTS[host_name]
+        tags = ["binary", "vector"]
+        if host_name == "rhel8":
+            tags.append("pr")
+        expansions = dict()
+        if host_name == "win32":
+            expansions["IS_WIN32"] = "1"
+        display_name = get_variant_name(base_display_name, host)
+        variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
+        variants.append(variant)
+
+    return variants
+
+
 def create_oidc_auth_variants():
     variants = []
     for host_name in ["ubuntu22", "macos", "win64"]:
@@ -471,6 +502,12 @@ def create_aws_auth_variants():
     return variants
 
 
+def create_min_support_variants():
+    host = HOSTS["rhel8"]
+    name = get_variant_name("Min Support", host=host)
+    return [create_variant([".test-min-support"], name, host=host)]
+
+
 def create_no_server_variants():
     host = HOSTS["rhel8"]
     name = get_variant_name("No server", host=host)
@@ -544,6 +581,8 @@ def create_server_version_tasks():
                 seen.add(combo)
                 tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
+        if python == ALL_PYTHONS[0]:
+            expansions["TEST_MIN_DEPS"] = "1"
         if "t" in python:
             tags.append("free-threaded")
         if python not in PYPYS and "t" not in python:
@@ -609,6 +648,8 @@ def create_test_non_standard_tasks():
         if pr:
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
+        if python == ALL_PYTHONS[0]:
+            expansions["TEST_MIN_DEPS"] = "1"
         name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
@@ -649,26 +690,12 @@ def create_test_standard_auth_tasks():
         if pr:
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
+        if python == ALL_PYTHONS[0]:
+            expansions["TEST_MIN_DEPS"] = "1"
         name = get_task_name("test-standard-auth", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
         test_vars["TOOLCHAIN_VERSION"] = python
-        test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
-    return tasks
-
-
-def create_min_deps_tasks():
-    """For variants that support testing with minimum dependencies."""
-    tasks = []
-    for topology in TOPOLOGIES:
-        auth, ssl = get_standard_auth_ssl(topology)
-        tags = ["test-min-deps", f"{topology}-{auth}-{ssl}"]
-        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
-        server_func = FunctionCall(func="run server", vars=expansions)
-        test_vars = expansions.copy()
-        test_vars["TEST_MIN_DEPS"] = "1"
-        name = get_task_name("test-min-deps", python=CPYTHONS[0], sync="sync", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
@@ -701,6 +728,8 @@ def create_standard_tasks():
         if pr:
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
+        if python == ALL_PYTHONS[0]:
+            expansions["TEST_MIN_DEPS"] = "1"
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
@@ -718,9 +747,11 @@ def create_no_orchestration_tasks():
             "test-no-orchestration",
             f"python-{python}",
         ]
-        name = get_task_name("test-no-orchestration", python=python)
         assume_func = FunctionCall(func="assume ec2 role")
         test_vars = dict(TOOLCHAIN_VERSION=python)
+        if python == ALL_PYTHONS[0]:
+            test_vars["TEST_MIN_DEPS"] = "1"
+        name = get_task_name("test-no-orchestration", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         commands = [assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=commands))
@@ -768,8 +799,10 @@ def create_aws_tasks():
         tags = [*base_tags, f"auth-aws-{test_type}"]
         if "t" in python:
             tags.append("free-threaded")
-        name = get_task_name(f"{base_name}-{test_type}", python=python)
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, TOOLCHAIN_VERSION=python)
+        if python == ALL_PYTHONS[0] and test_type != "ecs":
+            test_vars["TEST_MIN_DEPS"] = "1"
+        name = get_task_name(f"{base_name}-{test_type}", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [server_func, assume_func, test_func]
         tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
@@ -848,6 +881,8 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
             TOOLCHAIN_VERSION=python,
             VERSION=version,
         )
+        if python == ALL_PYTHONS[0]:
+            vars["TEST_MIN_DEPS"] = "1"
         test_func = FunctionCall(func="run tests", vars=vars)
 
         tags = ["ocsp", f"ocsp-{algo}", version]
@@ -856,13 +891,27 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         if algo == "valid-cert-server-staples" and version == "latest":
             tags.append("pr")
 
-        task_name = get_task_name(
-            f"test-ocsp-{algo}-{base_task_name}",
-            python=python,
-            version=version,
-        )
+        task_name = get_task_name(f"test-ocsp-{algo}-{base_task_name}", **vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
 
+    return tasks
+
+
+def create_min_support_tasks():
+    server_func = FunctionCall(func="run server")
+    from generate_config_utils import MIN_SUPPORT_VERSIONS
+
+    tasks = []
+    for python, topology in product(MIN_SUPPORT_VERSIONS, TOPOLOGIES):
+        auth, ssl = get_standard_auth_ssl(topology)
+        vars = dict(UV_PYTHON=python, AUTH=auth, SSL=ssl, TOPOLOGY=topology)
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = get_task_name(
+            "test-min-support", python=python, topology=topology, auth=auth, ssl=ssl
+        )
+        tags = ["test-min-support"]
+        commands = [server_func, test_func]
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
     return tasks
 
 
@@ -1138,6 +1187,14 @@ def create_run_tests_func():
     setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
     test_cmd = get_subprocess_exec(args=[".evergreen/just.sh", "run-tests"])
     return "run tests", [setup_cmd, test_cmd]
+
+
+def create_test_numpy_func():
+    includes = ["TOOLCHAIN_VERSION"]
+    test_cmd = get_subprocess_exec(
+        include_expansions_in_env=includes, args=[".evergreen/just.sh", "test-numpy"]
+    )
+    return "test numpy", [test_cmd]
 
 
 def create_cleanup_func():

@@ -12,6 +12,7 @@ set -eu
 #  TEST_CRYPT_SHARED    If non-empty, install crypt_shared lib.
 #  MONGODB_API_VERSION  The mongodb api version to use in tests.
 #  MONGODB_URI          If non-empty, use as the MONGODB_URI in tests.
+#  USE_ACTIVE_VENV      If non-empty, use the active virtual environment.
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 
@@ -21,5 +22,5 @@ if [ -f $SCRIPT_DIR/env.sh ]; then
 fi
 
 echo "Setting up tests with args \"$*\"..."
-uv run $SCRIPT_DIR/setup_tests.py "$@"
+uv run ${USE_ACTIVE_VENV:+--active} "$SCRIPT_DIR/setup_tests.py" "$@"
 echo "Setting up tests with args \"$*\"... done."

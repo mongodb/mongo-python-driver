@@ -65,6 +65,9 @@ if TYPE_CHECKING:
     from array import array as _array
     from mmap import mmap as _mmap
 
+    import numpy as np
+    import numpy.typing as npt
+
 
 class UuidRepresentation:
     UNSPECIFIED = 0
@@ -234,13 +237,20 @@ class BinaryVector:
 
     __slots__ = ("data", "dtype", "padding")
 
-    def __init__(self, data: Sequence[float | int], dtype: BinaryVectorDtype, padding: int = 0):
+    def __init__(
+        self,
+        data: Union[Sequence[float | int], npt.NDArray[np.number]],
+        dtype: BinaryVectorDtype,
+        padding: int = 0,
+    ):
         """
         :param data: Sequence of numbers representing the mathematical vector.
         :param dtype:  The data type stored in binary
         :param padding: The number of bits in the final byte that are to be ignored
           when a vector element's size is less than a byte
           and the length of the vector is not a multiple of 8.
+          (Padding is equivalent to a negative value of `count` in
+          `numpy.unpackbits <https://numpy.org/doc/stable/reference/generated/numpy.unpackbits.html>`_)
         """
         self.data = data
         self.dtype = dtype
@@ -425,9 +435,19 @@ class Binary(bytes):
         ...
 
     @classmethod
+    @overload
     def from_vector(
         cls: Type[Binary],
-        vector: Union[BinaryVector, list[int], list[float]],
+        vector: npt.NDArray[np.number],
+        dtype: BinaryVectorDtype,
+        padding: int = 0,
+    ) -> Binary:
+        ...
+
+    @classmethod
+    def from_vector(
+        cls: Type[Binary],
+        vector: Union[BinaryVector, list[int], list[float], npt.NDArray[np.number]],
         dtype: Optional[BinaryVectorDtype] = None,
         padding: Optional[int] = None,
     ) -> Binary:
@@ -459,34 +479,72 @@ class Binary(bytes):
             vector = vector.data  # type: ignore
 
         padding = 0 if padding is None else padding
-        if dtype == BinaryVectorDtype.INT8:  # pack ints in [-128, 127] as signed int8
-            format_str = "b"
-            if padding:
-                raise ValueError(f"padding does not apply to {dtype=}")
-        elif dtype == BinaryVectorDtype.PACKED_BIT:  # pack ints in [0, 255] as unsigned uint8
-            format_str = "B"
-            if 0 <= padding > 7:
-                raise ValueError(f"{padding=}. It must be in [0,1, ..7].")
-            if padding and not vector:
-                raise ValueError("Empty vector with non-zero padding.")
-        elif dtype == BinaryVectorDtype.FLOAT32:  # pack floats as float32
-            format_str = "f"
-            if padding:
-                raise ValueError(f"padding does not apply to {dtype=}")
-        else:
-            raise NotImplementedError("%s not yet supported" % dtype)
-
+        if not isinstance(dtype, BinaryVectorDtype):
+            raise TypeError(
+                "dtype must be a bson.BinaryVectorDtype of BinaryVectorDType.INT8, PACKED_BIT, FLOAT32"
+            )
         metadata = struct.pack("<sB", dtype.value, padding)
-        data = struct.pack(f"<{len(vector)}{format_str}", *vector)  # type: ignore
+
+        if isinstance(vector, list):
+            if dtype == BinaryVectorDtype.INT8:  # pack ints in [-128, 127] as signed int8
+                format_str = "b"
+                if padding:
+                    raise ValueError(f"padding does not apply to {dtype=}")
+            elif dtype == BinaryVectorDtype.PACKED_BIT:  # pack ints in [0, 255] as unsigned uint8
+                format_str = "B"
+                if 0 <= padding > 7:
+                    raise ValueError(f"{padding=}. It must be in [0,1, ..7].")
+                if padding and not vector:
+                    raise ValueError("Empty vector with non-zero padding.")
+            elif dtype == BinaryVectorDtype.FLOAT32:  # pack floats as float32
+                format_str = "f"
+                if padding:
+                    raise ValueError(f"padding does not apply to {dtype=}")
+            else:
+                raise NotImplementedError("%s not yet supported" % dtype)
+            data = struct.pack(f"<{len(vector)}{format_str}", *vector)
+        else:  # vector is numpy array or incorrect type.
+            try:
+                import numpy as np
+            except ImportError as exc:
+                raise ImportError(
+                    "Failed to create binary from vector. Check type. If numpy array, numpy must be installed."
+                ) from exc
+            if not isinstance(vector, np.ndarray):
+                raise TypeError(
+                    "Could not create Binary. Vector must be a BinaryVector, list[int], list[float] or numpy ndarray."
+                )
+            if vector.ndim != 1:
+                raise ValueError(
+                    "from_numpy_vector only supports 1D arrays as it creates a single vector."
+                )
+
+            if dtype == BinaryVectorDtype.FLOAT32:
+                vector = vector.astype(np.dtype("float32"), copy=False)
+            elif dtype == BinaryVectorDtype.INT8:
+                if vector.min() >= -128 and vector.max() <= 127:
+                    vector = vector.astype(np.dtype("int8"), copy=False)
+                else:
+                    raise ValueError("Values found outside INT8 range.")
+            elif dtype == BinaryVectorDtype.PACKED_BIT:
+                if vector.min() >= 0 and vector.max() <= 127:
+                    vector = vector.astype(np.dtype("uint8"), copy=False)
+                else:
+                    raise ValueError("Values found outside UINT8 range.")
+            else:
+                raise NotImplementedError("%s not yet supported" % dtype)
+            data = vector.tobytes()
+
         if padding and len(vector) and not (data[-1] & ((1 << padding) - 1)) == 0:
             raise ValueError(
                 "Vector has a padding P, but bits in the final byte lower than P are non-zero. They must be zero."
             )
         return cls(metadata + data, subtype=VECTOR_SUBTYPE)
 
-    def as_vector(self) -> BinaryVector:
-        """From the Binary, create a list of numbers, along with dtype and padding.
+    def as_vector(self, return_numpy: bool = False) -> BinaryVector:
+        """From the Binary, create a list or 1-d numpy array of numbers, along with dtype and padding.
 
+        :param return_numpy: If True, BinaryVector.data will be a one-dimensional numpy array. By default, it is a list.
         :return: BinaryVector
 
         .. versionadded:: 4.10
@@ -495,54 +553,84 @@ class Binary(bytes):
         if self.subtype != VECTOR_SUBTYPE:
             raise ValueError(f"Cannot decode subtype {self.subtype} as a vector")
 
-        position = 0
-        dtype, padding = struct.unpack_from("<sB", self, position)
-        position += 2
+        dtype, padding = struct.unpack_from("<sB", self)
         dtype = BinaryVectorDtype(dtype)
-        n_values = len(self) - position
+        offset = 2
+        n_bytes = len(self) - offset
 
         if padding and dtype != BinaryVectorDtype.PACKED_BIT:
             raise ValueError(
                 f"Corrupt data. Padding ({padding}) must be 0 for all but PACKED_BIT dtypes. ({dtype=})"
             )
 
-        if dtype == BinaryVectorDtype.INT8:
-            dtype_format = "b"
-            format_string = f"<{n_values}{dtype_format}"
-            vector = list(struct.unpack_from(format_string, self, position))
-            return BinaryVector(vector, dtype, padding)
+        if not return_numpy:
+            if dtype == BinaryVectorDtype.INT8:
+                dtype_format = "b"
+                format_string = f"<{n_bytes}{dtype_format}"
+                vector = list(struct.unpack_from(format_string, self, offset))
+                return BinaryVector(vector, dtype, padding)
 
-        elif dtype == BinaryVectorDtype.FLOAT32:
-            n_bytes = len(self) - position
-            n_values = n_bytes // 4
-            if n_bytes % 4:
-                raise ValueError(
-                    "Corrupt data. N bytes for a float32 vector must be a multiple of 4."
-                )
-            dtype_format = "f"
-            format_string = f"<{n_values}{dtype_format}"
-            vector = list(struct.unpack_from(format_string, self, position))
-            return BinaryVector(vector, dtype, padding)
+            elif dtype == BinaryVectorDtype.FLOAT32:
+                n_values = n_bytes // 4
+                if n_bytes % 4:
+                    raise ValueError(
+                        "Corrupt data. N bytes for a float32 vector must be a multiple of 4."
+                    )
+                dtype_format = "f"
+                format_string = f"<{n_values}{dtype_format}"
+                vector = list(struct.unpack_from(format_string, self, offset))
+                return BinaryVector(vector, dtype, padding)
 
-        elif dtype == BinaryVectorDtype.PACKED_BIT:
-            # data packed as uint8
-            if padding and not n_values:
-                raise ValueError("Corrupt data. Vector has a padding P, but no data.")
-            if padding > 7 or padding < 0:
-                raise ValueError(f"Corrupt data. Padding ({padding}) must be between 0 and 7.")
-            dtype_format = "B"
-            format_string = f"<{n_values}{dtype_format}"
-            unpacked_uint8s = list(struct.unpack_from(format_string, self, position))
-            if padding and n_values and unpacked_uint8s[-1] & (1 << padding) - 1 != 0:
-                warnings.warn(
-                    "Vector has a padding P, but bits in the final byte lower than P are non-zero. For pymongo>=5.0, they must be zero.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-            return BinaryVector(unpacked_uint8s, dtype, padding)
+            elif dtype == BinaryVectorDtype.PACKED_BIT:
+                # data packed as uint8
+                if padding and not n_bytes:
+                    raise ValueError("Corrupt data. Vector has a padding P, but no data.")
+                if padding > 7 or padding < 0:
+                    raise ValueError(f"Corrupt data. Padding ({padding}) must be between 0 and 7.")
+                dtype_format = "B"
+                format_string = f"<{n_bytes}{dtype_format}"
+                unpacked_uint8s = list(struct.unpack_from(format_string, self, offset))
+                if padding and n_bytes and unpacked_uint8s[-1] & (1 << padding) - 1 != 0:
+                    warnings.warn(
+                        "Vector has a padding P, but bits in the final byte lower than P are non-zero. For pymongo>=5.0, they must be zero.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+                return BinaryVector(unpacked_uint8s, dtype, padding)
 
-        else:
-            raise NotImplementedError("Binary Vector dtype %s not yet supported" % dtype.name)
+            else:
+                raise NotImplementedError("Binary Vector dtype %s not yet supported" % dtype.name)
+        else:  # create a numpy array
+            try:
+                import numpy as np
+            except ImportError as exc:
+                raise ImportError(
+                    "Converting binary to numpy.ndarray requires numpy to be installed."
+                ) from exc
+            if dtype == BinaryVectorDtype.INT8:
+                data = np.frombuffer(self[offset:], dtype="int8")
+            elif dtype == BinaryVectorDtype.FLOAT32:
+                if n_bytes % 4:
+                    raise ValueError(
+                        "Corrupt data. N bytes for a float32 vector must be a multiple of 4."
+                    )
+                data = np.frombuffer(self[offset:], dtype="float32")
+            elif dtype == BinaryVectorDtype.PACKED_BIT:
+                # data packed as uint8
+                if padding and not n_bytes:
+                    raise ValueError("Corrupt data. Vector has a padding P, but no data.")
+                if padding > 7 or padding < 0:
+                    raise ValueError(f"Corrupt data. Padding ({padding}) must be between 0 and 7.")
+                data = np.frombuffer(self[offset:], dtype="uint8")
+                if padding and np.unpackbits(data[-1])[-padding:].sum() > 0:
+                    warnings.warn(
+                        "Vector has a padding P, but bits in the final byte lower than P are non-zero. For pymongo>=5.0, they must be zero.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+            else:
+                raise NotImplementedError("Binary Vector dtype %s not yet supported" % dtype.name)
+            return BinaryVector(data, dtype, padding)
 
     @property
     def subtype(self) -> int:
