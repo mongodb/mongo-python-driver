@@ -57,6 +57,7 @@ from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
+from pymongo.synchronous.helpers import next
 
 _IS_SYNC = True
 

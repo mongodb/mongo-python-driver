@@ -45,7 +45,6 @@ from cryptography.x509 import ExtendedKeyUsage as _ExtendedKeyUsage
 from cryptography.x509 import ExtensionNotFound as _ExtensionNotFound
 from cryptography.x509 import TLSFeature as _TLSFeature
 from cryptography.x509 import TLSFeatureType as _TLSFeatureType
-from cryptography.x509 import load_pem_x509_certificate as _load_pem_x509_certificate
 from cryptography.x509.ocsp import OCSPCertStatus as _OCSPCertStatus
 from cryptography.x509.ocsp import OCSPRequestBuilder as _OCSPRequestBuilder
 from cryptography.x509.ocsp import OCSPResponseStatus as _OCSPResponseStatus
@@ -100,19 +99,6 @@ _LOGGER = _logging.getLogger(__name__)
 _CERT_REGEX = _re.compile(
     b"-----BEGIN CERTIFICATE[^\r\n]+.+?-----END CERTIFICATE[^\r\n]+", _re.DOTALL
 )
-
-
-def _load_trusted_ca_certs(cafile: str) -> list[Certificate]:
-    """Parse the tlsCAFile into a list of certificates."""
-    with open(cafile, "rb") as f:
-        data = f.read()
-
-    # Load all the certs in the file.
-    trusted_ca_certs = []
-    backend = _default_backend()
-    for cert_data in _re.findall(_CERT_REGEX, data):
-        trusted_ca_certs.append(_load_pem_x509_certificate(cert_data, backend))
-    return trusted_ca_certs
 
 
 def _get_issuer_cert(

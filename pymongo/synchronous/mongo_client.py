@@ -2837,7 +2837,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     if self._last_error is None:
                         self._last_error = exc
 
-                if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
+                if self._server is not None:
                     self._deprioritized_servers.append(self._server)
 
                 self._always_retryable = always_retryable

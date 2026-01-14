@@ -18,20 +18,13 @@ from __future__ import annotations
 import os
 import unittest
 from pathlib import Path
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 
 _IS_SYNC = False
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "run_command")
-else:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "run_command")
-
-
 globals().update(
     generate_test_classes(
-        os.path.join(TEST_PATH, "unified"),
+        get_test_path("run_command", "unified"),
         module=__name__,
     )
 )

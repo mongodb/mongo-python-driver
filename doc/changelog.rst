@@ -1,22 +1,32 @@
 Changelog
 =========
 
-Changes in Version 4.16.0 (XXXX/XX/XX)
+Changes in Version 4.16.0 (2026/01/07)
 --------------------------------------
 
 PyMongo 4.16 brings a number of changes including:
 
-.. warning:: PyMongo 4.16 drops support for Python 3.9 and PyPy 3.10: Python 3.10+ or PyPy 3.11+ is now required.
-
-- Dropped support for Python 3.9 and PyPy 3.10.
 - Removed invalid documents from :class:`bson.errors.InvalidDocument` error messages as
   doing so may leak sensitive user data.
   Instead, invalid documents are stored in :attr:`bson.errors.InvalidDocument.document`.
-- PyMongo now requires ``dnspython>=2.6.1``, since ``dnspython`` 1.0 is no longer maintained and is incompatible with
-  Python 3.10+.  The minimum version is ``2.6.1`` to account for `CVE-2023-29483 <https://www.cve.org/CVERecord?id=CVE-2023-29483>`_.
+- PyMongo now requires ``dnspython>=2.6.1``, since ``dnspython`` 1.0 is no longer maintained.
+  The minimum version is ``2.6.1`` to account for `CVE-2023-29483 <https://www.cve.org/CVERecord?id=CVE-2023-29483>`_.
 - Removed support for Eventlet.
   Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
 - Use Zstandard support from the standard library for Python 3.14+, and use ``backports.zstd`` for older versions.
+- Fixed return type annotation for ``find_one_and_*`` methods on :class:`~pymongo.asynchronous.collection.AsyncCollection`
+  and :class:`~pymongo.synchronous.collection.Collection` to include ``None``.
+- Added support for NumPy 1D-arrays in :class:`bson.binary.BinaryVector`.
+- Prevented :class:`~pymongo.encryption.ClientEncryption` from loading the crypt
+  shared library to fix "MongoCryptError: An existing crypt_shared library is
+  loaded by the application" unless the linked library search path is set.
+
+Changes in Version 4.15.5 (2025/12/02)
+--------------------------------------
+
+Version 4.15.5 is a bug fix release.
+
+- Fixed a bug that could cause ``AutoReconnect("connection pool paused")`` errors when cursors fetched more documents from the database after SDAM heartbeat failures.
 
 Changes in Version 4.15.4 (2025/10/21)
 --------------------------------------
