@@ -1,14 +1,12 @@
 {
-  "description": "backpressure-network-error-fail",
+  "description": "backpressure-network-timeout-error-single",
   "schemaVersion": "1.17",
   "runOnRequirements": [
     {
       "minServerVersion": "4.4",
       "serverless": "forbid",
       "topologies": [
-        "single",
-        "replicaset",
-        "sharded"
+        "single"
       ]
     }
   ],
@@ -22,7 +20,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "backpressure-network-error-fail",
+      "collectionName": "backpressure-network-timeout-error",
       "databaseName": "sdam-tests",
       "documents": [
         {
@@ -36,7 +34,7 @@
   ],
   "tests": [
     {
-      "description": "apply backpressure on network connection errors during connection establishment",
+      "description": "apply backpressure on network timeout error during connection establishment",
       "operations": [
         {
           "name": "createEntities",
@@ -48,14 +46,16 @@
                   "id": "client",
                   "useMultipleMongoses": false,
                   "observeEvents": [
-                    "serverHeartbeatSucceededEvent",
+                    "serverDescriptionChangedEvent",
                     "poolClearedEvent"
                   ],
                   "uriOptions": {
                     "retryWrites": false,
                     "heartbeatFrequencyMS": 1000000,
+                    "appname": "backpressureNetworkTimeoutErrorTest",
                     "serverMonitoringMode": "poll",
-                    "appname": "backpressureNetworkErrorFailTest"
+                    "connectTimeoutMS": 250,
+                    "socketTimeoutMS": 250
                   }
                 }
               },
@@ -70,7 +70,7 @@
                 "collection": {
                   "id": "collection",
                   "database": "database",
-                  "collectionName": "backpressure-network-error-fail"
+                  "collectionName": "backpressure-network-timeout-error"
                 }
               }
             ]
@@ -82,7 +82,11 @@
           "arguments": {
             "client": "client",
             "event": {
-              "serverHeartbeatSucceededEvent": {}
+              "serverDescriptionChangedEvent": {
+                "newDescription": {
+                  "type": "Standalone"
+                }
+              }
             },
             "count": 1
           }
@@ -100,8 +104,9 @@
                   "isMaster",
                   "hello"
                 ],
-                "appName": "backpressureNetworkErrorFailTest",
-                "closeConnection": true
+                "blockConnection": true,
+                "blockTimeMS": 500,
+                "appName": "backpressureNetworkTimeoutErrorTest"
               }
             }
           }
