@@ -24,7 +24,7 @@ from pathlib import Path
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.unified_format import generate_test_classes
+from test.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import OvertCommandListener
 
 from pymongo import DESCENDING
@@ -42,11 +42,7 @@ from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent, "read_write_concern")
-else:
-    TEST_PATH = os.path.join(Path(__file__).resolve().parent.parent, "read_write_concern")
+TEST_PATH = get_test_path("read_write_concern")
 
 
 class TestReadWriteConcernSpec(IntegrationTest):

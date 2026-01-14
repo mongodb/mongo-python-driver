@@ -597,9 +597,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
 
     def parse_client_options(self, opts):
         """Allow encryption spec to override a clientOptions parsing."""
-        # Convert test['clientOptions'] to dict to avoid a Jython bug using
-        # "**" with ScenarioDict.
-        return dict(opts)
+        return opts
 
     async def setup_scenario(self, scenario_def):
         """Allow specs to override a test's setup."""

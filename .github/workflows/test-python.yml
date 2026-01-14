@@ -22,11 +22,11 @@ jobs:
   static:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7
         with:
           enable-cache: true
           python-version: "3.10"
@@ -64,11 +64,11 @@ jobs:
 
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -83,11 +83,11 @@ jobs:
     runs-on: ubuntu-latest
     name: DocTest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7
         with:
           enable-cache: true
           python-version: "3.10"
@@ -108,11 +108,11 @@ jobs:
     name: Docs Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7
         with:
           enable-cache: true
           python-version: "3.10"
@@ -127,11 +127,11 @@ jobs:
     name: Link Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7
         with:
           enable-cache: true
           python-version: "3.10"
@@ -149,11 +149,11 @@ jobs:
       matrix:
         python: ["3.10", "3.11"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7
         with:
           enable-cache: true
           python-version: "${{matrix.python}}"
@@ -170,11 +170,11 @@ jobs:
     runs-on: ubuntu-latest
     name: Integration Tests
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7
         with:
           enable-cache: true
           python-version: "3.10"
@@ -200,7 +200,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "Make an sdist"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - uses: actions/setup-python@v6
@@ -208,13 +208,13 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
           # Build sdist on lowest supported Python
-          python-version: "3.10"
+          python-version: "3.9"
       - name: Build SDist
         shell: bash
         run: |
           pip install build
           python -m build --sdist
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: "sdist"
           path: dist/*.tar.gz
@@ -226,7 +226,7 @@ jobs:
       timeout-minutes: 20
       steps:
         - name: Download sdist
-          uses: actions/download-artifact@v6
+          uses: actions/download-artifact@v7
           with:
             path: sdist/
         - name: Unpack SDist
@@ -242,7 +242,7 @@ jobs:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
             # Test sdist on lowest supported Python
-            python-version: "3.10"
+            python-version: "3.9"
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
         - name: Run connect test from sdist
@@ -260,13 +260,13 @@ jobs:
       runs-on: ubuntu-latest
       name: Test minimum dependencies and Python
       steps:
-        - uses: actions/checkout@v5
+        - uses: actions/checkout@v6
           with:
             persist-credentials: false
         - name: Install uv
-          uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7
+          uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7
           with:
-            python-version: "3.10"
+            python-version: "3.9"
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
           with:

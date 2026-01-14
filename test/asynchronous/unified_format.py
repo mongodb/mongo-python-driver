@@ -29,6 +29,7 @@ import time
 import traceback
 from collections import defaultdict
 from inspect import iscoroutinefunction
+from pathlib import Path
 from test.asynchronous import (
     AsyncIntegrationTest,
     async_client_context,
@@ -77,6 +78,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.encryption import AsyncClientEncryption
+from pymongo.asynchronous.helpers import anext
 from pymongo.driver_info import DriverInfo
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
@@ -327,6 +329,17 @@ class EntityMapUtil:
                 kwargs["h"] = uri
             client = await self.test.async_rs_or_single_client(**kwargs)
             await client.aconnect()
+            # Wait for pool to be populated.
+            if "awaitMinPoolSizeMS" in spec:
+                pool = await async_get_pool(client)
+                t0 = time.monotonic()
+                while True:
+                    if (time.monotonic() - t0) > spec["awaitMinPoolSizeMS"] * 1000:
+                        raise ValueError("Test timed out during awaitMinPoolSize")
+                    async with pool.lock:
+                        if len(pool.conns) + pool.active_sockets >= pool.opts.min_pool_size:
+                            break
+                    await asyncio.sleep(0.1)
             self[spec["id"]] = client
             return
         elif entity_type == "database":
@@ -461,7 +474,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.25")
+    SCHEMA_VERSION = Version.from_string("1.26")
     RUN_ON_LOAD_BALANCER = True
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes
@@ -1445,7 +1458,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 read_concern=ReadConcern(level="local"),
             )
 
-            if expected_documents:
+            if expected_documents is not None:
                 sorted_expected_documents = sorted(expected_documents, key=lambda doc: doc["_id"])
                 actual_documents = await coll.find({}, sort=[("_id", ASCENDING)]).to_list()
                 self.assertListEqual(sorted_expected_documents, actual_documents)
@@ -1549,7 +1562,6 @@ class UnifiedSpecTestMeta(type):
                 if re.search(fail_pattern, description):
                     test_method = unittest.expectedFailure(test_method)
                     break
-
             setattr(cls, test_name, test_method)
 
 
@@ -1562,6 +1574,14 @@ _ALL_MIXIN_CLASSES = [
 _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS = {
     KLASS.SCHEMA_VERSION[0]: KLASS for KLASS in _ALL_MIXIN_CLASSES
 }
+
+
+def get_test_path(*args):
+    if _IS_SYNC:
+        root_dir = Path(__file__).resolve().parent
+    else:
+        root_dir = Path(__file__).resolve().parent.parent
+    return os.path.join(root_dir, *args)
 
 
 def generate_test_classes(
@@ -1596,10 +1616,12 @@ def generate_test_classes(
 
         return base
 
+    found_any = False
     for dirpath, _, filenames in os.walk(test_path):
         dirname = os.path.split(dirpath)[-1]
 
         for filename in filenames:
+            found_any = True
             fpath = os.path.join(dirpath, filename)
             with open(fpath) as scenario_stream:
                 # Use tz_aware=False to match how CodecOptions decodes
@@ -1636,5 +1658,8 @@ def generate_test_classes(
                 if bypass_test_generation_errors:
                     continue
                 raise
+
+    if not found_any:
+        raise ValueError(f"No test files found in {test_path}")
 
     return test_klasses
