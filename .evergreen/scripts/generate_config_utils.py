@@ -59,7 +59,7 @@ class Host:
 # Hosts with toolchains.
 HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8", dict())
 HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64", dict())
-HOSTS["win-latest"] = Host("win-latest", "windows-2022-latest", "WinLatest", dict())
+HOSTS["win-latest"] = Host("win-latest", "windows-2022-latest-small", "WinLatest", dict())
 HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32", dict())
 HOSTS["macos"] = Host("macos", "macos-14", "macOS", dict())
 HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64", dict())
