@@ -481,7 +481,7 @@ def create_perf_variants():
 def create_aws_auth_variants():
     variants = []
 
-    for host_name in ["ubuntu20", "win64", "macos"]:
+    for host_name in ["rhel8", "win64", "macos"]:
         expansions = dict()
         tasks = [".auth-aws"]
         tags = []
