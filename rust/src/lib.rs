@@ -4,6 +4,9 @@ use pyo3::exceptions::PyValueError;
 use bson::{doc, Document, Bson};
 use std::io::Cursor;
 
+// Type marker for Binary objects in BSON
+const BINARY_TYPE_MARKER: i32 = 5;
+
 /// Encode a Python dictionary to BSON bytes
 #[pyfunction]
 #[pyo3(signature = (obj, check_keys=false, codec_options=None))]
@@ -73,7 +76,7 @@ fn python_to_bson(
     // Check if this is a Binary object (has _type_marker == 5)
     if let Ok(type_marker) = obj.getattr("_type_marker") {
         if let Ok(marker) = type_marker.extract::<i32>() {
-            if marker == 5 {
+            if marker == BINARY_TYPE_MARKER {
                 // This is a Binary object
                 let subtype: u8 = obj.getattr("subtype")?.extract()?;
                 let bytes: Vec<u8> = obj.extract()?;
@@ -179,15 +182,18 @@ fn bson_to_python(
                 bson::spec::BinarySubtype::Vector => 9u8,
                 bson::spec::BinarySubtype::Reserved(s) => *s,  // Subtypes 10-127
                 bson::spec::BinarySubtype::UserDefined(s) => *s,  // Subtypes 128-255
-                // For any unknown/future subtypes, try to convert to u8
+                // For any unknown/future subtypes added to the BSON spec
+                // Note: This should rarely be hit with the current BSON specification
                 _ => {
-                    // This should not happen with current BSON spec, but handle it gracefully
-                    eprintln!("Warning: Unknown binary subtype encountered");
-                    0u8
+                    return Err(PyValueError::new_err(
+                        "Encountered unknown binary subtype that cannot be converted"
+                    ));
                 }
             };
             
-            // Subtype 0 is decoded as bytes, others as Binary objects
+            // Binary decoding rules per BSON spec:
+            // - Subtype 0 (Generic) is decoded as plain bytes (Python's bytes type)
+            // - All other subtypes are decoded as Binary objects to preserve type information
             if subtype == 0 {
                 Ok(PyBytes::new_bound(py, &v.bytes).into())
             } else {

@@ -143,7 +143,12 @@ def test_binary_subclass():
 
 
 def test_codec_options_accepted():
-    """Test that codec_options parameter is accepted (even if not fully used yet)."""
+    """Test that codec_options parameter is accepted.
+    
+    Note: Full codec_options functionality (document_class, tz_aware, uuid_representation,
+    etc.) will be implemented in future updates. This test verifies the parameter
+    is accepted without errors.
+    """
     print("\n=== Testing Codec Options Parameter ===")
     
     try:
