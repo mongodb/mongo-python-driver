@@ -23,6 +23,8 @@ def test_binary_subtypes():
         (0, "Generic/Default subtype"),
         (1, "Function subtype"),
         (5, "MD5 subtype"),
+        (10, "Reserved subtype 10"),
+        (50, "Reserved subtype 50"),
         (128, "User-defined subtype"),
         (200, "User-defined subtype 200"),
     ]

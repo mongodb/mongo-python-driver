@@ -89,8 +89,8 @@ fn python_to_bson(
                     7 => bson::spec::BinarySubtype::Column,
                     8 => bson::spec::BinarySubtype::Sensitive,
                     9 => bson::spec::BinarySubtype::Vector,
+                    10..=127 => bson::spec::BinarySubtype::Reserved(subtype),
                     128..=255 => bson::spec::BinarySubtype::UserDefined(subtype),
-                    _ => return Err(PyValueError::new_err(format!("Invalid binary subtype: {}", subtype))),
                 };
                 
                 return Ok(Bson::Binary(bson::Binary {
@@ -166,7 +166,7 @@ fn bson_to_python(
         Bson::Double(v) => Ok(v.to_object(py)),
         Bson::String(v) => Ok(v.to_object(py)),
         Bson::Binary(v) => {
-            let subtype = match v.subtype {
+            let subtype = match &v.subtype {
                 bson::spec::BinarySubtype::Generic => 0u8,
                 bson::spec::BinarySubtype::Function => 1u8,
                 bson::spec::BinarySubtype::BinaryOld => 2u8,
@@ -177,8 +177,14 @@ fn bson_to_python(
                 bson::spec::BinarySubtype::Column => 7u8,
                 bson::spec::BinarySubtype::Sensitive => 8u8,
                 bson::spec::BinarySubtype::Vector => 9u8,
-                bson::spec::BinarySubtype::UserDefined(s) => s,
-                _ => 0u8, // Default to Generic for any unknown subtypes
+                bson::spec::BinarySubtype::Reserved(s) => *s,  // Subtypes 10-127
+                bson::spec::BinarySubtype::UserDefined(s) => *s,  // Subtypes 128-255
+                // For any unknown/future subtypes, try to convert to u8
+                _ => {
+                    // This should not happen with current BSON spec, but handle it gracefully
+                    eprintln!("Warning: Unknown binary subtype encountered");
+                    0u8
+                }
             };
             
             // Subtype 0 is decoded as bytes, others as Binary objects
