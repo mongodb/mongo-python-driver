@@ -109,17 +109,56 @@ fn bson_to_python(py: Python, bson: &Bson) -> PyResult<PyObject> {
     }
 }
 
+/// Create a simple test document
+fn create_simple_doc() -> Document {
+    doc! {
+        "name": "John Doe",
+        "age": 30,
+        "active": true,
+        "score": 95.5,
+    }
+}
+
+/// Create a complex nested test document
+fn create_complex_doc() -> Document {
+    doc! {
+        "user": {
+            "name": "John Doe",
+            "age": 30,
+            "email": "john@example.com",
+            "address": {
+                "street": "123 Main St",
+                "city": "New York",
+                "state": "NY",
+                "zip": "10001"
+            }
+        },
+        "orders": [
+            {
+                "id": 1,
+                "total": 99.99,
+                "items": ["item1", "item2", "item3"]
+            },
+            {
+                "id": 2,
+                "total": 149.99,
+                "items": ["item4", "item5"]
+            }
+        ],
+        "metadata": {
+            "created": "2024-01-01",
+            "updated": "2024-01-15",
+            "version": 2
+        }
+    }
+}
+
 /// Benchmark: Encode a simple document multiple times
 #[pyfunction]
 fn benchmark_encode_simple(iterations: usize) -> PyResult<f64> {
     use std::time::Instant;
     
-    let doc = doc! {
-        "name": "John Doe",
-        "age": 30,
-        "active": true,
-        "score": 95.5,
-    };
+    let doc = create_simple_doc();
     
     let start = Instant::now();
     for _ in 0..iterations {
@@ -137,12 +176,7 @@ fn benchmark_encode_simple(iterations: usize) -> PyResult<f64> {
 fn benchmark_decode_simple(iterations: usize) -> PyResult<f64> {
     use std::time::Instant;
     
-    let doc = doc! {
-        "name": "John Doe",
-        "age": 30,
-        "active": true,
-        "score": 95.5,
-    };
+    let doc = create_simple_doc();
     
     let mut buf = Vec::new();
     doc.to_writer(&mut buf)
@@ -164,36 +198,7 @@ fn benchmark_decode_simple(iterations: usize) -> PyResult<f64> {
 fn benchmark_encode_complex(iterations: usize) -> PyResult<f64> {
     use std::time::Instant;
     
-    let doc = doc! {
-        "user": {
-            "name": "John Doe",
-            "age": 30,
-            "email": "john@example.com",
-            "address": {
-                "street": "123 Main St",
-                "city": "New York",
-                "state": "NY",
-                "zip": "10001"
-            }
-        },
-        "orders": [
-            {
-                "id": 1,
-                "total": 99.99,
-                "items": ["item1", "item2", "item3"]
-            },
-            {
-                "id": 2,
-                "total": 149.99,
-                "items": ["item4", "item5"]
-            }
-        ],
-        "metadata": {
-            "created": "2024-01-01",
-            "updated": "2024-01-15",
-            "version": 2
-        }
-    };
+    let doc = create_complex_doc();
     
     let start = Instant::now();
     for _ in 0..iterations {
@@ -211,36 +216,7 @@ fn benchmark_encode_complex(iterations: usize) -> PyResult<f64> {
 fn benchmark_decode_complex(iterations: usize) -> PyResult<f64> {
     use std::time::Instant;
     
-    let doc = doc! {
-        "user": {
-            "name": "John Doe",
-            "age": 30,
-            "email": "john@example.com",
-            "address": {
-                "street": "123 Main St",
-                "city": "New York",
-                "state": "NY",
-                "zip": "10001"
-            }
-        },
-        "orders": [
-            {
-                "id": 1,
-                "total": 99.99,
-                "items": ["item1", "item2", "item3"]
-            },
-            {
-                "id": 2,
-                "total": 149.99,
-                "items": ["item4", "item5"]
-            }
-        ],
-        "metadata": {
-            "created": "2024-01-01",
-            "updated": "2024-01-15",
-            "version": 2
-        }
-    };
+    let doc = create_complex_doc();
     
     let mut buf = Vec::new();
     doc.to_writer(&mut buf)
