@@ -1,0 +1,18 @@
+[package]
+name = "pymongo_rust"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "pymongo_rust"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.22", features = ["extension-module"] }
+bson = "2.13"
+serde = { version = "1.0", features = ["derive"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

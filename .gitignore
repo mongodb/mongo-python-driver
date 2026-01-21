@@ -42,3 +42,7 @@ test/lambda/*.json
 # test results and logs
 xunit-results/
 server.log
+
+# Rust artifacts
+rust/target/
+rust/Cargo.lock
