@@ -3,7 +3,7 @@
 use bson::{doc, Bson, Document};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{IntoPyDict, PyAny, PyBytes, PyDict};
+use pyo3::types::{IntoPyDict, PyAny, PyBool, PyBytes, PyDict, PyFloat, PyInt, PyString};
 use std::io::Cursor;
 
 // Type markers for BSON objects
@@ -79,7 +79,7 @@ fn encode_bson(
     let mut buf = Vec::new();
     doc.to_writer(&mut buf)
         .map_err(|e| PyValueError::new_err(format!("Failed to encode BSON: {}", e)))?;
-    Ok(PyBytes::new_bound(py, &buf).unbind())
+    Ok(PyBytes::new(py, &buf).unbind())
 }
 
 /// Decode BSON bytes to a Python dictionary
@@ -89,7 +89,7 @@ fn decode_bson(
     py: Python,
     data: &[u8],
     codec_options: Option<&Bound<'_, PyAny>>,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let cursor = Cursor::new(data);
     let doc = Document::from_reader(cursor)
         .map_err(|e| PyValueError::new_err(format!("Failed to decode BSON: {}", e)))?;
@@ -146,7 +146,7 @@ fn python_to_bson(
                         if name == "datetime" {
                             // Convert Python datetime to milliseconds since epoch
                             let py = obj.py();
-                            let datetime_ms_module = py.import_bound("bson.datetime_ms")?;
+                            let datetime_ms_module = py.import("bson.datetime_ms")?;
                             let datetime_to_millis =
                                 datetime_ms_module.getattr("_datetime_to_millis")?;
                             let millis: i64 = datetime_to_millis.call1((obj,))?.extract()?;
@@ -260,7 +260,7 @@ fn python_to_bson(
             subtype: bson::spec::BinarySubtype::Generic,
             bytes: v,
         }))
-    } else if let Ok(dict) = obj.downcast::<PyDict>() {
+    } else if let Ok(dict) = obj.cast::<PyDict>() {
         let doc = python_dict_to_bson_doc(dict, check_keys, codec_options)?;
         Ok(Bson::Document(doc))
     } else if let Ok(list) = obj.extract::<Vec<Bound<'_, PyAny>>>() {
@@ -282,8 +282,8 @@ fn bson_doc_to_python_dict(
     py: Python,
     doc: &Document,
     codec_options: Option<&Bound<'_, PyAny>>,
-) -> PyResult<PyObject> {
-    let dict = PyDict::new_bound(py);
+) -> PyResult<Py<PyAny>> {
+    let dict = PyDict::new(py);
 
     for (key, value) in doc {
         let py_value = bson_to_python(py, value, codec_options)?;
@@ -298,14 +298,14 @@ fn bson_to_python(
     py: Python,
     bson: &Bson,
     codec_options: Option<&Bound<'_, PyAny>>,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     match bson {
         Bson::Null => Ok(py.None()),
-        Bson::Boolean(v) => Ok(v.to_object(py)),
-        Bson::Int32(v) => Ok(v.to_object(py)),
-        Bson::Int64(v) => Ok(v.to_object(py)),
-        Bson::Double(v) => Ok(v.to_object(py)),
-        Bson::String(v) => Ok(v.to_object(py)),
+        Bson::Boolean(v) => Ok(PyBool::new(py, *v).to_owned().into_any().unbind()),
+        Bson::Int32(v) => Ok(PyInt::new(py, *v as i64).into_any().unbind()),
+        Bson::Int64(v) => Ok(PyInt::new(py, *v).into_any().unbind()),
+        Bson::Double(v) => Ok(PyFloat::new(py, *v).into_any().unbind()),
+        Bson::String(v) => Ok(PyString::new(py, v).into_any().unbind()),
         Bson::Binary(v) => {
             let subtype = match &v.subtype {
                 bson::spec::BinarySubtype::Generic => 0u8,
@@ -333,21 +333,21 @@ fn bson_to_python(
             // - Subtype 0 (Generic) is decoded as plain bytes (Python's bytes type)
             // - All other subtypes are decoded as Binary objects to preserve type information
             if subtype == 0 {
-                Ok(PyBytes::new_bound(py, &v.bytes).into())
+                Ok(PyBytes::new(py, &v.bytes).into())
             } else {
                 // Import Binary class from bson.binary
-                let bson_module = py.import_bound("bson.binary")?;
+                let bson_module = py.import("bson.binary")?;
                 let binary_class = bson_module.getattr("Binary")?;
 
                 // Create Binary(data, subtype)
-                let bytes = PyBytes::new_bound(py, &v.bytes);
+                let bytes = PyBytes::new(py, &v.bytes);
                 let binary = binary_class.call1((bytes, subtype))?;
                 Ok(binary.into())
             }
         }
         Bson::Document(v) => bson_doc_to_python_dict(py, v, codec_options),
         Bson::Array(v) => {
-            let list = pyo3::types::PyList::empty_bound(py);
+            let list = pyo3::types::PyList::empty(py);
             for item in v {
                 list.append(bson_to_python(py, item, codec_options)?)?;
             }
@@ -355,18 +355,18 @@ fn bson_to_python(
         }
         Bson::ObjectId(v) => {
             // Import ObjectId class from bson.objectid
-            let bson_module = py.import_bound("bson.objectid")?;
+            let bson_module = py.import("bson.objectid")?;
             let objectid_class = bson_module.getattr("ObjectId")?;
 
             // Create ObjectId from bytes
-            let bytes = PyBytes::new_bound(py, &v.bytes());
+            let bytes = PyBytes::new(py, &v.bytes());
             let objectid = objectid_class.call1((bytes,))?;
             Ok(objectid.into())
         }
         Bson::DateTime(v) => {
             // Convert to Python datetime with UTC timezone
-            let datetime_module = py.import_bound("datetime")?;
-            let utc_module = py.import_bound("bson.tz_util")?;
+            let datetime_module = py.import("datetime")?;
+            let utc_module = py.import("bson.tz_util")?;
             let utc = utc_module.getattr("utc")?;
 
             // Get milliseconds and convert to seconds and microseconds
@@ -376,13 +376,13 @@ fn bson_to_python(
 
             // Use datetime.fromtimestamp(seconds, tz=utc) to create datetime directly in UTC
             let datetime_class = datetime_module.getattr("datetime")?;
-            let kwargs = [("tz", utc)].into_py_dict_bound(py);
+            let kwargs = [("tz", utc)].into_py_dict(py)?;
             let dt = datetime_class.call_method("fromtimestamp", (seconds,), Some(&kwargs))?;
 
             // Add microseconds if needed
             if microseconds != 0 {
                 let timedelta_class = datetime_module.getattr("timedelta")?;
-                let kwargs = [("microseconds", microseconds)].into_py_dict_bound(py);
+                let kwargs = [("microseconds", microseconds)].into_py_dict(py)?;
                 let delta = timedelta_class.call((), Some(&kwargs))?;
                 let dt_with_micros = dt.call_method1("__add__", (delta,))?;
                 Ok(dt_with_micros.into())
@@ -392,7 +392,7 @@ fn bson_to_python(
         }
         Bson::RegularExpression(v) => {
             // Import Regex class from bson.regex
-            let bson_module = py.import_bound("bson.regex")?;
+            let bson_module = py.import("bson.regex")?;
             let regex_class = bson_module.getattr("Regex")?;
 
             // Convert BSON regex options to Python flags
@@ -404,7 +404,7 @@ fn bson_to_python(
         }
         Bson::Timestamp(v) => {
             // Import Timestamp class from bson.timestamp
-            let bson_module = py.import_bound("bson.timestamp")?;
+            let bson_module = py.import("bson.timestamp")?;
             let timestamp_class = bson_module.getattr("Timestamp")?;
 
             // Create Timestamp(time, inc)
