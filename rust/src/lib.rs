@@ -15,19 +15,19 @@ const TIMESTAMP_TYPE_MARKER: i32 = 17;
 fn int_flags_to_str(flags: i32) -> String {
     let mut options = String::new();
     
-    // Python re module flags:
+    // Python re module flags to BSON regex options:
     // re.IGNORECASE = 2 -> 'i'
-    // re.LOCALE = 4 -> 'l' (but not supported in BSON)
     // re.MULTILINE = 8 -> 'm'
     // re.DOTALL = 16 -> 's'
-    // re.UNICODE = 32 -> 'u' (but not in BSON)
     // re.VERBOSE = 64 -> 'x'
+    // Note: re.LOCALE and re.UNICODE are Python-specific and 
+    // have no direct BSON equivalents, so they are preserved for round-trip
     
     if flags & 2 != 0 {
         options.push('i');
     }
     if flags & 4 != 0 {
-        options.push('l');
+        options.push('l');  // Preserved for round-trip compatibility
     }
     if flags & 8 != 0 {
         options.push('m');
@@ -36,7 +36,7 @@ fn int_flags_to_str(flags: i32) -> String {
         options.push('s');
     }
     if flags & 32 != 0 {
-        options.push('u');
+        options.push('u');  // Preserved for round-trip compatibility
     }
     if flags & 64 != 0 {
         options.push('x');
@@ -357,31 +357,31 @@ fn bson_to_python(
             Ok(objectid.into())
         }
         Bson::DateTime(v) => {
-            // Convert to Python datetime
+            // Convert to Python datetime with UTC timezone
             let datetime_module = py.import_bound("datetime")?;
-            let datetime_class = datetime_module.getattr("datetime")?;
             let utc_module = py.import_bound("bson.tz_util")?;
             let utc = utc_module.getattr("utc")?;
             
-            // Get milliseconds and convert to datetime
+            // Get milliseconds and convert to seconds and microseconds
             let millis = v.timestamp_millis();
             let seconds = millis / 1000;
             let microseconds = (millis % 1000) * 1000;
             
-            // Create datetime from timestamp
-            let timestamp = datetime_class.getattr("fromtimestamp")?;
-            let dt = timestamp.call1((seconds,))?;
+            // Use datetime.fromtimestamp(seconds, tz=utc) to create datetime directly in UTC
+            let datetime_class = datetime_module.getattr("datetime")?;
+            let kwargs = [("tz", utc)].into_py_dict_bound(py);
+            let dt = datetime_class.call_method("fromtimestamp", (seconds,), Some(&kwargs))?;
             
-            // Add microseconds
-            let timedelta_class = datetime_module.getattr("timedelta")?;
-            let kwargs = [("microseconds", microseconds)].into_py_dict_bound(py);
-            let delta = timedelta_class.call((), Some(&kwargs))?;
-            let dt_with_micros = dt.call_method1("__add__", (delta,))?;
-            
-            // Add UTC timezone
-            let kwargs = [("tzinfo", utc)].into_py_dict_bound(py);
-            let dt_utc = dt_with_micros.call_method("replace", (), Some(&kwargs))?;
-            Ok(dt_utc.into())
+            // Add microseconds if needed
+            if microseconds != 0 {
+                let timedelta_class = datetime_module.getattr("timedelta")?;
+                let kwargs = [("microseconds", microseconds)].into_py_dict_bound(py);
+                let delta = timedelta_class.call((), Some(&kwargs))?;
+                let dt_with_micros = dt.call_method1("__add__", (delta,))?;
+                Ok(dt_with_micros.into())
+            } else {
+                Ok(dt.into())
+            }
         }
         Bson::RegularExpression(v) => {
             // Import Regex class from bson.regex
