@@ -1,11 +1,68 @@
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyAny};
+use pyo3::types::{PyBytes, PyDict, PyAny, IntoPyDict};
 use pyo3::exceptions::PyValueError;
 use bson::{doc, Document, Bson};
 use std::io::Cursor;
 
-// Type marker for Binary objects in BSON
+// Type markers for BSON objects
 const BINARY_TYPE_MARKER: i32 = 5;
+const OBJECTID_TYPE_MARKER: i32 = 7;
+const DATETIME_TYPE_MARKER: i32 = 9;
+const REGEX_TYPE_MARKER: i32 = 11;
+const TIMESTAMP_TYPE_MARKER: i32 = 17;
+
+/// Convert Python regex flags (int) to BSON regex options (string)
+fn int_flags_to_str(flags: i32) -> String {
+    let mut options = String::new();
+    
+    // Python re module flags to BSON regex options:
+    // re.IGNORECASE = 2 -> 'i'
+    // re.MULTILINE = 8 -> 'm'
+    // re.DOTALL = 16 -> 's'
+    // re.VERBOSE = 64 -> 'x'
+    // Note: re.LOCALE and re.UNICODE are Python-specific and 
+    // have no direct BSON equivalents, so they are preserved for round-trip
+    
+    if flags & 2 != 0 {
+        options.push('i');
+    }
+    if flags & 4 != 0 {
+        options.push('l');  // Preserved for round-trip compatibility
+    }
+    if flags & 8 != 0 {
+        options.push('m');
+    }
+    if flags & 16 != 0 {
+        options.push('s');
+    }
+    if flags & 32 != 0 {
+        options.push('u');  // Preserved for round-trip compatibility
+    }
+    if flags & 64 != 0 {
+        options.push('x');
+    }
+    
+    options
+}
+
+/// Convert BSON regex options (string) to Python regex flags (int)
+fn str_flags_to_int(options: &str) -> i32 {
+    let mut flags = 0;
+    
+    for ch in options.chars() {
+        match ch {
+            'i' => flags |= 2,  // re.IGNORECASE
+            'l' => flags |= 4,  // re.LOCALE
+            'm' => flags |= 8,  // re.MULTILINE
+            's' => flags |= 16, // re.DOTALL
+            'u' => flags |= 32, // re.UNICODE
+            'x' => flags |= 64, // re.VERBOSE
+            _ => {} // Ignore unknown flags
+        }
+    }
+    
+    flags
+}
 
 /// Encode a Python dictionary to BSON bytes
 #[pyfunction]
@@ -73,33 +130,107 @@ fn python_to_bson(
     check_keys: bool,
     codec_options: Option<&Bound<'_, PyAny>>,
 ) -> PyResult<Bson> {
-    // Check if this is a Binary object (has _type_marker == 5)
+    // Check for Python datetime objects first (before checking type_marker)
+    // datetime.datetime has module 'datetime' and type 'datetime'
+    if let Ok(type_obj) = obj.get_type().getattr("__module__") {
+        if let Ok(module_name) = type_obj.extract::<String>() {
+            if module_name == "datetime" {
+                if let Ok(type_name) = obj.get_type().getattr("__name__") {
+                    if let Ok(name) = type_name.extract::<String>() {
+                        if name == "datetime" {
+                            // Convert Python datetime to milliseconds since epoch
+                            let py = obj.py();
+                            let datetime_ms_module = py.import_bound("bson.datetime_ms")?;
+                            let datetime_to_millis = datetime_ms_module.getattr("_datetime_to_millis")?;
+                            let millis: i64 = datetime_to_millis.call1((obj,))?.extract()?;
+                            return Ok(Bson::DateTime(bson::DateTime::from_millis(millis)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Check if this is a BSON type with a _type_marker
     if let Ok(type_marker) = obj.getattr("_type_marker") {
         if let Ok(marker) = type_marker.extract::<i32>() {
-            if marker == BINARY_TYPE_MARKER {
-                // This is a Binary object
-                let subtype: u8 = obj.getattr("subtype")?.extract()?;
-                let bytes: Vec<u8> = obj.extract()?;
-                
-                let bson_subtype = match subtype {
-                    0 => bson::spec::BinarySubtype::Generic,
-                    1 => bson::spec::BinarySubtype::Function,
-                    2 => bson::spec::BinarySubtype::BinaryOld,
-                    3 => bson::spec::BinarySubtype::UuidOld,
-                    4 => bson::spec::BinarySubtype::Uuid,
-                    5 => bson::spec::BinarySubtype::Md5,
-                    6 => bson::spec::BinarySubtype::Encrypted,
-                    7 => bson::spec::BinarySubtype::Column,
-                    8 => bson::spec::BinarySubtype::Sensitive,
-                    9 => bson::spec::BinarySubtype::Vector,
-                    10..=127 => bson::spec::BinarySubtype::Reserved(subtype),
-                    128..=255 => bson::spec::BinarySubtype::UserDefined(subtype),
-                };
-                
-                return Ok(Bson::Binary(bson::Binary {
-                    subtype: bson_subtype,
-                    bytes,
-                }));
+            match marker {
+                BINARY_TYPE_MARKER => {
+                    // Binary object
+                    let subtype: u8 = obj.getattr("subtype")?.extract()?;
+                    let bytes: Vec<u8> = obj.extract()?;
+                    
+                    let bson_subtype = match subtype {
+                        0 => bson::spec::BinarySubtype::Generic,
+                        1 => bson::spec::BinarySubtype::Function,
+                        2 => bson::spec::BinarySubtype::BinaryOld,
+                        3 => bson::spec::BinarySubtype::UuidOld,
+                        4 => bson::spec::BinarySubtype::Uuid,
+                        5 => bson::spec::BinarySubtype::Md5,
+                        6 => bson::spec::BinarySubtype::Encrypted,
+                        7 => bson::spec::BinarySubtype::Column,
+                        8 => bson::spec::BinarySubtype::Sensitive,
+                        9 => bson::spec::BinarySubtype::Vector,
+                        10..=127 => bson::spec::BinarySubtype::Reserved(subtype),
+                        128..=255 => bson::spec::BinarySubtype::UserDefined(subtype),
+                    };
+                    
+                    return Ok(Bson::Binary(bson::Binary {
+                        subtype: bson_subtype,
+                        bytes,
+                    }));
+                }
+                OBJECTID_TYPE_MARKER => {
+                    // ObjectId object - get the binary representation
+                    let binary: Vec<u8> = obj.getattr("binary")?.extract()?;
+                    if binary.len() != 12 {
+                        return Err(PyValueError::new_err("ObjectId must be 12 bytes"));
+                    }
+                    let mut oid_bytes = [0u8; 12];
+                    oid_bytes.copy_from_slice(&binary);
+                    return Ok(Bson::ObjectId(bson::oid::ObjectId::from_bytes(oid_bytes)));
+                }
+                DATETIME_TYPE_MARKER => {
+                    // DateTime/DatetimeMS object - get milliseconds since epoch
+                    // Try to get the _value attribute (for DatetimeMS)
+                    if let Ok(value) = obj.getattr("_value") {
+                        let millis: i64 = value.extract()?;
+                        return Ok(Bson::DateTime(bson::DateTime::from_millis(millis)));
+                    }
+                    return Err(PyValueError::new_err("DateTime object must have _value attribute"));
+                }
+                REGEX_TYPE_MARKER => {
+                    // Regex object
+                    let pattern: String = obj.getattr("pattern")?.extract()?;
+                    let flags_obj = obj.getattr("flags")?;
+                    
+                    // Flags can be an int or a string
+                    let flags_str = if let Ok(flags_int) = flags_obj.extract::<i32>() {
+                        // Convert Python regex flags to BSON regex flags
+                        int_flags_to_str(flags_int)
+                    } else if let Ok(flags_str) = flags_obj.extract::<String>() {
+                        flags_str
+                    } else {
+                        String::new()
+                    };
+                    
+                    return Ok(Bson::RegularExpression(bson::Regex {
+                        pattern,
+                        options: flags_str,
+                    }));
+                }
+                TIMESTAMP_TYPE_MARKER => {
+                    // Timestamp object
+                    let time: u32 = obj.getattr("time")?.extract()?;
+                    let inc: u32 = obj.getattr("inc")?.extract()?;
+                    return Ok(Bson::Timestamp(bson::Timestamp {
+                        time,
+                        increment: inc,
+                    }));
+                }
+                _ => {
+                    // Unknown type marker, fall through to normal conversion
+                }
             }
         }
     }
@@ -214,6 +345,64 @@ fn bson_to_python(
                 list.append(bson_to_python(py, item, codec_options)?)?;
             }
             Ok(list.into())
+        }
+        Bson::ObjectId(v) => {
+            // Import ObjectId class from bson.objectid
+            let bson_module = py.import_bound("bson.objectid")?;
+            let objectid_class = bson_module.getattr("ObjectId")?;
+            
+            // Create ObjectId from bytes
+            let bytes = PyBytes::new_bound(py, &v.bytes());
+            let objectid = objectid_class.call1((bytes,))?;
+            Ok(objectid.into())
+        }
+        Bson::DateTime(v) => {
+            // Convert to Python datetime with UTC timezone
+            let datetime_module = py.import_bound("datetime")?;
+            let utc_module = py.import_bound("bson.tz_util")?;
+            let utc = utc_module.getattr("utc")?;
+            
+            // Get milliseconds and convert to seconds and microseconds
+            let millis = v.timestamp_millis();
+            let seconds = millis / 1000;
+            let microseconds = (millis % 1000) * 1000;
+            
+            // Use datetime.fromtimestamp(seconds, tz=utc) to create datetime directly in UTC
+            let datetime_class = datetime_module.getattr("datetime")?;
+            let kwargs = [("tz", utc)].into_py_dict_bound(py);
+            let dt = datetime_class.call_method("fromtimestamp", (seconds,), Some(&kwargs))?;
+            
+            // Add microseconds if needed
+            if microseconds != 0 {
+                let timedelta_class = datetime_module.getattr("timedelta")?;
+                let kwargs = [("microseconds", microseconds)].into_py_dict_bound(py);
+                let delta = timedelta_class.call((), Some(&kwargs))?;
+                let dt_with_micros = dt.call_method1("__add__", (delta,))?;
+                Ok(dt_with_micros.into())
+            } else {
+                Ok(dt.into())
+            }
+        }
+        Bson::RegularExpression(v) => {
+            // Import Regex class from bson.regex
+            let bson_module = py.import_bound("bson.regex")?;
+            let regex_class = bson_module.getattr("Regex")?;
+            
+            // Convert BSON regex options to Python flags
+            let flags = str_flags_to_int(&v.options);
+            
+            // Create Regex(pattern, flags)
+            let regex = regex_class.call1((v.pattern.clone(), flags))?;
+            Ok(regex.into())
+        }
+        Bson::Timestamp(v) => {
+            // Import Timestamp class from bson.timestamp
+            let bson_module = py.import_bound("bson.timestamp")?;
+            let timestamp_class = bson_module.getattr("Timestamp")?;
+            
+            // Create Timestamp(time, inc)
+            let timestamp = timestamp_class.call1((v.time, v.increment))?;
+            Ok(timestamp.into())
         }
         _ => Err(PyValueError::new_err(format!(
             "Unsupported BSON type for Python conversion: {:?}",

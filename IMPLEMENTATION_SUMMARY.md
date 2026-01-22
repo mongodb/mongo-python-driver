@@ -67,15 +67,15 @@ This spike successfully demonstrates the feasibility of replacing PyMongo's C ex
 - [x] Int64
 - [x] Double
 - [x] String (UTF-8)
-- [x] Binary (Generic subtype)
+- [x] Binary (all subtypes)
 - [x] Document (nested)
 - [x] Array
+- [x] DateTime
+- [x] ObjectId
+- [x] Regex
+- [x] Timestamp
 
 ### Not Yet Implemented (Future)
-- [ ] DateTime
-- [ ] ObjectId
-- [ ] Regex
-- [ ] Timestamp
 - [ ] Decimal128
 - [ ] MinKey/MaxKey
 - [ ] Code (with/without scope)
