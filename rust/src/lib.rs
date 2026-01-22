@@ -302,10 +302,10 @@ fn bson_to_python(
     match bson {
         Bson::Null => Ok(py.None()),
         Bson::Boolean(v) => Ok(PyBool::new(py, *v).to_owned().into_any().unbind()),
-        Bson::Int32(v) => Ok(PyInt::new(py, *v as i64).into_any().clone().unbind()),
-        Bson::Int64(v) => Ok(PyInt::new(py, *v).into_any().clone().unbind()),
-        Bson::Double(v) => Ok(PyFloat::new(py, *v).into_any().clone().unbind()),
-        Bson::String(v) => Ok(PyString::new(py, v).into_any().clone().unbind()),
+        Bson::Int32(v) => Ok(PyInt::new(py, *v as i64).into_any().unbind()),
+        Bson::Int64(v) => Ok(PyInt::new(py, *v).into_any().unbind()),
+        Bson::Double(v) => Ok(PyFloat::new(py, *v).into_any().unbind()),
+        Bson::String(v) => Ok(PyString::new(py, v).into_any().unbind()),
         Bson::Binary(v) => {
             let subtype = match &v.subtype {
                 bson::spec::BinarySubtype::Generic => 0u8,
