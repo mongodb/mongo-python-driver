@@ -12,9 +12,8 @@ const OBJECTID_TYPE_MARKER: i32 = 7;
 const DATETIME_TYPE_MARKER: i32 = 9;
 const REGEX_TYPE_MARKER: i32 = 11;
 const CODE_TYPE_MARKER: i32 = 13;
-#[allow(dead_code)]
+// Symbol and DBPointer are deprecated BSON types, included for decoding compatibility
 const SYMBOL_TYPE_MARKER: i32 = 14;
-#[allow(dead_code)]
 const DBPOINTER_TYPE_MARKER: i32 = 15;
 const TIMESTAMP_TYPE_MARKER: i32 = 17;
 const INT64_TYPE_MARKER: i32 = 18;
@@ -845,6 +844,7 @@ fn bson_to_python(
         Bson::DbPointer(ref dbpointer) => {
             // DBPointer (deprecated) -> decode as DBRef
             // DbPointer doesn't have public accessors, so we parse the debug string
+            // Note: This is fragile and should be replaced if the bson crate adds public accessors
             let debug_str = format!("{:?}", dbpointer);
             
             // Parse "DbPointer { namespace: \"collection\", id: ObjectId(\"5259b56afa5bd841d6585d99\") }"
@@ -869,6 +869,14 @@ fn bson_to_python(
             } else {
                 return Err(PyValueError::new_err("Failed to parse DbPointer ObjectId"));
             };
+            
+            // Validate ObjectId hex string length (must be exactly 24 characters for 12 bytes)
+            if oid_hex.len() != 24 {
+                return Err(PyValueError::new_err(format!(
+                    "Invalid ObjectId hex length: expected 24, got {}",
+                    oid_hex.len()
+                )));
+            }
             
             // Parse hex string to bytes
             let mut oid_bytes = [0u8; 12];

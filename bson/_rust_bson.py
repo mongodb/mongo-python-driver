@@ -87,13 +87,19 @@ def _decode_all(data: bytes, codec_options: Any) -> List[Any]:
             if position + 4 > data_len:
                 break
             
+            # BSON document size is a signed 32-bit integer per BSON spec
+            # but must be positive for valid documents
             size = int.from_bytes(data[position:position + 4], byteorder='little', signed=True)
             
+            # Validate size is positive and reasonable
             if size < 5:  # Minimum BSON document size
-                break
+                raise InvalidBSON(f"Invalid BSON document size: {size}")
+                
+            if size > data_len:  # Size larger than entire buffer
+                raise InvalidBSON(f"BSON document size {size} exceeds data length {data_len}")
                 
             if position + size > data_len:
-                break
+                raise InvalidBSON(f"Incomplete BSON document at position {position}")
             
             # Extract and decode this document
             doc_bytes = data[position:position + size]
