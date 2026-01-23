@@ -453,22 +453,25 @@ fn python_to_bson(
         Ok(Bson::Double(v))
     } else if let Ok(v) = obj.extract::<String>() {
         Ok(Bson::String(v))
-    } else if let Ok(v) = obj.extract::<Vec<u8>>() {
-        // Raw bytes without Binary wrapper -> subtype 0
-        Ok(Bson::Binary(bson::Binary {
-            subtype: bson::spec::BinarySubtype::Generic,
-            bytes: v,
-        }))
     } else if obj.hasattr("items")? {
         // Any object with items() method (dict, SON, OrderedDict, etc.)
         let doc = python_mapping_to_bson_doc(&obj, check_keys, codec_options)?;
         Ok(Bson::Document(doc))
     } else if let Ok(list) = obj.extract::<Vec<Bound<'_, PyAny>>>() {
+        // Check for sequences (lists, tuples) before bytes
+        // This must come before Vec<u8> check because tuples of ints can be extracted as Vec<u8>
         let mut arr = Vec::new();
         for item in list {
             arr.push(python_to_bson(item, check_keys, codec_options)?);
         }
         Ok(Bson::Array(arr))
+    } else if let Ok(v) = obj.extract::<Vec<u8>>() {
+        // Raw bytes without Binary wrapper -> subtype 0
+        // This check must come AFTER sequence check to avoid treating tuples as bytes
+        Ok(Bson::Binary(bson::Binary {
+            subtype: bson::spec::BinarySubtype::Generic,
+            bytes: v,
+        }))
     } else {
         Err(PyValueError::new_err(format!(
             "Unsupported Python type for BSON conversion: {:?}",
