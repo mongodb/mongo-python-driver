@@ -278,18 +278,22 @@ fn python_to_bson(
             }
             
             // Check for compiled regex Pattern objects
+            // Pattern type name can be 'Pattern', 'Pattern[str]', 'Pattern[bytes]' depending on Python version
             if module_name == "re" || module_name == "re._parser" {
                 if let Ok(type_name) = obj.get_type().getattr("__name__") {
                     if let Ok(name) = type_name.extract::<String>() {
-                        if name == "Pattern" {
+                        if name.starts_with("Pattern") {
                             // Extract pattern and flags from re.Pattern
-                            let pattern: String = obj.getattr("pattern")?.extract()?;
-                            let flags: i32 = obj.getattr("flags")?.extract()?;
-                            let flags_str = int_flags_to_str(flags);
-                            return Ok(Bson::RegularExpression(bson::Regex {
-                                pattern,
-                                options: flags_str,
-                            }));
+                            // Use hasattr to be extra safe
+                            if obj.hasattr("pattern")? && obj.hasattr("flags")? {
+                                let pattern: String = obj.getattr("pattern")?.extract()?;
+                                let flags: i32 = obj.getattr("flags")?.extract()?;
+                                let flags_str = int_flags_to_str(flags);
+                                return Ok(Bson::RegularExpression(bson::Regex {
+                                    pattern,
+                                    options: flags_str,
+                                }));
+                            }
                         }
                     }
                 }
@@ -538,17 +542,27 @@ fn bson_to_python(
             
             // Check for UUID subtypes (3 and 4)
             if subtype == 3 || subtype == 4 {
-                // Always decode as UUID unless explicitly disabled in codec_options
+                // Check codec_options for UUID representation setting
+                // PyMongo's UuidRepresentation enum values:
+                // UNSPECIFIED = 0, PYTHON_LEGACY = 1, JAVA_LEGACY = 2, CSHARP_LEGACY = 3, STANDARD = 4
+                // When uuid_representation is UNSPECIFIED (0), we should decode as Binary
+                // For other values, decode as UUID
                 let should_decode_as_uuid = if let Some(opts) = codec_options {
-                    // Check if uuid_representation is present and what its value is
-                    // In PyMongo, uuid_representation is an integer enum value
                     if let Ok(uuid_rep) = opts.getattr("uuid_representation") {
-                        !uuid_rep.is_none()
+                        if let Ok(rep_value) = uuid_rep.extract::<i32>() {
+                            // Decode as UUID if representation is not UNSPECIFIED (0)
+                            rep_value != 0
+                        } else {
+                            // If we can't extract as int, default to UUID
+                            true
+                        }
                     } else {
-                        true  // Default to UUID if not specified
+                        // No uuid_representation attribute, default to UUID
+                        true
                     }
                 } else {
-                    true  // Default to UUID if no codec_options
+                    // No codec_options, default to UUID for subtypes 3 and 4
+                    true
                 };
                 
                 if should_decode_as_uuid {
@@ -635,17 +649,28 @@ fn bson_to_python(
                 }
             } else {
                 // Return naive datetime (no timezone)
-                let dt = datetime_class.call_method1("utcfromtimestamp", (seconds,))?;
+                // Note: utcfromtimestamp is deprecated in Python 3.12+
+                // Use fromtimestamp with UTC then remove tzinfo for compatibility
+                let timezone_module = py.import("datetime")?;
+                let timezone_class = timezone_module.getattr("timezone")?;
+                let utc = timezone_class.getattr("utc")?;
+                
+                let kwargs = [("tz", utc)].into_py_dict(py)?;
+                let dt = datetime_class.call_method("fromtimestamp", (seconds,), Some(&kwargs))?;
+                
+                // Remove timezone to make it naive
+                let kwargs = [("tzinfo", py.None())].into_py_dict(py)?;
+                let naive_dt = dt.call_method("replace", (), Some(&kwargs))?;
                 
                 // Add microseconds if needed
                 if microseconds != 0 {
                     let timedelta_class = datetime_module.getattr("timedelta")?;
                     let kwargs = [("microseconds", microseconds)].into_py_dict(py)?;
                     let delta = timedelta_class.call((), Some(&kwargs))?;
-                    let dt_with_micros = dt.call_method1("__add__", (delta,))?;
+                    let dt_with_micros = naive_dt.call_method1("__add__", (delta,))?;
                     Ok(dt_with_micros.into())
                 } else {
-                    Ok(dt.into())
+                    Ok(naive_dt.into())
                 }
             }
         }
