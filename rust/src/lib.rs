@@ -17,7 +17,9 @@ const SYMBOL_TYPE_MARKER: i32 = 14;
 #[allow(dead_code)]
 const DBPOINTER_TYPE_MARKER: i32 = 15;
 const TIMESTAMP_TYPE_MARKER: i32 = 17;
+const INT64_TYPE_MARKER: i32 = 18;
 const DECIMAL128_TYPE_MARKER: i32 = 19;
+const DBREF_TYPE_MARKER: i32 = 100;
 const MAXKEY_TYPE_MARKER: i32 = 127;
 const MINKEY_TYPE_MARKER: i32 = 255;
 
@@ -83,7 +85,7 @@ fn encode_bson(
     check_keys: bool,
     codec_options: Option<&Bound<'_, PyAny>>,
 ) -> PyResult<Py<PyBytes>> {
-    let doc = python_mapping_to_bson_doc(obj, check_keys, codec_options)?;
+    let doc = python_mapping_to_bson_doc(obj, check_keys, codec_options, true)?;
     let mut buf = Vec::new();
     doc.to_writer(&mut buf)
         .map_err(|e| PyValueError::new_err(format!("Failed to encode BSON: {}", e)))?;
@@ -98,14 +100,14 @@ fn decode_bson(
     data: &Bound<'_, PyAny>,
     codec_options: Option<&Bound<'_, PyAny>>,
 ) -> PyResult<Py<PyAny>> {
-    // Accept both bytes and bytearray
-    let bytes = if let Ok(b) = data.extract::<&[u8]>() {
+    // Accept bytes, bytearray, memoryview, and other buffer protocol objects
+    let bytes: Vec<u8> = if let Ok(b) = data.extract::<Vec<u8>>() {
         b
     } else {
-        return Err(PyValueError::new_err("data must be bytes or bytearray"));
+        return Err(PyValueError::new_err("data must be bytes, bytearray, memoryview, or buffer protocol object"));
     };
     
-    let cursor = Cursor::new(bytes);
+    let cursor = Cursor::new(&bytes);
     let doc = Document::from_reader(cursor)
         .map_err(|e| PyValueError::new_err(format!("Failed to decode BSON: {}", e)))?;
     bson_doc_to_python_dict(py, &doc, codec_options)
@@ -116,6 +118,7 @@ fn python_mapping_to_bson_doc(
     obj: &Bound<'_, PyAny>,
     check_keys: bool,
     codec_options: Option<&Bound<'_, PyAny>>,
+    is_top_level: bool,
 ) -> PyResult<Document> {
     let mut doc = Document::new();
     let mut has_id = false;
@@ -125,7 +128,7 @@ fn python_mapping_to_bson_doc(
     if let Ok(items_method) = obj.getattr("items") {
         if let Ok(items_result) = items_method.call0() {
             // Try to cast to PyList or PyTuple first for efficient iteration
-            if let Ok(items_list) = items_result.downcast::<pyo3::types::PyList>() {
+            if let Ok(items_list) = items_result.cast::<pyo3::types::PyList>() {
                 for item in items_list {
                     process_mapping_item(
                         &item,
@@ -136,7 +139,7 @@ fn python_mapping_to_bson_doc(
                         codec_options,
                     )?;
                 }
-            } else if let Ok(items_tuple) = items_result.downcast::<pyo3::types::PyTuple>() {
+            } else if let Ok(items_tuple) = items_result.cast::<pyo3::types::PyTuple>() {
                 for item in items_tuple {
                     process_mapping_item(
                         &item,
@@ -175,15 +178,21 @@ fn python_mapping_to_bson_doc(
                 }
             }
             
-            // Insert _id first if present
+            // Insert _id first if present and at top level
             if has_id {
                 if let Some(id_val) = id_value {
-                    let mut new_doc = Document::new();
-                    new_doc.insert("_id", id_val);
-                    for (k, v) in doc {
-                        new_doc.insert(k, v);
+                    if is_top_level {
+                        // At top level, move _id to the front
+                        let mut new_doc = Document::new();
+                        new_doc.insert("_id", id_val);
+                        for (k, v) in doc {
+                            new_doc.insert(k, v);
+                        }
+                        return Ok(new_doc);
+                    } else {
+                        // Not at top level, just insert _id in normal position
+                        doc.insert("_id", id_val);
                     }
-                    return Ok(new_doc);
                 }
             }
             
@@ -240,7 +249,7 @@ fn process_mapping_item(
 
     let bson_value = python_to_bson(value, check_keys, codec_options)?;
 
-    // Store _id field separately to insert first
+    // Always store _id field, but it will be reordered at top level only
     if key_str == "_id" {
         *has_id = true;
         *id_value = Some(bson_value);
@@ -395,7 +404,7 @@ fn python_to_bson(
                     if let Ok(scope_obj) = obj.getattr("scope") {
                         if !scope_obj.is_none() {
                             // Code with scope
-                            let scope_doc = python_mapping_to_bson_doc(&scope_obj, check_keys, codec_options)?;
+                            let scope_doc = python_mapping_to_bson_doc(&scope_obj, check_keys, codec_options, false)?;
                             return Ok(Bson::JavaScriptCodeWithScope(bson::JavaScriptCodeWithScope {
                                 code: code_str,
                                 scope: scope_doc,
@@ -415,6 +424,11 @@ fn python_to_bson(
                         increment: inc,
                     }));
                 }
+                INT64_TYPE_MARKER => {
+                    // Int64 object - extract the value and encode as BSON Int64
+                    let value: i64 = obj.extract()?;
+                    return Ok(Bson::Int64(value));
+                }
                 DECIMAL128_TYPE_MARKER => {
                     // Decimal128 object
                     // Get the bytes representation
@@ -433,6 +447,39 @@ fn python_to_bson(
                 MINKEY_TYPE_MARKER => {
                     // MinKey object
                     return Ok(Bson::MinKey);
+                }
+                DBREF_TYPE_MARKER => {
+                    // DBRef object - use as_doc() method to get the full document representation
+                    // This includes $ref, $id, $db (if present), and any extra kwargs
+                    if let Ok(as_doc_method) = obj.getattr("as_doc") {
+                        if let Ok(doc_obj) = as_doc_method.call0() {
+                            // Convert the SON/dict returned by as_doc() to BSON
+                            let dbref_doc = python_mapping_to_bson_doc(&doc_obj, check_keys, codec_options, false)?;
+                            return Ok(Bson::Document(dbref_doc));
+                        }
+                    }
+                    
+                    // Fallback: manually construct the document
+                    let mut dbref_doc = Document::new();
+                    
+                    // Get collection (stored as $ref)
+                    let collection: String = obj.getattr("collection")?.extract()?;
+                    dbref_doc.insert("$ref", collection);
+                    
+                    // Get id (stored as $id) - can be any BSON type
+                    let id_obj = obj.getattr("id")?;
+                    let id_bson = python_to_bson(id_obj, check_keys, codec_options)?;
+                    dbref_doc.insert("$id", id_bson);
+                    
+                    // Get database if present (stored as $db)
+                    if let Ok(database_obj) = obj.getattr("database") {
+                        if !database_obj.is_none() {
+                            let database: String = database_obj.extract()?;
+                            dbref_doc.insert("$db", database);
+                        }
+                    }
+                    
+                    return Ok(Bson::Document(dbref_doc));
                 }
                 _ => {
                     // Unknown type marker, fall through to normal conversion
@@ -455,7 +502,7 @@ fn python_to_bson(
         Ok(Bson::String(v))
     } else if obj.hasattr("items")? {
         // Any object with items() method (dict, SON, OrderedDict, etc.)
-        let doc = python_mapping_to_bson_doc(&obj, check_keys, codec_options)?;
+        let doc = python_mapping_to_bson_doc(&obj, check_keys, codec_options, false)?;
         Ok(Bson::Document(doc))
     } else if let Ok(list) = obj.extract::<Vec<Bound<'_, PyAny>>>() {
         // Check for sequences (lists, tuples) before bytes
@@ -486,6 +533,52 @@ fn bson_doc_to_python_dict(
     doc: &Document,
     codec_options: Option<&Bound<'_, PyAny>>,
 ) -> PyResult<Py<PyAny>> {
+    // Check if this document is a DBRef (has $ref and $id fields)
+    if doc.contains_key("$ref") && doc.contains_key("$id") {
+        // This is a DBRef - decode as such
+        let collection = if let Some(Bson::String(s)) = doc.get("$ref") {
+            s.clone()
+        } else {
+            return Err(PyValueError::new_err("DBRef $ref field must be a string"));
+        };
+        
+        let id_bson = doc.get("$id").ok_or_else(|| PyValueError::new_err("DBRef missing $id field"))?;
+        let id_py = bson_to_python(py, id_bson, codec_options)?;
+        
+        // Import DBRef class
+        let bson_module = py.import("bson.dbref")?;
+        let dbref_class = bson_module.getattr("DBRef")?;
+        
+        // Get optional $db field
+        let database_arg = if let Some(db_bson) = doc.get("$db") {
+            if let Bson::String(database) = db_bson {
+                Some(database.clone())
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        
+        // Collect any extra fields (not $ref, $id, or $db) as kwargs
+        let kwargs = PyDict::new(py);
+        for (key, value) in doc {
+            if key != "$ref" && key != "$id" && key != "$db" {
+                let py_value = bson_to_python(py, value, codec_options)?;
+                kwargs.set_item(key, py_value)?;
+            }
+        }
+        
+        // Create DBRef with positional args and kwargs
+        if let Some(database) = database_arg {
+            let dbref = dbref_class.call((collection, id_py, database), Some(&kwargs))?;
+            return Ok(dbref.into());
+        } else {
+            let dbref = dbref_class.call((collection, id_py), Some(&kwargs))?;
+            return Ok(dbref.into());
+        }
+    }
+    
     let dict = PyDict::new(py);
 
     for (key, value) in doc {
@@ -748,6 +841,56 @@ fn bson_to_python(
             // Create MinKey instance
             let minkey = minkey_class.call0()?;
             Ok(minkey.into())
+        }
+        Bson::DbPointer(ref dbpointer) => {
+            // DBPointer (deprecated) -> decode as DBRef
+            // DbPointer doesn't have public accessors, so we parse the debug string
+            let debug_str = format!("{:?}", dbpointer);
+            
+            // Parse "DbPointer { namespace: \"collection\", id: ObjectId(\"5259b56afa5bd841d6585d99\") }"
+            let namespace = if let Some(ns_start) = debug_str.find("namespace: \"") {
+                let ns_start = ns_start + 12;
+                if let Some(ns_end) = debug_str[ns_start..].find("\"") {
+                    debug_str[ns_start..ns_start + ns_end].to_string()
+                } else {
+                    return Err(PyValueError::new_err("Failed to parse DbPointer namespace"));
+                }
+            } else {
+                return Err(PyValueError::new_err("Failed to parse DbPointer namespace"));
+            };
+            
+            let oid_hex = if let Some(oid_start) = debug_str.find("ObjectId(\"") {
+                let oid_start = oid_start + 10;
+                if let Some(oid_end) = debug_str[oid_start..].find("\"") {
+                    debug_str[oid_start..oid_start + oid_end].to_string()
+                } else {
+                    return Err(PyValueError::new_err("Failed to parse DbPointer ObjectId"));
+                }
+            } else {
+                return Err(PyValueError::new_err("Failed to parse DbPointer ObjectId"));
+            };
+            
+            // Parse hex string to bytes
+            let mut oid_bytes = [0u8; 12];
+            for i in 0..12 {
+                let hex_byte = &oid_hex[i*2..i*2+2];
+                oid_bytes[i] = u8::from_str_radix(hex_byte, 16)
+                    .map_err(|_| PyValueError::new_err("Failed to parse ObjectId hex"))?;
+            }
+            
+            // Import DBRef class from bson.dbref
+            let bson_module = py.import("bson.dbref")?;
+            let dbref_class = bson_module.getattr("DBRef")?;
+            
+            // Convert ObjectId to Python ObjectId
+            let objectid_module = py.import("bson.objectid")?;
+            let objectid_class = objectid_module.getattr("ObjectId")?;
+            let oid_py = PyBytes::new(py, &oid_bytes);
+            let objectid = objectid_class.call1((oid_py,))?;
+            
+            // Create DBRef(collection, id)
+            let dbref = dbref_class.call1((namespace, objectid))?;
+            Ok(dbref.into())
         }
         Bson::Symbol(v) => {
             // Symbol is deprecated but we need to support decoding it
