@@ -144,11 +144,16 @@ if TYPE_CHECKING:
     from bson.typings import _DocumentType, _ReadableBuffer
 
 try:
-    from bson import _cbson  # type: ignore[attr-defined]
+    from bson import _rust_bson as _cbson  # type: ignore[attr-defined]
 
     _USE_C = True
 except ImportError:
-    _USE_C = False
+    try:
+        from bson import _cbson  # type: ignore[attr-defined]
+
+        _USE_C = True
+    except ImportError:
+        _USE_C = False
 
 __all__ = [
     "ALL_UUID_SUBTYPES",
