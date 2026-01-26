@@ -831,12 +831,14 @@ def create_aws_tasks():
             funcs = [server_func, assume_func, test_func]
             tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
-    # Add the ECS task.
+    # Add the ECS task.  This will run on Ubuntu 24 to match the
+    # Fargate environment.
     tags = ["auth-aws-ecs"]
     test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME="ecs")
-    name = get_task_name(f"test-auth-aws-ecs-{test_type}", **test_vars)
+    name = get_task_name("test-auth-aws-ecs", **test_vars)
     test_func = FunctionCall(func="run tests", vars=test_vars)
-    funcs = [assume_func, test_func]
+    server_func = FunctionCall(func="run server", vars=dict(VERSION="8.0"))
+    funcs = [assume_func, server_func, test_func]
     tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     return tasks

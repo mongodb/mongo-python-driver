@@ -116,9 +116,12 @@ tasks:
           TOOLCHAIN_VERSION: "3.10"
           TEST_MIN_DEPS: "1"
     tags: [auth-aws, auth-aws-regular]
-  - name: test-auth-aws-ecs-regular
+  - name: test-auth-aws-ecs
     commands:
       - func: assume ec2 role
+      - func: run server
+        vars:
+          VERSION: "8.0"
       - func: run tests
         vars:
           TEST_NAME: auth_aws
