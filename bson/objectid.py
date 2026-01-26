@@ -15,7 +15,6 @@
 """Tools for working with MongoDB ObjectIds."""
 from __future__ import annotations
 
-import binascii
 import datetime
 import os
 import struct
@@ -98,11 +97,27 @@ class ObjectId:
            objectid.rst>`_.
         """
         if oid is None:
-            self.__generate()
+            # Generate a new value for this ObjectId.
+            with ObjectId._inc_lock:
+                inc = ObjectId._inc
+                ObjectId._inc = (inc + 1) % (_MAX_COUNTER_VALUE + 1)
+
+            # 4 bytes current time, 5 bytes random, 3 bytes inc.
+            self.__id = _PACK_INT_RANDOM(int(time.time()), ObjectId._random()) + _PACK_INT(inc)[1:4]
         elif isinstance(oid, bytes) and len(oid) == 12:
             self.__id = oid
+        elif isinstance(oid, str):
+            if len(oid) == 24:
+                try:
+                    self.__id = bytes.fromhex(oid)
+                except (TypeError, ValueError):
+                    _raise_invalid_id(oid)
+            else:
+                _raise_invalid_id(oid)
+        elif isinstance(oid, ObjectId):
+            self.__id = oid.binary
         else:
-            self.__validate(oid)
+            raise TypeError(f"id must be an instance of (bytes, str, ObjectId), not {type(oid)}")
 
     @classmethod
     def from_datetime(cls: Type[ObjectId], generation_time: datetime.datetime) -> ObjectId:
@@ -163,37 +178,6 @@ class ObjectId:
             cls.__random = _random_bytes()
         return cls.__random
 
-    def __generate(self) -> None:
-        """Generate a new value for this ObjectId."""
-        with ObjectId._inc_lock:
-            inc = ObjectId._inc
-            ObjectId._inc = (inc + 1) % (_MAX_COUNTER_VALUE + 1)
-
-        # 4 bytes current time, 5 bytes random, 3 bytes inc.
-        self.__id = _PACK_INT_RANDOM(int(time.time()), ObjectId._random()) + _PACK_INT(inc)[1:4]
-
-    def __validate(self, oid: Any) -> None:
-        """Validate and use the given id for this ObjectId.
-
-        Raises TypeError if id is not an instance of :class:`str`,
-        :class:`bytes`, or ObjectId. Raises InvalidId if it is not a
-        valid ObjectId.
-
-        :param oid: a valid ObjectId
-        """
-        if isinstance(oid, ObjectId):
-            self.__id = oid.binary
-        elif isinstance(oid, str):
-            if len(oid) == 24:
-                try:
-                    self.__id = bytes.fromhex(oid)
-                except (TypeError, ValueError):
-                    _raise_invalid_id(oid)
-            else:
-                _raise_invalid_id(oid)
-        else:
-            raise TypeError(f"id must be an instance of (bytes, str, ObjectId), not {type(oid)}")
-
     @property
     def binary(self) -> bytes:
         """12-byte binary representation of this ObjectId."""
@@ -234,7 +218,7 @@ class ObjectId:
             self.__id = oid
 
     def __str__(self) -> str:
-        return binascii.hexlify(self.__id).decode()
+        return self.__id.hex()
 
     def __repr__(self) -> str:
         return f"ObjectId('{self!s}')"

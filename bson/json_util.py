@@ -382,19 +382,6 @@ class JSONOptions(_BASE_CLASS):
             )
         )
 
-    def _options_dict(self) -> dict[Any, Any]:
-        # TODO: PYTHON-2442 use _asdict() instead
-        options_dict = super()._options_dict()
-        options_dict.update(
-            {
-                "strict_number_long": self.strict_number_long,
-                "datetime_representation": self.datetime_representation,
-                "strict_uuid": self.strict_uuid,
-                "json_mode": self.json_mode,
-            }
-        )
-        return options_dict
-
     def with_options(self, **kwargs: Any) -> JSONOptions:
         """
         Make a copy of this JSONOptions, overriding some options::
@@ -408,7 +395,7 @@ class JSONOptions(_BASE_CLASS):
 
         .. versionadded:: 3.12
         """
-        opts = self._options_dict()
+        opts = self._asdict()
         for opt in ("strict_number_long", "datetime_representation", "strict_uuid", "json_mode"):
             opts[opt] = kwargs.get(opt, getattr(self, opt))
         opts.update(kwargs)

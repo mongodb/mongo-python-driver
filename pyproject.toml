@@ -48,21 +48,21 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [dependency-groups]
 dev = []
-pip = ["pip"]
-gevent = ["gevent>=20.6.0"]
+pip = ["pip>=20.2"]
+gevent = ["gevent>=21.12"]
 coverage = [
-    "pytest-cov",
-    "coverage>=5,<=7.10.6"
+    "pytest-cov>=4.0.0",
+    "coverage[toml]>=5,<=7.10.7"
 ]
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
 ]
 perf = ["simplejson>=3.17.0"]
 typing = [
-    "mypy==1.18.2",
+    "mypy==1.19.1",
     "pyright==1.1.407",
-    "typing_extensions",
-    "pip"
+    "typing_extensions>=3.7.4.2",
+    "pip>=20.2"
 ]
 
 # Used to call hatch_build.py

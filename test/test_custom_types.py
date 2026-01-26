@@ -55,6 +55,7 @@ from bson.raw_bson import RawBSONDocument
 from pymongo.errors import DuplicateKeyError
 from pymongo.message import _CursorAddress
 from pymongo.synchronous.collection import ReturnDocument
+from pymongo.synchronous.helpers import next
 
 _IS_SYNC = True
 

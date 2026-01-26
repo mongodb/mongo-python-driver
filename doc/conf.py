@@ -88,6 +88,8 @@ pygments_style = "sphinx"
 linkcheck_ignore = [
     "https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.md#requesting-an-immediate-check",
     "https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback",
+    "https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.md",
+    "https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.md",
     "https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source",
     r"https://wiki.centos.org/[\w/]*",
     r"https://sourceforge.net/",
@@ -186,8 +188,8 @@ latex_documents = [
     ("index", "PyMongo.tex", "PyMongo Documentation", "Michael Dirolf", "manual"),
 ]
 
-# The name of an image file (relative to this directory) to place at the top of
-# the title page.
+# The name of an image file (relative to this directory) to place at the top
+# of the title page.
 # latex_logo = None
 
 # For "manual" documents, if this is true, then toplevel headings are parts,

@@ -4,7 +4,7 @@ set shell := ["bash", "-c"]
 export UV_FROZEN := "1"
 
 # Commonly used command segments.
-typing_run := "uv run --group typing --extra aws --extra encryption --extra ocsp --extra snappy --extra test --extra zstd"
+typing_run := "uv run --group typing --extra aws --extra encryption --with numpy --extra ocsp --extra snappy --extra test --extra zstd"
 docs_run := "uv run --extra docs"
 doc_build := "./doc/_build"
 mypy_args := "--install-types --non-interactive"
@@ -40,14 +40,14 @@ typing: && resync
 
 [group('typing')]
 typing-mypy: && resync
-    {{typing_run}} mypy {{mypy_args}} bson gridfs tools pymongo
-    {{typing_run}} mypy {{mypy_args}} --config-file mypy_test.ini test
-    {{typing_run}} mypy {{mypy_args}} test/test_typing.py test/test_typing_strict.py
+    {{typing_run}} python -m mypy {{mypy_args}} bson gridfs tools pymongo
+    {{typing_run}} python -m mypy {{mypy_args}} --config-file mypy_test.ini test
+    {{typing_run}} python -m mypy {{mypy_args}} test/test_typing.py test/test_typing_strict.py
 
 [group('typing')]
 typing-pyright: && resync
-    {{typing_run}} pyright test/test_typing.py test/test_typing_strict.py
-    {{typing_run}} pyright -p strict_pyrightconfig.json test/test_typing_strict.py
+    {{typing_run}} python -m pyright test/test_typing.py test/test_typing_strict.py
+    {{typing_run}} python -m pyright -p strict_pyrightconfig.json test/test_typing_strict.py
 
 [group('lint')]
 lint: && resync
@@ -59,7 +59,11 @@ lint-manual: && resync
 
 [group('test')]
 test *args="-v --durations=5 --maxfail=10": && resync
-    uv run --extra test pytest {{args}}
+    uv run --extra test python -m pytest {{args}}
+
+[group('test')]
+test-numpy: && resync
+    uv run --extra test --with numpy python -m pytest test/test_bson.py
 
 [group('test')]
 run-tests *args: && resync

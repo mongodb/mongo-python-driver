@@ -28,7 +28,7 @@ import pytest
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, PyMongoTestCase, unittest
-from test.unified_format import generate_test_classes
+from test.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import AllowListEventListener, OvertCommandListener
 
 from pymongo.errors import OperationFailure
@@ -39,12 +39,6 @@ from pymongo.write_concern import WriteConcern
 _IS_SYNC = True
 
 pytestmark = pytest.mark.search_index
-
-# Location of JSON test specifications.
-if _IS_SYNC:
-    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "index_management")
-else:
-    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "index_management")
 
 _NAME = "test-search-index"
 
@@ -370,7 +364,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
 
 globals().update(
     generate_test_classes(
-        _TEST_PATH,
+        get_test_path("index_management"),
         module=__name__,
     )
 )
