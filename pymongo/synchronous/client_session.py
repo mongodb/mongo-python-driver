@@ -715,7 +715,7 @@ class ClientSession:
         while True:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
-                backoff = jitter * min(_BACKOFF_INITIAL * (1.5**retry), _BACKOFF_MAX)
+                backoff = jitter * min(_BACKOFF_INITIAL * (1.5 ** (retry - 1)), _BACKOFF_MAX)
                 if _would_exceed_time_limit(start_time, backoff):
                     assert last_error is not None
                     raise last_error
