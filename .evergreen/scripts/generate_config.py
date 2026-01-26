@@ -481,7 +481,8 @@ def create_perf_variants():
 def create_aws_auth_variants():
     variants = []
 
-    for host_name in ["rhel8", "win64", "macos"]:
+    # ECS tests must be run on Ubuntu 24 to match the fargate environment.
+    for host_name in ["ubuntu24", "win64", "macos"]:
         expansions = dict()
         tasks = [".auth-aws"]
         tags = []

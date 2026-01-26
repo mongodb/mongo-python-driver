@@ -70,12 +70,12 @@ buildvariants:
     tags: [pr]
 
   # Aws auth tests
-  - name: auth-aws-rhel8
+  - name: auth-aws-ubuntu-24
     tasks:
       - name: .auth-aws
-    display_name: Auth AWS RHEL8
+    display_name: Auth AWS Ubuntu-24
     run_on:
-      - rhel87-small
+      - ubuntu2404-small
     tags: []
   - name: auth-aws-win64
     tasks:
