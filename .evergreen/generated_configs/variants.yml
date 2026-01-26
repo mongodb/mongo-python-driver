@@ -70,26 +70,33 @@ buildvariants:
     tags: [pr]
 
   # Aws auth tests
-  - name: auth-aws-ubuntu-24
+  - name: auth-aws-rhel8
     tasks:
       - name: .auth-aws
-    display_name: Auth AWS Ubuntu-24
+    display_name: Auth AWS RHEL8
     run_on:
-      - ubuntu2404-small
+      - rhel87-small
     tags: []
   - name: auth-aws-win64
     tasks:
-      - name: .auth-aws !.auth-aws-ecs
+      - name: .auth-aws
     display_name: Auth AWS Win64
     run_on:
       - windows-2022-latest-small
     tags: []
   - name: auth-aws-macos
     tasks:
-      - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2
+      - name: .auth-aws !.auth-aws-web-identity! .auth-aws-ec2
     display_name: Auth AWS macOS
     run_on:
       - macos-14
+    tags: [pr]
+  - name: auth-aws-ecs-macos
+    tasks:
+      - name: .auth-aws-ecs
+    display_name: Auth AWS ECS macOS
+    run_on:
+      - ubuntu2404-small
     tags: [pr]
 
   # Aws lambda tests
