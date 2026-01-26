@@ -63,7 +63,6 @@ HOSTS["win-latest"] = Host("win-latest", "windows-2022-latest-small", "WinLatest
 HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32", dict())
 HOSTS["macos"] = Host("macos", "macos-14", "macOS", dict())
 HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64", dict())
-HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20", dict())
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22", dict())
 HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
 HOSTS["debian11"] = Host("debian11", "debian11-small", "Debian11", dict())
