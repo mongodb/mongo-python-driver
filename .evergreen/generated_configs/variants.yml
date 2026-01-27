@@ -86,7 +86,7 @@ buildvariants:
     tags: []
   - name: auth-aws-macos
     tasks:
-      - name: .auth-aws !.auth-aws-web-identity! .auth-aws-ec2
+      - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ec2
     display_name: Auth AWS macOS
     run_on:
       - macos-14

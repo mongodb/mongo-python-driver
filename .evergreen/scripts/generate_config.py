@@ -486,7 +486,7 @@ def create_aws_auth_variants():
         tasks = [".auth-aws"]
         tags = []
         if host_name == "macos":
-            tasks = [".auth-aws !.auth-aws-web-identity! .auth-aws-ec2"]
+            tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ec2"]
             tags = ["pr"]
         elif host_name == "win64":
             tasks = [".auth-aws"]
