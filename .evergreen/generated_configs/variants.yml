@@ -252,7 +252,7 @@ buildvariants:
   # Enterprise auth tests
   - name: auth-enterprise-rhel8
     tasks:
-      - name: .test-standard-auth .auth !.free-threaded
+      - name: .test-standard-auth .auth !.python-3.14t
     display_name: Auth Enterprise RHEL8
     run_on:
       - rhel87-small
@@ -261,7 +261,7 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-macos
     tasks:
-      - name: .test-standard-auth !.pypy .auth !.free-threaded
+      - name: .test-standard-auth !.pypy .auth !.python-3.14t
     display_name: Auth Enterprise macOS
     run_on:
       - macos-14
@@ -270,7 +270,7 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-win64
     tasks:
-      - name: .test-standard-auth !.pypy .auth
+      - name: .test-standard-auth !.pypy .auth !.python-3.14t
     display_name: Auth Enterprise Win64
     run_on:
       - windows-2022-latest-small
