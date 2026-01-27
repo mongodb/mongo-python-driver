@@ -223,7 +223,8 @@ def create_enterprise_auth_variants():
         if host == "macos":
             tasks = [".test-standard-auth !.pypy .auth !.free-threaded"]
         if host == "win64":
-            tasks = [".test-standard-auth !.pypy .auth"]
+            # https://jira.mongodb.org/browse/PYTHON-5704
+            tasks = [".test-standard-auth !.pypy .auth !.free-threaded"]
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants

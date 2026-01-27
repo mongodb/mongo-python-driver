@@ -277,7 +277,7 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-win64
     tasks:
-      - name: .test-standard-auth !.pypy .auth
+      - name: .test-standard-auth !.pypy .auth !.free-threaded
     display_name: Auth Enterprise Win64
     run_on:
       - windows-2022-latest-small
