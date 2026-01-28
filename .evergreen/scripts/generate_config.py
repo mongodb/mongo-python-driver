@@ -1077,6 +1077,18 @@ def create_upload_coverage_func():
     return "upload coverage", [get_assume_role(), cmd]
 
 
+def create_upload_coverage_codecov_func():
+    # Upload the coverage report to codecov.
+    include_expansions = ["CODECOV_TOKEN"]
+    args = [
+        ".evergreen/scripts/upload-codecov.sh",
+    ]
+    upload_cmd = get_subprocess_exec(
+        silent=True, include_expansions_in_env=include_expansions, args=args
+    )
+    return "upload codecov", [get_assume_role(), upload_cmd]
+
+
 def create_download_and_merge_coverage_func():
     include_expansions = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
     args = [

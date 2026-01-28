@@ -252,6 +252,23 @@ functions:
           - TOOLCHAIN_VERSION
       type: test
 
+  # Upload coverage codecov
+  upload codecov:
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
+      type: setup
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/scripts/upload-codecov.sh
+        working_dir: src
+        silent: true
+        include_expansions_in_env:
+          - CODECOV_TOKEN
+      type: test
+
   # Upload coverage
   upload coverage:
     - command: ec2.assume_role
