@@ -1,0 +1,5 @@
+comment:  # this is a top-level key
+  layout: " diff, flags, files"
+  behavior: default
+  require_changes: true
+  require_base: false
