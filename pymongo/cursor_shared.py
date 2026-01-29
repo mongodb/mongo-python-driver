@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Generic, Mapping, Optional, Sequence, Tuple, Union
 
 from pymongo.message import _CursorAddress
-from pymongo.typings import _DocumentType
+from pymongo.typings import _Address, _DocumentType
 
 
 class _AgnosticCursorBase(Generic[_DocumentType], ABC):
@@ -32,8 +32,8 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
     # These are all typed more accurately in subclasses.
     _collection: Any
     _id: Optional[int]
-    _data: Any  # deque in practice
-    _address: Optional[tuple[str, Any]]
+    _data: Any
+    _address: Optional[_Address]
     _sock_mgr: Any
     _session: Optional[Any]
     _killed: bool
@@ -70,14 +70,14 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
 
     @property
     def cursor_id(self) -> Optional[int]:
-        """Returns the id of the cursor
+        """Returns the id of the cursor.
 
         .. versionadded:: 2.2
         """
         return self._id
 
     @property
-    def address(self) -> Optional[tuple[str, Any]]:
+    def address(self) -> Optional[_Address]:
         """The (host, port) of the server used, or None.
 
         .. versionchanged:: 3.0

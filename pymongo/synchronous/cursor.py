@@ -1163,13 +1163,13 @@ class Cursor(_CursorBase[_DocumentType], Generic[_DocumentType]):
         else:
             return False
 
-    def __enter__(self) -> Cursor[_DocumentType]:
-        return self
-
     def __next__(self) -> _DocumentType:
         return self.next()
 
     def __iter__(self) -> Cursor[_DocumentType]:
+        return self
+
+    def __enter__(self) -> Cursor[_DocumentType]:
         return self
 
 

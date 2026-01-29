@@ -1165,13 +1165,13 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType], Generic[_DocumentType]):
         else:
             return False
 
-    async def __aenter__(self) -> AsyncCursor[_DocumentType]:
-        return self
-
     async def __anext__(self) -> _DocumentType:
         return await self.next()
 
     def __aiter__(self) -> AsyncCursor[_DocumentType]:
+        return self
+
+    async def __aenter__(self) -> AsyncCursor[_DocumentType]:
         return self
 
 

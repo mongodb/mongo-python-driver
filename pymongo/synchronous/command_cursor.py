@@ -238,10 +238,10 @@ class CommandCursor(_CursorBase[_DocumentType], Generic[_DocumentType]):
 
         return len(self._data)
 
-    def __enter__(self) -> CommandCursor[_DocumentType]:
+    def __iter__(self) -> Iterator[_DocumentType]:
         return self
 
-    def __iter__(self) -> Iterator[_DocumentType]:
+    def __enter__(self) -> CommandCursor[_DocumentType]:
         return self
 
     def next(self) -> _DocumentType:

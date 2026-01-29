@@ -238,10 +238,10 @@ class AsyncCommandCursor(_AsyncCursorBase[_DocumentType], Generic[_DocumentType]
 
         return len(self._data)
 
-    async def __aenter__(self) -> AsyncCommandCursor[_DocumentType]:
+    def __aiter__(self) -> AsyncIterator[_DocumentType]:
         return self
 
-    def __aiter__(self) -> AsyncIterator[_DocumentType]:
+    async def __aenter__(self) -> AsyncCommandCursor[_DocumentType]:
         return self
 
     async def next(self) -> _DocumentType:
