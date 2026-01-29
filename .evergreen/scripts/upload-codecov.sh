@@ -22,10 +22,6 @@ fi
 echo "Installing uv..."
 export PYMONGO_BIN_DIR=bin
 bash $HERE/install-dependencies.sh
-curl -Os https://cli.codecov.io/latest/linux/codecov
-curl -Os https://cli.codecov.io/latest/linux/codecov.SHA256SUM
-shasum -a 256 -c codecov.SHA256SUM
-sudo chmod +x codecov
 echo "Installing uv... done."
 
 echo "Uploading $FNAME..."
