@@ -6,8 +6,8 @@ set -eu
 HERE=$(dirname ${BASH_SOURCE:-$0})
 ROOT=$(dirname "$(dirname $HERE)")
 
-push $ROOT > /dev/null
-FNAME=xunit-results/TEST-results.xml
+pushd $ROOT > /dev/null
+export FNAME=xunit-results/TEST-results.xml
 
 if [ -z "${github_pr_number:-}" ]; then
   echo "This is not a PR, not running codecov"
