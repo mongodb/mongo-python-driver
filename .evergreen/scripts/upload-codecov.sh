@@ -21,7 +21,9 @@ fi
 
 echo "Installing uv..."
 export PYMONGO_BIN_DIR=bin
+set -x
 bash $HERE/install-dependencies.sh
+set +x
 echo "Installing uv... done."
 
 echo "Uploading $FNAME..."
