@@ -15,15 +15,17 @@ if [ ! -f "$FNAME" ]; then
   exit 0
 fi
 
-# TODO: handle linux and windows.
-echo "Installing codecov..."
+echo "Installing uv..."
+export PYMONGO_BIN_DIR=bin
+bash $HERE/install-dependencies.sh
 curl -Os https://cli.codecov.io/latest/linux/codecov
 curl -Os https://cli.codecov.io/latest/linux/codecov.SHA256SUM
 shasum -a 256 -c codecov.SHA256SUM
 sudo chmod +x codecov
-echo "Installing codecov... done."
+echo "Installing uv... done."
+
 echo "Uploading $FNAME..."
-./codecov upload-process \
+$PYMONGO_BIN_DIR/uv tool run --from codecov-cli codecovcli upload-process \
   --report-type test_results \
   --disable-search \
   --fail-on-error \
