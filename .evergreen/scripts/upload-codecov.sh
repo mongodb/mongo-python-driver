@@ -3,6 +3,8 @@
 # Upload a coverate report to codecov.
 set -eux
 
+echo "Inside upload-codecov script"
+
 if [ -z "${github_pr_number:-}" ]; then
   echo "This is not a PR, not running codecov"
   exit 0
