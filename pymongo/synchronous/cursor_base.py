@@ -19,7 +19,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, Generic, Optional
 
 from pymongo import _csot
-from pymongo.cursor_base import _AgnosticCursorBase
+from pymongo.cursor_shared import _AgnosticCursorBase
 from pymongo.lock import _create_lock
 from pymongo.typings import _DocumentType
 
