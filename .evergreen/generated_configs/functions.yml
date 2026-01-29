@@ -267,6 +267,12 @@ functions:
         silent: true
         include_expansions_in_env:
           - CODECOV_TOKEN
+          - build_variant
+          - task_name
+          - github_commit
+          - github_pr_number
+          - github_pr_head_branch
+          - github_author
       type: test
 
   # Upload coverage

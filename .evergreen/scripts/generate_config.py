@@ -1078,8 +1078,16 @@ def create_upload_coverage_func():
 
 
 def create_upload_coverage_codecov_func():
-    # Upload the coverage report to codecov.
-    include_expansions = ["CODECOV_TOKEN"]
+    # Upload the coverage xml report to codecov.
+    include_expansions = [
+        "CODECOV_TOKEN",
+        "build_variant",
+        "task_name",
+        "github_commit",
+        "github_pr_number",
+        "github_pr_head_branch",
+        "github_author",
+    ]
     args = [
         ".evergreen/scripts/upload-codecov.sh",
     ]
