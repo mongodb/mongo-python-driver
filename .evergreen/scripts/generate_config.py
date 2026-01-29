@@ -1091,9 +1091,7 @@ def create_upload_coverage_codecov_func():
     args = [
         ".evergreen/scripts/upload-codecov.sh",
     ]
-    upload_cmd = get_subprocess_exec(
-        silent=True, include_expansions_in_env=include_expansions, args=args
-    )
+    upload_cmd = get_subprocess_exec(include_expansions_in_env=include_expansions, args=args)
     return "upload codecov", [upload_cmd]
 
 

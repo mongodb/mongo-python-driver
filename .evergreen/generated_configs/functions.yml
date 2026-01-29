@@ -260,7 +260,6 @@ functions:
         args:
           - .evergreen/scripts/upload-codecov.sh
         working_dir: src
-        silent: true
         include_expansions_in_env:
           - CODECOV_TOKEN
           - build_variant
