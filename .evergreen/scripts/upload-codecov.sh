@@ -29,7 +29,7 @@ sudo chmod +x codecov
 echo "Installing uv... done."
 
 echo "Uploading $FNAME..."
-$PYMONGO_BIN_DIR/uv tool run --from codecov-cli codecovcli upload-process \
+$PYMONGO_BIN_DIR/uv tool run --from codecov-cli codecovcli do-upload \
   --report-type test_results \
   --disable-search \
   --fail-on-error \
