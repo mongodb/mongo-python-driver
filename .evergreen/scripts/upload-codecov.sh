@@ -3,6 +3,10 @@
 # Upload a coverate report to codecov.
 set -eu
 
+HERE=$(dirname ${BASH_SOURCE:-$0})
+ROOT=$(dirname "$(dirname $HERE)")
+
+push $ROOT > /dev/null
 FNAME=xunit-results/TEST-results.xml
 
 if [ -z "${github_pr_number:-}" ]; then
@@ -36,3 +40,5 @@ $PYMONGO_BIN_DIR/uv tool run --from codecov-cli codecovcli upload-process \
   --flag "${build_variant}-${task_name}" \
   --file $FNAME
 echo "Uploading $FNAME... done."
+
+popd > /dev/null
