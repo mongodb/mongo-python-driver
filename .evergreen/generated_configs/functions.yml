@@ -254,10 +254,6 @@ functions:
 
   # Upload coverage codecov
   upload codecov:
-    - command: ec2.assume_role
-      params:
-        role_arn: ${assume_role_arn}
-      type: setup
     - command: subprocess.exec
       params:
         binary: bash

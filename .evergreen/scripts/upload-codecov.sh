@@ -1,6 +1,7 @@
 #!/bin/bash
+# shellcheck disable=SC2154
 # Upload a coverate report to codecov.
-set -eu
+set -eux
 
 if [ -z "${github_pr_number:-}" ]; then
   echo "This is not a PR, not running codecov"
