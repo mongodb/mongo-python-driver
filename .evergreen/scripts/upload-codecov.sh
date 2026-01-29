@@ -19,15 +19,8 @@ if [ ! -f "$FNAME" ]; then
   exit 0
 fi
 
-echo "Installing uv..."
-export PYMONGO_BIN_DIR=bin
-set -x
-bash $HERE/install-dependencies.sh
-set +x
-echo "Installing uv... done."
-
 echo "Uploading $FNAME..."
-$PYMONGO_BIN_DIR/uv tool run --from codecov-cli codecovcli do-upload \
+uv tool run --from codecov-cli codecovcli do-upload \
   --report-type test_results \
   --disable-search \
   --fail-on-error \
