@@ -36,7 +36,8 @@ from typing import (
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
-from pymongo import _csot, helpers_shared
+from pymongo import helpers_shared
+from pymongo.asynchronous.cursor_base import _AsyncCursorBase, _ConnectionManager
 from pymongo.asynchronous.helpers import anext
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
@@ -45,9 +46,7 @@ from pymongo.common import (
 )
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _QUERY_OPTIONS, CursorType, _Hint, _Sort
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import _async_create_lock
 from pymongo.message import (
-    _CursorAddress,
     _GetMore,
     _OpMsg,
     _OpReply,
@@ -65,31 +64,12 @@ if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
-    from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.read_preferences import _ServerMode
 
 _IS_SYNC = False
 
 
-class _ConnectionManager:
-    """Used with exhaust cursors to ensure the connection is returned."""
-
-    def __init__(self, conn: AsyncConnection, more_to_come: bool):
-        self.conn: Optional[AsyncConnection] = conn
-        self.more_to_come = more_to_come
-        self._lock = _async_create_lock()
-
-    def update_exhaust(self, more_to_come: bool) -> None:
-        self.more_to_come = more_to_come
-
-    async def close(self) -> None:
-        """Return this instance's connection to the connection pool."""
-        if self.conn:
-            await self.conn.unpin()
-            self.conn = None
-
-
-class AsyncCursor(Generic[_DocumentType]):
+class AsyncCursor(_AsyncCursorBase[_DocumentType], Generic[_DocumentType]):
     _query_class = _Query
     _getmore_class = _GetMore
 
@@ -266,8 +246,8 @@ class AsyncCursor(Generic[_DocumentType]):
         """The number of documents retrieved so far."""
         return self._retrieved
 
-    def __del__(self) -> None:
-        self._die_no_lock()
+    def _get_namespace(self) -> str:
+        return f"{self._dbname}.{self._collname}"
 
     def clone(self) -> AsyncCursor[_DocumentType]:
         """Get a clone of this cursor.
@@ -899,55 +879,6 @@ class AsyncCursor(Generic[_DocumentType]):
             self._read_preference = self._collection._read_preference_for(self.session)
         return self._read_preference
 
-    @property
-    def alive(self) -> bool:
-        """Does this cursor have the potential to return more data?
-
-        This is mostly useful with `tailable cursors
-        <https://www.mongodb.com/docs/manual/core/tailable-cursors/>`_
-        since they will stop iterating even though they *may* return more
-        results in the future.
-
-        With regular cursors, simply use an asynchronous for loop instead of :attr:`alive`::
-
-            async for doc in collection.find():
-                print(doc)
-
-        .. note:: Even if :attr:`alive` is True, :meth:`next` can raise
-          :exc:`StopIteration`. :attr:`alive` can also be True while iterating
-          a cursor from a failed server. In this case :attr:`alive` will
-          return False after :meth:`next` fails to retrieve the next batch
-          of results from the server.
-        """
-        return bool(len(self._data) or (not self._killed))
-
-    @property
-    def cursor_id(self) -> Optional[int]:
-        """Returns the id of the cursor
-
-        .. versionadded:: 2.2
-        """
-        return self._id
-
-    @property
-    def address(self) -> Optional[tuple[str, Any]]:
-        """The (host, port) of the server used, or None.
-
-        .. versionchanged:: 3.0
-           Renamed from "conn_id".
-        """
-        return self._address
-
-    @property
-    def session(self) -> Optional[AsyncClientSession]:
-        """The cursor's :class:`~pymongo.asynchronous.client_session.AsyncClientSession`, or None.
-
-        .. versionadded:: 3.6
-        """
-        if self._session and not self._session._implicit:
-            return self._session
-        return None
-
     def __copy__(self) -> AsyncCursor[_DocumentType]:
         """Support function for `copy.copy()`.
 
@@ -1010,59 +941,6 @@ class AsyncCursor(Generic[_DocumentType]):
                     key = copy.deepcopy(key, memo)  # noqa: PLW2901
                 y[key] = value  # type:ignore[index]
         return y
-
-    def _prepare_to_die(self, already_killed: bool) -> tuple[int, Optional[_CursorAddress]]:
-        self._killed = True
-        if self._id and not already_killed:
-            cursor_id = self._id
-            assert self._address is not None
-            address = _CursorAddress(self._address, f"{self._dbname}.{self._collname}")
-        else:
-            # Skip killCursors.
-            cursor_id = 0
-            address = None
-        return cursor_id, address
-
-    def _die_no_lock(self) -> None:
-        """Closes this cursor without acquiring a lock."""
-        try:
-            already_killed = self._killed
-        except AttributeError:
-            # ___init__ did not run to completion (or at all).
-            return
-
-        cursor_id, address = self._prepare_to_die(already_killed)
-        self._collection.database.client._cleanup_cursor_no_lock(
-            cursor_id, address, self._sock_mgr, self._session
-        )
-        if self._session and self._session._implicit:
-            self._session._attached_to_cursor = False
-            self._session = None
-        self._sock_mgr = None
-
-    async def _die_lock(self) -> None:
-        """Closes this cursor."""
-        try:
-            already_killed = self._killed
-        except AttributeError:
-            # ___init__ did not run to completion (or at all).
-            return
-
-        cursor_id, address = self._prepare_to_die(already_killed)
-        await self._collection.database.client._cleanup_cursor_lock(
-            cursor_id,
-            address,
-            self._sock_mgr,
-            self._session,
-        )
-        if self._session and self._session._implicit:
-            self._session._attached_to_cursor = False
-            self._session = None
-        self._sock_mgr = None
-
-    async def close(self) -> None:
-        """Explicitly close / kill this cursor."""
-        await self._die_lock()
 
     async def distinct(self, key: str) -> list[Any]:
         """Get a list of distinct values for `key` among all documents
@@ -1287,46 +1165,14 @@ class AsyncCursor(Generic[_DocumentType]):
         else:
             return False
 
+    async def __aenter__(self) -> AsyncCursor[_DocumentType]:
+        return self
+
     async def __anext__(self) -> _DocumentType:
         return await self.next()
 
     def __aiter__(self) -> AsyncCursor[_DocumentType]:
         return self
-
-    async def __aenter__(self) -> AsyncCursor[_DocumentType]:
-        return self
-
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        await self.close()
-
-    @_csot.apply
-    async def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
-        """Converts the contents of this cursor to a list more efficiently than ``[doc async for doc in cursor]``.
-
-        To use::
-
-          >>> await cursor.to_list()
-
-        Or, to read at most n items from the cursor::
-
-          >>> await cursor.to_list(n)
-
-        If the cursor is empty or has no more results, an empty list will be returned.
-
-        .. versionadded:: 4.9
-        """
-        res: list[_DocumentType] = []
-        remaining = length
-        if isinstance(length, int) and length < 1:
-            raise ValueError("to_list() length must be greater than 0")
-        while self.alive:
-            if not await self._next_batch(res, remaining):
-                break
-            if length is not None:
-                remaining = length - len(res)
-                if remaining == 0:
-                    break
-        return res
 
 
 class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):  # type: ignore[type-arg]
