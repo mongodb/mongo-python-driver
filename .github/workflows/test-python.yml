@@ -104,6 +104,8 @@ jobs:
         run: COVERAGE=1 just setup-tests
       - name: Run tests
         run: just run-tests
+      - name: Generate xml report
+        run: uv tool run coverage xml
       - name: Upload test results to Codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
   doctest:

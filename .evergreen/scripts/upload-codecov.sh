@@ -25,6 +25,7 @@ printf 'sha: %s\n' "$github_commit"
 printf 'branch: %s:%s\n' "$github_author" "$github_pr_head_branch"
 printf 'flag: %s-%s\n' "$build_variant" "$task_name"
 printf 'file: %s\n' "$FNAME"
+uv tool run coverage xml
 uv tool run --from codecov-cli codecovcli upload-process \
   --report-type coverage \
   --disable-search \
