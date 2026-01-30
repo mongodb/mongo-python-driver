@@ -104,15 +104,8 @@ jobs:
         run: COVERAGE=1 just setup-tests
       - name: Run tests
         run: just run-tests
-      - name: Generate the coverage report
-        run: uv tool run --with "coverage[toml]" coverage xml -o coverage.xml
       - name: Upload test results to Codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
-        with:
-          report_type: test_results
-          disable_search: true
-          files: coverage.xml
-          token: ${{ secrets.CODECOV_TOKEN }}
   doctest:
     runs-on: ubuntu-latest
     name: DocTest
