@@ -318,7 +318,7 @@ def create_green_framework_variants():
 def create_no_c_ext_variants():
     host = DEFAULT_HOST
     tasks = [".test-standard"]
-    expansions = dict()
+    expansions = dict(COVERAGE=1)
     handle_c_ext(C_EXTS[0], expansions)
     display_name = get_variant_name("No C Ext", host)
     return [create_variant(tasks, display_name, host=host)]
