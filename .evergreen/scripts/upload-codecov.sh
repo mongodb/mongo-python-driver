@@ -14,7 +14,7 @@ if [ -z "${github_pr_number:-}" ]; then
   exit 0
 fi
 
-if [ ! -f "$FNAME" ]; then
+if [ ! -f ".coverage" ]; then
   echo "There are no XML test results, not running codecov"
   exit 0
 fi
