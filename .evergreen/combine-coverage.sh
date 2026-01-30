@@ -13,4 +13,4 @@ source .venv/bin/activate
 ls -la coverage/
 
 coverage combine coverage/coverage.*
-coverage html --source=./ -d htmlcov
+coverage html -d htmlcov

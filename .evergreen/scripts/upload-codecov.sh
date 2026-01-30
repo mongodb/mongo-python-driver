@@ -20,7 +20,11 @@ if [ ! -f "$FNAME" ]; then
 fi
 
 echo "Uploading..."
-set -x
+printf 'pr: %s\n' "$github_pr_number"
+printf 'sha: %s\n' "$github_commit"
+printf 'branch: %s:%s\n' "$github_author" "$github_pr_head_branch"
+printf 'flag: %s-%s\n' "$build_variant" "$task_name"
+printf 'file: %s\n' "$FNAME"
 uv tool run --from codecov-cli codecovcli upload-process \
   --report-type coverage \
   --disable-search \
@@ -32,7 +36,6 @@ uv tool run --from codecov-cli codecovcli upload-process \
   --branch "${github_author}:${github_pr_head_branch}" \
   --flag "${build_variant}-${task_name}" \
   --file $FNAME
-set +x
 echo "Uploading...done."
 
 popd > /dev/null
