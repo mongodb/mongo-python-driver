@@ -20,7 +20,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     AsyncIterator,
-    Generic,
     Mapping,
     NoReturn,
     Optional,
@@ -44,7 +43,7 @@ if TYPE_CHECKING:
 _IS_SYNC = False
 
 
-class AsyncCommandCursor(_AsyncCursorBase[_DocumentType], Generic[_DocumentType]):
+class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
     """An asynchronous cursor / iterator over command cursors."""
 
     _getmore_class = _GetMore

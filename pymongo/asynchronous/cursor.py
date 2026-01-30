@@ -21,7 +21,6 @@ from collections import deque
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generic,
     Iterable,
     List,
     Mapping,
@@ -69,7 +68,7 @@ if TYPE_CHECKING:
 _IS_SYNC = False
 
 
-class AsyncCursor(_AsyncCursorBase[_DocumentType], Generic[_DocumentType]):
+class AsyncCursor(_AsyncCursorBase[_DocumentType]):
     _query_class = _Query
     _getmore_class = _GetMore
 
@@ -1175,7 +1174,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType], Generic[_DocumentType]):
         return self
 
 
-class AsyncRawBatchCursor(AsyncCursor, Generic[_DocumentType]):  # type: ignore[type-arg]
+class AsyncRawBatchCursor(AsyncCursor[_DocumentType]):
     """An asynchronous cursor / iterator over raw batches of BSON data from a query result."""
 
     _query_class = _RawBatchQuery

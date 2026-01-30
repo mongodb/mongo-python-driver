@@ -21,7 +21,6 @@ from collections import deque
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generic,
     Iterable,
     List,
     Mapping,
@@ -69,7 +68,7 @@ if TYPE_CHECKING:
 _IS_SYNC = True
 
 
-class Cursor(_CursorBase[_DocumentType], Generic[_DocumentType]):
+class Cursor(_CursorBase[_DocumentType]):
     _query_class = _Query
     _getmore_class = _GetMore
 
@@ -1173,7 +1172,7 @@ class Cursor(_CursorBase[_DocumentType], Generic[_DocumentType]):
         return self
 
 
-class RawBatchCursor(Cursor, Generic[_DocumentType]):  # type: ignore[type-arg]
+class RawBatchCursor(Cursor[_DocumentType]):
     """A cursor / iterator over raw batches of BSON data from a query result."""
 
     _query_class = _RawBatchQuery

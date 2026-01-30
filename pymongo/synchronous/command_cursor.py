@@ -19,7 +19,6 @@ from collections import deque
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generic,
     Iterator,
     Mapping,
     NoReturn,
@@ -44,7 +43,7 @@ if TYPE_CHECKING:
 _IS_SYNC = True
 
 
-class CommandCursor(_CursorBase[_DocumentType], Generic[_DocumentType]):
+class CommandCursor(_CursorBase[_DocumentType]):
     """A cursor / iterator over command cursors."""
 
     _getmore_class = _GetMore

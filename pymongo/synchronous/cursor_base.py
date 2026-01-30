@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Generic, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo import _csot
 from pymongo.cursor_shared import _AgnosticCursorBase
@@ -48,7 +48,7 @@ class _ConnectionManager:
             self.conn = None
 
 
-class _CursorBase(_AgnosticCursorBase[_DocumentType], Generic[_DocumentType]):
+class _CursorBase(_AgnosticCursorBase[_DocumentType]):
     """Synchronous cursor base class."""
 
     @property
