@@ -21,7 +21,7 @@ fi
 
 echo "Uploading..."
 set -x
-uv tool run coverage xml -o $FNAME
+uv tool run --with "coverage[toml]" coverage xml -o $FNAME
 uv tool run --from codecov-cli codecovcli do-upload \
   --report-type test_results \
   --disable-search \
