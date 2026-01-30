@@ -25,6 +25,7 @@ uv tool run --from codecov-cli codecovcli do-upload \
   --report-type test_results \
   --disable-search \
   --fail-on-error \
+  --git-service github \
   --token ${CODECOV_TOKEN} \
   --pr ${github_pr_number} \
   --sha ${github_commit} \
