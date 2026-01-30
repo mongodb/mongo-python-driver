@@ -21,8 +21,8 @@ fi
 
 echo "Uploading..."
 set -x
-uv tool run --from codecov-cli codecovcli do-upload \
-  --report-type test_results \
+uv tool run --from codecov-cli codecovcli upload-process \
+  --report-type coverage \
   --disable-search \
   --fail-on-error \
   --git-service github \
