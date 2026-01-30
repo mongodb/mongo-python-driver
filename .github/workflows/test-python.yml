@@ -109,7 +109,7 @@ jobs:
         with:
           report_type: test_results
           disable_search: true
-          files: coverage.xml
+          files: junit.xml
           token: ${{ secrets.CODECOV_TOKEN }}
   doctest:
     runs-on: ubuntu-latest

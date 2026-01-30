@@ -41,5 +41,5 @@ test/lambda/*.json
 
 # test results and logs
 xunit-results/
-coverage.xml
+junit.xml
 server.log
