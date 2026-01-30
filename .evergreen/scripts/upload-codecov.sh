@@ -7,7 +7,7 @@ HERE=$(dirname ${BASH_SOURCE:-$0})
 ROOT=$(dirname "$(dirname $HERE)")
 
 pushd $ROOT > /dev/null
-export FNAME=junit.xml
+export FNAME=coverage.xml
 
 if [ -z "${github_pr_number:-}" ]; then
   echo "This is not a PR, not running codecov"
@@ -21,6 +21,7 @@ fi
 
 echo "Uploading..."
 set -x
+uv tool run coverage xml -o $FNAME
 uv tool run --from codecov-cli codecovcli do-upload \
   --report-type test_results \
   --disable-search \

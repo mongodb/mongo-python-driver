@@ -458,8 +458,7 @@ def handle_test_env() -> None:
         # Keep in sync with combine-coverage.sh.
         # coverage >=5 is needed for relative_files=true.
         UV_ARGS.append("--group coverage")
-        # Generate coverage report compatible with codecov.io.
-        TEST_ARGS = f"{TEST_ARGS} --cov pymongo --cov bson --cov gridfs --junitxml=junit.xml -o junit_family=legacy"
+        TEST_ARGS = f"{TEST_ARGS} --cov"
         write_env("COVERAGE")
 
     if opts.green_framework:
