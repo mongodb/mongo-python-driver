@@ -367,6 +367,9 @@ buildvariants:
     display_name: No C Ext RHEL8
     run_on:
       - rhel87-small
+    expansions:
+      COVERAGE: "1"
+      NO_EXT: "1"
 
   # No server tests
   - name: no-server-rhel8
