@@ -38,6 +38,7 @@ post:
   # Disabled, causing timeouts
   # - func: "upload working dir"
   - func: "teardown system"
+  - func: "upload codecov"
   - func: "upload coverage"
   - func: "upload mo artifacts"
   - func: "upload test results"

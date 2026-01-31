@@ -239,7 +239,11 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
 
 [tool.coverage.run]
 branch = true
-source = ["pymongo", "bson", "gridfs" ]
+include = [
+    "pymongo/*",
+    "bson/*",
+    "gridfs/*"
+]
 relative_files = true
 
 [tool.coverage.report]
