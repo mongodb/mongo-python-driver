@@ -712,7 +712,6 @@ fail:
     return result;
 }
 
-
 /* End OP_MSG -------------------------------------------- */
 
 static int
