@@ -161,7 +161,6 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)message_length);
 
-
     /* objectify buffer */
     result = Py_BuildValue("iy#i", request_id,
                            pymongo_buffer_get_buffer(buffer),
