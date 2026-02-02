@@ -141,7 +141,7 @@ if TYPE_CHECKING:
     from pymongo.server_selectors import Selection
     from pymongo.synchronous.bulk import _Bulk
     from pymongo.synchronous.client_session import ClientSession, _ServerSession
-    from pymongo.synchronous.cursor import _ConnectionManager
+    from pymongo.synchronous.cursor_base import _ConnectionManager
     from pymongo.synchronous.encryption import _Encrypter
     from pymongo.synchronous.pool import Connection
     from pymongo.synchronous.server import Server
