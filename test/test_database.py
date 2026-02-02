@@ -51,6 +51,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous import auth
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.database import Database
+from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
@@ -470,7 +471,7 @@ class TestDatabase(IntegrationTest):
         # when you iterate key/value pairs in a document.
         # This isn't reliable since python dicts don't
         # guarantee any particular order. This will never
-        # work right in Jython or any Python or environment
+        # work right in any Python or environment
         # with hash randomization enabled (e.g. tox).
         db = self.client.pymongo_test
         db.test.drop()

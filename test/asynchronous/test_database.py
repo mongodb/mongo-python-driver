@@ -42,6 +42,7 @@ from pymongo import helpers_shared
 from pymongo.asynchronous import auth
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.errors import (
     CollectionInvalid,
@@ -475,7 +476,7 @@ class TestDatabase(AsyncIntegrationTest):
         # when you iterate key/value pairs in a document.
         # This isn't reliable since python dicts don't
         # guarantee any particular order. This will never
-        # work right in Jython or any Python or environment
+        # work right in any Python or environment
         # with hash randomization enabled (e.g. tox).
         db = self.client.pymongo_test
         await db.test.drop()

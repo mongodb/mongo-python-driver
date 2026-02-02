@@ -17,9 +17,10 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 
-from pymongo import MongoClient, ReadPreference
+from pymongo import MongoClient, ReadPreference, monitoring
 from pymongo.errors import ServerSelectionTimeoutError
 from pymongo.hello import HelloCompat
 from pymongo.operations import _Op
@@ -30,7 +31,7 @@ from pymongo.typings import strip_optional
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import IntegrationTest, client_context, client_knobs, unittest
 from test.utils import wait_until
 from test.utils_selection_tests import (
     create_selection_tests,
@@ -42,6 +43,7 @@ from test.utils_selection_tests_shared import (
 )
 from test.utils_shared import (
     FunctionCallRecorder,
+    HeartbeatEventListener,
     OvertCommandListener,
 )
 
@@ -204,6 +206,38 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         with self.assertRaisesRegex(ServerSelectionTimeoutError, "No primary available for writes"):
             topology.select_server(writable_server_selector, _Op.TEST, server_selection_timeout=0.1)
         self.assertEqual(selector.call_count, 0)
+
+    @client_context.require_replica_set
+    @client_context.require_failCommand_appName
+    def test_server_selection_getMore_blocks(self):
+        hb_listener = HeartbeatEventListener()
+        client = self.rs_client(
+            event_listeners=[hb_listener], heartbeatFrequencyMS=500, appName="heartbeatFailedClient"
+        )
+        coll = client.db.test
+        coll.drop()
+        docs = [{"x": 1} for _ in range(5)]
+        coll.insert_many(docs)
+
+        fail_heartbeat = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 4},
+            "data": {
+                "failCommands": [HelloCompat.LEGACY_CMD, "hello"],
+                "closeConnection": True,
+                "appName": "heartbeatFailedClient",
+            },
+        }
+
+        def hb_failed(event):
+            return isinstance(event, monitoring.ServerHeartbeatFailedEvent)
+
+        cursor = coll.find({}, batch_size=1)
+        cursor.next()  # force initial query that will pin the address for the getMore
+
+        with self.fail_point(fail_heartbeat):
+            wait_until(lambda: hb_listener.matching(hb_failed), "published failed event")
+        self.assertEqual(len(cursor.to_list()), 4)
 
 
 if __name__ == "__main__":

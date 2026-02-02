@@ -52,6 +52,7 @@ from pymongo.operations import IndexModel, InsertOne, UpdateOne
 from pymongo.read_concern import ReadConcern
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor
+from pymongo.synchronous.helpers import next
 
 _IS_SYNC = True
 

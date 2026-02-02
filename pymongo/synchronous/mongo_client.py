@@ -2857,7 +2857,7 @@ class _ClientConnectionRetryable(Generic[T]):
                             transaction.set_starting()
                         transaction.attempt = 0
 
-                if self._client.topology_description.topology_type == TOPOLOGY_TYPE.Sharded:
+                if self._server is not None:
                     self._deprioritized_servers.append(self._server)
 
                 self._always_retryable = always_retryable

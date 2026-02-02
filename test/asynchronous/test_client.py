@@ -92,6 +92,7 @@ from pymongo import event_loggers, message, monitoring
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor, CursorType
 from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.asynchronous.pool import (
     AsyncConnection,
@@ -1066,9 +1067,6 @@ class TestClient(AsyncIntegrationTest):
             await coll.count_documents({})
 
     async def test_close_kills_cursors(self):
-        if sys.platform.startswith("java"):
-            # We can't figure out how to make this test reliable with Jython.
-            raise SkipTest("Can't test with Jython")
         test_client = await self.async_rs_or_single_client()
         # Kill any cursors possibly queued up by previous tests.
         gc.collect()
@@ -1088,7 +1086,7 @@ class TestClient(AsyncIntegrationTest):
         cursor = await coll.aggregate([], batchSize=10)
         self.assertTrue(bool(await anext(cursor)))
         del cursor
-        # Required for PyPy, Jython and other Python implementations that
+        # Required for PyPy and other Python implementations that
         # don't use reference counting garbage collection.
         gc.collect()
 
@@ -1456,12 +1454,6 @@ class TestClient(AsyncIntegrationTest):
 
     @async_client_context.require_sync
     def test_interrupt_signal(self):
-        if sys.platform.startswith("java"):
-            # We can't figure out how to raise an exception on a thread that's
-            # blocked on a socket, whether that's the main thread or a worker,
-            # without simply killing the whole thread in Jython. This suggests
-            # PYTHON-294 can't actually occur in Jython.
-            raise SkipTest("Can't test interrupts in Jython")
         if is_greenthread_patched():
             raise SkipTest("Can't reliably test interrupts with green threads")
 
@@ -2406,7 +2398,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
         client = self.async_rs_or_single_client()
         self.addCleanup(client.close)
         coll = client.pymongo_test.test
-        pool = async_get_pool(client)
+        pool = async_get_pool(client)  # type:ignore
 
         # Patch the pool to delay the connect method.
         def delayed_connect(*args, **kwargs):
