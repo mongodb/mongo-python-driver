@@ -69,7 +69,6 @@ from pymongo.asynchronous.client_bulk import _AsyncClientBulk
 from pymongo.asynchronous.client_session import _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import (
-    _retry_overload,
     _RetryPolicy,
     _TokenBucket,
 )
@@ -2403,7 +2402,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return [doc["name"] async for doc in res]
 
     @_csot.apply
-    @_retry_overload
     async def drop_database(
         self,
         name_or_database: Union[str, database.AsyncDatabase[_DocumentTypeArg]],
@@ -2446,15 +2444,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 f"name_or_database must be an instance of str or a AsyncDatabase, not {type(name)}"
             )
 
-        async with await self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
-            await self[name]._command(
-                conn,
-                {"dropDatabase": 1, "comment": comment},
-                read_preference=ReadPreference.PRIMARY,
-                write_concern=self._write_concern_for(session),
-                parse_write_concern_error=True,
-                session=session,
-            )
+        await self[name].command(
+            {"dropDatabase": 1, "comment": comment},
+            read_preference=ReadPreference.PRIMARY,
+            write_concern=self._write_concern_for(session),
+            parse_write_concern_error=True,
+            session=session,
+        )
 
     @_csot.apply
     async def bulk_write(
@@ -2781,6 +2777,11 @@ class _ClientConnectionRetryable(Generic[T]):
             try:
                 res = await self._read() if self._is_read else await self._write()
                 await self._retry_policy.record_success(self._attempt_number > 0)
+                # Track whether the transaction has completed a command.
+                # If we need to apply backpressure to the first command,
+                # we will need to revert back to starting state.
+                if self._session is not None and self._session.in_transaction:
+                    self._session._transaction.has_completed_command = True
                 return res
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
@@ -2800,8 +2801,8 @@ class _ClientConnectionRetryable(Generic[T]):
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
-                        always_retryable = exc.has_error_label("RetryableError")
                         overloaded = exc.has_error_label("SystemOverloadedError")
+                        always_retryable = exc.has_error_label("RetryableError") and overloaded
                         if not always_retryable and (
                             self._is_not_eligible_for_retry()
                             or (
@@ -2813,6 +2814,18 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._retrying = True
                         self._last_error = exc
                         self._attempt_number += 1
+
+                        # Revert back to starting state if we're in a transaction but haven't completed the first
+                        # command.
+                        if (
+                            overloaded
+                            and self._session is not None
+                            and self._session.in_transaction
+                        ):
+                            transaction = self._session._transaction
+                            if not transaction.has_completed_command:
+                                transaction.set_starting()
+                            transaction.attempt = 0
                     else:
                         raise
 
@@ -2823,8 +2836,8 @@ class _ClientConnectionRetryable(Generic[T]):
                     ):
                         exc_to_check = exc.error
                     retryable_write_label = exc_to_check.has_error_label("RetryableWriteError")
-                    always_retryable = exc_to_check.has_error_label("RetryableError")
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
+                    always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
                     if not self._retryable and not always_retryable:
                         raise
                     if retryable_write_label or always_retryable:
@@ -2846,20 +2859,26 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._last_error = exc
                     if self._last_error is None:
                         self._last_error = exc
+                    # Revert back to starting state if we're in a transaction but haven't completed the first
+                    # command.
+                    if overloaded and self._session is not None and self._session.in_transaction:
+                        transaction = self._session._transaction
+                        if not transaction.has_completed_command:
+                            transaction.set_starting()
+                        transaction.attempt = 0
 
                 if self._server is not None:
                     self._deprioritized_servers.append(self._server)
 
                 self._always_retryable = always_retryable
-                if always_retryable:
+                if overloaded:
                     delay = self._retry_policy.backoff(self._attempt_number) if overloaded else 0
                     if not await self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
                             raise
-                    if overloaded:
-                        await asyncio.sleep(delay)
+                    await asyncio.sleep(delay)
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
