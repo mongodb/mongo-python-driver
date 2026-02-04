@@ -1281,6 +1281,108 @@ def create_send_dashboard_data_func():
     return "send dashboard data", cmds
 
 
+def create_test_rust_tasks():
+    """Create tasks for testing the Rust BSON extension."""
+    tasks = []
+    # Test on a subset of Python versions and platforms
+    for python in ["3.10", "3.12", "3.14"]:
+        tags = ["test-rust", f"python-{python}"]
+        if python == "3.14":
+            tags.append("pr")  # Run on PRs for latest Python
+        task_name = get_task_name("test-rust", python=python)
+        test_func = FunctionCall(
+            func="run rust tests",
+            vars=dict(
+                TOOLCHAIN_VERSION=python,
+                TEST_NAME="test_bson",
+                TEST_ARGS="test/test_bson.py -v",
+            ),
+        )
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
+    return tasks
+
+
+def create_test_rust_variants() -> list[BuildVariant]:
+    """Create build variants for testing the Rust BSON extension."""
+    variants = []
+    base_display_name = "Test Rust Extension"
+
+    # Test on Linux (primary), macOS, and Windows
+    for host_name in ("rhel8", "macos-arm64", "win64"):
+        tasks = [".test-rust"]
+        host = HOSTS[host_name]
+        tags = ["rust"]
+        if host_name == "rhel8":
+            tags.append("pr")  # Run on PRs for Linux
+        expansions = dict(PYMONGO_BUILD_RUST="1", PYMONGO_USE_RUST="1")
+        display_name = get_variant_name(base_display_name, host)
+        variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
+        variants.append(variant)
+
+    return variants
+
+
+def create_test_rust_func():
+    """Create function for running Rust extension tests.
+
+    This function installs Rust if needed, then runs the test setup and execution.
+    The Rust installation and PATH setup happens in a single shell session to ensure
+    cargo is available for the package build.
+    """
+    includes = ["TOOLCHAIN_VERSION", "PYMONGO_BUILD_RUST", "PYMONGO_USE_RUST", "TEST_ARGS"]
+
+    # Run everything in a single shell session to ensure Rust is available
+    # This combines: Rust installation + setup-tests + run-tests
+    # Note: get_subprocess_exec defaults to binary="bash", so we only need args
+    combined_cmd = get_subprocess_exec(
+        include_expansions_in_env=includes,
+        args=[
+            "-c",
+            # Source env.sh first to get the base PATH
+            "if [ -f .evergreen/scripts/env.sh ]; then "
+            ". .evergreen/scripts/env.sh; "
+            "fi; "
+            # Determine cargo path based on OS
+            'if [ "Windows_NT" = "${OS:-}" ]; then '
+            'CARGO_BIN="$USERPROFILE/.cargo/bin"; '
+            "else "
+            'CARGO_BIN="$HOME/.cargo/bin"; '
+            "fi; "
+            # Add cargo to PATH first so we can check if it exists
+            'export PATH="$CARGO_BIN:$PATH"; '
+            # Install Rust if needed
+            "if ! command -v cargo &> /dev/null; then "
+            'echo "Installing Rust..."; '
+            'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; '
+            # Source the cargo env to update PATH
+            'if [ -f "$HOME/.cargo/env" ]; then '
+            '. "$HOME/.cargo/env"; '
+            "fi; "
+            "fi; "
+            # Install maturin if cargo is available
+            "if command -v cargo &> /dev/null && ! command -v maturin &> /dev/null; then "
+            'echo "Installing maturin..."; '
+            "pip install maturin; "
+            "fi; "
+            # Show diagnostic information
+            'echo "Rust toolchain: $(rustc --version 2>/dev/null || echo not found)"; '
+            'echo "Cargo: $(cargo --version 2>/dev/null || echo not found)"; '
+            'echo "Maturin: $(maturin --version 2>/dev/null || echo not found)"; '
+            'echo "Cargo path: $(command -v cargo || echo not found)"; '
+            # Update env.sh to include cargo in PATH for subsequent shell sessions
+            "if [ -f .evergreen/scripts/env.sh ]; then "
+            'echo "export PATH=\\"$CARGO_BIN:\\$PATH\\"" >> .evergreen/scripts/env.sh; '
+            "fi; "
+            # Run setup-tests
+            'bash .evergreen/just.sh setup-tests "${TEST_NAME}" ""; '
+            # Run tests
+            "bash .evergreen/just.sh run-tests",
+        ],
+    )
+
+    return "run rust tests", [combined_cmd]
+
+
 mod = sys.modules[__name__]
 write_variants_to_file(mod)
 write_tasks_to_file(mod)

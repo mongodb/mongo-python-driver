@@ -32,6 +32,8 @@ PASS_THROUGH_ENV = [
     "UV_PYTHON",
     "REQUIRE_FIPS",
     "IS_WIN32",
+    "PYMONGO_USE_RUST",
+    "PYMONGO_BUILD_RUST",
 ]
 
 # Map the test name to test extra.
@@ -470,6 +472,10 @@ def handle_test_env() -> None:
         TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
+
+        # For test_bson, run the specific test file
+        if test_name == "test_bson":
+            TEST_ARGS = f"test/test_bson.py {TEST_ARGS}"
 
     write_env("TEST_ARGS", TEST_ARGS)
     write_env("UV_ARGS", " ".join(UV_ARGS))

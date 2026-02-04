@@ -1,0 +1,64 @@
+# Evergreen configuration for Rust BSON extension testing
+# This file can be included in the main .evergreen/config.yml
+
+functions:
+  # Test Rust extension
+  test rust extension:
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/run-rust-tests.sh
+        working_dir: src
+      type: test
+
+tasks:
+  # Rust extension tests on different Python versions
+  - name: test-rust-python3.10
+    commands:
+      - func: test rust extension
+    tags: [rust, python-3.10]
+
+  - name: test-rust-python3.12
+    commands:
+      - func: test rust extension
+    tags: [rust, python-3.12]
+
+  - name: test-rust-python3.14
+    commands:
+      - func: test rust extension
+    tags: [rust, python-3.14, pr]
+
+buildvariants:
+  # Test Rust extension on Linux (primary platform)
+  - name: test-rust-rhel8
+    display_name: "Test Rust Extension - RHEL8"
+    run_on: rhel87-small
+    expansions:
+      PYMONGO_BUILD_RUST: "1"
+      PYMONGO_USE_RUST: "1"
+    tasks:
+      - name: .rust
+    tags: [rust, pr]
+
+  # Test Rust extension on macOS ARM64
+  - name: test-rust-macos-arm64
+    display_name: "Test Rust Extension - macOS ARM64"
+    run_on: macos-14-arm64
+    expansions:
+      PYMONGO_BUILD_RUST: "1"
+      PYMONGO_USE_RUST: "1"
+    tasks:
+      - name: .rust
+    tags: [rust]
+
+  # Test Rust extension on Windows
+  - name: test-rust-win64
+    display_name: "Test Rust Extension - Win64"
+    run_on: windows-64-vsMulti-small
+    expansions:
+      PYMONGO_BUILD_RUST: "1"
+      PYMONGO_USE_RUST: "1"
+    tasks:
+      - name: .rust
+    tags: [rust]

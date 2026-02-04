@@ -5028,6 +5028,32 @@ tasks:
       - python-3.14
       - test-numpy
 
+  # Test rust tests
+  - name: test-rust-python3.10
+    commands:
+      - func: run rust tests
+        vars:
+          TOOLCHAIN_VERSION: "3.10"
+          TEST_NAME: test_bson
+          TEST_ARGS: test/test_bson.py -v
+    tags: [test-rust, python-3.10]
+  - name: test-rust-python3.12
+    commands:
+      - func: run rust tests
+        vars:
+          TOOLCHAIN_VERSION: "3.12"
+          TEST_NAME: test_bson
+          TEST_ARGS: test/test_bson.py -v
+    tags: [test-rust, python-3.12]
+  - name: test-rust-python3.14
+    commands:
+      - func: run rust tests
+        vars:
+          TOOLCHAIN_VERSION: "3.14"
+          TEST_NAME: test_bson
+          TEST_ARGS: test/test_bson.py -v
+    tags: [test-rust, python-3.14, pr]
+
   # Test standard auth tests
   - name: test-standard-auth-v4.2-python3.10-auth-ssl-sharded-cluster-min-deps
     commands:

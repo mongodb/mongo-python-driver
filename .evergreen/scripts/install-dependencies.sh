@@ -30,7 +30,7 @@ fi
 
 # Ensure just is installed.
 if ! command -v just &>/dev/null; then
-  uv tool install rust-just
+  uv tool install rust-just || uv tool install --force rust-just
 fi
 
 popd > /dev/null

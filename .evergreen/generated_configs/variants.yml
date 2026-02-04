@@ -676,3 +676,35 @@ buildvariants:
     expansions:
       IS_WIN32: "1"
     tags: [binary, vector]
+
+  # Test rust tests
+  - name: test-rust-extension-rhel8
+    tasks:
+      - name: .test-rust
+    display_name: Test Rust Extension RHEL8
+    run_on:
+      - rhel87-small
+    expansions:
+      PYMONGO_BUILD_RUST: "1"
+      PYMONGO_USE_RUST: "1"
+    tags: [rust, pr]
+  - name: test-rust-extension-macos-arm64
+    tasks:
+      - name: .test-rust
+    display_name: Test Rust Extension macOS Arm64
+    run_on:
+      - macos-14-arm64
+    expansions:
+      PYMONGO_BUILD_RUST: "1"
+      PYMONGO_USE_RUST: "1"
+    tags: [rust]
+  - name: test-rust-extension-win64
+    tasks:
+      - name: .test-rust
+    display_name: Test Rust Extension Win64
+    run_on:
+      - windows-2022-latest-small
+    expansions:
+      PYMONGO_BUILD_RUST: "1"
+      PYMONGO_USE_RUST: "1"
+    tags: [rust]
