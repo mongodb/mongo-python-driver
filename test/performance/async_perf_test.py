@@ -206,6 +206,152 @@ class PerformanceTest:
         self.results = results
 
 
+# RUST COMPARISON MICRO-BENCHMARKS
+class RustComparisonTest(PerformanceTest):
+    """Base class for tests that compare C vs Rust implementations."""
+
+    implementation: str = "c"  # Default to C
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        # Set up environment for C or Rust
+        if self.implementation == "rust":
+            os.environ["PYMONGO_USE_RUST"] = "1"
+        else:
+            os.environ.pop("PYMONGO_USE_RUST", None)
+
+        # Preserve extension modules when reloading
+        _cbson = sys.modules.get("bson._cbson")
+        _rbson = sys.modules.get("bson._rbson")
+
+        # Clear bson modules except extensions
+        for key in list(sys.modules.keys()):
+            if key.startswith("bson") and not key.endswith(("_cbson", "_rbson")):
+                del sys.modules[key]
+
+        # Restore extension modules
+        if _cbson:
+            sys.modules["bson._cbson"] = _cbson
+        if _rbson:
+            sys.modules["bson._rbson"] = _rbson
+
+        # Re-import bson
+        import bson as bson_module
+
+        self.bson = bson_module
+
+
+class RustSimpleIntEncodingTest(RustComparisonTest):
+    """Test encoding of simple integer documents."""
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.document = {"number": 42}
+        self.data_size = len(encode(self.document)) * NUM_DOCS
+
+    async def do_task(self):
+        for _ in range(NUM_DOCS):
+            self.bson.encode(self.document)
+
+
+class TestRustSimpleIntEncodingC(RustSimpleIntEncodingTest, AsyncPyMongoTestCase):
+    implementation = "c"
+
+
+class TestRustSimpleIntEncodingRust(RustSimpleIntEncodingTest, AsyncPyMongoTestCase):
+    implementation = "rust"
+
+
+class RustSimpleIntDecodingTest(RustComparisonTest):
+    """Test decoding of simple integer documents."""
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.document = encode({"number": 42})
+        self.data_size = len(self.document) * NUM_DOCS
+
+    async def do_task(self):
+        for _ in range(NUM_DOCS):
+            self.bson.decode(self.document)
+
+
+class TestRustSimpleIntDecodingC(RustSimpleIntDecodingTest, AsyncPyMongoTestCase):
+    implementation = "c"
+
+
+class TestRustSimpleIntDecodingRust(RustSimpleIntDecodingTest, AsyncPyMongoTestCase):
+    implementation = "rust"
+
+
+class RustMixedTypesEncodingTest(RustComparisonTest):
+    """Test encoding of documents with mixed types."""
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.document = {
+            "string": "hello",
+            "int": 42,
+            "float": 3.14,
+            "bool": True,
+            "null": None,
+        }
+        self.data_size = len(encode(self.document)) * NUM_DOCS
+
+    async def do_task(self):
+        for _ in range(NUM_DOCS):
+            self.bson.encode(self.document)
+
+
+class TestRustMixedTypesEncodingC(RustMixedTypesEncodingTest, AsyncPyMongoTestCase):
+    implementation = "c"
+
+
+class TestRustMixedTypesEncodingRust(RustMixedTypesEncodingTest, AsyncPyMongoTestCase):
+    implementation = "rust"
+
+
+class RustNestedEncodingTest(RustComparisonTest):
+    """Test encoding of nested documents."""
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.document = {"nested": {"level1": {"level2": {"value": "deep"}}}}
+        self.data_size = len(encode(self.document)) * NUM_DOCS
+
+    async def do_task(self):
+        for _ in range(NUM_DOCS):
+            self.bson.encode(self.document)
+
+
+class TestRustNestedEncodingC(RustNestedEncodingTest, AsyncPyMongoTestCase):
+    implementation = "c"
+
+
+class TestRustNestedEncodingRust(RustNestedEncodingTest, AsyncPyMongoTestCase):
+    implementation = "rust"
+
+
+class RustListEncodingTest(RustComparisonTest):
+    """Test encoding of documents with lists."""
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.document = {"numbers": list(range(10))}
+        self.data_size = len(encode(self.document)) * NUM_DOCS
+
+    async def do_task(self):
+        for _ in range(NUM_DOCS):
+            self.bson.encode(self.document)
+
+
+class TestRustListEncodingC(RustListEncodingTest, AsyncPyMongoTestCase):
+    implementation = "c"
+
+
+class TestRustListEncodingRust(RustListEncodingTest, AsyncPyMongoTestCase):
+    implementation = "rust"
+
+
 # SINGLE-DOC BENCHMARKS
 class TestRunCommand(PerformanceTest, AsyncPyMongoTestCase):
     data_size = len(encode({"hello": True})) * NUM_DOCS

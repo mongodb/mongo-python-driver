@@ -45,6 +45,7 @@ TEST_SUITE_MAP = {
     "ocsp": "ocsp",
     "perf": "perf",
     "numpy": "",
+    "test_bson": "",
 }
 
 # Tests that require a sub test suite.

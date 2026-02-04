@@ -13,12 +13,20 @@ set -eu
 #  MONGODB_API_VERSION  The mongodb api version to use in tests.
 #  MONGODB_URI          If non-empty, use as the MONGODB_URI in tests.
 #  USE_ACTIVE_VENV      If non-empty, use the active virtual environment.
+#  PYMONGO_BUILD_RUST   If non-empty, build and test with Rust extension.
+#  PYMONGO_USE_RUST     If non-empty, use the Rust extension for tests.
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE:-$0})
 
 # Try to source the env file.
 if [ -f $SCRIPT_DIR/env.sh ]; then
   source $SCRIPT_DIR/env.sh
+fi
+
+# Install Rust toolchain if building Rust extension
+if [ -n "${PYMONGO_BUILD_RUST:-}" ]; then
+  echo "PYMONGO_BUILD_RUST is set, installing Rust toolchain..."
+  bash $SCRIPT_DIR/install-rust.sh
 fi
 
 echo "Setting up tests with args \"$*\"..."

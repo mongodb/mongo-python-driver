@@ -22,7 +22,7 @@ from typing import Any
 sys.path[0:0] = [""]
 
 from copy import deepcopy
-from test import unittest
+from test import skip_if_rust_bson, unittest
 
 from bson import decode, encode
 from bson.dbref import DBRef
@@ -129,6 +129,7 @@ class TestDBRef(unittest.TestCase):
 
 
 # https://github.com/mongodb/specifications/blob/master/source/dbref/dbref.md#test-plan
+@skip_if_rust_bson
 class TestDBRefSpec(unittest.TestCase):
     def test_decoding_1_2_3(self):
         doc: Any

@@ -67,7 +67,7 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, PyMongoTestCase, client_context
+from test import IntegrationTest, PyMongoTestCase, client_context, skip_if_rust_bson
 
 from bson import CodecOptions, ObjectId, decode, decode_all, decode_file_iter, decode_iter, encode
 from bson.raw_bson import RawBSONDocument
@@ -272,6 +272,7 @@ class TestPymongo(IntegrationTest):
         assert retrieved["other"] == 1  # type:ignore[misc]
 
 
+@skip_if_rust_bson
 class TestDecode(unittest.TestCase):
     def test_bson_decode(self) -> None:
         doc = {"_id": 1}
