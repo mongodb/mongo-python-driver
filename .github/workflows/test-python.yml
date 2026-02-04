@@ -61,8 +61,17 @@ jobs:
         os: [ubuntu-latest]
         python-version: ["3.10", "pypy-3.11", "3.13t"]
         mongodb-version: ["8.0"]
+        extension: ["c", "rust"]
+        exclude:
+          # Don't test Rust with pypy
+          - python-version: "pypy-3.11"
+            extension: "rust"
+          # Don't test Rust with free-threaded Python (not yet supported)
+          - python-version: "3.13t"
+            extension: "rust"
 
-    name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
+    name: CPython ${{ matrix.python-version }}-${{ matrix.os }}-${{ matrix.extension }}
+    continue-on-error: ${{ matrix.extension == 'rust' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -72,12 +81,20 @@ jobs:
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
+      - name: Install Rust toolchain
+        if: matrix.extension == 'rust'
+        uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9 # stable
+        with:
+          toolchain: stable
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
           version: "${{ matrix.mongodb-version }}"
       - name: Run tests
         run: uv run --extra test pytest -v
+        env:
+          PYMONGO_BUILD_RUST: ${{ matrix.extension == 'rust' && '1' || '' }}
+          PYMONGO_USE_RUST: ${{ matrix.extension == 'rust' && '1' || '' }}
 
   coverage:
     # This enables a coverage report for a given PR, which will be augmented by

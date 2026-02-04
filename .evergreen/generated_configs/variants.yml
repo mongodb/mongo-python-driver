@@ -477,6 +477,40 @@ buildvariants:
     expansions:
       SUB_TEST_NAME: pyopenssl
 
+  # Rust tests
+  - name: test-with-rust-extension
+    tasks:
+      - name: .test-standard .server-latest .pr
+    display_name: Test with Rust Extension
+    run_on:
+      - rhel87-small
+    expansions:
+      PYMONGO_BUILD_RUST: "1"
+      PYMONGO_USE_RUST: "1"
+    tags: [rust, pr]
+  - name: test-with-rust-extension---macos-arm64
+    tasks:
+      - name: .test-standard .server-latest !.pr
+    display_name: Test with Rust Extension - macOS ARM64
+    run_on:
+      - macos-14-arm64
+    batchtime: 10080
+    expansions:
+      PYMONGO_BUILD_RUST: "1"
+      PYMONGO_USE_RUST: "1"
+    tags: [rust]
+  - name: test-with-rust-extension---windows
+    tasks:
+      - name: .test-standard .server-latest !.pr
+    display_name: Test with Rust Extension - Windows
+    run_on:
+      - windows-64-vsMulti-small
+    batchtime: 10080
+    expansions:
+      PYMONGO_BUILD_RUST: "1"
+      PYMONGO_USE_RUST: "1"
+    tags: [rust]
+
   # Search index tests
   - name: search-index-helpers-rhel8
     tasks:

@@ -22,6 +22,11 @@ bash $HERE/install-dependencies.sh
 # Handle the value for UV_PYTHON.
 . $HERE/setup-uv-python.sh
 
+# Show Rust toolchain status for debugging
+echo "Rust toolchain: $(rustc --version 2>/dev/null || echo 'not found')"
+echo "Cargo: $(cargo --version 2>/dev/null || echo 'not found')"
+echo "Maturin: $(maturin --version 2>/dev/null || echo 'not found')"
+
 # Only run the next part if not running on CI.
 if [ -z "${CI:-}" ]; then
   # Add the default install path to the path if needed.
