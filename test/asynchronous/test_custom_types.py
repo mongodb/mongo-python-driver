@@ -28,7 +28,12 @@ from gridfs.asynchronous.grid_file import AsyncGridIn, AsyncGridOut
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    async_client_context,
+    skip_if_rust_bson,
+    unittest,
+)
 
 from bson import (
     _BUILT_IN_TYPES,
@@ -211,6 +216,7 @@ class TestCustomPythonBSONTypeToBSONMultiplexedCodec(CustomBSONTypeTests, unitte
         cls.codecopts = codec_options
 
 
+@skip_if_rust_bson
 class TestBSONFallbackEncoder(unittest.TestCase):
     def _get_codec_options(self, fallback_encoder):
         type_registry = TypeRegistry(fallback_encoder=fallback_encoder)
@@ -336,6 +342,7 @@ class TestBSONTypeEnDeCodecs(unittest.TestCase):
         self.assertFalse(issubclass(TypeEncoder, TypeDecoder))
 
 
+@skip_if_rust_bson
 class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
     TypeA: Any
     TypeB: Any
@@ -622,6 +629,7 @@ class TestTypeRegistry(unittest.TestCase):
         run_test(TypeCodec, {"bson_type": Decimal128, "transform_bson": lambda x: x})
 
 
+@skip_if_rust_bson
 class TestCollectionWCustomType(AsyncIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()

@@ -41,7 +41,7 @@ except ImportError:
     pass
 
 try:
-    from bson import _cbson  # type: ignore[attr-defined] # noqa: F401
+    from bson import _cbson  # noqa: F401
 
     sys.exit("could still import _cbson")
 except ImportError:

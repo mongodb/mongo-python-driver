@@ -84,6 +84,22 @@ from test.version import Version
 
 _IS_SYNC = True
 
+# Skip tests when using Rust BSON extension for features not yet implemented
+# Import pytest lazily to avoid requiring it for integration tests
+try:
+    import pytest
+
+    import bson
+
+    skip_if_rust_bson = pytest.mark.skipif(
+        bson.get_bson_implementation() == "rust",
+        reason="Feature not yet implemented in Rust BSON extension",
+    )
+except ImportError:
+    # pytest not available, define a no-op decorator
+    def skip_if_rust_bson(func):
+        return func
+
 
 def _connection_string(h):
     if h.startswith(("mongodb://", "mongodb+srv://")):
