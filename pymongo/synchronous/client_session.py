@@ -169,7 +169,7 @@ from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous.cursor import _ConnectionManager
+from pymongo.synchronous.cursor_base import _ConnectionManager
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -404,12 +404,16 @@ class _Transaction:
         self.recovery_token = None
         self.attempt = 0
         self.client = client
+        self.has_completed_command = False
 
     def active(self) -> bool:
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
 
     def starting(self) -> bool:
         return self.state == _TxnState.STARTING
+
+    def set_starting(self) -> None:
+        self.state = _TxnState.STARTING
 
     @property
     def pinned_conn(self) -> Optional[Connection]:

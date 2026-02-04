@@ -223,7 +223,8 @@ def create_enterprise_auth_variants():
         if host == "macos":
             tasks = [".test-standard-auth !.pypy .auth !.free-threaded"]
         if host == "win64":
-            tasks = [".test-standard-auth !.pypy .auth"]
+            # https://jira.mongodb.org/browse/PYTHON-5704
+            tasks = [".test-standard-auth !.pypy .auth !.free-threaded"]
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants
@@ -481,15 +482,15 @@ def create_perf_variants():
 def create_aws_auth_variants():
     variants = []
 
-    for host_name in ["ubuntu20", "win64", "macos"]:
+    for host_name in ["rhel8", "win64", "macos"]:
         expansions = dict()
         tasks = [".auth-aws"]
         tags = []
         if host_name == "macos":
-            tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2"]
+            tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ec2"]
             tags = ["pr"]
         elif host_name == "win64":
-            tasks = [".auth-aws !.auth-aws-ecs"]
+            tasks = [".auth-aws"]
         host = HOSTS[host_name]
         variant = create_variant(
             tasks,
@@ -499,6 +500,16 @@ def create_aws_auth_variants():
             expansions=expansions,
         )
         variants.append(variant)
+
+    # The ECS test must be run on Ubuntu 24 to match the Fargate Config.
+    variant = create_variant(
+        [".auth-aws-ecs"],
+        get_variant_name("Auth AWS ECS", host),
+        host=HOSTS["ubuntu24"],
+        tags=tags,
+        expansions=expansions,
+    )
+    variants.append(variant)
     return variants
 
 
@@ -788,19 +799,18 @@ def create_aws_tasks():
         "env-creds",
         "session-creds",
         "web-identity",
-        "ecs",
     ]
+    assume_func = FunctionCall(func="assume ec2 role")
     for version, test_type, python in zip_cycle(get_versions_from("4.4"), aws_test_types, CPYTHONS):
         base_name = f"test-auth-aws-{version}"
         base_tags = ["auth-aws"]
         server_vars = dict(AUTH_AWS="1", VERSION=version)
         server_func = FunctionCall(func="run server", vars=server_vars)
-        assume_func = FunctionCall(func="assume ec2 role")
         tags = [*base_tags, f"auth-aws-{test_type}"]
         if "t" in python:
             tags.append("free-threaded")
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, TOOLCHAIN_VERSION=python)
-        if python == ALL_PYTHONS[0] and test_type != "ecs":
+        if python == ALL_PYTHONS[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
         name = get_task_name(f"{base_name}-{test_type}", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
@@ -821,6 +831,16 @@ def create_aws_tasks():
             test_func = FunctionCall(func="run tests", vars=test_vars)
             funcs = [server_func, assume_func, test_func]
             tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
+
+    # Add the ECS task.  This will run on Ubuntu 24 to match the
+    # Fargate environment.
+    tags = ["auth-aws-ecs"]
+    test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME="ecs")
+    name = get_task_name("test-auth-aws-ecs", **test_vars)
+    test_func = FunctionCall(func="run tests", vars=test_vars)
+    server_func = FunctionCall(func="run server", vars=dict(VERSION="8.0"))
+    funcs = [assume_func, server_func, test_func]
+    tasks.append(EvgTask(name=name, tags=tags, commands=funcs))
 
     return tasks
 

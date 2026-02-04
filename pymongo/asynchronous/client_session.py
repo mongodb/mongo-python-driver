@@ -159,7 +159,7 @@ from bson.binary import Binary
 from bson.int64 import Int64
 from bson.timestamp import Timestamp
 from pymongo import _csot
-from pymongo.asynchronous.cursor import _ConnectionManager
+from pymongo.asynchronous.cursor_base import _ConnectionManager
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
@@ -406,12 +406,16 @@ class _Transaction:
         self.recovery_token = None
         self.attempt = 0
         self.client = client
+        self.has_completed_command = False
 
     def active(self) -> bool:
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
 
     def starting(self) -> bool:
         return self.state == _TxnState.STARTING
+
+    def set_starting(self) -> None:
+        self.state = _TxnState.STARTING
 
     @property
     def pinned_conn(self) -> Optional[AsyncConnection]:

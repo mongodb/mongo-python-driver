@@ -15,10 +15,11 @@
 """Test Client Backpressure spec."""
 from __future__ import annotations
 
-import asyncio
+import os
+import pathlib
 import sys
-
-import pymongo
+from time import perf_counter
+from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
@@ -28,10 +29,13 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
+from test.asynchronous.unified_format import generate_test_classes
+from test.utils_shared import EventListener, OvertCommandListener
 
+import pymongo
 from pymongo.asynchronous import helpers
 from pymongo.asynchronous.helpers import _MAX_RETRIES, _RetryPolicy, _TokenBucket
-from pymongo.errors import PyMongoError
+from pymongo.errors import OperationFailure, PyMongoError
 
 _IS_SYNC = False
 
@@ -42,7 +46,7 @@ mock_overload_error = {
     "data": {
         "failCommands": ["find", "insert", "update"],
         "errorCode": 462,  # IngressRequestRateLimitExceeded
-        "errorLabels": ["RetryableError"],
+        "errorLabels": ["RetryableError", "SystemOverloadedError"],
     },
 }
 
@@ -68,6 +72,7 @@ class TestBackpressure(AsyncIntegrationTest):
                 await self.db.command("find", "t")
 
         self.assertIn("RetryableError", str(error.exception))
+        self.assertIn("SystemOverloadedError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_find(self):
@@ -87,6 +92,7 @@ class TestBackpressure(AsyncIntegrationTest):
                 await self.db.t.find_one()
 
         self.assertIn("RetryableError", str(error.exception))
+        self.assertIn("SystemOverloadedError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_insert_one(self):
@@ -106,6 +112,7 @@ class TestBackpressure(AsyncIntegrationTest):
                 await self.db.t.find_one()
 
         self.assertIn("RetryableError", str(error.exception))
+        self.assertIn("SystemOverloadedError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_update_many(self):
@@ -127,6 +134,7 @@ class TestBackpressure(AsyncIntegrationTest):
                 await self.db.t.update_many({}, {"$set": {"x": 2}})
 
         self.assertIn("RetryableError", str(error.exception))
+        self.assertIn("SystemOverloadedError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_getMore(self):
@@ -140,7 +148,7 @@ class TestBackpressure(AsyncIntegrationTest):
             "data": {
                 "failCommands": ["getMore"],
                 "errorCode": 462,  # IngressRequestRateLimitExceeded
-                "errorLabels": ["RetryableError"],
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
             },
         }
         cursor = coll.find(batch_size=2)
@@ -158,6 +166,7 @@ class TestBackpressure(AsyncIntegrationTest):
                 await cursor.to_list()
 
         self.assertIn("RetryableError", str(error.exception))
+        self.assertIn("SystemOverloadedError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_limit_retry_command(self):
@@ -180,6 +189,7 @@ class TestBackpressure(AsyncIntegrationTest):
                 await db.command("find", "t")
 
         self.assertIn("RetryableError", str(error.exception))
+        self.assertIn("SystemOverloadedError", str(error.exception))
 
 
 class TestRetryPolicy(AsyncPyMongoTestCase):
@@ -225,6 +235,84 @@ class TestRetryPolicy(AsyncPyMongoTestCase):
             self.assertFalse(await retry_policy.should_retry(1, 1.0))
         self.assertTrue(await retry_policy.should_retry(1, 1.0))
 
+
+# Prose tests.
+class AsyncTestClientBackpressure(AsyncIntegrationTest):
+    listener: EventListener
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.listener = OvertCommandListener()
+
+    @async_client_context.require_connection
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.listener.reset()
+        self.app_name = self.__class__.__name__.lower()
+        self.client = await self.async_rs_or_single_client(
+            event_listeners=[self.listener], retryWrites=False, appName=self.app_name
+        )
+
+    @patch("random.random")
+    @async_client_context.require_failCommand_appName
+    async def test_01_operation_retry_uses_exponential_backoff(self, random_func):
+        # Drivers should test that retries do not occur immediately when a SystemOverloadedError is encountered.
+
+        # 1. let `client` be a `MongoClient`
+        client = self.client
+
+        # 2. let `collection` be a collection
+        collection = client.test.test
+
+        # 3. Now, run transactions without backoff:
+
+        # a. Configure the random number generator used for jitter to always return `0` -- this effectively disables backoff.
+        random_func.return_value = 0
+
+        # b. Configure the following failPoint:
+        fail_point = dict(
+            mode="alwaysOn",
+            data=dict(
+                failCommands=["insert"],
+                errorCode=2,
+                errorLabels=["SystemOverloadedError", "RetryableError"],
+                appName=self.app_name,
+            ),
+        )
+        async with self.fail_point(fail_point):
+            # c. Execute the following command. Expect that the command errors. Measure the duration of the command execution.
+            start0 = perf_counter()
+            with self.assertRaises(OperationFailure):
+                await collection.insert_one({"a": 1})
+            end0 = perf_counter()
+
+            # d. Configure the random number generator used for jitter to always return `1`.
+            random_func.return_value = 1
+
+            # e. Execute step c again.
+            start1 = perf_counter()
+            with self.assertRaises(OperationFailure):
+                await collection.insert_one({"a": 1})
+            end1 = perf_counter()
+
+            # f. Compare the two time between the two runs.
+            # The sum of 5 backoffs is 3.1 seconds. There is a 1-second window to account for potential variance between the two
+            # runs.
+            self.assertTrue(abs((end1 - start1) - (end0 - start0 + 3.1)) < 1)
+
+
+# Location of JSON test specifications.
+if _IS_SYNC:
+    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "client-backpressure")
+else:
+    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "client-backpressure")
+
+globals().update(
+    generate_test_classes(
+        _TEST_PATH,
+        module=__name__,
+    )
+)
 
 if __name__ == "__main__":
     unittest.main()

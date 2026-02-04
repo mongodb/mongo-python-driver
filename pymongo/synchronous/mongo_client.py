@@ -112,7 +112,6 @@ from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.helpers import (
-    _retry_overload,
     _RetryPolicy,
     _TokenBucket,
 )
@@ -147,7 +146,7 @@ if TYPE_CHECKING:
     from pymongo.server_selectors import Selection
     from pymongo.synchronous.bulk import _Bulk
     from pymongo.synchronous.client_session import ClientSession, _ServerSession
-    from pymongo.synchronous.cursor import _ConnectionManager
+    from pymongo.synchronous.cursor_base import _ConnectionManager
     from pymongo.synchronous.encryption import _Encrypter
     from pymongo.synchronous.pool import Connection
     from pymongo.synchronous.server import Server
@@ -2393,7 +2392,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return [doc["name"] for doc in res]
 
     @_csot.apply
-    @_retry_overload
     def drop_database(
         self,
         name_or_database: Union[str, database.Database[_DocumentTypeArg]],
@@ -2436,15 +2434,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 f"name_or_database must be an instance of str or a Database, not {type(name)}"
             )
 
-        with self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
-            self[name]._command(
-                conn,
-                {"dropDatabase": 1, "comment": comment},
-                read_preference=ReadPreference.PRIMARY,
-                write_concern=self._write_concern_for(session),
-                parse_write_concern_error=True,
-                session=session,
-            )
+        self[name].command(
+            {"dropDatabase": 1, "comment": comment},
+            read_preference=ReadPreference.PRIMARY,
+            write_concern=self._write_concern_for(session),
+            parse_write_concern_error=True,
+            session=session,
+        )
 
     @_csot.apply
     def bulk_write(
@@ -2771,6 +2767,11 @@ class _ClientConnectionRetryable(Generic[T]):
             try:
                 res = self._read() if self._is_read else self._write()
                 self._retry_policy.record_success(self._attempt_number > 0)
+                # Track whether the transaction has completed a command.
+                # If we need to apply backpressure to the first command,
+                # we will need to revert back to starting state.
+                if self._session is not None and self._session.in_transaction:
+                    self._session._transaction.has_completed_command = True
                 return res
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
@@ -2790,8 +2791,8 @@ class _ClientConnectionRetryable(Generic[T]):
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
-                        always_retryable = exc.has_error_label("RetryableError")
                         overloaded = exc.has_error_label("SystemOverloadedError")
+                        always_retryable = exc.has_error_label("RetryableError") and overloaded
                         if not always_retryable and (
                             self._is_not_eligible_for_retry()
                             or (
@@ -2803,6 +2804,18 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._retrying = True
                         self._last_error = exc
                         self._attempt_number += 1
+
+                        # Revert back to starting state if we're in a transaction but haven't completed the first
+                        # command.
+                        if (
+                            overloaded
+                            and self._session is not None
+                            and self._session.in_transaction
+                        ):
+                            transaction = self._session._transaction
+                            if not transaction.has_completed_command:
+                                transaction.set_starting()
+                            transaction.attempt = 0
                     else:
                         raise
 
@@ -2813,8 +2826,8 @@ class _ClientConnectionRetryable(Generic[T]):
                     ):
                         exc_to_check = exc.error
                     retryable_write_label = exc_to_check.has_error_label("RetryableWriteError")
-                    always_retryable = exc_to_check.has_error_label("RetryableError")
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
+                    always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
                     if not self._retryable and not always_retryable:
                         raise
                     if retryable_write_label or always_retryable:
@@ -2836,20 +2849,26 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._last_error = exc
                     if self._last_error is None:
                         self._last_error = exc
+                    # Revert back to starting state if we're in a transaction but haven't completed the first
+                    # command.
+                    if overloaded and self._session is not None and self._session.in_transaction:
+                        transaction = self._session._transaction
+                        if not transaction.has_completed_command:
+                            transaction.set_starting()
+                        transaction.attempt = 0
 
                 if self._server is not None:
                     self._deprioritized_servers.append(self._server)
 
                 self._always_retryable = always_retryable
-                if always_retryable:
+                if overloaded:
                     delay = self._retry_policy.backoff(self._attempt_number) if overloaded else 0
                     if not self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
                             raise
-                    if overloaded:
-                        time.sleep(delay)
+                    time.sleep(delay)
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""

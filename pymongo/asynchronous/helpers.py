@@ -32,7 +32,6 @@ from typing import (
 from pymongo import _csot
 from pymongo.errors import (
     OperationFailure,
-    PyMongoError,
 )
 from pymongo.helpers_shared import _REAUTHENTICATION_REQUIRED_CODE
 from pymongo.lock import _async_create_lock
@@ -164,34 +163,6 @@ class _RetryPolicy:
             # We could add info to the exception and log.
             return False
         return True
-
-
-def _retry_overload(func: F) -> F:
-    @functools.wraps(func)
-    async def inner(self: Any, *args: Any, **kwargs: Any) -> Any:
-        retry_policy = self._retry_policy
-        attempt = 0
-        while True:
-            try:
-                res = await func(self, *args, **kwargs)
-                await retry_policy.record_success(retry=attempt > 0)
-                return res
-            except PyMongoError as exc:
-                if not exc.has_error_label("RetryableError"):
-                    raise
-                attempt += 1
-                delay = 0
-                if exc.has_error_label("SystemOverloadedError"):
-                    delay = retry_policy.backoff(attempt)
-                if not await retry_policy.should_retry(attempt, delay):
-                    raise
-
-                # Implement exponential backoff on retry.
-                if delay:
-                    await asyncio.sleep(delay)
-                continue
-
-    return cast(F, inner)
 
 
 async def _getaddrinfo(

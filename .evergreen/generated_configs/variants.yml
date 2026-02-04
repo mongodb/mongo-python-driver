@@ -70,26 +70,33 @@ buildvariants:
     tags: [pr]
 
   # Aws auth tests
-  - name: auth-aws-ubuntu-20
+  - name: auth-aws-rhel8
     tasks:
       - name: .auth-aws
-    display_name: Auth AWS Ubuntu-20
+    display_name: Auth AWS RHEL8
     run_on:
-      - ubuntu2004-small
+      - rhel87-small
     tags: []
   - name: auth-aws-win64
     tasks:
-      - name: .auth-aws !.auth-aws-ecs
+      - name: .auth-aws
     display_name: Auth AWS Win64
     run_on:
-      - windows-64-vsMulti-small
+      - windows-2022-latest-small
     tags: []
   - name: auth-aws-macos
     tasks:
-      - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ecs !.auth-aws-ec2
+      - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ec2
     display_name: Auth AWS macOS
     run_on:
       - macos-14
+    tags: [pr]
+  - name: auth-aws-ecs-macos
+    tasks:
+      - name: .auth-aws-ecs
+    display_name: Auth AWS ECS macOS
+    run_on:
+      - ubuntu2404-small
     tags: [pr]
 
   # Aws lambda tests
@@ -199,7 +206,7 @@ buildvariants:
       - name: .test-non-standard !.pypy
     display_name: Encryption Win64
     run_on:
-      - windows-64-vsMulti-small
+      - windows-2022-latest-small
     batchtime: 1440
     expansions:
       TEST_NAME: encryption
@@ -231,7 +238,7 @@ buildvariants:
       - name: .test-non-standard !.pypy
     display_name: Encryption crypt_shared Win64
     run_on:
-      - windows-64-vsMulti-small
+      - windows-2022-latest-small
     batchtime: 1440
     expansions:
       TEST_NAME: encryption
@@ -270,10 +277,10 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-win64
     tasks:
-      - name: .test-standard-auth !.pypy .auth
+      - name: .test-standard-auth !.pypy .auth !.free-threaded
     display_name: Auth Enterprise Win64
     run_on:
-      - windows-64-vsMulti-small
+      - windows-2022-latest-small
     expansions:
       TEST_NAME: enterprise_auth
       AUTH: auth
@@ -384,7 +391,7 @@ buildvariants:
       - name: .ocsp-rsa !.ocsp-staple .4.4
     display_name: OCSP Win64
     run_on:
-      - windows-64-vsMulti-small
+      - windows-2022-latest-small
     batchtime: 10080
   - name: ocsp-macos
     tasks:
@@ -423,7 +430,7 @@ buildvariants:
       - name: "!.auth_oidc_remote .auth_oidc"
     display_name: Auth OIDC Win64
     run_on:
-      - windows-64-vsMulti-small
+      - windows-2022-latest-small
     batchtime: 1440
 
   # Perf tests
@@ -462,7 +469,7 @@ buildvariants:
       - name: .test-standard !.pypy .async .replica_set-noauth-ssl
     display_name: PyOpenSSL Win64
     run_on:
-      - rhel87-small
+      - windows-2022-latest-small
     batchtime: 1440
     expansions:
       SUB_TEST_NAME: pyopenssl
@@ -606,7 +613,7 @@ buildvariants:
       - name: .test-standard !.pypy
     display_name: "* Test Win64"
     run_on:
-      - windows-64-vsMulti-small
+      - windows-2022-latest-small
     tags: [standard-non-linux]
   - name: test-win32
     tasks:
@@ -655,7 +662,7 @@ buildvariants:
       - name: .test-numpy
     display_name: Test Numpy Win64
     run_on:
-      - windows-64-vsMulti-small
+      - windows-2022-latest-small
     tags: [binary, vector]
   - name: test-numpy-win32
     tasks:

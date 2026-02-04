@@ -30,6 +30,7 @@ from unasync import Rule, unasync_files  # type: ignore[import-not-found]
 replacements = {
     "AsyncCollection": "Collection",
     "AsyncDatabase": "Database",
+    "_AsyncCursorBase": "_CursorBase",
     "AsyncCursor": "Cursor",
     "AsyncMongoClient": "MongoClient",
     "AsyncCommandCursor": "CommandCursor",
@@ -209,9 +210,9 @@ converted_tests = [
     "test_auth_oidc.py",
     "test_auth_spec.py",
     "test_bulk.py",
-    "test_backpressure.py",
     "test_change_stream.py",
     "test_client.py",
+    "test_client_backpressure.py",
     "test_client_bulk_write.py",
     "test_client_context.py",
     "test_client_metadata.py",
