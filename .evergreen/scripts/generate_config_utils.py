@@ -59,11 +59,12 @@ class Host:
 # Hosts with toolchains.
 HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8", dict())
 HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64", dict())
+HOSTS["win-latest"] = Host("win-latest", "windows-2022-latest-small", "WinLatest", dict())
 HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32", dict())
 HOSTS["macos"] = Host("macos", "macos-14", "macOS", dict())
 HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64", dict())
-HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20", dict())
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22", dict())
+HOSTS["ubuntu24"] = Host("ubuntu24", "ubuntu2404-small", "Ubuntu-24", dict())
 HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
 HOSTS["debian11"] = Host("debian11", "debian11-small", "Debian11", dict())
 DEFAULT_HOST = HOSTS["rhel8"]
@@ -139,6 +140,14 @@ def create_variant(
     expansions = expansions and expansions.copy() or dict()
     if version:
         expansions["VERSION"] = version
+    # 8.0+ Windows builds must run on win-latest
+    if (
+        "win64" in display_name.lower()
+        or "win32" in display_name.lower()
+        and version
+        and version >= "8.0"
+    ):
+        kwargs["run_on"] = HOSTS["win-latest"].run_on
     return create_variant_generic(
         tasks, display_name, version=version, host=host, expansions=expansions, **kwargs
     )

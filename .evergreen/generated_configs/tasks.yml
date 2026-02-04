@@ -102,7 +102,7 @@ tasks:
           AWS_ROLE_SESSION_NAME: test
           TOOLCHAIN_VERSION: "3.14"
     tags: [auth-aws, auth-aws-web-identity]
-  - name: test-auth-aws-latest-ecs-python3.10
+  - name: test-auth-aws-latest-regular-python3.10-min-deps
     commands:
       - func: run server
         vars:
@@ -112,9 +112,21 @@ tasks:
       - func: run tests
         vars:
           TEST_NAME: auth_aws
-          SUB_TEST_NAME: ecs
+          SUB_TEST_NAME: regular
           TOOLCHAIN_VERSION: "3.10"
-    tags: [auth-aws, auth-aws-ecs]
+          TEST_MIN_DEPS: "1"
+    tags: [auth-aws, auth-aws-regular]
+  - name: test-auth-aws-ecs
+    commands:
+      - func: assume ec2 role
+      - func: run server
+        vars:
+          VERSION: "8.0"
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: ecs
+    tags: [auth-aws-ecs]
 
   # Backport pr tests
   - name: backport-pr

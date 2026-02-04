@@ -144,7 +144,7 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.asynchronous.bulk import _AsyncBulk
     from pymongo.asynchronous.client_session import AsyncClientSession, _ServerSession
-    from pymongo.asynchronous.cursor import _ConnectionManager
+    from pymongo.asynchronous.cursor_base import _ConnectionManager
     from pymongo.asynchronous.encryption import _Encrypter
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.asynchronous.server import Server

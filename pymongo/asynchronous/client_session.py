@@ -159,7 +159,7 @@ from bson.binary import Binary
 from bson.int64 import Int64
 from bson.timestamp import Timestamp
 from pymongo import _csot
-from pymongo.asynchronous.cursor import _ConnectionManager
+from pymongo.asynchronous.cursor_base import _ConnectionManager
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
