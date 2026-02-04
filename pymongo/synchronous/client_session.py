@@ -139,6 +139,7 @@ import collections
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
+from contextvars import ContextVar
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -179,6 +180,14 @@ if TYPE_CHECKING:
     from pymongo.typings import ClusterTime, _Address
 
 _IS_SYNC = True
+
+_SESSION: ContextVar[Optional[_BoundClientSession]] = ContextVar("SESSION", default=None)
+
+
+class _BoundClientSession:
+    def __init__(self, session: ClientSession, client_id: int):
+        self.session = session
+        self.client_id = client_id
 
 
 class SessionOptions:
@@ -516,6 +525,9 @@ class ClientSession:
         self._attached_to_cursor = False
         # Should we leave the session alive when the cursor is closed?
         self._leave_alive = False
+        # Is this session bound to a scope?
+        self._bound = False
+        self._session_token: Optional[ContextVar[_BoundClientSession]] = None
 
     def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -546,11 +558,23 @@ class ClientSession:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
+    def bind(self) -> ClientSession:
+        self._bound = True
+        return self
+
     def __enter__(self) -> ClientSession:
+        if self._bound:
+            bound_session = _BoundClientSession(self, id(self._client))
+            self._session_token = _SESSION.set(bound_session)
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        self._end_session(lock=True)
+        if self._session_token:
+            _SESSION.reset(self._session_token)
+            self._session_token = None
+            self._bound = False
+        else:
+            self._end_session(lock=True)
 
     @property
     def client(self) -> MongoClient[Any]:
