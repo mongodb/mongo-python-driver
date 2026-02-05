@@ -2527,6 +2527,28 @@ tasks:
           SUB_TEST_NAME: gke
     tags: [auth_oidc, auth_oidc_remote]
 
+  # Perf rust tests
+  - name: perf-rust-8.0-standalone-ssl
+    commands:
+      - func: run server
+        vars:
+          VERSION: v8.0-perf
+          SSL: ssl
+      - func: run rust perf tests
+      - func: attach benchmark test results
+      - func: send dashboard data
+    tags: [perf, rust]
+  - name: perf-rust-8.0-standalone
+    commands:
+      - func: run server
+        vars:
+          VERSION: v8.0-perf
+          SSL: nossl
+      - func: run rust perf tests
+      - func: attach benchmark test results
+      - func: send dashboard data
+    tags: [perf, rust]
+
   # Perf tests
   - name: perf-8.0-standalone-ssl
     commands:

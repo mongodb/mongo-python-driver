@@ -976,6 +976,30 @@ def create_perf_tasks():
     return tasks
 
 
+def create_perf_rust_tasks():
+    """Create performance test tasks for Rust extension.
+
+    These tasks run Rust-specific BSON encoding/decoding benchmarks
+    to compare C vs Rust performance.
+    """
+    tasks = []
+    # Run Rust perf tests with and without SSL
+    for ssl in ["ssl", "nossl"]:
+        vars = dict(VERSION="v8.0-perf", SSL=ssl)
+        server_func = FunctionCall(func="run server", vars=vars)
+        # Use the rust perf function instead of regular run tests
+        test_func = FunctionCall(func="run rust perf tests")
+        attach_func = FunctionCall(func="attach benchmark test results")
+        send_func = FunctionCall(func="send dashboard data")
+        task_name = "perf-rust-8.0-standalone"
+        if ssl == "ssl":
+            task_name += "-ssl"
+        tags = ["perf", "rust"]
+        commands = [server_func, test_func, attach_func, send_func]
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
+    return tasks
+
+
 def create_getdata_tasks():
     # Wildcard task. Do you need to find out what tools are available and where?
     # Throw it here, and execute this task on all buildvariants
@@ -1381,6 +1405,69 @@ def create_test_rust_func():
     )
 
     return "run rust tests", [combined_cmd]
+
+
+def create_perf_rust_func():
+    """Create function for running Rust performance benchmarks.
+
+    This function installs Rust if needed, then runs Rust-specific BSON
+    encoding/decoding performance benchmarks to compare C vs Rust performance.
+    """
+    includes = ["PYMONGO_BUILD_RUST", "PYMONGO_USE_RUST"]
+
+    combined_cmd = get_subprocess_exec(
+        include_expansions_in_env=includes,
+        args=[
+            "-c",
+            # Source env.sh first to get the base PATH
+            "if [ -f .evergreen/scripts/env.sh ]; then "
+            ". .evergreen/scripts/env.sh; "
+            "fi; "
+            # Determine cargo path based on OS
+            'if [ "Windows_NT" = "${OS:-}" ]; then '
+            'CARGO_BIN="$USERPROFILE/.cargo/bin"; '
+            "else "
+            'CARGO_BIN="$HOME/.cargo/bin"; '
+            "fi; "
+            # Add cargo to PATH first so we can check if it exists
+            'export PATH="$CARGO_BIN:$PATH"; '
+            # Install Rust if needed
+            "if ! command -v cargo &> /dev/null; then "
+            'echo "Installing Rust..."; '
+            'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; '
+            # Source the cargo env to update PATH
+            'if [ -f "$HOME/.cargo/env" ]; then '
+            '. "$HOME/.cargo/env"; '
+            "fi; "
+            "fi; "
+            # Install maturin if cargo is available
+            "if command -v cargo &> /dev/null && ! command -v maturin &> /dev/null; then "
+            'echo "Installing maturin..."; '
+            "pip install maturin; "
+            "fi; "
+            # Show diagnostic information
+            'echo "Rust toolchain: $(rustc --version 2>/dev/null || echo not found)"; '
+            'echo "Cargo: $(cargo --version 2>/dev/null || echo not found)"; '
+            'echo "Maturin: $(maturin --version 2>/dev/null || echo not found)"; '
+            # Update env.sh to include cargo in PATH for subsequent shell sessions
+            "if [ -f .evergreen/scripts/env.sh ]; then "
+            'echo "export PATH=\\"$CARGO_BIN:\\$PATH\\"" >> .evergreen/scripts/env.sh; '
+            "fi; "
+            # Set up the test environment with perf extras
+            'bash .evergreen/just.sh setup-tests perf ""; '
+            # Run the Rust-specific performance benchmarks
+            # These tests compare C vs Rust BSON encoding/decoding performance
+            "export FASTBENCH=1; "
+            "bash .evergreen/just.sh run-tests "
+            "TestRustSimpleIntEncodingC TestRustSimpleIntEncodingRust "
+            "TestRustMixedTypesEncodingC TestRustMixedTypesEncodingRust "
+            "TestRustSimpleIntDecodingC TestRustSimpleIntDecodingRust "
+            "TestRustNestedEncodingC TestRustNestedEncodingRust "
+            "TestRustListEncodingC TestRustListEncodingRust",
+        ],
+    )
+
+    return "run rust perf tests", [combined_cmd]
 
 
 mod = sys.modules[__name__]
