@@ -102,7 +102,14 @@ class CustomHook(BuildHookInterface):
         sys.path.insert(0, str(here))
 
         # Build C extensions
-        subprocess.run([sys.executable, "_setup.py", "build_ext", "-i"], check=True)
+        try:
+            subprocess.run([sys.executable, "_setup.py", "build_ext", "-i"], check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            warnings.warn(
+                f"Failed to build C extension: {e}. "
+                "The package will be installed without compiled extensions.",
+                stacklevel=2,
+            )
 
         # Build Rust extension (optional)
         # Only build if PYMONGO_BUILD_RUST is set or Rust is available
