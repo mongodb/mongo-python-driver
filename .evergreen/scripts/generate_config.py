@@ -1450,8 +1450,12 @@ def create_perf_rust_func():
             'echo "Cargo: $(cargo --version 2>/dev/null || echo not found)"; '
             'echo "Maturin: $(maturin --version 2>/dev/null || echo not found)"; '
             # Update env.sh to include cargo in PATH for subsequent shell sessions
+            # Check if the PATH update is already in env.sh to avoid duplicates
             "if [ -f .evergreen/scripts/env.sh ]; then "
+            'if ! grep -q "CARGO_BIN" .evergreen/scripts/env.sh; then '
+            'echo "# Rust/Cargo PATH" >> .evergreen/scripts/env.sh; '
             'echo "export PATH=\\"$CARGO_BIN:\\$PATH\\"" >> .evergreen/scripts/env.sh; '
+            "fi; "
             "fi; "
             # Set up the test environment with perf extras
             "bash .evergreen/just.sh setup-tests perf rust; "
