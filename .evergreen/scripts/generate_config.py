@@ -1454,7 +1454,7 @@ def create_perf_rust_func():
             'echo "export PATH=\\"$CARGO_BIN:\\$PATH\\"" >> .evergreen/scripts/env.sh; '
             "fi; "
             # Set up the test environment with perf extras
-            'bash .evergreen/just.sh setup-tests perf ""; '
+            "bash .evergreen/just.sh setup-tests perf rust; "
             # Run the Rust-specific performance benchmarks
             # These tests compare C vs Rust BSON encoding/decoding performance
             "export FASTBENCH=1; "

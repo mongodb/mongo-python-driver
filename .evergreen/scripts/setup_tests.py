@@ -449,7 +449,7 @@ def handle_test_env() -> None:
 
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
         # affects the benchmark results.
-        if sub_test_name == "sync":
+        if sub_test_name == "sync" or sub_test_name == "rust":
             TEST_ARGS = f"test/performance/perf_test.py {TEST_ARGS}"
         else:
             TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
