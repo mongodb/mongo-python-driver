@@ -1452,9 +1452,13 @@ def create_perf_rust_func():
             # Update env.sh to include cargo in PATH for subsequent shell sessions
             # Check if the PATH update is already in env.sh to avoid duplicates
             "if [ -f .evergreen/scripts/env.sh ]; then "
-            'if ! grep -q "CARGO_BIN" .evergreen/scripts/env.sh; then '
+            'if ! grep -q ".cargo/bin" .evergreen/scripts/env.sh; then '
             'echo "# Rust/Cargo PATH" >> .evergreen/scripts/env.sh; '
-            'echo "export PATH=\\"$CARGO_BIN:\\$PATH\\"" >> .evergreen/scripts/env.sh; '
+            'if [ "Windows_NT" = "${OS:-}" ]; then '
+            'echo "export PATH=\\"\\$USERPROFILE/.cargo/bin:\\$PATH\\"" >> .evergreen/scripts/env.sh; '
+            "else "
+            'echo "export PATH=\\"\\$HOME/.cargo/bin:\\$PATH\\"" >> .evergreen/scripts/env.sh; '
+            "fi; "
             "fi; "
             "fi; "
             # Set up the test environment with perf extras
