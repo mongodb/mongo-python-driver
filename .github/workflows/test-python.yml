@@ -26,7 +26,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7
+        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7
         with:
           enable-cache: true
           python-version: "3.10"
@@ -68,7 +68,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7
+        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -79,6 +79,37 @@ jobs:
       - name: Run tests
         run: uv run --extra test pytest -v
 
+  coverage:
+    # This enables a coverage report for a given PR, which will be augmented by
+    # the combined codecov report uploaded in Evergreen.
+    runs-on: ubuntu-latest
+
+    name: Coverage
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7
+        with:
+          enable-cache: true
+          python-version: "3.10"
+      - id: setup-mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@master
+        with:
+          version: "8.0"
+      - name: Install just
+        run: uv tool install rust-just
+      - name: Setup tests
+        run: COVERAGE=1 just setup-tests
+      - name: Run tests
+        run: just run-tests
+      - name: Generate xml report
+        run: uv tool run --with "coverage[toml]" coverage xml
+      - name: Upload test results to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
   doctest:
     runs-on: ubuntu-latest
     name: DocTest
@@ -87,7 +118,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7
+        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7
         with:
           enable-cache: true
           python-version: "3.10"
@@ -112,7 +143,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7
+        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7
         with:
           enable-cache: true
           python-version: "3.10"
@@ -131,7 +162,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7
+        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7
         with:
           enable-cache: true
           python-version: "3.10"
@@ -153,7 +184,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7
+        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7
         with:
           enable-cache: true
           python-version: "${{matrix.python}}"
@@ -174,7 +205,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7
+        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7
         with:
           enable-cache: true
           python-version: "3.10"
@@ -264,7 +295,7 @@ jobs:
           with:
             persist-credentials: false
         - name: Install uv
-          uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7
+          uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7
           with:
             python-version: "3.9"
         - id: setup-mongodb

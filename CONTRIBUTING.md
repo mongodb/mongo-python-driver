@@ -197,7 +197,7 @@ the pages will re-render and the browser will automatically refresh.
     version of Python, set `UV_PYTHON` before running `just install`.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
-    [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `$DRIVERS_TOOLS/evergreen/run-mongodb.sh start -h`
+    [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `$DRIVERS_TOOLS/.evergreen/run-mongodb.sh start -h`
     for a full list of options.
 -   Run `just test` or `pytest` to run all of the tests.
 -   Append `test/<mod_name>.py::<class_name>::<test_name>` to run

@@ -318,10 +318,10 @@ def create_green_framework_variants():
 def create_no_c_ext_variants():
     host = DEFAULT_HOST
     tasks = [".test-standard"]
-    expansions = dict()
+    expansions = dict(COVERAGE="1")
     handle_c_ext(C_EXTS[0], expansions)
     display_name = get_variant_name("No C Ext", host)
-    return [create_variant(tasks, display_name, host=host)]
+    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
 def create_mod_wsgi_variants():
@@ -1075,6 +1075,24 @@ def create_upload_coverage_func():
         content_type="text/html",
     )
     return "upload coverage", [get_assume_role(), cmd]
+
+
+def create_upload_coverage_codecov_func():
+    # Upload the coverage xml report to codecov.
+    include_expansions = [
+        "CODECOV_TOKEN",
+        "build_variant",
+        "task_name",
+        "github_commit",
+        "github_pr_number",
+        "github_pr_head_branch",
+        "github_author",
+    ]
+    args = [
+        ".evergreen/scripts/upload-codecov.sh",
+    ]
+    upload_cmd = get_subprocess_exec(include_expansions_in_env=include_expansions, args=args)
+    return "upload codecov", [upload_cmd]
 
 
 def create_download_and_merge_coverage_func():
