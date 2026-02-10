@@ -919,7 +919,7 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         tags = ["ocsp", f"ocsp-{algo}", version]
         if "disableStapling" not in variant:
             tags.append("ocsp-staple")
-        if algo == "valid-cert-server-staples" and version == "latest":
+        if base_task_name == "valid-cert-server-staples" and version == "latest":
             tags.append("pr")
             if "TEST_MIN_DEPS" not in vars:
                 vars["COVERAGE"] = "1"
