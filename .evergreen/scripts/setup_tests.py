@@ -324,7 +324,8 @@ def handle_test_env() -> None:
         version = os.environ.get("VERSION", "latest")
         cmd = [
             "bash",
-            f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh",
+            f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh",
+            "start",
             "--ssl",
             "--version",
             version,
