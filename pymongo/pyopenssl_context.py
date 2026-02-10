@@ -357,7 +357,7 @@ class SSLContext:
             try:
                 for storename in ("CA", "ROOT"):
                     self._load_wincerts(storename)
-            except PermissionError:
+            except Exception:
                 # Fall back to certifi
                 self._load_certifi()
         elif _sys.platform == "darwin":
