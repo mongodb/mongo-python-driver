@@ -75,7 +75,7 @@ tasks:
           SUB_TEST_NAME: session-creds
           TOOLCHAIN_VERSION: 3.14t
     tags: [auth-aws, auth-aws-session-creds, free-threaded]
-  - name: test-auth-aws-rapid-web-identity-python3.14
+  - name: test-auth-aws-rapid-web-identity-python3.14-cov
     commands:
       - func: run server
         vars:
@@ -87,7 +87,8 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           TOOLCHAIN_VERSION: "3.14"
-    tags: [auth-aws, auth-aws-web-identity]
+          COVERAGE: "1"
+    tags: [auth-aws, auth-aws-web-identity, pr]
   - name: test-auth-aws-rapid-web-identity-session-name-python3.14
     commands:
       - func: run server
@@ -2491,14 +2492,13 @@ tasks:
           TEST_NAME: auth_oidc
           SUB_TEST_NAME: default
           COVERAGE: "1"
-    tags: [auth_oidc]
+    tags: [auth_oidc, pr]
   - name: test-auth-oidc-azure
     commands:
       - func: run tests
         vars:
           TEST_NAME: auth_oidc
           SUB_TEST_NAME: azure
-          COVERAGE: "1"
     tags: [auth_oidc, auth_oidc_remote]
   - name: test-auth-oidc-gcp
     commands:
@@ -2506,7 +2506,6 @@ tasks:
         vars:
           TEST_NAME: auth_oidc
           SUB_TEST_NAME: gcp
-          COVERAGE: "1"
     tags: [auth_oidc, auth_oidc_remote]
   - name: test-auth-oidc-eks
     commands:
@@ -2514,7 +2513,6 @@ tasks:
         vars:
           TEST_NAME: auth_oidc
           SUB_TEST_NAME: eks
-          COVERAGE: "1"
     tags: [auth_oidc, auth_oidc_remote]
   - name: test-auth-oidc-aks
     commands:
@@ -2522,7 +2520,6 @@ tasks:
         vars:
           TEST_NAME: auth_oidc
           SUB_TEST_NAME: aks
-          COVERAGE: "1"
     tags: [auth_oidc, auth_oidc_remote]
   - name: test-auth-oidc-gke
     commands:
@@ -2530,7 +2527,6 @@ tasks:
         vars:
           TEST_NAME: auth_oidc
           SUB_TEST_NAME: gke
-          COVERAGE: "1"
     tags: [auth_oidc, auth_oidc_remote]
 
   # Perf tests

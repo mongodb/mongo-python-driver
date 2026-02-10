@@ -816,9 +816,9 @@ def create_aws_tasks():
         if "t" in python:
             tags.append("free-threaded")
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, TOOLCHAIN_VERSION=python)
-        if python == ALL_PYTHONS[0]:
+        if python == MIN_MAX_PYTHON[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
-        elif python == ALL_PYTHONS[-1]:
+        elif python == MIN_MAX_PYTHON[-1]:
             tags.append("pr")
             test_vars["COVERAGE"] = "1"
         name = get_task_name(f"{base_name}-{test_type}", **test_vars)
@@ -857,12 +857,15 @@ def create_aws_tasks():
 def create_oidc_tasks():
     tasks = []
     for sub_test in ["default", "azure", "gcp", "eks", "aks", "gke"]:
-        vars = dict(TEST_NAME="auth_oidc", SUB_TEST_NAME=sub_test, COVERAGE="1")
-        test_func = FunctionCall(func="run tests", vars=vars)
-        task_name = f"test-auth-oidc-{sub_test}"
+        vars = dict(TEST_NAME="auth_oidc", SUB_TEST_NAME=sub_test)
         tags = ["auth_oidc"]
         if sub_test != "default":
             tags.append("auth_oidc_remote")
+        else:
+            tags.append("pr")
+            vars["COVERAGE"] = "1"
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = f"test-auth-oidc-{sub_test}"
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
 
     return tasks
