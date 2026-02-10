@@ -915,7 +915,6 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         )
         if python == ALL_PYTHONS[0]:
             vars["TEST_MIN_DEPS"] = "1"
-        test_func = FunctionCall(func="run tests", vars=vars)
         tags = ["ocsp", f"ocsp-{algo}", version]
         if "disableStapling" not in variant:
             tags.append("ocsp-staple")
@@ -923,6 +922,7 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
             tags.append("pr")
             if "TEST_MIN_DEPS" not in vars:
                 vars["COVERAGE"] = "1"
+        test_func = FunctionCall(func="run tests", vars=vars)
         task_name = get_task_name(f"test-ocsp-{algo}-{base_task_name}", **vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
 

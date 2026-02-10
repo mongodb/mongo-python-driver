@@ -914,6 +914,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
+          COVERAGE: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -1939,6 +1940,7 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
+          COVERAGE: "1"
     tags:
       - ocsp
       - ocsp-rsa
