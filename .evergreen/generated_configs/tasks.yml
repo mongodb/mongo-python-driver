@@ -4987,7 +4987,7 @@ tasks:
       - pypy
 
   # Test numpy tests
-  - name: test-numpy-python3.10
+  - name: test-numpy-python3.10-python3.10
     commands:
       - func: test numpy
         vars:
@@ -4997,16 +4997,18 @@ tasks:
       - vector
       - python-3.10
       - test-numpy
-  - name: test-numpy-python3.14
+  - name: test-numpy-python3.14-python3.14-cov
     commands:
       - func: test numpy
         vars:
           TOOLCHAIN_VERSION: "3.14"
+          COVERAGE: "1"
     tags:
       - binary
       - vector
       - python-3.14
       - test-numpy
+      - pr
 
   # Test standard auth tests
   - name: test-standard-auth-v4.2-python3.10-auth-ssl-sharded-cluster-min-deps

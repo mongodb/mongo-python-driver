@@ -344,8 +344,12 @@ def create_test_numpy_tasks():
     tasks = []
     for python in MIN_MAX_PYTHON:
         tags = ["binary", "vector", f"python-{python}", "test-numpy"]
-        task_name = get_task_name("test-numpy", python=python)
-        test_func = FunctionCall(func="test numpy", vars=dict(TOOLCHAIN_VERSION=python))
+        vars = vars = dict(TOOLCHAIN_VERSION=python)
+        if python == MIN_MAX_PYTHON[-1]:
+            tags.append("pr")
+            vars["COVERAGE"] = "1"
+        task_name = get_task_name("test-numpy", python=python, **vars)
+        test_func = FunctionCall(func="test numpy", vars=vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
 
