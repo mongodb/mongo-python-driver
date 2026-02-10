@@ -318,7 +318,7 @@ def create_green_framework_variants():
 def create_no_c_ext_variants():
     host = DEFAULT_HOST
     tasks = [".test-standard"]
-    expansions = dict(COVERAGE="1")
+    expansions = dict()
     handle_c_ext(C_EXTS[0], expansions)
     display_name = get_variant_name("No C Ext", host)
     return [create_variant(tasks, display_name, host=host, expansions=expansions)]
@@ -661,6 +661,8 @@ def create_test_non_standard_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
+        if python not in PYPYS and "t" not in python:
+            expansions["COVERAGE"] = "1"
         name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
@@ -703,6 +705,8 @@ def create_test_standard_auth_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
+        if python not in PYPYS and "t" not in python:
+            expansions["COVERAGE"] = "1"
         name = get_task_name("test-standard-auth", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
@@ -741,6 +745,8 @@ def create_standard_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
+        if python not in PYPYS and "t" not in python:
+            expansions["COVERAGE"] = "1"
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
@@ -762,6 +768,8 @@ def create_no_orchestration_tasks():
         test_vars = dict(TOOLCHAIN_VERSION=python)
         if python == ALL_PYTHONS[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
+        if python not in PYPYS and "t" not in python:
+            test_vars["COVERAGE"] = "1"
         name = get_task_name("test-no-orchestration", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         commands = [assume_func, test_func]
@@ -812,6 +820,8 @@ def create_aws_tasks():
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, TOOLCHAIN_VERSION=python)
         if python == ALL_PYTHONS[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
+        if python not in PYPYS and "t" not in python:
+            test_vars["COVERAGE"] = "1"
         name = get_task_name(f"{base_name}-{test_type}", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [server_func, assume_func, test_func]
@@ -848,7 +858,7 @@ def create_aws_tasks():
 def create_oidc_tasks():
     tasks = []
     for sub_test in ["default", "azure", "gcp", "eks", "aks", "gke"]:
-        vars = dict(TEST_NAME="auth_oidc", SUB_TEST_NAME=sub_test)
+        vars = dict(TEST_NAME="auth_oidc", SUB_TEST_NAME=sub_test, COVERAGE="1")
         test_func = FunctionCall(func="run tests", vars=vars)
         task_name = f"test-auth-oidc-{sub_test}"
         tags = ["auth_oidc"]
@@ -903,6 +913,8 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         )
         if python == ALL_PYTHONS[0]:
             vars["TEST_MIN_DEPS"] = "1"
+        if python not in PYPYS and "t" not in python:
+            vars["COVERAGE"] = "1"
         test_func = FunctionCall(func="run tests", vars=vars)
 
         tags = ["ocsp", f"ocsp-{algo}", version]
