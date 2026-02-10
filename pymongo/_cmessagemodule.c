@@ -25,6 +25,17 @@
 
 #include "_cbsonmodule.h"
 #include "buffer.h"
+#include <limits.h>
+
+static int _check_int32_size(size_t size, const char *what) {
+    if (size > (size_t)INT32_MAX) {
+        PyErr_Format(PyExc_OverflowError,
+                     "MongoDB %s length exceeds maximum int32 size (%d bytes)",
+                     what, INT32_MAX);
+        return 0;
+    }
+    return 1;
+}
 
 struct module_state {
     PyObject* _cbson;
@@ -44,7 +55,7 @@ struct module_state {
 /* Get an error class from the pymongo.errors module.
  *
  * Returns a new ref */
-static PyObject* _error(char* name) {
+static PyObject* _error(const char *name) {
     PyObject* error = NULL;
     PyObject* errors = PyImport_ImportModule("pymongo.errors");
     if (!errors) {
@@ -58,13 +69,16 @@ static PyObject* _error(char* name) {
 /* The same as buffer_write_bytes except that it also validates
  * "size" will fit in an int.
  * Returns 0 on failure */
-static int buffer_write_bytes_ssize_t(buffer_t buffer, const char* data, Py_ssize_t size) {
+static int buffer_write_bytes_ssize_t(buffer_t buffer, const char *data, Py_ssize_t size)
+{
     int downsize = _downcast_and_check(size, 0);
-    if (size == -1) {
+    if (downsize == -1) {
+        /* _downcast_and_check already set an exception */
         return 0;
     }
     return buffer_write_bytes(buffer, data, downsize);
 }
+
 
 static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     /* NOTE just using a random number as the request_id */
@@ -80,7 +94,8 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer = NULL;
-    int length_location, message_length;
+    int length_location;
+    size_t message_length;
     PyObject* result = NULL;
     struct module_state *state = GETSTATE(self);
     if (!state) {
@@ -136,7 +151,13 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
         max_size = (cur_size > max_size) ? cur_size : max_size;
     }
 
-    message_length = pymongo_buffer_get_position(buffer) - length_location;
+    message_length = (size_t)pymongo_buffer_get_position(buffer) -
+                     (size_t)length_location;
+
+    if (!_check_int32_size(message_length, "message length")) {
+        goto fail;
+    }
+
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)message_length);
 
@@ -162,7 +183,8 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     int num_to_return;
     long long cursor_id;
     buffer_t buffer = NULL;
-    int length_location, message_length;
+    int length_location;
+    size_t message_length;
     PyObject* result = NULL;
 
     if (!PyArg_ParseTuple(args, "et#iL",
@@ -196,7 +218,13 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
         goto fail;
     }
 
-    message_length = pymongo_buffer_get_position(buffer) - length_location;
+    message_length = (size_t)pymongo_buffer_get_position(buffer) -
+                     (size_t)length_location;
+
+    if (!_check_int32_size(message_length, "getMore message length")) {
+        goto fail;
+    }
+
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)message_length);
 
@@ -229,7 +257,8 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer = NULL;
-    int length_location, message_length;
+    int length_location;
+    size_t message_length;
     int total_size = 0;
     int max_doc_size = 0;
     PyObject* result = NULL;
@@ -279,7 +308,8 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     }
 
     if (identifier_length) {
-        int payload_one_length_location, payload_length;
+        int payload_one_length_location;
+        size_t payload_length;
         /* Payload type 1 */
         if (!buffer_write_bytes(buffer, "\x01", 1)) {
             goto fail;
@@ -307,15 +337,29 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
             Py_CLEAR(doc);
         }
 
-        payload_length = pymongo_buffer_get_position(buffer) - payload_one_length_location;
+        payload_length = (size_t)pymongo_buffer_get_position(buffer) -
+                         (size_t)payload_one_length_location;
+
+        if (!_check_int32_size(payload_length, "OP_MSG payload length")) {
+            goto fail;
+        }
+
         buffer_write_int32_at_position(
             buffer, payload_one_length_location, (int32_t)payload_length);
         total_size += payload_length;
     }
 
-    message_length = pymongo_buffer_get_position(buffer) - length_location;
+
+    message_length = (size_t)pymongo_buffer_get_position(buffer) -
+                     (size_t)length_location;
+
+    if (!_check_int32_size(message_length, "OP_MSG message length")) {
+        goto fail;
+    }
+
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)message_length);
+
 
     /* objectify buffer */
     result = Py_BuildValue("iy#ii", request_id,
@@ -365,8 +409,8 @@ _batched_op_msg(
     long max_message_size;
     int idx = 0;
     int size_location;
-    int position;
-    int length;
+    size_t position;
+    size_t length;
     PyObject* max_bson_size_obj = NULL;
     PyObject* max_write_batch_size_obj = NULL;
     PyObject* max_message_size_obj = NULL;
@@ -520,8 +564,13 @@ _batched_op_msg(
         goto fail;
     }
 
-    position = pymongo_buffer_get_position(buffer);
-    length = position - size_location;
+    position = (size_t)pymongo_buffer_get_position(buffer);
+    length = position - (size_t)size_location;
+
+    if (!_check_int32_size(length, "batched OP_MSG section length")) {
+        goto fail;
+    }
+
     buffer_write_int32_at_position(buffer, size_location, (int32_t)length);
     return 1;
 
@@ -591,7 +640,7 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
     unsigned char op;
     unsigned char ack;
     int request_id;
-    int position;
+    size_t position;
     PyObject* command = NULL;
     PyObject* docs = NULL;
     PyObject* ctx = NULL;
@@ -643,7 +692,12 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
     }
 
     request_id = rand();
-    position = pymongo_buffer_get_position(buffer);
+    position = (size_t)pymongo_buffer_get_position(buffer);
+
+    if (!_check_int32_size(position, "batched OP_MSG message length")) {
+        goto fail;
+    }
+
     buffer_write_int32_at_position(buffer, 0, (int32_t)position);
     buffer_write_int32_at_position(buffer, 4, (int32_t)request_id);
     result = Py_BuildValue("iy#O", request_id,
@@ -850,10 +904,21 @@ _batched_write_command(
         goto fail;
     }
 
-    position = pymongo_buffer_get_position(buffer);
-    length = position - lst_len_loc - 1;
+    position = (size_t)pymongo_buffer_get_position(buffer);
+    length = position - (size_t)lst_len_loc - 1;
+
+    if (!_check_int32_size(length, "batched write list length")) {
+        goto fail;
+    }
+
     buffer_write_int32_at_position(buffer, lst_len_loc, (int32_t)length);
-    length = position - cmd_len_loc;
+
+    length = position - (size_t)cmd_len_loc;
+
+    if (!_check_int32_size(length, "batched write command length")) {
+        goto fail;
+    }
+
     buffer_write_int32_at_position(buffer, cmd_len_loc, (int32_t)length);
     return 1;
 
