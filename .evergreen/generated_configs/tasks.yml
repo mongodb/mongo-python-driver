@@ -2489,7 +2489,7 @@ tasks:
     tags: [ocsp, ocsp-rsa, latest]
 
   # Oidc tests
-  - name: test-auth-oidc-default
+  - name: test-auth-oidc-default-cov
     commands:
       - func: run tests
         vars:
