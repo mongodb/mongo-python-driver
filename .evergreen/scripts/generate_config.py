@@ -596,7 +596,7 @@ def create_server_version_tasks():
             expansions["TEST_MIN_DEPS"] = "1"
         if "t" in python:
             tags.append("free-threaded")
-        if python not in PYPYS and "t" not in python:
+        if "pr" in tags:
             expansions["COVERAGE"] = "1"
         name = get_task_name(
             "test-server-version",
@@ -661,7 +661,7 @@ def create_test_non_standard_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
-        if python not in PYPYS and "t" not in python:
+        elif pr:
             expansions["COVERAGE"] = "1"
         name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
@@ -705,7 +705,7 @@ def create_test_standard_auth_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
-        if python not in PYPYS and "t" not in python:
+        elif pr:
             expansions["COVERAGE"] = "1"
         name = get_task_name("test-standard-auth", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
@@ -745,7 +745,7 @@ def create_standard_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
-        if python not in PYPYS and "t" not in python:
+        elif pr:
             expansions["COVERAGE"] = "1"
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
@@ -768,8 +768,6 @@ def create_no_orchestration_tasks():
         test_vars = dict(TOOLCHAIN_VERSION=python)
         if python == ALL_PYTHONS[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
-        if python not in PYPYS and "t" not in python:
-            test_vars["COVERAGE"] = "1"
         name = get_task_name("test-no-orchestration", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         commands = [assume_func, test_func]
@@ -820,7 +818,8 @@ def create_aws_tasks():
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, TOOLCHAIN_VERSION=python)
         if python == ALL_PYTHONS[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
-        if python not in PYPYS and "t" not in python:
+        elif python == ALL_PYTHONS[-1]:
+            tags.append("pr")
             test_vars["COVERAGE"] = "1"
         name = get_task_name(f"{base_name}-{test_type}", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
@@ -913,16 +912,14 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         )
         if python == ALL_PYTHONS[0]:
             vars["TEST_MIN_DEPS"] = "1"
-        if python not in PYPYS and "t" not in python:
-            vars["COVERAGE"] = "1"
         test_func = FunctionCall(func="run tests", vars=vars)
-
         tags = ["ocsp", f"ocsp-{algo}", version]
         if "disableStapling" not in variant:
             tags.append("ocsp-staple")
         if algo == "valid-cert-server-staples" and version == "latest":
             tags.append("pr")
-
+            if "TEST_MIN_DEPS" not in vars:
+                vars["COVERAGE"] = "1"
         task_name = get_task_name(f"test-ocsp-{algo}-{base_task_name}", **vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
 
