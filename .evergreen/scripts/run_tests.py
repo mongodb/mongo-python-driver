@@ -205,9 +205,10 @@ def run() -> None:
         TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG}".split())
 
     if os.environ.get("COVERAGE"):
-        cmd = f"{sys.executable} -m coverage run -m pytest {' '.join(TEST_ARGS)} {' '.join(sys.argv[1:])}"
+        binary = sys.executable.replace(os.sep, "/")
+        cmd = f"{binary} -m coverage run -m pytest {' '.join(TEST_ARGS)} {' '.join(sys.argv[1:])}"
         result = subprocess.run(shlex.split(cmd), check=False)  # noqa: S603
-        cmd = f"{sys.executable} -m coverage report"
+        cmd = f"{binary} -m coverage report"
         subprocess.run(shlex.split(cmd), check=False)  # noqa: S603
         if result.returncode != 0:
             print(result.stderr)
