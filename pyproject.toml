@@ -51,7 +51,6 @@ dev = []
 pip = ["pip>=20.2"]
 gevent = ["gevent>=21.12"]
 coverage = [
-    "pytest-cov>=4.0.0",
     "coverage[toml]>=5,<=7.10.7"
 ]
 mockupdb = [
@@ -245,9 +244,6 @@ include = [
     "gridfs/*"
 ]
 relative_files = true
-# Disable include-ignored warnings as --source is enabled automatically causing a self conflict as per:
-# https://github.com/pytest-dev/pytest-cov/issues/532
-disable_warnings = ["include-ignored"]
 
 [tool.coverage.report]
 exclude_lines = [
