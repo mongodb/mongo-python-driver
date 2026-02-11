@@ -61,7 +61,7 @@ test *args="-v --durations=5 --maxfail=10": && resync
 
 [group('test')]
 test-numpy: && resync
-    if [ "{{COVERAGE}}" = "1" ]; then \
+    if [ "${COVERAGE:-}" = "1" ]; then \
         uv run --extra test --group coverage --with numpy python -m pytest --cov test/test_bson.py; \
     else \
         uv run --extra test --with numpy python -m pytest test/test_bson.py; \
