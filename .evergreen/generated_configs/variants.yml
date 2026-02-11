@@ -419,6 +419,8 @@ buildvariants:
     run_on:
       - ubuntu2204-small
     batchtime: 1440
+    expansions:
+      COVERAGE: "1"
     tags: [pr]
   - name: auth-oidc-macos
     tasks:

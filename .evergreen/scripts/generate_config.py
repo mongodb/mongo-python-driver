@@ -401,6 +401,7 @@ def create_oidc_auth_variants():
                     tags=["pr"],
                     host=host,
                     batchtime=BATCHTIME_DAY,
+                    expansions=dict(COVERAGE="1"),
                 )
             )
     return variants
@@ -865,9 +866,6 @@ def create_oidc_tasks():
         tags = ["auth_oidc"]
         if sub_test != "default":
             tags.append("auth_oidc_remote")
-        else:
-            tags.append("pr")
-            vars["COVERAGE"] = "1"
         test_func = FunctionCall(func="run tests", vars=vars)
         task_name = get_task_name(f"test-auth-oidc-{sub_test}", **vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))

@@ -2489,14 +2489,13 @@ tasks:
     tags: [ocsp, ocsp-rsa, latest]
 
   # Oidc tests
-  - name: test-auth-oidc-default-cov
+  - name: test-auth-oidc-default
     commands:
       - func: run tests
         vars:
           TEST_NAME: auth_oidc
           SUB_TEST_NAME: default
-          COVERAGE: "1"
-    tags: [auth_oidc, pr]
+    tags: [auth_oidc]
   - name: test-auth-oidc-azure
     commands:
       - func: run tests
