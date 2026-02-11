@@ -250,6 +250,7 @@ functions:
         working_dir: src
         include_expansions_in_env:
           - TOOLCHAIN_VERSION
+          - COVERAGE
       type: test
 
   # Upload coverage codecov

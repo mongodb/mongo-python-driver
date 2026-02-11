@@ -1246,7 +1246,7 @@ def create_run_tests_func():
 
 
 def create_test_numpy_func():
-    includes = ["TOOLCHAIN_VERSION"]
+    includes = ["TOOLCHAIN_VERSION", "COVERAGE"]
     test_cmd = get_subprocess_exec(
         include_expansions_in_env=includes, args=[".evergreen/just.sh", "test-numpy"]
     )
