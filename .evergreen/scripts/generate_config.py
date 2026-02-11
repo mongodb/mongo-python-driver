@@ -1103,7 +1103,7 @@ def create_upload_coverage_codecov_func():
         "github_pr_number",
         "github_pr_head_branch",
         "github_author",
-        "is_patch",
+        "requester",
         "branch_name",
     ]
     args = [
