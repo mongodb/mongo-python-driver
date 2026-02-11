@@ -250,6 +250,7 @@ functions:
         working_dir: src
         include_expansions_in_env:
           - TOOLCHAIN_VERSION
+          - COVERAGE
       type: test
 
   # Upload coverage codecov
@@ -268,7 +269,7 @@ functions:
           - github_pr_number
           - github_pr_head_branch
           - github_author
-          - is_patch
+          - requester
           - branch_name
       type: test
 

@@ -431,6 +431,9 @@ def handle_test_env() -> None:
         # We do not want the default client_context to be initialized.
         write_env("DISABLE_CONTEXT")
 
+    if test_name == "numpy":
+        UV_ARGS.append("--with numpy")
+
     if test_name == "perf":
         data_dir = ROOT / "specifications/source/benchmarking/data"
         if not data_dir.exists():
@@ -458,7 +461,6 @@ def handle_test_env() -> None:
         # Keep in sync with combine-coverage.sh.
         # coverage >=5 is needed for relative_files=true.
         UV_ARGS.append("--group coverage")
-        TEST_ARGS = f"{TEST_ARGS} --cov"
         write_env("COVERAGE")
 
     if opts.green_framework:
