@@ -15,7 +15,7 @@ if [ ! -f ".coverage" ]; then
   exit 0
 fi
 
-if [[ "$" == "github_pr" || "${REQUESTER}" == "commit" ]]; then
+if [[ "${REQUESTER}" == "github_pr" || "${REQUESTER}" == "commit" ]]; then
     echo "Uploading codecov for $REQUESTER..."
 else
     echo "Error: requester must be 'github_pr' or 'commit', got '${REQUESTER}'" >&2
