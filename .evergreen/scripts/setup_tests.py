@@ -431,6 +431,9 @@ def handle_test_env() -> None:
         # We do not want the default client_context to be initialized.
         write_env("DISABLE_CONTEXT")
 
+    if test_name == "numpy":
+        UV_ARGS.append("--with numpy")
+
     if test_name == "perf":
         data_dir = ROOT / "specifications/source/benchmarking/data"
         if not data_dir.exists():

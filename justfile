@@ -60,12 +60,9 @@ test *args="-v --durations=5 --maxfail=10": && resync
     uv run --extra test python -m pytest {{args}}
 
 [group('test')]
-test-numpy: && resync
-    if [ "${COVERAGE:-}" = "1" ]; then \
-        uv run --extra test --group coverage --with numpy coverage run -m pytest test/test_bson.py; \
-    else \
-        uv run --extra test --with numpy python -m pytest test/test_bson.py; \
-    fi
+test-numpy *args="": && resync
+    just setup-tests numpy {{args}}
+    just run-tests test/test_bson.py
 
 [group('test')]
 run-tests *args: && resync
