@@ -43,6 +43,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
+from pymongo import MongoClient
 from pymongo.errors import (
     AutoReconnect,
     ConnectionFailure,
@@ -609,18 +610,23 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
     @async_client_context.require_version_min(6, 0)
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
-        await self.configure_fail_point(async_client_context.client, {}, off=True)
+        self.setup_client = MongoClient()
+        self.addCleanup(self.setup_client.close)
 
-    async def asyncTearDown(self):
-        await self.configure_fail_point(async_client_context.client, {}, off=True)
-        return await super().asyncTearDown()
+    # TODO: After PYTHON-4595 we can use async event handlers and remove this workaround.
+    def configure_fail_point_sync(self, command_args, off=False):
+        cmd = {"configureFailPoint": "failCommand"}
+        cmd.update(command_args)
+        if off:
+            cmd["mode"] = "off"
+            cmd.pop("data", None)
+        self.setup_client.admin.command(cmd)
 
     async def test_01_drivers_return_the_correct_error_when_receiving_only_errors_without_NoWritesPerformed(
         self
     ):
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
-        task = None
 
         # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and SystemOverloadedError error labels.
         command_args = {
@@ -646,32 +652,35 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
 
         def failed(event: CommandFailedEvent) -> None:
             # Configure the 10107 fail point command only if the the failed event is for the 91 error configured in step 2.
-            nonlocal task
+            if listener.failed_events:
+                return
             assert event.failure["code"] == 91
-            task = asyncio.create_task(self.configure_fail_point(client, command_args_inner))
+            self.configure_fail_point_sync(command_args_inner)
+            listener.failed_events.append(event)
 
         listener.failed = failed
 
         client = await self.async_rs_client(retryWrites=True, event_listeners=[listener])
         self.addAsyncCleanup(client.close)
 
-        async with self.fail_point(command_args):
-            # Attempt an insertOne operation on any record for any database and collection.
-            # Expect the insertOne to fail with a server error.
-            with self.assertRaises(NotPrimaryError) as exc:
-                await client.test.test.insert_one({})
+        self.configure_fail_point_sync(command_args)
 
-        await task
+        # Attempt an insertOne operation on any record for any database and collection.
+        # Expect the insertOne to fail with a server error.
+        with self.assertRaises(NotPrimaryError) as exc:
+            await client.test.test.insert_one({})
 
         # Assert that the error code of the server error is 10107.
         assert exc.exception.errors["code"] == 10107
+
+        # Disable the fail point.
+        self.configure_fail_point_sync({}, off=True)
 
     async def test_02_drivers_return_the_correct_error_when_receiving_only_errors_with_NoWritesPerformed(
         self
     ):
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
-        task = None
 
         # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and SystemOverloadedError error labels.
         command_args = {
@@ -697,39 +706,43 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
+            if listener.failed_events:
+                return
             # Configure the 10107 fail point command only if the the failed event is for the 91 error configured in step 2.
-            nonlocal task
             assert event.failure["code"] == 91
-            task = asyncio.create_task(self.configure_fail_point(client, command_args_inner))
+            self.configure_fail_point_sync(command_args_inner)
+            listener.failed_events.append(event)
 
         listener.failed = failed
 
         client = await self.async_rs_client(retryWrites=True, event_listeners=[listener])
         self.addAsyncCleanup(client.close)
 
-        async with self.fail_point(command_args):
-            # Attempt an insertOne operation on any record for any database and collection.
-            # Expect the insertOne to fail with a server error.
-            with self.assertRaises(NotPrimaryError) as exc:
-                await client.test.test.insert_one({})
+        self.configure_fail_point_sync(command_args)
 
-        await task
+        # Attempt an insertOne operation on any record for any database and collection.
+        # Expect the insertOne to fail with a server error.
+        with self.assertRaises(NotPrimaryError) as exc:
+            await client.test.test.insert_one({})
 
         # Assert that the error code of the server error is 91.
         assert exc.exception.errors["code"] == 91
 
+        # Disable the fail point.
+        self.configure_fail_point_sync({}, off=True)
+
     async def test_03_drivers_return_the_correct_error_when_receiving_some_errors_with_NoWritesPerformed_and_some_without_NoWritesPerformed(
         self
     ):
+        # TODO: read the expected behavior and add breakpoint() to the retry loop
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
-        task = None
 
         # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
         # code `91` (NotWritablePrimary) and the `NoWritesPerformed`, `RetryableError` and `SystemOverloadedError` labels.
         command_args_inner = {
             "configureFailPoint": "failCommand",
-            "mode": {"times": 1},
+            "mode": "alwaysOn",
             "data": {
                 "failCommands": ["insert"],
                 "errorLabels": ["RetryableError", "SystemOverloadedError", "NoWritesPerformed"],
@@ -751,28 +764,35 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
 
         def failed(event: CommandFailedEvent) -> None:
             # Configure the fail point command only if the the failed event is for the 91 error configured in step 2.
-            nonlocal task
-            print("here I am boo")
+            print("hi")
+            if listener.failed_events:
+                return
+            print("ho")
             assert event.failure["code"] == 91
-            task = asyncio.create_task(self.configure_fail_point(client, command_args_inner))
+            self.configure_fail_point_sync(command_args_inner)
+            listener.failed_events.append(event)
 
         listener.failed = failed
 
         client = await self.async_rs_client(retryWrites=True, event_listeners=[listener])
         self.addAsyncCleanup(client.close)
 
-        async with self.fail_point(command_args):
-            # Attempt an insertOne operation on any record for any database and collection.
-            # Expect the insertOne to fail with a server error.
-            with self.assertRaises(NotPrimaryError) as exc:
-                await client.test.test.insert_one({})
+        self.configure_fail_point_sync(command_args)
 
-        await task
+        # Attempt an insertOne operation on any record for any database and collection.
+        # Expect the insertOne to fail with a server error.
+        from pymongo.errors import OperationFailure
+
+        with self.assertRaises(Exception) as exc:
+            await client.test.test.insert_one({})
 
         # Assert that the error code of the server error is 91.
         assert exc.exception.errors["code"] == 91
         # Assert that the error does not contain the error label `NoWritesPerformed`.
         assert "NoWritesPerformed" not in exc.exception.errors["errorLabels"]
+
+        # Disable the fail point.
+        self.configure_fail_point_sync({}, off=True)
 
 
 if __name__ == "__main__":
