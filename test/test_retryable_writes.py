@@ -46,11 +46,12 @@ from bson.son import SON
 from pymongo.errors import (
     AutoReconnect,
     ConnectionFailure,
-    OperationFailure,
+    NotPrimaryError,
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
 from pymongo.monitoring import (
+    CommandFailedEvent,
     CommandSucceededEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
@@ -595,6 +596,179 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
                 final_txn_id = session._transaction_id
                 self.assertEqual(Int64(initial_txn_id + 1), sent_txn_id, msg)
                 self.assertEqual(sent_txn_id, final_txn_id, msg)
+
+
+class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
+    # Only run against replica sets as mongos does not propagate the NoWritesPerformed label to the drivers.
+    @client_context.require_replica_set
+    # Run against server versions 6.0 and above.
+    @client_context.require_version_min(6, 0)
+    def setUp(self) -> None:
+        super().setUp()
+        self.configure_fail_point(client_context.client, {}, off=True)
+
+    def tearDown(self):
+        self.configure_fail_point(client_context.client, {}, off=True)
+        return super().tearDown()
+
+    def test_01_drivers_return_the_correct_error_when_receiving_only_errors_without_NoWritesPerformed(
+        self
+    ):
+        # Create a client with retryWrites=true.
+        listener = OvertCommandListener()
+        task = None
+
+        # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and SystemOverloadedError error labels.
+        command_args = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["insert"],
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+                "errorCode": 91,
+            },
+        }
+
+        # Via the command monitoring CommandFailedEvent, configure a fail point with error code 10107 (NotWritablePrimary).
+        command_args_inner = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "failCommands": ["insert"],
+                "errorCode": 10107,
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+            },
+        }
+
+        def failed(event: CommandFailedEvent) -> None:
+            # Configure the 10107 fail point command only if the the failed event is for the 91 error configured in step 2.
+            nonlocal task
+            assert event.failure["code"] == 91
+            task = asyncio.create_task(self.configure_fail_point(client, command_args_inner))
+
+        listener.failed = failed
+
+        client = self.rs_client(retryWrites=True, event_listeners=[listener])
+        self.addCleanup(client.close)
+
+        with self.fail_point(command_args):
+            # Attempt an insertOne operation on any record for any database and collection.
+            # Expect the insertOne to fail with a server error.
+            with self.assertRaises(NotPrimaryError) as exc:
+                client.test.test.insert_one({})
+
+        task
+
+        # Assert that the error code of the server error is 10107.
+        assert exc.exception.errors["code"] == 10107
+
+    def test_02_drivers_return_the_correct_error_when_receiving_only_errors_with_NoWritesPerformed(
+        self
+    ):
+        # Create a client with retryWrites=true.
+        listener = OvertCommandListener()
+        task = None
+
+        # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and SystemOverloadedError error labels.
+        command_args = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["insert"],
+                "errorLabels": ["RetryableError", "SystemOverloadedError", "NoWritesPerformed"],
+                "errorCode": 91,
+            },
+        }
+
+        # Via the command monitoring CommandFailedEvent, configure a fail point with error code `10107` (NotWritablePrimary)
+        # and a NoWritesPerformed label.
+        command_args_inner = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "failCommands": ["insert"],
+                "errorCode": 10107,
+                "errorLabels": ["RetryableError", "SystemOverloadedError", "NoWritesPerformed"],
+            },
+        }
+
+        def failed(event: CommandFailedEvent) -> None:
+            # Configure the 10107 fail point command only if the the failed event is for the 91 error configured in step 2.
+            nonlocal task
+            assert event.failure["code"] == 91
+            task = asyncio.create_task(self.configure_fail_point(client, command_args_inner))
+
+        listener.failed = failed
+
+        client = self.rs_client(retryWrites=True, event_listeners=[listener])
+        self.addCleanup(client.close)
+
+        with self.fail_point(command_args):
+            # Attempt an insertOne operation on any record for any database and collection.
+            # Expect the insertOne to fail with a server error.
+            with self.assertRaises(NotPrimaryError) as exc:
+                client.test.test.insert_one({})
+
+        task
+
+        # Assert that the error code of the server error is 91.
+        assert exc.exception.errors["code"] == 91
+
+    def test_03_drivers_return_the_correct_error_when_receiving_some_errors_with_NoWritesPerformed_and_some_without_NoWritesPerformed(
+        self
+    ):
+        # Create a client with retryWrites=true.
+        listener = OvertCommandListener()
+        task = None
+
+        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
+        # code `91` (NotWritablePrimary) and the `NoWritesPerformed`, `RetryableError` and `SystemOverloadedError` labels.
+        command_args_inner = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["insert"],
+                "errorLabels": ["RetryableError", "SystemOverloadedError", "NoWritesPerformed"],
+                "errorCode": 91,
+            },
+        }
+
+        # Configure a fail point with error code `91` (ShutdownInProgress) with the `RetryableError` and
+        # `SystemOverloadedError` error labels but without the `NoWritesPerformed` error label.
+        command_args = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["insert"],
+                "errorCode": 91,
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+            },
+        }
+
+        def failed(event: CommandFailedEvent) -> None:
+            # Configure the fail point command only if the the failed event is for the 91 error configured in step 2.
+            nonlocal task
+            print("here I am boo")
+            assert event.failure["code"] == 91
+            task = asyncio.create_task(self.configure_fail_point(client, command_args_inner))
+
+        listener.failed = failed
+
+        client = self.rs_client(retryWrites=True, event_listeners=[listener])
+        self.addCleanup(client.close)
+
+        with self.fail_point(command_args):
+            # Attempt an insertOne operation on any record for any database and collection.
+            # Expect the insertOne to fail with a server error.
+            with self.assertRaises(NotPrimaryError) as exc:
+                client.test.test.insert_one({})
+
+        task
+
+        # Assert that the error code of the server error is 91.
+        assert exc.exception.errors["code"] == 91
+        # Assert that the error does not contain the error label `NoWritesPerformed`.
+        assert "NoWritesPerformed" not in exc.exception.errors["errorLabels"]
 
 
 if __name__ == "__main__":
