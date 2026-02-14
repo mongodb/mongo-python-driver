@@ -26,7 +26,7 @@ from typing import Any
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import IntegrationTest, client_context, skip_if_rust_bson, unittest
 
 import bson
 from bson import decode, encode
@@ -137,6 +137,7 @@ class TestBinary(unittest.TestCase):
         self.assertNotEqual(hash(one), hash(two))
         self.assertEqual(hash(Binary(b"hello world", 42)), hash(two))
 
+    @skip_if_rust_bson
     def test_uuid_subtype_4(self):
         """Only STANDARD should decode subtype 4 as native uuid."""
         expected_uuid = uuid.uuid4()
@@ -153,6 +154,7 @@ class TestBinary(unittest.TestCase):
         opts = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
         self.assertEqual(expected_uuid, decode(encoded, opts)["uuid"])
 
+    @skip_if_rust_bson
     def test_legacy_java_uuid(self):
         # Test decoding
         data = BinaryData.java_data
@@ -193,6 +195,7 @@ class TestBinary(unittest.TestCase):
         )
         self.assertEqual(data, encoded)
 
+    @skip_if_rust_bson
     def test_legacy_csharp_uuid(self):
         data = BinaryData.csharp_data
 
