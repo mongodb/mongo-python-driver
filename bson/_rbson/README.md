@@ -295,14 +295,7 @@ doc = {"name": "John", "age": 30, "score": 95.5}
 bson_bytes = _rbson._dict_to_bson_direct(doc, False, DEFAULT_CODEC_OPTIONS)
 ```
 
-### Benchmarking
 
-Run the benchmarks yourself:
-```bash
-python benchmark_direct_bson.py        # Quick comparison
-python benchmark_bson_types.py         # Individual type analysis
-python benchmark_comprehensive.py      # Detailed statistics
-```
 
 ## Steps to Achieve Performance Parity with C Extensions
 
@@ -377,7 +370,23 @@ PYMONGO_USE_RUST=1 python -m pytest test/ -v
 
 Run performance benchmarks:
 ```bash
-python test/performance/perf_test.py
+# Quick benchmark run
+FASTBENCH=1 python test/performance/perf_test.py -v
+
+# With Rust extension enabled
+PYMONGO_USE_RUST=1 FASTBENCH=1 python test/performance/perf_test.py -v
+
+# Full benchmark setup (see test/performance/perf_test.py for details)
+python -m pip install simplejson
+git clone --depth 1 https://github.com/mongodb/specifications.git
+cd specifications/source/benchmarking/data
+tar xf extended_bson.tgz
+tar xf parallel.tgz
+tar xf single_and_multi_document.tgz
+cd -
+export TEST_PATH="specifications/source/benchmarking/data"
+export OUTPUT_FILE="results.json"
+python test/performance/perf_test.py -v
 ```
 
 ## Module Structure
