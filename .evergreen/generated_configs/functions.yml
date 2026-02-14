@@ -111,6 +111,8 @@ functions:
           - LOAD_BALANCER
           - LOCAL_ATLAS
           - NO_EXT
+          - PYMONGO_BUILD_RUST
+          - PYMONGO_USE_RUST
       type: test
     - command: expansions.update
       params:
@@ -152,6 +154,8 @@ functions:
           - IS_WIN32
           - REQUIRE_FIPS
           - TEST_MIN_DEPS
+          - PYMONGO_BUILD_RUST
+          - PYMONGO_USE_RUST
       type: test
     - command: subprocess.exec
       params:

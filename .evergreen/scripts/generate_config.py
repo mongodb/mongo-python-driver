@@ -958,11 +958,15 @@ def create_search_index_tasks():
 
 def create_perf_tasks():
     tasks = []
-    for version, ssl, sync in product(["8.0"], ["ssl", "nossl"], ["sync", "async"]):
+    for version, ssl, sync in product(["8.0"], ["ssl", "nossl"], ["sync", "async", "rust"]):
         vars = dict(VERSION=f"v{version}-perf", SSL=ssl)
         server_func = FunctionCall(func="run server", vars=vars)
-        vars = dict(TEST_NAME="perf", SUB_TEST_NAME=sync)
-        test_func = FunctionCall(func="run tests", vars=vars)
+        test_vars = dict(TEST_NAME="perf", SUB_TEST_NAME=sync)
+        # Enable Rust for rust perf tests
+        if sync == "rust":
+            test_vars["PYMONGO_BUILD_RUST"] = "1"
+            test_vars["PYMONGO_USE_RUST"] = "1"
+        test_func = FunctionCall(func="run tests", vars=test_vars)
         attach_func = FunctionCall(func="attach benchmark test results")
         send_func = FunctionCall(func="send dashboard data")
         task_name = f"perf-{version}-standalone"
@@ -970,6 +974,8 @@ def create_perf_tasks():
             task_name += "-ssl"
         if sync == "async":
             task_name += "-async"
+        elif sync == "rust":
+            task_name += "-rust"
         tags = ["perf"]
         commands = [server_func, test_func, attach_func, send_func]
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
@@ -1189,6 +1195,8 @@ def create_run_server_func():
         "LOAD_BALANCER",
         "LOCAL_ATLAS",
         "NO_EXT",
+        "PYMONGO_BUILD_RUST",
+        "PYMONGO_USE_RUST",
     ]
     args = [".evergreen/just.sh", "run-server", "${TEST_NAME}"]
     sub_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
@@ -1222,6 +1230,8 @@ def create_run_tests_func():
         "IS_WIN32",
         "REQUIRE_FIPS",
         "TEST_MIN_DEPS",
+        "PYMONGO_BUILD_RUST",
+        "PYMONGO_USE_RUST",
     ]
     args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
     setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
@@ -1281,6 +1291,55 @@ def create_send_dashboard_data_func():
         ),
     ]
     return "send dashboard data", cmds
+
+
+def create_rust_variants():
+    """Create build variants that test with Rust extension alongside C extension."""
+    variants = []
+
+    # Test Rust on Linux (primary platform) - runs on PRs
+    # Run standard tests with Rust enabled (both sync and async)
+    variant = create_variant(
+        [".test-standard .server-latest .pr"],
+        "Test with Rust Extension",
+        host=DEFAULT_HOST,
+        tags=["rust", "pr"],
+        expansions=dict(
+            PYMONGO_BUILD_RUST="1",
+            PYMONGO_USE_RUST="1",
+        ),
+    )
+    variants.append(variant)
+
+    # Test on macOS ARM64 (important for M1/M2 Macs)
+    variant = create_variant(
+        [".test-standard .server-latest !.pr"],
+        "Test with Rust Extension - macOS ARM64",
+        host=HOSTS["macos-arm64"],
+        tags=["rust"],
+        batchtime=BATCHTIME_WEEK,
+        expansions=dict(
+            PYMONGO_BUILD_RUST="1",
+            PYMONGO_USE_RUST="1",
+        ),
+    )
+    variants.append(variant)
+
+    # Test on Windows (important for cross-platform compatibility)
+    variant = create_variant(
+        [".test-standard .server-latest !.pr"],
+        "Test with Rust Extension - Windows",
+        host=HOSTS["win64"],
+        tags=["rust"],
+        batchtime=BATCHTIME_WEEK,
+        expansions=dict(
+            PYMONGO_BUILD_RUST="1",
+            PYMONGO_USE_RUST="1",
+        ),
+    )
+    variants.append(variant)
+
+    return variants
 
 
 mod = sys.modules[__name__]

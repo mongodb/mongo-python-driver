@@ -86,3 +86,31 @@ run-server *args="":
 [group('server')]
 stop-server:
     bash .evergreen/scripts/stop-server.sh
+
+[group('rust')]
+rust-build:
+    cd bson/_rbson && ./build.sh
+
+[group('rust')]
+rust-clean:
+    rm -f bson/_rbson*.so bson/_rbson*.pyd
+    cd bson/_rbson && cargo clean
+
+[group('rust')]
+rust-rebuild: rust-clean rust-build
+
+[group('rust')]
+rust-install:
+    PYMONGO_BUILD_RUST=1 pip install --force-reinstall --no-deps .
+
+[group('rust')]
+rust-install-full:
+    PYMONGO_BUILD_RUST=1 pip install --force-reinstall .
+
+[group('rust')]
+rust-test:
+    PYMONGO_USE_RUST=1 uv run --extra test python -m pytest test/test_bson.py -v
+
+[group('rust')]
+rust-check:
+    @python -c 'import os; os.environ["PYMONGO_USE_RUST"] = "1"; import bson; print("Rust extension:", bson.get_bson_implementation())'

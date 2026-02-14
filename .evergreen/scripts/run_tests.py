@@ -151,6 +151,16 @@ def run() -> None:
     if os.environ.get("PYMONGOCRYPT_LIB"):
         handle_pymongocrypt()
 
+    # Check if Rust extension is being used
+    if os.environ.get("PYMONGO_USE_RUST") or os.environ.get("PYMONGO_BUILD_RUST"):
+        try:
+            import bson
+
+            LOGGER.info(f"BSON implementation: {bson.get_bson_implementation()}")
+            LOGGER.info(f"Has Rust: {bson.has_rust()}, Has C: {bson.has_c()}")
+        except Exception as e:
+            LOGGER.warning(f"Could not check BSON implementation: {e}")
+
     LOGGER.info(f"Test setup:\n{AUTH=}\n{SSL=}\n{UV_ARGS=}\n{TEST_ARGS=}")
 
     # Record the start time for a perf test.

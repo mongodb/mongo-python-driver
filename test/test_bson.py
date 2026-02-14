@@ -1746,9 +1746,11 @@ class TestLongLongToString(unittest.TestCase):
         try:
             from bson import _cbson
 
+            if _cbson is None:
+                self.skipTest("C extension not available")
             _cbson._test_long_long_to_str()
         except ImportError:
-            print("_cbson was not imported. Check compilation logs.")
+            self.skipTest("C extension not available")
 
 
 if __name__ == "__main__":
