@@ -25,7 +25,7 @@ from decimal import DecimalException
 
 sys.path[0:0] = [""]
 
-from test import unittest
+from test import skip_if_rust_bson, unittest
 
 from bson import decode, encode, json_util
 from bson.binary import STANDARD
@@ -96,6 +96,7 @@ decode_extjson = functools.partial(
 loads = functools.partial(json.loads, object_pairs_hook=SON)
 
 
+@skip_if_rust_bson
 class TestBSONCorpus(unittest.TestCase):
     def assertJsonEqual(self, first, second, msg=None):
         """Fail if the two json strings are unequal.
