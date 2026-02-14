@@ -201,12 +201,14 @@ class CustomBSONTypeTests:
         fileobj.close()
 
 
+@skip_if_rust_bson
 class TestCustomPythonBSONTypeToBSONMonolithicCodec(CustomBSONTypeTests, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.codecopts = DECIMAL_CODECOPTS
 
 
+@skip_if_rust_bson
 class TestCustomPythonBSONTypeToBSONMultiplexedCodec(CustomBSONTypeTests, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -279,6 +281,7 @@ class TestBSONFallbackEncoder(unittest.TestCase):
         self.assertEqual(called_with, [2 << 65])
 
 
+@skip_if_rust_bson
 class TestBSONTypeEnDeCodecs(unittest.TestCase):
     def test_instantiation(self):
         msg = "Can't instantiate abstract class"
@@ -439,6 +442,7 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
             encode({"x": self.TypeA(100)}, codec_options=codecopts)
 
 
+@skip_if_rust_bson
 class TestTypeRegistry(unittest.TestCase):
     types: Tuple[object, object]
     codecs: Tuple[Type[TypeCodec], Type[TypeCodec]]
@@ -752,6 +756,7 @@ class TestCollectionWCustomType(AsyncIntegrationTest):
         self.assertIsNone(await c.find_one())
 
 
+@skip_if_rust_bson
 class TestGridFileCustomType(AsyncIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
@@ -918,6 +923,7 @@ class ChangeStreamsWCustomTypesTestMixin:
             await run_test(doc_cls)
 
 
+@skip_if_rust_bson
 class TestCollectionChangeStreamsWCustomTypes(
     AsyncIntegrationTest, ChangeStreamsWCustomTypesTestMixin
 ):
@@ -937,6 +943,7 @@ class TestCollectionChangeStreamsWCustomTypes(
         await self.input_target.delete_many({})
 
 
+@skip_if_rust_bson
 class TestDatabaseChangeStreamsWCustomTypes(
     AsyncIntegrationTest, ChangeStreamsWCustomTypesTestMixin
 ):
@@ -957,6 +964,7 @@ class TestDatabaseChangeStreamsWCustomTypes(
         await self.input_target.insert_one({"data": "dummy"})
 
 
+@skip_if_rust_bson
 class TestClusterChangeStreamsWCustomTypes(
     AsyncIntegrationTest, ChangeStreamsWCustomTypesTestMixin
 ):
