@@ -72,6 +72,7 @@ bytes [#bytes]_                          binary         both
 from __future__ import annotations
 
 import datetime
+import importlib.util
 import itertools
 import os
 import re
@@ -143,12 +144,79 @@ if TYPE_CHECKING:
     from bson.raw_bson import RawBSONDocument
     from bson.typings import _DocumentType, _ReadableBuffer
 
-try:
-    from bson import _cbson  # type: ignore[attr-defined]
+# Try to import C and Rust extensions
+_cbson = None
+_rbson = None
+_HAS_C = False
+_HAS_RUST = False
 
-    _USE_C = True
-except ImportError:
-    _USE_C = False
+# Use importlib to avoid circular import issues
+_spec = None
+try:
+    # Check if already loaded (e.g., when reloading bson module)
+    if "bson._cbson" in sys.modules:
+        _cbson = sys.modules["bson._cbson"]
+        if hasattr(_cbson, "_bson_to_dict"):
+            _HAS_C = True
+    else:
+        _spec = importlib.util.find_spec("bson._cbson")
+        if _spec and _spec.loader:
+            _cbson = importlib.util.module_from_spec(_spec)
+            _spec.loader.exec_module(_cbson)
+            if hasattr(_cbson, "_bson_to_dict"):
+                _HAS_C = True
+            else:
+                _cbson = None
+except (ImportError, AttributeError):
+    pass
+
+try:
+    # Check if already loaded (e.g., when reloading bson module)
+    if "bson._rbson" in sys.modules:
+        _rbson = sys.modules["bson._rbson"]
+        if hasattr(_rbson, "_bson_to_dict"):
+            _HAS_RUST = True
+    else:
+        _spec = importlib.util.find_spec("bson._rbson")
+        if _spec and _spec.loader:
+            _rbson = importlib.util.module_from_spec(_spec)
+            _spec.loader.exec_module(_rbson)
+            if hasattr(_rbson, "_bson_to_dict"):
+                _HAS_RUST = True
+            else:
+                _rbson = None
+except (ImportError, AttributeError):
+    pass
+
+# Clean up the spec variable to avoid polluting the module namespace
+del _spec
+
+# Determine which extension to use at runtime
+# Priority: PYMONGO_USE_RUST env var > C extension (default) > pure Python
+_USE_RUST_RUNTIME = os.environ.get("PYMONGO_USE_RUST", "").lower() in ("1", "true", "yes")
+
+# Decide which extension to actually use
+_USE_C = False
+_USE_RUST = False
+
+if _USE_RUST_RUNTIME:
+    if _HAS_RUST:
+        # User requested Rust and it's available - use Rust, not C
+        _USE_RUST = True
+    elif _HAS_C:
+        # User requested Rust but it's not available - warn and use C
+        import warnings
+
+        warnings.warn(
+            "PYMONGO_USE_RUST is set but Rust extension is not available. "
+            "Falling back to C extension.",
+            stacklevel=2,
+        )
+        _USE_C = True
+else:
+    # User didn't request Rust - use C by default if available
+    if _HAS_C:
+        _USE_C = True
 
 __all__ = [
     "ALL_UUID_SUBTYPES",
@@ -209,6 +277,8 @@ __all__ = [
     "is_valid",
     "BSON",
     "has_c",
+    "has_rust",
+    "get_bson_implementation",
     "DatetimeConversion",
     "DatetimeMS",
 ]
@@ -543,7 +613,7 @@ if _USE_C:
     ) -> Tuple[str, Any, int]:
         return cast(
             "Tuple[str, Any, int]",
-            _cbson._element_to_dict(data, position, obj_end, opts, raw_array),
+            _cbson._element_to_dict(data, position, obj_end, opts, raw_array),  # type: ignore[union-attr]
         )
 
 else:
@@ -634,8 +704,13 @@ def _bson_to_dict(data: Any, opts: CodecOptions[_DocumentType]) -> _DocumentType
         raise InvalidBSON(str(exc_value)).with_traceback(exc_tb) from None
 
 
-if _USE_C:
-    _bson_to_dict = _cbson._bson_to_dict
+# Save reference to Python implementation before overriding
+_bson_to_dict_python = _bson_to_dict
+
+if _USE_RUST:
+    _bson_to_dict = _rbson._bson_to_dict  # type: ignore[union-attr]
+elif _USE_C:
+    _bson_to_dict = _cbson._bson_to_dict  # type: ignore[union-attr]
 
 
 _PACK_FLOAT = struct.Struct("<d").pack
@@ -1017,8 +1092,10 @@ def _dict_to_bson(
     return _PACK_INT(len(encoded) + 5) + encoded + b"\x00"
 
 
-if _USE_C:
-    _dict_to_bson = _cbson._dict_to_bson
+if _USE_RUST:
+    _dict_to_bson = _rbson._dict_to_bson  # type: ignore[union-attr]
+elif _USE_C:
+    _dict_to_bson = _cbson._dict_to_bson  # type: ignore[union-attr]
 
 
 _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of CodecOptions")
@@ -1130,7 +1207,7 @@ def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> lis
 
 
 if _USE_C:
-    _decode_all = _cbson._decode_all
+    _decode_all = _cbson._decode_all  # type: ignore[union-attr]
 
 
 @overload
@@ -1223,7 +1300,7 @@ def _array_of_documents_to_buffer(data: Union[memoryview, bytes]) -> bytes:
 
 
 if _USE_C:
-    _array_of_documents_to_buffer = _cbson._array_of_documents_to_buffer
+    _array_of_documents_to_buffer = _cbson._array_of_documents_to_buffer  # type: ignore[union-attr]
 
 
 def _convert_raw_document_lists_to_streams(document: Any) -> None:
@@ -1470,7 +1547,30 @@ class BSON(bytes):
 
 def has_c() -> bool:
     """Is the C extension installed?"""
-    return _USE_C
+    return _HAS_C
+
+
+def has_rust() -> bool:
+    """Is the Rust extension installed?
+
+    .. versionadded:: 5.0
+    """
+    return _HAS_RUST
+
+
+def get_bson_implementation() -> str:
+    """Get the name of the BSON implementation being used.
+
+    Returns one of: 'rust', 'c', or 'python'.
+
+    .. versionadded:: 5.0
+    """
+    if _USE_RUST:
+        return "rust"
+    elif _USE_C:
+        return "c"
+    else:
+        return "python"
 
 
 def _after_fork() -> None:

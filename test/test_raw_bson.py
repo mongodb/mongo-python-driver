@@ -19,7 +19,12 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import (
+    IntegrationTest,
+    client_context,
+    skip_if_rust_bson,
+    unittest,
+)
 
 from bson import Code, DBRef, decode, encode
 from bson.binary import JAVA_LEGACY, Binary, UuidRepresentation
@@ -31,6 +36,7 @@ from bson.son import SON
 _IS_SYNC = True
 
 
+@skip_if_rust_bson
 class TestRawBSONDocument(IntegrationTest):
     # {'_id': ObjectId('556df68b6e32ab21a95e0785'),
     #  'name': 'Sherlock',

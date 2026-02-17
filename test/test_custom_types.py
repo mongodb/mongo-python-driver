@@ -28,7 +28,12 @@ from gridfs.synchronous.grid_file import GridIn, GridOut
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import (
+    IntegrationTest,
+    client_context,
+    skip_if_rust_bson,
+    unittest,
+)
 
 from bson import (
     _BUILT_IN_TYPES,
@@ -196,12 +201,14 @@ class CustomBSONTypeTests:
         fileobj.close()
 
 
+@skip_if_rust_bson
 class TestCustomPythonBSONTypeToBSONMonolithicCodec(CustomBSONTypeTests, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.codecopts = DECIMAL_CODECOPTS
 
 
+@skip_if_rust_bson
 class TestCustomPythonBSONTypeToBSONMultiplexedCodec(CustomBSONTypeTests, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -211,6 +218,7 @@ class TestCustomPythonBSONTypeToBSONMultiplexedCodec(CustomBSONTypeTests, unitte
         cls.codecopts = codec_options
 
 
+@skip_if_rust_bson
 class TestBSONFallbackEncoder(unittest.TestCase):
     def _get_codec_options(self, fallback_encoder):
         type_registry = TypeRegistry(fallback_encoder=fallback_encoder)
@@ -273,6 +281,7 @@ class TestBSONFallbackEncoder(unittest.TestCase):
         self.assertEqual(called_with, [2 << 65])
 
 
+@skip_if_rust_bson
 class TestBSONTypeEnDeCodecs(unittest.TestCase):
     def test_instantiation(self):
         msg = "Can't instantiate abstract class"
@@ -336,6 +345,7 @@ class TestBSONTypeEnDeCodecs(unittest.TestCase):
         self.assertFalse(issubclass(TypeEncoder, TypeDecoder))
 
 
+@skip_if_rust_bson
 class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
     TypeA: Any
     TypeB: Any
@@ -432,6 +442,7 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
             encode({"x": self.TypeA(100)}, codec_options=codecopts)
 
 
+@skip_if_rust_bson
 class TestTypeRegistry(unittest.TestCase):
     types: Tuple[object, object]
     codecs: Tuple[Type[TypeCodec], Type[TypeCodec]]
@@ -622,6 +633,7 @@ class TestTypeRegistry(unittest.TestCase):
         run_test(TypeCodec, {"bson_type": Decimal128, "transform_bson": lambda x: x})
 
 
+@skip_if_rust_bson
 class TestCollectionWCustomType(IntegrationTest):
     def setUp(self):
         super().setUp()
@@ -744,6 +756,7 @@ class TestCollectionWCustomType(IntegrationTest):
         self.assertIsNone(c.find_one())
 
 
+@skip_if_rust_bson
 class TestGridFileCustomType(IntegrationTest):
     def setUp(self):
         super().setUp()
@@ -910,6 +923,7 @@ class ChangeStreamsWCustomTypesTestMixin:
             run_test(doc_cls)
 
 
+@skip_if_rust_bson
 class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
     @client_context.require_change_streams
     def setUp(self):
@@ -927,6 +941,7 @@ class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCus
         self.input_target.delete_many({})
 
 
+@skip_if_rust_bson
 class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
     @client_context.require_version_min(4, 2, 0)
     @client_context.require_change_streams
@@ -945,6 +960,7 @@ class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCusto
         self.input_target.insert_one({"data": "dummy"})
 
 
+@skip_if_rust_bson
 class TestClusterChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
     @client_context.require_version_min(4, 2, 0)
     @client_context.require_change_streams

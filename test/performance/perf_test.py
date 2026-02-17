@@ -137,7 +137,11 @@ class PerformanceTest:
         # Remove "Test" so that TestFlatEncoding is reported as "FlatEncoding".
         name = self.__class__.__name__[4:]
         median = self.percentile(50)
-        megabytes_per_sec = (self.data_size * self.n_threads) / median / 1000000
+        # Protect against division by zero for very fast operations
+        if median > 0:
+            megabytes_per_sec = (self.data_size * self.n_threads) / median / 1000000
+        else:
+            megabytes_per_sec = float("inf")
         print(
             f"Completed {self.__class__.__name__} {megabytes_per_sec:.3f} MB/s, MEDIAN={self.percentile(50):.3f}s, "
             f"total time={duration:.3f}s, iterations={len(self.results)}"
@@ -271,6 +275,241 @@ class TestFullEncoding(BsonEncodingTest, unittest.TestCase):
 
 class TestFullDecoding(BsonDecodingTest, unittest.TestCase):
     dataset = "full_bson.json"
+
+
+# RUST COMPARISON MICRO-BENCHMARKS
+# These tests compare C vs Rust implementations for the same BSON operations
+class RustComparisonTest(PerformanceTest):
+    """Base class for tests that compare C vs Rust implementations."""
+
+    implementation: str = "c"  # Default to C
+
+    def setUp(self):
+        super().setUp()
+        # Set up environment for C or Rust
+        if self.implementation == "rust":
+            os.environ["PYMONGO_USE_RUST"] = "1"
+        else:
+            os.environ.pop("PYMONGO_USE_RUST", None)
+
+        # Preserve extension modules when reloading
+        _cbson = sys.modules.get("bson._cbson")
+        _rbson = sys.modules.get("bson._rbson")
+
+        # Clear bson modules except extensions
+        for key in list(sys.modules.keys()):
+            if key.startswith("bson") and not key.endswith(("_cbson", "_rbson")):
+                del sys.modules[key]
+
+        # Restore extension modules
+        if _cbson:
+            sys.modules["bson._cbson"] = _cbson
+        if _rbson:
+            sys.modules["bson._rbson"] = _rbson
+
+        # Re-import bson
+        import bson as bson_module
+
+        self.bson = bson_module
+
+
+class RustSimpleIntEncodingTest(RustComparisonTest):
+    """Test encoding of simple integer documents."""
+
+    def setUp(self):
+        super().setUp()
+        self.document = {"number": 42}
+        self.data_size = len(encode(self.document)) * NUM_DOCS
+
+    def do_task(self):
+        for _ in range(NUM_DOCS):
+            self.bson.encode(self.document)
+
+
+class TestRustSimpleIntEncodingC(RustSimpleIntEncodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustSimpleIntEncodingRust(RustSimpleIntEncodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustSimpleIntDecodingTest(RustComparisonTest):
+    """Test decoding of simple integer documents."""
+
+    def setUp(self):
+        super().setUp()
+        self.document = encode({"number": 42})
+        self.data_size = len(self.document) * NUM_DOCS
+
+    def do_task(self):
+        for _ in range(NUM_DOCS):
+            self.bson.decode(self.document)
+
+
+class TestRustSimpleIntDecodingC(RustSimpleIntDecodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustSimpleIntDecodingRust(RustSimpleIntDecodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustMixedTypesEncodingTest(RustComparisonTest):
+    """Test encoding of documents with mixed types."""
+
+    def setUp(self):
+        super().setUp()
+        self.document = {
+            "string": "hello",
+            "int": 42,
+            "float": 3.14,
+            "bool": True,
+            "null": None,
+        }
+        self.data_size = len(encode(self.document)) * NUM_DOCS
+
+    def do_task(self):
+        for _ in range(NUM_DOCS):
+            self.bson.encode(self.document)
+
+
+class TestRustMixedTypesEncodingC(RustMixedTypesEncodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustMixedTypesEncodingRust(RustMixedTypesEncodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustNestedEncodingTest(RustComparisonTest):
+    """Test encoding of nested documents."""
+
+    def setUp(self):
+        super().setUp()
+        self.document = {"nested": {"level1": {"level2": {"value": "deep"}}}}
+        self.data_size = len(encode(self.document)) * NUM_DOCS
+
+    def do_task(self):
+        for _ in range(NUM_DOCS):
+            self.bson.encode(self.document)
+
+
+class TestRustNestedEncodingC(RustNestedEncodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustNestedEncodingRust(RustNestedEncodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustListEncodingTest(RustComparisonTest):
+    """Test encoding of documents with lists."""
+
+    def setUp(self):
+        super().setUp()
+        self.document = {"numbers": list(range(10))}
+        self.data_size = len(encode(self.document)) * NUM_DOCS
+
+    def do_task(self):
+        for _ in range(NUM_DOCS):
+            self.bson.encode(self.document)
+
+
+class TestRustListEncodingC(RustListEncodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustListEncodingRust(RustListEncodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+# Rust comparison versions of standard BSON benchmarks
+# These use the same test data as the standard benchmarks but compare C vs Rust
+
+
+class RustFlatEncodingTest(RustComparisonTest, BsonEncodingTest):
+    """Rust comparison for flat BSON encoding."""
+
+    dataset = "flat_bson.json"
+
+
+class TestRustFlatEncodingC(RustFlatEncodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustFlatEncodingRust(RustFlatEncodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustFlatDecodingTest(RustComparisonTest, BsonDecodingTest):
+    """Rust comparison for flat BSON decoding."""
+
+    dataset = "flat_bson.json"
+
+
+class TestRustFlatDecodingC(RustFlatDecodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustFlatDecodingRust(RustFlatDecodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustDeepEncodingTest(RustComparisonTest, BsonEncodingTest):
+    """Rust comparison for deep BSON encoding."""
+
+    dataset = "deep_bson.json"
+
+
+class TestRustDeepEncodingC(RustDeepEncodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustDeepEncodingRust(RustDeepEncodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustDeepDecodingTest(RustComparisonTest, BsonDecodingTest):
+    """Rust comparison for deep BSON decoding."""
+
+    dataset = "deep_bson.json"
+
+
+class TestRustDeepDecodingC(RustDeepDecodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustDeepDecodingRust(RustDeepDecodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustFullEncodingTest(RustComparisonTest, BsonEncodingTest):
+    """Rust comparison for full BSON encoding."""
+
+    dataset = "full_bson.json"
+
+
+class TestRustFullEncodingC(RustFullEncodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustFullEncodingRust(RustFullEncodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustFullDecodingTest(RustComparisonTest, BsonDecodingTest):
+    """Rust comparison for full BSON decoding."""
+
+    dataset = "full_bson.json"
+
+
+class TestRustFullDecodingC(RustFullDecodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustFullDecodingRust(RustFullDecodingTest, unittest.TestCase):
+    implementation = "rust"
 
 
 # JSON MICRO-BENCHMARKS

@@ -133,6 +133,7 @@ markers = [
     "mockupdb: tests that rely on mockupdb",
     "default: default test suite",
     "default_async: default async test suite",
+    "test_bson: bson module tests",
 ]
 
 [tool.mypy]

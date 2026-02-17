@@ -37,7 +37,7 @@ def main() -> None:
         except Exception as e:
             LOGGER.exception(e)
         try:
-            from bson import _cbson  # type:ignore[attr-defined] # noqa: F401
+            from bson import _cbson  # noqa: F401
         except Exception as e:
             LOGGER.exception(e)
         sys.exit("could not load C extensions")
