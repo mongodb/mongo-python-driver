@@ -278,6 +278,7 @@ class TestFullDecoding(BsonDecodingTest, unittest.TestCase):
 
 
 # RUST COMPARISON MICRO-BENCHMARKS
+# These tests compare C vs Rust implementations for the same BSON operations
 class RustComparisonTest(PerformanceTest):
     """Base class for tests that compare C vs Rust implementations."""
 
@@ -420,6 +421,94 @@ class TestRustListEncodingC(RustListEncodingTest, unittest.TestCase):
 
 
 class TestRustListEncodingRust(RustListEncodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+# Rust comparison versions of standard BSON benchmarks
+# These use the same test data as the standard benchmarks but compare C vs Rust
+
+
+class RustFlatEncodingTest(RustComparisonTest, BsonEncodingTest):
+    """Rust comparison for flat BSON encoding."""
+
+    dataset = "flat_bson.json"
+
+
+class TestRustFlatEncodingC(RustFlatEncodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustFlatEncodingRust(RustFlatEncodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustFlatDecodingTest(RustComparisonTest, BsonDecodingTest):
+    """Rust comparison for flat BSON decoding."""
+
+    dataset = "flat_bson.json"
+
+
+class TestRustFlatDecodingC(RustFlatDecodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustFlatDecodingRust(RustFlatDecodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustDeepEncodingTest(RustComparisonTest, BsonEncodingTest):
+    """Rust comparison for deep BSON encoding."""
+
+    dataset = "deep_bson.json"
+
+
+class TestRustDeepEncodingC(RustDeepEncodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustDeepEncodingRust(RustDeepEncodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustDeepDecodingTest(RustComparisonTest, BsonDecodingTest):
+    """Rust comparison for deep BSON decoding."""
+
+    dataset = "deep_bson.json"
+
+
+class TestRustDeepDecodingC(RustDeepDecodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustDeepDecodingRust(RustDeepDecodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustFullEncodingTest(RustComparisonTest, BsonEncodingTest):
+    """Rust comparison for full BSON encoding."""
+
+    dataset = "full_bson.json"
+
+
+class TestRustFullEncodingC(RustFullEncodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustFullEncodingRust(RustFullEncodingTest, unittest.TestCase):
+    implementation = "rust"
+
+
+class RustFullDecodingTest(RustComparisonTest, BsonDecodingTest):
+    """Rust comparison for full BSON decoding."""
+
+    dataset = "full_bson.json"
+
+
+class TestRustFullDecodingC(RustFullDecodingTest, unittest.TestCase):
+    implementation = "c"
+
+
+class TestRustFullDecodingRust(RustFullDecodingTest, unittest.TestCase):
     implementation = "rust"
 
 
