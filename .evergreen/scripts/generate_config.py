@@ -344,7 +344,7 @@ def create_test_numpy_tasks():
     tasks = []
     for python in MIN_MAX_PYTHON:
         tags = ["binary", "vector", f"python-{python}", "test-numpy"]
-        vars = vars = dict(TOOLCHAIN_VERSION=python)
+        vars = dict(TOOLCHAIN_VERSION=python)
         if python == MIN_MAX_PYTHON[-1]:
             tags.append("pr")
             vars["COVERAGE"] = "1"
