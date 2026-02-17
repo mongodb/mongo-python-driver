@@ -606,7 +606,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
     @client_context.require_version_min(6, 0)
     def setUp(self) -> None:
         super().setUp()
-        self.setup_client = MongoClient()
+        self.setup_client = MongoClient(**client_context.default_client_options)
         self.addCleanup(self.setup_client.close)
 
     # TODO: After PYTHON-4595 we can use async event handlers and remove this workaround.
