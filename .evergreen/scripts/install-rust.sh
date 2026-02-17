@@ -51,6 +51,10 @@ else
     cargo --version
 fi
 
+# Ensure default toolchain is set (needed for rustup to work properly)
+echo "Setting default toolchain to stable..."
+rustup default stable
+
 # Install maturin if not already installed
 if ! command -v maturin &> /dev/null; then
     echo "Installing maturin..."
