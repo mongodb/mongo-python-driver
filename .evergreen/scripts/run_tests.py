@@ -152,12 +152,26 @@ def run() -> None:
         handle_pymongocrypt()
 
     # Check if Rust extension is being used
+    LOGGER.info(f"PYMONGO_USE_RUST={os.environ.get('PYMONGO_USE_RUST', 'not set')}")
+    LOGGER.info(f"PYMONGO_BUILD_RUST={os.environ.get('PYMONGO_BUILD_RUST', 'not set')}")
+
     if os.environ.get("PYMONGO_USE_RUST") or os.environ.get("PYMONGO_BUILD_RUST"):
         try:
             import bson
 
-            LOGGER.info(f"BSON implementation: {bson.get_bson_implementation()}")
-            LOGGER.info(f"Has Rust: {bson.has_rust()}, Has C: {bson.has_c()}")
+            impl = bson.get_bson_implementation()
+            has_rust = bson.has_rust()
+            has_c = bson.has_c()
+
+            LOGGER.info(f"BSON implementation in use: {impl}")
+            LOGGER.info(f"Has Rust: {has_rust}, Has C: {has_c}")
+
+            if impl == "rust":
+                LOGGER.info("✓ Rust extension is ACTIVE")
+            elif impl == "c":
+                LOGGER.info("✓ C extension is ACTIVE")
+            else:
+                LOGGER.info("✓ Pure Python implementation is ACTIVE")
         except Exception as e:
             LOGGER.warning(f"Could not check BSON implementation: {e}")
 
