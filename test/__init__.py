@@ -490,7 +490,7 @@ class ClientContext:
             func=func,
         )
 
-    def require_version_min(self, *ver):
+    def require_version_min(self, *ver) -> Any:
         """Run a test only if the server version is at least ``version``."""
         other_version = Version(*ver)
         return self._require(

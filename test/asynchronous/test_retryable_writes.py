@@ -614,7 +614,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         self.addCleanup(self.setup_client.close)
 
     # TODO: After PYTHON-4595 we can use async event handlers and remove this workaround.
-    def configure_fail_point_sync(self, command_args, off=False):
+    def configure_fail_point_sync(self, command_args, off=False) -> None:
         cmd = {"configureFailPoint": "failCommand"}
         cmd.update(command_args)
         if off:
@@ -624,7 +624,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
 
     async def test_01_drivers_return_the_correct_error_when_receiving_only_errors_without_NoWritesPerformed(
         self
-    ):
+    ) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
 
@@ -678,7 +678,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
 
     async def test_02_drivers_return_the_correct_error_when_receiving_only_errors_with_NoWritesPerformed(
         self
-    ):
+    ) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
 
@@ -733,7 +733,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
 
     async def test_03_drivers_return_the_correct_error_when_receiving_some_errors_with_NoWritesPerformed_and_some_without_NoWritesPerformed(
         self
-    ):
+    ) -> None:
         # TODO: read the expected behavior and add breakpoint() to the retry loop
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
@@ -764,10 +764,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
 
         def failed(event: CommandFailedEvent) -> None:
             # Configure the fail point command only if the the failed event is for the 91 error configured in step 2.
-            print("hi")
             if listener.failed_events:
                 return
-            print("ho")
             assert event.failure["code"] == 91
             self.configure_fail_point_sync(command_args_inner)
             listener.failed_events.append(event)
