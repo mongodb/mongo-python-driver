@@ -603,7 +603,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
     # Only run against replica sets as mongos does not propagate the NoWritesPerformed label to the drivers.
     @client_context.require_replica_set
     # Run against server versions 6.0 and above.
-    @client_context.require_version_min(6, 0)
+    @client_context.require_version_min(6, 0)  # type: ignore[untyped-decorator]
     def setUp(self) -> None:
         super().setUp()
         self.setup_client = MongoClient(**client_context.default_client_options)
@@ -667,7 +667,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
             client.test.test.insert_one({})
 
         # Assert that the error code of the server error is 10107.
-        assert exc.exception.errors["code"] == 10107
+        assert exc.exception.errors["code"] == 10107  # type:ignore[call-overload]
 
         # Disable the fail point.
         self.configure_fail_point_sync({}, off=True)
@@ -722,7 +722,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
             client.test.test.insert_one({})
 
         # Assert that the error code of the server error is 91.
-        assert exc.exception.errors["code"] == 91
+        assert exc.exception.errors["code"] == 91  # type:ignore[call-overload]
 
         # Disable the fail point.
         self.configure_fail_point_sync({}, off=True)
