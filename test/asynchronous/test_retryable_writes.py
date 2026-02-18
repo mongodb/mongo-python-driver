@@ -661,7 +661,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         listener.failed = failed
 
         client = await self.async_rs_client(retryWrites=True, event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
 
         self.configure_fail_point_sync(command_args)
 
@@ -716,7 +715,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         listener.failed = failed
 
         client = await self.async_rs_client(retryWrites=True, event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
 
         self.configure_fail_point_sync(command_args)
 
@@ -773,7 +771,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         listener.failed = failed
 
         client = await self.async_rs_client(retryWrites=True, event_listeners=[listener])
-        self.addAsyncCleanup(client.close)
 
         self.configure_fail_point_sync(command_args)
 

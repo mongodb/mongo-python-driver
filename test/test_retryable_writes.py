@@ -657,7 +657,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         listener.failed = failed
 
         client = self.rs_client(retryWrites=True, event_listeners=[listener])
-        self.addCleanup(client.close)
 
         self.configure_fail_point_sync(command_args)
 
@@ -712,7 +711,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         listener.failed = failed
 
         client = self.rs_client(retryWrites=True, event_listeners=[listener])
-        self.addCleanup(client.close)
 
         self.configure_fail_point_sync(command_args)
 
@@ -769,7 +767,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         listener.failed = failed
 
         client = self.rs_client(retryWrites=True, event_listeners=[listener])
-        self.addCleanup(client.close)
 
         self.configure_fail_point_sync(command_args)
 
