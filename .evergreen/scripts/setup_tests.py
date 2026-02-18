@@ -466,6 +466,9 @@ def handle_test_env() -> None:
     if opts.green_framework:
         framework = opts.green_framework or os.environ["GREEN_FRAMEWORK"]
         UV_ARGS.append(f"--group {framework}")
+        if framework == "gevent" and opts.test_min_deps:
+            # PYTHON-5729.  This can be removed when the min supported gevent is moved to 25.9.1.
+            UV_ARGS.append('--with "setuptools==81.0"')
 
     else:
         TEST_ARGS = f"-v --durations=5 {TEST_ARGS}"
