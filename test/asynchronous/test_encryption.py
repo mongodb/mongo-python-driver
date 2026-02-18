@@ -876,6 +876,8 @@ class TestViews(AsyncEncryptionIntegrationTest):
 
 
 class TestCorpus(AsyncEncryptionIntegrationTest):
+    # PYTHON-5708: Encryption tests sending large payloads fail on some mongocryptd versions.
+    @async_client_context.require_version_max(6, 99)
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     async def asyncSetUp(self):
         await super().asyncSetUp()
@@ -1022,14 +1024,12 @@ class TestCorpus(AsyncEncryptionIntegrationTest):
             else:
                 self.assertEqual(value["value"], corpus[key]["value"], key)
 
-    @pytest.mark.skip(reason="PYTHON-5708")
     async def test_corpus(self):
         opts = AutoEncryptionOpts(
             self.kms_providers(), "keyvault.datakeys", kms_tls_options=DEFAULT_KMS_TLS
         )
         await self._test_corpus(opts)
 
-    @pytest.mark.skip(reason="PYTHON-5708")
     async def test_corpus_local_schema(self):
         # Configure the encrypted field via the local schema_map option.
         schemas = {"db.coll": self.fix_up_schema(json_data("corpus", "corpus-schema.json"))}
@@ -1054,6 +1054,8 @@ class TestBsonSizeBatches(AsyncEncryptionIntegrationTest):
     client_encrypted: AsyncMongoClient
     listener: OvertCommandListener
 
+    # PYTHON-5708: Encryption tests sending large payloads fail on some mongocryptd versions.
+    @async_client_context.require_version_max(6, 99)
     async def asyncSetUp(self):
         await super().asyncSetUp()
         db = async_client_context.client.db
@@ -1111,7 +1113,6 @@ class TestBsonSizeBatches(AsyncEncryptionIntegrationTest):
             len([c for c in self.listener.started_command_names() if c == "insert"]), 2
         )
 
-    @pytest.mark.skip(reason="PYTHON-5708")
     async def test_04_bulk_batch_split(self):
         limits_doc = json_data("limits", "limits-doc.json")
         doc1 = {"_id": "encryption_exceeds_2mib_1", "unencrypted": "a" * (_2_MiB - 2000)}
@@ -1132,7 +1133,6 @@ class TestBsonSizeBatches(AsyncEncryptionIntegrationTest):
         doc["_id"] = "under_16mib_bulk"
         await self.coll_encrypted.bulk_write([InsertOne(doc)])
 
-    @pytest.mark.skip(reason="PYTHON-5708")
     async def test_06_insert_fails_over_16MiB(self):
         limits_doc = json_data("limits", "limits-doc.json")
         doc = {"_id": "encryption_exceeds_16mib", "unencrypted": "a" * (_16_MiB - 2000)}

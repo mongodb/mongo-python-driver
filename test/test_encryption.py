@@ -872,6 +872,8 @@ class TestViews(EncryptionIntegrationTest):
 
 
 class TestCorpus(EncryptionIntegrationTest):
+    # PYTHON-5708: Encryption tests sending large payloads fail on some mongocryptd versions.
+    @client_context.require_version_max(6, 99)
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def setUp(self):
         super().setUp()
@@ -1018,14 +1020,12 @@ class TestCorpus(EncryptionIntegrationTest):
             else:
                 self.assertEqual(value["value"], corpus[key]["value"], key)
 
-    @pytest.mark.skip(reason="PYTHON-5708")
     def test_corpus(self):
         opts = AutoEncryptionOpts(
             self.kms_providers(), "keyvault.datakeys", kms_tls_options=DEFAULT_KMS_TLS
         )
         self._test_corpus(opts)
 
-    @pytest.mark.skip(reason="PYTHON-5708")
     def test_corpus_local_schema(self):
         # Configure the encrypted field via the local schema_map option.
         schemas = {"db.coll": self.fix_up_schema(json_data("corpus", "corpus-schema.json"))}
@@ -1050,6 +1050,8 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
     client_encrypted: MongoClient
     listener: OvertCommandListener
 
+    # PYTHON-5708: Encryption tests sending large payloads fail on some mongocryptd versions.
+    @client_context.require_version_max(6, 99)
     def setUp(self):
         super().setUp()
         db = client_context.client.db
@@ -1107,7 +1109,6 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
             len([c for c in self.listener.started_command_names() if c == "insert"]), 2
         )
 
-    @pytest.mark.skip(reason="PYTHON-5708")
     def test_04_bulk_batch_split(self):
         limits_doc = json_data("limits", "limits-doc.json")
         doc1 = {"_id": "encryption_exceeds_2mib_1", "unencrypted": "a" * (_2_MiB - 2000)}
@@ -1128,7 +1129,6 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         doc["_id"] = "under_16mib_bulk"
         self.coll_encrypted.bulk_write([InsertOne(doc)])
 
-    @pytest.mark.skip(reason="PYTHON-5708")
     def test_06_insert_fails_over_16MiB(self):
         limits_doc = json_data("limits", "limits-doc.json")
         doc = {"_id": "encryption_exceeds_16mib", "unencrypted": "a" * (_16_MiB - 2000)}
