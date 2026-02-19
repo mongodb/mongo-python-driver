@@ -263,17 +263,17 @@ class TestRetryableReads(AsyncIntegrationTest):
 
     @async_client_context.require_replica_set
     @async_client_context.require_failCommand_fail_point
-    async def test_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available(
+    async def test_03_01_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available(
         self
     ):
         listener = OvertCommandListener()
 
-        # Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
+        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
         client = await self.async_rs_or_single_client(
             event_listeners=[listener], retryReads=True, readPreference="primaryPreferred"
         )
 
-        # Configure a fail point with the RetryableError and SystemOverloadedError error labels.
+        # 2. Configure a fail point with the RetryableError and SystemOverloadedError error labels.
         command_args = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -285,30 +285,32 @@ class TestRetryableReads(AsyncIntegrationTest):
         }
         await async_set_fail_point(client, command_args)
 
-        # Reset the command event monitor to clear the fail point command from its stored events.
+        # 3. Reset the command event monitor to clear the fail point command from its stored events.
         listener.reset()
 
-        # Execute a `find` command with `client`.
+        # 4. Execute a `find` command with `client`.
         await client.t.t.find_one({})
 
-        # Assert that one failed command event and one successful command event occurred.
+        # 5. Assert that one failed command event and one successful command event occurred.
         self.assertEqual(len(listener.failed_events), 1)
         self.assertEqual(len(listener.succeeded_events), 1)
 
-        # Assert that both events occurred on different servers.
+        # 6. Assert that both events occurred on different servers.
         assert listener.failed_events[0].connection_id != listener.succeeded_events[0].connection_id
 
     @async_client_context.require_replica_set
     @async_client_context.require_failCommand_fail_point
-    async def test_retryable_reads_error_are_retried_on_same_replicaset_server(self):
+    async def test_03_02_retryable_reads_caused_by_non_overload_errors_are_retried_on_the_same_replicaset_server(
+        self
+    ):
         listener = OvertCommandListener()
 
-        # Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
+        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
         client = await self.async_rs_or_single_client(
             event_listeners=[listener], retryReads=True, readPreference="primaryPreferred"
         )
 
-        # Configure a fail point with the RetryableError error label.
+        # 2. Configure a fail point with the RetryableError error label.
         command_args = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -320,17 +322,17 @@ class TestRetryableReads(AsyncIntegrationTest):
         }
         await async_set_fail_point(client, command_args)
 
-        # Reset the command event monitor to clear the fail point command from its stored events.
+        # 3. Reset the command event monitor to clear the fail point command from its stored events.
         listener.reset()
 
-        # Execute a `find` command with `client`.
+        # 4. Execute a `find` command with `client`.
         await client.t.t.find_one({})
 
-        # Assert that one failed command event and one successful command event occurred.
+        # 5. Assert that one failed command event and one successful command event occurred.
         self.assertEqual(len(listener.failed_events), 1)
         self.assertEqual(len(listener.succeeded_events), 1)
 
-        # Assert that both events occurred the same server.
+        # 6. Assert that both events occurred the same server.
         assert listener.failed_events[0].connection_id == listener.succeeded_events[0].connection_id
 
 
