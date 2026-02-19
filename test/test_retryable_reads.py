@@ -259,6 +259,78 @@ class TestRetryableReads(IntegrationTest):
             self.assertEqual(command_docs[0]["lsid"], command_docs[1]["lsid"])
             self.assertIsNot(command_docs[0], command_docs[1])
 
+    @client_context.require_replica_set
+    @client_context.require_failCommand_fail_point
+    def test_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available(
+        self
+    ):
+        listener = OvertCommandListener()
+
+        # Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
+        client = self.rs_or_single_client(
+            event_listeners=[listener], retryReads=True, readPreference="primaryPreferred"
+        )
+
+        # Configure a fail point with the RetryableError and SystemOverloadedError error labels.
+        command_args = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+                "errorCode": 6,
+            },
+        }
+        set_fail_point(client, command_args)
+
+        # Reset the command event monitor to clear the fail point command from its stored events.
+        listener.reset()
+
+        # Execute a `find` command with `client`.
+        client.t.t.find_one({})
+
+        # Assert that one failed command event and one successful command event occurred.
+        self.assertEqual(len(listener.failed_events), 1)
+        self.assertEqual(len(listener.succeeded_events), 1)
+
+        # Assert that both events occurred on different servers.
+        assert listener.failed_events[0].connection_id != listener.succeeded_events[0].connection_id
+
+    @client_context.require_replica_set
+    @client_context.require_failCommand_fail_point
+    def test_retryable_reads_error_are_retried_on_same_replicaset_server(self):
+        listener = OvertCommandListener()
+
+        # Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
+        client = self.rs_or_single_client(
+            event_listeners=[listener], retryReads=True, readPreference="primaryPreferred"
+        )
+
+        # Configure a fail point with the RetryableError error label.
+        command_args = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "errorLabels": ["RetryableError"],
+                "errorCode": 6,
+            },
+        }
+        set_fail_point(client, command_args)
+
+        # Reset the command event monitor to clear the fail point command from its stored events.
+        listener.reset()
+
+        # Execute a `find` command with `client`.
+        client.t.t.find_one({})
+
+        # Assert that one failed command event and one successful command event occurred.
+        self.assertEqual(len(listener.failed_events), 1)
+        self.assertEqual(len(listener.succeeded_events), 1)
+
+        # Assert that both events occurred the same server.
+        assert listener.failed_events[0].connection_id == listener.succeeded_events[0].connection_id
+
 
 if __name__ == "__main__":
     unittest.main()
