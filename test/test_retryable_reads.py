@@ -260,6 +260,7 @@ class TestRetryableReads(IntegrationTest):
             self.assertIsNot(command_docs[0], command_docs[1])
 
     @client_context.require_replica_set
+    @client_context.require_secondaries_count(1)
     @client_context.require_failCommand_fail_point
     @client_context.require_version_min(4, 4, 0)
     def test_03_01_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available(
@@ -298,6 +299,7 @@ class TestRetryableReads(IntegrationTest):
         assert listener.failed_events[0].connection_id != listener.succeeded_events[0].connection_id
 
     @client_context.require_replica_set
+    @client_context.require_secondaries_count(1)
     @client_context.require_failCommand_fail_point
     @client_context.require_version_min(4, 4, 0)
     def test_03_02_retryable_reads_caused_by_non_overload_errors_are_retried_on_the_same_replicaset_server(
