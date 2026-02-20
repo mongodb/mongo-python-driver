@@ -79,7 +79,6 @@ def _handle_reauth(func: F) -> F:
 _MAX_RETRIES = 5
 _BACKOFF_INITIAL = 0.1
 _BACKOFF_MAX = 10
-# DRIVERS-3240 will determine these defaults.
 DEFAULT_RETRY_TOKEN_CAPACITY = 1000.0
 DEFAULT_RETRY_TOKEN_RETURN = 0.1
 
@@ -101,7 +100,6 @@ class _TokenBucket:
     ):
         self.lock = _async_create_lock()
         self.capacity = capacity
-        # DRIVERS-3240 will determine how full the bucket should start.
         self.tokens = capacity
         self.return_rate = return_rate
 
@@ -123,7 +121,7 @@ class _TokenBucket:
 class _RetryPolicy:
     """A retry limiter that performs exponential backoff with jitter.
 
-    Retry attempts are limited by a token bucket to prevent overwhelming the server during
+    When adaptive retries are enabled, retry attempts are limited by a token bucket to prevent overwhelming the server during
     a prolonged outage or high load.
     """
 
@@ -133,15 +131,18 @@ class _RetryPolicy:
         attempts: int = _MAX_RETRIES,
         backoff_initial: float = _BACKOFF_INITIAL,
         backoff_max: float = _BACKOFF_MAX,
+        adaptive_retry: bool = False,
     ):
         self.token_bucket = token_bucket
         self.attempts = attempts
         self.backoff_initial = backoff_initial
         self.backoff_max = backoff_max
+        self.adaptive_retry = adaptive_retry
 
     async def record_success(self, retry: bool) -> None:
         """Record a successful operation."""
-        await self.token_bucket.deposit(retry)
+        if self.adaptive_retry:
+            await self.token_bucket.deposit(retry)
 
     def backoff(self, attempt: int) -> float:
         """Return the backoff duration for the given ."""
@@ -158,7 +159,7 @@ class _RetryPolicy:
                 return False
 
         # Check token bucket last since we only want to consume a token if we actually retry.
-        if not await self.token_bucket.consume():
+        if self.adaptive_retry and not await self.token_bucket.consume():
             # DRIVERS-3246 Improve diagnostics when this case happens.
             # We could add info to the exception and log.
             return False
