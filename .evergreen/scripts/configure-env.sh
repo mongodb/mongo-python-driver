@@ -76,8 +76,6 @@ EOT
 rm -rf $DRIVERS_TOOLS
 BRANCH=master
 ORG=mongodb-labs
-ORG=blink1073
-BRANCH=test-mongodb-runner-python
 git clone --branch $BRANCH https://github.com/$ORG/drivers-evergreen-tools.git $DRIVERS_TOOLS
 
 cat <<EOT > ${DRIVERS_TOOLS}/.env
