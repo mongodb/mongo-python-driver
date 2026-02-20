@@ -44,6 +44,7 @@ TEST_SUITE_MAP = {
     "mockupdb": "mockupdb",
     "ocsp": "ocsp",
     "perf": "perf",
+    "numpy": "",
 }
 
 # Tests that require a sub test suite.

@@ -368,7 +368,6 @@ buildvariants:
     run_on:
       - rhel87-small
     expansions:
-      COVERAGE: "1"
       NO_EXT: "1"
 
   # No server tests
@@ -420,6 +419,8 @@ buildvariants:
     run_on:
       - ubuntu2204-small
     batchtime: 1440
+    expansions:
+      COVERAGE: "1"
     tags: [pr]
   - name: auth-oidc-macos
     tasks:

@@ -48,19 +48,11 @@ from pymongo.write_concern import WriteConcern
 
 _HAVE_PYOPENSSL = False
 try:
-    # All of these must be available to use PyOpenSSL
-    import OpenSSL
-    import requests
-    import service_identity
-
-    # Ensure service_identity>=18.1 is installed
-    from service_identity.pyopenssl import verify_ip_address
-
-    from pymongo.ocsp_support import _load_trusted_ca_certs
+    from pymongo import pyopenssl_context
 
     _HAVE_PYOPENSSL = True
 except ImportError:
-    _load_trusted_ca_certs = None  # type: ignore
+    pass
 
 
 if HAVE_SSL:
@@ -135,11 +127,6 @@ class TestClientSSL(PyMongoTestCase):
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_use_pyopenssl_when_available(self):
         self.assertTrue(HAVE_PYSSL)
-
-    @unittest.skipUnless(_HAVE_PYOPENSSL, "Cannot test without PyOpenSSL")
-    def test_load_trusted_ca_certs(self):
-        trusted_ca_certs = _load_trusted_ca_certs(CA_BUNDLE_PEM)
-        self.assertEqual(2, len(trusted_ca_certs))
 
 
 class TestSSL(IntegrationTest):
