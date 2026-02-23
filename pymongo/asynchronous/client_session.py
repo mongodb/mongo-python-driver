@@ -154,6 +154,8 @@ from typing import (
     TypeVar,
 )
 
+from _contextvars import Token
+
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.timestamp import Timestamp
@@ -528,7 +530,7 @@ class AsyncClientSession:
         self._leave_alive = False
         # Is this session bound to a scope?
         self._bound = False
-        self._session_token: Optional[ContextVar[_AsyncBoundClientSession]] = None
+        self._session_token: Optional[Token[_AsyncBoundClientSession]] = None
 
     async def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -566,12 +568,12 @@ class AsyncClientSession:
     async def __aenter__(self) -> AsyncClientSession:
         if self._bound:
             bound_session = _AsyncBoundClientSession(self, id(self._client))
-            self._session_token = _SESSION.set(bound_session)
+            self._session_token = _SESSION.set(bound_session)  # type: ignore[assignment]
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         if self._session_token:
-            _SESSION.reset(self._session_token)
+            _SESSION.reset(self._session_token)  # type: ignore[arg-type]
             self._session_token = None
             self._bound = False
         else:

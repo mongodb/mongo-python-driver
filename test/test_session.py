@@ -189,6 +189,52 @@ class TestSession(IntegrationTest):
                         f"{f.__name__} did not return implicit session to pool",
                     )
 
+        # Explicit bound session
+        for f, args, kw in ops:
+            with client.start_session() as s:
+                with s.bind():
+                    listener.reset()
+                    s._materialize()
+                    last_use = s._server_session.last_use
+                    start = time.monotonic()
+                    self.assertLessEqual(last_use, start)
+                    # In case "f" modifies its inputs.
+                    args = copy.copy(args)
+                    kw = copy.copy(kw)
+                    f(*args, **kw)
+                    self.assertGreaterEqual(len(listener.started_events), 1)
+                    for event in listener.started_events:
+                        self.assertIn(
+                            "lsid",
+                            event.command,
+                            f"{f.__name__} sent no lsid with {event.command_name}",
+                        )
+
+                        self.assertEqual(
+                            s.session_id,
+                            event.command["lsid"],
+                            f"{f.__name__} sent wrong lsid with {event.command_name}",
+                        )
+
+                    self.assertFalse(s.has_ended)
+
+            self.assertTrue(s.has_ended)
+            with self.assertRaisesRegex(InvalidOperation, "ended session"):
+                with s.bind():
+                    f(*args, **kw)
+
+            # Test a session cannot be used on another client.
+            with self.client2.start_session() as s:
+                with s.bind():
+                    # In case "f" modifies its inputs.
+                    args = copy.copy(args)
+                    kw = copy.copy(kw)
+                    with self.assertRaisesRegex(
+                        InvalidOperation,
+                        "Only the client that created the bound session can perform operations within its context block",
+                    ):
+                        f(*args, **kw)
+
     def test_implicit_sessions_checkout(self):
         # "To confirm that implicit sessions only allocate their server session after a
         # successful connection checkout" test from Driver Sessions Spec.
@@ -824,6 +870,55 @@ class TestSession(IntegrationTest):
         client = self.client
         with client.start_session() as s:
             self.assertRaises(TypeError, lambda: copy.copy(s))
+
+    def test_nested_session_binding(self):
+        coll = self.client.pymongo_test.test
+        coll.insert_one({"x": 1})
+
+        session1 = self.client.start_session()
+        session2 = self.client.start_session()
+        try:
+            self.listener.reset()
+            # Uses implicit session
+            coll.find_one()
+            implicit_lsid = self.listener.started_events[0].command.get("lsid")
+            self.assertIsNotNone(implicit_lsid)
+            self.assertNotEqual(implicit_lsid, session1.session_id)
+            self.assertNotEqual(implicit_lsid, session2.session_id)
+
+            with session1.bind():
+                self.listener.reset()
+                # Uses bound session1
+                coll.find_one()
+                session1_lsid = self.listener.started_events[0].command.get("lsid")
+                self.assertEqual(session1_lsid, session1.session_id)
+
+                with session2.bind():
+                    self.listener.reset()
+                    # Uses bound session2
+                    coll.find_one()
+                    session2_lsid = self.listener.started_events[0].command.get("lsid")
+                    self.assertEqual(session2_lsid, session2.session_id)
+                    self.assertNotEqual(session2_lsid, session1.session_id)
+
+                self.listener.reset()
+                # Use bound session1 again
+                coll.find_one()
+                session1_lsid = self.listener.started_events[0].command.get("lsid")
+                self.assertEqual(session1_lsid, session1.session_id)
+                self.assertNotEqual(session1_lsid, session2.session_id)
+
+            self.listener.reset()
+            # Uses implicit session
+            coll.find_one()
+            implicit_lsid = self.listener.started_events[0].command.get("lsid")
+            self.assertIsNotNone(implicit_lsid)
+            self.assertNotEqual(implicit_lsid, session1.session_id)
+            self.assertNotEqual(implicit_lsid, session2.session_id)
+
+        finally:
+            session1.end_session()
+            session2.end_session()
 
 
 class TestCausalConsistency(UnitTest):
