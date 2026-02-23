@@ -2815,7 +2815,11 @@ class _ClientConnectionRetryable(Generic[T]):
                     if self._last_error is None:
                         self._last_error = exc
 
-                if self._server is not None:
+                if (
+                    self._server is not None
+                    and self._client.topology_description.topology_type_name == "Sharded"
+                    or exc.has_error_label("SystemOverloadedError")
+                ):
                     self._deprioritized_servers.append(self._server)
 
     def _is_not_eligible_for_retry(self) -> bool:
