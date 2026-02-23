@@ -877,6 +877,8 @@ class TestSession(AsyncIntegrationTest):
 
         session1 = self.client.start_session()
         session2 = self.client.start_session()
+        session1._materialize()
+        session2._materialize()
         try:
             self.listener.reset()
             # Uses implicit session

@@ -2268,15 +2268,14 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self, session: Optional[client_session.AsyncClientSession]
     ) -> AsyncGenerator[Optional[client_session.AsyncClientSession], None]:
         """If provided session is None, lend a temporary session."""
+        if session is not None and not isinstance(session, client_session.AsyncClientSession):
+            raise ValueError(
+                f"'session' argument must be an AsyncClientSession or None, not {type(session)}"
+            )
 
         # Check for a bound session. If one exists, treat it as an explicitly passed session.
         session = session or self._get_bound_session()
-
-        if session is not None:
-            if not isinstance(session, client_session.AsyncClientSession):
-                raise ValueError(
-                    f"'session' argument must be an AsyncClientSession or None, not {type(session)}"
-                )
+        if session:
             # Don't call end_session.
             yield session
             return
