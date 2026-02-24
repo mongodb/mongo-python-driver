@@ -25,7 +25,8 @@
             "$$placeholder": 1
           },
           "retryReads": false,
-          "retryWrites": false
+          "retryWrites": false,
+          "appName": "mongodb-oidc-no-retry"
         },
         "observeEvents": [
           "commandStartedEvent",
@@ -147,7 +148,8 @@
                 "failCommands": [
                   "find"
                 ],
-                "errorCode": 391
+                "errorCode": 391,
+                "appName": "mongodb-oidc-no-retry"
               }
             }
           }
@@ -212,7 +214,8 @@
                 "failCommands": [
                   "insert"
                 ],
-                "errorCode": 391
+                "errorCode": 391,
+                "appName": "mongodb-oidc-no-retry"
               }
             }
           }
@@ -289,7 +292,8 @@
                 "failCommands": [
                   "insert"
                 ],
-                "closeConnection": true
+                "closeConnection": true,
+                "appName": "mongodb-oidc-no-retry"
               }
             }
           }
@@ -321,7 +325,8 @@
                 "failCommands": [
                   "saslStart"
                 ],
-                "errorCode": 18
+                "errorCode": 18,
+                "appName": "mongodb-oidc-no-retry"
               }
             }
           }
@@ -398,7 +403,8 @@
                 "failCommands": [
                   "saslStart"
                 ],
-                "errorCode": 18
+                "errorCode": 18,
+                "appName": "mongodb-oidc-no-retry"
               }
             }
           }

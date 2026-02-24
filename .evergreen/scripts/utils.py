@@ -44,6 +44,7 @@ TEST_SUITE_MAP = {
     "mockupdb": "mockupdb",
     "ocsp": "ocsp",
     "perf": "perf",
+    "numpy": "",
 }
 
 # Tests that require a sub test suite.
@@ -51,7 +52,7 @@ SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms", "mod_wsgi", "perf"]
 
 EXTRA_TESTS = ["mod_wsgi", "aws_lambda", "doctest"]
 
-# Tests that do not use run-orchestration directly.
+# Tests that do not use run-mongodb directly.
 NO_RUN_ORCHESTRATION = [
     "auth_oidc",
     "atlas_connect",

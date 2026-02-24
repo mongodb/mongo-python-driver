@@ -321,7 +321,7 @@ def create_no_c_ext_variants():
     expansions = dict()
     handle_c_ext(C_EXTS[0], expansions)
     display_name = get_variant_name("No C Ext", host)
-    return [create_variant(tasks, display_name, host=host)]
+    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
 def create_mod_wsgi_variants():
@@ -344,8 +344,12 @@ def create_test_numpy_tasks():
     tasks = []
     for python in MIN_MAX_PYTHON:
         tags = ["binary", "vector", f"python-{python}", "test-numpy"]
-        task_name = get_task_name("test-numpy", python=python)
-        test_func = FunctionCall(func="test numpy", vars=dict(TOOLCHAIN_VERSION=python))
+        vars = dict(TOOLCHAIN_VERSION=python)
+        if python == MIN_MAX_PYTHON[-1]:
+            tags.append("pr")
+            vars["COVERAGE"] = "1"
+        task_name = get_task_name("test-numpy", python=python, **vars)
+        test_func = FunctionCall(func="test numpy", vars=vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
 
@@ -397,6 +401,7 @@ def create_oidc_auth_variants():
                     tags=["pr"],
                     host=host,
                     batchtime=BATCHTIME_DAY,
+                    expansions=dict(COVERAGE="1"),
                 )
             )
     return variants
@@ -596,7 +601,7 @@ def create_server_version_tasks():
             expansions["TEST_MIN_DEPS"] = "1"
         if "t" in python:
             tags.append("free-threaded")
-        if python not in PYPYS and "t" not in python:
+        if "pr" in tags:
             expansions["COVERAGE"] = "1"
         name = get_task_name(
             "test-server-version",
@@ -661,6 +666,8 @@ def create_test_non_standard_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
+        elif pr:
+            expansions["COVERAGE"] = "1"
         name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
@@ -703,6 +710,8 @@ def create_test_standard_auth_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
+        elif pr:
+            expansions["COVERAGE"] = "1"
         name = get_task_name("test-standard-auth", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
@@ -741,6 +750,8 @@ def create_standard_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
+        elif pr:
+            expansions["COVERAGE"] = "1"
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
@@ -810,8 +821,11 @@ def create_aws_tasks():
         if "t" in python:
             tags.append("free-threaded")
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, TOOLCHAIN_VERSION=python)
-        if python == ALL_PYTHONS[0]:
+        if python == MIN_MAX_PYTHON[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
+        elif python == MIN_MAX_PYTHON[-1]:
+            tags.append("pr")
+            test_vars["COVERAGE"] = "1"
         name = get_task_name(f"{base_name}-{test_type}", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [server_func, assume_func, test_func]
@@ -849,11 +863,11 @@ def create_oidc_tasks():
     tasks = []
     for sub_test in ["default", "azure", "gcp", "eks", "aks", "gke"]:
         vars = dict(TEST_NAME="auth_oidc", SUB_TEST_NAME=sub_test)
-        test_func = FunctionCall(func="run tests", vars=vars)
-        task_name = f"test-auth-oidc-{sub_test}"
         tags = ["auth_oidc"]
         if sub_test != "default":
             tags.append("auth_oidc_remote")
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = get_task_name(f"test-auth-oidc-{sub_test}", **vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
 
     return tasks
@@ -903,14 +917,14 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         )
         if python == ALL_PYTHONS[0]:
             vars["TEST_MIN_DEPS"] = "1"
-        test_func = FunctionCall(func="run tests", vars=vars)
-
         tags = ["ocsp", f"ocsp-{algo}", version]
         if "disableStapling" not in variant:
             tags.append("ocsp-staple")
-        if algo == "valid-cert-server-staples" and version == "latest":
+        if base_task_name == "valid-cert-server-staples" and version == "latest":
             tags.append("pr")
-
+            if "TEST_MIN_DEPS" not in vars:
+                vars["COVERAGE"] = "1"
+        test_func = FunctionCall(func="run tests", vars=vars)
         task_name = get_task_name(f"test-ocsp-{algo}-{base_task_name}", **vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
 
@@ -1077,6 +1091,26 @@ def create_upload_coverage_func():
     return "upload coverage", [get_assume_role(), cmd]
 
 
+def create_upload_coverage_codecov_func():
+    # Upload the coverage xml report to codecov.
+    include_expansions = [
+        "CODECOV_TOKEN",
+        "build_variant",
+        "task_name",
+        "github_commit",
+        "github_pr_number",
+        "github_pr_head_branch",
+        "github_author",
+        "requester",
+        "branch_name",
+    ]
+    args = [
+        ".evergreen/scripts/upload-codecov.sh",
+    ]
+    upload_cmd = get_subprocess_exec(include_expansions_in_env=include_expansions, args=args)
+    return "upload codecov", [upload_cmd]
+
+
 def create_download_and_merge_coverage_func():
     include_expansions = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
     args = [
@@ -1210,7 +1244,7 @@ def create_run_tests_func():
 
 
 def create_test_numpy_func():
-    includes = ["TOOLCHAIN_VERSION"]
+    includes = ["TOOLCHAIN_VERSION", "COVERAGE"]
     test_cmd = get_subprocess_exec(
         include_expansions_in_env=includes, args=[".evergreen/just.sh", "test-numpy"]
     )

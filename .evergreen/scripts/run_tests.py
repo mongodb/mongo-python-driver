@@ -4,7 +4,9 @@ import json
 import logging
 import os
 import platform
+import shlex
 import shutil
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -201,6 +203,16 @@ def run() -> None:
 
     if os.environ.get("DEBUG_LOG"):
         TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG}".split())
+
+    if os.environ.get("COVERAGE"):
+        binary = sys.executable.replace(os.sep, "/")
+        cmd = f"{binary} -m coverage run -m pytest {' '.join(TEST_ARGS)} {' '.join(sys.argv[1:])}"
+        result = subprocess.run(shlex.split(cmd), check=False)  # noqa: S603
+        cmd = f"{binary} -m coverage report"
+        subprocess.run(shlex.split(cmd), check=False)  # noqa: S603
+        if result.returncode != 0:
+            print(result.stderr)
+        sys.exit(result.returncode)
 
     # Run local tests.
     ret = pytest.main(TEST_ARGS + sys.argv[1:])
