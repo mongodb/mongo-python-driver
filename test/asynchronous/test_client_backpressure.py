@@ -310,7 +310,7 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
         self.assertEqual(len(self.listener.started_events), _MAX_RETRIES + 1)
 
     @async_client_context.require_failCommand_appName
-    async def test_03_adaptive_retries_limited_by_tokens(self):
+    async def test_04_adaptive_retries_limited_by_tokens(self):
         # Drivers should test that when enabled, adaptive retries are limited by the number of tokens in the bucket.
 
         # 1. Let `client` be a `MongoClient` with adaptiveRetries=True.
