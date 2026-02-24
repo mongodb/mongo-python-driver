@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "buffer.h"
-#include <limits.h>
 
 #define INITIAL_BUFFER_SIZE 256
 
@@ -85,13 +84,12 @@ static int buffer_grow(buffer_t buffer, int min_length) {
     }
     while (size < min_length) {
         old_size = size;
-        if (size > INT32_MAX / 2) {
+        size *= 2;
+        if (size <= old_size) {
            /* Size did not increase. Could be an overflow
             * or size < 1. Just go with min_length. */
            size = min_length;
-           break;
         }
-        size *= 2;
     }
     buffer->buffer = (char*)realloc(buffer->buffer, sizeof(char) * size);
     if (buffer->buffer == NULL) {
@@ -107,27 +105,30 @@ static int buffer_grow(buffer_t buffer, int min_length) {
  * Return non-zero and sets MemoryError on allocation failure.
  * Return non-zero and sets ValueError if `size` would exceed 2GiB. */
 static int buffer_assure_space(buffer_t buffer, int size) {
-    size_t new_size;
-
-    if (size < 0) {
+    int new_size = buffer->position + size;
+    /* Check for overflow. */
+    if (new_size < buffer->position) {
         PyErr_SetString(PyExc_ValueError,
                         "Document would overflow BSON size limit");
         return 1;
     }
 
-    new_size = (size_t)buffer->position + (size_t)size;
-
-    if (new_size > (size_t)INT32_MAX) {
-        PyErr_SetString(PyExc_ValueError,
-                        "Document would overflow BSON size limit");
-        return 1;
-    }
-
-    if (new_size <= (size_t)buffer->size) {
+    if (new_size <= buffer->size) {
         return 0;
     }
+    return buffer_grow(buffer, new_size);
+}
 
-    return buffer_grow(buffer, (int)new_size);
+/* Save `size` bytes from the current position in `buffer` (and grow if needed).
+ * Return offset for writing, or -1 on failure.
+ * Sets MemoryError or ValueError on failure. */
+buffer_position pymongo_buffer_save_space(buffer_t buffer, int size) {
+    int position = buffer->position;
+    if (buffer_assure_space(buffer, size) != 0) {
+        return -1;
+    }
+    buffer->position += size;
+    return position;
 }
 
 /* Write `size` bytes from `data` to `buffer` (and grow if needed).
