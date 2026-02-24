@@ -60,7 +60,7 @@ static PyObject* _error(char* name) {
  * Returns 0 on failure */
 static int buffer_write_bytes_ssize_t(buffer_t buffer, const char* data, Py_ssize_t size) {
     int downsize = _downcast_and_check(size, 0);
-    if (size == -1) {
+    if (downsize == -1) {
         return 0;
     }
     return buffer_write_bytes(buffer, data, downsize);
@@ -333,7 +333,6 @@ fail:
     return result;
 }
 
-
 static void
 _set_document_too_large(int size, long max) {
     PyObject* DocumentTooLarge = _error("DocumentTooLarge");
@@ -352,7 +351,6 @@ _set_document_too_large(int size, long max) {
 #define _DELETE 2
 
 /* OP_MSG ----------------------------------------------- */
-
 static int
 _batched_op_msg(
         unsigned char op, unsigned char ack,
@@ -658,7 +656,6 @@ fail:
 }
 
 /* End OP_MSG -------------------------------------------- */
-
 static int
 _batched_write_command(
         char* ns, Py_ssize_t ns_len, unsigned char op,
@@ -862,7 +859,6 @@ fail:
     Py_XDECREF(iterator);
     return 0;
 }
-
 static PyObject*
 _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
     char *ns = NULL;
@@ -1017,7 +1013,6 @@ fail:
     INITERROR;
 }
 
-
 static PyModuleDef_Slot _cmessage_slots[] = {
     {Py_mod_exec, _cmessage_exec},
 #ifdef Py_MOD_MULTIPLE_INTERPRETERS_SUPPORTED
@@ -1028,7 +1023,6 @@ static PyModuleDef_Slot _cmessage_slots[] = {
 #endif
     {0, NULL},
 };
-
 
 static struct PyModuleDef moduledef = {
         PyModuleDef_HEAD_INIT,
@@ -1046,4 +1040,3 @@ PyMODINIT_FUNC
 PyInit__cmessage(void)
 {
     return PyModuleDef_Init(&moduledef);
-}
