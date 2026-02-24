@@ -204,7 +204,7 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     result = Py_BuildValue("iy#", request_id,
                            pymongo_buffer_get_buffer(buffer),
                            (Py_ssize_t)pymongo_buffer_get_position(buffer));
-failure:
+fail:
     PyMem_Free(collection_name);
     if (buffer) {
         pymongo_buffer_free(buffer);
@@ -577,7 +577,7 @@ _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
                            pymongo_buffer_get_buffer(buffer),
                            (Py_ssize_t)pymongo_buffer_get_position(buffer),
                            to_publish);
-failure:
+fail:
     destroy_codec_options(&options);
     pymongo_buffer_free(buffer);
     Py_XDECREF(to_publish);
@@ -648,7 +648,7 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
                            pymongo_buffer_get_buffer(buffer),
                            (Py_ssize_t)pymongo_buffer_get_position(buffer),
                            to_publish);
-failure:
+fail:
     destroy_codec_options(&options);
     pymongo_buffer_free(buffer);
     Py_XDECREF(to_publish);
@@ -859,7 +859,6 @@ fail:
     Py_XDECREF(iterator);
     return 0;
 }
-
 static PyObject*
 _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
     char *ns = NULL;
@@ -911,7 +910,7 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
                            pymongo_buffer_get_buffer(buffer),
                            (Py_ssize_t)pymongo_buffer_get_position(buffer),
                            to_publish);
-failure:
+fail:
     PyMem_Free(ns);
     destroy_codec_options(&options);
     pymongo_buffer_free(buffer);
@@ -1041,4 +1040,3 @@ PyMODINIT_FUNC
 PyInit__cmessage(void)
 {
     return PyModuleDef_Init(&moduledef);
-}
