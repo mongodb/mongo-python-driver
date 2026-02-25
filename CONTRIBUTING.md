@@ -128,7 +128,7 @@ If you used AI assistance in any way during your contribution, please disclose w
 
 ##### Questions?
 
-If you're unsure whether your contribution complies with this policy, please ask in an issue before submitting a PR. We're happy to guide contributors toward successful contributions.
+If you're unsure whether your contribution complies with this policy, please ask for guidance within the scope of the PR and clarify any uncertainty. We're happy to guide contributors toward successful contributions.
 
 ---
 
