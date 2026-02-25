@@ -624,7 +624,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
-        .. versionchanged:: 4.XX
+        .. versionchanged:: 4.17
            Added the ``adaptive_retries`` URI and keyword argument.
 
         .. versionchanged:: 4.5
