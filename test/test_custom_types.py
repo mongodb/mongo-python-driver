@@ -248,7 +248,7 @@ class TestBSONFallbackEncoder(unittest.TestCase):
         def fallback_encoder(value):
             try:
                 return Decimal128(value)
-            except:
+            except Exception:
                 raise TypeError("cannot encode type %s" % (type(value)))
 
         codecopts = self._get_codec_options(fallback_encoder)

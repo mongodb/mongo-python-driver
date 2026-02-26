@@ -153,7 +153,7 @@ class TestMongosLoadBalancing(AsyncMockClientTest):
         client.kill_host("{}:{}".format(*next(iter(client.nodes))))
         try:
             await client.db.command("ping")
-        except:
+        except Exception:
             pass
 
         # We eventually connect to a new mongos.

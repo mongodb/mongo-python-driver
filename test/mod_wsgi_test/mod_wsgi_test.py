@@ -43,7 +43,7 @@ try:
     from mod_wsgi import version as mod_wsgi_version  # type: ignore[import]
 
     _HAVE_MOD_WSGI = True
-except:
+except Exception:
     mod_wsgi_version = None
     _HAVE_MOD_WSGI = False
 

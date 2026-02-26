@@ -858,7 +858,7 @@ class TestCausalConsistency(AsyncUnitTest):
             self.listener.reset()
             try:
                 await self.client.pymongo_test.command("doesntexist", session=sess)
-            except:
+            except Exception:
                 pass
             failed = self.listener.failed_events[0]
             failed_op_time = failed.failure.get("operationTime")

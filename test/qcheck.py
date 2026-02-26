@@ -237,7 +237,7 @@ def check(predicate, generator):
             if not predicate(case):
                 reduction = reduce(case, predicate)
                 counter_examples.append("after {} reductions: {!r}".format(*reduction))
-        except:
+        except Exception:
             counter_examples.append(f"{case!r} : {traceback.format_exc()}")
     return counter_examples
 

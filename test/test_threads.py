@@ -72,7 +72,7 @@ class Insert(threading.Thread):
             try:
                 self.collection.insert_one({"test": "insert"})
                 error = False
-            except:
+            except Exception:
                 if not self.expect_exception:
                     raise
 
@@ -95,7 +95,7 @@ class Update(threading.Thread):
             try:
                 self.collection.update_one({"test": "unique"}, {"$set": {"test": "update"}})
                 error = False
-            except:
+            except Exception:
                 if not self.expect_exception:
                     raise
 
