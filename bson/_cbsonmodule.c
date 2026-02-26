@@ -814,6 +814,7 @@ int convert_codec_options(PyObject* self, PyObject* options_obj, codec_options_t
     }
 
     options->is_raw_bson = (101 == type_marker);
+    options->is_dict_class = (options->document_class == (PyObject*)&PyDict_Type);
     options->options_obj = options_obj;
 
     Py_INCREF(options->options_obj);
@@ -1013,10 +1014,21 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     }
     /*
      * Use _type_marker attribute instead of PyObject_IsInstance for better perf.
+     *
+     * Skip _type_marker lookup for common built-in types
+     * that we know don't have a _type_marker attribute. This avoids the overhead
+     * of PyObject_HasAttr/PyObject_GetAttr calls for the most common cases.
      */
-    type = _type_marker(value, state->_type_marker_str);
-    if (type < 0) {
-        return 0;
+    if (PyUnicode_CheckExact(value) || PyLong_CheckExact(value) || PyFloat_CheckExact(value) ||
+        PyBool_Check(value) || PyDict_CheckExact(value) || PyList_CheckExact(value) ||
+        PyTuple_CheckExact(value) || PyBytes_CheckExact(value) || value == Py_None) {
+        /* Built-in types don't have _type_marker, skip the lookup */
+        type = 0;
+    } else {
+        type = _type_marker(value, state->_type_marker_str);
+        if (type < 0) {
+            return 0;
+        }
     }
 
     switch (type) {
@@ -2716,11 +2728,20 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
                                    unsigned max,
                                    const codec_options_t* options) {
     unsigned position = 0;
-    PyObject* dict = PyObject_CallObject(options->document_class, NULL);
+    PyObject* dict;
+    int raw_array = 0;
+
+    /* Use PyDict_New() directly when document_class is dict.
+     * This avoids the overhead of PyObject_CallObject() for the common case. */
+    if (options->is_dict_class) {
+        dict = PyDict_New();
+    } else {
+        dict = PyObject_CallObject(options->document_class, NULL);
+    }
     if (!dict) {
         return NULL;
     }
-    int raw_array = 0;
+
     while (position < max) {
         PyObject* name = NULL;
         PyObject* value = NULL;
@@ -2735,7 +2756,24 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
             position = (unsigned)new_position;
         }
 
-        PyObject_SetItem(dict, name, value);
+        /* Use PyDict_SetItem() when document_class is dict.
+         * PyDict_SetItem() is faster than PyObject_SetItem() because it
+         * avoids method lookup overhead. */
+        if (options->is_dict_class) {
+            if (PyDict_SetItem(dict, name, value) < 0) {
+                Py_DECREF(name);
+                Py_DECREF(value);
+                Py_DECREF(dict);
+                return NULL;
+            }
+        } else {
+            if (PyObject_SetItem(dict, name, value) < 0) {
+                Py_DECREF(name);
+                Py_DECREF(value);
+                Py_DECREF(dict);
+                return NULL;
+            }
+        }
         Py_DECREF(name);
         Py_DECREF(value);
     }
