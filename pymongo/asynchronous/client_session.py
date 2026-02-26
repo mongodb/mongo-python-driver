@@ -528,7 +528,7 @@ class AsyncClientSession:
         self._attached_to_cursor = False
         # Should we leave the session alive when the cursor is closed?
         self._leave_alive = False
-        # Is this session bound to a scope?
+        # Is this session bound to a context manager scope?
         self._bound = False
         self._session_token: Optional[Token[_AsyncBoundClientSession]] = None
 
