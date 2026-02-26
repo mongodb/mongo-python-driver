@@ -139,6 +139,7 @@ import collections
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
+from contextvars import ContextVar
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -152,6 +153,8 @@ from typing import (
     Type,
     TypeVar,
 )
+
+from _contextvars import Token
 
 from bson.binary import Binary
 from bson.int64 import Int64
@@ -180,6 +183,14 @@ if TYPE_CHECKING:
     from pymongo.typings import ClusterTime, _Address
 
 _IS_SYNC = False
+
+_SESSION: ContextVar[Optional[_AsyncBoundClientSession]] = ContextVar("SESSION", default=None)
+
+
+class _AsyncBoundClientSession:
+    def __init__(self, session: AsyncClientSession, client_id: int):
+        self.session = session
+        self.client_id = client_id
 
 
 class SessionOptions:
@@ -517,6 +528,9 @@ class AsyncClientSession:
         self._attached_to_cursor = False
         # Should we leave the session alive when the cursor is closed?
         self._leave_alive = False
+        # Is this session bound to a context manager scope?
+        self._bound = False
+        self._session_token: Optional[Token[_AsyncBoundClientSession]] = None
 
     async def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -547,11 +561,23 @@ class AsyncClientSession:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
+    def bind(self) -> AsyncClientSession:
+        self._bound = True
+        return self
+
     async def __aenter__(self) -> AsyncClientSession:
+        if self._bound:
+            bound_session = _AsyncBoundClientSession(self, id(self._client))
+            self._session_token = _SESSION.set(bound_session)  # type: ignore[assignment]
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        await self._end_session(lock=True)
+        if self._session_token:
+            _SESSION.reset(self._session_token)  # type: ignore[arg-type]
+            self._session_token = None
+            self._bound = False
+        else:
+            await self._end_session(lock=True)
 
     @property
     def client(self) -> AsyncMongoClient[Any]:
