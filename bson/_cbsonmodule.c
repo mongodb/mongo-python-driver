@@ -711,13 +711,19 @@ static long _type_marker(PyObject* object, PyObject* _type_marker_str) {
     PyObject* type_marker = NULL;
     long type = 0;
 
-    if (PyObject_HasAttr(object, _type_marker_str)) {
-        type_marker = PyObject_GetAttr(object, _type_marker_str);
-        if (type_marker == NULL) {
+    #if PY_VERSION_HEX >= 0x030D0000
+        // 3.13
+        if (PyObject_GetOptionalAttr(object, _type_marker_str, &type_marker) == -1) {
             return -1;
         }
-    }
-
+    # else
+        if (PyObject_HasAttr(object, _type_marker_str)) {
+            type_marker = PyObject_GetAttr(object, _type_marker_str);
+            if (type_marker == NULL) {
+                return -1;
+            }
+        }
+    #endif
     /*
      * Python objects with broken __getattr__ implementations could return
      * arbitrary types for a call to PyObject_GetAttrString. For example
@@ -1022,7 +1028,6 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     if (PyUnicode_CheckExact(value) || PyLong_CheckExact(value) || PyFloat_CheckExact(value) ||
         PyBool_Check(value) || PyDict_CheckExact(value) || PyList_CheckExact(value) ||
         PyTuple_CheckExact(value) || PyBytes_CheckExact(value) || value == Py_None) {
-        /* Built-in types don't have _type_marker, skip the lookup */
         type = 0;
     } else {
         type = _type_marker(value, state->_type_marker_str);
