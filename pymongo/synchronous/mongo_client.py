@@ -615,7 +615,17 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             client to use Stable API. See `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_ for
             details.
 
+          | **Adaptive retry options:**
+          | (If not enabled explicitly, adaptive retries will not be enabled.)
+
+          - `adaptive_retries`: (boolean) Whether the adaptive retry mechanism is enabled for this client.
+            If enabled, server overload errors will use a token-bucket based system to mitigate further overload.
+            Defaults to ``False``.
+
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
+
+        .. versionchanged:: 4.17
+           Added the ``adaptive_retries`` URI and keyword argument.
 
         .. versionchanged:: 4.5
            Added the ``serverMonitoringMode`` keyword argument.
@@ -778,7 +788,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._timeout: float | None = None
         self._topology_settings: TopologySettings = None  # type: ignore[assignment]
         self._event_listeners: _EventListeners | None = None
-        self._retry_policy = _RetryPolicy(_TokenBucket())
 
         # _pool_class, _monitor_class, and _condition_class are for deep
         # customization of PyMongo, e.g. Motor.
@@ -890,6 +899,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._opened = False
         self._closed = False
         self._loop: Optional[asyncio.AbstractEventLoop] = None
+
+        self._retry_policy = _RetryPolicy(
+            _TokenBucket(), adaptive_retry=self._options.adaptive_retries
+        )
         if not is_srv:
             self._init_background()
 

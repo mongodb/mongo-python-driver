@@ -645,6 +645,21 @@ class ClientUnitTest(UnitTest):
             with self.assertWarns(UserWarning):
                 self.simple_client(multi_host)
 
+    def test_adaptive_retries(self):
+        # Assert that adaptive retries are disabled by default.
+        c = self.simple_client(connect=False)
+        self.assertFalse(c.options.adaptive_retries)
+
+        # Assert that adaptive retries can be enabled through connection or client options.
+        c = self.simple_client(connect=False, adaptive_retries=True)
+        self.assertTrue(c.options.adaptive_retries)
+
+        c = self.simple_client(connect=False, adaptiveRetries=True)
+        self.assertTrue(c.options.adaptive_retries)
+
+        c = self.simple_client(host="mongodb://localhost/?adaptiveretries=true", connect=False)
+        self.assertTrue(c.options.adaptive_retries)
+
 
 class TestClient(IntegrationTest):
     def test_multiple_uris(self):
