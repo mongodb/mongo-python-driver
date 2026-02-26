@@ -12,7 +12,7 @@ def set_env(name: str, value: Any = "1") -> None:
 
 def start_server():
     opts, extra_opts = get_test_options(
-        "Run a MongoDB server.  All given flags will be passed to run-orchestration.sh in DRIVERS_TOOLS.",
+        "Run a MongoDB server.  All given flags will be passed to run-mongodb.sh in DRIVERS_TOOLS.",
         require_sub_test_name=False,
         allow_extra_opts=True,
     )
@@ -51,7 +51,7 @@ def start_server():
     elif opts.quiet:
         extra_opts.append("-q")
 
-    cmd = ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh", *extra_opts]
+    cmd = ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh", "start", *extra_opts]
     run_command(cmd, cwd=DRIVERS_TOOLS)
 
 
