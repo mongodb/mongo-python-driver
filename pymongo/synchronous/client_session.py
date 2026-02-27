@@ -139,7 +139,7 @@ import collections
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -152,8 +152,6 @@ from typing import (
     Type,
     TypeVar,
 )
-
-from _contextvars import Token
 
 from bson.binary import Binary
 from bson.int64 import Int64
@@ -190,6 +188,24 @@ class _BoundClientSession:
     def __init__(self, session: ClientSession, client_id: int):
         self.session = session
         self.client_id = client_id
+
+
+class BoundSessionContext:
+    """Context manager returned by ClientSession.bind() that manages bound state."""
+
+    def __init__(self, session: ClientSession) -> None:
+        self._session = session
+        self._session_token: Optional[Token[_BoundClientSession]] = None
+
+    def __enter__(self) -> ClientSession:
+        bound_session = _BoundClientSession(self._session, id(self._session._client))
+        self._session_token = _SESSION.set(bound_session)  # type: ignore[assignment]
+        return self._session
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if self._session_token:
+            _SESSION.reset(self._session_token)  # type: ignore[arg-type]
+            self._session_token = None
 
 
 class SessionOptions:
@@ -527,9 +543,6 @@ class ClientSession:
         self._attached_to_cursor = False
         # Should we leave the session alive when the cursor is closed?
         self._leave_alive = False
-        # Is this session bound to a context manager scope?
-        self._bound = False
-        self._session_token: Optional[Token[_BoundClientSession]] = None
 
     def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -560,23 +573,18 @@ class ClientSession:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
-    def bind(self) -> ClientSession:
-        self._bound = True
-        return self
+    def bind(self) -> BoundSessionContext:
+        """Bind this session so it is implicitly passed to all database operations within the returned context.
+
+        .. versionadded:: 4.17
+        """
+        return BoundSessionContext(self)
 
     def __enter__(self) -> ClientSession:
-        if self._bound:
-            bound_session = _BoundClientSession(self, id(self._client))
-            self._session_token = _SESSION.set(bound_session)  # type: ignore[assignment]
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        if self._session_token:
-            _SESSION.reset(self._session_token)  # type: ignore[arg-type]
-            self._session_token = None
-            self._bound = False
-        else:
-            self._end_session(lock=True)
+        self._end_session(lock=True)
 
     @property
     def client(self) -> MongoClient[Any]:
