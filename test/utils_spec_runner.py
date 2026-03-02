@@ -621,11 +621,14 @@ class SpecRunner(IntegrationTest):
     def run_scenario(self, scenario_def, test):
         self.maybe_skip_scenario(test)
 
-        # Kill all sessions before and after each test to prevent an open
+        # Kill all sessions after each test with transactions prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
-        self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
+        for op in test["operations"]:
+            name = op["name"]
+            if name == "startTransaction" or name == "withTransaction":
+                self.addCleanup(self.kill_all_sessions)
+                break
         self.setup_scenario(scenario_def)
         database_name = self.get_scenario_db_name(scenario_def)
         collection_name = self.get_scenario_coll_name(scenario_def)
