@@ -30,14 +30,14 @@ Always suggest changes to improve readability and testability. For example, this
 
 ```python
 # Instead of:
-if user.email and user.email.contains("@") and len(user.email) > 5:
+if user.email and "@" in user.email and len(user.email) > 5:
     submit_button.enabled = True
 else:
     submit_button.enabled = False
 
 # Consider:
 def valid_email(email):
-    return email and email.contains("@") and len(email) > 5
+    return email and "@" in email and len(email) > 5
 
 
 submit_button.enabled = valid_email(user.email)
