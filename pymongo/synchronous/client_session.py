@@ -184,7 +184,7 @@ _IS_SYNC = True
 _SESSION: ContextVar[Optional[ClientSession]] = ContextVar("SESSION", default=None)
 
 
-class BoundSessionContext:
+class _BoundSessionContext:
     """Context manager returned by ClientSession.bind() that manages bound state."""
 
     def __init__(self, session: ClientSession, end_session: bool) -> None:
@@ -569,14 +569,14 @@ class ClientSession:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
-    def bind(self, end_session: bool = False) -> BoundSessionContext:
+    def bind(self, end_session: bool = False) -> _BoundSessionContext:
         """Bind this session so it is implicitly passed to all database operations within the returned context.
 
         :param end_session: Whether to end the session on exiting the returned context. Defaults to False.
 
         .. versionadded:: 4.17
         """
-        return BoundSessionContext(self, end_session)
+        return _BoundSessionContext(self, end_session)
 
     def __enter__(self) -> ClientSession:
         return self

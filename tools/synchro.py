@@ -37,7 +37,7 @@ replacements = {
     "AsyncRawBatchCursor": "RawBatchCursor",
     "AsyncRawBatchCommandCursor": "RawBatchCommandCursor",
     "AsyncClientSession": "ClientSession",
-    "_AsyncBoundSessionContext": "BoundSessionContext",
+    "_AsyncBoundSessionContext": "_BoundSessionContext",
     "AsyncChangeStream": "ChangeStream",
     "AsyncCollectionChangeStream": "CollectionChangeStream",
     "AsyncDatabaseChangeStream": "DatabaseChangeStream",
