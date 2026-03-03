@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import datetime
-import logging
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -31,17 +30,14 @@ from typing import (
 from bson import _decode_all_selective
 from pymongo import _csot, helpers_shared, message
 from pymongo.compression_support import _NO_COMPRESSION
-from pymongo.errors import (
-    NotPrimaryError,
-    OperationFailure,
-)
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import (
     async_receive_message,
     async_sendall,
 )
+from pymongo.telemetry import command_telemetry
+from pymongo.tracing import add_cursor_id
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -159,140 +155,71 @@ async def command(
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-    if client is not None:
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=spec,
-                commandName=next(iter(spec)),
-                databaseName=dbname,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-            )
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        listeners.publish_command_start(
-            orig,
-            dbname,
-            request_id,
-            address,
-            conn.server_connection_id,
-            service_id=conn.service_id,
-        )
 
-    try:
-        await async_sendall(conn.conn.get_conn, msg)
-        if use_op_msg and unacknowledged:
-            # Unacknowledged, fake a successful command response.
-            reply = None
-            response_doc: _DocumentOut = {"ok": 1}
-        else:
-            reply = await async_receive_message(conn, request_id)
-            conn.more_to_come = reply.more_to_come
-            unpacked_docs = reply.unpack_response(
-                codec_options=codec_options, user_fields=user_fields
-            )
+    with command_telemetry(
+        command_name=name,
+        database_name=dbname,
+        spec=spec,
+        address=address if address else conn.address,
+        driver_connection_id=conn.id,
+        server_connection_id=conn.server_connection_id,
+        publish_event=publish,
+        start_time=start,
+        client=client,
+        listeners=listeners,
+        request_id=request_id,
+        service_id=conn.service_id,
+    ) as telemetry:
+        try:
+            await async_sendall(conn.conn.get_conn, msg)
+            if use_op_msg and unacknowledged:
+                # Unacknowledged, fake a successful command response.
+                reply = None
+                response_doc: _DocumentOut = {"ok": 1}
+            else:
+                reply = await async_receive_message(conn, request_id)
+                conn.more_to_come = reply.more_to_come
+                unpacked_docs = reply.unpack_response(
+                    codec_options=codec_options, user_fields=user_fields
+                )
 
-            response_doc = unpacked_docs[0]
-            if not conn.ready:
-                cluster_time = response_doc.get("$clusterTime")
-                if cluster_time:
-                    conn._cluster_time = cluster_time
-            if client:
-                await client._process_response(response_doc, session)
-            if check:
-                helpers_shared._check_command_response(
-                    response_doc,
-                    conn.max_wire_version,
-                    allowable_errors,
-                    parse_write_concern_error=parse_write_concern_error,
-                )
-    except Exception as exc:
-        duration = datetime.datetime.now() - start
-        if isinstance(exc, (NotPrimaryError, OperationFailure)):
-            failure: _DocumentOut = exc.details  # type: ignore[assignment]
-        else:
-            failure = message._convert_exception(exc)
-        if client is not None:
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(spec)),
-                    databaseName=dbname,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=conn.id,
-                    serverConnectionId=conn.server_connection_id,
-                    serverHost=conn.address[0],
-                    serverPort=conn.address[1],
-                    serviceId=conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
-        if publish:
-            assert listeners is not None
-            assert address is not None
-            listeners.publish_command_failure(
-                duration,
-                failure,
-                name,
-                request_id,
-                address,
-                conn.server_connection_id,
-                service_id=conn.service_id,
-                database_name=dbname,
-            )
-        raise
-    duration = datetime.datetime.now() - start
-    if client is not None:
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.SUCCEEDED,
-                clientId=client._topology_settings._topology_id,
-                durationMS=duration,
-                reply=response_doc,
-                commandName=next(iter(spec)),
-                databaseName=dbname,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-                speculative_authenticate="speculativeAuthenticate" in orig,
-            )
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        listeners.publish_command_success(
-            duration,
-            response_doc,
-            name,
-            request_id,
-            address,
-            conn.server_connection_id,
-            service_id=conn.service_id,
+                response_doc = unpacked_docs[0]
+                if not conn.ready:
+                    cluster_time = response_doc.get("$clusterTime")
+                    if cluster_time:
+                        conn._cluster_time = cluster_time
+                if client:
+                    await client._process_response(response_doc, session)
+                if check:
+                    helpers_shared._check_command_response(
+                        response_doc,
+                        conn.max_wire_version,
+                        allowable_errors,
+                        parse_write_concern_error=parse_write_concern_error,
+                    )
+        except Exception as exc:
+            telemetry.publish_failed(exc)
+            raise
+
+        # Add cursor_id to span if present in response
+        if telemetry.span is not None and isinstance(response_doc, dict):
+            cursor_info = response_doc.get("cursor")
+            if cursor_info and isinstance(cursor_info, dict):
+                cursor_id = cursor_info.get("id", 0)
+                if cursor_id:
+                    add_cursor_id(telemetry.span, cursor_id)
+
+        # Publish command succeeded event
+        telemetry.publish_succeeded(
+            reply=response_doc,
             speculative_hello=speculative_hello,
-            database_name=dbname,
+            speculative_authenticate="speculativeAuthenticate" in orig,
         )
 
-    if client and client._encrypter and reply:
-        decrypted = await client._encrypter.decrypt(reply.raw_command_response())
-        response_doc = cast(
-            "_DocumentOut", _decode_all_selective(decrypted, codec_options, user_fields)[0]
-        )
+        if client and client._encrypter and reply:
+            decrypted = await client._encrypter.decrypt(reply.raw_command_response())
+            response_doc = cast(
+                "_DocumentOut", _decode_all_selective(decrypted, codec_options, user_fields)[0]
+            )
 
-    return response_doc  # type: ignore[return-value]
+        return response_doc  # type: ignore[return-value]
