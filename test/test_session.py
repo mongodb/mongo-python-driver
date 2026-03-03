@@ -888,14 +888,14 @@ class TestSession(IntegrationTest):
             self.assertNotEqual(implicit_lsid, session1.session_id)
             self.assertNotEqual(implicit_lsid, session2.session_id)
 
-            with session1.bind():
+            with session1.bind(end_session=False):
                 self.listener.reset()
                 # Uses bound session1
                 coll.find_one()
                 session1_lsid = self.listener.started_events[0].command.get("lsid")
                 self.assertEqual(session1_lsid, session1.session_id)
 
-                with session2.bind():
+                with session2.bind(end_session=False):
                     self.listener.reset()
                     # Uses bound session2
                     coll.find_one()
@@ -926,12 +926,12 @@ class TestSession(IntegrationTest):
         coll = self.client.pymongo_test.test
         coll.insert_one({"x": 1})
 
-        with self.client.start_session().bind(end_session=True) as s1:
+        with self.client.start_session().bind() as s1:
             coll.find_one()
 
         self.assertTrue(s1.has_ended)
 
-        with self.client.start_session().bind() as s2:
+        with self.client.start_session().bind(end_session=False) as s2:
             coll.find_one()
 
         self.assertFalse(s2.has_ended)

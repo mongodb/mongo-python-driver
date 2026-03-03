@@ -570,10 +570,12 @@ class AsyncClientSession:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
-    def bind(self, end_session: bool = False) -> _AsyncBoundSessionContext:
+    def bind(self, end_session: bool = True) -> _AsyncBoundSessionContext:
         """Bind this session so it is implicitly passed to all database operations within the returned context.
 
-        :param end_session: Whether to end the session on exiting the returned context. Defaults to False.
+        :param end_session: Whether to end the session on exiting the returned context. Defaults to True.
+            If set to False, :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.end_session()` must be called
+            once the session is no longer used.
 
         .. versionadded:: 4.17
         """
