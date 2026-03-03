@@ -2302,8 +2302,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _get_bound_session(self) -> Optional[ClientSession]:
         bound_session = _SESSION.get()
         if bound_session:
-            if bound_session.client_id == id(self):
-                return bound_session.session
+            if bound_session.client is self:
+                return bound_session
             else:
                 raise InvalidOperation(
                     "Only the client that created the bound session can perform operations within its context block. See <PLACEHOLDER> for more information."

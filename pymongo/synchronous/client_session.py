@@ -181,13 +181,7 @@ if TYPE_CHECKING:
 
 _IS_SYNC = True
 
-_SESSION: ContextVar[Optional[_BoundClientSession]] = ContextVar("SESSION", default=None)
-
-
-class _BoundClientSession:
-    def __init__(self, session: ClientSession, client_id: int):
-        self.session = session
-        self.client_id = client_id
+_SESSION: ContextVar[Optional[ClientSession]] = ContextVar("SESSION", default=None)
 
 
 class BoundSessionContext:
@@ -195,11 +189,10 @@ class BoundSessionContext:
 
     def __init__(self, session: ClientSession) -> None:
         self._session = session
-        self._session_token: Optional[Token[_BoundClientSession]] = None
+        self._session_token: Optional[Token[ClientSession]] = None
 
     def __enter__(self) -> ClientSession:
-        bound_session = _BoundClientSession(self._session, id(self._session._client))
-        self._session_token = _SESSION.set(bound_session)  # type: ignore[assignment]
+        self._session_token = _SESSION.set(self._session)  # type: ignore[assignment]
         return self._session
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

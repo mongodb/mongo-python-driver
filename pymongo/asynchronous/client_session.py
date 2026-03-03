@@ -182,25 +182,18 @@ if TYPE_CHECKING:
 
 _IS_SYNC = False
 
-_SESSION: ContextVar[Optional[_AsyncBoundClientSession]] = ContextVar("SESSION", default=None)
+_SESSION: ContextVar[Optional[AsyncClientSession]] = ContextVar("SESSION", default=None)
 
 
-class _AsyncBoundClientSession:
-    def __init__(self, session: AsyncClientSession, client_id: int):
-        self.session = session
-        self.client_id = client_id
-
-
-class AsyncBoundSessionContext:
+class _AsyncBoundSessionContext:
     """Context manager returned by AsyncClientSession.bind() that manages bound state."""
 
     def __init__(self, session: AsyncClientSession) -> None:
         self._session = session
-        self._session_token: Optional[Token[_AsyncBoundClientSession]] = None
+        self._session_token: Optional[Token[AsyncClientSession]] = None
 
     async def __aenter__(self) -> AsyncClientSession:
-        bound_session = _AsyncBoundClientSession(self._session, id(self._session._client))
-        self._session_token = _SESSION.set(bound_session)  # type: ignore[assignment]
+        self._session_token = _SESSION.set(self._session)  # type: ignore[assignment]
         return self._session
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -574,12 +567,12 @@ class AsyncClientSession:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
-    def bind(self) -> AsyncBoundSessionContext:
+    def bind(self) -> _AsyncBoundSessionContext:
         """Bind this session so it is implicitly passed to all database operations within the returned context.
 
         .. versionadded:: 4.17
         """
-        return AsyncBoundSessionContext(self)
+        return _AsyncBoundSessionContext(self)
 
     async def __aenter__(self) -> AsyncClientSession:
         return self
