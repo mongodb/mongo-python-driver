@@ -922,6 +922,22 @@ class TestSession(AsyncIntegrationTest):
             await session1.end_session()
             await session2.end_session()
 
+    async def test_session_binding_end_session(self):
+        coll = self.client.pymongo_test.test
+        await coll.insert_one({"x": 1})
+
+        async with self.client.start_session().bind(end_session=True) as s1:
+            await coll.find_one()
+
+        self.assertTrue(s1.has_ended)
+
+        async with self.client.start_session().bind() as s2:
+            await coll.find_one()
+
+        self.assertFalse(s2.has_ended)
+
+        await s2.end_session()
+
 
 class TestCausalConsistency(AsyncUnitTest):
     listener: SessionTestListener

@@ -922,6 +922,22 @@ class TestSession(IntegrationTest):
             session1.end_session()
             session2.end_session()
 
+    def test_session_binding_end_session(self):
+        coll = self.client.pymongo_test.test
+        coll.insert_one({"x": 1})
+
+        with self.client.start_session().bind(end_session=True) as s1:
+            coll.find_one()
+
+        self.assertTrue(s1.has_ended)
+
+        with self.client.start_session().bind() as s2:
+            coll.find_one()
+
+        self.assertFalse(s2.has_ended)
+
+        s2.end_session()
+
 
 class TestCausalConsistency(UnitTest):
     listener: SessionTestListener
