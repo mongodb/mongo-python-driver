@@ -1,7 +1,7 @@
 When reviewing code, focus on:
 
 ## Security Critical Issues
-- Check for hardcoded secrets, API keys, or credentials
+- Check for hardcoded secrets, API keys, or credentials.
 - Check for instances of potential method call injection, dynamic code execution, symbol injection or other code injection vulnerabilities.
 
 ## Performance Red Flags
