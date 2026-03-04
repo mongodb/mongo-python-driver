@@ -595,7 +595,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
         await coll.insert_one({})
         listener.reset()
         async with client.start_session() as s:
-            with pymongo.timeout(0.1):
+            with pymongo.timeout(1.0):
                 with self.assertRaises(ExecutionTimeout):
                     await s.with_transaction(callback)
 
