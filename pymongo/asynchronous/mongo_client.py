@@ -894,15 +894,16 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.read_concern,
         )
 
+        self._retry_policy = _RetryPolicy(
+            _TokenBucket(), adaptive_retry=self._options.adaptive_retries
+        )
+
         self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
 
         self._opened = False
         self._closed = False
         self._loop: Optional[asyncio.AbstractEventLoop] = None
 
-        self._retry_policy = _RetryPolicy(
-            _TokenBucket(), adaptive_retry=self._options.adaptive_retries
-        )
         if not is_srv:
             self._init_background()
 
