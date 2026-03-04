@@ -252,7 +252,7 @@ class _ClientBulk:
         ) as telemetry:
             try:
                 reply = bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc, arg-type]
-                telemetry.publish_succeeded(reply)
+                telemetry.publish_succeeded(reply)  # type: ignore[misc, arg-type]
                 # Process the response from the server.
                 self.client._process_response(reply, bwc.session)  # type: ignore[arg-type]
             except Exception as exc:
@@ -301,7 +301,7 @@ class _ClientBulk:
                 else:
                     # Comply with APM spec.
                     reply = {"ok": 1}
-                telemetry.publish_succeeded(reply)
+                telemetry.publish_succeeded(reply)  # type: ignore[misc, arg-type]
             except Exception as exc:
                 telemetry.publish_failed(exc)
                 # Top-level error will be embedded in ClientBulkWriteException.

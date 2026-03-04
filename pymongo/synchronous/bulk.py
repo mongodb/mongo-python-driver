@@ -266,7 +266,7 @@ class _Bulk:
         ) as telemetry:
             try:
                 reply = bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc]
-                telemetry.publish_succeeded(reply)
+                telemetry.publish_succeeded(reply)  # type: ignore[misc, arg-type]
                 client._process_response(reply, bwc.session)  # type: ignore[arg-type]
             except Exception as exc:
                 telemetry.publish_failed(exc)
