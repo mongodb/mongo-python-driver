@@ -37,7 +37,6 @@ from pymongo.network_layer import (
     async_sendall,
 )
 from pymongo.telemetry import command_telemetry
-from pymongo.tracing import add_cursor_id
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -201,15 +200,6 @@ async def command(
             telemetry.publish_failed(exc)
             raise
 
-        # Add cursor_id to span if present in response
-        if telemetry.span is not None and isinstance(response_doc, dict):
-            cursor_info = response_doc.get("cursor")
-            if cursor_info and isinstance(cursor_info, dict):
-                cursor_id = cursor_info.get("id", 0)
-                if cursor_id:
-                    add_cursor_id(telemetry.span, cursor_id)
-
-        # Publish command succeeded event
         telemetry.publish_succeeded(
             reply=response_doc,
             speculative_hello=speculative_hello,

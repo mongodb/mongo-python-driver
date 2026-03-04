@@ -14,7 +14,7 @@
 
 """Unified telemetry support for PyMongo.
 
-Supports telemetry using standardized logging, event publishing, and OpenTelemetry.
+Supports telemetry through standardized logging, event publishing, and OpenTelemetry.
 
 To enable OpenTelemetry logging, set the environment variable:
     OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED=true
@@ -24,43 +24,109 @@ To enable OpenTelemetry logging, set the environment variable:
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Mapping, Optional
 
 from pymongo import message
 from pymongo.errors import NotPrimaryError, OperationFailure
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.logger import _COMMAND_LOGGER, _SENSITIVE_COMMANDS, _CommandStatusMessage, _debug_log
 from pymongo.monitoring import _EventListeners
-from pymongo.tracing import (
-    _build_query_summary,
-    _extract_collection_name,
-    _get_tracer,
-    _is_sensitive_command,
-)
 
 try:
-    from opentelemetry import trace
-    from opentelemetry.trace import Span, SpanKind, Status, StatusCode
+    from opentelemetry import trace  # type: ignore[import-not-found]
+    from opentelemetry.trace import (  # type: ignore[import-not-found]
+        Span,
+        SpanKind,
+        Status,
+        StatusCode,
+        Tracer,
+    )
 
     _HAS_OPENTELEMETRY = True
 except ImportError:
     _HAS_OPENTELEMETRY = False
-    trace = None  # type: ignore[assignment]
-    Span = None  # type: ignore[assignment, misc]
-    SpanKind = None  # type: ignore[assignment, misc]
-    Status = None  # type: ignore[assignment, misc]
-    StatusCode = None  # type: ignore[assignment, misc]
+    trace = None
+    Span = None
+    SpanKind = None
+    Status = None
+    StatusCode = None
+    Tracer = None
 
 if TYPE_CHECKING:
     from pymongo.typings import _Address, _AgnosticMongoClient, _DocumentOut
+
+
+# Environment variable names
+_OTEL_ENABLED_ENV = "OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED"
+
+
+def _is_tracing_enabled() -> bool:
+    """Check if tracing is enabled via environment variable."""
+    if not _HAS_OPENTELEMETRY:
+        return False
+    value = os.environ.get(_OTEL_ENABLED_ENV, "").lower()
+    return value in ("1", "true")
+
+
+def _get_tracer() -> Optional[Tracer]:
+    """Get the PyMongo tracer instance."""
+    if not _HAS_OPENTELEMETRY or not _is_tracing_enabled():
+        return None
+    from pymongo._version import __version__
+
+    return trace.get_tracer("PyMongo", __version__)
+
+
+def _is_sensitive_command(command_name: str) -> bool:
+    """Check if a command is sensitive and should not be traced."""
+    return command_name.lower() in _SENSITIVE_COMMANDS
+
+
+def _build_query_summary(
+    command_name: str,
+    database_name: str,
+    collection_name: Optional[str],
+) -> str:
+    """Build the db.query.summary attribute value."""
+    if collection_name:
+        return f"{command_name} {database_name}.{collection_name}"
+    return f"{command_name} {database_name}"
+
+
+def _extract_collection_name(spec: Mapping[str, Any]) -> Optional[str]:
+    """Extract collection name from command spec if applicable."""
+    if not spec:
+        return None
+    cmd_name = next(iter(spec)).lower()
+    # Commands where the first value is the collection name
+    if cmd_name in (
+        "insert",
+        "update",
+        "delete",
+        "find",
+        "aggregate",
+        "findandmodify",
+        "count",
+        "distinct",
+        "create",
+        "drop",
+        "createindexes",
+        "dropindexes",
+        "listindexes",
+    ):
+        value = spec.get(next(iter(spec)))
+        if isinstance(value, str):
+            return value
+    return None
 
 
 class _CommandTelemetry:
     """Manages telemetry for MongoDB commands, including logging, event publishing, and OpenTelemetry spans.
 
     This class is a context manager that handles the full lifecycle of command telemetry:
-    - On entry (__enter__): Sets up OpenTelemetry span and publishes the started event
-    - On exit (__exit__): Cleans up the span context (caller handles success/failure publishing)
+    - On entry: sets up OpenTelemetry span and publishes the started event
+    - On exit: cleans up the span context (caller handles success/failure publishing)
     """
 
     __slots__ = (
@@ -75,6 +141,7 @@ class _CommandTelemetry:
         "_listeners",
         "_client",
         "_request_id",
+        "_operation_id",
         "_service_id",
         "_span",
         "_span_context",
@@ -89,11 +156,12 @@ class _CommandTelemetry:
         server_connection_id: Optional[int],
         publish_event: bool,
         start_time: datetime,
-        address: Optional[_Address],
+        address: _Address,
         listeners: Optional[_EventListeners],
         client: Optional[_AgnosticMongoClient],
-        request_id: Optional[int],
+        request_id: int,
         service_id: Optional[Any],
+        operation_id: Optional[int] = None,
     ):
         self._command_name = command_name
         self._database_name = database_name
@@ -106,6 +174,7 @@ class _CommandTelemetry:
         self._listeners = listeners
         self._client = client
         self._request_id = request_id
+        self._operation_id = operation_id if operation_id is not None else request_id
         self._service_id = service_id
         self._span: Optional[Span] = None
         self._span_context: Optional[Any] = None
@@ -177,7 +246,7 @@ class _CommandTelemetry:
                     commandName=next(iter(self._spec)),
                     databaseName=self._database_name,
                     requestId=self._request_id,
-                    operationId=self._request_id,
+                    operationId=self._operation_id,
                     driverConnectionId=self._driver_connection_id,
                     serverConnectionId=self._server_connection_id,
                     serverHost=self._address[0] if self._address else None,
@@ -188,11 +257,12 @@ class _CommandTelemetry:
             assert self._listeners is not None
             assert self._address is not None
             self._listeners.publish_command_start(
-                self._spec,
+                self._spec,  # type: ignore[arg-type]
                 self._database_name,
                 self._request_id,
                 self._address,
                 self._server_connection_id,
+                op_id=self._operation_id,
                 service_id=self._service_id,
             )
 
@@ -204,6 +274,15 @@ class _CommandTelemetry:
     ) -> None:
         """Publish command succeeded event and log."""
         duration = datetime.now() - self._start_time
+
+        # Add cursor_id to span if present in response
+        if self._span is not None and isinstance(reply, dict):
+            cursor_info = reply.get("cursor")
+            if cursor_info and isinstance(cursor_info, dict):
+                cursor_id = cursor_info.get("id", 0)
+                if cursor_id:
+                    self._span.set_attribute("db.mongodb.cursor_id", cursor_id)
+
         if self._client is not None:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
@@ -215,7 +294,7 @@ class _CommandTelemetry:
                     commandName=next(iter(self._spec)),
                     databaseName=self._database_name,
                     requestId=self._request_id,
-                    operationId=self._request_id,
+                    operationId=self._operation_id,
                     driverConnectionId=self._driver_connection_id,
                     serverConnectionId=self._server_connection_id,
                     serverHost=self._address[0] if self._address else None,
@@ -233,6 +312,7 @@ class _CommandTelemetry:
                 self._request_id,
                 self._address,
                 self._server_connection_id,
+                op_id=self._operation_id,
                 service_id=self._service_id,
                 speculative_hello=speculative_hello,
                 database_name=self._database_name,
@@ -264,7 +344,7 @@ class _CommandTelemetry:
                     commandName=next(iter(self._spec)),
                     databaseName=self._database_name,
                     requestId=self._request_id,
-                    operationId=self._request_id,
+                    operationId=self._operation_id,
                     driverConnectionId=self._driver_connection_id,
                     serverConnectionId=self._server_connection_id,
                     serverHost=self._address[0] if self._address else None,
@@ -282,6 +362,7 @@ class _CommandTelemetry:
                 self._request_id,
                 self._address,
                 self._server_connection_id,
+                op_id=self._operation_id,
                 service_id=self._service_id,
                 database_name=self._database_name,
             )
@@ -295,11 +376,12 @@ def command_telemetry(
     server_connection_id: Optional[int],
     publish_event: bool,
     start_time: datetime,
-    address: Optional[_Address] = None,
+    request_id: int,
+    address: _Address,
     listeners: Optional[_EventListeners] = None,
     client: Optional[_AgnosticMongoClient] = None,
-    request_id: Optional[int] = None,
     service_id: Optional[Any] = None,
+    operation_id: Optional[int] = None,
 ) -> _CommandTelemetry:
     """Create a _CommandTelemetry context manager for command telemetry.
 
@@ -336,4 +418,5 @@ def command_telemetry(
         client=client,
         request_id=request_id,
         service_id=service_id,
+        operation_id=operation_id,
     )

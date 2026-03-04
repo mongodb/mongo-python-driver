@@ -19,8 +19,6 @@
 from __future__ import annotations
 
 import copy
-import datetime
-import logging
 from collections.abc import MutableMapping
 from itertools import islice
 from typing import (
@@ -62,11 +60,9 @@ from pymongo.errors import (
     WaitQueueTimeoutError,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import (
     _ClientBulkWriteContext,
     _convert_client_bulk_exception,
-    _convert_exception,
     _convert_write_result,
     _randint,
 )
@@ -77,6 +73,7 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
+from pymongo.telemetry import command_telemetry
 from pymongo.typings import _DocumentOut, _Pipeline
 from pymongo.write_concern import WriteConcern
 
@@ -238,82 +235,35 @@ class _ClientBulk:
         """A proxy for Connection.write_command that handles event publishing."""
         cmd["ops"] = op_docs
         cmd["nsInfo"] = ns_docs
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=cmd,
-                commandName=next(iter(cmd)),
-                databaseName=bwc.db_name,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=bwc.conn.id,
-                serverConnectionId=bwc.conn.server_connection_id,
-                serverHost=bwc.conn.address[0],
-                serverPort=bwc.conn.address[1],
-                serviceId=bwc.conn.service_id,
-            )
-        if bwc.publish:
-            bwc._start(cmd, request_id, op_docs, ns_docs)
-        try:
-            reply = bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc, arg-type]
-            duration = datetime.datetime.now() - bwc.start_time
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.SUCCEEDED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    reply=reply,
-                    commandName=next(iter(cmd)),
-                    databaseName=bwc.db_name,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=bwc.conn.id,
-                    serverConnectionId=bwc.conn.server_connection_id,
-                    serverHost=bwc.conn.address[0],
-                    serverPort=bwc.conn.address[1],
-                    serviceId=bwc.conn.service_id,
-                )
-            if bwc.publish:
-                bwc._succeed(request_id, reply, duration)  # type: ignore[arg-type]
-            # Process the response from the server.
-            self.client._process_response(reply, bwc.session)  # type: ignore[arg-type]
-        except Exception as exc:
-            duration = datetime.datetime.now() - bwc.start_time
-            if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure: _DocumentOut = exc.details  # type: ignore[assignment]
-            else:
-                failure = _convert_exception(exc)
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(cmd)),
-                    databaseName=bwc.db_name,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=bwc.conn.id,
-                    serverConnectionId=bwc.conn.server_connection_id,
-                    serverHost=bwc.conn.address[0],
-                    serverPort=bwc.conn.address[1],
-                    serviceId=bwc.conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
-
-            if bwc.publish:
-                bwc._fail(request_id, failure, duration)
-            # Top-level error will be embedded in ClientBulkWriteException.
-            reply = {"error": exc}
-            # Process the response from the server.
-            if isinstance(exc, OperationFailure):
-                self.client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
-            else:
-                self.client._process_response({}, bwc.session)  # type: ignore[arg-type]
+        with command_telemetry(
+            command_name=bwc.name,
+            database_name=bwc.db_name,
+            spec=cmd,
+            driver_connection_id=bwc.conn.id,
+            server_connection_id=bwc.conn.server_connection_id,
+            publish_event=bwc.publish,
+            start_time=bwc.start_time,
+            address=bwc.conn.address,
+            listeners=bwc.listeners,
+            client=client,
+            request_id=request_id,
+            service_id=bwc.conn.service_id,
+            operation_id=bwc.op_id,
+        ) as telemetry:
+            try:
+                reply = bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc, arg-type]
+                telemetry.publish_succeeded(reply)
+                # Process the response from the server.
+                self.client._process_response(reply, bwc.session)  # type: ignore[arg-type]
+            except Exception as exc:
+                telemetry.publish_failed(exc)
+                # Top-level error will be embedded in ClientBulkWriteException.
+                reply = {"error": exc}
+                # Process the response from the server.
+                if isinstance(exc, OperationFailure):
+                    self.client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
+                else:
+                    self.client._process_response({}, bwc.session)  # type: ignore[arg-type]
         return reply  # type: ignore[return-value]
 
     def unack_write(
@@ -327,82 +277,35 @@ class _ClientBulk:
         client: MongoClient[Any],
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for Connection.unack_write that handles event publishing."""
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=cmd,
-                commandName=next(iter(cmd)),
-                databaseName=bwc.db_name,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=bwc.conn.id,
-                serverConnectionId=bwc.conn.server_connection_id,
-                serverHost=bwc.conn.address[0],
-                serverPort=bwc.conn.address[1],
-                serviceId=bwc.conn.service_id,
-            )
-        if bwc.publish:
-            cmd = bwc._start(cmd, request_id, op_docs, ns_docs)
-        try:
-            result = bwc.conn.unack_write(msg, bwc.max_bson_size)  # type: ignore[func-returns-value, misc, override]
-            duration = datetime.datetime.now() - bwc.start_time
-            if result is not None:
-                reply = _convert_write_result(bwc.name, cmd, result)  # type: ignore[arg-type]
-            else:
-                # Comply with APM spec.
-                reply = {"ok": 1}
-                if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _COMMAND_LOGGER,
-                        message=_CommandStatusMessage.SUCCEEDED,
-                        clientId=client._topology_settings._topology_id,
-                        durationMS=duration,
-                        reply=reply,
-                        commandName=next(iter(cmd)),
-                        databaseName=bwc.db_name,
-                        requestId=request_id,
-                        operationId=request_id,
-                        driverConnectionId=bwc.conn.id,
-                        serverConnectionId=bwc.conn.server_connection_id,
-                        serverHost=bwc.conn.address[0],
-                        serverPort=bwc.conn.address[1],
-                        serviceId=bwc.conn.service_id,
-                    )
-            if bwc.publish:
-                bwc._succeed(request_id, reply, duration)
-        except Exception as exc:
-            duration = datetime.datetime.now() - bwc.start_time
-            if isinstance(exc, OperationFailure):
-                failure: _DocumentOut = _convert_write_result(bwc.name, cmd, exc.details)  # type: ignore[arg-type]
-            elif isinstance(exc, NotPrimaryError):
-                failure = exc.details  # type: ignore[assignment]
-            else:
-                failure = _convert_exception(exc)
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(cmd)),
-                    databaseName=bwc.db_name,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=bwc.conn.id,
-                    serverConnectionId=bwc.conn.server_connection_id,
-                    serverHost=bwc.conn.address[0],
-                    serverPort=bwc.conn.address[1],
-                    serviceId=bwc.conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
-            if bwc.publish:
-                assert bwc.start_time is not None
-                bwc._fail(request_id, failure, duration)
-            # Top-level error will be embedded in ClientBulkWriteException.
-            reply = {"error": exc}
+        cmd["ops"] = op_docs
+        cmd["nsInfo"] = ns_docs
+        with command_telemetry(
+            command_name=bwc.name,
+            database_name=bwc.db_name,
+            spec=cmd,
+            driver_connection_id=bwc.conn.id,
+            server_connection_id=bwc.conn.server_connection_id,
+            publish_event=bwc.publish,
+            start_time=bwc.start_time,
+            address=bwc.conn.address,
+            listeners=bwc.listeners,
+            client=client,
+            request_id=request_id,
+            service_id=bwc.conn.service_id,
+            operation_id=bwc.op_id,
+        ) as telemetry:
+            try:
+                result = bwc.conn.unack_write(msg, bwc.max_bson_size)  # type: ignore[func-returns-value, misc, override]
+                if result is not None:
+                    reply = _convert_write_result(bwc.name, cmd, result)  # type: ignore[arg-type]
+                else:
+                    # Comply with APM spec.
+                    reply = {"ok": 1}
+                telemetry.publish_succeeded(reply)
+            except Exception as exc:
+                telemetry.publish_failed(exc)
+                # Top-level error will be embedded in ClientBulkWriteException.
+                reply = {"error": exc}
         return reply
 
     def _execute_batch_unack(
