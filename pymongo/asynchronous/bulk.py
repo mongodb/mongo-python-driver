@@ -266,7 +266,7 @@ class _AsyncBulk:
         ) as telemetry:
             try:
                 reply = await bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc]
-                telemetry.publish_succeeded(reply)
+                telemetry.publish_succeeded(reply)  # type: ignore[misc, arg-type]
                 await client._process_response(reply, bwc.session)  # type: ignore[arg-type]
             except Exception as exc:
                 telemetry.publish_failed(exc)
@@ -310,7 +310,7 @@ class _AsyncBulk:
                 else:
                     # Comply with APM spec.
                     reply = {"ok": 1}
-                telemetry.publish_succeeded(reply)
+                telemetry.publish_succeeded(reply)  # type: ignore[misc, arg-type]
             except Exception as exc:
                 telemetry.publish_failed(exc)
                 raise

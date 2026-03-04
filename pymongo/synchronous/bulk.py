@@ -310,7 +310,7 @@ class _Bulk:
                 else:
                     # Comply with APM spec.
                     reply = {"ok": 1}
-                telemetry.publish_succeeded(reply)
+                telemetry.publish_succeeded(reply)  # type: ignore[misc, arg-type]
             except Exception as exc:
                 telemetry.publish_failed(exc)
                 raise
