@@ -57,12 +57,10 @@ if TYPE_CHECKING:
     from pymongo.typings import _Address, _AgnosticMongoClient, _DocumentOut
 
 
-# Environment variable names
 _OTEL_ENABLED_ENV = "OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED"
 
 
 def _is_tracing_enabled() -> bool:
-    """Check if tracing is enabled via environment variable."""
     if not _HAS_OPENTELEMETRY:
         return False
     value = os.environ.get(_OTEL_ENABLED_ENV, "").lower()
@@ -70,7 +68,6 @@ def _is_tracing_enabled() -> bool:
 
 
 def _get_tracer() -> Optional[Tracer]:
-    """Get the PyMongo tracer instance."""
     if not _HAS_OPENTELEMETRY or not _is_tracing_enabled():
         return None
     from pymongo._version import __version__
@@ -79,7 +76,6 @@ def _get_tracer() -> Optional[Tracer]:
 
 
 def _is_sensitive_command(command_name: str) -> bool:
-    """Check if a command is sensitive and should not be traced."""
     return command_name.lower() in _SENSITIVE_COMMANDS
 
 
@@ -125,7 +121,7 @@ class _CommandTelemetry:
     """Manages telemetry for MongoDB commands, including logging, event publishing, and OpenTelemetry spans.
 
     This class is a context manager that handles the full lifecycle of command telemetry:
-    - On entry: sets up OpenTelemetry span and publishes the started event
+    - On entry: sets up OpenTelemetry span (if enabled) and publishes the started event and/or log
     - On exit: cleans up the span context (caller handles success/failure publishing)
     """
 
@@ -180,7 +176,6 @@ class _CommandTelemetry:
         self._span_context: Optional[Any] = None
 
     def __enter__(self) -> _CommandTelemetry:
-        """Enter the telemetry context: set up span and publish started event."""
         self._setup_span()
         self.publish_started()
         return self
@@ -191,7 +186,6 @@ class _CommandTelemetry:
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
     ) -> None:
-        """Exit the telemetry context: clean up span context."""
         if self._span_context is not None:
             self._span_context.__exit__(exc_type, exc_val, exc_tb)
 
@@ -213,7 +207,6 @@ class _CommandTelemetry:
         )
         self._span = self._span_context.__enter__()
 
-        # Set span attributes
         self._span.set_attribute("db.system", "mongodb")
         self._span.set_attribute("db.namespace", self._database_name)
         self._span.set_attribute("db.command.name", self._command_name)
@@ -235,7 +228,7 @@ class _CommandTelemetry:
         return self._span
 
     def publish_started(self) -> None:
-        """Publish command started event and log."""
+        """Publish command started event and log if enabled."""
         if self._client is not None:
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
@@ -272,7 +265,7 @@ class _CommandTelemetry:
         speculative_hello: bool = False,
         speculative_authenticate: bool = False,
     ) -> None:
-        """Publish command succeeded event and log."""
+        """Publish command succeeded event and log if enabled."""
         duration = datetime.now() - self._start_time
 
         # Add cursor_id to span if present in response
@@ -319,7 +312,7 @@ class _CommandTelemetry:
             )
 
     def publish_failed(self, exc: Exception) -> None:
-        """Publish command failed event and log."""
+        """Publish command failed event and log if enabled."""
         duration = datetime.now() - self._start_time
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
@@ -388,7 +381,7 @@ def command_telemetry(
     Returns a _CommandTelemetry instance that should be used as a context manager.
     The context manager automatically:
     - Sets up OpenTelemetry span if tracing is enabled and command is not sensitive
-    - Publishes the started event on entry
+    - Publishes the started event and/or log on entry if enabled
     - Cleans up the span context on exit
 
     The caller is responsible for calling publish_succeeded() on successful completion
