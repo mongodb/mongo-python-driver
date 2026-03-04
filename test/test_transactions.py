@@ -21,6 +21,7 @@ import sys
 import time
 from io import BytesIO
 
+import pymongo
 from gridfs.synchronous.grid_file import GridFS, GridFSBucket
 from pymongo.server_selectors import writable_server_selector
 from pymongo.synchronous.pool import PoolState
@@ -42,7 +43,9 @@ from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,
     ConnectionFailure,
+    ExecutionTimeout,
     InvalidOperation,
+    NetworkTimeout,
     OperationFailure,
 )
 from pymongo.operations import IndexModel, InsertOne
@@ -489,7 +492,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         listener.reset()
         with client.start_session() as s:
             with PatchSessionTimeout(0):
-                with self.assertRaises(OperationFailure):
+                with self.assertRaises(NetworkTimeout):
                     s.with_transaction(callback)
 
         self.assertEqual(listener.started_command_names(), ["insert", "abortTransaction"])
@@ -521,7 +524,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
         with client.start_session() as s:
             with PatchSessionTimeout(0):
-                with self.assertRaises(OperationFailure):
+                with self.assertRaises(NetworkTimeout):
                     s.with_transaction(callback)
 
         self.assertEqual(listener.started_command_names(), ["insert", "commitTransaction"])
@@ -550,7 +553,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
         with client.start_session() as s:
             with PatchSessionTimeout(0):
-                with self.assertRaises(ConnectionFailure):
+                with self.assertRaises(NetworkTimeout):
                     s.with_transaction(callback)
 
         # One insert for the callback and two commits (includes the automatic
@@ -558,6 +561,38 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         self.assertEqual(
             listener.started_command_names(), ["insert", "commitTransaction", "commitTransaction"]
         )
+
+    @client_context.require_transactions
+    def test_callback_not_retried_after_csot_timeout(self):
+        listener = OvertCommandListener()
+        client = self.rs_client(event_listeners=[listener])
+        coll = client[self.db.name].test
+
+        def callback(session):
+            coll.insert_one({}, session=session)
+            err: dict = {
+                "ok": 0,
+                "errmsg": "Transaction 7819 has been aborted.",
+                "code": 251,
+                "codeName": "NoSuchTransaction",
+                "errorLabels": ["TransientTransactionError"],
+            }
+            raise OperationFailure(err["errmsg"], err["code"], err)
+
+        # Create the collection.
+        coll.insert_one({})
+        listener.reset()
+        with client.start_session() as s:
+            with pymongo.timeout(0.1):
+                with self.assertRaises(ExecutionTimeout):
+                    s.with_transaction(callback)
+
+        # At least two attempts: the original and one or more retries.
+        inserts = len([x for x in listener.started_command_names() if x == "insert"])
+        aborts = len([x for x in listener.started_command_names() if x == "abortTransaction"])
+
+        self.assertGreaterEqual(inserts, 2)
+        self.assertGreaterEqual(aborts, 2)
 
     # Tested here because this supports Motor's convenient transactions API.
     @client_context.require_transactions
