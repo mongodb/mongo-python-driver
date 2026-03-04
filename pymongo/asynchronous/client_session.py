@@ -573,6 +573,13 @@ class AsyncClientSession:
     def bind(self, end_session: bool = True) -> _AsyncBoundSessionContext:
         """Bind this session so it is implicitly passed to all database operations within the returned context.
 
+        .. code-block:: python
+
+           async with client.start_session() as s:
+               async with s.bind():
+                   # session=s is passed implicitly
+                   await client.db.collection.insert_one({"x": 1})
+
         :param end_session: Whether to end the session on exiting the returned context. Defaults to True.
             If set to False, :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.end_session()` must be called
             once the session is no longer used.
