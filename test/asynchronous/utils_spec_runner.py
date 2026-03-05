@@ -621,7 +621,7 @@ class AsyncSpecRunner(AsyncIntegrationTest):
     async def run_scenario(self, scenario_def, test):
         self.maybe_skip_scenario(test)
 
-        # Kill all sessions after each test with transactions prevent an open
+        # Kill all sessions after each test with transactions to prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         for op in test["operations"]:

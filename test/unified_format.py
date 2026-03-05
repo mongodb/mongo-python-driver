@@ -1486,7 +1486,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if skip_reason is not None:
             raise unittest.SkipTest(f"{skip_reason}")
 
-        # Kill all sessions after each test with transactions prevent an open
+        # Kill all sessions after each test with transactions to prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
         for op in spec["operations"]:
