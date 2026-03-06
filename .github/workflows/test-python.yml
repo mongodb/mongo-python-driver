@@ -245,7 +245,7 @@ jobs:
         run: |
           pip install build
           python -m build --sdist
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: "sdist"
           path: dist/*.tar.gz
@@ -257,7 +257,7 @@ jobs:
       timeout-minutes: 20
       steps:
         - name: Download sdist
-          uses: actions/download-artifact@v7
+          uses: actions/download-artifact@v8
           with:
             path: sdist/
         - name: Unpack SDist

@@ -92,7 +92,7 @@ jobs:
           # Free-threading builds:
           ls wheelhouse/*cp314t*.whl
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: wheel-${{ matrix.buildplat[1] }}
           path: ./wheelhouse/*.whl
@@ -125,7 +125,7 @@ jobs:
           cd ..
           python -c "from pymongo import has_c; assert has_c()"
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: "sdist"
           path: ./dist/*.tar.gz
@@ -136,13 +136,13 @@ jobs:
     name: Download Wheels
     steps:
       - name: Download all workflow run artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
       - name: Flatten directory
         working-directory: .
         run: |
           find . -mindepth 2 -type f -exec mv {} . \;
           find . -type d -empty -delete
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: all-dist-${{ github.run_id }}
           path: "./*"
