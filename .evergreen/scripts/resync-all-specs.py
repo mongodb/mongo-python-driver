@@ -7,6 +7,8 @@ import subprocess
 from argparse import Namespace
 from subprocess import CalledProcessError
 
+JIRA_FILTER = "https://jira.mongodb.org/issues/?jql=labels%20%3D%20automated-sync%20AND%20status%20!%3D%20Closed"
+
 
 def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
     """Actually sync the specs"""
@@ -117,6 +119,7 @@ def write_summary(errored: dict[str, str], new: list[str], filename: str | None)
         pr_body += "\n -".join(new)
         pr_body += "\n"
     if pr_body != "":
+        pr_body = f"Jira tickets: {JIRA_FILTER}\n\n" + pr_body
         if filename is None:
             print(f"\n{pr_body}")
         else:
