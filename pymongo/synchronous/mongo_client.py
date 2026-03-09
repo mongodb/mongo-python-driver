@@ -2858,10 +2858,11 @@ class _ClientConnectionRetryable(Generic[T]):
                     retryable_write_label = exc_to_check.has_error_label("RetryableWriteError")
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                     always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
-                    if (
-                        not self._client.options.retry_writes
-                        or not self._retryable
-                        and not always_retryable
+
+                    # Always retry abortTransaction and commitTransaction up to once
+                    if not (self._client.options.retry_writes and self._retryable) and (
+                        not always_retryable
+                        and self._operation not in ["abortTransaction", "commitTransaction"]
                     ):
                         raise
                     if retryable_write_label or always_retryable:
