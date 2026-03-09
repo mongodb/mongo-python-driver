@@ -621,14 +621,11 @@ class AsyncSpecRunner(AsyncIntegrationTest):
     async def run_scenario(self, scenario_def, test):
         self.maybe_skip_scenario(test)
 
-        # Kill all sessions after each test with transactions to prevent an open
+        # Kill all sessions before and after each test to prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
-        for op in test["operations"]:
-            name = op["name"]
-            if name == "startTransaction" or name == "withTransaction":
-                self.addAsyncCleanup(self.kill_all_sessions)
-                break
+        await self.kill_all_sessions()
+        self.addAsyncCleanup(self.kill_all_sessions)
         await self.setup_scenario(scenario_def)
         database_name = self.get_scenario_db_name(scenario_def)
         collection_name = self.get_scenario_coll_name(scenario_def)
