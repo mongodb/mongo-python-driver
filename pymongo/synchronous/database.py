@@ -952,7 +952,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             )
 
         return self._client._retryable_read(
-            inner, read_preference, session, command_name, None, False
+            inner, read_preference, session, command_name, None, False, is_run_command=True
         )
 
     @_csot.apply

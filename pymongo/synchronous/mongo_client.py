@@ -2005,6 +2005,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         read_pref: Optional[_ServerMode] = None,
         retryable: bool = False,
         operation_id: Optional[int] = None,
+        is_run_command: bool = False,
     ) -> T:
         """Internal retryable helper for all client transactions.
 
@@ -2016,6 +2017,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param address: Server Address, defaults to None
         :param read_pref: Topology of read operation, defaults to None
         :param retryable: If the operation should be retried once, defaults to None
+        :param is_run_command: If this is a runCommand operation, defaults to False
 
         :return: Output of the calling func()
         """
@@ -2030,6 +2032,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             address=address,
             retryable=retryable,
             operation_id=operation_id,
+            is_run_command=is_run_command,
         ).run()
 
     def _retryable_read(
@@ -2041,6 +2044,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         address: Optional[_Address] = None,
         retryable: bool = True,
         operation_id: Optional[int] = None,
+        is_run_command: bool = False,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -2056,6 +2060,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param address: Optional address when sending a message, defaults to None
         :param retryable: if we should attempt retries
             (may not always be supported even if supplied), defaults to False
+        :param is_run_command: If this is a runCommand operation, defaults to False.
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2074,6 +2079,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 read_pref=read_pref,
                 retryable=retryable,
                 operation_id=operation_id,
+                is_run_command=is_run_command,
             )
 
     def _retryable_write(
@@ -2737,6 +2743,7 @@ class _ClientConnectionRetryable(Generic[T]):
         address: Optional[_Address] = None,
         retryable: bool = False,
         operation_id: Optional[int] = None,
+        is_run_command: bool = False,
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
@@ -2759,6 +2766,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._operation = operation
         self._operation_id = operation_id
         self._attempt_number = 0
+        self._is_run_command = is_run_command
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2799,6 +2807,11 @@ class _ClientConnectionRetryable(Generic[T]):
                 always_retryable = False
                 overloaded = False
                 exc_to_check = exc
+
+                if self._is_run_command and not (
+                    self._client.options.retry_reads and self._client.options.retry_writes
+                ):
+                    raise
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
@@ -2806,11 +2819,15 @@ class _ClientConnectionRetryable(Generic[T]):
                         exc_code = getattr(exc, "code", None)
                         overloaded = exc.has_error_label("SystemOverloadedError")
                         always_retryable = exc.has_error_label("RetryableError") and overloaded
-                        if not always_retryable and (
-                            self._is_not_eligible_for_retry()
-                            or (
-                                isinstance(exc, OperationFailure)
-                                and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
+                        if (
+                            not self._client.options.retry_reads
+                            or not always_retryable
+                            and (
+                                self._is_not_eligible_for_retry()
+                                or (
+                                    isinstance(exc, OperationFailure)
+                                    and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
+                                )
                             )
                         ):
                             raise
@@ -2841,7 +2858,11 @@ class _ClientConnectionRetryable(Generic[T]):
                     retryable_write_label = exc_to_check.has_error_label("RetryableWriteError")
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                     always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
-                    if not self._retryable and not always_retryable:
+                    if (
+                        not self._client.options.retry_writes
+                        or not self._retryable
+                        and not always_retryable
+                    ):
                         raise
                     if retryable_write_label or always_retryable:
                         assert self._session

@@ -1,0 +1,281 @@
+{
+  "description": "tests that runCommand only retries when retryReads=true and retryWrites=true",
+  "schemaVersion": "1.3",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4",
+      "topologies": [
+        "replicaset",
+        "sharded",
+        "load-balanced"
+      ]
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "client_defaults",
+        "useMultipleMongoses": false,
+        "observeEvents": [
+          "commandStartedEvent",
+          "commandSucceededEvent",
+          "commandFailedEvent"
+        ]
+      }
+    },
+    {
+      "database": {
+        "id": "database_defaults",
+        "client": "client_defaults",
+        "databaseName": "backpressure-runCommand-requirements-db"
+      }
+    },
+    {
+      "client": {
+        "id": "client_retryReads_false",
+        "useMultipleMongoses": false,
+        "observeEvents": [
+          "commandStartedEvent",
+          "commandSucceededEvent",
+          "commandFailedEvent"
+        ],
+        "uriOptions": {
+          "retryReads": false
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database_retryReads_false",
+        "client": "client_retryReads_false",
+        "databaseName": "backpressure-runCommand-requirements-db"
+      }
+    },
+    {
+      "collection": {
+        "id": "retryable-reads-tests",
+        "database": "database_retryReads_false",
+        "collectionName": "coll_retryReads_false"
+      }
+    },
+    {
+      "client": {
+        "id": "client_retryWrites_false",
+        "useMultipleMongoses": false,
+        "observeEvents": [
+          "commandStartedEvent",
+          "commandSucceededEvent",
+          "commandFailedEvent"
+        ],
+        "uriOptions": {
+          "retryWrites": false
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database_retryWrites_false",
+        "client": "client_retryWrites_false",
+        "databaseName": "backpressure-runCommand-requirements-db"
+      }
+    },
+    {
+      "collection": {
+        "id": "retryable-writes-tests",
+        "database": "database_retryWrites_false",
+        "collectionName": "coll_retryWrites_false"
+      }
+    },
+    {
+      "client": {
+        "id": "internal_client",
+        "useMultipleMongoses": false
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "database.runCommand retries with defaults (retryReads=true and retryWrites=true)",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "internal_client",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "ping"
+                ],
+                "errorLabels": [
+                  "RetryableError",
+                  "SystemOverloadedError"
+                ],
+                "errorCode": 2
+              }
+            }
+          }
+        },
+        {
+          "name": "runCommand",
+          "object": "database_defaults",
+          "arguments": {
+            "command": {
+              "ping": 1
+            },
+            "commandName": "ping"
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client_defaults",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "ping"
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "ping"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "commandName": "ping"
+              }
+            },
+            {
+              "commandSucceededEvent": {
+                "commandName": "ping"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "database.runCommand does not retry when retryReads=false",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "internal_client",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "ping"
+                ],
+                "errorLabels": [
+                  "RetryableError",
+                  "SystemOverloadedError"
+                ],
+                "errorCode": 2
+              }
+            }
+          }
+        },
+        {
+          "name": "runCommand",
+          "object": "database_retryReads_false",
+          "arguments": {
+            "command": {
+              "ping": 1
+            },
+            "commandName": "ping"
+          },
+          "expectError": {
+            "isError": true,
+            "isClientError": false
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client_retryReads_false",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "ping"
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "ping"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "database.runCommand does not retry when retryWrites=false",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "internal_client",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "ping"
+                ],
+                "errorLabels": [
+                  "RetryableError",
+                  "SystemOverloadedError"
+                ],
+                "errorCode": 2
+              }
+            }
+          }
+        },
+        {
+          "name": "runCommand",
+          "object": "database_retryWrites_false",
+          "arguments": {
+            "command": {
+              "ping": 1
+            },
+            "commandName": "ping"
+          },
+          "expectError": {
+            "isError": true,
+            "isClientError": false
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client_retryWrites_false",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "commandName": "ping"
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "ping"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
