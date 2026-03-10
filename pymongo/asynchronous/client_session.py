@@ -163,7 +163,9 @@ from pymongo.asynchronous.cursor_base import _ConnectionManager
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
+    ExecutionTimeout,
     InvalidOperation,
+    NetworkTimeout,
     OperationFailure,
     PyMongoError,
     WTimeoutError,
@@ -480,14 +482,20 @@ _BACKOFF_MAX = 0.500  # 500ms max backoff
 _BACKOFF_INITIAL = 0.005  # 5ms initial backoff
 
 
-def _within_time_limit(start_time: float) -> bool:
+def _within_time_limit(start_time: float, backoff: float = 0) -> bool:
     """Are we within the with_transaction retry limit?"""
-    return time.monotonic() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
+    remaining = _csot.remaining()
+    if remaining is not None and remaining <= 0:
+        return False
+    return time.monotonic() + backoff - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
 
 
-def _would_exceed_time_limit(start_time: float, backoff: float) -> bool:
-    """Is the backoff within the with_transaction retry limit?"""
-    return time.monotonic() + backoff - start_time >= _WITH_TRANSACTION_RETRY_TIME_LIMIT
+def _make_timeout_error(error: BaseException) -> PyMongoError:
+    """Convert error to a NetworkTimeout or ExecutionTimeout as appropriate."""
+    if _csot.remaining() is not None:
+        return ExecutionTimeout(str(error), 50, {"ok": 0, "errmsg": str(error), "code": 50})
+    else:
+        return NetworkTimeout(str(error))
 
 
 _T = TypeVar("_T")
@@ -722,9 +730,9 @@ class AsyncClientSession:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
                 backoff = jitter * min(_BACKOFF_INITIAL * (1.5**retry), _BACKOFF_MAX)
-                if _would_exceed_time_limit(start_time, backoff):
+                if not _within_time_limit(start_time, backoff):
                     assert last_error is not None
-                    raise last_error
+                    raise _make_timeout_error(last_error) from last_error
                 await asyncio.sleep(backoff)
             retry += 1
             await self.start_transaction(
@@ -737,13 +745,13 @@ class AsyncClientSession:
                 last_error = exc
                 if self.in_transaction:
                     await self.abort_transaction()
-                if (
-                    isinstance(exc, PyMongoError)
-                    and exc.has_error_label("TransientTransactionError")
-                    and _within_time_limit(start_time)
+                if isinstance(exc, PyMongoError) and exc.has_error_label(
+                    "TransientTransactionError"
                 ):
-                    # Retry the entire transaction.
-                    continue
+                    if _within_time_limit(start_time):
+                        # Retry the entire transaction.
+                        continue
+                    raise _make_timeout_error(last_error) from exc
                 raise
 
             if not self.in_transaction:
@@ -754,17 +762,16 @@ class AsyncClientSession:
                 try:
                     await self.commit_transaction()
                 except PyMongoError as exc:
-                    if (
-                        exc.has_error_label("UnknownTransactionCommitResult")
-                        and _within_time_limit(start_time)
-                        and not _max_time_expired_error(exc)
-                    ):
+                    last_error = exc
+                    if not _within_time_limit(start_time):
+                        raise _make_timeout_error(last_error) from exc
+                    if exc.has_error_label(
+                        "UnknownTransactionCommitResult"
+                    ) and not _max_time_expired_error(exc):
                         # Retry the commit.
                         continue
 
-                    if exc.has_error_label("TransientTransactionError") and _within_time_limit(
-                        start_time
-                    ):
+                    if exc.has_error_label("TransientTransactionError"):
                         # Retry the entire transaction.
                         break
                     raise
