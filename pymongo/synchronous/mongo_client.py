@@ -2006,6 +2006,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         retryable: bool = False,
         operation_id: Optional[int] = None,
         is_run_command: bool = False,
+        is_aggregate_write: bool = False,
     ) -> T:
         """Internal retryable helper for all client transactions.
 
@@ -2018,6 +2019,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param read_pref: Topology of read operation, defaults to None
         :param retryable: If the operation should be retried once, defaults to None
         :param is_run_command: If this is a runCommand operation, defaults to False
+        :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
 
         :return: Output of the calling func()
         """
@@ -2033,6 +2035,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             retryable=retryable,
             operation_id=operation_id,
             is_run_command=is_run_command,
+            is_aggregate_write=is_aggregate_write,
         ).run()
 
     def _retryable_read(
@@ -2045,6 +2048,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         retryable: bool = True,
         operation_id: Optional[int] = None,
         is_run_command: bool = False,
+        is_aggregate_write: bool = False,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -2061,6 +2065,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param retryable: if we should attempt retries
             (may not always be supported even if supplied), defaults to False
         :param is_run_command: If this is a runCommand operation, defaults to False.
+        :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2080,6 +2085,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 retryable=retryable,
                 operation_id=operation_id,
                 is_run_command=is_run_command,
+                is_aggregate_write=is_aggregate_write,
             )
 
     def _retryable_write(
@@ -2744,6 +2750,7 @@ class _ClientConnectionRetryable(Generic[T]):
         retryable: bool = False,
         operation_id: Optional[int] = None,
         is_run_command: bool = False,
+        is_aggregate_write: bool = False,
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
@@ -2767,6 +2774,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._operation_id = operation_id
         self._attempt_number = 0
         self._is_run_command = is_run_command
+        self._is_aggregate_write = is_aggregate_write
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2812,6 +2820,9 @@ class _ClientConnectionRetryable(Generic[T]):
                     self._client.options.retry_reads and self._client.options.retry_writes
                 ):
                     raise
+                if self._is_aggregate_write and not self._client.options.retry_writes:
+                    raise
+
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
@@ -2860,9 +2871,9 @@ class _ClientConnectionRetryable(Generic[T]):
                     always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
 
                     # Always retry abortTransaction and commitTransaction up to once
-                    if not (self._client.options.retry_writes and self._retryable) and (
-                        not always_retryable
-                        and self._operation not in ["abortTransaction", "commitTransaction"]
+                    if self._operation not in ["abortTransaction", "commitTransaction"] and (
+                        not self._client.options.retry_writes
+                        or not (self._retryable or always_retryable)
                     ):
                         raise
                     if retryable_write_label or always_retryable:

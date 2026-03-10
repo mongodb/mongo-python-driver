@@ -2939,6 +2939,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             session,
             retryable=not cmd._performs_write,
             operation=_Op.AGGREGATE,
+            is_aggregate_write=cmd._performs_write,
         )
 
     def aggregate(
