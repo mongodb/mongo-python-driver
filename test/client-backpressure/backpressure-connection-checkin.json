@@ -17,8 +17,7 @@
         "id": "client",
         "useMultipleMongoses": false,
         "observeEvents": [
-          "commandStartedEvent",
-          "commandFailedEvent",
+          "connectionCheckedOutEvent",
           "connectionCheckedInEvent"
         ],
         "ignoreCommandMonitoringEvents": [
@@ -99,82 +98,40 @@
       "expectEvents": [
         {
           "client": "client",
-          "eventType": "all",
+          "eventType": "cmap",
           "events": [
             {
-              "commandStartedEvent": {
-                "commandName": "find"
-              }
-            },
-            {
-              "commandFailedEvent": {
-                "commandName": "find"
-              }
+              "connectionCheckedOutEvent": {}
             },
             {
               "connectionCheckedInEvent": {}
             },
             {
-              "commandStartedEvent": {
-                "commandName": "find"
-              }
-            },
-            {
-              "commandFailedEvent": {
-                "commandName": "find"
-              }
+              "connectionCheckedOutEvent": {}
             },
             {
               "connectionCheckedInEvent": {}
             },
             {
-              "commandStartedEvent": {
-                "commandName": "find"
-              }
-            },
-            {
-              "commandFailedEvent": {
-                "commandName": "find"
-              }
+              "connectionCheckedOutEvent": {}
             },
             {
               "connectionCheckedInEvent": {}
             },
             {
-              "commandStartedEvent": {
-                "commandName": "find"
-              }
-            },
-            {
-              "commandFailedEvent": {
-                "commandName": "find"
-              }
+              "connectionCheckedOutEvent": {}
             },
             {
               "connectionCheckedInEvent": {}
             },
             {
-              "commandStartedEvent": {
-                "commandName": "find"
-              }
-            },
-            {
-              "commandFailedEvent": {
-                "commandName": "find"
-              }
+              "connectionCheckedOutEvent": {}
             },
             {
               "connectionCheckedInEvent": {}
             },
             {
-              "commandStartedEvent": {
-                "commandName": "find"
-              }
-            },
-            {
-              "commandFailedEvent": {
-                "commandName": "find"
-              }
+              "connectionCheckedOutEvent": {}
             },
             {
               "connectionCheckedInEvent": {}
