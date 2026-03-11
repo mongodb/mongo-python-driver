@@ -82,6 +82,35 @@ teardown-tests:
 integration-tests:
     bash integration_tests/run.sh
 
+[group('test')]
+test-coverage *args="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -n "${USE_ACTIVE_VENV:-}" ]; then
+        # When USE_ACTIVE_VENV is set, run coverage directly in the active venv
+        uv run --active --extra test --group coverage python -m coverage run -m pytest {{args}}
+        uv run --active --group coverage python -m coverage report
+    else
+        # Otherwise use the standard Evergreen workflow
+        just setup-tests --cov
+        just run-tests {{args}}
+        just coverage-report
+    fi
+
+[group('coverage')]
+coverage-report:
+    uv tool run --with "coverage[toml]" coverage report
+
+[group('coverage')]
+coverage-html:
+    uv tool run --with "coverage[toml]" coverage html
+    @echo "Coverage report generated in htmlcov/index.html"
+
+[group('coverage')]
+coverage-xml:
+    uv tool run --with "coverage[toml]" coverage xml
+    @echo "Coverage report generated in coverage.xml"
+
 [group('server')]
 run-server *args="":
     bash .evergreen/scripts/run-server.sh {{args}}
