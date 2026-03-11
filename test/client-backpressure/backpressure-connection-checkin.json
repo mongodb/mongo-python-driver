@@ -19,9 +19,6 @@
         "observeEvents": [
           "connectionCheckedOutEvent",
           "connectionCheckedInEvent"
-        ],
-        "ignoreCommandMonitoringEvents": [
-          "killCursors"
         ]
       }
     },
