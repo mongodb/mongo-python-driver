@@ -57,7 +57,9 @@ lint-manual *args="": && resync
 
 [group('test')]
 test *args="-v --durations=5 --maxfail=10": && resync
-    uv run --extra test python -m pytest {{args}}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    uv run ${USE_ACTIVE_VENV:+--active} --extra test python -m pytest {{args}}
 
 [group('test')]
 test-numpy *args="": && resync
