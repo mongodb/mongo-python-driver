@@ -84,18 +84,9 @@ integration-tests:
 
 [group('test')]
 test-coverage *args="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [ -n "${USE_ACTIVE_VENV:-}" ]; then
-        # When USE_ACTIVE_VENV is set, run coverage directly in the active venv
-        uv run --active --extra test --group coverage python -m coverage run -m pytest {{args}}
-        uv run --active --group coverage python -m coverage report
-    else
-        # Otherwise use the standard Evergreen workflow
-        just setup-tests --cov
-        just run-tests {{args}}
-        just coverage-report
-    fi
+    just setup-tests --cov
+    just run-tests {{args}}
+    just coverage-report
 
 [group('coverage')]
 coverage-report:
