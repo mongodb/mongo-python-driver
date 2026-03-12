@@ -227,7 +227,7 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
         self.listener.reset()
         self.app_name = self.__class__.__name__.lower()
         self.client = await self.async_rs_or_single_client(
-            event_listeners=[self.listener], retryWrites=False, appName=self.app_name
+            event_listeners=[self.listener], appName=self.app_name
         )
 
     @patch("random.random")
