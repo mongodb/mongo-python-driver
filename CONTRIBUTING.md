@@ -205,6 +205,7 @@ the pages will re-render and the browser will automatically refresh.
     and the `<class_name>` to test a full module. For example:
     `just test test/test_change_stream.py::TestUnifiedChangeStreamsErrors::test_change_stream_errors_on_ElectionInProgress`.
 -   Use the `-k` argument to select tests by pattern.
+-   Run `just test-coverage` to run tests with coverage and display a report. After running tests with coverage, use `just coverage-html` to generate an HTML report in `htmlcov/index.html`.
 
 
 ## Running tests that require secrets, services, or other configuration

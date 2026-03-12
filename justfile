@@ -82,6 +82,25 @@ teardown-tests:
 integration-tests:
     bash integration_tests/run.sh
 
+[group('test')]
+test-coverage *args="":
+    just setup-tests --cov
+    just run-tests {{args}}
+
+[group('coverage')]
+coverage-report:
+    uv tool run --with "coverage[toml]" coverage report
+
+[group('coverage')]
+coverage-html:
+    uv tool run --with "coverage[toml]" coverage html
+    @echo "Coverage report generated in htmlcov/index.html"
+
+[group('coverage')]
+coverage-xml:
+    uv tool run --with "coverage[toml]" coverage xml
+    @echo "Coverage report generated in coverage.xml"
+
 [group('server')]
 run-server *args="":
     bash .evergreen/scripts/run-server.sh {{args}}
