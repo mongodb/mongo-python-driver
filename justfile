@@ -86,7 +86,6 @@ integration-tests:
 test-coverage *args="":
     just setup-tests --cov
     just run-tests {{args}}
-    just coverage-report
 
 [group('coverage')]
 coverage-report:
