@@ -1,6 +1,15 @@
 Changelog
 =========
 
+Changes in Version 4.17.0 (2026/XX/XX)
+--------------------------------------
+
+PyMongo 4.17 brings a number of changes including:
+
+- Added the :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.bind` and :meth:`~pymongo.client_session.ClientSession.bind` methods
+  that allow users to bind a session to all database operations within the scope of a context manager instead of having to explicitly pass the session to each individual operation.
+  See <PLACEHOLDER> for examples and more information.
+
 Changes in Version 4.16.0 (2026/01/07)
 --------------------------------------
 

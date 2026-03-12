@@ -140,6 +140,7 @@ import random
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
+from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -182,6 +183,28 @@ if TYPE_CHECKING:
     from pymongo.typings import ClusterTime, _Address
 
 _IS_SYNC = True
+
+_SESSION: ContextVar[Optional[ClientSession]] = ContextVar("SESSION", default=None)
+
+
+class _BoundSessionContext:
+    """Context manager returned by ClientSession.bind() that manages bound state."""
+
+    def __init__(self, session: ClientSession, end_session: bool) -> None:
+        self._session = session
+        self._session_token: Optional[Token[ClientSession]] = None
+        self._end_session = end_session
+
+    def __enter__(self) -> ClientSession:
+        self._session_token = _SESSION.set(self._session)  # type: ignore[assignment]
+        return self._session
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if self._session_token:
+            _SESSION.reset(self._session_token)  # type: ignore[arg-type]
+            self._session_token = None
+        if self._end_session:
+            self._session.end_session()
 
 
 class SessionOptions:
@@ -565,6 +588,24 @@ class ClientSession:
     def _check_ended(self) -> None:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
+
+    def bind(self, end_session: bool = True) -> _BoundSessionContext:
+        """Bind this session so it is implicitly passed to all database operations within the returned context.
+
+        .. code-block:: python
+
+           with client.start_session() as s:
+               with s.bind():
+                   # session=s is passed implicitly
+                   client.db.collection.insert_one({"x": 1})
+
+        :param end_session: Whether to end the session on exiting the returned context. Defaults to True.
+            If set to False, :meth:`~pymongo.client_session.ClientSession.end_session()` must be called
+            once the session is no longer used.
+
+        .. versionadded:: 4.17
+        """
+        return _BoundSessionContext(self, end_session)
 
     def __enter__(self) -> ClientSession:
         return self

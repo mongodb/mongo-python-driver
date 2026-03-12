@@ -109,7 +109,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous import client_session, database, uri_parser
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
-from pymongo.synchronous.client_session import _EmptyServerSession
+from pymongo.synchronous.client_session import _SESSION, _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.helpers import (
     _RetryPolicy,
@@ -1426,7 +1426,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
     def _ensure_session(self, session: Optional[ClientSession] = None) -> Optional[ClientSession]:
-        """If provided session is None, lend a temporary session."""
+        """If provided session and bound session are None, lend a temporary session."""
+        session = session or self._get_bound_session()
         if session:
             return session
 
@@ -2295,11 +2296,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self, session: Optional[client_session.ClientSession]
     ) -> Generator[Optional[client_session.ClientSession], None]:
         """If provided session is None, lend a temporary session."""
-        if session is not None:
-            if not isinstance(session, client_session.ClientSession):
-                raise ValueError(
-                    f"'session' argument must be a ClientSession or None, not {type(session)}"
-                )
+        if session is not None and not isinstance(session, client_session.ClientSession):
+            raise ValueError(
+                f"'session' argument must be a ClientSession or None, not {type(session)}"
+            )
+
+        # Check for a bound session. If one exists, treat it as an explicitly passed session.
+        session = session or self._get_bound_session()
+        if session:
             # Don't call end_session.
             yield session
             return
@@ -2326,6 +2330,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._topology.receive_cluster_time(reply.get("$clusterTime"))
         if session is not None:
             session._process_response(reply)
+
+    def _get_bound_session(self) -> Optional[ClientSession]:
+        bound_session = _SESSION.get()
+        if bound_session:
+            if bound_session.client is self:
+                return bound_session
+            else:
+                raise InvalidOperation(
+                    "Only the client that created the bound session can perform operations within its context block. See <PLACEHOLDER> for more information."
+                )
+        else:
+            return None
 
     def server_info(self, session: Optional[client_session.ClientSession] = None) -> dict[str, Any]:
         """Get information about the MongoDB server we're connected to.
@@ -2904,7 +2920,11 @@ class _ClientConnectionRetryable(Generic[T]):
                             transaction.set_starting()
                         transaction.attempt = 0
 
-                if self._server is not None:
+                if (
+                    self._server is not None
+                    and self._client.topology_description.topology_type_name == "Sharded"
+                    or exc.has_error_label("SystemOverloadedError")
+                ):
                     self._deprioritized_servers.append(self._server)
 
                 self._always_retryable = always_retryable

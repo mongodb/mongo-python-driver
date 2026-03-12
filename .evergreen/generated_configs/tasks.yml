@@ -75,7 +75,7 @@ tasks:
           SUB_TEST_NAME: session-creds
           TOOLCHAIN_VERSION: 3.14t
     tags: [auth-aws, auth-aws-session-creds, free-threaded]
-  - name: test-auth-aws-rapid-web-identity-python3.14
+  - name: test-auth-aws-rapid-web-identity-python3.14-cov
     commands:
       - func: run server
         vars:
@@ -87,7 +87,8 @@ tasks:
           TEST_NAME: auth_aws
           SUB_TEST_NAME: web-identity
           TOOLCHAIN_VERSION: "3.14"
-    tags: [auth-aws, auth-aws-web-identity]
+          COVERAGE: "1"
+    tags: [auth-aws, auth-aws-web-identity, pr]
   - name: test-auth-aws-rapid-web-identity-session-name-python3.14
     commands:
       - func: run server
@@ -904,7 +905,7 @@ tasks:
       - ocsp-ecdsa
       - rapid
       - ocsp-staple
-  - name: test-ocsp-ecdsa-valid-cert-server-staples-latest-python3.14
+  - name: test-ocsp-ecdsa-valid-cert-server-staples-latest-python3.14-cov
     commands:
       - func: run tests
         vars:
@@ -913,11 +914,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
+          COVERAGE: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
       - latest
       - ocsp-staple
+      - pr
   - name: test-ocsp-ecdsa-invalid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
       - func: run tests
@@ -1928,7 +1931,7 @@ tasks:
       - ocsp-rsa
       - rapid
       - ocsp-staple
-  - name: test-ocsp-rsa-valid-cert-server-staples-latest-python3.14
+  - name: test-ocsp-rsa-valid-cert-server-staples-latest-python3.14-cov
     commands:
       - func: run tests
         vars:
@@ -1937,11 +1940,13 @@ tasks:
           TEST_NAME: ocsp
           TOOLCHAIN_VERSION: "3.14"
           VERSION: latest
+          COVERAGE: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - latest
       - ocsp-staple
+      - pr
   - name: test-ocsp-rsa-invalid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
       - func: run tests
@@ -2615,20 +2620,18 @@ tasks:
       - replica_set-auth-nossl
       - async
       - free-threaded
-  - name: test-server-version-python3.13-sync-auth-nossl-replica-set-cov
+  - name: test-server-version-python3.13-sync-auth-nossl-replica-set
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: nossl
           TOPOLOGY: replica_set
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: nossl
           TOPOLOGY: replica_set
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_sync
     tags:
@@ -2636,20 +2639,18 @@ tasks:
       - python-3.13
       - replica_set-auth-nossl
       - sync
-  - name: test-server-version-python3.12-async-auth-ssl-replica-set-cov
+  - name: test-server-version-python3.12-async-auth-ssl-replica-set
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: replica_set
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: replica_set
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
@@ -2657,20 +2658,18 @@ tasks:
       - python-3.12
       - replica_set-auth-ssl
       - async
-  - name: test-server-version-python3.11-sync-auth-ssl-replica-set-cov
+  - name: test-server-version-python3.11-sync-auth-ssl-replica-set
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: replica_set
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: replica_set
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
@@ -2743,20 +2742,18 @@ tasks:
       - python-pypy3.11
       - replica_set-noauth-ssl
       - async
-  - name: test-server-version-python3.14-sync-noauth-ssl-replica-set-cov
+  - name: test-server-version-python3.14-sync-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_sync
     tags:
@@ -2764,20 +2761,18 @@ tasks:
       - python-3.14
       - replica_set-noauth-ssl
       - sync
-  - name: test-server-version-python3.14-async-auth-nossl-sharded-cluster-cov
+  - name: test-server-version-python3.14-async-auth-nossl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: nossl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: nossl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_async
     tags:
@@ -2829,20 +2824,18 @@ tasks:
       - sharded_cluster-auth-ssl
       - async
       - pr
-  - name: test-server-version-python3.11-async-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.11-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_async
     tags:
@@ -2850,20 +2843,18 @@ tasks:
       - python-3.11
       - sharded_cluster-auth-ssl
       - async
-  - name: test-server-version-python3.12-async-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.12-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
@@ -2871,20 +2862,18 @@ tasks:
       - python-3.12
       - sharded_cluster-auth-ssl
       - async
-  - name: test-server-version-python3.13-async-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.13-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_async
     tags:
@@ -2892,20 +2881,18 @@ tasks:
       - python-3.13
       - sharded_cluster-auth-ssl
       - async
-  - name: test-server-version-python3.14-async-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.14-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_async
     tags:
@@ -2976,20 +2963,18 @@ tasks:
       - sharded_cluster-auth-ssl
       - sync
       - pr
-  - name: test-server-version-python3.11-sync-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.11-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
@@ -2997,20 +2982,18 @@ tasks:
       - python-3.11
       - sharded_cluster-auth-ssl
       - sync
-  - name: test-server-version-python3.12-sync-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.12-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_sync
     tags:
@@ -3018,20 +3001,18 @@ tasks:
       - python-3.12
       - sharded_cluster-auth-ssl
       - sync
-  - name: test-server-version-python3.13-sync-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.13-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_sync
     tags:
@@ -3039,20 +3020,18 @@ tasks:
       - python-3.13
       - sharded_cluster-auth-ssl
       - sync
-  - name: test-server-version-python3.14-sync-auth-ssl-sharded-cluster-cov
+  - name: test-server-version-python3.14-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_sync
     tags:
@@ -3099,20 +3078,18 @@ tasks:
       - python-pypy3.11
       - sharded_cluster-auth-ssl
       - sync
-  - name: test-server-version-python3.12-async-noauth-nossl-sharded-cluster-cov
+  - name: test-server-version-python3.12-async-noauth-nossl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
@@ -3120,20 +3097,18 @@ tasks:
       - python-3.12
       - sharded_cluster-noauth-nossl
       - async
-  - name: test-server-version-python3.11-sync-noauth-nossl-sharded-cluster-cov
+  - name: test-server-version-python3.11-sync-noauth-nossl-sharded-cluster
     commands:
       - func: run server
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: sharded_cluster
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_sync
     tags:
@@ -3141,7 +3116,7 @@ tasks:
       - python-3.11
       - sharded_cluster-noauth-nossl
       - sync
-  - name: test-server-version-python3.10-async-noauth-ssl-sharded-cluster-min-deps-cov
+  - name: test-server-version-python3.10-async-noauth-ssl-sharded-cluster-min-deps
     commands:
       - func: run server
         vars:
@@ -3149,14 +3124,12 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: sharded_cluster
           TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_async
     tags:
@@ -3183,20 +3156,18 @@ tasks:
       - python-pypy3.11
       - sharded_cluster-noauth-ssl
       - sync
-  - name: test-server-version-python3.13-async-auth-nossl-standalone-cov
+  - name: test-server-version-python3.13-async-auth-nossl-standalone
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: nossl
           TOPOLOGY: standalone
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: nossl
           TOPOLOGY: standalone
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_async
     tags:
@@ -3204,20 +3175,18 @@ tasks:
       - python-3.13
       - standalone-auth-nossl
       - async
-  - name: test-server-version-python3.12-sync-auth-nossl-standalone-cov
+  - name: test-server-version-python3.12-sync-auth-nossl-standalone
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: nossl
           TOPOLOGY: standalone
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: nossl
           TOPOLOGY: standalone
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_sync
     tags:
@@ -3225,20 +3194,18 @@ tasks:
       - python-3.12
       - standalone-auth-nossl
       - sync
-  - name: test-server-version-python3.11-async-auth-ssl-standalone-cov
+  - name: test-server-version-python3.11-async-auth-ssl-standalone
     commands:
       - func: run server
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: standalone
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: standalone
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_async
     tags:
@@ -3246,7 +3213,7 @@ tasks:
       - python-3.11
       - standalone-auth-ssl
       - async
-  - name: test-server-version-python3.10-sync-auth-ssl-standalone-min-deps-cov
+  - name: test-server-version-python3.10-sync-auth-ssl-standalone-min-deps
     commands:
       - func: run server
         vars:
@@ -3254,14 +3221,12 @@ tasks:
           SSL: ssl
           TOPOLOGY: standalone
           TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: standalone
           TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.10"
           TEST_NAME: default_sync
     tags:
@@ -3293,18 +3258,20 @@ tasks:
       - standalone-noauth-nossl
       - async
       - pr
-  - name: test-server-version-pypy3.11-sync-noauth-nossl-standalone
+  - name: test-server-version-pypy3.11-sync-noauth-nossl-standalone-cov
     commands:
       - func: run server
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
+          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
+          COVERAGE: "1"
           TOOLCHAIN_VERSION: pypy3.11
           TEST_NAME: default_sync
     tags:
@@ -3313,20 +3280,18 @@ tasks:
       - standalone-noauth-nossl
       - sync
       - pr
-  - name: test-server-version-python3.14-async-noauth-ssl-standalone-cov
+  - name: test-server-version-python3.14-async-noauth-ssl-standalone
     commands:
       - func: run server
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: standalone
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: standalone
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_async
     tags:
@@ -4082,7 +4047,7 @@ tasks:
       - standalone-noauth-nossl
       - async
       - pypy
-  - name: test-standard-latest-python3.12-async-noauth-ssl-replica-set
+  - name: test-standard-latest-python3.12-async-noauth-ssl-replica-set-cov
     commands:
       - func: run server
         vars:
@@ -4090,12 +4055,14 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
+          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
+          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.12"
           TEST_NAME: default_async
     tags:
@@ -4128,7 +4095,7 @@ tasks:
       - replica_set-noauth-ssl
       - async
       - pypy
-  - name: test-standard-latest-python3.13-async-auth-ssl-sharded-cluster
+  - name: test-standard-latest-python3.13-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -4136,12 +4103,14 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: latest
+          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: latest
+          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.13"
           TEST_NAME: default_async
     tags:
@@ -4151,7 +4120,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - async
       - pr
-  - name: test-standard-latest-python3.11-async-noauth-nossl-standalone
+  - name: test-standard-latest-python3.11-async-noauth-nossl-standalone-cov
     commands:
       - func: run server
         vars:
@@ -4159,12 +4128,14 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: latest
+          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: latest
+          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.11"
           TEST_NAME: default_async
     tags:
@@ -4174,7 +4145,7 @@ tasks:
       - standalone-noauth-nossl
       - async
       - pr
-  - name: test-standard-latest-python3.14-async-noauth-nossl-standalone
+  - name: test-standard-latest-python3.14-async-noauth-nossl-standalone-cov
     commands:
       - func: run server
         vars:
@@ -4182,12 +4153,14 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: latest
+          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: latest
+          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.14"
           TEST_NAME: default_async
     tags:
@@ -4829,7 +4802,7 @@ tasks:
       - python-3.13
       - standalone-noauth-nossl
       - noauth
-  - name: test-non-standard-latest-python3.14t-noauth-ssl-replica-set
+  - name: test-non-standard-latest-python3.14t-noauth-ssl-replica-set-cov
     commands:
       - func: run server
         vars:
@@ -4837,12 +4810,14 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
+          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
+          COVERAGE: "1"
           TOOLCHAIN_VERSION: 3.14t
     tags:
       - test-non-standard
@@ -4874,7 +4849,7 @@ tasks:
       - replica_set-noauth-ssl
       - noauth
       - pypy
-  - name: test-non-standard-latest-python3.14-auth-ssl-sharded-cluster
+  - name: test-non-standard-latest-python3.14-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -4882,12 +4857,14 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: latest
+          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: latest
+          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.14"
     tags:
       - test-non-standard
@@ -4896,7 +4873,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - pr
-  - name: test-non-standard-latest-python3.13-noauth-nossl-standalone
+  - name: test-non-standard-latest-python3.13-noauth-nossl-standalone-cov
     commands:
       - func: run server
         vars:
@@ -4904,12 +4881,14 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: latest
+          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: latest
+          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.13"
     tags:
       - test-non-standard
@@ -5007,7 +4986,7 @@ tasks:
       - pypy
 
   # Test numpy tests
-  - name: test-numpy-python3.10
+  - name: test-numpy-python3.10-python3.10
     commands:
       - func: test numpy
         vars:
@@ -5017,16 +4996,18 @@ tasks:
       - vector
       - python-3.10
       - test-numpy
-  - name: test-numpy-python3.14
+  - name: test-numpy-python3.14-python3.14-cov
     commands:
       - func: test numpy
         vars:
           TOOLCHAIN_VERSION: "3.14"
+          COVERAGE: "1"
     tags:
       - binary
       - vector
       - python-3.14
       - test-numpy
+      - pr
 
   # Test standard auth tests
   - name: test-standard-auth-v4.2-python3.10-auth-ssl-sharded-cluster-min-deps
@@ -5290,7 +5271,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - pypy
-  - name: test-standard-auth-latest-python3.11-auth-ssl-sharded-cluster
+  - name: test-standard-auth-latest-python3.11-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -5298,12 +5279,14 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: latest
+          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: auth
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: latest
+          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.11"
     tags:
       - test-standard-auth

@@ -66,7 +66,7 @@ from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
-from pymongo.asynchronous.client_session import _EmptyServerSession
+from pymongo.asynchronous.client_session import _SESSION, _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import (
     _RetryPolicy,
@@ -1428,7 +1428,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     def _ensure_session(
         self, session: Optional[AsyncClientSession] = None
     ) -> Optional[AsyncClientSession]:
-        """If provided session is None, lend a temporary session."""
+        """If provided session and bound session are None, lend a temporary session."""
+        session = session or self._get_bound_session()
         if session:
             return session
 
@@ -2299,11 +2300,14 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self, session: Optional[client_session.AsyncClientSession]
     ) -> AsyncGenerator[Optional[client_session.AsyncClientSession], None]:
         """If provided session is None, lend a temporary session."""
-        if session is not None:
-            if not isinstance(session, client_session.AsyncClientSession):
-                raise ValueError(
-                    f"'session' argument must be an AsyncClientSession or None, not {type(session)}"
-                )
+        if session is not None and not isinstance(session, client_session.AsyncClientSession):
+            raise ValueError(
+                f"'session' argument must be an AsyncClientSession or None, not {type(session)}"
+            )
+
+        # Check for a bound session. If one exists, treat it as an explicitly passed session.
+        session = session or self._get_bound_session()
+        if session:
             # Don't call end_session.
             yield session
             return
@@ -2332,6 +2336,18 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         await self._topology.receive_cluster_time(reply.get("$clusterTime"))
         if session is not None:
             session._process_response(reply)
+
+    def _get_bound_session(self) -> Optional[AsyncClientSession]:
+        bound_session = _SESSION.get()
+        if bound_session:
+            if bound_session.client is self:
+                return bound_session
+            else:
+                raise InvalidOperation(
+                    "Only the client that created the bound session can perform operations within its context block. See <PLACEHOLDER> for more information."
+                )
+        else:
+            return None
 
     async def server_info(
         self, session: Optional[client_session.AsyncClientSession] = None
@@ -2914,7 +2930,11 @@ class _ClientConnectionRetryable(Generic[T]):
                             transaction.set_starting()
                         transaction.attempt = 0
 
-                if self._server is not None:
+                if (
+                    self._server is not None
+                    and self._client.topology_description.topology_type_name == "Sharded"
+                    or exc.has_error_label("SystemOverloadedError")
+                ):
                     self._deprioritized_servers.append(self._server)
 
                 self._always_retryable = always_retryable
