@@ -96,20 +96,18 @@ class TestBackpressure(IntegrationTest):
 
     @client_context.require_failCommand_appName
     def test_retry_overload_error_insert_one(self):
-        self.db.t.insert_one({"x": 1})
-
         # Ensure command is retried on overload error.
         fail_many = mock_overload_error.copy()
         fail_many["mode"] = {"times": _MAX_RETRIES}
         with self.fail_point(fail_many):
-            self.db.t.find_one()
+            self.db.t.insert_one({"x": 1})
 
         # Ensure command stops retrying after _MAX_RETRIES.
         fail_too_many = mock_overload_error.copy()
         fail_too_many["mode"] = {"times": _MAX_RETRIES + 1}
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                self.db.t.find_one()
+                self.db.t.insert_one({"x": 1})
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
