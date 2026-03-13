@@ -235,6 +235,11 @@ class ClientOptions:
         self.__server_monitoring_mode = options.get(
             "servermonitoringmode", common.SERVER_MONITORING_MODE
         )
+        self.__adaptive_retries = (
+            options.get("adaptive_retries", common.ADAPTIVE_RETRIES)
+            if "adaptive_retries" in options
+            else options.get("adaptiveretries", common.ADAPTIVE_RETRIES)
+        )
 
     @property
     def _options(self) -> Mapping[str, Any]:
@@ -346,3 +351,11 @@ class ClientOptions:
         .. versionadded:: 4.5
         """
         return self.__server_monitoring_mode
+
+    @property
+    def adaptive_retries(self) -> bool:
+        """The configured adaptiveRetries option.
+
+        .. versionadded:: 4.XX
+        """
+        return self.__adaptive_retries

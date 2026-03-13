@@ -213,6 +213,7 @@ converted_tests = [
     "test_bulk.py",
     "test_change_stream.py",
     "test_client.py",
+    "test_client_backpressure.py",
     "test_client_bulk_write.py",
     "test_client_context.py",
     "test_client_metadata.py",
@@ -350,7 +351,7 @@ def translate_async_sleeps(lines: list[str]) -> list[str]:
     sleeps = [line for line in lines if "asyncio.sleep" in line]
 
     for line in sleeps:
-        res = re.search(r"asyncio.sleep\(([^()]*)\)", line)
+        res = re.search(r"asyncio\.sleep\(\s*(.*?)\)", line)
         if res:
             old = res[0]
             index = lines.index(line)
