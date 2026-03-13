@@ -85,49 +85,53 @@ likelihood for getting review sooner shoots up.
     -   `versionadded:: 3.11`
     -   `versionchanged:: 3.5`
 
-**Pull Request Template Breakdown**
+### AI-Generated Contributions Policy
 
--  **Github PR Title**
+#### Our Stance
 
-    -   The PR Title format should always be
-            `[JIRA-ID] : Jira Title or Blurb Summary`.
+We only accept pull requests that are authored and submitted by human contributors who fully understand the changes they are proposing. Pull requests that are not clearly owned and understood by a human contributor may be closed. **All contributions must be submitted, reviewed, and understood by human contributors.**
 
--  **JIRA LINK**
+##### Why This Policy Exists
 
--   Convenient link to the associated JIRA ticket.
+At MongoDB, we understand the power and prevalence of AI tools in software development. With that being said, many MongoDB libraries are foundational tools used in production systems worldwide. The nature of these libraries requires:
 
--   **Summary**
+- **Deep domain expertise**: MongoDB's wire protocol, BSON specification, connection pooling, authentication mechanisms, and concurrency patterns require an understanding that AI alone cannot substantiate.
 
-     -   Small blurb on why this is needed. The JIRA task should have
-            the more in-depth description, but this should still, at a
-            high level, give anyone looking an understanding of why the
-            PR has been checked in.
+- **Long-term maintainability**: Contributors need to be able to explain *why* code is written a certain way, explain design decisions, and be available to iterate on their contributions.
 
--    **Changes in this PR**
+- **Security responsibility**: Authentication, credential handling, and TLS implementation cannot be left to probabilistic code generation.
 
-     -   The explicit code changes that this PR is introducing. This
-            should be more specific than just the task name. (Unless the
-            task name is very clear).
+##### What This Means for Contributors
 
--   **Test Plan**
+**Required:**
 
-    -   Everything needs a test description. Describe what you did
-            to validate your changes actually worked; if you did
-            nothing, then document you did not test it. Aim to make
-            these steps reproducible by other engineers, specifically
-            with your primary reviewer in mind.
+- Full understanding of every line of code you submit
+- Ability to explain and defend your implementation choices
+- Willingness to iterate and maintain your contributions
 
--   **Screenshots**
+**Encouraged:**
 
-    -   Any images that provide more context to the PR. Usually,
-            these just coincide with the test plan.
+- Using AI assistants as learning tools to understand concepts
+- IDE autocomplete features that suggest standard patterns
+- AI help for brainstorming approaches (but write the code yourself)
+- Writing code using AI tools, reviewing each line and revising code as necessary.
 
--   **Callouts or follow-up items**
+**Not allowed:**
 
-    -   This is a good place for identifying "to-dos" that you've
-            placed in the code (Must have an accompanying JIRA Ticket).
-    -   Potential bugs that you are unsure how to test in the code.
-    -   Opinions you want to receive about your code.
+- Submitting PRs generated solely by AI tools
+- Copy-pasting AI-generated code without full understanding
+
+##### Disclosure
+
+If you used AI assistance in any way during your contribution, please disclose what the AI assistant was used for in your PR description. We would love to know what tools developers have found useful in iterating in their day to day.
+
+##### Questions?
+
+If you're unsure whether your contribution complies with this policy, please ask for guidance within the scope of the PR and clarify any uncertainty. We're happy to guide contributors toward successful contributions.
+
+---
+
+*This policy helps us maintain the reliability, security, and trustworthiness that production applications depend on. Thank you for understanding and for contributing thoughtfully to PyMongo.*
 
 ## Running Linters
 
