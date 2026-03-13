@@ -5,3 +5,4 @@
 .. automodule:: pymongo.asynchronous.command_cursor
    :synopsis: Tools for iterating over MongoDB command results
    :members:
+   :inherited-members:

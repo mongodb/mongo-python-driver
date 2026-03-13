@@ -104,7 +104,7 @@ class OIDCTestBase(AsyncPyMongoTestCase):
 
     @asynccontextmanager
     async def fail_point(self, command_args):
-        cmd_on = SON([("configureFailPoint", "failCommand")])
+        cmd_on = dict(configureFailPoint="failCommand", appName="auth_oidc")
         cmd_on.update(command_args)
         client = AsyncMongoClient(self.uri_admin)
         await client.admin.command(cmd_on)
@@ -112,7 +112,7 @@ class OIDCTestBase(AsyncPyMongoTestCase):
             yield
         finally:
             await client.admin.command(
-                "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
+                "configureFailPoint", cmd_on["configureFailPoint"], mode="off", appName="auth_oidc"
             )
             await client.close()
 

@@ -127,7 +127,7 @@ If you used AI assistance in any way during your contribution, please disclose w
 
 ##### Questions?
 
-If you're unsure whether your contribution complies with this policy, please ask in an issue before submitting a PR. We're happy to guide contributors toward successful contributions.
+If you're unsure whether your contribution complies with this policy, please ask for guidance within the scope of the PR and clarify any uncertainty. We're happy to guide contributors toward successful contributions.
 
 ---
 
@@ -201,7 +201,7 @@ the pages will re-render and the browser will automatically refresh.
     version of Python, set `UV_PYTHON` before running `just install`.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
-    [`run-orchestration.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-orchestration.sh).  Run `$DRIVERS_TOOLS/evergreen/run-orchestration.sh -h`
+    [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `$DRIVERS_TOOLS/.evergreen/run-mongodb.sh start -h`
     for a full list of options.
 -   Run `just test` or `pytest` to run all of the tests.
 -   Append `test/<mod_name>.py::<class_name>::<test_name>` to run
@@ -400,7 +400,7 @@ To run any of the test suites with minimum supported dependencies, pass `--test-
 
 - If adding new tests files that should only be run for that test suite, add a pytest marker to the file and add
   to the list of pytest markers in `pyproject.toml`.  Then add the test suite to the `TEST_SUITE_MAP` in `.evergreen/scripts/utils.py`.  If for some reason it is not a pytest-runnable test, add it to the list of `EXTRA_TESTS` instead.
-- If the test uses Atlas or otherwise doesn't use `run-orchestration.sh`, add it to the `NO_RUN_ORCHESTRATION` list in
+- If the test uses Atlas or otherwise doesn't use `run-mongodb.sh`, add it to the `NO_RUN_ORCHESTRATION` list in
   `.evergreen/scripts/utils.py`.
 - If there is something special required to run the local server or there is an extra flag that should always be set
   like `AUTH`, add that logic to `.evergreen/scripts/run_server.py`.

@@ -367,6 +367,8 @@ buildvariants:
     display_name: No C Ext RHEL8
     run_on:
       - rhel87-small
+    expansions:
+      NO_EXT: "1"
 
   # No server tests
   - name: no-server-rhel8
@@ -417,6 +419,8 @@ buildvariants:
     run_on:
       - ubuntu2204-small
     batchtime: 1440
+    expansions:
+      COVERAGE: "1"
     tags: [pr]
   - name: auth-oidc-macos
     tasks:

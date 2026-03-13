@@ -876,6 +876,8 @@ class TestViews(AsyncEncryptionIntegrationTest):
 
 
 class TestCorpus(AsyncEncryptionIntegrationTest):
+    # PYTHON-5708: Encryption tests sending large payloads fail on some mongocryptd versions.
+    @async_client_context.require_version_max(6, 99)
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     async def asyncSetUp(self):
         await super().asyncSetUp()
@@ -1052,6 +1054,8 @@ class TestBsonSizeBatches(AsyncEncryptionIntegrationTest):
     client_encrypted: AsyncMongoClient
     listener: OvertCommandListener
 
+    # PYTHON-5708: Encryption tests sending large payloads fail on some mongocryptd versions.
+    @async_client_context.require_version_max(6, 99)
     async def asyncSetUp(self):
         await super().asyncSetUp()
         db = async_client_context.client.db

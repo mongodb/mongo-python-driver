@@ -30,6 +30,7 @@ from unasync import Rule, unasync_files  # type: ignore[import-not-found]
 replacements = {
     "AsyncCollection": "Collection",
     "AsyncDatabase": "Database",
+    "_AsyncCursorBase": "_CursorBase",
     "AsyncCursor": "Cursor",
     "AsyncMongoClient": "MongoClient",
     "AsyncCommandCursor": "CommandCursor",

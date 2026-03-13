@@ -104,14 +104,16 @@ class OIDCTestBase(PyMongoTestCase):
 
     @contextmanager
     def fail_point(self, command_args):
-        cmd_on = SON([("configureFailPoint", "failCommand")])
+        cmd_on = dict(configureFailPoint="failCommand", appName="auth_oidc")
         cmd_on.update(command_args)
         client = MongoClient(self.uri_admin)
         client.admin.command(cmd_on)
         try:
             yield
         finally:
-            client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
+            client.admin.command(
+                "configureFailPoint", cmd_on["configureFailPoint"], mode="off", appName="auth_oidc"
+            )
             client.close()
 
 

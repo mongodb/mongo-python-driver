@@ -324,7 +324,8 @@ def handle_test_env() -> None:
         version = os.environ.get("VERSION", "latest")
         cmd = [
             "bash",
-            f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh",
+            f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh",
+            "start",
             "--ssl",
             "--version",
             version,
@@ -431,6 +432,9 @@ def handle_test_env() -> None:
         # We do not want the default client_context to be initialized.
         write_env("DISABLE_CONTEXT")
 
+    if test_name == "numpy":
+        UV_ARGS.append("--with numpy")
+
     if test_name == "perf":
         data_dir = ROOT / "specifications/source/benchmarking/data"
         if not data_dir.exists():
@@ -458,12 +462,14 @@ def handle_test_env() -> None:
         # Keep in sync with combine-coverage.sh.
         # coverage >=5 is needed for relative_files=true.
         UV_ARGS.append("--group coverage")
-        TEST_ARGS = f"{TEST_ARGS} --cov"
         write_env("COVERAGE")
 
     if opts.green_framework:
         framework = opts.green_framework or os.environ["GREEN_FRAMEWORK"]
         UV_ARGS.append(f"--group {framework}")
+        if framework == "gevent" and opts.test_min_deps:
+            # PYTHON-5729.  This can be removed when the min supported gevent is moved to 25.9.1.
+            UV_ARGS.append('--with "setuptools==81.0"')
 
     else:
         TEST_ARGS = f"-v --durations=5 {TEST_ARGS}"
