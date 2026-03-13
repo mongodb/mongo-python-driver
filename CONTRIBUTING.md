@@ -89,11 +89,11 @@ likelihood for getting review sooner shoots up.
 
 #### Our Stance
 
-We do not accept pull requests that are entirely understood by the contributor; as such we will close Pull Requests that are not cosigned by a human contributor. **All contributions must be submitted, reviewed, and understood by human contributors.**
+We only accept pull requests that are authored and submitted by human contributors who fully understand the changes they are proposing. Pull requests that are not clearly owned and understood by a human contributor may be closed. **All contributions must be submitted, reviewed, and understood by human contributors.**
 
 ##### Why This Policy Exists
 
-At MongoDB, we underestand the power and prevalence of AI tools in software development. With that being said, many MongoDB libraries are foundational tools used in production systems worldwide. The nature of these libraries requires:
+At MongoDB, we understand the power and prevalence of AI tools in software development. With that being said, many MongoDB libraries are foundational tools used in production systems worldwide. The nature of these libraries requires:
 
 - **Deep domain expertise**: MongoDB's wire protocol, BSON specification, connection pooling, authentication mechanisms, and concurrency patterns require an understanding that AI alone cannot substantiate.
 
