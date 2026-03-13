@@ -61,7 +61,7 @@ jobs:
 
       - name: Set up QEMU
         if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
         with:
           # setup-qemu-action by default uses `tonistiigi/binfmt:latest` image,
           # which is out of date. This causes seg faults during build.
@@ -92,7 +92,7 @@ jobs:
           # Free-threading builds:
           ls wheelhouse/*cp314t*.whl
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: wheel-${{ matrix.buildplat[1] }}
           path: ./wheelhouse/*.whl
@@ -125,7 +125,7 @@ jobs:
           cd ..
           python -c "from pymongo import has_c; assert has_c()"
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: "sdist"
           path: ./dist/*.tar.gz
@@ -142,7 +142,7 @@ jobs:
         run: |
           find . -mindepth 2 -type f -exec mv {} . \;
           find . -type d -empty -delete
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: all-dist-${{ github.run_id }}
           path: "./*"
