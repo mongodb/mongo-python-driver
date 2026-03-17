@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import copy
 import re
+import warnings
 from collections.abc import Mapping as _Mapping
 from typing import (
     Any,
@@ -99,13 +100,28 @@ class SON(Dict[_Key, _Value]):
         yield from self.__keys
 
     def has_key(self, key: _Key) -> bool:
+        warnings.warn(
+            "SON.has_key() is deprecated, use the in operator instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return key in self.__keys
 
     def iterkeys(self) -> Iterator[_Key]:
+        warnings.warn(
+            "SON.iterkeys() is deprecated, use the keys() method instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.__iter__()
 
     # fourth level uses definitions from lower levels
     def itervalues(self) -> Iterator[_Value]:
+        warnings.warn(
+            "SON.itervalues() is deprecated, use the values() method instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         for _, v in self.items():
             yield v
 
