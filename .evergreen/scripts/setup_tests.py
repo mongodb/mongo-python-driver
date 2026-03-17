@@ -153,6 +153,10 @@ def handle_test_env() -> None:
     # Start compiling the args we'll pass to uv.
     UV_ARGS = ["--extra test --no-group dev"]
 
+    # If USE_ACTIVE_VENV is set, add --active to UV_ARGS so run-tests.sh uses the active venv.
+    if is_set("USE_ACTIVE_VENV"):
+        UV_ARGS.append("--active")
+
     test_title = test_name
     if sub_test_name:
         test_title += f" {sub_test_name}"
