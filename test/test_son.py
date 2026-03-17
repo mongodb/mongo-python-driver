@@ -145,13 +145,11 @@ class TestSON(unittest.TestCase):
             self.assertEqual(ele * 100, test_son[ele])
 
     def test_contains_has(self):
-        """key in SON and __contains__"""
+        """Test key membership via 'in' and __contains__."""
         test_son = SON([(1, 100), (2, 200), (3, 300)])
         self.assertIn(1, test_son)
         self.assertIn(2, test_son, "in failed")
         self.assertNotIn(22, test_son, "in succeeded when it shouldn't")
-        self.assertTrue(2 in test_son, "'in' operator failed for key 2")
-        self.assertFalse(22 in test_son, "'in' operator succeeded when it shouldn't")
 
     def test_clears(self):
         """Test clear()"""
