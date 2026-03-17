@@ -796,8 +796,6 @@ TIMEOUT_OPTIONS: list[str] = [
     "waitqueuetimeoutms",
 ]
 
-_AUTH_OPTIONS = frozenset(["authmechanismproperties"])
-
 
 def _get_validator(
     key: str, validators: dict[str, Callable[[Any, Any], Any]], normed_key: Optional[str] = None
