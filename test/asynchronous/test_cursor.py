@@ -1864,5 +1864,404 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
             self.assertEqual(cmd.command["$db"], "pymongo_test")
 
 
+class AsyncTestCursorCoverage(AsyncIntegrationTest):
+    """Additional tests to improve code coverage for AsyncCursor."""
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await self.db.test.drop()
+        await self.db.test.insert_many([{"x": i, "y": i * 2} for i in range(10)])
+
+    async def test_get_namespace(self):
+        """Test _get_namespace() method."""
+        cursor = self.db.test.find()
+        expected_ns = f"{self.db.name}.test"
+        self.assertEqual(expected_ns, cursor._get_namespace())
+
+    async def test_cursor_alive_property_states(self):
+        """Test cursor alive property in different states."""
+        cursor = self.db.test.find()
+        # Cursor is alive even before starting (has potential to return data)
+        self.assertTrue(cursor.alive)
+
+        # Start the cursor
+        await anext(cursor)
+        self.assertTrue(cursor.alive)
+
+        # Exhaust the cursor
+        await cursor.to_list()
+        self.assertFalse(cursor.alive)
+
+    async def test_cursor_closed_property(self):
+        """Test cursor behavior after close."""
+        cursor = self.db.test.find()
+        await anext(cursor)
+        self.assertTrue(cursor.alive)
+
+        await cursor.close()
+        # After close, cursor is killed (check internal _killed flag)
+        self.assertTrue(cursor._killed)
+
+    async def test_retrieved_property(self):
+        """Test the retrieved property tracking."""
+        cursor = self.db.test.find().batch_size(2)
+        self.assertEqual(0, cursor.retrieved)
+
+        await anext(cursor)
+        self.assertGreater(cursor.retrieved, 0)
+
+    async def test_cursor_with_let_parameter(self):
+        """Test cursor with let parameter."""
+        # let parameter allows variables to be used in the filter
+        cursor = self.db.test.find(
+            {"$expr": {"$eq": ["$x", "$$targetValue"]}}, let={"targetValue": 5}
+        )
+        docs = await cursor.to_list()
+        self.assertEqual(1, len(docs))
+        self.assertEqual(5, docs[0]["x"])
+
+    async def test_cursor_with_invalid_let_parameter(self):
+        """Test cursor raises error for invalid let parameter."""
+        with self.assertRaises(TypeError):
+            self.db.test.find(let="invalid")  # type: ignore[arg-type]
+
+    async def test_cursor_with_show_record_id(self):
+        """Test cursor with show_record_id option."""
+        cursor = self.db.test.find(show_record_id=True)
+        doc = await anext(cursor)
+        self.assertIn("$recordId", doc)
+
+    async def test_cursor_with_return_key(self):
+        """Test cursor with return_key option."""
+        await self.db.test.create_index([("x", ASCENDING)])
+        cursor = self.db.test.find({"x": 5}, return_key=True).hint([("x", ASCENDING)])
+        doc = await anext(cursor)
+        # return_key returns only index keys
+        self.assertIn("x", doc)
+        self.assertNotIn("y", doc)
+
+    async def test_check_okay_to_chain_after_iteration(self):
+        """Test that cursor configuration methods raise after iteration."""
+        cursor = self.db.test.find()
+        await anext(cursor)  # Start iteration
+
+        # All these should raise InvalidOperation
+        with self.assertRaises(InvalidOperation):
+            cursor.limit(5)
+        with self.assertRaises(InvalidOperation):
+            cursor.skip(2)
+        with self.assertRaises(InvalidOperation):
+            cursor.sort("x")
+        with self.assertRaises(InvalidOperation):
+            cursor.hint([("x", ASCENDING)])
+        with self.assertRaises(InvalidOperation):
+            cursor.max([("x", 10)])
+        with self.assertRaises(InvalidOperation):
+            cursor.min([("x", 0)])
+        with self.assertRaises(InvalidOperation):
+            await cursor.add_option(2)
+        with self.assertRaises(InvalidOperation):
+            cursor.remove_option(2)
+        with self.assertRaises(InvalidOperation):
+            cursor.batch_size(10)
+        with self.assertRaises(InvalidOperation):
+            cursor.max_time_ms(1000)
+        with self.assertRaises(InvalidOperation):
+            cursor.collation(Collation("en_US"))
+        with self.assertRaises(InvalidOperation):
+            cursor.allow_disk_use(True)
+        with self.assertRaises(InvalidOperation):
+            cursor.where("this.x > 5")
+        with self.assertRaises(InvalidOperation):
+            cursor.comment("test")
+
+    async def test_cursor_context_manager(self):
+        """Test cursor as async context manager."""
+        async with self.db.test.find() as cursor:
+            doc = await anext(cursor)
+            self.assertIsNotNone(doc)
+        # Cursor should be killed after context (check _killed flag)
+        self.assertTrue(cursor._killed)
+
+    async def test_cursor_context_manager_with_exception(self):
+        """Test cursor context manager closes on exception."""
+        cursor = None
+        try:
+            async with self.db.test.find() as cursor:
+                await anext(cursor)
+                raise ValueError("test exception")
+        except ValueError:
+            pass
+        # Cursor should be killed after exception
+        self.assertTrue(cursor._killed)
+
+    async def test_cursor_collation(self):
+        """Test cursor with collation."""
+        await self.db.test.drop()
+        await self.db.test.insert_many([{"name": "abc"}, {"name": "ABC"}, {"name": "def"}])
+        # Case-insensitive sort
+        cursor = (
+            self.db.test.find().collation(Collation("en_US", strength=2)).sort("name", ASCENDING)
+        )
+        docs = await cursor.to_list()
+        self.assertEqual(3, len(docs))
+
+    async def test_cursor_collation_type_error(self):
+        """Test cursor raises error for invalid collation."""
+        with self.assertRaises(TypeError):
+            self.db.test.find().collation("invalid")  # type: ignore[arg-type]
+
+    async def test_cursor_getitem_not_supported(self):
+        """Test that AsyncCursor does not support indexing."""
+        cursor = self.db.test.find()
+        with self.assertRaises(IndexError) as ctx:
+            cursor[5]
+        self.assertIn("does not support indexing", str(ctx.exception))
+
+    async def test_cursor_next_after_close(self):
+        """Test that next() raises StopAsyncIteration after close."""
+        cursor = self.db.test.find()
+        await cursor.close()
+        with self.assertRaises(StopAsyncIteration):
+            await anext(cursor)
+
+    async def test_cursor_rewind_resets_state(self):
+        """Test that rewind properly resets cursor state."""
+        cursor = self.db.test.find().limit(3)
+
+        # Iterate fully
+        docs1 = await cursor.to_list()
+        self.assertEqual(3, len(docs1))
+        self.assertEqual(0, len(cursor._data))
+
+        # Rewind and iterate again
+        await cursor.rewind()
+        docs2 = await cursor.to_list()
+        self.assertEqual(3, len(docs2))
+        self.assertEqual(docs1, docs2)
+
+    async def test_cursor_clone_with_session(self):
+        """Test that clone preserves explicit session."""
+        async with self.client.start_session() as session:
+            cursor = self.db.test.find(session=session)
+            cloned = cursor.clone()
+            # Clone should reference the same session
+            self.assertEqual(cursor.session, cloned.session)
+
+    async def test_cursor_clone_without_session(self):
+        """Test that clone without session doesn't add one."""
+        cursor = self.db.test.find()
+        cloned = cursor.clone()
+        # Clone should have no session if original had none
+        self.assertIsNone(cloned.session)
+
+    async def test_cursor_distinct_with_collation(self):
+        """Test distinct with collation."""
+        await self.db.test.drop()
+        await self.db.test.insert_many([{"name": "abc"}, {"name": "ABC"}, {"name": "def"}])
+        # Case-insensitive distinct
+        cursor = self.db.test.find().collation(Collation("en_US", strength=2))
+        # distinct() on cursor with collation
+        values = await cursor.distinct("name")
+        # Should have 2 distinct values (abc/ABC treated as same)
+        self.assertEqual(2, len(values))
+
+    async def test_cursor_explain_with_options(self):
+        """Test explain with cursor options set."""
+        cursor = self.db.test.find({"x": {"$gt": 5}}).sort("x", ASCENDING).limit(5).skip(1)
+        explanation = await cursor.explain()
+        self.assertIn("queryPlanner", explanation)
+
+    async def test_cursor_max_time_ms_type_errors(self):
+        """Test max_time_ms raises TypeError for invalid input."""
+        cursor = self.db.test.find()
+        with self.assertRaises(TypeError):
+            cursor.max_time_ms("invalid")  # type: ignore[arg-type]
+
+    async def test_cursor_max_await_time_ms_type_errors(self):
+        """Test max_await_time_ms raises TypeError for invalid input."""
+        cursor = self.db.test.find()
+        with self.assertRaises(TypeError):
+            cursor.max_await_time_ms("invalid")  # type: ignore[arg-type]
+
+    async def test_cursor_comment_type(self):
+        """Test cursor with comment of various types."""
+        # String comment
+        cursor1 = self.db.test.find().comment("test comment")
+        docs1 = await cursor1.to_list()
+        self.assertGreater(len(docs1), 0)
+
+        # Dict comment
+        cursor2 = self.db.test.find().comment({"key": "value"})
+        docs2 = await cursor2.to_list()
+        self.assertGreater(len(docs2), 0)
+
+    async def test_cursor_batch_size_validation(self):
+        """Test batch_size validation."""
+        with self.assertRaises(TypeError):
+            self.db.test.find(batch_size="invalid")  # type: ignore[arg-type]
+        with self.assertRaises(ValueError):
+            self.db.test.find(batch_size=-1)
+
+    async def test_cursor_skip_validation(self):
+        """Test skip validation."""
+        with self.assertRaises(TypeError):
+            self.db.test.find(skip="invalid")  # type: ignore[arg-type]
+
+    async def test_cursor_limit_validation(self):
+        """Test limit validation."""
+        with self.assertRaises(TypeError):
+            self.db.test.find(limit="invalid")  # type: ignore[arg-type]
+
+    async def test_cursor_filter_validation(self):
+        """Test filter validation."""
+        with self.assertRaises(TypeError):
+            self.db.test.find(filter="invalid")  # type: ignore[arg-type]
+
+    async def test_cursor_type_validation(self):
+        """Test cursor_type validation."""
+        with self.assertRaises(ValueError):
+            self.db.test.find(cursor_type=999)
+
+    async def test_cursor_query_spec_with_modifiers(self):
+        """Test _query_spec includes modifiers."""
+        cursor = (
+            self.db.test.find()
+            .sort("x", ASCENDING)
+            .hint([("x", ASCENDING)])
+            .max_time_ms(1000)
+            .comment("test")
+        )
+        spec = cursor._query_spec()
+        self.assertIsInstance(spec, dict)
+
+    async def test_cursor_copy(self):
+        """Test cursor __copy__ returns clone."""
+        cursor = self.db.test.find().limit(5)
+        copied = copy.copy(cursor)
+        self.assertIsNot(cursor, copied)
+        self.assertEqual(cursor._limit, copied._limit)
+
+    async def test_cursor_deepcopy(self):
+        """Test cursor __deepcopy__ returns deep clone."""
+        cursor = self.db.test.find({"x": {"$gt": 0}}).limit(5)
+        copied = copy.deepcopy(cursor)
+        self.assertIsNot(cursor, copied)
+        self.assertEqual(cursor._limit, copied._limit)
+        self.assertEqual(cursor._spec, copied._spec)
+        # Spec should be a different object
+        self.assertIsNot(cursor._spec, copied._spec)
+
+    async def test_cursor_iteration_protocol(self):
+        """Test cursor async iteration protocol."""
+        cursor = self.db.test.find().limit(3)
+
+        # Test __aiter__ returns self
+        self.assertIs(cursor, cursor.__aiter__())
+
+        # Test __anext__ returns documents
+        doc1 = await cursor.__anext__()
+        self.assertIsNotNone(doc1)
+
+    async def test_cursor_to_list_with_limit(self):
+        """Test to_list respects cursor limit."""
+        cursor = self.db.test.find().limit(3)
+        docs = await cursor.to_list()
+        self.assertEqual(3, len(docs))
+
+    async def test_cursor_to_list_with_length(self):
+        """Test to_list with length parameter."""
+        cursor = self.db.test.find()
+        docs = await cursor.to_list(length=3)
+        self.assertEqual(3, len(docs))
+
+    async def test_min_max_require_hint(self):
+        """Test that min/max require hint for proper execution."""
+        await self.db.test.create_index([("x", ASCENDING)])
+
+        # min without hint should work when index exists
+        cursor = self.db.test.find().min([("x", 5)]).hint([("x", ASCENDING)])
+        docs = await cursor.to_list()
+        self.assertTrue(all(doc["x"] >= 5 for doc in docs))
+
+        # max without hint should work when index exists
+        cursor = self.db.test.find().max([("x", 5)]).hint([("x", ASCENDING)])
+        docs = await cursor.to_list()
+        self.assertTrue(all(doc["x"] < 5 for doc in docs))
+
+    async def test_cursor_address_property(self):
+        """Test cursor address is set after first batch."""
+        cursor = self.db.test.find()
+        self.assertIsNone(cursor.address)
+        await anext(cursor)
+        # Address should be set after query
+        self.assertIsNotNone(cursor.address)
+
+    async def test_cursor_session_property(self):
+        """Test cursor session property."""
+        # Cursor without explicit session
+        cursor1 = self.db.test.find()
+        self.assertIsNone(cursor1.session)
+
+        # Cursor with explicit session
+        async with self.client.start_session() as session:
+            cursor2 = self.db.test.find(session=session)
+            self.assertEqual(session, cursor2.session)
+
+    async def test_cursor_allow_disk_use_type_error(self):
+        """Test allow_disk_use raises TypeError for invalid input."""
+        with self.assertRaises(TypeError):
+            self.db.test.find().allow_disk_use("invalid")  # type: ignore[arg-type]
+
+
+class AsyncTestRawBatchCursorCoverage(AsyncIntegrationTest):
+    """Additional tests for AsyncRawBatchCursor coverage."""
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await self.db.test.drop()
+        await self.db.test.insert_many([{"x": i} for i in range(20)])
+
+    async def test_raw_batch_cursor_iteration(self):
+        """Test raw batch cursor returns raw BSON."""
+        cursor = self.db.test.find_raw_batches(batch_size=5)
+        batch_count = 0
+        async for batch in cursor:
+            self.assertIsInstance(batch, bytes)
+            # Decode the batch to verify it's valid BSON
+            docs = decode_all(batch)
+            self.assertGreater(len(docs), 0)
+            batch_count += 1
+        self.assertGreater(batch_count, 0)
+
+    async def test_raw_batch_cursor_explain(self):
+        """Test raw batch cursor explain."""
+        cursor = self.db.test.find_raw_batches()
+        explanation = await cursor.explain()
+        self.assertIn("queryPlanner", explanation)
+
+    async def test_raw_batch_cursor_getitem_raises(self):
+        """Test raw batch cursor __getitem__ raises InvalidOperation."""
+        cursor = self.db.test.find_raw_batches()
+        with self.assertRaises(InvalidOperation):
+            cursor[0]
+
+    async def test_raw_batch_cursor_with_sort(self):
+        """Test raw batch cursor with sort."""
+        cursor = self.db.test.find_raw_batches(batch_size=5).sort("x", DESCENDING)
+        first_batch = await anext(cursor)
+        docs = decode_all(first_batch)
+        # First doc should have highest x value
+        self.assertEqual(19, docs[0]["x"])
+
+    async def test_raw_batch_cursor_with_limit(self):
+        """Test raw batch cursor with limit."""
+        cursor = self.db.test.find_raw_batches(batch_size=5).limit(7)
+        all_docs = []
+        async for batch in cursor:
+            all_docs.extend(decode_all(batch))
+        self.assertEqual(7, len(all_docs))
+
+
 if __name__ == "__main__":
     unittest.main()
