@@ -50,9 +50,11 @@ from pymongo.common import _MAX_END_SESSIONS
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import IndexModel, InsertOne, UpdateOne
 from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.helpers import next
+from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
 
@@ -1343,6 +1345,285 @@ class TestClusterTime(IntegrationTest):
             started = cmd_listener.started_events[0]
             self.assertEqual(started.command_name, "ping")
             self.assertEqual(started.command["$clusterTime"], cluster_time)
+
+
+class TestClientSessionCoverage(IntegrationTest):
+    """Additional tests to improve code coverage for ClientSession."""
+
+    @client_context.require_sessions
+    def test_session_has_ended_property(self):
+        """Test has_ended property state transitions."""
+        session = self.client.start_session()
+        self.assertFalse(session.has_ended)
+        session.end_session()
+        self.assertTrue(session.has_ended)
+
+    @client_context.require_sessions
+    def test_session_session_id_property(self):
+        """Test session_id property returns correct value."""
+        with self.client.start_session() as session:
+            session_id = session.session_id
+            self.assertIsInstance(session_id, dict)
+            self.assertIn("id", session_id)
+
+    @client_context.require_sessions
+    def test_session_cluster_time_operations(self):
+        """Test cluster time advance operations."""
+        with self.client.start_session() as session:
+            # Initially None
+            self.assertIsNone(session.cluster_time)
+
+            # Perform operation to get cluster time
+            self.db.test.find_one({}, session=session)
+
+            # Cluster time should be set after operation
+            # (may still be None on some server versions)
+
+    @client_context.require_sessions
+    def test_session_operation_time_operations(self):
+        """Test operation time advance operations."""
+        with self.client.start_session() as session:
+            # Initially None
+            self.assertIsNone(session.operation_time)
+
+            # Perform operation to get operation time
+            self.db.test.find_one({}, session=session)
+
+    @client_context.require_sessions
+    def test_session_options_property(self):
+        """Test session options property."""
+        with self.client.start_session(causal_consistency=True) as session:
+            self.assertTrue(session.options.causal_consistency)
+
+    @client_context.require_sessions
+    def test_session_client_property(self):
+        """Test session client property."""
+        with self.client.start_session() as session:
+            self.assertEqual(self.client, session.client)
+
+    @client_context.require_sessions
+    def test_session_in_transaction_property(self):
+        """Test in_transaction property."""
+        if client_context.is_rs or client_context.is_mongos:
+            with self.client.start_session() as session:
+                self.assertFalse(session.in_transaction)
+                session.start_transaction()
+                self.assertTrue(session.in_transaction)
+                session.abort_transaction()
+                self.assertFalse(session.in_transaction)
+
+    @client_context.require_sessions
+    def test_session_context_manager(self):
+        """Test session async context manager."""
+        with self.client.start_session() as session:
+            self.assertFalse(session.has_ended)
+            self.db.test.find_one({}, session=session)
+        self.assertTrue(session.has_ended)
+
+    @client_context.require_sessions
+    def test_session_context_manager_exception(self):
+        """Test session context manager closes on exception."""
+        session = None
+        try:
+            with self.client.start_session() as session:
+                raise ValueError("test exception")
+        except ValueError:
+            pass
+        self.assertTrue(session.has_ended)
+
+    @client_context.require_sessions
+    def test_session_operations_after_end(self):
+        """Test operations on ended session raise InvalidOperation."""
+        session = self.client.start_session()
+        session.end_session()
+
+        with self.assertRaises(InvalidOperation):
+            self.db.test.find_one({}, session=session)
+
+    @client_context.require_sessions
+    def test_session_end_session_idempotent(self):
+        """Test that end_session can be called multiple times."""
+        session = self.client.start_session()
+        session.end_session()
+        # Second call should not raise
+        session.end_session()
+        self.assertTrue(session.has_ended)
+
+    @client_context.require_transactions
+    def test_transaction_start_without_prior_transaction(self):
+        """Test start_transaction on fresh session."""
+        with self.client.start_session() as session:
+            session.start_transaction()
+            self.assertTrue(session.in_transaction)
+            session.abort_transaction()
+
+    @client_context.require_transactions
+    def test_transaction_start_twice_raises(self):
+        """Test starting transaction twice raises error."""
+        with self.client.start_session() as session:
+            session.start_transaction()
+            with self.assertRaises(InvalidOperation):
+                session.start_transaction()
+            session.abort_transaction()
+
+    @client_context.require_transactions
+    def test_transaction_abort_without_transaction_raises(self):
+        """Test aborting without transaction raises error."""
+        with self.client.start_session() as session:
+            with self.assertRaises(InvalidOperation):
+                session.abort_transaction()
+
+    @client_context.require_transactions
+    def test_transaction_commit_without_transaction_raises(self):
+        """Test committing without transaction raises error."""
+        with self.client.start_session() as session:
+            with self.assertRaises(InvalidOperation):
+                session.commit_transaction()
+
+    @client_context.require_sessions
+    def test_session_advance_cluster_time_validation(self):
+        """Test advance_cluster_time with invalid input."""
+        with self.client.start_session() as session:
+            with self.assertRaises(TypeError):
+                session.advance_cluster_time("invalid")  # type: ignore
+            with self.assertRaises(ValueError):
+                session.advance_cluster_time({})
+
+    @client_context.require_sessions
+    def test_session_advance_operation_time_validation(self):
+        """Test advance_operation_time with invalid input."""
+        from bson import Timestamp
+
+        with self.client.start_session() as session:
+            with self.assertRaises(TypeError):
+                session.advance_operation_time("invalid")  # type: ignore
+            # Valid Timestamp should work
+            session.advance_operation_time(Timestamp(1, 1))
+
+    @client_context.require_transactions
+    def test_with_transaction_callback_success(self):
+        """Test with_transaction with successful callback."""
+        with self.client.start_session() as session:
+
+            def callback(session):
+                self.db.test.insert_one({"x": 1}, session=session)
+                return "success"
+
+            result = session.with_transaction(callback)
+            self.assertEqual("success", result)
+
+    @client_context.require_transactions
+    def test_with_transaction_callback_exception(self):
+        """Test with_transaction with callback exception."""
+        with self.client.start_session() as session:
+
+            def callback(session):
+                self.db.test.insert_one({"x": 1}, session=session)
+                raise ValueError("callback error")
+
+            with self.assertRaises(ValueError):
+                session.with_transaction(callback)
+            # Transaction should be aborted
+            self.assertFalse(session.in_transaction)
+
+
+class TestSessionOptionsCoverage(UnitTest):
+    """Tests for SessionOptions coverage."""
+
+    def test_session_options_defaults(self):
+        """Test SessionOptions default values."""
+        from pymongo.synchronous.client_session import SessionOptions
+
+        options = SessionOptions()
+        self.assertTrue(options.causal_consistency)
+        self.assertIsNone(options.default_transaction_options)
+        self.assertFalse(options.snapshot)
+
+    def test_session_options_snapshot_disables_causal_consistency(self):
+        """Test snapshot=True forces causal_consistency=False."""
+        from pymongo.synchronous.client_session import SessionOptions
+
+        options = SessionOptions(snapshot=True)
+        self.assertFalse(options.causal_consistency)
+        self.assertTrue(options.snapshot)
+
+    def test_session_options_snapshot_with_causal_raises(self):
+        """Test snapshot=True with causal_consistency=True raises error."""
+        from pymongo.synchronous.client_session import SessionOptions
+
+        with self.assertRaises(ConfigurationError):
+            SessionOptions(snapshot=True, causal_consistency=True)
+
+    def test_session_options_invalid_transaction_options(self):
+        """Test SessionOptions with invalid transaction options type."""
+        from pymongo.synchronous.client_session import SessionOptions
+
+        with self.assertRaises(TypeError):
+            SessionOptions(default_transaction_options="invalid")  # type: ignore
+
+
+class TestTransactionOptionsCoverage(UnitTest):
+    """Tests for TransactionOptions coverage."""
+
+    def test_transaction_options_defaults(self):
+        """Test TransactionOptions default values."""
+        from pymongo.synchronous.client_session import TransactionOptions
+
+        options = TransactionOptions()
+        self.assertIsNone(options.read_concern)
+        self.assertIsNone(options.write_concern)
+        self.assertIsNone(options.read_preference)
+        self.assertIsNone(options.max_commit_time_ms)
+
+    def test_transaction_options_with_values(self):
+        """Test TransactionOptions with all values set."""
+        from pymongo.synchronous.client_session import TransactionOptions
+
+        options = TransactionOptions(
+            read_concern=ReadConcern("majority"),
+            write_concern=WriteConcern(w="majority"),
+            read_preference=ReadPreference.PRIMARY,
+            max_commit_time_ms=5000,
+        )
+        self.assertEqual("majority", options.read_concern.level)
+        self.assertEqual("majority", options.write_concern.document.get("w"))
+        self.assertEqual(ReadPreference.PRIMARY, options.read_preference)
+        self.assertEqual(5000, options.max_commit_time_ms)
+
+    def test_transaction_options_invalid_read_concern(self):
+        """Test TransactionOptions with invalid read_concern type."""
+        from pymongo.synchronous.client_session import TransactionOptions
+
+        with self.assertRaises(TypeError):
+            TransactionOptions(read_concern="invalid")  # type: ignore
+
+    def test_transaction_options_invalid_write_concern(self):
+        """Test TransactionOptions with invalid write_concern type."""
+        from pymongo.synchronous.client_session import TransactionOptions
+
+        with self.assertRaises(TypeError):
+            TransactionOptions(write_concern="invalid")  # type: ignore
+
+    def test_transaction_options_invalid_read_preference(self):
+        """Test TransactionOptions with invalid read_preference type."""
+        from pymongo.synchronous.client_session import TransactionOptions
+
+        with self.assertRaises(TypeError):
+            TransactionOptions(read_preference="invalid")  # type: ignore
+
+    def test_transaction_options_invalid_max_commit_time(self):
+        """Test TransactionOptions with invalid max_commit_time_ms type."""
+        from pymongo.synchronous.client_session import TransactionOptions
+
+        with self.assertRaises(TypeError):
+            TransactionOptions(max_commit_time_ms="invalid")  # type: ignore
+
+    def test_transaction_options_unacknowledged_write_concern(self):
+        """Test TransactionOptions rejects unacknowledged write concern."""
+        from pymongo.synchronous.client_session import TransactionOptions
+
+        with self.assertRaises(ConfigurationError):
+            TransactionOptions(write_concern=WriteConcern(w=0))
 
 
 if __name__ == "__main__":

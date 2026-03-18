@@ -1132,5 +1132,122 @@ globals().update(
 )
 
 
+class TestChangeStreamCoverage(TestCollectionChangeStream):
+    """Additional tests to improve code coverage for ChangeStream."""
+
+    def test_change_stream_alive_property(self):
+        """Test alive property state transitions."""
+        with self.change_stream() as cs:
+            self.assertTrue(cs.alive)
+        # After context exit, should be closed
+        self.assertFalse(cs.alive)
+
+    def test_change_stream_idempotent_close(self):
+        """Test that close() can be called multiple times safely."""
+        cs = self.change_stream()
+        cs.close()
+        # Second close should not raise
+        cs.close()
+        self.assertFalse(cs.alive)
+
+    def test_change_stream_resume_token_deepcopy(self):
+        """Test that resume_token returns a deep copy."""
+        coll = self.watched_collection()
+        with self.change_stream() as cs:
+            coll.insert_one({"x": 1})
+            next(cs)  # Consume the change event
+            token1 = cs.resume_token
+            token2 = cs.resume_token
+            # Should be equal but different objects
+            self.assertEqual(token1, token2)
+            self.assertIsNot(token1, token2)
+
+    def test_change_stream_with_comment(self):
+        """Test change stream with comment parameter."""
+        client, listener = self.client_with_listener("aggregate")
+        try:
+            with self.change_stream_with_client(client, comment="test_comment"):
+                pass
+        finally:
+            client.close()
+
+        # Check that comment was in the aggregate command
+        self.assertGreater(len(listener.started_events), 0)
+        cmd = listener.started_events[0].command
+        self.assertEqual("test_comment", cmd.get("comment"))
+
+    def test_change_stream_with_show_expanded_events(self):
+        """Test change stream with show_expanded_events parameter."""
+        if not client_context.version.at_least(6, 0):
+            self.skipTest("show_expanded_events requires MongoDB 6.0+")
+
+        with self.change_stream(show_expanded_events=True) as cs:
+            # Just verify it doesn't error
+            self.assertTrue(cs.alive)
+
+    @client_context.require_version_min(6, 0)
+    def test_change_stream_with_full_document_before_change(self):
+        """Test change stream with full_document_before_change parameter."""
+        coll = self.watched_collection()
+        # Need to ensure collection exists with changeStreamPreAndPostImages enabled
+        coll.drop()
+        self.db.create_collection(coll.name, changeStreamPreAndPostImages={"enabled": True})
+        coll.insert_one({"x": 1})
+
+        with self.change_stream(full_document_before_change="whenAvailable") as cs:
+            coll.update_one({"x": 1}, {"$set": {"x": 2}})
+            change = next(cs)
+            self.assertEqual("update", change["operationType"])
+            # fullDocumentBeforeChange should be present
+            self.assertIn("fullDocumentBeforeChange", change)
+
+    def test_change_stream_next_after_close(self):
+        """Test that next() on closed stream raises StopIteration."""
+        cs = self.change_stream()
+        cs.close()
+        with self.assertRaises(StopIteration):
+            next(cs)
+
+    def test_change_stream_try_next_after_close(self):
+        """Test that try_next() on closed stream raises StopIteration."""
+        cs = self.change_stream()
+        cs.close()
+        with self.assertRaises(StopIteration):
+            cs.try_next()
+
+    def test_change_stream_pipeline_construction(self):
+        """Test change stream pipeline is properly constructed."""
+        pipeline = [{"$match": {"operationType": "insert"}}]
+        client, listener = self.client_with_listener("aggregate")
+        try:
+            with self.change_stream_with_client(client, pipeline=pipeline):
+                pass
+        finally:
+            client.close()
+
+        cmd = listener.started_events[0].command
+        agg_pipeline = cmd["pipeline"]
+        # First stage should be $changeStream
+        self.assertIn("$changeStream", agg_pipeline[0])
+        # Second stage should be our match
+        self.assertEqual({"$match": {"operationType": "insert"}}, agg_pipeline[1])
+
+    def test_change_stream_empty_pipeline(self):
+        """Test change stream with empty pipeline."""
+        with self.change_stream(pipeline=[]) as cs:
+            self.assertTrue(cs.alive)
+
+    def test_change_stream_context_manager_exception(self):
+        """Test change stream context manager closes on exception."""
+        cs = None
+        try:
+            with self.change_stream() as cs:
+                raise ValueError("test exception")
+        except ValueError:
+            pass
+        # Stream should be closed
+        self.assertFalse(cs.alive)
+
+
 if __name__ == "__main__":
     unittest.main()

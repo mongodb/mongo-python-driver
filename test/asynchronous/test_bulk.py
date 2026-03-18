@@ -781,6 +781,227 @@ class AsyncTestBulk(AsyncBulkTestBase):
         self.assertEqual(6, result.inserted_count)
         self.assertEqual(6, await self.coll.count_documents({}))
 
+    async def test_bulk_write_with_comment(self):
+        """Test bulk write operations with comment parameter."""
+        requests = [
+            InsertOne({"x": 1}),
+            UpdateOne({"x": 1}, {"$set": {"y": 1}}),
+            DeleteOne({"x": 1}),
+        ]
+        result = await self.coll.bulk_write(requests, comment="bulk_comment")
+        self.assertEqual(1, result.inserted_count)
+        self.assertEqual(1, result.modified_count)
+        self.assertEqual(1, result.deleted_count)
+
+    async def test_bulk_write_with_let(self):
+        """Test bulk write operations with let parameter."""
+        if not async_client_context.version.at_least(5, 0):
+            self.skipTest("let parameter requires MongoDB 5.0+")
+
+        await self.coll.insert_one({"x": 1})
+        requests = [
+            UpdateOne({"$expr": {"$eq": ["$x", "$$targetVal"]}}, {"$set": {"updated": True}}),
+        ]
+        result = await self.coll.bulk_write(requests, let={"targetVal": 1})
+        self.assertEqual(1, result.modified_count)
+
+    async def test_bulk_write_all_operation_types(self):
+        """Test bulk write with all operation types combined."""
+        await self.coll.insert_many([{"x": i} for i in range(5)])
+
+        requests = [
+            InsertOne({"x": 100}),
+            UpdateOne({"x": 0}, {"$set": {"updated": True}}),
+            UpdateMany({"x": {"$lte": 2}}, {"$set": {"batch_updated": True}}),
+            ReplaceOne({"x": 3}, {"x": 3, "replaced": True}),
+            DeleteOne({"x": 4}),
+            DeleteMany({"x": {"$gt": 50}}),
+        ]
+        result = await self.coll.bulk_write(requests)
+
+        self.assertEqual(1, result.inserted_count)
+        self.assertGreaterEqual(result.modified_count, 1)
+        self.assertGreaterEqual(result.deleted_count, 1)
+
+    async def test_bulk_write_unordered(self):
+        """Test unordered bulk write continues after error."""
+        await self.coll.create_index([("x", 1)], unique=True)
+        self.addAsyncCleanup(self.coll.drop_index, [("x", 1)])
+
+        requests = [
+            InsertOne({"x": 1}),
+            InsertOne({"x": 1}),  # Duplicate - will error
+            InsertOne({"x": 2}),
+            InsertOne({"x": 3}),
+        ]
+
+        with self.assertRaises(BulkWriteError) as ctx:
+            await self.coll.bulk_write(requests, ordered=False)
+
+        # With unordered, should have inserted 3 documents
+        self.assertEqual(3, ctx.exception.details["nInserted"])
+
+    async def test_bulk_write_ordered(self):
+        """Test ordered bulk write stops on first error."""
+        await self.coll.create_index([("x", 1)], unique=True)
+        self.addAsyncCleanup(self.coll.drop_index, [("x", 1)])
+
+        requests = [
+            InsertOne({"x": 1}),
+            InsertOne({"x": 1}),  # Duplicate - will error
+            InsertOne({"x": 2}),
+            InsertOne({"x": 3}),
+        ]
+
+        with self.assertRaises(BulkWriteError) as ctx:
+            await self.coll.bulk_write(requests, ordered=True)
+
+        # With ordered, should have inserted only 1 document
+        self.assertEqual(1, ctx.exception.details["nInserted"])
+
+    async def test_bulk_write_bypass_document_validation(self):
+        """Test bulk write with bypass_document_validation."""
+        if not async_client_context.version.at_least(3, 2):
+            self.skipTest("bypass_document_validation requires MongoDB 3.2+")
+
+        # Create collection with validator
+        await self.coll.drop()
+        await self.db.create_collection(
+            self.coll.name, validator={"$jsonSchema": {"required": ["name"]}}
+        )
+
+        # Without bypass, should fail
+        with self.assertRaises(BulkWriteError):
+            await self.coll.bulk_write([InsertOne({"x": 1})])
+
+        # With bypass, should succeed
+        result = await self.coll.bulk_write([InsertOne({"x": 1})], bypass_document_validation=True)
+        self.assertEqual(1, result.inserted_count)
+
+    async def test_bulk_write_result_properties(self):
+        """Test all BulkWriteResult properties."""
+        await self.coll.insert_one({"x": 1})
+
+        requests = [
+            InsertOne({"x": 2}),
+            UpdateOne({"x": 1}, {"$set": {"updated": True}}),
+            ReplaceOne({"x": 2}, {"x": 2, "replaced": True}, upsert=True),
+            DeleteOne({"x": 1}),
+        ]
+        result = await self.coll.bulk_write(requests)
+
+        # Check all properties
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(1, result.inserted_count)
+        self.assertGreaterEqual(result.matched_count, 0)
+        self.assertGreaterEqual(result.modified_count, 0)
+        self.assertEqual(1, result.deleted_count)
+        self.assertIsInstance(result.upserted_count, int)
+        self.assertIsInstance(result.upserted_ids, dict)
+
+    async def test_bulk_write_with_upsert(self):
+        """Test bulk write upsert operations."""
+        requests = [
+            UpdateOne({"x": 1}, {"$set": {"y": 1}}, upsert=True),
+            UpdateOne({"x": 2}, {"$set": {"y": 2}}, upsert=True),
+            ReplaceOne({"x": 3}, {"x": 3, "y": 3}, upsert=True),
+        ]
+        result = await self.coll.bulk_write(requests)
+
+        self.assertEqual(3, result.upserted_count)
+        self.assertEqual(3, len(result.upserted_ids))
+
+    async def test_update_one_with_hint(self):
+        """Test UpdateOne with hint parameter."""
+        await self.coll.create_index([("x", 1)])
+        self.addAsyncCleanup(self.coll.drop_index, [("x", 1)])
+
+        await self.coll.insert_one({"x": 1})
+
+        requests = [UpdateOne({"x": 1}, {"$set": {"y": 1}}, hint=[("x", 1)])]
+        result = await self.coll.bulk_write(requests)
+        self.assertEqual(1, result.modified_count)
+
+    async def test_update_many_with_hint(self):
+        """Test UpdateMany with hint parameter."""
+        await self.coll.create_index([("x", 1)])
+        self.addAsyncCleanup(self.coll.drop_index, [("x", 1)])
+
+        await self.coll.insert_many([{"x": 1}, {"x": 1}])
+
+        requests = [UpdateMany({"x": 1}, {"$set": {"y": 1}}, hint=[("x", 1)])]
+        result = await self.coll.bulk_write(requests)
+        self.assertEqual(2, result.modified_count)
+
+    async def test_delete_one_with_hint(self):
+        """Test DeleteOne with hint parameter."""
+        await self.coll.create_index([("x", 1)])
+        self.addAsyncCleanup(self.coll.drop_index, [("x", 1)])
+
+        await self.coll.insert_one({"x": 1})
+
+        requests = [DeleteOne({"x": 1}, hint=[("x", 1)])]
+        result = await self.coll.bulk_write(requests)
+        self.assertEqual(1, result.deleted_count)
+
+    async def test_delete_many_with_hint(self):
+        """Test DeleteMany with hint parameter."""
+        await self.coll.create_index([("x", 1)])
+        self.addAsyncCleanup(self.coll.drop_index, [("x", 1)])
+
+        await self.coll.insert_many([{"x": 1}, {"x": 1}])
+
+        requests = [DeleteMany({"x": 1}, hint=[("x", 1)])]
+        result = await self.coll.bulk_write(requests)
+        self.assertEqual(2, result.deleted_count)
+
+    async def test_update_one_with_array_filters(self):
+        """Test UpdateOne with array_filters parameter."""
+        await self.coll.insert_one({"x": [{"y": 1}, {"y": 2}, {"y": 3}]})
+
+        requests = [
+            UpdateOne({}, {"$set": {"x.$[elem].z": 1}}, array_filters=[{"elem.y": {"$gt": 1}}])
+        ]
+        result = await self.coll.bulk_write(requests)
+        self.assertEqual(1, result.modified_count)
+
+        doc = await self.coll.find_one()
+        # Elements with y > 1 should have z = 1
+        for elem in doc["x"]:
+            if elem["y"] > 1:
+                self.assertEqual(1, elem.get("z"))
+
+    async def test_replace_one_with_hint(self):
+        """Test ReplaceOne with hint parameter."""
+        await self.coll.create_index([("x", 1)])
+        self.addAsyncCleanup(self.coll.drop_index, [("x", 1)])
+
+        await self.coll.insert_one({"x": 1})
+
+        requests = [ReplaceOne({"x": 1}, {"x": 1, "replaced": True}, hint=[("x", 1)])]
+        result = await self.coll.bulk_write(requests)
+        self.assertEqual(1, result.modified_count)
+
+    async def test_update_with_collation(self):
+        """Test update operations with collation."""
+        await self.coll.insert_many(
+            [
+                {"name": "cafe"},
+                {"name": "Cafe"},
+            ]
+        )
+
+        requests = [
+            UpdateMany(
+                {"name": "cafe"},
+                {"$set": {"updated": True}},
+                collation={"locale": "en", "strength": 2},
+            )
+        ]
+        result = await self.coll.bulk_write(requests)
+        # With case-insensitive collation, both docs should match
+        self.assertEqual(2, result.modified_count)
+
 
 class AsyncBulkAuthorizationTestBase(AsyncBulkTestBase):
     @async_client_context.require_auth

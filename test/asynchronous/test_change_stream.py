@@ -1152,5 +1152,122 @@ globals().update(
 )
 
 
+class AsyncTestChangeStreamCoverage(TestAsyncCollectionAsyncChangeStream):
+    """Additional tests to improve code coverage for AsyncChangeStream."""
+
+    async def test_change_stream_alive_property(self):
+        """Test alive property state transitions."""
+        async with await self.change_stream() as cs:
+            self.assertTrue(cs.alive)
+        # After context exit, should be closed
+        self.assertFalse(cs.alive)
+
+    async def test_change_stream_idempotent_close(self):
+        """Test that close() can be called multiple times safely."""
+        cs = await self.change_stream()
+        await cs.close()
+        # Second close should not raise
+        await cs.close()
+        self.assertFalse(cs.alive)
+
+    async def test_change_stream_resume_token_deepcopy(self):
+        """Test that resume_token returns a deep copy."""
+        coll = self.watched_collection()
+        async with await self.change_stream() as cs:
+            await coll.insert_one({"x": 1})
+            await anext(cs)  # Consume the change event
+            token1 = cs.resume_token
+            token2 = cs.resume_token
+            # Should be equal but different objects
+            self.assertEqual(token1, token2)
+            self.assertIsNot(token1, token2)
+
+    async def test_change_stream_with_comment(self):
+        """Test change stream with comment parameter."""
+        client, listener = await self.client_with_listener("aggregate")
+        try:
+            async with await self.change_stream_with_client(client, comment="test_comment"):
+                pass
+        finally:
+            await client.close()
+
+        # Check that comment was in the aggregate command
+        self.assertGreater(len(listener.started_events), 0)
+        cmd = listener.started_events[0].command
+        self.assertEqual("test_comment", cmd.get("comment"))
+
+    async def test_change_stream_with_show_expanded_events(self):
+        """Test change stream with show_expanded_events parameter."""
+        if not async_client_context.version.at_least(6, 0):
+            self.skipTest("show_expanded_events requires MongoDB 6.0+")
+
+        async with await self.change_stream(show_expanded_events=True) as cs:
+            # Just verify it doesn't error
+            self.assertTrue(cs.alive)
+
+    @async_client_context.require_version_min(6, 0)
+    async def test_change_stream_with_full_document_before_change(self):
+        """Test change stream with full_document_before_change parameter."""
+        coll = self.watched_collection()
+        # Need to ensure collection exists with changeStreamPreAndPostImages enabled
+        await coll.drop()
+        await self.db.create_collection(coll.name, changeStreamPreAndPostImages={"enabled": True})
+        await coll.insert_one({"x": 1})
+
+        async with await self.change_stream(full_document_before_change="whenAvailable") as cs:
+            await coll.update_one({"x": 1}, {"$set": {"x": 2}})
+            change = await anext(cs)
+            self.assertEqual("update", change["operationType"])
+            # fullDocumentBeforeChange should be present
+            self.assertIn("fullDocumentBeforeChange", change)
+
+    async def test_change_stream_next_after_close(self):
+        """Test that next() on closed stream raises StopAsyncIteration."""
+        cs = await self.change_stream()
+        await cs.close()
+        with self.assertRaises(StopAsyncIteration):
+            await anext(cs)
+
+    async def test_change_stream_try_next_after_close(self):
+        """Test that try_next() on closed stream raises StopAsyncIteration."""
+        cs = await self.change_stream()
+        await cs.close()
+        with self.assertRaises(StopAsyncIteration):
+            await cs.try_next()
+
+    async def test_change_stream_pipeline_construction(self):
+        """Test change stream pipeline is properly constructed."""
+        pipeline = [{"$match": {"operationType": "insert"}}]
+        client, listener = await self.client_with_listener("aggregate")
+        try:
+            async with await self.change_stream_with_client(client, pipeline=pipeline):
+                pass
+        finally:
+            await client.close()
+
+        cmd = listener.started_events[0].command
+        agg_pipeline = cmd["pipeline"]
+        # First stage should be $changeStream
+        self.assertIn("$changeStream", agg_pipeline[0])
+        # Second stage should be our match
+        self.assertEqual({"$match": {"operationType": "insert"}}, agg_pipeline[1])
+
+    async def test_change_stream_empty_pipeline(self):
+        """Test change stream with empty pipeline."""
+        async with await self.change_stream(pipeline=[]) as cs:
+            self.assertTrue(cs.alive)
+
+    async def test_change_stream_context_manager_exception(self):
+        """Test change stream context manager closes on exception."""
+        cs = None
+        try:
+            async with await self.change_stream() as cs:
+                raise ValueError("test exception")
+        except ValueError:
+            pass
+        # Stream should be closed
+        self.assertFalse(cs.alive)
+
+
 if __name__ == "__main__":
     unittest.main()
