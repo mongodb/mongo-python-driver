@@ -32,7 +32,7 @@
       "database": {
         "id": "database",
         "client": "client",
-        "databaseName": "retryable-writes-tests"
+        "databaseName": "backpressure-connection-checkin"
       }
     },
     {
@@ -41,18 +41,6 @@
         "database": "database",
         "collectionName": "coll"
       }
-    }
-  ],
-  "initialData": [
-    {
-      "collectionName": "coll",
-      "databaseName": "retryable-writes-tests",
-      "documents": [
-        {
-          "_id": 1,
-          "x": 11
-        }
-      ]
     }
   ],
   "tests": [

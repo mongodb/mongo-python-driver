@@ -112,7 +112,7 @@
       "database": {
         "id": "database_retryWrites_false",
         "client": "client_retryWrites_false",
-        "databaseName": "backpressure-db"
+        "databaseName": "retryable-writes-tests"
       }
     },
     {
@@ -711,7 +711,7 @@
       ]
     },
     {
-      "description": "database.aggregate retries using operation loop",
+      "description": "database.aggregate read retries using operation loop",
       "operations": [
         {
           "name": "failPoint",
@@ -1480,7 +1480,7 @@
       ]
     },
     {
-      "description": "collection.aggregate retries using operation loop",
+      "description": "collection.aggregate read retries using operation loop",
       "operations": [
         {
           "name": "failPoint",
@@ -4734,7 +4734,7 @@
       ]
     },
     {
-      "description": "collection.aggregate retries using operation loop",
+      "description": "collection.aggregate write retries using operation loop",
       "operations": [
         {
           "name": "failPoint",
