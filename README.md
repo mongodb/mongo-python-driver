@@ -4,6 +4,7 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/pymongo)](https://pypi.org/project/pymongo)
 [![Monthly Downloads](https://static.pepy.tech/badge/pymongo/month)](https://pepy.tech/project/pymongo)
 [![API Documentation Status](https://readthedocs.org/projects/pymongo/badge/?version=stable)](http://pymongo.readthedocs.io/en/stable/api?badge=stable)
+[![codecov](https://codecov.io/gh/mongodb/mongo-python-driver/graph/badge.svg?token=FBhKFzbRKS)](https://codecov.io/gh/mongodb/mongo-python-driver)
 
 ## About
 
