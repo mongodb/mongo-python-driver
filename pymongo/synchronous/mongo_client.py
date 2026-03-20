@@ -35,6 +35,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+import time as time  # noqa: PLC0414 # needed in sync version
 import warnings
 import weakref
 from collections import defaultdict
@@ -110,6 +111,10 @@ from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _SESSION, _EmptyServerSession
 from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.helpers import (
+    _RetryPolicy,
+    _TokenBucket,
+)
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
@@ -610,7 +615,17 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             client to use Stable API. See `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_ for
             details.
 
+          | **Adaptive retry options:**
+          | (If not enabled explicitly, adaptive retries will not be enabled.)
+
+          - `adaptive_retries`: (boolean) Whether the adaptive retry mechanism is enabled for this client.
+            If enabled, server overload errors will use a token-bucket based system to mitigate further overload.
+            Defaults to ``False``.
+
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
+
+        .. versionchanged:: 4.17
+           Added the ``adaptive_retries`` URI and keyword argument.
 
         .. versionchanged:: 4.5
            Added the ``serverMonitoringMode`` keyword argument.
@@ -879,11 +894,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.read_concern,
         )
 
+        self._retry_policy = _RetryPolicy(
+            _TokenBucket(), adaptive_retry=self._options.adaptive_retries
+        )
+
         self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
 
         self._opened = False
         self._closed = False
         self._loop: Optional[asyncio.AbstractEventLoop] = None
+
         if not is_srv:
             self._init_background()
 
@@ -1987,6 +2007,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         read_pref: Optional[_ServerMode] = None,
         retryable: bool = False,
         operation_id: Optional[int] = None,
+        is_run_command: bool = False,
+        is_aggregate_write: bool = False,
     ) -> T:
         """Internal retryable helper for all client transactions.
 
@@ -1998,6 +2020,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param address: Server Address, defaults to None
         :param read_pref: Topology of read operation, defaults to None
         :param retryable: If the operation should be retried once, defaults to None
+        :param is_run_command: If this is a runCommand operation, defaults to False
+        :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
 
         :return: Output of the calling func()
         """
@@ -2012,6 +2036,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             address=address,
             retryable=retryable,
             operation_id=operation_id,
+            is_run_command=is_run_command,
+            is_aggregate_write=is_aggregate_write,
         ).run()
 
     def _retryable_read(
@@ -2023,6 +2049,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         address: Optional[_Address] = None,
         retryable: bool = True,
         operation_id: Optional[int] = None,
+        is_run_command: bool = False,
+        is_aggregate_write: bool = False,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -2038,6 +2066,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param address: Optional address when sending a message, defaults to None
         :param retryable: if we should attempt retries
             (may not always be supported even if supplied), defaults to False
+        :param is_run_command: If this is a runCommand operation, defaults to False.
+        :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2056,6 +2086,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 read_pref=read_pref,
                 retryable=retryable,
                 operation_id=operation_id,
+                is_run_command=is_run_command,
+                is_aggregate_write=is_aggregate_write,
             )
 
     def _retryable_write(
@@ -2444,15 +2476,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 f"name_or_database must be an instance of str or a Database, not {type(name)}"
             )
 
-        with self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
-            self[name]._command(
-                conn,
-                {"dropDatabase": 1, "comment": comment},
-                read_preference=ReadPreference.PRIMARY,
-                write_concern=self._write_concern_for(session),
-                parse_write_concern_error=True,
-                session=session,
-            )
+        self[name].command(
+            {"dropDatabase": 1, "comment": comment},
+            read_preference=ReadPreference.PRIMARY,
+            write_concern=self._write_concern_for(session),
+            parse_write_concern_error=True,
+            session=session,
+        )
 
     @_csot.apply
     def bulk_write(
@@ -2736,12 +2766,15 @@ class _ClientConnectionRetryable(Generic[T]):
         address: Optional[_Address] = None,
         retryable: bool = False,
         operation_id: Optional[int] = None,
+        is_run_command: bool = False,
+        is_aggregate_write: bool = False,
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
+        self._always_retryable = False
         self._multiple_retries = _csot.get_timeout() is not None
         self._client = mongo_client
-
+        self._retry_policy = mongo_client._retry_policy
         self._func = func
         self._bulk = bulk
         self._session = session
@@ -2757,6 +2790,8 @@ class _ClientConnectionRetryable(Generic[T]):
         self._operation = operation
         self._operation_id = operation_id
         self._attempt_number = 0
+        self._is_run_command = is_run_command
+        self._is_aggregate_write = is_aggregate_write
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2776,7 +2811,14 @@ class _ClientConnectionRetryable(Generic[T]):
         while True:
             self._check_last_error(check_csot=True)
             try:
-                return self._read() if self._is_read else self._write()
+                res = self._read() if self._is_read else self._write()
+                self._retry_policy.record_success(self._attempt_number > 0)
+                # Track whether the transaction has completed a command.
+                # If we need to apply backpressure to the first command,
+                # we will need to revert back to starting state.
+                if self._session is not None and self._session.in_transaction:
+                    self._session._transaction.has_completed_command = True
+                return res
             except ServerSelectionTimeoutError:
                 # The application may think the write was never attempted
                 # if we raise ServerSelectionTimeoutError on the retry
@@ -2787,37 +2829,77 @@ class _ClientConnectionRetryable(Generic[T]):
                 # most likely be a waste of time.
                 raise
             except PyMongoError as exc:
+                always_retryable = False
+                overloaded = False
+                exc_to_check = exc
+
+                if self._is_run_command and not (
+                    self._client.options.retry_reads and self._client.options.retry_writes
+                ):
+                    raise
+                if self._is_aggregate_write and not self._client.options.retry_writes:
+                    raise
+
                 # Execute specialized catch on read
                 if self._is_read:
                     if isinstance(exc, (ConnectionFailure, OperationFailure)):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
-                        if self._is_not_eligible_for_retry() or (
-                            isinstance(exc, OperationFailure)
-                            and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
+                        overloaded = exc.has_error_label("SystemOverloadedError")
+                        always_retryable = exc.has_error_label("RetryableError") and overloaded
+                        if (
+                            not self._client.options.retry_reads
+                            or not always_retryable
+                            and (
+                                self._is_not_eligible_for_retry()
+                                or (
+                                    isinstance(exc, OperationFailure)
+                                    and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
+                                )
+                            )
                         ):
                             raise
                         self._retrying = True
                         self._last_error = exc
                         self._attempt_number += 1
+
+                        # Revert back to starting state if we're in a transaction but haven't completed the first
+                        # command.
+                        if (
+                            overloaded
+                            and self._session is not None
+                            and self._session.in_transaction
+                        ):
+                            transaction = self._session._transaction
+                            if not transaction.has_completed_command:
+                                transaction.set_starting()
+                            transaction.attempt = 0
                     else:
                         raise
 
                 # Specialized catch on write operation
                 if not self._is_read:
-                    if not self._retryable:
+                    if isinstance(exc, ClientBulkWriteException) and isinstance(
+                        exc.error, PyMongoError
+                    ):
+                        exc_to_check = exc.error
+                    retryable_write_label = exc_to_check.has_error_label("RetryableWriteError")
+                    overloaded = exc_to_check.has_error_label("SystemOverloadedError")
+                    always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
+
+                    # Always retry abortTransaction and commitTransaction up to once
+                    if self._operation not in ["abortTransaction", "commitTransaction"] and (
+                        not self._client.options.retry_writes
+                        or not (self._retryable or always_retryable)
+                    ):
                         raise
-                    if isinstance(exc, ClientBulkWriteException) and exc.error:
-                        retryable_write_error_exc = isinstance(
-                            exc.error, PyMongoError
-                        ) and exc.error.has_error_label("RetryableWriteError")
-                    else:
-                        retryable_write_error_exc = exc.has_error_label("RetryableWriteError")
-                    if retryable_write_error_exc:
+                    if retryable_write_label or always_retryable:
                         assert self._session
                         self._session._unpin()
-                    if not retryable_write_error_exc or self._is_not_eligible_for_retry():
-                        if exc.has_error_label("NoWritesPerformed") and self._last_error:
+                    if not always_retryable and (
+                        not retryable_write_label or self._is_not_eligible_for_retry()
+                    ):
+                        if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
                             raise
@@ -2826,10 +2908,17 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._bulk.retrying = True
                     else:
                         self._retrying = True
-                    if not exc.has_error_label("NoWritesPerformed"):
+                    if not exc_to_check.has_error_label("NoWritesPerformed"):
                         self._last_error = exc
                     if self._last_error is None:
                         self._last_error = exc
+                    # Revert back to starting state if we're in a transaction but haven't completed the first
+                    # command.
+                    if overloaded and self._session is not None and self._session.in_transaction:
+                        transaction = self._session._transaction
+                        if not transaction.has_completed_command:
+                            transaction.set_starting()
+                        transaction.attempt = 0
 
                 if (
                     self._server is not None
@@ -2837,6 +2926,16 @@ class _ClientConnectionRetryable(Generic[T]):
                     or exc.has_error_label("SystemOverloadedError")
                 ):
                     self._deprioritized_servers.append(self._server)
+
+                self._always_retryable = always_retryable
+                if overloaded:
+                    delay = self._retry_policy.backoff(self._attempt_number) if overloaded else 0
+                    if not self._retry_policy.should_retry(self._attempt_number, delay):
+                        if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
+                            raise self._last_error from exc
+                        else:
+                            raise
+                    time.sleep(delay)
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
@@ -2899,7 +2998,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     and conn.supports_sessions
                 )
                 is_mongos = conn.is_mongos
-                if not sessions_supported:
+                if not self._always_retryable and not sessions_supported:
                     # A retry is not possible because this server does
                     # not support sessions raise the last error.
                     self._check_last_error()
@@ -2931,7 +3030,7 @@ class _ClientConnectionRetryable(Generic[T]):
             conn,
             read_pref,
         ):
-            if self._retrying and not self._retryable:
+            if self._retrying and not self._retryable and not self._always_retryable:
                 self._check_last_error()
             if self._retrying:
                 _debug_log(

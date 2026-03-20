@@ -16,9 +16,12 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import sys
+import time
 from io import BytesIO
 
+import pymongo
 from gridfs.synchronous.grid_file import GridFS, GridFSBucket
 from pymongo.server_selectors import writable_server_selector
 from pymongo.synchronous.pool import PoolState
@@ -40,7 +43,9 @@ from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,
     ConnectionFailure,
+    ExecutionTimeout,
     InvalidOperation,
+    NetworkTimeout,
     OperationFailure,
 )
 from pymongo.operations import IndexModel, InsertOne
@@ -426,7 +431,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.configure_fail_point(client, command_args)
 
     @client_context.require_transactions
-    def test_callback_raises_custom_error(self):
+    def test_1_callback_raises_custom_error(self):
         class _MyException(Exception):
             pass
 
@@ -438,7 +443,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
                 s.with_transaction(raise_error)
 
     @client_context.require_transactions
-    def test_callback_returns_value(self):
+    def test_2_callback_returns_value(self):
         def callback(_):
             return "Foo"
 
@@ -466,7 +471,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.assertEqual(s.with_transaction(callback), "Foo")
 
     @client_context.require_transactions
-    def test_callback_not_retried_after_timeout(self):
+    def test_3_1_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -487,14 +492,14 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         listener.reset()
         with client.start_session() as s:
             with PatchSessionTimeout(0):
-                with self.assertRaises(OperationFailure):
+                with self.assertRaises(NetworkTimeout):
                     s.with_transaction(callback)
 
         self.assertEqual(listener.started_command_names(), ["insert", "abortTransaction"])
 
     @client_context.require_test_commands
     @client_context.require_transactions
-    def test_callback_not_retried_after_commit_timeout(self):
+    def test_3_2_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -519,14 +524,14 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
         with client.start_session() as s:
             with PatchSessionTimeout(0):
-                with self.assertRaises(OperationFailure):
+                with self.assertRaises(NetworkTimeout):
                     s.with_transaction(callback)
 
         self.assertEqual(listener.started_command_names(), ["insert", "commitTransaction"])
 
     @client_context.require_test_commands
     @client_context.require_transactions
-    def test_commit_not_retried_after_timeout(self):
+    def test_3_3_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
@@ -548,7 +553,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
         with client.start_session() as s:
             with PatchSessionTimeout(0):
-                with self.assertRaises(ConnectionFailure):
+                with self.assertRaises(NetworkTimeout):
                     s.with_transaction(callback)
 
         # One insert for the callback and two commits (includes the automatic
@@ -556,6 +561,38 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         self.assertEqual(
             listener.started_command_names(), ["insert", "commitTransaction", "commitTransaction"]
         )
+
+    @client_context.require_transactions
+    def test_callback_not_retried_after_csot_timeout(self):
+        listener = OvertCommandListener()
+        client = self.rs_client(event_listeners=[listener])
+        coll = client[self.db.name].test
+
+        def callback(session):
+            coll.insert_one({}, session=session)
+            err: dict = {
+                "ok": 0,
+                "errmsg": "Transaction 7819 has been aborted.",
+                "code": 251,
+                "codeName": "NoSuchTransaction",
+                "errorLabels": ["TransientTransactionError"],
+            }
+            raise OperationFailure(err["errmsg"], err["code"], err)
+
+        # Create the collection.
+        coll.insert_one({})
+        listener.reset()
+        with client.start_session() as s:
+            with pymongo.timeout(1.0):
+                with self.assertRaises(ExecutionTimeout):
+                    s.with_transaction(callback)
+
+        # At least two attempts: the original and one or more retries.
+        inserts = len([x for x in listener.started_command_names() if x == "insert"])
+        aborts = len([x for x in listener.started_command_names() if x == "abortTransaction"])
+
+        self.assertGreaterEqual(inserts, 2)
+        self.assertGreaterEqual(aborts, 2)
 
     # Tested here because this supports Motor's convenient transactions API.
     @client_context.require_transactions
@@ -593,6 +630,68 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.assertFalse(s.in_transaction)
             s.with_transaction(callback)
             self.assertFalse(s.in_transaction)
+
+    @client_context.require_test_commands
+    @client_context.require_transactions
+    def test_4_retry_backoff_is_enforced(self):
+        client = client_context.client
+        coll = client[self.db.name].test
+        # patch random to make it deterministic -- once to effectively have
+        # no backoff and the second time with "max" backoff (always waiting the longest
+        # possible time)
+        _original_random_random = random.random
+
+        def always_one():
+            return 1
+
+        def always_zero():
+            return 0
+
+        random.random = always_zero
+        # set fail point to trigger transaction failure and trigger backoff
+        self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 13},
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 251,
+                },
+            }
+        )
+        self.addCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
+
+        def callback(session):
+            coll.insert_one({}, session=session)
+
+        start = time.monotonic()
+        with self.client.start_session() as s:
+            s.with_transaction(callback)
+        end = time.monotonic()
+        no_backoff_time = end - start
+
+        random.random = always_one
+        # set fail point to trigger transaction failure and trigger backoff
+        self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {
+                    "times": 13
+                },  # sufficiently high enough such that the time effect of backoff is noticeable
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 251,
+                },
+            }
+        )
+        self.addCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
+        start = time.monotonic()
+        with self.client.start_session() as s:
+            s.with_transaction(callback)
+        end = time.monotonic()
+        self.assertLess(abs(end - start - (no_backoff_time + 2.2)), 1)  # sum of 13 backoffs is 2.2
+
+        random.random = _original_random_random
 
 
 class TestOptionsInsideTransactionProse(TransactionsBase):
