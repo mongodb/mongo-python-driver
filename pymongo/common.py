@@ -143,6 +143,12 @@ SERVER_MONITORING_MODE = "auto"  # poll/stream/auto
 # Default value for adaptiveRetries
 ADAPTIVE_RETRIES = False
 
+# Default value for maxAdaptiveRetries
+MAX_ADAPTIVE_RETRIES = 2
+
+# Default value for enableOverloadRetargeting
+ENABLE_OVERLOAD_RETARGETING = False
+
 # Auth mechanism properties that must raise an error instead of warning if they invalidate.
 _MECH_PROP_MUST_RAISE = ["CANONICALIZE_HOST_NAME"]
 
@@ -776,6 +782,8 @@ KW_VALIDATORS: dict[str, Callable[[Any, Any], Any]] = {
     "auto_encryption_opts": validate_auto_encryption_opts_or_none,
     "authoidcallowedhosts": validate_list,
     "adaptive_retries": validate_boolean_or_string,
+    "max_adaptive_retries": validate_non_negative_integer,
+    "enable_overload_retargeting": validate_boolean_or_string,
 }
 
 # Dictionary where keys are any URI option name, and values are the

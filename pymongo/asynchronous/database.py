@@ -38,7 +38,6 @@ from pymongo.asynchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.asynchronous.change_stream import AsyncDatabaseChangeStream
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
-from pymongo.asynchronous.helpers import _retry_overload
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.database_shared import _check_name, _CodecDocumentType
 from pymongo.errors import CollectionInvalid, InvalidOperation
@@ -479,7 +478,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         return change_stream
 
     @_csot.apply
-    @_retry_overload
     async def create_collection(
         self,
         name: str,
@@ -822,7 +820,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         ...
 
     @_csot.apply
-    @_retry_overload
     async def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -959,7 +956,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         )
 
     @_csot.apply
-    @_retry_overload
     async def cursor_command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -1283,7 +1279,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         return await self.client._retryable_write(False, inner, session, _Op.DROP)
 
     @_csot.apply
-    @_retry_overload
     async def drop_collection(
         self,
         name_or_collection: Union[str, AsyncCollection[_DocumentTypeArg]],

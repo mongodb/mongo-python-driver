@@ -22,6 +22,7 @@ import random
 import socket
 import sys
 import time as time  # noqa: PLC0414 # needed in sync version
+from contextvars import ContextVar
 from typing import (
     Any,
     Callable,
@@ -76,9 +77,13 @@ def _handle_reauth(func: F) -> F:
     return cast(F, inner)
 
 
-_MAX_RETRIES = 5
+_MAX_RETRIES = 2
 _BACKOFF_INITIAL = 0.1
 _BACKOFF_MAX = 10
+
+# Context variable used to pass the current retry attempt number to conn.command()
+# so that retry metadata can be injected into outgoing command bodies.
+_RETRY_ATTEMPT: ContextVar[int] = ContextVar("_retry_attempt", default=0)
 DEFAULT_RETRY_TOKEN_CAPACITY = 1000.0
 DEFAULT_RETRY_TOKEN_RETURN = 0.1
 
