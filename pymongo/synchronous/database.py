@@ -614,6 +614,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             common.validate_is_mapping("clusteredIndex", clustered_index)
 
         with self._client._tmp_session(session) as s:
+            if s and not s.in_transaction:
+                s._leave_alive = True
             # Skip this check in a transaction where listCollections is not
             # supported.
             if (
@@ -622,6 +624,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 and name in self._list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
+            if s:
+                s._leave_alive = False
             coll = Collection(
                 self,
                 name,
@@ -697,18 +701,17 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.9
 
         .. _aggregation pipeline:
-            https://mongodb.com/docs/manual/reference/operator/aggregation-pipeline
+            https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
 
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-        with self.client._tmp_session(session, close=False) as s:
+        with self.client._tmp_session(session) as s:
             cmd = _DatabaseAggregationCommand(
                 self,
                 CommandCursor,
                 pipeline,
                 kwargs,
-                session is not None,
                 user_fields={"cursor": {"firstBatch": 1}},
             )
             return self.client._retryable_read(
@@ -932,12 +935,15 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        with self._client._conn_for_reads(read_preference, session, operation=command_name) as (
-            connection,
-            read_preference,
-        ):
+
+        def inner(
+            session: Optional[ClientSession],
+            _server: Server,
+            conn: Connection,
+            read_preference: _ServerMode,
+        ) -> Union[dict[str, Any], _CodecDocumentType]:
             return self._command(
-                connection,
+                conn,
                 command,
                 value,
                 check,
@@ -947,6 +953,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 **kwargs,
             )
+
+        return self._client._retryable_read(
+            inner, read_preference, session, command_name, None, False, is_run_command=True
+        )
 
     @_csot.apply
     @_retry_overload
@@ -1014,17 +1024,19 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         else:
             command_name = next(iter(command))
 
-        with self._client._tmp_session(session, close=False) as tmp_session:
+        with self._client._tmp_session(session) as tmp_session:
             opts = codec_options or DEFAULT_CODEC_OPTIONS
-
             if read_preference is None:
                 read_preference = (
                     tmp_session and tmp_session._txn_read_preference()
                 ) or ReadPreference.PRIMARY
-            with self._client._conn_for_reads(read_preference, tmp_session, command_name) as (
-                conn,
-                read_preference,
-            ):
+
+            def inner(
+                session: Optional[ClientSession],
+                _server: Server,
+                conn: Connection,
+                read_preference: _ServerMode,
+            ) -> CommandCursor[_DocumentType]:
                 response = self._command(
                     conn,
                     command,
@@ -1033,7 +1045,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                     None,
                     read_preference,
                     opts,
-                    session=tmp_session,
+                    session=session,
                     **kwargs,
                 )
                 coll = self.get_collection("$cmd", read_preference=read_preference)
@@ -1043,14 +1055,17 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                         response["cursor"],
                         conn.address,
                         max_await_time_ms=max_await_time_ms,
-                        session=tmp_session,
-                        explicit_session=session is not None,
+                        session=session,
                         comment=comment,
                     )
                     cmd_cursor._maybe_pin_connection(conn)
                     return cmd_cursor
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
+
+            return self.client._retryable_read(
+                inner, read_preference, tmp_session, command_name, None, False
+            )
 
     def _retryable_read_command(
         self,
@@ -1090,7 +1105,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         )
         cmd = {"listCollections": 1, "cursor": {}}
         cmd.update(kwargs)
-        with self._client._tmp_session(session, close=False) as tmp_session:
+        with self._client._tmp_session(session) as tmp_session:
             cursor = (
                 self._command(conn, cmd, read_preference=read_preference, session=tmp_session)
             )["cursor"]
@@ -1099,7 +1114,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 cursor,
                 conn.address,
                 session=tmp_session,
-                explicit_session=session is not None,
                 comment=cmd.get("comment"),
             )
         cmd_cursor._maybe_pin_connection(conn)
@@ -1251,15 +1265,19 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             command["comment"] = comment
 
-        with self._client._conn_for_writes(session, operation=_Op.DROP) as connection:
+        def inner(
+            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+        ) -> dict[str, Any]:
             return self._command(
-                connection,
+                conn,
                 command,
                 allowable_errors=["ns not found", 26],
                 write_concern=self._write_concern_for(session),
                 parse_write_concern_error=True,
                 session=session,
             )
+
+        return self.client._retryable_write(False, inner, session, _Op.DROP)
 
     @_csot.apply
     @_retry_overload

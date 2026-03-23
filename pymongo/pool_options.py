@@ -79,17 +79,6 @@ elif sys.platform == "win32":
         # Windows patch level (e.g. 10.0.17763-SP0).
         "version": ".".join(map(str, _ver[:3])) + f"-SP{_ver[-1] or '0'}",
     }
-elif sys.platform.startswith("java"):
-    _name, _ver, _arch = platform.java_ver()[-1]
-    _METADATA["os"] = {
-        # Linux, Windows 7, Mac OS X, etc.
-        "type": _name,
-        "name": _name,
-        # x86, x86_64, AMD64, etc.
-        "architecture": _arch,
-        # Linux kernel version, OSX version, etc.
-        "version": _ver,
-    }
 else:
     # Get potential alias (e.g. SunOS 5.11 becomes Solaris 2.11)
     _aliased = platform.system_alias(platform.system(), platform.release(), platform.version())
@@ -106,14 +95,6 @@ if platform.python_implementation().startswith("PyPy"):
             platform.python_implementation(),
             ".".join(map(str, sys.pypy_version_info)),  # type: ignore
             "(Python %s)" % ".".join(map(str, sys.version_info)),
-        )
-    )
-elif sys.platform.startswith("java"):
-    _METADATA["platform"] = " ".join(
-        (
-            platform.python_implementation(),
-            ".".join(map(str, sys.version_info)),
-            "(%s)" % " ".join((platform.system(), platform.release())),
         )
     )
 else:

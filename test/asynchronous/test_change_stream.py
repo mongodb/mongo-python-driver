@@ -35,7 +35,7 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import (
     AllowListEventListener,
     EventListener,
@@ -772,8 +772,8 @@ class ProseSpecTestsMixin:
 class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
     dbs: list
 
-    @async_client_context.require_version_min(4, 2, 0)
-    @async_client_context.require_change_streams
+    @async_client_context.require_version_min(4, 2, 0)  # type:ignore[untyped-decorator]
+    @async_client_context.require_change_streams  # type:ignore[untyped-decorator]
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         self.dbs = [self.db, self.client.pymongo_test_2]
@@ -832,8 +832,8 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
 
 
 class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
-    @async_client_context.require_version_min(4, 2, 0)
-    @async_client_context.require_change_streams
+    @async_client_context.require_version_min(4, 2, 0)  # type:ignore[untyped-decorator]
+    @async_client_context.require_change_streams  # type:ignore[untyped-decorator]
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
 
@@ -1144,12 +1144,9 @@ class TestAllLegacyScenarios(AsyncIntegrationTest):
         self.listener.reset()
 
 
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "change_streams")
-
-
 globals().update(
     generate_test_classes(
-        os.path.join(_TEST_PATH, "unified"),
+        get_test_path("change_streams", "unified"),
         module=__name__,
     )
 )

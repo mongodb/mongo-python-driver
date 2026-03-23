@@ -143,7 +143,7 @@ class SON(Dict[_Key, _Value]):
         del self[k]
         return (k, v)
 
-    def update(self, other: Optional[Any] = None, **kwargs: _Value) -> None:  # type: ignore[override]
+    def update(self, other: Optional[Any] = None, **kwargs: _Value) -> None:
         # Make progressively weaker assumptions about "other"
         if other is None:
             pass

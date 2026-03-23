@@ -19,7 +19,7 @@ import pathlib
 import time
 import unittest
 from test import IntegrationTest
-from test.unified_format import generate_test_classes
+from test.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import CMAPListener
 from typing import Any, Optional
 
@@ -40,16 +40,8 @@ pytestmark = pytest.mark.mockupdb
 
 _IS_SYNC = True
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "handshake", "unified")
-else:
-    _TEST_PATH = os.path.join(
-        pathlib.Path(__file__).resolve().parent.parent, "handshake", "unified"
-    )
-
 # Generate unified tests.
-globals().update(generate_test_classes(_TEST_PATH, module=__name__))
+globals().update(generate_test_classes(get_test_path("handshake", "unified"), module=__name__))
 
 
 def _get_handshake_driver_info(request):
@@ -226,6 +218,19 @@ class TestClientMetadataProse(IntegrationTest):
         time.sleep(0.005)
         # add same metadata again
         self.check_metadata_added(client, "Framework", None, None)
+
+    def test_handshake_documents_include_backpressure(self):
+        # Create a `MongoClient` that is configured to record all handshake documents sent to the server as a part of
+        # connection establishment.
+        client = self.rs_or_single_client("mongodb://" + self.server.address_string)
+
+        # Send a `ping` command to the server and verify that the command succeeds. This ensure that a connection is
+        # established on all topologies.  Note: MockupDB only supports standalone servers.
+        client.admin.command("ping")
+
+        # Assert that for every handshake document intercepted:
+        # the document has a field `backpressure` whose value is `true`.
+        self.assertEqual(self.handshake_req["backpressure"], True)
 
 
 if __name__ == "__main__":

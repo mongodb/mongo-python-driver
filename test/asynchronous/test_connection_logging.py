@@ -22,20 +22,13 @@ import sys
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 
 _IS_SYNC = False
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent, "connection_logging")
-else:
-    _TEST_PATH = os.path.join(pathlib.Path(__file__).resolve().parent.parent, "connection_logging")
-
-
 globals().update(
     generate_test_classes(
-        _TEST_PATH,
+        get_test_path("connection_logging"),
         module=__name__,
     )
 )

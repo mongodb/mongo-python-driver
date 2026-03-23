@@ -30,7 +30,7 @@ import pytest
 
 sys.path[0:0] = [""]
 
-from test.asynchronous.unified_format import generate_test_classes
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import EventListener, OvertCommandListener
 
 from bson import SON
@@ -54,14 +54,13 @@ from pymongo.synchronous.uri_parser import parse_uri
 _IS_SYNC = False
 
 ROOT = Path(__file__).parent.parent.resolve()
-TEST_PATH = ROOT / "auth" / "unified"
 ENVIRON = os.environ.get("OIDC_ENV", "test")
 DOMAIN = os.environ.get("OIDC_DOMAIN", "")
 TOKEN_DIR = os.environ.get("OIDC_TOKEN_DIR", "")
 TOKEN_FILE = os.environ.get("OIDC_TOKEN_FILE", "")
 
 # Generate unified tests.
-globals().update(generate_test_classes(str(TEST_PATH), module=__name__))
+globals().update(generate_test_classes(get_test_path("auth", "unified"), module=__name__))
 
 pytestmark = pytest.mark.auth_oidc
 
@@ -105,7 +104,7 @@ class OIDCTestBase(AsyncPyMongoTestCase):
 
     @asynccontextmanager
     async def fail_point(self, command_args):
-        cmd_on = SON([("configureFailPoint", "failCommand")])
+        cmd_on = dict(configureFailPoint="failCommand", appName="auth_oidc")
         cmd_on.update(command_args)
         client = AsyncMongoClient(self.uri_admin)
         await client.admin.command(cmd_on)
@@ -113,7 +112,7 @@ class OIDCTestBase(AsyncPyMongoTestCase):
             yield
         finally:
             await client.admin.command(
-                "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
+                "configureFailPoint", cmd_on["configureFailPoint"], mode="off", appName="auth_oidc"
             )
             await client.close()
 

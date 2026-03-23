@@ -236,7 +236,7 @@ class AsyncChangeStream(Generic[_DocumentType]):
                     )
 
     async def _run_aggregation_cmd(
-        self, session: Optional[AsyncClientSession], explicit_session: bool
+        self, session: Optional[AsyncClientSession]
     ) -> AsyncCommandCursor:  # type: ignore[type-arg]
         """Run the full aggregation pipeline for this AsyncChangeStream and return
         the corresponding AsyncCommandCursor.
@@ -246,7 +246,6 @@ class AsyncChangeStream(Generic[_DocumentType]):
             AsyncCommandCursor,
             self._aggregation_pipeline(),
             self._command_options(),
-            explicit_session,
             result_processor=self._process_result,
             comment=self._comment,
         )
@@ -258,10 +257,8 @@ class AsyncChangeStream(Generic[_DocumentType]):
         )
 
     async def _create_cursor(self) -> AsyncCommandCursor:  # type: ignore[type-arg]
-        async with self._client._tmp_session(self._session, close=False) as s:
-            return await self._run_aggregation_cmd(
-                session=s, explicit_session=self._session is not None
-            )
+        async with self._client._tmp_session(self._session) as s:
+            return await self._run_aggregation_cmd(session=s)
 
     async def _resume(self) -> None:
         """Reestablish this change stream after a resumable error."""

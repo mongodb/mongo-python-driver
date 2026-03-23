@@ -41,26 +41,27 @@ jobs:
         - [ubuntu-latest, "manylinux_i686", "cp3*-manylinux_i686"]
         - [windows-2022, "win_amd6", "cp3*-win_amd64"]
         - [windows-2022, "win32", "cp3*-win32"]
+        - [windows-11-arm, "win_arm64", "cp3*-win_arm64"]
         - [macos-14, "macos", "cp*-macosx_*"]
 
     steps:
       - name: Checkout pymongo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ inputs.ref }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           cache: 'pip'
-          python-version: 3.9
+          python-version: 3.11
           cache-dependency-path: 'pyproject.toml'
           allow-prereleases: true
 
       - name: Set up QEMU
         if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
         with:
           # setup-qemu-action by default uses `tonistiigi/binfmt:latest` image,
           # which is out of date. This causes seg faults during build.
@@ -69,22 +70,14 @@ jobs:
           platforms: all
 
       - name: Install cibuildwheel
-        # Note: the default manylinux is manylinux2014
+        # Note: the default manylinux is manylinux_2_28
         run: |
           python -m pip install -U pip
-          python -m pip install "cibuildwheel>=2.20,<3"
+          python -m pip install "cibuildwheel>=3.2.0,<4"
 
       - name: Build wheels
         env:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
-        run: python -m cibuildwheel --output-dir wheelhouse
-
-      - name: Build manylinux1 wheels
-        if: ${{ matrix.buildplat[1] == 'manylinux_x86_64' || matrix.buildplat[1] == 'manylinux_i686' }}
-        env:
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
-          CIBW_MANYLINUX_I686_IMAGE: manylinux1
-          CIBW_BUILD: "cp39-${{ matrix.buildplat[1] }} cp39-${{ matrix.buildplat[1] }}"
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Assert all versions in wheelhouse
@@ -95,10 +88,11 @@ jobs:
           ls wheelhouse/*cp311*.whl
           ls wheelhouse/*cp312*.whl
           ls wheelhouse/*cp313*.whl
+          ls wheelhouse/*cp314*.whl
           # Free-threading builds:
-          ls wheelhouse/*cp313t*.whl
+          ls wheelhouse/*cp314t*.whl
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: wheel-${{ matrix.buildplat[1] }}
           path: ./wheelhouse/*.whl
@@ -106,18 +100,18 @@ jobs:
 
   make_sdist:
     name: Make SDist
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ inputs.ref }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           # Build sdist on lowest supported Python
-          python-version: '3.9'
+          python-version: "3.9"
 
       - name: Build SDist
         run: |
@@ -131,7 +125,7 @@ jobs:
           cd ..
           python -c "from pymongo import has_c; assert has_c()"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: "sdist"
           path: ./dist/*.tar.gz
@@ -142,13 +136,13 @@ jobs:
     name: Download Wheels
     steps:
       - name: Download all workflow run artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
       - name: Flatten directory
         working-directory: .
         run: |
           find . -mindepth 2 -type f -exec mv {} . \;
           find . -type d -empty -delete
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: all-dist-${{ github.run_id }}
           path: "./*"

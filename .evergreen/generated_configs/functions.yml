@@ -101,8 +101,8 @@ functions:
           - AUTH
           - SSL
           - ORCHESTRATION_FILE
-          - PYTHON_BINARY
-          - PYTHON_VERSION
+          - UV_PYTHON
+          - TOOLCHAIN_VERSION
           - STORAGE_ENGINE
           - REQUIRE_API_VERSION
           - DRIVERS_TOOLS
@@ -134,10 +134,10 @@ functions:
           - AWS_SECRET_ACCESS_KEY
           - AWS_SESSION_TOKEN
           - COVERAGE
-          - PYTHON_BINARY
+          - UV_PYTHON
           - LIBMONGOCRYPT_URL
           - MONGODB_URI
-          - PYTHON_VERSION
+          - TOOLCHAIN_VERSION
           - DISABLE_TEST_COMMANDS
           - GREEN_FRAMEWORK
           - NO_EXT
@@ -151,6 +151,7 @@ functions:
           - VERSION
           - IS_WIN32
           - REQUIRE_FIPS
+          - TEST_MIN_DEPS
       type: test
     - command: subprocess.exec
       params:
@@ -236,6 +237,40 @@ functions:
         args:
           - ${DRIVERS_TOOLS}/.evergreen/teardown.sh
         working_dir: src
+      type: test
+
+  # Test numpy
+  test numpy:
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/just.sh
+          - test-numpy
+        working_dir: src
+        include_expansions_in_env:
+          - TOOLCHAIN_VERSION
+          - COVERAGE
+      type: test
+
+  # Upload coverage codecov
+  upload codecov:
+    - command: subprocess.exec
+      params:
+        binary: bash
+        args:
+          - .evergreen/scripts/upload-codecov.sh
+        working_dir: src
+        include_expansions_in_env:
+          - CODECOV_TOKEN
+          - build_variant
+          - task_name
+          - github_commit
+          - github_pr_number
+          - github_pr_head_branch
+          - github_author
+          - requester
+          - branch_name
       type: test
 
   # Upload coverage

@@ -3,14 +3,10 @@ PYMONGO=$(dirname "$(cd "$(dirname "$0")" || exit; pwd)")
 
 rm $PYMONGO/test/transactions/legacy/errors-client.json  # PYTHON-1894
 rm $PYMONGO/test/connection_monitoring/wait-queue-fairness.json  # PYTHON-1873
-rm $PYMONGO/test/client-side-encryption/spec/unified/fle2v2-BypassQueryAnalysis.json  # PYTHON-5143
-rm $PYMONGO/test/client-side-encryption/spec/unified/fle2v2-EncryptedFields-vs-EncryptedFieldsMap.json  # PYTHON-5143
-rm $PYMONGO/test/client-side-encryption/spec/unified/localSchema.json  # PYTHON-5143
-rm $PYMONGO/test/client-side-encryption/spec/unified/maxWireVersion.json  # PYTHON-5143
-rm $PYMONGO/test/unified-test-format/valid-pass/poc-queryable-encryption.json  # PYTHON-5143
 rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-application-error.json  # PYTHON-4918
 rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-checkout-error.json  # PYTHON-4918
 rm $PYMONGO/test/discovery_and_monitoring/unified/pool-clear-min-pool-size-error.json  # PYTHON-4918
+rm $PYMONGO/test/client-side-encryption/spec/unified/client-bulkWrite-qe.json  # PYTHON-4929
 
 # Python doesn't implement DRIVERS-3064
 rm $PYMONGO/test/collection_management/listCollections-rawdata.json
@@ -45,7 +41,7 @@ rm $PYMONGO/test/index_management/index-rawdata.json
 rm $PYMONGO/test/collection_management/modifyCollection-*.json
 
 # PYTHON-5248 - Remove support for MongoDB 4.0
-rm $PYMONGO/test/**/pre-42-*.json
+find /$PYMONGO/test -type f -name 'pre-42-*.json' -delete
 
 # PYTHON-3359 - Remove Database and Collection level timeout override
 rm $PYMONGO/test/csot/override-collection-timeoutMS.json
@@ -53,5 +49,8 @@ rm $PYMONGO/test/csot/override-database-timeoutMS.json
 
 # PYTHON-2943 - Socks5 Proxy Support
 rm $PYMONGO/test/uri_options/proxy-options.json
+
+# PYTHON-5517 - Avoid clearing the connection pool when the server connection rate limiter triggers
+rm $PYMONGO/test/discovery_and_monitoring/unified/backpressure-*.json
 
 echo "Done removing unimplemented tests"

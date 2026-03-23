@@ -18,12 +18,12 @@
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Mapping, Optional, TypedDict
 
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 
 try:
-    import pymongocrypt  # type:ignore[import-untyped] # noqa: F401
+    import pymongocrypt  # type:ignore[import-untyped]  # noqa: F401
 
     # Check for pymongocrypt>=1.10.
     from pymongocrypt import synchronous as _  # noqa: F401
@@ -32,12 +32,24 @@ try:
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
 from bson import int64
-from pymongo.common import validate_is_mapping
+from pymongo.common import check_for_min_version, validate_is_mapping
 from pymongo.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext
     from pymongo.typings import _AgnosticMongoClient
+
+
+def check_min_pymongocrypt() -> None:
+    """Raise an appropriate error if the min pymongocrypt is not installed."""
+    pymongocrypt_version, required_version, is_valid = check_for_min_version("pymongocrypt")
+    if not is_valid:
+        raise ConfigurationError(
+            f"client side encryption requires pymongocrypt>={required_version}, "
+            f"found version {pymongocrypt_version}. "
+            "Install a compatible version with: "
+            "python -m pip install 'pymongo[encryption]'"
+        )
 
 
 class AutoEncryptionOpts:
@@ -215,6 +227,7 @@ class AutoEncryptionOpts:
                 "install a compatible version with: "
                 "python -m pip install 'pymongo[encryption]'"
             )
+        check_min_pymongocrypt()
         if encrypted_fields_map:
             validate_is_mapping("encrypted_fields_map", encrypted_fields_map)
         self._encrypted_fields_map = encrypted_fields_map
@@ -295,3 +308,85 @@ class RangeOpts:
             if v is not None:
                 doc[k] = v
         return doc
+
+
+class TextOpts:
+    """**BETA** Options to configure encrypted queries using the text algorithm.
+
+    TextOpts is currently unstable API and subject to backwards breaking changes."""
+
+    def __init__(
+        self,
+        substring: Optional[SubstringOpts] = None,
+        prefix: Optional[PrefixOpts] = None,
+        suffix: Optional[SuffixOpts] = None,
+        case_sensitive: Optional[bool] = None,
+        diacritic_sensitive: Optional[bool] = None,
+    ) -> None:
+        """Options to configure encrypted queries using the text algorithm.
+
+        :param substring: Further options to support substring queries.
+        :param prefix: Further options to support prefix queries.
+        :param suffix: Further options to support suffix queries.
+        :param case_sensitive: Whether text indexes for this field are case sensitive.
+        :param diacritic_sensitive: Whether text indexes for this field are diacritic sensitive.
+
+        .. versionadded:: 4.15
+        """
+        self.substring = substring
+        self.prefix = prefix
+        self.suffix = suffix
+        self.case_sensitive = case_sensitive
+        self.diacritic_sensitive = diacritic_sensitive
+
+    @property
+    def document(self) -> dict[str, Any]:
+        doc = {}
+        for k, v in [
+            ("substring", self.substring),
+            ("prefix", self.prefix),
+            ("suffix", self.suffix),
+            ("caseSensitive", self.case_sensitive),
+            ("diacriticSensitive", self.diacritic_sensitive),
+        ]:
+            if v is not None:
+                doc[k] = v
+        return doc
+
+
+class SubstringOpts(TypedDict):
+    """**BETA** Options for substring text queries.
+
+    SubstringOpts is currently unstable API and subject to backwards breaking changes.
+    """
+
+    # strMaxLength is the maximum allowed length to insert. Inserting longer strings will error.
+    strMaxLength: int
+    # strMinQueryLength is the minimum allowed query length. Querying with a shorter string will error.
+    strMinQueryLength: int
+    # strMaxQueryLength is the maximum allowed query length. Querying with a longer string will error.
+    strMaxQueryLength: int
+
+
+class PrefixOpts(TypedDict):
+    """**BETA** Options for prefix text queries.
+
+    PrefixOpts is currently unstable API and subject to backwards breaking changes.
+    """
+
+    # strMinQueryLength is the minimum allowed query length. Querying with a shorter string will error.
+    strMinQueryLength: int
+    # strMaxQueryLength is the maximum allowed query length. Querying with a longer string will error.
+    strMaxQueryLength: int
+
+
+class SuffixOpts(TypedDict):
+    """**BETA** Options for suffix text queries.
+
+    SuffixOpts is currently unstable API and subject to backwards breaking changes.
+    """
+
+    # strMinQueryLength is the minimum allowed query length. Querying with a shorter string will error.
+    strMinQueryLength: int
+    # strMaxQueryLength is the maximum allowed query length. Querying with a longer string will error.
+    strMaxQueryLength: int

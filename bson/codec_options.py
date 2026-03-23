@@ -273,9 +273,6 @@ if TYPE_CHECKING:
         def _arguments_repr(self) -> str:
             ...
 
-        def _options_dict(self) -> dict[Any, Any]:
-            ...
-
         # NamedTuple API
         @classmethod
         def _make(cls, obj: Iterable[Any]) -> CodecOptions[_DocumentType]:
@@ -466,19 +463,6 @@ else:
                 )
             )
 
-        def _options_dict(self) -> dict[str, Any]:
-            """Dictionary of the arguments used to create this object."""
-            # TODO: PYTHON-2442 use _asdict() instead
-            return {
-                "document_class": self.document_class,
-                "tz_aware": self.tz_aware,
-                "uuid_representation": self.uuid_representation,
-                "unicode_decode_error_handler": self.unicode_decode_error_handler,
-                "tzinfo": self.tzinfo,
-                "type_registry": self.type_registry,
-                "datetime_conversion": self.datetime_conversion,
-            }
-
         def __repr__(self) -> str:
             return f"{self.__class__.__name__}({self._arguments_repr()})"
 
@@ -494,7 +478,7 @@ else:
 
             .. versionadded:: 3.5
             """
-            opts = self._options_dict()
+            opts = self._asdict()
             opts.update(kwargs)
             return CodecOptions(**opts)
 

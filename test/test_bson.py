@@ -19,6 +19,7 @@ from __future__ import annotations
 import array
 import collections
 import datetime
+import importlib.util
 import mmap
 import os
 import pickle
@@ -70,6 +71,8 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset, utc
+
+_NUMPY_AVAILABLE = importlib.util.find_spec("numpy") is not None
 
 
 class NotADict(abc.MutableMapping):
@@ -132,10 +135,6 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(InvalidBSON, decode, data)
 
     def check_encode_then_decode(self, doc_class=dict, decoder=decode, encoder=encode):
-        # Work around http://bugs.jython.org/issue1728
-        if sys.platform.startswith("java"):
-            doc_class = SON
-
         def helper(doc):
             self.assertEqual(doc, (decoder(encoder(doc_class(doc)))))
             self.assertEqual(doc, decoder(encoder(doc)))
@@ -871,6 +870,65 @@ class TestBSON(unittest.TestCase):
             BinaryVector([1], BinaryVectorDtype.INT8), BinaryVector([2], BinaryVectorDtype.INT8)
         )
 
+    @unittest.skipIf(not _NUMPY_AVAILABLE, "numpy optional-dependency not installed.")
+    def test_vector_from_numpy(self):
+        """Follows test_vector except for input type numpy.ndarray"""
+        # Simple data values could be treated as any of our BinaryVectorDtypes
+        import numpy as np
+
+        arr = np.array([2, 3])
+        # INT8
+        binary_vector_int8 = Binary.from_vector(arr, BinaryVectorDtype.INT8)
+        # as_vector
+        vector = binary_vector_int8.as_vector()
+        assert isinstance(vector, BinaryVector)
+        assert vector.data == arr.tolist()
+        # as_numpy_vector
+        vector_np = binary_vector_int8.as_vector(return_numpy=True)
+        assert isinstance(vector_np, BinaryVector)
+        assert isinstance(vector_np.data, np.ndarray)
+        assert np.all(vector.data == arr)
+        # PACKED_BIT
+        binary_vector_uint8 = Binary.from_vector(arr, BinaryVectorDtype.PACKED_BIT)
+        # as_vector
+        vector = binary_vector_uint8.as_vector()
+        assert isinstance(vector, BinaryVector)
+        assert vector.data == arr.tolist()
+        # as_numpy_vector
+        vector_np = binary_vector_uint8.as_vector(return_numpy=True)
+        assert isinstance(vector_np, BinaryVector)
+        assert isinstance(vector_np.data, np.ndarray)
+        assert np.all(vector_np.data == arr)
+        # FLOAT32
+        binary_vector_float32 = Binary.from_vector(arr, BinaryVectorDtype.FLOAT32)
+        # as_vector
+        vector = binary_vector_float32.as_vector()
+        assert isinstance(vector, BinaryVector)
+        assert vector.data == arr.tolist()
+        # as_numpy_vector
+        vector_np = binary_vector_float32.as_vector(return_numpy=True)
+        assert isinstance(vector_np, BinaryVector)
+        assert isinstance(vector_np.data, np.ndarray)
+        assert np.all(vector_np.data == arr)
+
+        # Invalid cases
+        with self.assertRaises(ValueError):
+            Binary.from_vector(np.array([-1]), BinaryVectorDtype.PACKED_BIT)
+        with self.assertRaises(ValueError):
+            Binary.from_vector(np.array([128]), BinaryVectorDtype.PACKED_BIT)
+        with self.assertRaises(ValueError):
+            Binary.from_vector(np.array([-198]), BinaryVectorDtype.INT8)
+
+        # Unexpected cases
+        # Creating a vector of INT8 from a list of doubles will be caught by struct.pack
+        # Numpy's default behavior is to cast to the type requested.
+        list_floats = [-1.1, 1.1]
+        cast_bin = Binary.from_vector(np.array(list_floats), BinaryVectorDtype.INT8)
+        vector = cast_bin.as_vector()
+        vector_np = cast_bin.as_vector(return_numpy=True)
+        assert vector.data != list_floats
+        assert vector.data == vector_np.data.tolist() == [-1, 1]
+
     def test_unicode_regex(self):
         """Tests we do not get a segfault for C extension on unicode RegExs.
         This had been happening.
@@ -1163,7 +1221,7 @@ class TestBSON(unittest.TestCase):
         ):
             encode({"t": Wrapper(1)})
 
-    def test_doc_in_invalid_document_error_message(self):
+    def test_doc_in_invalid_document_error_as_property(self):
         class Wrapper:
             def __init__(self, val):
                 self.val = val
@@ -1173,10 +1231,11 @@ class TestBSON(unittest.TestCase):
 
         self.assertEqual("1", repr(Wrapper(1)))
         doc = {"t": Wrapper(1)}
-        with self.assertRaisesRegex(InvalidDocument, f"Invalid document {doc}"):
+        with self.assertRaisesRegex(InvalidDocument, "Invalid document:") as cm:
             encode(doc)
+        self.assertEqual(cm.exception.document, doc)
 
-    def test_doc_in_invalid_document_error_message_mapping(self):
+    def test_doc_in_invalid_document_error_as_property_mapping(self):
         class MyMapping(abc.Mapping):
             def keys(self):
                 return ["t"]
@@ -1192,6 +1251,11 @@ class TestBSON(unittest.TestCase):
             def __iter__(self):
                 return iter(["t"])
 
+            def __eq__(self, other):
+                if isinstance(other, MyMapping):
+                    return True
+                return False
+
         class Wrapper:
             def __init__(self, val):
                 self.val = val
@@ -1201,8 +1265,9 @@ class TestBSON(unittest.TestCase):
 
         self.assertEqual("1", repr(Wrapper(1)))
         doc = MyMapping()
-        with self.assertRaisesRegex(InvalidDocument, f"Invalid document {doc}"):
+        with self.assertRaisesRegex(InvalidDocument, "Invalid document:") as cm:
             encode(doc)
+        self.assertEqual(cm.exception.document, doc)
 
 
 class TestCodecOptions(unittest.TestCase):

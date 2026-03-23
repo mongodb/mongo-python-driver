@@ -218,6 +218,127 @@ class TestRetryableReads(AsyncIntegrationTest):
         #  Assert that both events occurred on the same mongos.
         assert listener.succeeded_events[0].connection_id == listener.failed_events[0].connection_id
 
+    @async_client_context.require_failCommand_fail_point
+    async def test_retryable_reads_are_retried_on_the_same_implicit_session(self):
+        listener = OvertCommandListener()
+        client = await self.async_rs_or_single_client(
+            directConnection=False,
+            event_listeners=[listener],
+            retryReads=True,
+        )
+
+        await client.t.t.insert_one({"x": 1})
+
+        commands = [
+            ("aggregate", lambda: client.t.t.count_documents({})),
+            ("aggregate", lambda: client.t.t.aggregate([{"$match": {}}])),
+            ("count", lambda: client.t.t.estimated_document_count()),
+            ("distinct", lambda: client.t.t.distinct("x")),
+            ("find", lambda: client.t.t.find_one({})),
+            ("listDatabases", lambda: client.list_databases()),
+            ("listCollections", lambda: client.t.list_collections()),
+            ("listIndexes", lambda: client.t.t.list_indexes()),
+        ]
+
+        for command_name, operation in commands:
+            listener.reset()
+            fail_command = {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 1},
+                "data": {"failCommands": [command_name], "errorCode": 6},
+            }
+
+            async with self.fail_point(fail_command):
+                await operation()
+
+            #  Assert that both events occurred on the same session.
+            command_docs = [
+                event.command
+                for event in listener.started_events
+                if event.command_name == command_name
+            ]
+            self.assertEqual(len(command_docs), 2)
+            self.assertEqual(command_docs[0]["lsid"], command_docs[1]["lsid"])
+            self.assertIsNot(command_docs[0], command_docs[1])
+
+    @async_client_context.require_replica_set
+    @async_client_context.require_secondaries_count(1)
+    @async_client_context.require_failCommand_fail_point
+    @async_client_context.require_version_min(4, 4, 0)
+    async def test_03_01_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available(
+        self
+    ):
+        listener = OvertCommandListener()
+
+        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
+        client = await self.async_rs_or_single_client(
+            event_listeners=[listener], retryReads=True, readPreference="primaryPreferred"
+        )
+
+        # 2. Configure a fail point with the RetryableError and SystemOverloadedError error labels.
+        command_args = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+                "errorCode": 6,
+            },
+        }
+        await async_set_fail_point(client, command_args)
+
+        # 3. Reset the command event monitor to clear the fail point command from its stored events.
+        listener.reset()
+
+        # 4. Execute a `find` command with `client`.
+        await client.t.t.find_one({})
+
+        # 5. Assert that one failed command event and one successful command event occurred.
+        self.assertEqual(len(listener.failed_events), 1)
+        self.assertEqual(len(listener.succeeded_events), 1)
+
+        # 6. Assert that both events occurred on different servers.
+        assert listener.failed_events[0].connection_id != listener.succeeded_events[0].connection_id
+
+    @async_client_context.require_replica_set
+    @async_client_context.require_secondaries_count(1)
+    @async_client_context.require_failCommand_fail_point
+    @async_client_context.require_version_min(4, 4, 0)
+    async def test_03_02_retryable_reads_caused_by_non_overload_errors_are_retried_on_the_same_replicaset_server(
+        self
+    ):
+        listener = OvertCommandListener()
+
+        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
+        client = await self.async_rs_or_single_client(
+            event_listeners=[listener], retryReads=True, readPreference="primaryPreferred"
+        )
+
+        # 2. Configure a fail point with the RetryableError error label.
+        command_args = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "errorLabels": ["RetryableError"],
+                "errorCode": 6,
+            },
+        }
+        await async_set_fail_point(client, command_args)
+
+        # 3. Reset the command event monitor to clear the fail point command from its stored events.
+        listener.reset()
+
+        # 4. Execute a `find` command with `client`.
+        await client.t.t.find_one({})
+
+        # 5. Assert that one failed command event and one successful command event occurred.
+        self.assertEqual(len(listener.failed_events), 1)
+        self.assertEqual(len(listener.succeeded_events), 1)
+
+        # 6. Assert that both events occurred the same server.
+        assert listener.failed_events[0].connection_id == listener.succeeded_events[0].connection_id
+
 
 if __name__ == "__main__":
     unittest.main()

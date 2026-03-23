@@ -32,7 +32,6 @@ from typing import (
 from pymongo import _csot
 from pymongo.errors import (
     OperationFailure,
-    PyMongoError,
 )
 from pymongo.helpers_shared import _REAUTHENTICATION_REQUIRED_CODE
 from pymongo.lock import _async_create_lock
@@ -80,7 +79,6 @@ def _handle_reauth(func: F) -> F:
 _MAX_RETRIES = 5
 _BACKOFF_INITIAL = 0.1
 _BACKOFF_MAX = 10
-# DRIVERS-3240 will determine these defaults.
 DEFAULT_RETRY_TOKEN_CAPACITY = 1000.0
 DEFAULT_RETRY_TOKEN_RETURN = 0.1
 
@@ -102,7 +100,6 @@ class _TokenBucket:
     ):
         self.lock = _async_create_lock()
         self.capacity = capacity
-        # DRIVERS-3240 will determine how full the bucket should start.
         self.tokens = capacity
         self.return_rate = return_rate
 
@@ -124,7 +121,7 @@ class _TokenBucket:
 class _RetryPolicy:
     """A retry limiter that performs exponential backoff with jitter.
 
-    Retry attempts are limited by a token bucket to prevent overwhelming the server during
+    When adaptive retries are enabled, retry attempts are limited by a token bucket to prevent overwhelming the server during
     a prolonged outage or high load.
     """
 
@@ -134,15 +131,18 @@ class _RetryPolicy:
         attempts: int = _MAX_RETRIES,
         backoff_initial: float = _BACKOFF_INITIAL,
         backoff_max: float = _BACKOFF_MAX,
+        adaptive_retry: bool = False,
     ):
         self.token_bucket = token_bucket
         self.attempts = attempts
         self.backoff_initial = backoff_initial
         self.backoff_max = backoff_max
+        self.adaptive_retry = adaptive_retry
 
     async def record_success(self, retry: bool) -> None:
         """Record a successful operation."""
-        await self.token_bucket.deposit(retry)
+        if self.adaptive_retry:
+            await self.token_bucket.deposit(retry)
 
     def backoff(self, attempt: int) -> float:
         """Return the backoff duration for the given ."""
@@ -159,39 +159,11 @@ class _RetryPolicy:
                 return False
 
         # Check token bucket last since we only want to consume a token if we actually retry.
-        if not await self.token_bucket.consume():
+        if self.adaptive_retry and not await self.token_bucket.consume():
             # DRIVERS-3246 Improve diagnostics when this case happens.
             # We could add info to the exception and log.
             return False
         return True
-
-
-def _retry_overload(func: F) -> F:
-    @functools.wraps(func)
-    async def inner(self: Any, *args: Any, **kwargs: Any) -> Any:
-        retry_policy = self._retry_policy
-        attempt = 0
-        while True:
-            try:
-                res = await func(self, *args, **kwargs)
-                await retry_policy.record_success(retry=attempt > 0)
-                return res
-            except PyMongoError as exc:
-                if not exc.has_error_label("RetryableError"):
-                    raise
-                attempt += 1
-                delay = 0
-                if exc.has_error_label("SystemOverloadedError"):
-                    delay = retry_policy.backoff(attempt)
-                if not await retry_policy.should_retry(attempt, delay):
-                    raise
-
-                # Implement exponential backoff on retry.
-                if delay:
-                    await asyncio.sleep(delay)
-                continue
-
-    return cast(F, inner)
 
 
 async def _getaddrinfo(
@@ -202,7 +174,7 @@ async def _getaddrinfo(
         socket.SocketKind,
         int,
         str,
-        tuple[str, int] | tuple[str, int, int, int],
+        tuple[str, int] | tuple[str, int, int, int] | tuple[int, bytes],
     ]
 ]:
     if not _IS_SYNC:

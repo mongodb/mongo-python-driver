@@ -64,10 +64,14 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.asynchronous.pool import AsyncBaseConnection
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
-from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
+from pymongo.encryption_options import (
+    AutoEncryptionOpts,
+    RangeOpts,
+    TextOpts,
+    check_min_pymongocrypt,
+)
 from pymongo.errors import (
     ConfigurationError,
     EncryptedCollectionError,
@@ -77,11 +81,11 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.helpers_shared import _get_timeout_details
-from pymongo.network_layer import PyMongoKMSProtocol, async_receive_kms, async_sendall
+from pymongo.network_layer import async_socket_sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
-    _configured_protocol_interface,
+    _async_configured_socket,
     _raise_connection_failure,
 )
 from pymongo.read_concern import ReadConcern
@@ -94,7 +98,9 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
+    from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
+
 
 _IS_SYNC = False
 
@@ -110,10 +116,9 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
-async def _connect_kms(address: _Address, opts: PoolOptions) -> AsyncBaseConnection:
+async def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
     try:
-        interface = await _configured_protocol_interface(address, opts, PyMongoKMSProtocol)
-        return AsyncBaseConnection(interface, opts)
+        return await _async_configured_socket(address, opts)
     except Exception as exc:
         _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
@@ -198,11 +203,19 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         try:
             conn = await _connect_kms(address, opts)
             try:
-                await async_sendall(conn.conn.get_conn, message)
+                await async_socket_sendall(conn, message)
                 while kms_context.bytes_needed > 0:
                     # CSOT: update timeout.
-                    conn.set_conn_timeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                    data = await async_receive_kms(conn, kms_context.bytes_needed)
+                    conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    data: memoryview | bytes
+                    if _IS_SYNC:
+                        data = conn.recv(kms_context.bytes_needed)
+                    else:
+                        from pymongo.network_layer import (  # type: ignore[attr-defined]
+                            async_receive_data_socket,
+                        )
+
+                        data = await async_receive_data_socket(conn, kms_context.bytes_needed)
                     if not data:
                         raise OSError("KMS connection closed")
                     kms_context.feed(data)
@@ -221,7 +234,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                     address, exc, msg_prefix=msg_prefix, timeout_details=_get_timeout_details(opts)
                 )
             finally:
-                await conn.close_conn(None)
+                conn.close()
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
         except Exception as exc:
@@ -264,7 +277,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         args.extend(self.opts._mongocryptd_spawn_args)
         _spawn_daemon(args)
 
-    async def mark_command(self, database: str, cmd: bytes) -> bytes:
+    async def mark_command(self, database: str, cmd: bytes) -> bytes | memoryview:
         """Mark a command for encryption.
 
         :param database: The database on which to run this command.
@@ -291,7 +304,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             )
         return res.raw
 
-    async def fetch_keys(self, filter: bytes) -> AsyncGenerator[bytes, None]:
+    async def fetch_keys(self, filter: bytes) -> AsyncGenerator[bytes | memoryview, None]:
         """Yields one or more keys from the key vault.
 
         :param filter: The filter to pass to find.
@@ -463,7 +476,7 @@ class _Encrypter:
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
             return _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
 
-    async def decrypt(self, response: bytes) -> Optional[bytes]:
+    async def decrypt(self, response: bytes | memoryview) -> Optional[bytes]:
         """Decrypt a MongoDB command response.
 
         :param response: A MongoDB command response as BSON.
@@ -516,6 +529,11 @@ class Algorithm(str, enum.Enum):
 
     .. versionadded:: 4.4
     """
+    TEXTPREVIEW = "TextPreview"
+    """**BETA** - TextPreview.
+
+    .. versionadded:: 4.15
+    """
 
 
 class QueryType(str, enum.Enum):
@@ -539,6 +557,24 @@ class QueryType(str, enum.Enum):
     .. note:: Support for RangePreview is deprecated. Use :attr:`QueryType.RANGE` instead.
 
     .. versionadded:: 4.4
+    """
+
+    PREFIXPREVIEW = "prefixPreview"
+    """**BETA** - Used to encrypt a value for a prefixPreview query.
+
+    .. versionadded:: 4.15
+    """
+
+    SUFFIXPREVIEW = "suffixPreview"
+    """**BETA** - Used to encrypt a value for a suffixPreview query.
+
+    .. versionadded:: 4.15
+    """
+
+    SUBSTRINGPREVIEW = "substringPreview"
+    """**BETA** - Used to encrypt a value for a substringPreview query.
+
+    .. versionadded:: 4.15
     """
 
 
@@ -644,6 +680,8 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 "python -m pip install --upgrade 'pymongo[encryption]'"
             )
 
+        check_min_pymongocrypt()
+
         if not isinstance(codec_options, CodecOptions):
             raise TypeError(
                 f"codec_options must be an instance of bson.codec_options.CodecOptions, not {type(codec_options)}"
@@ -679,7 +717,10 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         self._encryption = AsyncExplicitEncrypter(
             self._io_callbacks,
             _create_mongocrypt_options(
-                kms_providers=kms_providers, schema_map=None, key_expiration_ms=key_expiration_ms
+                kms_providers=kms_providers,
+                schema_map=None,
+                key_expiration_ms=key_expiration_ms,
+                bypass_encryption=True,  # Don't load crypt_shared
             ),
         )
         # Use the same key vault collection as the callback.
@@ -876,6 +917,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         contention_factor: Optional[int] = None,
         range_opts: Optional[RangeOpts] = None,
         is_expression: bool = False,
+        text_opts: Optional[TextOpts] = None,
     ) -> Any:
         self._check_closed()
         if isinstance(key_id, uuid.UUID):
@@ -895,6 +937,12 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 range_opts.document,
                 codec_options=self._codec_options,
             )
+        text_opts_bytes = None
+        if text_opts:
+            text_opts_bytes = encode(
+                text_opts.document,
+                codec_options=self._codec_options,
+            )
         with _wrap_encryption_errors():
             encrypted_doc = await self._encryption.encrypt(
                 value=doc,
@@ -905,6 +953,8 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts_bytes,
                 is_expression=is_expression,
+                # For compatibility with pymongocrypt < 1.16:
+                **{"text_opts": text_opts_bytes} if text_opts_bytes else {},
             )
             return decode(encrypted_doc)["v"]
 
@@ -917,6 +967,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
         range_opts: Optional[RangeOpts] = None,
+        text_opts: Optional[TextOpts] = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -937,8 +988,13 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             used.
         :param range_opts: Index options for `range` queries. See
             :class:`RangeOpts` for some valid options.
+        :param text_opts: Index options for `textPreview` queries. See
+            :class:`TextOpts` for some valid options.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+
+        .. versionchanged:: 4.9
+           Added the `text_opts` parameter.
 
         .. versionchanged:: 4.9
            Added the `range_opts` parameter.
@@ -960,6 +1016,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts,
                 is_expression=False,
+                text_opts=text_opts,
             ),
         )
 

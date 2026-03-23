@@ -1,6 +1,148 @@
 Changelog
 =========
 
+Changes in Version 4.17.0 (2026/XX/XX)
+--------------------------------------
+
+PyMongo 4.17 brings a number of changes including:
+
+- Added the :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.bind` and :meth:`~pymongo.client_session.ClientSession.bind` methods
+  that allow users to bind a session to all database operations within the scope of a context manager instead of having to explicitly pass the session to each individual operation.
+  See <PLACEHOLDER> for examples and more information.
+
+Changes in Version 4.16.0 (2026/01/07)
+--------------------------------------
+
+PyMongo 4.16 brings a number of changes including:
+
+- Removed invalid documents from :class:`bson.errors.InvalidDocument` error messages as
+  doing so may leak sensitive user data.
+  Instead, invalid documents are stored in :attr:`bson.errors.InvalidDocument.document`.
+- PyMongo now requires ``dnspython>=2.6.1``, since ``dnspython`` 1.0 is no longer maintained.
+  The minimum version is ``2.6.1`` to account for `CVE-2023-29483 <https://www.cve.org/CVERecord?id=CVE-2023-29483>`_.
+- Removed support for Eventlet.
+  Eventlet is actively being sunset by its maintainers and has compatibility issues with PyMongo's dnspython dependency.
+- Use Zstandard support from the standard library for Python 3.14+, and use ``backports.zstd`` for older versions.
+- Fixed return type annotation for ``find_one_and_*`` methods on :class:`~pymongo.asynchronous.collection.AsyncCollection`
+  and :class:`~pymongo.synchronous.collection.Collection` to include ``None``.
+- Added support for NumPy 1D-arrays in :class:`bson.binary.BinaryVector`.
+- Prevented :class:`~pymongo.encryption.ClientEncryption` from loading the crypt
+  shared library to fix "MongoCryptError: An existing crypt_shared library is
+  loaded by the application" unless the linked library search path is set.
+
+Changes in Version 4.15.5 (2025/12/02)
+--------------------------------------
+
+Version 4.15.5 is a bug fix release.
+
+- Fixed a bug that could cause ``AutoReconnect("connection pool paused")`` errors when cursors fetched more documents from the database after SDAM heartbeat failures.
+
+Changes in Version 4.15.4 (2025/10/21)
+--------------------------------------
+
+Version 4.15.4 is a bug fix release.
+
+- Relaxed the callback type of :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.with_transaction` to allow the broader Awaitable type rather than only Coroutine objects.
+- Added the missing Python 3.14 trove classifier to the package metadata.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.15.4 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.15.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47237
+
+Changes in Version 4.15.3 (2025/10/07)
+--------------------------------------
+
+Version 4.15.3 is a bug fix release.
+
+- Fixed a memory leak when raising :class:`bson.errors.InvalidDocument` with C extensions.
+- Fixed the return type of the  :meth:`~pymongo.asynchronous.collection.AsyncCollection.distinct`,
+  :meth:`~pymongo.synchronous.collection.Collection.distinct`, :meth:`pymongo.asynchronous.cursor.AsyncCursor.distinct`,
+  and :meth:`pymongo.asynchronous.cursor.AsyncCursor.distinct` methods.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.15.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.15.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47293
+
+Changes in Version 4.15.2 (2025/10/01)
+--------------------------------------
+
+Version 4.15.2 is a bug fix release.
+
+- Add wheels for Python 3.14 and 3.14t that were missing from 4.15.0 release. Drop the 3.13t wheel.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.15.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.15.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=47186
+
+Changes in Version 4.15.1 (2025/09/16)
+--------------------------------------
+
+Version 4.15.1 is a bug fix release.
+
+- Fixed a bug in :meth:`~pymongo.synchronous.encryption.ClientEncryption.encrypt`
+  and :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.encrypt`
+  that would cause a ``TypeError`` when using ``pymongocrypt<1.16`` by passing
+  an unsupported ``type_opts`` parameter even if Queryable Encryption text
+  queries beta was not used.
+
+- Fixed a bug in ``AsyncMongoClient`` that caused a ``ServerSelectionTimeoutError``
+  when used with ``uvicorn``, ``FastAPI``, or ``uvloop``.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.15.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.15.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=46486
+
+Changes in Version 4.15.0 (2025/09/10)
+--------------------------------------
+
+PyMongo 4.15 brings a number of changes including:
+
+- Added :class:`~pymongo.encryption_options.TextOpts`,
+  :attr:`~pymongo.encryption.Algorithm.TEXTPREVIEW`,
+  :attr:`~pymongo.encryption.QueryType.PREFIXPREVIEW`,
+  :attr:`~pymongo.encryption.QueryType.SUFFIXPREVIEW`,
+  :attr:`~pymongo.encryption.QueryType.SUBSTRINGPREVIEW`,
+  as part of the experimental Queryable Encryption text queries beta.
+  ``pymongocrypt>=1.16`` is required for text query support.
+- Added :class:`bson.decimal128.DecimalEncoder` and
+  :class:`bson.decimal128.DecimalDecoder`
+  to support encoding and decoding of BSON Decimal128 values to
+  decimal.Decimal values using the TypeRegistry API.
+- Added support for Windows ``arm64`` wheels.
+
+Changes in Version 4.14.1 (2025/08/19)
+--------------------------------------
+
+Version 4.14.1 is a bug fix release.
+
+- Fixed a bug in ``MongoClient.append_metadata()`` and
+  ``AsyncMongoClient.append_metadata()``
+  that allowed duplicate ``DriverInfo.name`` to be appended to the metadata.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.14.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.14.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=45256
+
 Changes in Version 4.14.0 (2025/08/06)
 --------------------------------------
 
@@ -33,6 +175,14 @@ PyMongo 4.14 brings a number of changes including:
   PACKED_BIT.
 - Changed :meth:`~pymongo.uri_parser.parse_uri`'s ``options`` return value to be
   type ``dict`` instead of ``_CaseInsensitiveDictionary``.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.14 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.14 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=43041
 
 Changes in Version 4.13.2 (2025/06/17)
 --------------------------------------

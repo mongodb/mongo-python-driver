@@ -6,12 +6,13 @@ import pathlib
 import subprocess
 from argparse import Namespace
 from subprocess import CalledProcessError
-from typing import Optional
+
+JIRA_FILTER = "https://jira.mongodb.org/issues/?jql=labels%20%3D%20automated-sync%20AND%20status%20!%3D%20Closed"
 
 
 def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
     """Actually sync the specs"""
-    print("Beginning to sync specs")  # noqa: T201
+    print("Beginning to sync specs")
     for spec in os.scandir(directory):
         if not spec.is_dir():
             continue
@@ -27,17 +28,34 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
             )
         except CalledProcessError as exc:
             errored[spec.name] = exc.stderr
-    print("Done syncing specs")  # noqa: T201
+    print("Done syncing specs")
 
 
-def apply_patches():
-    print("Beginning to apply patches")  # noqa: T201
-    subprocess.run(["bash", "./.evergreen/remove-unimplemented-tests.sh"], check=True)  # noqa: S603, S607
+def apply_patches(errored):
+    print("Beginning to apply patches")
     subprocess.run(
-        ["git apply -R --allow-empty --whitespace=fix ./.evergreen/spec-patch/*"],  # noqa: S607
-        shell=True,  # noqa: S602
+        ["bash", "./.evergreen/remove-unimplemented-tests.sh"],  # noqa: S603, S607
         check=True,
     )
+    try:
+        # Avoid shell=True by passing arguments as a list.
+        # Note: glob expansion doesn't work in shell=False, so we use a list of files.
+        patches = [str(p) for p in pathlib.Path("./.evergreen/spec-patch/").glob("*")]
+        if patches:
+            subprocess.run(
+                [  # noqa: S603, S607
+                    "git",
+                    "apply",
+                    "-R",
+                    "--allow-empty",
+                    "--whitespace=fix",
+                    *patches,
+                ],
+                check=True,
+                stderr=subprocess.PIPE,
+            )
+    except CalledProcessError as exc:
+        errored["applying patches"] = exc.stderr
 
 
 def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
@@ -56,7 +74,6 @@ def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
         "client_side_operations_timeout": "csot",
         "mongodb_handshake": "handshake",
         "load_balancers": "load_balancer",
-        "atlas_data_lake_testing": "atlas",
         "connection_monitoring_and_pooling": "connection_monitoring",
         "command_logging_and_monitoring": "command_logging",
         "initial_dns_seedlist_discovery": "srv_seedlist",
@@ -70,23 +87,30 @@ def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
     return list(spec_set - test_set)
 
 
-def write_summary(errored: dict[str, str], new: list[str], filename: Optional[str]) -> None:
+def write_summary(errored: dict[str, str], new: list[str], filename: str | None) -> None:
     """Generate the PR description"""
     pr_body = ""
+    # Avoid shell=True and complex pipes by using Python to process git output
     process = subprocess.run(
-        ["git diff --name-only | awk -F'/' '{print $2}' | sort | uniq"],  # noqa: S607
-        shell=True,  # noqa: S602
+        ["git", "diff", "--name-only"],  # noqa: S603, S607
         capture_output=True,
         text=True,
         check=True,
     )
-    succeeded = process.stdout.strip().split()
+    changed_files = process.stdout.strip().splitlines()
+    succeeded_set = set()
+    for f in changed_files:
+        parts = f.split("/")
+        if len(parts) > 1:
+            succeeded_set.add(parts[1])
+    succeeded = sorted(succeeded_set)
+
     if len(succeeded) > 0:
         pr_body += "The following specs were changed:\n -"
         pr_body += "\n -".join(succeeded)
         pr_body += "\n"
     if len(errored) > 0:
-        pr_body += "\n\nThe following spec syncs encountered errors:\n -"
+        pr_body += "\n\nThe following spec syncs encountered errors:"
         for k, v in errored.items():
             pr_body += f"\n -{k}\n```{v}\n```"
         pr_body += "\n"
@@ -95,8 +119,9 @@ def write_summary(errored: dict[str, str], new: list[str], filename: Optional[st
         pr_body += "\n -".join(new)
         pr_body += "\n"
     if pr_body != "":
+        pr_body = f"Jira tickets: {JIRA_FILTER}\n\n" + pr_body
         if filename is None:
-            print(f"\n{pr_body}")  # noqa: T201
+            print(f"\n{pr_body}")
         else:
             with open(filename, "w") as f:
                 # replacements made for proper json
@@ -107,7 +132,7 @@ def main(args: Namespace):
     directory = pathlib.Path("./test")
     errored: dict[str, str] = {}
     resync_specs(directory, errored)
-    apply_patches()
+    apply_patches(errored)
     new = check_new_spec_directories(directory)
     write_summary(errored, new, args.filename)
 
@@ -117,7 +142,9 @@ if __name__ == "__main__":
         description="Python Script to resync all specs and generate summary for PR."
     )
     parser.add_argument(
-        "--filename", help="Name of file for the summary to be written into.", default=None
+        "--filename",
+        help="Name of file for the summary to be written into.",
+        default=None,
     )
     args = parser.parse_args()
     main(args)

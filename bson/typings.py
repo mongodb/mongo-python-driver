@@ -28,4 +28,4 @@ if TYPE_CHECKING:
 _DocumentOut = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
 _DocumentTypeArg = TypeVar("_DocumentTypeArg", bound=Mapping[str, Any])
-_ReadableBuffer = Union[bytes, memoryview, "mmap", "array"]  # type: ignore[type-arg]
+_ReadableBuffer = Union[bytes, memoryview, bytearray, "mmap", "array"]  # type: ignore[type-arg]

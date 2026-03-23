@@ -22,11 +22,13 @@ from shrub.v3.shrub_service import ShrubService
 ##############
 
 ALL_VERSIONS = ["4.2", "4.4", "5.0", "6.0", "7.0", "8.0", "rapid", "latest"]
-CPYTHONS = ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
-PYPYS = ["pypy3.10"]
+CPYTHONS = ["3.10", "3.11", "3.12", "3.13", "3.14t", "3.14"]
+PYPYS = ["pypy3.11"]
+MIN_SUPPORT_VERSIONS = ["3.9", "pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080
+BATCHTIME_DAY = 1440
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
 TOPOLOGIES = ["standalone", "replica_set", "sharded_cluster"]
 C_EXTS = ["without_ext", "with_ext"]
@@ -41,6 +43,7 @@ DISPLAY_LOOKUP = dict(
     sync={"sync": "Sync", "async": "Async"},
     coverage={"1": "cov"},
     no_ext={"1": "No C"},
+    test_min_deps={"1": "Min Deps"},
 )
 HOSTS = dict()
 
@@ -56,12 +59,12 @@ class Host:
 # Hosts with toolchains.
 HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8", dict())
 HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64", dict())
+HOSTS["win-latest"] = Host("win-latest", "windows-2022-latest-small", "WinLatest", dict())
 HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32", dict())
 HOSTS["macos"] = Host("macos", "macos-14", "macOS", dict())
 HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64", dict())
-HOSTS["ubuntu20"] = Host("ubuntu20", "ubuntu2004-small", "Ubuntu-20", dict())
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22", dict())
-HOSTS["rhel7"] = Host("rhel7", "rhel79-small", "RHEL7", dict())
+HOSTS["ubuntu24"] = Host("ubuntu24", "ubuntu2404-small", "Ubuntu-24", dict())
 HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
 HOSTS["debian11"] = Host("debian11", "debian11-small", "Debian11", dict())
 DEFAULT_HOST = HOSTS["rhel8"]
@@ -131,41 +134,23 @@ def create_variant(
     *,
     version: str | None = None,
     host: Host | str | None = None,
-    python: str | None = None,
     expansions: dict | None = None,
     **kwargs: Any,
 ) -> BuildVariant:
     expansions = expansions and expansions.copy() or dict()
     if version:
         expansions["VERSION"] = version
-    if python:
-        expansions["PYTHON_BINARY"] = get_python_binary(python, host)
+    # 8.0+ Windows builds must run on win-latest
+    if (
+        "win64" in display_name.lower()
+        or "win32" in display_name.lower()
+        and version
+        and version >= "8.0"
+    ):
+        kwargs["run_on"] = HOSTS["win-latest"].run_on
     return create_variant_generic(
         tasks, display_name, version=version, host=host, expansions=expansions, **kwargs
     )
-
-
-def get_python_binary(python: str, host: Host) -> str:
-    """Get the appropriate python binary given a python version and host."""
-    name = host.name
-    if name in ["win64", "win32"]:
-        if name == "win32":
-            base = "C:/python/32"
-        else:
-            base = "C:/python"
-        python_dir = python.replace(".", "").replace("t", "")
-        return f"{base}/Python{python_dir}/python{python}.exe"
-
-    if name in ["rhel8", "ubuntu22", "ubuntu20", "rhel7"]:
-        return f"/opt/python/{python}/bin/python3"
-
-    if name in ["macos", "macos-arm64"]:
-        bin_name = "python3t" if "t" in python else "python3"
-        python_dir = python.replace("t", "")
-        framework_dir = "PythonT" if "t" in python else "Python"
-        return f"/Library/Frameworks/{framework_dir}.Framework/Versions/{python_dir}/bin/{bin_name}"
-
-    raise ValueError(f"no match found for python {python} on {name}")
 
 
 def get_versions_from(min_version: str) -> list[str]:
@@ -196,12 +181,12 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
         display_name = f"{display_name}{sep}{version}"
     for key, value in kwargs.items():
         name = value
-        if key.lower() == "python":
+        if key.lower() in ["python", "toolchain_version"]:
             if not value.startswith("pypy"):
                 name = f"Python{value}"
             else:
                 name = f"PyPy{value.replace('pypy', '')}"
-        elif key.lower() in DISPLAY_LOOKUP:
+        elif key.lower() in DISPLAY_LOOKUP and value in DISPLAY_LOOKUP[key.lower()]:
             name = DISPLAY_LOOKUP[key.lower()][value]
         else:
             continue
@@ -273,7 +258,7 @@ def generate_yaml(tasks=None, variants=None):
     out = ShrubService.generate_yaml(project)
     # Dedent by two spaces to match what we use in config.yml
     lines = [line[2:] for line in out.splitlines()]
-    print("\n".join(lines))  # noqa: T201
+    print("\n".join(lines))
 
 
 ##################

@@ -97,7 +97,7 @@ package that is incompatible with PyMongo.
 
 ## Dependencies
 
-PyMongo supports CPython 3.9+ and PyPy3.10+.
+PyMongo supports CPython 3.9+ and PyPy3.9+.
 
 Required dependencies:
 
@@ -139,7 +139,8 @@ python -m pip install "pymongo[snappy]"
 ```
 
 Wire protocol compression with zstandard requires
-[zstandard](https://pypi.org/project/zstandard):
+[backports.zstd](https://pypi.org/project/backports.zstd)
+when used with Python versions before 3.14:
 
 ```bash
 python -m pip install "pymongo[zstd]"

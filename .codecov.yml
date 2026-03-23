@@ -1,0 +1,4 @@
+# do not notify until at least 100 builds have been uploaded from the CI pipeline
+# you can also set after_n_builds on comments independently
+comment:
+  after_n_builds: 100

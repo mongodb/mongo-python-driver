@@ -25,9 +25,10 @@ import os
 import time
 import types
 from collections import abc
-from test.helpers import (
+from test.helpers_shared import (
     AWS_CREDS,
     AWS_CREDS_2,
+    AWS_TEMP_CREDS,
     AZURE_CREDS,
     CA_PEM,
     CLIENT_PEM,
@@ -36,7 +37,7 @@ from test.helpers import (
     LOCAL_MASTER_KEY,
 )
 from test.utils_shared import CMAPListener, camel_to_snake, parse_collection_options
-from typing import Any, Union
+from typing import Any, MutableMapping, Union
 
 from bson import (
     RE_TYPE,
@@ -108,6 +109,7 @@ PLACEHOLDER_MAP = {}
 for provider_name, provider_data in [
     ("local", {"key": LOCAL_MASTER_KEY}),
     ("local:name1", {"key": LOCAL_MASTER_KEY}),
+    ("aws_temp", AWS_TEMP_CREDS),
     ("aws", AWS_CREDS),
     ("aws:name1", AWS_CREDS),
     ("aws:name2", AWS_CREDS_2),
@@ -120,6 +122,9 @@ for provider_name, provider_data in [
 ]:
     for key, value in provider_data.items():
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
+        PLACEHOLDER_MAP[placeholder] = value
+
+        placeholder = f"/autoEncryptOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
 
 OIDC_ENV = os.environ.get("OIDC_ENV", "test")
@@ -157,7 +162,9 @@ def with_metaclass(meta, *bases):
             return meta(name, resolved_bases, d)
 
         @classmethod
-        def __prepare__(cls, name, this_bases):
+        def __prepare__(
+            cls, name: str, this_bases: tuple[type, ...], /, **kwds: Any
+        ) -> MutableMapping[str, object]:
             return meta.__prepare__(name, bases)
 
     return type.__new__(metaclass, "temporary_class", (), {})

@@ -57,10 +57,6 @@ elif TEST_NAME == "mod_wsgi":
 
     teardown_mod_wsgi()
 
-# Tear down data_lake if applicable.
-elif TEST_NAME == "data_lake":
-    run_command(f"{DRIVERS_TOOLS}/.evergreen/atlas_data_lake/teardown.sh")
-
 # Tear down coverage if applicable.
 if os.environ.get("COVERAGE"):
     shutil.rmtree(".pytest_cache", ignore_errors=True)

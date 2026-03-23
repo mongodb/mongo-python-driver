@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Run spec syncing script and create PR
+set -eu
 
 # SETUP
 SRC_URL="https://github.com/mongodb/specifications.git"

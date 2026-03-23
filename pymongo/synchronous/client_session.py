@@ -140,6 +140,7 @@ import random
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
+from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -160,17 +161,18 @@ from pymongo import _csot
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
+    ExecutionTimeout,
     InvalidOperation,
+    NetworkTimeout,
     OperationFailure,
     PyMongoError,
     WTimeoutError,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
-from pymongo.operations import _Op
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
-from pymongo.synchronous.cursor import _ConnectionManager
+from pymongo.synchronous.cursor_base import _ConnectionManager
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -181,6 +183,28 @@ if TYPE_CHECKING:
     from pymongo.typings import ClusterTime, _Address
 
 _IS_SYNC = True
+
+_SESSION: ContextVar[Optional[ClientSession]] = ContextVar("SESSION", default=None)
+
+
+class _BoundSessionContext:
+    """Context manager returned by ClientSession.bind() that manages bound state."""
+
+    def __init__(self, session: ClientSession, end_session: bool) -> None:
+        self._session = session
+        self._session_token: Optional[Token[ClientSession]] = None
+        self._end_session = end_session
+
+    def __enter__(self) -> ClientSession:
+        self._session_token = _SESSION.set(self._session)  # type: ignore[assignment]
+        return self._session
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if self._session_token:
+            _SESSION.reset(self._session_token)  # type: ignore[arg-type]
+            self._session_token = None
+        if self._end_session:
+            self._session.end_session()
 
 
 class SessionOptions:
@@ -405,12 +429,16 @@ class _Transaction:
         self.recovery_token = None
         self.attempt = 0
         self.client = client
+        self.has_completed_command = False
 
     def active(self) -> bool:
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
 
     def starting(self) -> bool:
         return self.state == _TxnState.STARTING
+
+    def set_starting(self) -> None:
+        self.state = _TxnState.STARTING
 
     @property
     def pinned_conn(self) -> Optional[Connection]:
@@ -471,13 +499,24 @@ _UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(  # 
 # This limit is non-configurable and was chosen to be twice the 60 second
 # default value of MongoDB's `transactionLifetimeLimitSeconds` parameter.
 _WITH_TRANSACTION_RETRY_TIME_LIMIT = 120
-_BACKOFF_MAX = 1
-_BACKOFF_INITIAL = 0.050  # 50ms initial backoff
+_BACKOFF_MAX = 0.500  # 500ms max backoff
+_BACKOFF_INITIAL = 0.005  # 5ms initial backoff
 
 
-def _within_time_limit(start_time: float) -> bool:
+def _within_time_limit(start_time: float, backoff: float = 0) -> bool:
     """Are we within the with_transaction retry limit?"""
-    return time.monotonic() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
+    remaining = _csot.remaining()
+    if remaining is not None and remaining <= 0:
+        return False
+    return time.monotonic() + backoff - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
+
+
+def _make_timeout_error(error: BaseException) -> PyMongoError:
+    """Convert error to a NetworkTimeout or ExecutionTimeout as appropriate."""
+    if _csot.remaining() is not None:
+        return ExecutionTimeout(str(error), 50, {"ok": 0, "errmsg": str(error), "code": 50})
+    else:
+        return NetworkTimeout(str(error))
 
 
 _T = TypeVar("_T")
@@ -516,6 +555,10 @@ class ClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
+        # Is this session attached to a cursor?
+        self._attached_to_cursor = False
+        # Should we leave the session alive when the cursor is closed?
+        self._leave_alive = False
 
     def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
@@ -538,13 +581,31 @@ class ClientSession:
 
     def _end_implicit_session(self) -> None:
         # Implicit sessions can't be part of transactions or pinned connections
-        if self._server_session is not None:
+        if not self._leave_alive and self._server_session is not None:
             self._client._return_server_session(self._server_session)
             self._server_session = None
 
     def _check_ended(self) -> None:
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
+
+    def bind(self, end_session: bool = True) -> _BoundSessionContext:
+        """Bind this session so it is implicitly passed to all database operations within the returned context.
+
+        .. code-block:: python
+
+           with client.start_session() as s:
+               with s.bind():
+                   # session=s is passed implicitly
+                   client.db.collection.insert_one({"x": 1})
+
+        :param end_session: Whether to end the session on exiting the returned context. Defaults to True.
+            If set to False, :meth:`~pymongo.client_session.ClientSession.end_session()` must be called
+            once the session is no longer used.
+
+        .. versionadded:: 4.17
+        """
+        return _BoundSessionContext(self, end_session)
 
     def __enter__(self) -> ClientSession:
         return self
@@ -703,10 +764,14 @@ class ClientSession:
         """
         start_time = time.monotonic()
         retry = 0
+        last_error: Optional[BaseException] = None
         while True:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
-                backoff = jitter * min(_BACKOFF_INITIAL * (2**retry), _BACKOFF_MAX)
+                backoff = jitter * min(_BACKOFF_INITIAL * (1.5**retry), _BACKOFF_MAX)
+                if not _within_time_limit(start_time, backoff):
+                    assert last_error is not None
+                    raise _make_timeout_error(last_error) from last_error
                 time.sleep(backoff)
             retry += 1
             self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
@@ -714,15 +779,16 @@ class ClientSession:
                 ret = callback(self)
             # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
             except BaseException as exc:
+                last_error = exc
                 if self.in_transaction:
                     self.abort_transaction()
-                if (
-                    isinstance(exc, PyMongoError)
-                    and exc.has_error_label("TransientTransactionError")
-                    and _within_time_limit(start_time)
+                if isinstance(exc, PyMongoError) and exc.has_error_label(
+                    "TransientTransactionError"
                 ):
-                    # Retry the entire transaction.
-                    continue
+                    if _within_time_limit(start_time):
+                        # Retry the entire transaction.
+                        continue
+                    raise _make_timeout_error(last_error) from exc
                 raise
 
             if not self.in_transaction:
@@ -733,17 +799,16 @@ class ClientSession:
                 try:
                     self.commit_transaction()
                 except PyMongoError as exc:
-                    if (
-                        exc.has_error_label("UnknownTransactionCommitResult")
-                        and _within_time_limit(start_time)
-                        and not _max_time_expired_error(exc)
-                    ):
+                    last_error = exc
+                    if not _within_time_limit(start_time):
+                        raise _make_timeout_error(last_error) from exc
+                    if exc.has_error_label(
+                        "UnknownTransactionCommitResult"
+                    ) and not _max_time_expired_error(exc):
                         # Retry the commit.
                         continue
 
-                    if exc.has_error_label("TransientTransactionError") and _within_time_limit(
-                        start_time
-                    ):
+                    if exc.has_error_label("TransientTransactionError"):
                         # Retry the entire transaction.
                         break
                     raise
@@ -873,7 +938,9 @@ class ClientSession:
         ) -> dict[str, Any]:
             return self._finish_transaction(conn, command_name)
 
-        return self._client._retry_internal(func, self, None, retryable=True, operation=_Op.ABORT)
+        return self._client._retry_internal(
+            func, self, None, retryable=True, operation=command_name
+        )
 
     def _finish_transaction(self, conn: Connection, command_name: str) -> dict[str, Any]:
         self._transaction.attempt += 1

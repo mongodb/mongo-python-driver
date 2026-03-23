@@ -76,9 +76,6 @@ do
     auth)
       cpjson auth/tests/ auth
       ;;
-    atlas-data-lake-testing|data_lake)
-      cpjson atlas-data-lake-testing/tests/ data_lake
-      ;;
     bson-binary-vector|bson_binary_vector)
       cpjson bson-binary-vector/tests/ bson_binary_vector
       ;;
@@ -96,6 +93,9 @@ do
       ;;
     change-streams|change_streams)
       cpjson change-streams/tests/ change_streams/
+      ;;
+    client-backpressure|client_backpressure)
+      cpjson client-backpressure/tests client-backpressure
       ;;
     client-side-encryption|csfle|fle)
       cpjson client-side-encryption/tests/ client-side-encryption/spec

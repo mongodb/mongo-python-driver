@@ -16,7 +16,7 @@ be of interest or that has already been addressed.
 
 ## Supported Interpreters
 
-PyMongo supports CPython 3.9+ and PyPy3.10+. Language features not
+PyMongo supports CPython 3.9+ and PyPy3.9+. Language features not
 supported by all interpreters can not be used.
 
 ## Style Guide
@@ -194,10 +194,10 @@ the pages will re-render and the browser will automatically refresh.
 
 -   Run `just install` to set a local virtual environment, or you can manually
     create a virtual environment and run `pytest` directly.  If you want to use a specific
-    version of Python, remove the `.venv` folder and set `PYTHON_BINARY` before running `just install`.
+    version of Python, set `UV_PYTHON` before running `just install`.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
-    [`run-orchestration.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-orchestration.sh).  Run `$DRIVERS_TOOLS/evergreen/run-orchestration.sh -h`
+    [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `$DRIVERS_TOOLS/.evergreen/run-mongodb.sh start -h`
     for a full list of options.
 -   Run `just test` or `pytest` to run all of the tests.
 -   Append `test/<mod_name>.py::<class_name>::<test_name>` to run
@@ -205,6 +205,7 @@ the pages will re-render and the browser will automatically refresh.
     and the `<class_name>` to test a full module. For example:
     `just test test/test_change_stream.py::TestUnifiedChangeStreamsErrors::test_change_stream_errors_on_ElectionInProgress`.
 -   Use the `-k` argument to select tests by pattern.
+-   Run `just test-coverage` to run tests with coverage and display a report. After running tests with coverage, use `just coverage-html` to generate an HTML report in `htmlcov/index.html`.
 
 
 ## Running tests that require secrets, services, or other configuration
@@ -335,7 +336,7 @@ Locally you can run:
 
 - Run `just run-server`.
 - Run `just setup-tests`.
-- Run `UV_PYTHON=3.13t just run-tests`.
+- Run `UV_PYTHON=3.14t just run-tests`.
 
 ### AWS Lambda tests
 
@@ -354,13 +355,6 @@ Note: these tests can only be run from an Evergreen Linux host that has the Pyth
 
 The `mode` can be `standalone` or `embedded`.  For the `replica_set` version of the tests, use
 `TOPOLOGY=replica_set just run-server`.
-
-### Atlas Data Lake tests.
-
-You must have `docker` or `podman` installed locally.
-
-- Run `just setup-tests data_lake`.
-- Run `just run-tests`.
 
 ### OCSP tests
 
@@ -389,11 +383,21 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 - Finally, you can use `just setup-tests --debug-log`.
 - For evergreen patch builds, you can use `evergreen patch --param DEBUG_LOG=1` to enable debug logs for failed tests in the patch.
 
+## Testing minimum dependencies
+
+To run any of the test suites with minimum supported dependencies, pass `--test-min-deps` to
+`just setup-tests`.
+
+## Testing time-dependent operations
+
+- `test.utils_shared.delay` - One can trigger an arbitrarily long-running operation on the server using this delay utility
+  in combination with a `$where` operation. Use this to test behaviors around timeouts or signals.
+
 ## Adding a new test suite
 
 - If adding new tests files that should only be run for that test suite, add a pytest marker to the file and add
   to the list of pytest markers in `pyproject.toml`.  Then add the test suite to the `TEST_SUITE_MAP` in `.evergreen/scripts/utils.py`.  If for some reason it is not a pytest-runnable test, add it to the list of `EXTRA_TESTS` instead.
-- If the test uses Atlas or otherwise doesn't use `run-orchestration.sh`, add it to the `NO_RUN_ORCHESTRATION` list in
+- If the test uses Atlas or otherwise doesn't use `run-mongodb.sh`, add it to the `NO_RUN_ORCHESTRATION` list in
   `.evergreen/scripts/utils.py`.
 - If there is something special required to run the local server or there is an extra flag that should always be set
   like `AUTH`, add that logic to `.evergreen/scripts/run_server.py`.
@@ -401,6 +405,16 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 - If there are any special test considerations, including not running `pytest` at all, handle it in `.evergreen/scripts/run_tests.py`.
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
 - Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
+- There are some considerations about the Python version used in the test:
+    - If a specific version of Python is needed in a task that is running on variants with a toolchain, use
+``TOOLCHAIN_VERSION`` (e.g. `TOOLCHAIN_VERSION=3.10`).  The actual path lookup needs to be done on the host, since
+tasks are host-agnostic.
+    - If a specific Python binary is needed (for example on the FIPS host), set `UV_PYTHON=/path/to/python`.
+    - If a specific Python version is needed and the toolchain will not be available, use `UV_PYTHON` (e.g. `UV_PYTHON=3.11`).
+    - The default if neither ``TOOLCHAIN_VERSION`` or ``UV_PYTHON`` is set is to use UV to install the minimum
+      supported version of Python and use that.  This ensures a consistent behavior across host types that do not
+      have the Python toolchain (e.g. Azure VMs), by having a known version of Python with the build headers (`Python.h`)
+      needed to build the C extensions.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
@@ -412,6 +426,14 @@ runtimes tend to have more variation.  When using the `flaky` decorator, open a 
 a use the ticket number as the "reason" parameter to the decorator, e.g. `@flaky(reason="PYTHON-1234")`.
 When running tests locally (not in CI), the `flaky` decorator will be disabled unless `ENABLE_FLAKY` is set.
 To disable the `flaky` decorator in CI, you can use `evergreen patch --param DISABLE_FLAKY=1`.
+
+## Integration Tests
+
+The `integration_tests` directory has a set of scripts that verify the usage of PyMongo with downstream packages or frameworks.  See the [README](./integration_tests/README.md) for more information.
+
+To run the tests, use `just integration_tests`.
+
+The tests should be able to run with and without SSL enabled.
 
 ## Specification Tests
 
@@ -466,6 +488,7 @@ results into the patch file.
 For example: the imaginary, unimplemented PYTHON-1234 ticket has associated spec test changes. To add those changes to `PYTHON-1234.patch`), do the following:
 ```bash
 git diff HEAD~1 path/to/file >> .evergreen/spec-patch/PYTHON-1234.patch
+```
 
 #### Running Locally
 Both `resync-all-specs.sh` and `resync-all-specs.py` can be run locally (and won't generate a PR).
@@ -503,8 +526,10 @@ Use this generated file as a starting point for the completed conversion.
 
 The script is used like so: `python tools/convert_test_to_async.py [test_file.py]`
 
-## Generating a flame graph using py-spy
+## CPU profiling
+
 To profile a test script and generate a flame graph, follow these steps:
+
 1. Install `py-spy` if you haven't already:
    ```bash
    pip install py-spy
@@ -514,3 +539,31 @@ To profile a test script and generate a flame graph, follow these steps:
    (Note: on macOS you will need to run this command using `sudo` to allow `py-spy` to attach to the Python process.)
 4. If you need to include native code (for example the C extensions), profiling should be done on a Linux system, as macOS and Windows do not support the `--native` option of `py-spy`.
    Creating an ubuntu Evergreen spawn host and using `scp` to copy the flamegraph `.svg` file back to your local machine is the best way to do this.
+5. You can then view the flamegraph using an SVG viewer like a browser.
+
+## Memory profiling
+
+To test for a memory leak or any memory-related issues, the current best tool is [memray](https://bloomberg.github.io/memray/overview.html).
+In order to include code from our C extensions, it must be run in native mode, on Linux.
+To do so, either spin up an Ubuntu docker container or an Ubuntu Evergreen spawn host.
+
+From the spawn host or Ubuntu image, do the following:
+
+1. Install `memray` if you haven't already:
+   ```bash
+   pip install memray
+   ```
+2. Inside your test script, perform any required setup and then loop over the code you want to profile for improved sampling.
+3. Run memray with the script under test with the `--native` flag, e.g. `python -m memray run --native -o test.bin <path/to/script>`.
+4. Generate the flamegraph with `python -m memray flamegraph -o test.html test.bin`.
+   See the [docs](https://bloomberg.github.io/memray/flamegraph.html) for more options.
+5. Then, from the host computer, use either scp or docker cp to copy the flamegraph, e.g. `scp ubuntu@ec2-3-82-52-49.compute-1.amazonaws.com:/home/ubuntu/test.html .`.
+6. You can then view the flamegraph html in a browser.
+
+## Dependabot updates
+
+Dependabot will raise PRs at most once per week, grouped by GitHub Actions updates and Python requirement
+file updates.  We have a pre-commit hook that will update the `uv.lock` file when requirements change.
+To update the lock file on a failing PR, you can use a method like `gh pr checkout <pr number>`, then run
+`just lint uv-lock` to update the lock file, and then push the changes.  If a typing dependency has changed,
+also run `just typing` and handle any new findings.

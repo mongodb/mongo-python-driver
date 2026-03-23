@@ -69,7 +69,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, PyMongoTestCase, client_context
 
-from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
+from bson import CodecOptions, ObjectId, decode, decode_all, decode_file_iter, decode_iter, encode
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import ASCENDING, MongoClient
@@ -141,6 +141,32 @@ class TestPymongo(IntegrationTest):
         docs = to_list(cursor)
         self.assertTrue(docs)
 
+    def test_distinct(self) -> None:
+        self.coll.delete_many({})
+        self.coll.insert_many(
+            [
+                {"_id": None},
+                {"_id": 0},
+                {"_id": ""},
+                {"_id": ObjectId()},
+                {"_id": True},
+            ]
+        )
+
+        def collection_distinct(
+            collection: Collection,
+        ) -> list[None | int | str | ObjectId | bool]:
+            return collection.distinct("_id")
+
+        def cursor_distinct(
+            collection: Collection,
+        ) -> list[None | int | str | ObjectId | bool]:
+            cursor = collection.find()
+            return cursor.distinct("_id")
+
+        collection_distinct(self.coll)
+        cursor_distinct(self.coll)
+
     @only_type_check
     def test_bulk_write(self) -> None:
         self.coll.insert_one({})
@@ -170,7 +196,7 @@ class TestPymongo(IntegrationTest):
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne(
                 {},
-                {"name": "American Graffiti", "year": "WRONG_TYPE"},  # type:ignore[typeddict-item]
+                {"name": "American Graffiti", "year": "WRONG_TYPE"},  # type:ignore[arg-type]
             ),
             DeleteOne({}),
         ]
@@ -243,7 +269,7 @@ class TestPymongo(IntegrationTest):
         assert retrieved is not None
         assert retrieved["name"] == "foo"
         # We expect a type error here.
-        assert retrieved["other"] == 1  # type:ignore[typeddict-item]
+        assert retrieved["other"] == 1  # type:ignore[misc]
 
 
 class TestDecode(unittest.TestCase):
@@ -416,11 +442,11 @@ class TestDocumentType(PyMongoTestCase):
         bad_mov = {"name": "THX-1138", "year": "WRONG TYPE"}
         bad_movie = Movie(name="THX-1138", year="WRONG TYPE")  # type: ignore[typeddict-item]
         coll.insert_one(bad_mov)  # type:ignore[arg-type]
-        coll.insert_one({"name": "THX-1138", "year": "WRONG TYPE"})  # type: ignore[typeddict-item]
+        coll.insert_one({"name": "THX-1138", "year": "WRONG TYPE"})  # type: ignore[arg-type]
         coll.insert_one(bad_movie)
         coll.insert_many([bad_mov])  # type: ignore[list-item]
         coll.insert_many(
-            [{"name": "THX-1138", "year": "WRONG TYPE"}]  # type: ignore[typeddict-item]
+            [{"name": "THX-1138", "year": "WRONG TYPE"}]  # type: ignore[list-item]
         )
         coll.insert_many([bad_movie])
 
@@ -475,7 +501,7 @@ class TestDocumentType(PyMongoTestCase):
         # This should fail because the output is a Movie.
         assert out["foo"]  # type:ignore[typeddict-item]
         # pyright gives reportTypedDictNotRequiredAccess for the following:
-        assert out["_id"]  # type:ignore
+        assert out["_id"]  # type:ignore[unused-ignore]
 
     @only_type_check
     def test_typeddict_empty_document_type(self) -> None:
@@ -496,7 +522,7 @@ class TestDocumentType(PyMongoTestCase):
         out = coll.find_one({})
         assert out is not None
         # pyright gives reportTypedDictNotRequiredAccess for the following:
-        assert out["_id"]  # type:ignore
+        assert out["_id"]  # type:ignore[unused-ignore]
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:

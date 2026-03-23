@@ -50,20 +50,11 @@ def _resolve(*args: Any, **kwargs: Any) -> resolver.Answer:
     if _IS_SYNC:
         from dns import resolver
 
-        if hasattr(resolver, "resolve"):
-            # dnspython >= 2
-            return resolver.resolve(*args, **kwargs)
-        # dnspython 1.X
-        return resolver.query(*args, **kwargs)
+        return resolver.resolve(*args, **kwargs)
     else:
         from dns import asyncresolver
 
-        if hasattr(asyncresolver, "resolve"):
-            # dnspython >= 2
-            return asyncresolver.resolve(*args, **kwargs)  # type:ignore[return-value]
-        raise ConfigurationError(
-            "Upgrade to dnspython version >= 2.0 to use MongoClient with mongodb+srv:// connections."
-        )
+        return asyncresolver.resolve(*args, **kwargs)  # type:ignore[return-value]
 
 
 _INVALID_HOST_MSG = (
@@ -107,7 +98,7 @@ class _SrvResolver:
             # No TXT records
             return None
         except Exception as exc:
-            raise ConfigurationError(str(exc)) from None
+            raise ConfigurationError(str(exc)) from exc
         if len(results) > 1:
             raise ConfigurationError("Only one TXT record is supported")
         return (b"&".join([b"".join(res.strings) for res in results])).decode("utf-8")  # type: ignore[attr-defined]
@@ -122,7 +113,7 @@ class _SrvResolver:
                 # Raise the original error.
                 raise
             # Else, raise all errors as ConfigurationError.
-            raise ConfigurationError(str(exc)) from None
+            raise ConfigurationError(str(exc)) from exc
         return results
 
     def _get_srv_response_and_hosts(
@@ -145,8 +136,8 @@ class _SrvResolver:
                 )
             try:
                 nlist = srv_host.split(".")[1:][-self.__slen :]
-            except Exception:
-                raise ConfigurationError(f"Invalid SRV host: {node[0]}") from None
+            except Exception as exc:
+                raise ConfigurationError(f"Invalid SRV host: {node[0]}") from exc
             if self.__plist != nlist:
                 raise ConfigurationError(f"Invalid SRV host: {node[0]}")
         if self.__srv_max_hosts:

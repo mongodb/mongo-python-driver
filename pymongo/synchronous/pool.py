@@ -19,6 +19,8 @@ import collections
 import contextlib
 import logging
 import os
+import socket
+import ssl
 import sys
 import time
 import weakref
@@ -49,10 +51,12 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     DocumentTooLarge,
     ExecutionTimeout,
     InvalidOperation,
+    NetworkTimeout,
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
     WaitQueueTimeoutError,
+    _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers_shared import _get_timeout_details, format_timeout_details
@@ -84,7 +88,7 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.client_session import _validate_session_write_concern
-from pymongo.synchronous.helpers import _backoff, _handle_reauth
+from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.synchronous.network import command
 
 if TYPE_CHECKING:
@@ -104,38 +108,78 @@ if TYPE_CHECKING:
     from pymongo.typings import _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
-try:
-    from fcntl import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
-
-    def _set_non_inheritable_non_atomic(fd: int) -> None:
-        """Set the close-on-exec flag on the given file descriptor."""
-        flags = fcntl(fd, F_GETFD)
-        fcntl(fd, F_SETFD, flags | FD_CLOEXEC)
-
-except ImportError:
-    # Windows, various platforms we don't claim to support
-    # (Jython, IronPython, ..), systems that don't provide
-    # everything we need from fcntl, etc.
-    def _set_non_inheritable_non_atomic(fd: int) -> None:  # noqa: ARG001
-        """Dummy function for platforms that don't provide fcntl."""
-
 
 _IS_SYNC = True
 
 
-class BaseConnection:
-    """A base connection object for server and kms connections."""
+class Connection:
+    """Store a connection with some metadata.
 
-    def __init__(self, conn: NetworkingInterface, opts: PoolOptions):
+    :param conn: a raw connection object
+    :param pool: a Pool instance
+    :param address: the server's (host, port)
+    :param id: the id of this socket in it's pool
+    :param is_sdam: SDAM connections do not call hello on creation
+    """
+
+    def __init__(
+        self,
+        conn: NetworkingInterface,
+        pool: Pool,
+        address: tuple[str, int],
+        id: int,
+        is_sdam: bool,
+    ):
+        self.pool_ref = weakref.ref(pool)
         self.conn = conn
-        self.socket_checker: SocketChecker = SocketChecker()
-        self.cancel_context: _CancellationContext = _CancellationContext()
-        self.is_sdam = False
+        self.address = address
+        self.id = id
+        self.is_sdam = is_sdam
         self.closed = False
-        self.last_timeout: float | None = None
-        self.more_to_come = False
-        self.opts = opts
-        self.max_wire_version = -1
+        self.last_checkin_time = time.monotonic()
+        self.performed_handshake = False
+        self.is_writable: bool = False
+        self.max_wire_version = MAX_WIRE_VERSION
+        self.max_bson_size = MAX_BSON_SIZE
+        self.max_message_size = MAX_MESSAGE_SIZE
+        self.max_write_batch_size = MAX_WRITE_BATCH_SIZE
+        self.supports_sessions = False
+        self.hello_ok: bool = False
+        self.is_mongos = False
+        self.op_msg_enabled = False
+        self.listeners = pool.opts._event_listeners
+        self.enabled_for_cmap = pool.enabled_for_cmap
+        self.enabled_for_logging = pool.enabled_for_logging
+        self.compression_settings = pool.opts._compression_settings
+        self.compression_context: Union[SnappyContext, ZlibContext, ZstdContext, None] = None
+        self.socket_checker: SocketChecker = SocketChecker()
+        self.oidc_token_gen_id: Optional[int] = None
+        # Support for mechanism negotiation on the initial handshake.
+        self.negotiated_mechs: Optional[list[str]] = None
+        self.auth_ctx: Optional[_AuthContext] = None
+
+        # The pool's generation changes with each reset() so we can close
+        # sockets created before the last reset.
+        self.pool_gen = pool.gen
+        self.generation = self.pool_gen.get_overall()
+        self.ready = False
+        self.cancel_context: _CancellationContext = _CancellationContext()
+        self.opts = pool.opts
+        self.more_to_come: bool = False
+        # For load balancer support.
+        self.service_id: Optional[ObjectId] = None
+        self.server_connection_id: Optional[int] = None
+        # When executing a transaction in load balancing mode, this flag is
+        # set to true to indicate that the session now owns the connection.
+        self.pinned_txn = False
+        self.pinned_cursor = False
+        self.active = False
+        self.last_timeout = self.opts.socket_timeout
+        self.connect_rtt = 0.0
+        self._client_id = pool._client_id
+        self.creation_time = time.monotonic()
+        # For gossiping $clusterTime from the connection handshake to the client.
+        self._cluster_time = None
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
@@ -164,110 +208,16 @@ class BaseConnection:
             formatted = format_timeout_details(timeout_details)
             # CSOT: raise an error without running the command since we know it will time out.
             errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f} {formatted}"
-            if self.max_wire_version != -1:
-                raise ExecutionTimeout(
-                    errmsg,
-                    50,
-                    {"ok": 0, "errmsg": errmsg, "code": 50},
-                    self.max_wire_version,
-                )
-            else:
-                raise TimeoutError(errmsg)
+            raise ExecutionTimeout(
+                errmsg,
+                50,
+                {"ok": 0, "errmsg": errmsg, "code": 50},
+                self.max_wire_version,
+            )
         if cmd is not None:
             cmd["maxTimeMS"] = int(max_time_ms * 1000)
         self.set_conn_timeout(timeout)
         return timeout
-
-    def close_conn(self, reason: Optional[str]) -> None:
-        """Close this connection with a reason."""
-        if self.closed:
-            return
-        self._close_conn()
-
-    def _close_conn(self) -> None:
-        """Close this connection."""
-        if self.closed:
-            return
-        self.closed = True
-        self.cancel_context.cancel()
-        # Note: We catch exceptions to avoid spurious errors on interpreter
-        # shutdown.
-        try:
-            self.conn.close()
-        except Exception:  # noqa: S110
-            pass
-
-    def conn_closed(self) -> bool:
-        """Return True if we know socket has been closed, False otherwise."""
-        if _IS_SYNC:
-            return self.socket_checker.socket_closed(self.conn.get_conn)
-        else:
-            return self.conn.is_closing()
-
-
-class Connection(BaseConnection):
-    """Store a connection with some metadata.
-
-    :param conn: a raw connection object
-    :param pool: a Pool instance
-    :param address: the server's (host, port)
-    :param id: the id of this socket in it's pool
-    :param is_sdam: SDAM connections do not call hello on creation
-    """
-
-    def __init__(
-        self,
-        conn: NetworkingInterface,
-        pool: Pool,
-        address: tuple[str, int],
-        id: int,
-        is_sdam: bool,
-    ):
-        super().__init__(conn, pool.opts)
-        self.pool_ref = weakref.ref(pool)
-        self.address: tuple[str, int] = address
-        self.id: int = id
-        self.is_sdam = is_sdam
-        self.last_checkin_time = time.monotonic()
-        self.performed_handshake = False
-        self.is_writable: bool = False
-        self.max_wire_version = MAX_WIRE_VERSION
-        self.max_bson_size: int = MAX_BSON_SIZE
-        self.max_message_size: int = MAX_MESSAGE_SIZE
-        self.max_write_batch_size: int = MAX_WRITE_BATCH_SIZE
-        self.supports_sessions = False
-        self.hello_ok: bool = False
-        self.is_mongos: bool = False
-        self.op_msg_enabled = False
-        self.listeners = pool.opts._event_listeners
-        self.enabled_for_cmap = pool.enabled_for_cmap
-        self.enabled_for_logging = pool.enabled_for_logging
-        self.compression_settings = pool.opts._compression_settings
-        self.compression_context: Union[SnappyContext, ZlibContext, ZstdContext, None] = None
-        self.oidc_token_gen_id: Optional[int] = None
-        # Support for mechanism negotiation on the initial handshake.
-        self.negotiated_mechs: Optional[list[str]] = None
-        self.auth_ctx: Optional[_AuthContext] = None
-
-        # The pool's generation changes with each reset() so we can close
-        # sockets created before the last reset.
-        self.pool_gen = pool.gen
-        self.generation = self.pool_gen.get_overall()
-        self.ready = False
-        # For load balancer support.
-        self.service_id: Optional[ObjectId] = None
-        self.server_connection_id: Optional[int] = None
-        # When executing a transaction in load balancing mode, this flag is
-        # set to true to indicate that the session now owns the connection.
-        self.pinned_txn = False
-        self.pinned_cursor = False
-        self.active = False
-        self.last_timeout = self.opts.socket_timeout
-        self.connect_rtt = 0.0
-        self._client_id = pool._client_id
-        self.creation_time = time.monotonic()
-        # For gossiping $clusterTime from the connection handshake to the client.
-        self._cluster_time = None
 
     def pin_txn(self) -> None:
         self.pinned_txn = True
@@ -304,6 +254,7 @@ class Connection(BaseConnection):
         cmd = self.hello_cmd()
         performing_handshake = not self.performed_handshake
         awaitable = False
+        cmd["backpressure"] = True
         if performing_handshake:
             self.performed_handshake = True
             cmd["client"] = self.opts.metadata
@@ -610,6 +561,26 @@ class Connection(BaseConnection):
                     error=reason,
                 )
 
+    def _close_conn(self) -> None:
+        """Close this connection."""
+        if self.closed:
+            return
+        self.closed = True
+        self.cancel_context.cancel()
+        # Note: We catch exceptions to avoid spurious errors on interpreter
+        # shutdown.
+        try:
+            self.conn.close()
+        except Exception:  # noqa: S110
+            pass
+
+    def conn_closed(self) -> bool:
+        """Return True if we know socket has been closed, False otherwise."""
+        if _IS_SYNC:
+            return self.socket_checker.socket_closed(self.conn.get_conn)
+        else:
+            return self.conn.is_closing()
+
     def send_cluster_time(
         self,
         command: MutableMapping[str, Any],
@@ -645,7 +616,7 @@ class Connection(BaseConnection):
         # signals and throws KeyboardInterrupt into the current frame on the
         # main thread.
         #
-        # But in Gevent and Eventlet, the polling mechanism (epoll, kqueue,
+        # But in Gevent, the polling mechanism (epoll, kqueue,
         # ..) is called in Python code, which experiences the signal as a
         # KeyboardInterrupt from the start, rather than as an initial
         # socket.error, so we catch that, close the socket, and reraise it.
@@ -723,8 +694,6 @@ class PoolState:
     CLOSED = 3
 
 
-# Do *not* explicitly inherit from object or Jython won't call __del__
-# https://bugs.jython.org/issue1057
 class Pool:
     def __init__(
         self,
@@ -787,8 +756,8 @@ class Pool:
         # Also used for: clearing the wait queue
         self._max_connecting_cond = _create_condition(self.lock)
         self._pending = 0
+        self._max_connecting = self.opts.max_connecting
         self._client_id = client_id
-        self._backoff = 0
         if self.enabled_for_cmap:
             assert self.opts._event_listeners is not None
             self.opts._event_listeners.publish_pool_created(
@@ -844,8 +813,6 @@ class Pool:
         with self.size_cond:
             if self.closed:
                 return
-            # Clear the backoff state.
-            self._backoff = 0
             if self.opts.pause_enabled and pause and not self.opts.load_balanced:
                 old_state, self.state = self.state, PoolState.PAUSED
             self.gen.inc(service_id)
@@ -928,11 +895,6 @@ class Pool:
                 for conn in sockets:
                     conn.close_conn(ConnectionClosedReason.STALE)
 
-    @property
-    def max_connecting(self) -> int:
-        """The current max connecting limit for the pool."""
-        return 1 if self._backoff else self.opts.max_connecting
-
     def update_is_writable(self, is_writable: Optional[bool]) -> None:
         """Updates the is_writable attribute on all sockets currently in the
         Pool.
@@ -997,7 +959,7 @@ class Pool:
                 with self._max_connecting_cond:
                     # If maxConnecting connections are already being created
                     # by this pool then try again later instead of waiting.
-                    if self._pending >= self.max_connecting:
+                    if self._pending >= self._max_connecting:
                         return
                     self._pending += 1
                     incremented = True
@@ -1025,29 +987,20 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def _handle_connection_error(self, error: BaseException, phase: str, conn_id: int) -> None:
+    def _handle_connection_error(self, error: BaseException) -> None:
         # Handle system overload condition for non-sdam pools.
-        # Look for an AutoReconnect error raised from a ConnectionResetError with
-        # errno == errno.ECONNRESET or raised from an OSError that we've created due to
-        # a closed connection.
-        # If found, set backoff and add error labels.
-        if self.is_sdam or type(error) != AutoReconnect:
+        # Look for errors of type AutoReconnect and add error labels if appropriate.
+        if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
             return
-        self._backoff += 1
+        assert isinstance(error, AutoReconnect)  # Appease type checker.
+        # If the original error was a DNS, certificate, or SSL error, ignore it.
+        if isinstance(error.__cause__, (_CertificateError, SSLErrors, socket.gaierror)):
+            # End of file errors are excluded, because the server may have disconnected
+            # during the handshake.
+            if not isinstance(error.__cause__, (ssl.SSLEOFError, ssl.SSLZeroReturnError)):
+                return
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
-        # Log the pool backoff message.
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.POOL_BACKOFF,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-                driverConnectionId=conn_id,
-                reason=_verbose_connection_error_reason(ConnectionClosedReason.POOL_BACKOFF),
-                error=ConnectionClosedReason.POOL_BACKOFF,
-            )
 
     def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
         """Connect to Mongo and return a new Connection.
@@ -1078,17 +1031,8 @@ class Pool:
                 driverConnectionId=conn_id,
             )
 
-        # Apply backoff if applicable.
-        if self._backoff:
-            time.sleep(_backoff(self._backoff))
-
-        # Pass a context to determine if we successfully create a configured socket.
-        context = dict(has_created_socket=False)
-
         try:
-            networking_interface = _configured_socket_interface(
-                self.address, self.opts, context=context
-            )
+            networking_interface = _configured_socket_interface(self.address, self.opts)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             with self.lock:
@@ -1109,8 +1053,7 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
-            if context["has_created_socket"]:
-                self._handle_connection_error(error, "handshake", conn_id)
+            self._handle_connection_error(error)
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
                 _raise_connection_failure(self.address, error, timeout_details=details)
@@ -1122,9 +1065,11 @@ class Pool:
             self.active_contexts.discard(tmp_context)
         if tmp_context.cancelled:
             conn.cancel_context.cancel()
+        completed_hello = False
         try:
             if not self.is_sdam:
                 conn.hello()
+                completed_hello = True
                 self.is_writable = conn.is_writable
             if handler:
                 handler.contribute_socket(conn, completed_handshake=False)
@@ -1134,15 +1079,14 @@ class Pool:
         except BaseException as e:
             with self.lock:
                 self.active_contexts.discard(conn.cancel_context)
-            self._handle_connection_error(e, "hello", conn_id)
+            if not completed_hello:
+                self._handle_connection_error(e)
             conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
         if handler:
             handler.client._topology.receive_cluster_time(conn._cluster_time)
 
-        # Clear the backoff state.
-        self._backoff = 0
         return conn
 
     @contextlib.contextmanager
@@ -1319,12 +1263,12 @@ class Pool:
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
                     self._raise_if_not_ready(checkout_started_time, emit_event=False)
-                    while not (self.conns or self._pending < self.max_connecting):
+                    while not (self.conns or self._pending < self._max_connecting):
                         timeout = deadline - time.monotonic() if deadline else None
                         if not _cond_wait(self._max_connecting_cond, timeout):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
-                            if self.conns or self._pending < self.max_connecting:
+                            if self.conns or self._pending < self._max_connecting:
                                 self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout(checkout_started_time)
@@ -1465,7 +1409,7 @@ class Pool:
         :class:`~pymongo.errors.AutoReconnect` exceptions on server
         hiccups, etc. We only check if the socket was closed by an external
         error if it has been > 1 second since the socket was checked into the
-        pool, or we are in backoff mode, to keep performance reasonable -
+        pool to keep performance reasonable -
         we can't avoid AutoReconnects completely anyway.
         """
         idle_time_seconds = conn.idle_time_seconds()
@@ -1478,8 +1422,6 @@ class Pool:
             return True
 
         check_interval_seconds = self._check_interval_seconds
-        if self._backoff:
-            check_interval_seconds = 0
         if check_interval_seconds is not None and (
             check_interval_seconds == 0 or idle_time_seconds > check_interval_seconds
         ):

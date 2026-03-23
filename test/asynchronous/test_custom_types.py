@@ -23,6 +23,7 @@ from decimal import Decimal
 from random import random
 from typing import Any, Tuple, Type, no_type_check
 
+from bson.decimal128 import DecimalDecoder, DecimalEncoder
 from gridfs.asynchronous.grid_file import AsyncGridIn, AsyncGridOut
 
 sys.path[0:0] = [""]
@@ -59,29 +60,7 @@ from pymongo.message import _CursorAddress
 _IS_SYNC = False
 
 
-class DecimalEncoder(TypeEncoder):
-    @property
-    def python_type(self):
-        return Decimal
-
-    def transform_python(self, value):
-        return Decimal128(value)
-
-
-class DecimalDecoder(TypeDecoder):
-    @property
-    def bson_type(self):
-        return Decimal128
-
-    def transform_bson(self, value):
-        return value.to_decimal()
-
-
-class DecimalCodec(DecimalDecoder, DecimalEncoder):
-    pass
-
-
-DECIMAL_CODECOPTS = CodecOptions(type_registry=TypeRegistry([DecimalCodec()]))
+DECIMAL_CODECOPTS = CodecOptions(type_registry=TypeRegistry([DecimalEncoder(), DecimalDecoder()]))
 
 
 class UndecipherableInt64Type:

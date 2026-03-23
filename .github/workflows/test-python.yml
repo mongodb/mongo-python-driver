@@ -14,21 +14,24 @@ defaults:
   run:
     shell: bash -eux {0}
 
+permissions:
+  contents: read
+
 jobs:
 
   static:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Install just
-        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
+      - name: Install just
+        run: uv tool install rust-just
       - name: Install Python dependencies
         run: |
           just install
@@ -56,16 +59,16 @@ jobs:
       matrix:
         # Tests currently only pass on ubuntu on GitHub Actions.
         os: [ubuntu-latest]
-        python-version: ["3.9", "pypy-3.10", "3.13t"]
+        python-version: ["3.10", "pypy-3.11", "3.13t"]
         mongodb-version: ["8.0"]
 
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -76,20 +79,51 @@ jobs:
       - name: Run tests
         run: uv run --extra test pytest -v
 
+  coverage:
+    # This enables a coverage report for a given PR, which will be augmented by
+    # the combined codecov report uploaded in Evergreen.
+    runs-on: ubuntu-latest
+
+    name: Coverage
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
+        with:
+          enable-cache: true
+          python-version: "3.10"
+      - id: setup-mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@master
+        with:
+          version: "8.0"
+      - name: Install just
+        run: uv tool install rust-just
+      - name: Setup tests
+        run: COVERAGE=1 just setup-tests
+      - name: Run tests
+        run: just run-tests
+      - name: Generate xml report
+        run: uv tool run --with "coverage[toml]" coverage xml
+      - name: Upload test results to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
   doctest:
     runs-on: ubuntu-latest
     name: DocTest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Install just
-        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
+      - name: Install just
+        run: uv tool install rust-just
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
@@ -105,16 +139,16 @@ jobs:
     name: Docs Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Install just
-        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+        run: uv tool install rust-just
       - name: Install dependencies
         run: just install
       - name: Build docs
@@ -124,16 +158,16 @@ jobs:
     name: Link Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
         with:
           enable-cache: true
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Install just
-        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+        run: uv tool install rust-just
       - name: Install dependencies
         run: just install
       - name: Build docs
@@ -144,18 +178,18 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.9", "3.11"]
+        python: ["3.10", "3.11"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
         with:
           enable-cache: true
           python-version: "${{matrix.python}}"
       - name: Install just
-        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+        run: uv tool install rust-just
       - name: Install dependencies
         run: |
           just install
@@ -163,25 +197,55 @@ jobs:
         run: |
           just typing
 
+  integration_tests:
+    runs-on: ubuntu-latest
+    name: Integration Tests
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
+        with:
+          enable-cache: true
+          python-version: "3.10"
+      - name: Install just
+        run: uv tool install rust-just
+      - name: Install dependencies
+        run: |
+          just install
+      - id: setup-mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@master
+      - name: Run tests
+        run:  |
+          just integration-tests
+      - id: setup-mongodb-ssl
+        uses: mongodb-labs/drivers-evergreen-tools@master
+        with:
+          ssl: true
+      - name: Run tests
+        run: |
+          just integration-tests
+
   make_sdist:
     runs-on: ubuntu-latest
     name: "Make an sdist"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
           # Build sdist on lowest supported Python
-          python-version: '3.9'
+          python-version: "3.9"
       - name: Build SDist
         shell: bash
         run: |
           pip install build
           python -m build --sdist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: "sdist"
           path: dist/*.tar.gz
@@ -193,7 +257,9 @@ jobs:
       timeout-minutes: 20
       steps:
         - name: Download sdist
-          uses: actions/download-artifact@v4
+          uses: actions/download-artifact@v7
+          with:
+            path: sdist/
         - name: Unpack SDist
           shell: bash
           run: |
@@ -202,12 +268,12 @@ jobs:
             mkdir test
             tar --strip-components=1 -zxf *.tar.gz -C ./test
             ls test
-        - uses: actions/setup-python@v5
+        - uses: actions/setup-python@v6
           with:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
             # Test sdist on lowest supported Python
-            python-version: '3.9'
+            python-version: "3.9"
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
         - name: Run connect test from sdist
@@ -223,50 +289,23 @@ jobs:
       permissions:
         contents: read
       runs-on: ubuntu-latest
-      name: Test using minimum dependencies and supported Python
+      name: Test minimum dependencies and Python
       steps:
-        - uses: actions/checkout@v4
+        - uses: actions/checkout@v6
           with:
             persist-credentials: false
         - name: Install uv
-          uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
+          uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7
           with:
-            python-version: '3.9'
+            python-version: "3.9"
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
           with:
             version: "8.0"
-        # Async and our test_dns do not support dnspython 1.X, so we don't run async or dns tests here
         - name: Run tests
           shell: bash
           run: |
             uv venv
             source .venv/bin/activate
-            uv pip install -e ".[test]" --resolution=lowest-direct
-            pytest -v test/test_srv_polling.py
-
-  test_minimum_for_async:
-      permissions:
-        contents: read
-      runs-on: ubuntu-latest
-      name: Test async's minimum dependencies and Python
-      steps:
-        - uses: actions/checkout@v4
-          with:
-            persist-credentials: false
-        - name: Install uv
-          uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v5
-          with:
-            python-version: '3.9'
-        - id: setup-mongodb
-          uses: mongodb-labs/drivers-evergreen-tools@master
-          with:
-            version: "8.0"
-        # The lifetime kwarg we use in srv resolution was added to the async resolver API in dnspython 2.1.0
-        - name: Run tests
-          shell: bash
-          run: |
-            uv venv
-            source .venv/bin/activate
-            uv pip install -e ".[test]" --resolution=lowest-direct dnspython==2.1.0 --force-reinstall
+            uv pip install -e ".[test]" --resolution=lowest-direct --force-reinstall
             pytest -v test/test_srv_polling.py test/test_dns.py test/asynchronous/test_srv_polling.py test/asynchronous/test_dns.py

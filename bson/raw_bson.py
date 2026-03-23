@@ -60,7 +60,9 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS as DEFAULT
 
 
 def _inflate_bson(
-    bson_bytes: bytes, codec_options: CodecOptions[RawBSONDocument], raw_array: bool = False
+    bson_bytes: bytes | memoryview,
+    codec_options: CodecOptions[RawBSONDocument],
+    raw_array: bool = False,
 ) -> dict[str, Any]:
     """Inflates the top level fields of a BSON document.
 
@@ -85,7 +87,9 @@ class RawBSONDocument(Mapping[str, Any]):
     __codec_options: CodecOptions[RawBSONDocument]
 
     def __init__(
-        self, bson_bytes: bytes, codec_options: Optional[CodecOptions[RawBSONDocument]] = None
+        self,
+        bson_bytes: bytes | memoryview,
+        codec_options: Optional[CodecOptions[RawBSONDocument]] = None,
     ) -> None:
         """Create a new :class:`RawBSONDocument`
 
@@ -135,7 +139,7 @@ class RawBSONDocument(Mapping[str, Any]):
         _get_object_size(bson_bytes, 0, len(bson_bytes))
 
     @property
-    def raw(self) -> bytes:
+    def raw(self) -> bytes | memoryview:
         """The raw BSON bytes composing this document."""
         return self.__raw
 
@@ -153,7 +157,7 @@ class RawBSONDocument(Mapping[str, Any]):
 
     @staticmethod
     def _inflate_bson(
-        bson_bytes: bytes, codec_options: CodecOptions[RawBSONDocument]
+        bson_bytes: bytes | memoryview, codec_options: CodecOptions[RawBSONDocument]
     ) -> Mapping[str, Any]:
         return _inflate_bson(bson_bytes, codec_options)
 
@@ -180,7 +184,7 @@ class _RawArrayBSONDocument(RawBSONDocument):
 
     @staticmethod
     def _inflate_bson(
-        bson_bytes: bytes, codec_options: CodecOptions[RawBSONDocument]
+        bson_bytes: bytes | memoryview, codec_options: CodecOptions[RawBSONDocument]
     ) -> Mapping[str, Any]:
         return _inflate_bson(bson_bytes, codec_options, raw_array=True)
 

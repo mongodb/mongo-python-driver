@@ -85,6 +85,7 @@ class TopologyDescription:
         self._server_descriptions = server_descriptions
         self._max_set_version = max_set_version
         self._max_election_id = max_election_id
+        self._candidate_servers = list(self._server_descriptions.values())
 
         # The heartbeat_frequency is used in staleness estimates.
         self._topology_settings = topology_settings
@@ -249,6 +250,11 @@ class TopologyDescription:
         return [s for s in self._server_descriptions.values() if s.is_readable]
 
     @property
+    def candidate_servers(self) -> list[ServerDescription]:
+        """List of Servers excluding deprioritized servers."""
+        return self._candidate_servers
+
+    @property
     def common_wire_version(self) -> Optional[int]:
         """Minimum of all servers' max wire versions, or None."""
         servers = self.known_servers
@@ -283,11 +289,27 @@ class TopologyDescription:
             if (cast(float, s.round_trip_time) - fastest) <= threshold
         ]
 
+    def _filter_servers(
+        self, deprioritized_servers: Optional[list[ServerDescription]] = None
+    ) -> None:
+        """Filter out deprioritized servers from a list of server candidates."""
+        if not deprioritized_servers:
+            self._candidate_servers = self.known_servers
+        else:
+            deprioritized_addresses = {sd.address for sd in deprioritized_servers}
+            filtered = [
+                server
+                for server in self.known_servers
+                if server.address not in deprioritized_addresses
+            ]
+            self._candidate_servers = filtered or self.known_servers
+
     def apply_selector(
         self,
         selector: Any,
         address: Optional[_Address] = None,
         custom_selector: Optional[_ServerSelector] = None,
+        deprioritized_servers: Optional[list[ServerDescription]] = None,
     ) -> list[ServerDescription]:
         """List of servers matching the provided selector(s).
 
@@ -322,16 +344,25 @@ class TopologyDescription:
         if address:
             # Ignore selectors when explicit address is requested.
             description = self.server_descriptions().get(address)
-            return [description] if description else []
+            return [description] if description and description.is_server_type_known else []
 
+        self._filter_servers(deprioritized_servers)
         # Primary selection fast path.
         if self.topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary and type(selector) is Primary:
-            for sd in self._server_descriptions.values():
+            for sd in self._candidate_servers:
                 if sd.server_type == SERVER_TYPE.RSPrimary:
                     sds = [sd]
                     if custom_selector:
                         sds = custom_selector(sds)
                     return sds
+            # All primaries are deprioritized
+            if deprioritized_servers:
+                for sd in deprioritized_servers:
+                    if sd.server_type == SERVER_TYPE.RSPrimary:
+                        sds = [sd]
+                        if custom_selector:
+                            sds = custom_selector(sds)
+                        return sds
             # No primary found, return an empty list.
             return []
 
@@ -339,6 +370,11 @@ class TopologyDescription:
         # Ignore read preference for sharded clusters.
         if self.topology_type != TOPOLOGY_TYPE.Sharded:
             selection = selector(selection)
+            # No suitable servers found, apply preference again but include deprioritized servers.
+            if not selection and deprioritized_servers:
+                self._filter_servers(None)
+                selection = Selection.from_topology_description(self)
+                selection = selector(selection)
 
         # Apply custom selector followed by localThresholdMS.
         if custom_selector is not None and selection:

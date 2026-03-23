@@ -4,11 +4,19 @@ import json
 import logging
 import os
 import platform
+import shlex
 import shutil
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 from shutil import which
+
+try:
+    import importlib_metadata
+except ImportError:
+    from importlib import metadata as importlib_metadata
+
 
 import pytest
 from utils import DRIVERS_TOOLS, LOGGER, ROOT, run_command
@@ -21,6 +29,22 @@ GREEN_FRAMEWORK = os.environ.get("GREEN_FRAMEWORK")
 TEST_ARGS = os.environ.get("TEST_ARGS", "").split()
 TEST_NAME = os.environ.get("TEST_NAME")
 SUB_TEST_NAME = os.environ.get("SUB_TEST_NAME")
+
+
+def list_packages():
+    packages = set()
+    for distribution in importlib_metadata.distributions():
+        if distribution.name:
+            packages.add(distribution.name)
+    print("Package             Version     URL")
+    print("------------------- ----------- ----------------------------------------------------")
+    for name in sorted(packages):
+        distribution = importlib_metadata.distribution(name)
+        url = ""
+        if distribution.origin is not None:
+            url = distribution.origin.url
+        print(f"{name:20s}{distribution.version:12s}{url}")
+    print("------------------- ----------- ----------------------------------------------------\n")
 
 
 def handle_perf(start_time: datetime):
@@ -46,13 +70,7 @@ def handle_perf(start_time: datetime):
 
 
 def handle_green_framework() -> None:
-    if GREEN_FRAMEWORK == "eventlet":
-        import eventlet
-
-        # https://github.com/eventlet/eventlet/issues/401
-        eventlet.sleep()
-        eventlet.monkey_patch()
-    elif GREEN_FRAMEWORK == "gevent":
+    if GREEN_FRAMEWORK == "gevent":
         from gevent import monkey
 
         monkey.patch_all()
@@ -90,10 +108,11 @@ def handle_aws_lambda() -> None:
     env["TEST_LAMBDA_DIRECTORY"] = str(target_dir)
     env.setdefault("AWS_REGION", "us-east-1")
     dirs = ["pymongo", "gridfs", "bson"]
-    # Store the original .so files.
-    before_sos = []
+    # Remove the original .so files.
     for dname in dirs:
-        before_sos.extend(f"{f.parent.name}/{f.name}" for f in (ROOT / dname).glob("*.so"))
+        so_paths = [f"{f.parent.name}/{f.name}" for f in (ROOT / dname).glob("*.so")]
+        for so_path in list(so_paths):
+            Path(so_path).unlink()
     # Build the c extensions.
     docker = which("docker") or which("podman")
     if not docker:
@@ -106,21 +125,23 @@ def handle_aws_lambda() -> None:
         target = ROOT / "test/lambda/mongodb" / dname
         shutil.rmtree(target, ignore_errors=True)
         shutil.copytree(ROOT / dname, target)
-    # Remove the original so files from the lambda directory.
-    for so_path in before_sos:
-        (ROOT / "test/lambda/mongodb" / so_path).unlink()
     # Remove the new so files from the ROOT directory.
     for dname in dirs:
         so_paths = [f"{f.parent.name}/{f.name}" for f in (ROOT / dname).glob("*.so")]
         for so_path in list(so_paths):
-            if so_path not in before_sos:
-                Path(so_path).unlink()
+            Path(so_path).unlink()
 
     script_name = "run-deployed-lambda-aws-tests.sh"
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/aws_lambda/{script_name}", env=env)
 
 
 def run() -> None:
+    # Add diagnostic for python version.
+    print("Running with python", sys.version)
+
+    # List the installed packages.
+    list_packages()
+
     # Handle green framework first so they can patch modules.
     if GREEN_FRAMEWORK:
         handle_green_framework()
@@ -182,6 +203,16 @@ def run() -> None:
 
     if os.environ.get("DEBUG_LOG"):
         TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG}".split())
+
+    if os.environ.get("COVERAGE"):
+        binary = sys.executable.replace(os.sep, "/")
+        cmd = f"{binary} -m coverage run -m pytest {' '.join(TEST_ARGS)} {' '.join(sys.argv[1:])}"
+        result = subprocess.run(shlex.split(cmd), check=False)  # noqa: S603
+        cmd = f"{binary} -m coverage report"
+        subprocess.run(shlex.split(cmd), check=False)  # noqa: S603
+        if result.returncode != 0:
+            print(result.stderr)
+        sys.exit(result.returncode)
 
     # Run local tests.
     ret = pytest.main(TEST_ARGS + sys.argv[1:])

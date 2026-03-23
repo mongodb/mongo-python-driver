@@ -19,7 +19,6 @@ from collections import deque
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generic,
     Iterator,
     Mapping,
     NoReturn,
@@ -29,18 +28,11 @@ from typing import (
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
-from pymongo import _csot
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.message import (
-    _CursorAddress,
-    _GetMore,
-    _OpMsg,
-    _OpReply,
-    _RawBatchGetMore,
-)
+from pymongo.message import _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
 from pymongo.response import PinnedResponse
-from pymongo.synchronous.cursor import _ConnectionManager
+from pymongo.synchronous.cursor_base import _ConnectionManager, _CursorBase
 from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
@@ -51,7 +43,7 @@ if TYPE_CHECKING:
 _IS_SYNC = True
 
 
-class CommandCursor(Generic[_DocumentType]):
+class CommandCursor(_CursorBase[_DocumentType]):
     """A cursor / iterator over command cursors."""
 
     _getmore_class = _GetMore
@@ -64,7 +56,6 @@ class CommandCursor(Generic[_DocumentType]):
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
         session: Optional[ClientSession] = None,
-        explicit_session: bool = False,
         comment: Any = None,
     ) -> None:
         """Create a new command cursor."""
@@ -80,7 +71,8 @@ class CommandCursor(Generic[_DocumentType]):
         self._max_await_time_ms = max_await_time_ms
         self._timeout = self._collection.database.client.options.timeout
         self._session = session
-        self._explicit_session = explicit_session
+        if self._session is not None:
+            self._session._attached_to_cursor = True
         self._killed = self._id == 0
         self._comment = comment
         if self._killed:
@@ -98,8 +90,8 @@ class CommandCursor(Generic[_DocumentType]):
                 f"max_await_time_ms must be an integer or None, not {type(max_await_time_ms)}"
             )
 
-    def __del__(self) -> None:
-        self._die_no_lock()
+    def _get_namespace(self) -> str:
+        return self._ns
 
     def batch_size(self, batch_size: int) -> CommandCursor[_DocumentType]:
         """Limits the number of documents returned in one batch. Each batch
@@ -161,91 +153,11 @@ class CommandCursor(Generic[_DocumentType]):
     ) -> Sequence[_DocumentOut]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
-    @property
-    def alive(self) -> bool:
-        """Does this cursor have the potential to return more data?
-
-        Even if :attr:`alive` is ``True``, :meth:`next` can raise
-        :exc:`StopIteration`. Best to use a for loop::
-
-            for doc in collection.aggregate(pipeline):
-                print(doc)
-
-        .. note:: :attr:`alive` can be True while iterating a cursor from
-          a failed server. In this case :attr:`alive` will return False after
-          :meth:`next` fails to retrieve the next batch of results from the
-          server.
-        """
-        return bool(len(self._data) or (not self._killed))
-
-    @property
-    def cursor_id(self) -> int:
-        """Returns the id of the cursor."""
-        return self._id
-
-    @property
-    def address(self) -> Optional[_Address]:
-        """The (host, port) of the server used, or None.
-
-        .. versionadded:: 3.0
-        """
-        return self._address
-
-    @property
-    def session(self) -> Optional[ClientSession]:
-        """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
-
-        .. versionadded:: 3.6
-        """
-        if self._explicit_session:
-            return self._session
-        return None
-
-    def _prepare_to_die(self) -> tuple[int, Optional[_CursorAddress]]:
-        already_killed = self._killed
-        self._killed = True
-        if self._id and not already_killed:
-            cursor_id = self._id
-            assert self._address is not None
-            address = _CursorAddress(self._address, self._ns)
-        else:
-            # Skip killCursors.
-            cursor_id = 0
-            address = None
-        return cursor_id, address
-
-    def _die_no_lock(self) -> None:
-        """Closes this cursor without acquiring a lock."""
-        cursor_id, address = self._prepare_to_die()
-        self._collection.database.client._cleanup_cursor_no_lock(
-            cursor_id, address, self._sock_mgr, self._session, self._explicit_session
-        )
-        if not self._explicit_session:
-            self._session = None
-        self._sock_mgr = None
-
-    def _die_lock(self) -> None:
-        """Closes this cursor."""
-        cursor_id, address = self._prepare_to_die()
-        self._collection.database.client._cleanup_cursor_lock(
-            cursor_id,
-            address,
-            self._sock_mgr,
-            self._session,
-            self._explicit_session,
-        )
-        if not self._explicit_session:
-            self._session = None
-        self._sock_mgr = None
-
     def _end_session(self) -> None:
-        if self._session and not self._explicit_session:
+        if self._session and self._session._implicit:
+            self._session._attached_to_cursor = False
             self._session._end_implicit_session()
             self._session = None
-
-    def close(self) -> None:
-        """Explicitly close / kill this cursor."""
-        self._die_lock()
 
     def _send_message(self, operation: _GetMore) -> None:
         """Send a getmore message and handle the response."""
@@ -328,6 +240,9 @@ class CommandCursor(Generic[_DocumentType]):
     def __iter__(self) -> Iterator[_DocumentType]:
         return self
 
+    def __enter__(self) -> CommandCursor[_DocumentType]:
+        return self
+
     def next(self) -> _DocumentType:
         """Advance the cursor."""
         # Block until a document is returnable.
@@ -383,41 +298,6 @@ class CommandCursor(Generic[_DocumentType]):
         """
         return self._try_next(get_more_allowed=True)
 
-    def __enter__(self) -> CommandCursor[_DocumentType]:
-        return self
-
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        self.close()
-
-    @_csot.apply
-    def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
-        """Converts the contents of this cursor to a list more efficiently than ``[doc for doc in cursor]``.
-
-        To use::
-
-          >>> cursor.to_list()
-
-        Or, so read at most n items from the cursor::
-
-          >>> cursor.to_list(n)
-
-        If the cursor is empty or has no more results, an empty list will be returned.
-
-        .. versionadded:: 4.9
-        """
-        res: list[_DocumentType] = []
-        remaining = length
-        if isinstance(length, int) and length < 1:
-            raise ValueError("to_list() length must be greater than 0")
-        while self.alive:
-            if not self._next_batch(res, remaining):
-                break
-            if length is not None:
-                remaining = length - len(res)
-                if remaining == 0:
-                    break
-        return res
-
 
 class RawBatchCommandCursor(CommandCursor[_DocumentType]):
     _getmore_class = _RawBatchGetMore
@@ -430,7 +310,6 @@ class RawBatchCommandCursor(CommandCursor[_DocumentType]):
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
         session: Optional[ClientSession] = None,
-        explicit_session: bool = False,
         comment: Any = None,
     ) -> None:
         """Create a new cursor / iterator over raw batches of BSON data.
@@ -449,7 +328,6 @@ class RawBatchCommandCursor(CommandCursor[_DocumentType]):
             batch_size,
             max_await_time_ms,
             session,
-            explicit_session,
             comment,
         )
 

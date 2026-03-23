@@ -22,7 +22,7 @@ work with MongoDB from Python.
 Getting Help
 ------------
 If you're having trouble or have questions about PyMongo, ask your question on
-our `MongoDB Community Forum <https://www.mongodb.com/community/forums/tag/python>`_.
+one of the platforms listed on `Technical Support <https://www.mongodb.com/docs/manual/support/>`_.
 You may also want to consider a
 `commercial support subscription <https://support.mongodb.com/welcome>`_.
 Once you get an answer, it'd be great if you could work it back into this
@@ -37,7 +37,7 @@ project.
 
 Feature Requests / Feedback
 ---------------------------
-Use our `feedback engine <https://feedback.mongodb.com/forums/924286-drivers>`_
+Use our `feedback engine <https://feedback.mongodb.com/?category=7548141816650747033>`_
 to send us feature requests and general feedback about PyMongo.
 
 Contributing

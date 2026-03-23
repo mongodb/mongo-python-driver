@@ -1,10 +1,8 @@
 # See https://just.systems/man/en/ for instructions
 set shell := ["bash", "-c"]
-# Do not modify the lock file when running justfile commands.
-export UV_FROZEN := "1"
 
 # Commonly used command segments.
-typing_run := "uv run --group typing --extra aws --extra encryption --extra ocsp --extra snappy --extra test --extra zstd"
+typing_run := "uv run --group typing --extra aws --extra encryption --with numpy --extra ocsp --extra snappy --extra test --extra zstd"
 docs_run := "uv run --extra docs"
 doc_build := "./doc/_build"
 mypy_args := "--install-types --non-interactive"
@@ -16,7 +14,7 @@ default:
 
 [private]
 resync:
- @uv sync --quiet --frozen
+ @uv sync --quiet
 
 install:
    bash .evergreen/scripts/setup-dev-env.sh
@@ -40,26 +38,33 @@ typing: && resync
 
 [group('typing')]
 typing-mypy: && resync
-    {{typing_run}} mypy {{mypy_args}} bson gridfs tools pymongo
-    {{typing_run}} mypy {{mypy_args}} --config-file mypy_test.ini test
-    {{typing_run}} mypy {{mypy_args}} test/test_typing.py test/test_typing_strict.py
+    {{typing_run}} python -m mypy {{mypy_args}} bson gridfs tools pymongo
+    {{typing_run}} python -m mypy {{mypy_args}} --config-file mypy_test.ini test
+    {{typing_run}} python -m mypy {{mypy_args}} test/test_typing.py test/test_typing_strict.py
 
 [group('typing')]
 typing-pyright: && resync
-    {{typing_run}} pyright test/test_typing.py test/test_typing_strict.py
-    {{typing_run}} pyright -p strict_pyrightconfig.json test/test_typing_strict.py
+    {{typing_run}} python -m pyright test/test_typing.py test/test_typing_strict.py
+    {{typing_run}} python -m pyright -p strict_pyrightconfig.json test/test_typing_strict.py
 
 [group('lint')]
-lint: && resync
-    uv run pre-commit run --all-files
+lint *args="": && resync
+    uvx pre-commit run --all-files {{args}}
 
 [group('lint')]
-lint-manual: && resync
-    uv run pre-commit run --all-files --hook-stage manual
+lint-manual *args="": && resync
+    uvx pre-commit run --all-files --hook-stage manual {{args}}
 
 [group('test')]
 test *args="-v --durations=5 --maxfail=10": && resync
-    uv run --extra test pytest {{args}}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    uv run ${USE_ACTIVE_VENV:+--active} --extra test python -m pytest {{args}}
+
+[group('test')]
+test-numpy *args="": && resync
+    just setup-tests numpy {{args}}
+    just run-tests test/test_bson.py
 
 [group('test')]
 run-tests *args: && resync
@@ -72,6 +77,29 @@ setup-tests *args="":
 [group('test')]
 teardown-tests:
     bash .evergreen/scripts/teardown-tests.sh
+
+[group('test')]
+integration-tests:
+    bash integration_tests/run.sh
+
+[group('test')]
+test-coverage *args="":
+    just setup-tests --cov
+    just run-tests {{args}}
+
+[group('coverage')]
+coverage-report:
+    uv tool run --with "coverage[toml]" coverage report
+
+[group('coverage')]
+coverage-html:
+    uv tool run --with "coverage[toml]" coverage html
+    @echo "Coverage report generated in htmlcov/index.html"
+
+[group('coverage')]
+coverage-xml:
+    uv tool run --with "coverage[toml]" coverage xml
+    @echo "Coverage report generated in coverage.xml"
 
 [group('server')]
 run-server *args="":

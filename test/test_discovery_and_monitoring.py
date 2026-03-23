@@ -25,7 +25,9 @@ from asyncio import StreamReader, StreamWriter
 from pathlib import Path
 from test.helpers import ConcurrentRunner
 from test.utils import flaky
+from test.utils_shared import delay
 
+from pymongo.errors import ConnectionFailure
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
 from pymongo.synchronous.pool import Connection
@@ -40,7 +42,7 @@ from test import (
     unittest,
 )
 from test.pymongo_mocks import DummyMonitor
-from test.unified_format import generate_test_classes
+from test.unified_format import generate_test_classes, get_test_path
 from test.utils import (
     get_pool,
 )
@@ -67,7 +69,12 @@ from pymongo.errors import (
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers_shared import _check_command_response, _check_write_command_response
-from pymongo.monitoring import ServerHeartbeatFailedEvent, ServerHeartbeatStartedEvent
+from pymongo.monitoring import (
+    ConnectionCheckOutFailedEvent,
+    PoolClearedEvent,
+    ServerHeartbeatFailedEvent,
+    ServerHeartbeatStartedEvent,
+)
 from pymongo.server_description import SERVER_TYPE, ServerDescription
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
@@ -76,14 +83,7 @@ from pymongo.topology_description import TOPOLOGY_TYPE
 
 _IS_SYNC = True
 
-# Location of JSON test specifications.
-if _IS_SYNC:
-    SDAM_PATH = os.path.join(Path(__file__).resolve().parent, "discovery_and_monitoring")
-else:
-    SDAM_PATH = os.path.join(
-        Path(__file__).resolve().parent.parent,
-        "discovery_and_monitoring",
-    )
+SDAM_PATH = get_test_path("discovery_and_monitoring")
 
 
 def create_mock_topology(uri, monitor_class=DummyMonitor):
@@ -138,6 +138,9 @@ def got_app_error(topology, app_error):
         raise AssertionError
     except (AutoReconnect, NotPrimaryError, OperationFailure) as e:
         if when == "beforeHandshakeCompletes":
+            # The pool would have added the SystemOverloadedError in this case.
+            if isinstance(e, AutoReconnect):
+                e._add_error_label("SystemOverloadedError")
             completed_handshake = False
         elif when == "afterHandshakeCompletes":
             completed_handshake = True
@@ -444,6 +447,57 @@ class TestPoolManagement(IntegrationTest):
             Connection.close_conn = original_close
 
 
+class TestPoolBackpressure(IntegrationTest):
+    @client_context.require_version_min(7, 0, 0)
+    def test_connection_pool_is_not_cleared(self):
+        listener = CMAPListener()
+
+        # Create a client that listens to CMAP events, with maxConnecting=100.
+        client = self.rs_or_single_client(maxConnecting=100, event_listeners=[listener])
+
+        # Enable the ingress rate limiter.
+        client.admin.command(
+            "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
+        )
+        client.admin.command("setParameter", 1, ingressConnectionEstablishmentRatePerSec=20)
+        client.admin.command("setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1)
+        client.admin.command("setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1)
+
+        # Disable the ingress rate limiter on teardown.
+        # Sleep for 1 second before disabling to avoid the rate limiter.
+        def teardown():
+            time.sleep(1)
+            client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
+            )
+
+        self.addCleanup(teardown)
+
+        # Make sure the collection has at least one document.
+        client.test.test.delete_many({})
+        client.test.test.insert_one({})
+
+        # Run a slow operation to tie up the connection.
+        def target():
+            try:
+                client.test.test.find_one({"$where": delay(0.1)})
+            except ConnectionFailure:
+                pass
+
+        # Run 100 parallel operations that contend for connections.
+        tasks = []
+        for _ in range(100):
+            tasks.append(ConcurrentRunner(target=target))
+        for t in tasks:
+            t.start()
+        for t in tasks:
+            t.join()
+
+        # Verify there were at least 10 connection checkout failed event but no pool cleared events.
+        self.assertGreater(len(listener.events_by_type(ConnectionCheckOutFailedEvent)), 10)
+        self.assertEqual(len(listener.events_by_type(PoolClearedEvent)), 0)
+
+
 class TestServerMonitoringMode(IntegrationTest):
     @client_context.require_no_load_balancer
     def setUp(self):
@@ -483,7 +537,7 @@ class TestServerMonitoringMode(IntegrationTest):
 
     def test_rtt_connection_is_disabled_auto(self):
         envs = [
-            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9"},
+            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.10"},
             {"FUNCTIONS_WORKER_RUNTIME": "python"},
             {"K_SERVICE": "gcpservicename"},
             {"FUNCTION_NAME": "gcpfunctionname"},
