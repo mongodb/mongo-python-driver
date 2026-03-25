@@ -88,7 +88,7 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.client_session import _validate_session_write_concern
-from pymongo.synchronous.helpers import _RETRY_ATTEMPT, _handle_reauth
+from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.synchronous.network import command
 
 if TYPE_CHECKING:
@@ -395,9 +395,6 @@ class Connection:
         if session:
             session._apply_to(spec, retryable_write, read_preference, self)
         self.send_cluster_time(spec, session, client)
-        retry_attempt = _RETRY_ATTEMPT.get()
-        if retry_attempt > 0:
-            spec["retry"] = retry_attempt
         listeners = self.listeners if publish_events else None
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
         if self.op_msg_enabled:

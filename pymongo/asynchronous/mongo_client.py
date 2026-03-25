@@ -69,7 +69,6 @@ from pymongo.asynchronous.client_bulk import _AsyncClientBulk
 from pymongo.asynchronous.client_session import _SESSION, _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import (
-    _RETRY_ATTEMPT,
     _RetryPolicy,
     _TokenBucket,
 )
@@ -897,7 +896,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self._retry_policy = _RetryPolicy(
             _TokenBucket(),
-            attempts=self._options.max_adaptive_retries,
+            attempts=self._options.max_retries,
             adaptive_retry=self._options.adaptive_retries,
         )
 
@@ -2823,7 +2822,6 @@ class _ClientConnectionRetryable(Generic[T]):
 
         while True:
             self._check_last_error(check_csot=True)
-            retry_token = _RETRY_ATTEMPT.set(self._attempt_number)
             try:
                 res = await self._read() if self._is_read else await self._write()
                 await self._retry_policy.record_success(self._attempt_number > 0)
@@ -2950,8 +2948,6 @@ class _ClientConnectionRetryable(Generic[T]):
                         else:
                             raise
                     await asyncio.sleep(delay)
-            finally:
-                _RETRY_ATTEMPT.reset(retry_token)
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""

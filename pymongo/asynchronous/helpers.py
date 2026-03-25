@@ -22,7 +22,6 @@ import random
 import socket
 import sys
 import time as time  # noqa: PLC0414 # needed in sync version
-from contextvars import ContextVar
 from typing import (
     Any,
     Callable,
@@ -30,7 +29,7 @@ from typing import (
     cast,
 )
 
-from pymongo import _csot
+from pymongo import _csot, common
 from pymongo.errors import (
     OperationFailure,
 )
@@ -77,13 +76,9 @@ def _handle_reauth(func: F) -> F:
     return cast(F, inner)
 
 
-_MAX_RETRIES = 2
 _BACKOFF_INITIAL = 0.1
 _BACKOFF_MAX = 10
 
-# Context variable used to pass the current retry attempt number to conn.command()
-# so that retry metadata can be injected into outgoing command bodies.
-_RETRY_ATTEMPT: ContextVar[int] = ContextVar("_retry_attempt", default=0)
 DEFAULT_RETRY_TOKEN_CAPACITY = 1000.0
 DEFAULT_RETRY_TOKEN_RETURN = 0.1
 
@@ -133,7 +128,7 @@ class _RetryPolicy:
     def __init__(
         self,
         token_bucket: _TokenBucket,
-        attempts: int = _MAX_RETRIES,
+        attempts: int = common._MAX_RETRIES,
         backoff_initial: float = _BACKOFF_INITIAL,
         backoff_max: float = _BACKOFF_MAX,
         adaptive_retry: bool = False,

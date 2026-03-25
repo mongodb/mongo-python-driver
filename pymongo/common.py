@@ -143,8 +143,8 @@ SERVER_MONITORING_MODE = "auto"  # poll/stream/auto
 # Default value for adaptiveRetries
 ADAPTIVE_RETRIES = False
 
-# Default value for maxAdaptiveRetries
-MAX_ADAPTIVE_RETRIES = 2
+# Default value for max retries
+_MAX_RETRIES = 2
 
 # Default value for enableOverloadRetargeting
 ENABLE_OVERLOAD_RETARGETING = False
@@ -782,7 +782,7 @@ KW_VALIDATORS: dict[str, Callable[[Any, Any], Any]] = {
     "auto_encryption_opts": validate_auto_encryption_opts_or_none,
     "authoidcallowedhosts": validate_list,
     "adaptive_retries": validate_boolean_or_string,
-    "max_adaptive_retries": validate_non_negative_integer,
+    "max_retries": validate_non_negative_integer,
     "enable_overload_retargeting": validate_boolean_or_string,
 }
 
