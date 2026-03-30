@@ -615,17 +615,17 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             client to use Stable API. See `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_ for
             details.
 
-          | **Adaptive retry options:**
-          | (If not enabled explicitly, adaptive retries will not be enabled.)
+          | **Overload retry options:**|
 
-          - `adaptive_retries`: (boolean) Whether the adaptive retry mechanism is enabled for this client.
-            If enabled, server overload errors will use a token-bucket based system to mitigate further overload.
+          - `max_adaptive_retries`: (int) How many retries to allow for overload errors. Defaults to ``2``.
+          - `enable_overload_retargeting`: (boolean) Whether overload retargeting is enabled for this client.
+            If enabled, server overload errors will cause retry attempts to select a server that has not yet returned an overload error, if possible.
             Defaults to ``False``.
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
         .. versionchanged:: 4.17
-           Added the ``adaptive_retries`` URI and keyword argument.
+           Added the ``max_adaptive_retries`` and ``enable_overload_retargeting`` URI and keyword arguments.
 
         .. versionchanged:: 4.5
            Added the ``serverMonitoringMode`` keyword argument.
@@ -894,9 +894,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.read_concern,
         )
 
-        self._retry_policy = _RetryPolicy(
-            _TokenBucket(), adaptive_retry=self._options.adaptive_retries
-        )
+        self._retry_policy = _RetryPolicy(_TokenBucket())
 
         self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
 

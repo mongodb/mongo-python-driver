@@ -30,6 +30,7 @@ from typing import (
 )
 
 from pymongo import _csot
+from pymongo.common import MAX_ADAPTIVE_RETRIES
 from pymongo.errors import (
     OperationFailure,
 )
@@ -76,7 +77,6 @@ def _handle_reauth(func: F) -> F:
     return cast(F, inner)
 
 
-_MAX_RETRIES = 5
 _BACKOFF_INITIAL = 0.1
 _BACKOFF_MAX = 10
 DEFAULT_RETRY_TOKEN_CAPACITY = 1000.0
@@ -128,16 +128,15 @@ class _RetryPolicy:
     def __init__(
         self,
         token_bucket: _TokenBucket,
-        attempts: int = _MAX_RETRIES,
+        attempts: int = MAX_ADAPTIVE_RETRIES,
         backoff_initial: float = _BACKOFF_INITIAL,
         backoff_max: float = _BACKOFF_MAX,
-        adaptive_retry: bool = False,
     ):
         self.token_bucket = token_bucket
         self.attempts = attempts
         self.backoff_initial = backoff_initial
         self.backoff_max = backoff_max
-        self.adaptive_retry = adaptive_retry
+        self.adaptive_retry = False
 
     async def record_success(self, retry: bool) -> None:
         """Record a successful operation."""

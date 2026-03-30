@@ -240,6 +240,16 @@ class ClientOptions:
             if "adaptive_retries" in options
             else options.get("adaptiveretries", common.ADAPTIVE_RETRIES)
         )
+        self.__max_adaptive_retries = (
+            options.get("max_adaptive_retries", common.MAX_ADAPTIVE_RETRIES)
+            if "max_adaptive_retries" in options
+            else options.get("maxadaptiveretries", common.MAX_ADAPTIVE_RETRIES)
+        )
+        self.__enable_overload_retargeting = (
+            options.get("enable_overload_retargeting", common.ENABLE_OVERLOAD_RETARGETING)
+            if "enable_overload_retargeting" in options
+            else options.get("enableoverloadretargeting", common.ENABLE_OVERLOAD_RETARGETING)
+        )
 
     @property
     def _options(self) -> Mapping[str, Any]:
@@ -353,9 +363,17 @@ class ClientOptions:
         return self.__server_monitoring_mode
 
     @property
-    def adaptive_retries(self) -> bool:
-        """The configured adaptiveRetries option.
+    def max_adaptive_retries(self) -> int:
+        """The configured maxAdaptiveRetries option.
 
-        .. versionadded:: 4.XX
+        .. versionadded:: 4.17
         """
-        return self.__adaptive_retries
+        return self.__max_adaptive_retries
+
+    @property
+    def enable_overload_retargeting(self) -> bool:
+        """The configured enableOverloadRetargeting option.
+
+        .. versionadded:: 4.17
+        """
+        return self.__enable_overload_retargeting
