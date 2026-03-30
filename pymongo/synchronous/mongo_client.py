@@ -615,7 +615,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             client to use Stable API. See `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_ for
             details.
 
-          | **Overload retry options:**|
+          | **Overload retry options:**
 
           - `max_adaptive_retries`: (int) How many retries to allow for overload errors. Defaults to ``2``.
           - `enable_overload_retargeting`: (boolean) Whether overload retargeting is enabled for this client.
