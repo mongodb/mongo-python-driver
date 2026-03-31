@@ -140,9 +140,6 @@ SRV_SERVICE_NAME = "mongodb"
 # Default value for serverMonitoringMode
 SERVER_MONITORING_MODE = "auto"  # poll/stream/auto
 
-# Default value for adaptiveRetries
-ADAPTIVE_RETRIES = False
-
 # Default value for max adaptive retries
 MAX_ADAPTIVE_RETRIES = 2
 
@@ -747,7 +744,6 @@ URI_OPTIONS_VALIDATOR_MAP: dict[str, Callable[[Any, Any], Any]] = {
     "srvmaxhosts": validate_non_negative_integer,
     "timeoutms": validate_timeoutms,
     "servermonitoringmode": validate_server_monitoring_mode,
-    "adaptiveretries": validate_boolean_or_string,
     "maxadaptiveretries": validate_non_negative_integer,
     "enableoverloadretargeting": validate_boolean_or_string,
 }
@@ -783,7 +779,6 @@ KW_VALIDATORS: dict[str, Callable[[Any, Any], Any]] = {
     "server_selector": validate_is_callable_or_none,
     "auto_encryption_opts": validate_auto_encryption_opts_or_none,
     "authoidcallowedhosts": validate_list,
-    "adaptive_retries": validate_boolean_or_string,
     "max_adaptive_retries": validate_non_negative_integer,
     "enable_overload_retargeting": validate_boolean_or_string,
 }

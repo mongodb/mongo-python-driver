@@ -70,7 +70,6 @@ from pymongo.asynchronous.client_session import _SESSION, _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import (
     _RetryPolicy,
-    _TokenBucket,
 )
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
@@ -894,7 +893,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.read_concern,
         )
 
-        self._retry_policy = _RetryPolicy(_TokenBucket())
+        self._retry_policy = _RetryPolicy(attempts=self._options.max_adaptive_retries)
 
         self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
 
@@ -2820,7 +2819,6 @@ class _ClientConnectionRetryable(Generic[T]):
             self._check_last_error(check_csot=True)
             try:
                 res = await self._read() if self._is_read else await self._write()
-                await self._retry_policy.record_success(self._attempt_number > 0)
                 # Track whether the transaction has completed a command.
                 # If we need to apply backpressure to the first command,
                 # we will need to revert back to starting state.
@@ -2929,9 +2927,12 @@ class _ClientConnectionRetryable(Generic[T]):
                         transaction.attempt = 0
 
                 if (
-                    self._server is not None
-                    and self._client.topology_description.topology_type_name == "Sharded"
-                    or exc.has_error_label("SystemOverloadedError")
+                    self._client.options.enable_overload_retargeting
+                    and self._server is not None
+                    and (
+                        self._client.topology_description.topology_type_name == "Sharded"
+                        or exc.has_error_label("SystemOverloadedError")
+                    )
                 ):
                     self._deprioritized_servers.append(self._server)
 

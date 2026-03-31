@@ -21,6 +21,7 @@ import sys
 from time import perf_counter
 from unittest.mock import patch
 
+from pymongo import ReadPreference
 from pymongo.common import MAX_ADAPTIVE_RETRIES
 
 sys.path[0:0] = [""]
@@ -36,7 +37,7 @@ from test.utils_shared import EventListener, OvertCommandListener
 
 import pymongo
 from pymongo.asynchronous import helpers
-from pymongo.asynchronous.helpers import _RetryPolicy, _TokenBucket
+from pymongo.asynchronous.helpers import _RetryPolicy
 from pymongo.errors import OperationFailure, PyMongoError
 
 _IS_SYNC = False
@@ -235,7 +236,7 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_appName
     async def test_03_overload_retries_limited(self):
-        # Drivers should test that without adaptive retries enabled, overload errors are retried a maximum of three times.
+        # Drivers should test that overload errors are retried a maximum of two times.
 
         # 1. Let `client` be a `MongoClient`.
         client = self.client
@@ -264,6 +265,41 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
 
         # 6. Assert that the total number of started commands is MAX_ADAPTIVE_RETRIES + 1.
         self.assertEqual(len(self.listener.started_events), MAX_ADAPTIVE_RETRIES + 1)
+
+    @async_client_context.require_failCommand_appName
+    async def test_04_overload_retries_limited_configured(self):
+        # Drivers should test that overload errors are retried a maximum of maxAdaptiveRetries times.
+        max_retries = 1
+
+        # 1. Let `client` be a `MongoClient` with `maxAdaptiveRetries=1` and command event monitoring enabled.
+        client = await self.async_single_client(
+            maxAdaptiveRetries=max_retries, event_listeners=[self.listener]
+        )
+        # 2. Let `coll` be a collection.
+        coll = client.pymongo_test.coll
+
+        # 3. Configure the following failpoint:
+        failpoint = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "failCommands": ["find"],
+                "errorCode": 462,  # IngressRequestRateLimitExceeded
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+            },
+        }
+
+        # 4. Perform a find operation with `coll` that fails.
+        async with self.fail_point(failpoint):
+            with self.assertRaises(PyMongoError) as error:
+                await coll.find_one({})
+
+        # 5. Assert that the raised error contains both the `RetryableError` and `SystemOverLoadedError` error labels.
+        self.assertIn("RetryableError", str(error.exception))
+        self.assertIn("SystemOverloadedError", str(error.exception))
+
+        # 6. Assert that the total number of started commands is max_retries + 1.
+        self.assertEqual(len(self.listener.started_events), max_retries + 1)
 
 
 # Location of JSON test specifications.

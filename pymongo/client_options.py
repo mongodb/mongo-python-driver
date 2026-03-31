@@ -235,11 +235,6 @@ class ClientOptions:
         self.__server_monitoring_mode = options.get(
             "servermonitoringmode", common.SERVER_MONITORING_MODE
         )
-        self.__adaptive_retries = (
-            options.get("adaptive_retries", common.ADAPTIVE_RETRIES)
-            if "adaptive_retries" in options
-            else options.get("adaptiveretries", common.ADAPTIVE_RETRIES)
-        )
         self.__max_adaptive_retries = (
             options.get("max_adaptive_retries", common.MAX_ADAPTIVE_RETRIES)
             if "max_adaptive_retries" in options
