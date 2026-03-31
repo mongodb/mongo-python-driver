@@ -21,23 +21,18 @@ import sys
 from time import perf_counter
 from unittest.mock import patch
 
-from pymongo import ReadPreference
 from pymongo.common import MAX_ADAPTIVE_RETRIES
 
 sys.path[0:0] = [""]
 
 from test.asynchronous import (
     AsyncIntegrationTest,
-    AsyncPyMongoTestCase,
     async_client_context,
     unittest,
 )
 from test.asynchronous.unified_format import generate_test_classes
 from test.utils_shared import EventListener, OvertCommandListener
 
-import pymongo
-from pymongo.asynchronous import helpers
-from pymongo.asynchronous.helpers import _RetryPolicy
 from pymongo.errors import OperationFailure, PyMongoError
 
 _IS_SYNC = False
