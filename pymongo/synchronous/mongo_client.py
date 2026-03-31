@@ -2921,7 +2921,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     and self._server is not None
                     and (
                         self._client.topology_description.topology_type_name == "Sharded"
-                        or exc.has_error_label("SystemOverloadedError")
+                        or overloaded
                     )
                 ):
                     self._deprioritized_servers.append(self._server)
