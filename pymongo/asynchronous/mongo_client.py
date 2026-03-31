@@ -70,7 +70,6 @@ from pymongo.asynchronous.client_session import _SESSION, _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import (
     _RetryPolicy,
-    _TokenBucket,
 )
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
@@ -615,17 +614,17 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             client to use Stable API. See `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_ for
             details.
 
-          | **Adaptive retry options:**
-          | (If not enabled explicitly, adaptive retries will not be enabled.)
+          | **Overload retry options:**
 
-          - `adaptive_retries`: (boolean) Whether the adaptive retry mechanism is enabled for this client.
-            If enabled, server overload errors will use a token-bucket based system to mitigate further overload.
+          - `max_adaptive_retries`: (int) How many retries to allow for overload errors. Defaults to ``2``.
+          - `enable_overload_retargeting`: (boolean) Whether overload retargeting is enabled for this client.
+            If enabled, server overload errors will cause retry attempts to select a server that has not yet returned an overload error, if possible.
             Defaults to ``False``.
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
         .. versionchanged:: 4.17
-           Added the ``adaptive_retries`` URI and keyword argument.
+           Added the ``max_adaptive_retries`` and ``enable_overload_retargeting`` URI and keyword arguments.
 
         .. versionchanged:: 4.5
            Added the ``serverMonitoringMode`` keyword argument.
@@ -894,9 +893,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.read_concern,
         )
 
-        self._retry_policy = _RetryPolicy(
-            _TokenBucket(), adaptive_retry=self._options.adaptive_retries
-        )
+        self._retry_policy = _RetryPolicy(attempts=self._options.max_adaptive_retries)
 
         self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
 
@@ -2822,7 +2819,6 @@ class _ClientConnectionRetryable(Generic[T]):
             self._check_last_error(check_csot=True)
             try:
                 res = await self._read() if self._is_read else await self._write()
-                await self._retry_policy.record_success(self._attempt_number > 0)
                 # Track whether the transaction has completed a command.
                 # If we need to apply backpressure to the first command,
                 # we will need to revert back to starting state.
@@ -2930,10 +2926,9 @@ class _ClientConnectionRetryable(Generic[T]):
                             transaction.set_starting()
                         transaction.attempt = 0
 
-                if (
-                    self._server is not None
-                    and self._client.topology_description.topology_type_name == "Sharded"
-                    or exc.has_error_label("SystemOverloadedError")
+                if self._server is not None and (
+                    self._client.topology_description.topology_type_name == "Sharded"
+                    or (overloaded and self._client.options.enable_overload_retargeting)
                 ):
                     self._deprioritized_servers.append(self._server)
 
