@@ -2916,13 +2916,9 @@ class _ClientConnectionRetryable(Generic[T]):
                             transaction.set_starting()
                         transaction.attempt = 0
 
-                if (
-                    self._client.options.enable_overload_retargeting
-                    and self._server is not None
-                    and (
-                        self._client.topology_description.topology_type_name == "Sharded"
-                        or overloaded
-                    )
+                if self._server is not None and (
+                    self._client.topology_description.topology_type_name == "Sharded"
+                    or (overloaded and self._client.options.enable_overload_retargeting)
                 ):
                     self._deprioritized_servers.append(self._server)
 
