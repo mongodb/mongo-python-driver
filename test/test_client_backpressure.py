@@ -254,7 +254,7 @@ class TestClientBackpressure(IntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 coll.find_one({})
 
-        # 5. Assert that the raised error contains both the `RetryableError` and `SystemOverLoadedError` error labels.
+        # 5. Assert that the raised error contains both the `RetryableError` and `SystemOverloadedError` error labels.
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
@@ -287,7 +287,7 @@ class TestClientBackpressure(IntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 coll.find_one({})
 
-        # 5. Assert that the raised error contains both the `RetryableError` and `SystemOverLoadedError` error labels.
+        # 5. Assert that the raised error contains both the `RetryableError` and `SystemOverloadedError` error labels.
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 

@@ -650,7 +650,7 @@ class ClientUnitTest(UnitTest):
         c = self.simple_client(connect=False)
         self.assertEqual(c.options.max_adaptive_retries, 2)
 
-        # Assert that adaptive retries can be enabled through connection or client options.
+        # Assert that max adaptive retries can be configured through connection or client options.
         c = self.simple_client(connect=False, max_adaptive_retries=10)
         self.assertEqual(c.options.max_adaptive_retries, 10)
 
