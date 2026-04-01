@@ -561,9 +561,21 @@ class _ClientBulk:
                         error, ConnectionFailure
                     ) and not isinstance(error, (NotPrimaryError, WaitQueueTimeoutError))
 
+                    retryable_label_error = (
+                        hasattr(error, "details")
+                        and isinstance(error.details, dict)
+                        and "errorLabels" in error.details
+                        and isinstance(error.details["errorLabels"], list)
+                        and "RetryableError" in error.details["errorLabels"]
+                    )
+
                     # Synthesize the full bulk result without modifying the
                     # current one because this write operation may be retried.
-                    if retryable and (retryable_top_level_error or retryable_network_error):
+                    if retryable and (
+                        retryable_top_level_error
+                        or retryable_network_error
+                        or retryable_label_error
+                    ):
                         full = copy.deepcopy(full_result)
                         _merge_command(self.ops, self.idx_offset, full, result)
                         _throw_client_bulk_write_exception(full, self.verbose_results)

@@ -17,8 +17,11 @@ from __future__ import annotations
 
 import asyncio
 import builtins
+import functools
+import random
 import socket
 import sys
+import time as time  # noqa: PLC0414 # needed in sync version
 from typing import (
     Any,
     Callable,
@@ -26,10 +29,12 @@ from typing import (
     cast,
 )
 
+from pymongo import _csot
 from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.helpers_shared import _REAUTHENTICATION_REQUIRED_CODE
+from pymongo.lock import _create_lock
 
 _IS_SYNC = True
 
@@ -38,6 +43,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def _handle_reauth(func: F) -> F:
+    @functools.wraps(func)
     def inner(*args: Any, **kwargs: Any) -> Any:
         no_reauth = kwargs.pop("no_reauth", False)
         from pymongo.message import _BulkWriteContext
@@ -68,6 +74,96 @@ def _handle_reauth(func: F) -> F:
             raise
 
     return cast(F, inner)
+
+
+_MAX_RETRIES = 5
+_BACKOFF_INITIAL = 0.1
+_BACKOFF_MAX = 10
+DEFAULT_RETRY_TOKEN_CAPACITY = 1000.0
+DEFAULT_RETRY_TOKEN_RETURN = 0.1
+
+
+def _backoff(
+    attempt: int, initial_delay: float = _BACKOFF_INITIAL, max_delay: float = _BACKOFF_MAX
+) -> float:
+    jitter = random.random()  # noqa: S311
+    return jitter * min(initial_delay * (2**attempt), max_delay)
+
+
+class _TokenBucket:
+    """A token bucket implementation for rate limiting."""
+
+    def __init__(
+        self,
+        capacity: float = DEFAULT_RETRY_TOKEN_CAPACITY,
+        return_rate: float = DEFAULT_RETRY_TOKEN_RETURN,
+    ):
+        self.lock = _create_lock()
+        self.capacity = capacity
+        self.tokens = capacity
+        self.return_rate = return_rate
+
+    def consume(self) -> bool:
+        """Consume a token from the bucket if available."""
+        with self.lock:
+            if self.tokens >= 1:
+                self.tokens -= 1
+                return True
+            return False
+
+    def deposit(self, retry: bool = False) -> None:
+        """Deposit a token back into the bucket."""
+        retry_token = 1 if retry else 0
+        with self.lock:
+            self.tokens = min(self.capacity, self.tokens + retry_token + self.return_rate)
+
+
+class _RetryPolicy:
+    """A retry limiter that performs exponential backoff with jitter.
+
+    When adaptive retries are enabled, retry attempts are limited by a token bucket to prevent overwhelming the server during
+    a prolonged outage or high load.
+    """
+
+    def __init__(
+        self,
+        token_bucket: _TokenBucket,
+        attempts: int = _MAX_RETRIES,
+        backoff_initial: float = _BACKOFF_INITIAL,
+        backoff_max: float = _BACKOFF_MAX,
+        adaptive_retry: bool = False,
+    ):
+        self.token_bucket = token_bucket
+        self.attempts = attempts
+        self.backoff_initial = backoff_initial
+        self.backoff_max = backoff_max
+        self.adaptive_retry = adaptive_retry
+
+    def record_success(self, retry: bool) -> None:
+        """Record a successful operation."""
+        if self.adaptive_retry:
+            self.token_bucket.deposit(retry)
+
+    def backoff(self, attempt: int) -> float:
+        """Return the backoff duration for the given ."""
+        return _backoff(max(0, attempt - 1), self.backoff_initial, self.backoff_max)
+
+    def should_retry(self, attempt: int, delay: float) -> bool:
+        """Return if we have budget to retry and how long to backoff."""
+        if attempt > self.attempts:
+            return False
+
+        # If the delay would exceed the deadline, bail early before consuming a token.
+        if _csot.get_timeout():
+            if time.monotonic() + delay > _csot.get_deadline():
+                return False
+
+        # Check token bucket last since we only want to consume a token if we actually retry.
+        if self.adaptive_retry and not self.token_bucket.consume():
+            # DRIVERS-3246 Improve diagnostics when this case happens.
+            # We could add info to the exception and log.
+            return False
+        return True
 
 
 def _getaddrinfo(
