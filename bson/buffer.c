@@ -155,4 +155,3 @@ char* pymongo_buffer_get_buffer(buffer_t buffer) {
 void pymongo_buffer_update_position(buffer_t buffer, buffer_position new_position) {
     buffer->position = new_position;
 }
-
