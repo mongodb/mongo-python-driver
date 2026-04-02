@@ -27,18 +27,16 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers_shared import _check_command_response
 from pymongo.logger import (
-    _COMMAND_LOGGER,
     _SDAM_LOGGER,
-    _CommandStatusMessage,
     _debug_log,
     _SDAMStatusMessage,
 )
-from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
+from pymongo.message import _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.telemetry import command_telemetry
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -170,140 +168,66 @@ class Server:
             message = operation.get_message(read_preference, conn, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=cmd,
-                commandName=next(iter(cmd)),
-                databaseName=dbn,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-            )
+        if publish and "$db" not in cmd:
+            cmd["$db"] = dbn
 
-        if publish:
-            if "$db" not in cmd:
-                cmd["$db"] = dbn
-            assert listeners is not None
-            listeners.publish_command_start(
-                cmd,
-                dbn,
-                request_id,
-                conn.address,
-                conn.server_connection_id,
-                service_id=conn.service_id,
-            )
+        with command_telemetry(
+            command_name=operation.name,
+            database_name=dbn,
+            spec=cmd,
+            driver_connection_id=conn.id,
+            server_connection_id=conn.server_connection_id,
+            publish_event=publish,
+            start_time=start,
+            address=conn.address,
+            listeners=listeners,
+            client=client,
+            request_id=request_id,
+            service_id=conn.service_id,
+        ) as telemetry:
+            try:
+                if more_to_come:
+                    reply = conn.receive_message(None)
+                else:
+                    conn.send_message(data, max_doc_size)
+                    reply = conn.receive_message(request_id)
 
-        try:
-            if more_to_come:
-                reply = conn.receive_message(None)
-            else:
-                conn.send_message(data, max_doc_size)
-                reply = conn.receive_message(request_id)
-
-            # Unpack and check for command errors.
-            if use_cmd:
-                user_fields = _CURSOR_DOC_FIELDS
-                legacy_response = False
-            else:
-                user_fields = None
-                legacy_response = True
-            docs = unpack_res(
-                reply,
-                operation.cursor_id,
-                operation.codec_options,
-                legacy_response=legacy_response,
-                user_fields=user_fields,
-            )
-            if use_cmd:
-                first = docs[0]
-                operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
-                _check_command_response(first, conn.max_wire_version, pool_opts=conn.opts)  # type:ignore[has-type]
-        except Exception as exc:
-            duration = datetime.now() - start
-            if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure: _DocumentOut = exc.details  # type: ignore[assignment]
-            else:
-                failure = _convert_exception(exc)
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(cmd)),
-                    databaseName=dbn,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=conn.id,
-                    serverConnectionId=conn.server_connection_id,
-                    serverHost=conn.address[0],
-                    serverPort=conn.address[1],
-                    serviceId=conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
+                # Unpack and check for command errors.
+                if use_cmd:
+                    user_fields = _CURSOR_DOC_FIELDS
+                    legacy_response = False
+                else:
+                    user_fields = None
+                    legacy_response = True
+                docs = unpack_res(
+                    reply,
+                    operation.cursor_id,
+                    operation.codec_options,
+                    legacy_response=legacy_response,
+                    user_fields=user_fields,
                 )
-            if publish:
-                assert listeners is not None
-                listeners.publish_command_failure(
-                    duration,
-                    failure,
-                    operation.name,
-                    request_id,
-                    conn.address,
-                    conn.server_connection_id,
-                    service_id=conn.service_id,
-                    database_name=dbn,
-                )
-            raise
+                if use_cmd:
+                    first = docs[0]
+                    operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
+                    _check_command_response(first, conn.max_wire_version, pool_opts=conn.opts)  # type:ignore[has-type]
+            except Exception as exc:
+                telemetry.publish_failed(exc)
+                raise
+
+            # Must publish in find / getMore / explain command response format.
+            if use_cmd:
+                res = docs[0]
+            elif operation.name == "explain":
+                res = docs[0] if docs else {}
+            else:
+                res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}  # type: ignore[union-attr]
+                if operation.name == "find":
+                    res["cursor"]["firstBatch"] = docs
+                else:
+                    res["cursor"]["nextBatch"] = docs
+            telemetry.publish_succeeded(res)
+
         duration = datetime.now() - start
-        # Must publish in find / getMore / explain command response
-        # format.
-        if use_cmd:
-            res = docs[0]
-        elif operation.name == "explain":
-            res = docs[0] if docs else {}
-        else:
-            res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}  # type: ignore[union-attr]
-            if operation.name == "find":
-                res["cursor"]["firstBatch"] = docs
-            else:
-                res["cursor"]["nextBatch"] = docs
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.SUCCEEDED,
-                clientId=client._topology_settings._topology_id,
-                durationMS=duration,
-                reply=res,
-                commandName=next(iter(cmd)),
-                databaseName=dbn,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-            )
-        if publish:
-            assert listeners is not None
-            listeners.publish_command_success(
-                duration,
-                res,
-                operation.name,
-                request_id,
-                conn.address,
-                conn.server_connection_id,
-                service_id=conn.service_id,
-                database_name=dbn,
-            )
 
         # Decrypt response.
         client = operation.client  # type: ignore[assignment]
