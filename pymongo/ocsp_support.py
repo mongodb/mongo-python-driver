@@ -36,7 +36,7 @@ from cryptography.hazmat.primitives.asymmetric.x448 import (
 from cryptography.hazmat.primitives.asymmetric.x25519 import (
     X25519PublicKey as _X25519PublicKey,
 )
-from cryptography.hazmat.primitives.hashes import SHA1 as _SHA1
+from cryptography.hazmat.primitives.hashes import SHA256 as _SHA256
 from cryptography.hazmat.primitives.hashes import Hash as _Hash
 from cryptography.hazmat.primitives.serialization import Encoding as _Encoding
 from cryptography.hazmat.primitives.serialization import PublicFormat as _PublicFormat
@@ -158,7 +158,7 @@ def _get_extension(
 def _public_key_hash(cert: Certificate) -> bytes:
     public_key = cert.public_key()
     # https://tools.ietf.org/html/rfc2560#section-4.2.1
-    # "KeyHash ::= OCTET STRING -- SHA-1 hash of responder's public key
+    # "KeyHash ::= OCTET STRING -- SHA-256 hash of responder's public key
     # (excluding the tag and length fields)"
     # https://stackoverflow.com/a/46309453/600498
     if isinstance(public_key, _RSAPublicKey):
@@ -167,7 +167,7 @@ def _public_key_hash(cert: Certificate) -> bytes:
         pbytes = public_key.public_bytes(_Encoding.X962, _PublicFormat.UncompressedPoint)
     else:
         pbytes = public_key.public_bytes(_Encoding.DER, _PublicFormat.SubjectPublicKeyInfo)
-    digest = _Hash(_SHA1(), backend=_default_backend())  # noqa: S303
+    digest = _Hash(_SHA256(), backend=_default_backend())
     digest.update(pbytes)
     return digest.finalize()
 
@@ -249,7 +249,7 @@ def _verify_response_signature(issuer: Certificate, response: OCSPResponse) -> i
 def _build_ocsp_request(cert: Certificate, issuer: Certificate) -> OCSPRequest:
     # https://cryptography.io/en/latest/x509/ocsp/#creating-requests
     builder = _OCSPRequestBuilder()
-    builder = builder.add_certificate(cert, issuer, _SHA1())  # noqa: S303
+    builder = builder.add_certificate(cert, issuer, _SHA256())
     return builder.build()
 
 
