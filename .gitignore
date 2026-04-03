@@ -43,3 +43,4 @@ test/lambda/*.json
 xunit-results/
 coverage.xml
 server.log
+.coverage

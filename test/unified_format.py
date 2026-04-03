@@ -1451,11 +1451,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
-        # Kill all sessions before and after each test to prevent an open
-        # transaction (from a test failure) from blocking collection/database
-        # operations during test set up and tear down.
-        self.kill_all_sessions()
-
         # Handle flaky tests.
         flaky_tests = [
             ("PYTHON-5170", ".*test_discovery_and_monitoring.*"),
@@ -1490,6 +1485,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         skip_reason = spec.get("skipReason", None)
         if skip_reason is not None:
             raise unittest.SkipTest(f"{skip_reason}")
+
+        # Kill all sessions after each test with transactions to prevent an open
+        # transaction (from a test failure) from blocking collection/database
+        # operations during test set up and tear down.
+        for op in spec["operations"]:
+            name = op["name"]
+            if name == "startTransaction" or name == "withTransaction":
+                self.addCleanup(self.kill_all_sessions)
+                break
 
         # process createEntities
         self._uri = uri
