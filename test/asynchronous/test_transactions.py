@@ -500,10 +500,12 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
         listener.reset()
         async with client.start_session() as s:
             with PatchSessionTimeout(0):
-                with self.assertRaises(NetworkTimeout):
+                with self.assertRaises(NetworkTimeout) as context:
                     await s.with_transaction(callback)
 
         self.assertEqual(listener.started_command_names(), ["insert", "abortTransaction"])
+        # Assert that the timeout error has the same labels as the error it wraps.
+        self.assertTrue(context.exception.has_error_label("TransientTransactionError"))
 
     @async_client_context.require_test_commands
     @async_client_context.require_transactions
@@ -534,10 +536,12 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
 
         async with client.start_session() as s:
             with PatchSessionTimeout(0):
-                with self.assertRaises(NetworkTimeout):
+                with self.assertRaises(NetworkTimeout) as context:
                     await s.with_transaction(callback)
 
         self.assertEqual(listener.started_command_names(), ["insert", "commitTransaction"])
+        # Assert that the timeout error has the same labels as the error it wraps.
+        self.assertTrue(context.exception.has_error_label("TransientTransactionError"))
 
     @async_client_context.require_test_commands
     @async_client_context.require_transactions
@@ -565,7 +569,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
 
         async with client.start_session() as s:
             with PatchSessionTimeout(0):
-                with self.assertRaises(NetworkTimeout):
+                with self.assertRaises(NetworkTimeout) as context:
                     await s.with_transaction(callback)
 
         # One insert for the callback and two commits (includes the automatic
@@ -573,6 +577,8 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
         self.assertEqual(
             listener.started_command_names(), ["insert", "commitTransaction", "commitTransaction"]
         )
+        # Assert that the timeout error has the same labels as the error it wraps.
+        self.assertTrue(context.exception.has_error_label("UnknownTransactionCommitResult"))
 
     @async_client_context.require_transactions
     async def test_callback_not_retried_after_csot_timeout(self):
