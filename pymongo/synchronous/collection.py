@@ -21,7 +21,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    ContextManager,
     Generic,
     Iterable,
     Iterator,
@@ -255,6 +254,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             unicode_decode_error_handler="replace", document_class=dict
         )
         self._timeout = database.client.options.timeout
+        self._retry_policy = database.client._retry_policy
 
         if create or kwargs:
             if _IS_SYNC:
@@ -572,11 +572,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         change_stream._initialize_cursor()
         return change_stream
 
-    def _conn_for_writes(
-        self, session: Optional[ClientSession], operation: str
-    ) -> ContextManager[Connection]:
-        return self._database.client._conn_for_writes(session, operation)
-
     def _command(
         self,
         conn: Connection,
@@ -653,7 +648,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if "size" in options:
                 options["size"] = float(options["size"])
             cmd.update(options)
-        with self._conn_for_writes(session, operation=_Op.CREATE) as conn:
+
+        def inner(
+            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+        ) -> None:
             if qev2_required and conn.max_wire_version < 21:
                 raise ConfigurationError(
                     "Driver support of Queryable Encryption is incompatible with server. "
@@ -669,6 +667,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 collation=collation,
                 session=session,
             )
+
+        self.database.client._retryable_write(False, inner, session, _Op.CREATE)
 
     def _create(
         self,
@@ -2237,7 +2237,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command (like maxTimeMS) can be passed as keyword arguments.
         """
         names = []
-        with self._conn_for_writes(session, operation=_Op.CREATE_INDEXES) as conn:
+
+        def inner(
+            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+        ) -> list[str]:
             supports_quorum = conn.max_wire_version >= 9
 
             def gen_indexes() -> Iterator[Mapping[str, Any]]:
@@ -2266,7 +2269,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 write_concern=self._write_concern_for(session),
                 session=session,
             )
-        return names
+            return names
+
+        return self.database.client._retryable_write(False, inner, session, _Op.CREATE_INDEXES)
 
     def create_index(
         self,
@@ -2419,7 +2424,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
         self._drop_index("*", session=session, **kwargs)
 
-    @_csot.apply
     def drop_index(
         self,
         index_or_name: _IndexKeyHint,
@@ -2487,7 +2491,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._conn_for_writes(session, operation=_Op.DROP_INDEXES) as conn:
+
+        def inner(
+            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+        ) -> None:
             self._command(
                 conn,
                 cmd,
@@ -2496,6 +2503,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 write_concern=self._write_concern_for(session),
                 session=session,
             )
+
+        self.database.client._retryable_write(False, inner, session, _Op.DROP_INDEXES)
 
     def list_indexes(
         self,
@@ -2760,14 +2769,21 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd = {"createSearchIndexes": self.name, "indexes": list(gen_indexes())}
         cmd.update(kwargs)
 
-        with self._conn_for_writes(session, operation=_Op.CREATE_SEARCH_INDEXES) as conn:
+        def inner(
+            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+        ) -> list[str]:
             resp = self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                session=session,
             )
             return [index["name"] for index in resp["indexesCreated"]]
+
+        return self.database.client._retryable_write(
+            False, inner, session, _Op.CREATE_SEARCH_INDEXES
+        )
 
     def drop_search_index(
         self,
@@ -2794,14 +2810,20 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._conn_for_writes(session, operation=_Op.DROP_SEARCH_INDEXES) as conn:
+
+        def inner(
+            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+        ) -> None:
             self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 allowable_errors=["ns not found", 26],
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                session=session,
             )
+
+        self.database.client._retryable_write(False, inner, session, _Op.DROP_SEARCH_INDEXES)
 
     def update_search_index(
         self,
@@ -2830,14 +2852,20 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._conn_for_writes(session, operation=_Op.UPDATE_SEARCH_INDEX) as conn:
+
+        def inner(
+            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+        ) -> None:
             self._command(
                 conn,
                 cmd,
                 read_preference=ReadPreference.PRIMARY,
                 allowable_errors=["ns not found", 26],
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                session=session,
             )
+
+        self.database.client._retryable_write(False, inner, session, _Op.UPDATE_SEARCH_INDEX)
 
     def options(
         self,
@@ -2911,6 +2939,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             session,
             retryable=not cmd._performs_write,
             operation=_Op.AGGREGATE,
+            is_aggregate_write=cmd._performs_write,
         )
 
     def aggregate(
@@ -3116,17 +3145,21 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         write_concern = self._write_concern_for_cmd(cmd, session)
+        client = self._database.client
 
-        with self._conn_for_writes(session, operation=_Op.RENAME) as conn:
-            with self._database.client._tmp_session(session) as s:
-                return conn.command(
-                    "admin",
-                    cmd,
-                    write_concern=write_concern,
-                    parse_write_concern_error=True,
-                    session=s,
-                    client=self._database.client,
-                )
+        def inner(
+            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+        ) -> MutableMapping[str, Any]:
+            return conn.command(
+                "admin",
+                cmd,
+                write_concern=write_concern,
+                parse_write_concern_error=True,
+                session=session,
+                client=client,
+            )
+
+        return client._retryable_write(False, inner, session, _Op.RENAME)
 
     def distinct(
         self,
