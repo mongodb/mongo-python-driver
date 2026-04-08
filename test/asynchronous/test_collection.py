@@ -2260,5 +2260,264 @@ class AsyncTestCollection(AsyncIntegrationTest):
             await helper(*args, let={})  # type: ignore
 
 
+class AsyncTestCollectionCoverage(AsyncIntegrationTest):
+    """Additional tests to improve code coverage for AsyncCollection."""
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await self.db.test.drop()
+        await self.db.test.insert_many([{"x": i, "y": i * 2} for i in range(10)])
+
+    async def test_collection_full_name(self):
+        """Test full_name property."""
+        expected = f"{self.db.name}.test"
+        self.assertEqual(expected, self.db.test.full_name)
+
+    async def test_collection_name(self):
+        """Test name property."""
+        self.assertEqual("test", self.db.test.name)
+
+    async def test_collection_database(self):
+        """Test database property."""
+        self.assertEqual(self.db, self.db.test.database)
+
+    async def test_collection_equality(self):
+        """Test collection equality."""
+        coll1 = self.db.test
+        coll2 = self.db.test
+        coll3 = self.db.other
+        self.assertEqual(coll1, coll2)
+        self.assertNotEqual(coll1, coll3)
+
+    async def test_collection_hash(self):
+        """Test collection hashability."""
+        coll1 = self.db.test
+        coll2 = self.db.test
+        # Same collection should have same hash
+        self.assertEqual(hash(coll1), hash(coll2))
+        # Collections can be used in sets
+        s = {coll1, coll2}
+        self.assertEqual(1, len(s))
+
+    async def test_collection_repr(self):
+        """Test collection repr."""
+        coll = self.db.test
+        repr_str = repr(coll)
+        self.assertIn("test", repr_str)
+        self.assertIn("AsyncCollection", repr_str)
+
+    async def test_collection_getattr(self):
+        """Test sub-collection access via attribute."""
+        subcoll = self.db.test.subcollection
+        self.assertEqual("test.subcollection", subcoll.name)
+
+    async def test_collection_getitem(self):
+        """Test sub-collection access via indexing."""
+        subcoll = self.db.test["subcollection"]
+        self.assertEqual("test.subcollection", subcoll.name)
+
+    async def test_collection_with_options(self):
+        """Test with_options creates new collection with options."""
+        from pymongo.read_concern import ReadConcern
+        from pymongo.write_concern import WriteConcern
+
+        coll = self.db.test.with_options(
+            read_concern=ReadConcern("majority"), write_concern=WriteConcern(w=1)
+        )
+        self.assertEqual("majority", coll.read_concern.level)
+        self.assertEqual({"w": 1}, coll.write_concern.document)
+        # Original should be unchanged
+        self.assertNotEqual("majority", self.db.test.read_concern.level)
+
+    async def test_collection_drop(self):
+        """Test collection drop."""
+        await self.db.test_drop.insert_one({"x": 1})
+        await self.db.test_drop.drop()
+        names = await self.db.list_collection_names()
+        self.assertNotIn("test_drop", names)
+
+    async def test_collection_drop_with_comment(self):
+        """Test collection drop with comment."""
+        await self.db.test_drop_comment.insert_one({"x": 1})
+        await self.db.test_drop_comment.drop(comment="test_comment")
+        names = await self.db.list_collection_names()
+        self.assertNotIn("test_drop_comment", names)
+
+    async def test_find_raw_batches(self):
+        """Test find_raw_batches returns raw BSON."""
+        from bson import decode_all
+
+        cursor = self.db.test.find_raw_batches(batch_size=5)
+        batch_count = 0
+        async for batch in cursor:
+            self.assertIsInstance(batch, bytes)
+            docs = decode_all(batch)
+            self.assertGreater(len(docs), 0)
+            batch_count += 1
+        self.assertGreater(batch_count, 0)
+
+    async def test_aggregate_raw_batches(self):
+        """Test aggregate_raw_batches returns raw BSON."""
+        from bson import decode_all
+
+        cursor = await self.db.test.aggregate_raw_batches([{"$sort": {"x": 1}}], batchSize=5)
+        batch_count = 0
+        async for batch in cursor:
+            self.assertIsInstance(batch, bytes)
+            docs = decode_all(batch)
+            self.assertGreater(len(docs), 0)
+            batch_count += 1
+        self.assertGreater(batch_count, 0)
+
+    async def test_distinct_with_collation(self):
+        """Test distinct with collation."""
+        await self.db.test.drop()
+        await self.db.test.insert_many(
+            [
+                {"name": "abc"},
+                {"name": "ABC"},
+                {"name": "def"},
+            ]
+        )
+        # Case-insensitive distinct
+        values = await self.db.test.distinct("name", collation={"locale": "en_US", "strength": 2})
+        # abc and ABC should be considered the same
+        self.assertEqual(2, len(values))
+
+    async def test_count_documents_with_options(self):
+        """Test count_documents with skip, limit, hint."""
+        await self.db.test.create_index([("x", 1)])
+
+        count = await self.db.test.count_documents(
+            {"x": {"$gte": 0}}, skip=2, limit=5, hint=[("x", 1)]
+        )
+        self.assertEqual(5, count)
+
+    async def test_estimated_document_count(self):
+        """Test estimated_document_count."""
+        count = await self.db.test.estimated_document_count()
+        self.assertEqual(10, count)
+
+    async def test_estimated_document_count_with_options(self):
+        """Test estimated_document_count with maxTimeMS and comment."""
+        count = await self.db.test.estimated_document_count(maxTimeMS=5000, comment="test_comment")
+        self.assertEqual(10, count)
+
+    async def test_find_one_and_delete_with_options(self):
+        """Test find_one_and_delete with projection, sort."""
+        doc = await self.db.test.find_one_and_delete(
+            {"x": {"$gte": 0}}, projection={"x": 1}, sort=[("x", -1)]
+        )
+        self.assertEqual(9, doc["x"])
+        self.assertNotIn("y", doc)
+
+    async def test_find_one_and_replace_with_options(self):
+        """Test find_one_and_replace with various options."""
+        from pymongo import ReturnDocument
+
+        doc = await self.db.test.find_one_and_replace(
+            {"x": 0},
+            {"x": 0, "replaced": True},
+            projection={"x": 1, "replaced": 1},
+            return_document=ReturnDocument.AFTER,
+        )
+        self.assertEqual(0, doc["x"])
+        self.assertTrue(doc.get("replaced"))
+
+    async def test_find_one_and_update_with_options(self):
+        """Test find_one_and_update with various options."""
+        from pymongo import ReturnDocument
+
+        doc = await self.db.test.find_one_and_update(
+            {"x": 0},
+            {"$set": {"updated": True}},
+            projection={"x": 1, "updated": 1},
+            return_document=ReturnDocument.AFTER,
+        )
+        self.assertEqual(0, doc["x"])
+        self.assertTrue(doc.get("updated"))
+
+    async def test_update_one_with_array_filters(self):
+        """Test update_one with array_filters."""
+        await self.db.test.drop()
+        await self.db.test.insert_one({"items": [{"v": 1}, {"v": 2}, {"v": 3}]})
+
+        result = await self.db.test.update_one(
+            {}, {"$set": {"items.$[elem].updated": True}}, array_filters=[{"elem.v": {"$gt": 1}}]
+        )
+        self.assertEqual(1, result.modified_count)
+
+    async def test_update_many_with_hint(self):
+        """Test update_many with hint."""
+        await self.db.test.create_index([("x", 1)])
+
+        result = await self.db.test.update_many(
+            {"x": {"$gte": 0}}, {"$set": {"batch_updated": True}}, hint=[("x", 1)]
+        )
+        self.assertEqual(10, result.modified_count)
+
+    async def test_delete_one_with_hint(self):
+        """Test delete_one with hint."""
+        await self.db.test.create_index([("x", 1)])
+
+        result = await self.db.test.delete_one({"x": 0}, hint=[("x", 1)])
+        self.assertEqual(1, result.deleted_count)
+
+    async def test_delete_many_with_hint(self):
+        """Test delete_many with hint."""
+        await self.db.test.create_index([("x", 1)])
+
+        result = await self.db.test.delete_many({"x": {"$lt": 5}}, hint=[("x", 1)])
+        self.assertEqual(5, result.deleted_count)
+
+    async def test_aggregate_with_let(self):
+        """Test aggregate with let parameter."""
+        if not async_client_context.version.at_least(5, 0):
+            self.skipTest("let parameter requires MongoDB 5.0+")
+
+        pipeline = [{"$match": {"$expr": {"$eq": ["$x", "$$targetVal"]}}}]
+        cursor = await self.db.test.aggregate(pipeline, let={"targetVal": 5})
+        docs = await cursor.to_list()
+        self.assertEqual(1, len(docs))
+        self.assertEqual(5, docs[0]["x"])
+
+    async def test_aggregate_with_batch_size(self):
+        """Test aggregate with batchSize."""
+        cursor = await self.db.test.aggregate([{"$sort": {"x": 1}}], batchSize=2)
+        docs = await cursor.to_list()
+        self.assertEqual(10, len(docs))
+
+    async def test_list_indexes(self):
+        """Test list_indexes returns cursor."""
+        await self.db.test.create_index([("x", 1)])
+        cursor = await self.db.test.list_indexes()
+
+        # Should get at least the _id index
+        indexes = await cursor.to_list()
+        self.assertGreaterEqual(len(indexes), 1)
+        index_names = [idx["name"] for idx in indexes]
+        self.assertIn("_id_", index_names)
+
+    async def test_index_information(self):
+        """Test index_information returns dict."""
+        await self.db.test.create_index([("x", 1)], name="x_index")
+        info = await self.db.test.index_information()
+
+        self.assertIsInstance(info, dict)
+        self.assertIn("_id_", info)
+        self.assertIn("x_index", info)
+
+    async def test_options_method(self):
+        """Test options() returns collection options."""
+        # Create a capped collection
+        await self.db.drop_collection("test_capped")
+        await self.db.create_collection("test_capped", capped=True, size=10000)
+
+        opts = await self.db.test_capped.options()
+        self.assertTrue(opts.get("capped"))
+
+        await self.db.drop_collection("test_capped")
+
+
 if __name__ == "__main__":
     unittest.main()
