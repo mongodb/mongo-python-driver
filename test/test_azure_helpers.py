@@ -24,28 +24,25 @@ from __future__ import annotations
 import json
 import sys
 import unittest
-from unittest.mock import patch
+from contextlib import contextmanager
+from unittest.mock import MagicMock, patch
 
 sys.path[0:0] = [""]
 
 from pymongo._azure_helpers import _get_azure_response
 
 
-class _MockResponse:
-    """Minimal context-manager response for urlopen."""
+@contextmanager
+def _mock_urlopen(status: int, body: str):
+    """Context manager that patches ``urllib.request.urlopen`` with a fake response."""
+    mock_response = MagicMock()
+    mock_response.__enter__ = lambda s: s
+    mock_response.__exit__ = MagicMock(return_value=False)
+    mock_response.status = status
+    mock_response.read.return_value = body.encode("utf8")
 
-    def __init__(self, body: str, status: int = 200):
-        self.status = status
-        self._body = body.encode("utf8")
-
-    def read(self):
-        return self._body
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        return False
+    with patch("urllib.request.urlopen", return_value=mock_response) as mock_open:
+        yield mock_open
 
 
 class TestGetAzureResponse(unittest.TestCase):
@@ -54,7 +51,7 @@ class TestGetAzureResponse(unittest.TestCase):
 
     def test_success_without_client_id(self):
         body = json.dumps({"access_token": "tok", "expires_in": "3600"})
-        with patch("urllib.request.urlopen", return_value=_MockResponse(body)) as mock_open:
+        with _mock_urlopen(200, body) as mock_open:
             result = self._call()
 
         self.assertEqual(result["access_token"], "tok")
@@ -66,7 +63,7 @@ class TestGetAzureResponse(unittest.TestCase):
 
     def test_success_with_client_id(self):
         body = json.dumps({"access_token": "tok", "expires_in": "3600"})
-        with patch("urllib.request.urlopen", return_value=_MockResponse(body)) as mock_open:
+        with _mock_urlopen(200, body) as mock_open:
             result = self._call(client_id="my-client-id")
 
         self.assertEqual(result["access_token"], "tok")
@@ -75,7 +72,7 @@ class TestGetAzureResponse(unittest.TestCase):
 
     def test_url_contains_resource_and_api_version(self):
         body = json.dumps({"access_token": "tok", "expires_in": "3600"})
-        with patch("urllib.request.urlopen", return_value=_MockResponse(body)) as mock_open:
+        with _mock_urlopen(200, body) as mock_open:
             self._call(resource="https://test-resource.example.com")
 
         url = mock_open.call_args[0][0].full_url
@@ -84,7 +81,7 @@ class TestGetAzureResponse(unittest.TestCase):
 
     def test_request_headers(self):
         body = json.dumps({"access_token": "tok", "expires_in": "3600"})
-        with patch("urllib.request.urlopen", return_value=_MockResponse(body)) as mock_open:
+        with _mock_urlopen(200, body) as mock_open:
             self._call()
 
         request = mock_open.call_args[0][0]
@@ -100,14 +97,14 @@ class TestGetAzureResponse(unittest.TestCase):
 
     def test_non_200_status_raises_value_error(self):
         body = json.dumps({"error": "something went wrong"})
-        with patch("urllib.request.urlopen", return_value=_MockResponse(body, status=400)):
+        with _mock_urlopen(400, body):
             with self.assertRaises(ValueError) as ctx:
                 self._call()
 
         self.assertIn("Failed to acquire IMDS access token", str(ctx.exception))
 
     def test_non_json_body_raises_value_error(self):
-        with patch("urllib.request.urlopen", return_value=_MockResponse("not-json")):
+        with _mock_urlopen(200, "not-json"):
             with self.assertRaises(ValueError) as ctx:
                 self._call()
 
@@ -115,7 +112,7 @@ class TestGetAzureResponse(unittest.TestCase):
 
     def test_missing_access_token_raises_value_error(self):
         body = json.dumps({"expires_in": "3600"})
-        with patch("urllib.request.urlopen", return_value=_MockResponse(body)):
+        with _mock_urlopen(200, body):
             with self.assertRaises(ValueError) as ctx:
                 self._call()
 
@@ -123,7 +120,7 @@ class TestGetAzureResponse(unittest.TestCase):
 
     def test_missing_expires_in_raises_value_error(self):
         body = json.dumps({"access_token": "tok"})
-        with patch("urllib.request.urlopen", return_value=_MockResponse(body)):
+        with _mock_urlopen(200, body):
             with self.assertRaises(ValueError) as ctx:
                 self._call()
 
@@ -131,7 +128,7 @@ class TestGetAzureResponse(unittest.TestCase):
 
     def test_empty_access_token_raises_value_error(self):
         body = json.dumps({"access_token": "", "expires_in": "3600"})
-        with patch("urllib.request.urlopen", return_value=_MockResponse(body)):
+        with _mock_urlopen(200, body):
             with self.assertRaises(ValueError) as ctx:
                 self._call()
 
@@ -139,7 +136,7 @@ class TestGetAzureResponse(unittest.TestCase):
 
     def test_empty_expires_in_raises_value_error(self):
         body = json.dumps({"access_token": "tok", "expires_in": ""})
-        with patch("urllib.request.urlopen", return_value=_MockResponse(body)):
+        with _mock_urlopen(200, body):
             with self.assertRaises(ValueError) as ctx:
                 self._call()
 
@@ -147,7 +144,7 @@ class TestGetAzureResponse(unittest.TestCase):
 
     def test_timeout_passed_to_urlopen(self):
         body = json.dumps({"access_token": "tok", "expires_in": "3600"})
-        with patch("urllib.request.urlopen", return_value=_MockResponse(body)) as mock_open:
+        with _mock_urlopen(200, body) as mock_open:
             self._call(timeout=42)
 
         _, kwargs = mock_open.call_args
