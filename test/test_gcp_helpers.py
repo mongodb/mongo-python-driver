@@ -30,7 +30,7 @@ from pymongo._gcp_helpers import _get_gcp_response
 def _mock_urlopen(status: int, body: str):
     """Context manager that patches ``urllib.request.urlopen`` with a fake response."""
     mock_response = MagicMock()
-    mock_response.__enter__ = lambda s: s
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
     mock_response.__exit__ = MagicMock(return_value=False)
     mock_response.status = status
     mock_response.read.return_value = body.encode("utf8")
