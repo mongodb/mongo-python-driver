@@ -49,6 +49,12 @@ mock_overload_error = {
 }
 
 
+def get_mock_overload_error(times: int):
+    error = mock_overload_error.copy()
+    error["mode"] = {"times": times}
+    return error
+
+
 class TestBackpressure(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
@@ -57,14 +63,12 @@ class TestBackpressure(IntegrationTest):
         self.db.t.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
-        fail_many = mock_overload_error.copy()
-        fail_many["mode"] = {"times": MAX_ADAPTIVE_RETRIES}
+        fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
             self.db.command("find", "t")
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
-        fail_too_many = mock_overload_error.copy()
-        fail_too_many["mode"] = {"times": MAX_ADAPTIVE_RETRIES + 1}
+        fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.command("find", "t")
@@ -77,14 +81,12 @@ class TestBackpressure(IntegrationTest):
         self.db.t.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
-        fail_many = mock_overload_error.copy()
-        fail_many["mode"] = {"times": MAX_ADAPTIVE_RETRIES}
+        fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
             self.db.t.find_one()
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
-        fail_too_many = mock_overload_error.copy()
-        fail_too_many["mode"] = {"times": MAX_ADAPTIVE_RETRIES + 1}
+        fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.t.find_one()
@@ -95,14 +97,12 @@ class TestBackpressure(IntegrationTest):
     @client_context.require_failCommand_appName
     def test_retry_overload_error_insert_one(self):
         # Ensure command is retried on overload error.
-        fail_many = mock_overload_error.copy()
-        fail_many["mode"] = {"times": MAX_ADAPTIVE_RETRIES}
+        fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
             self.db.t.insert_one({"x": 1})
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
-        fail_too_many = mock_overload_error.copy()
-        fail_too_many["mode"] = {"times": MAX_ADAPTIVE_RETRIES + 1}
+        fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.t.insert_one({"x": 1})
@@ -117,14 +117,12 @@ class TestBackpressure(IntegrationTest):
         self.db.t.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
-        fail_many = mock_overload_error.copy()
-        fail_many["mode"] = {"times": MAX_ADAPTIVE_RETRIES}
+        fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
             self.db.t.update_many({}, {"$set": {"x": 2}})
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
-        fail_too_many = mock_overload_error.copy()
-        fail_too_many["mode"] = {"times": MAX_ADAPTIVE_RETRIES + 1}
+        fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.t.update_many({}, {"$set": {"x": 2}})
