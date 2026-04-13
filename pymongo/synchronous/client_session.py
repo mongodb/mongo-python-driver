@@ -465,6 +465,7 @@ class _Transaction:
         self.sharded = False
         self.recovery_token = None
         self.attempt = 0
+        self.has_completed_command = False
 
     def __del__(self) -> None:
         if self.conn_mgr:

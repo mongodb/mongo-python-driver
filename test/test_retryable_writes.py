@@ -728,7 +728,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
     def test_03_drivers_return_the_correct_error_when_receiving_some_errors_with_NoWritesPerformed_and_some_without_NoWritesPerformed(
         self
     ) -> None:
-        # TODO: read the expected behavior and add breakpoint() to the retry loop
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
 
@@ -757,7 +756,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
-            # Configure the fail point command only if the the failed event is for the 91 error configured in step 2.
+            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
             if listener.failed_events:
                 return
             assert event.failure["code"] == 91
