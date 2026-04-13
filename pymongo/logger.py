@@ -42,7 +42,6 @@ class _ConnectionStatusMessage(str, enum.Enum):
     POOL_READY = "Connection pool ready"
     POOL_CLOSED = "Connection pool closed"
     POOL_CLEARED = "Connection pool cleared"
-    POOL_BACKOFF = "Connection pool backoff"
 
     CONN_CREATED = "Connection created"
     CONN_READY = "Connection ready"
@@ -89,7 +88,6 @@ _SDAM_LOGGER = logging.getLogger("pymongo.topology")
 _VERBOSE_CONNECTION_ERROR_REASONS = {
     ConnectionClosedReason.POOL_CLOSED: "Connection pool was closed",
     ConnectionCheckOutFailedReason.POOL_CLOSED: "Connection pool was closed",
-    ConnectionClosedReason.POOL_BACKOFF: "Connection pool is in backoff",
     ConnectionClosedReason.STALE: "Connection pool was stale",
     ConnectionClosedReason.ERROR: "An error occurred while using the connection",
     ConnectionCheckOutFailedReason.CONN_ERROR: "An error occurred while trying to establish a new connection",

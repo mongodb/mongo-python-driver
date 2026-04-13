@@ -934,9 +934,6 @@ class ConnectionClosedReason:
     POOL_CLOSED = "poolClosed"
     """The pool was closed, making the connection no longer valid."""
 
-    POOL_BACKOFF = "poolBackoff"
-    """The pool is in backoff mode."""
-
 
 class ConnectionCheckOutFailedReason:
     """An enum that defines values for `reason` on a

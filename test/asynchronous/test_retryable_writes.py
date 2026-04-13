@@ -657,6 +657,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
                 return
             assert event.failure["code"] == 91
             self.configure_fail_point_sync(command_args_inner)
+            self.addCleanup(self.configure_fail_point_sync, {}, off=True)
             listener.failed_events.append(event)
 
         listener.failed = failed
@@ -664,6 +665,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         client = await self.async_rs_client(retryWrites=True, event_listeners=[listener])
 
         self.configure_fail_point_sync(command_args)
+        self.addCleanup(self.configure_fail_point_sync, {}, off=True)
 
         # Attempt an insertOne operation on any record for any database and collection.
         # Expect the insertOne to fail with a server error.
@@ -672,9 +674,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
 
         # Assert that the error code of the server error is 10107.
         assert exc.exception.errors["code"] == 10107  # type:ignore[call-overload]
-
-        # Disable the fail point.
-        self.configure_fail_point_sync({}, off=True)
 
     async def test_02_drivers_return_the_correct_error_when_receiving_only_errors_with_NoWritesPerformed(
         self
@@ -711,6 +710,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
             # Configure the 10107 fail point command only if the the failed event is for the 91 error configured in step 2.
             assert event.failure["code"] == 91
             self.configure_fail_point_sync(command_args_inner)
+            self.addCleanup(self.configure_fail_point_sync, {}, off=True)
             listener.failed_events.append(event)
 
         listener.failed = failed
@@ -718,6 +718,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         client = await self.async_rs_client(retryWrites=True, event_listeners=[listener])
 
         self.configure_fail_point_sync(command_args)
+        self.addCleanup(self.configure_fail_point_sync, {}, off=True)
 
         # Attempt an insertOne operation on any record for any database and collection.
         # Expect the insertOne to fail with a server error.
@@ -726,9 +727,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
 
         # Assert that the error code of the server error is 91.
         assert exc.exception.errors["code"] == 91  # type:ignore[call-overload]
-
-        # Disable the fail point.
-        self.configure_fail_point_sync({}, off=True)
 
     async def test_03_drivers_return_the_correct_error_when_receiving_some_errors_with_NoWritesPerformed_and_some_without_NoWritesPerformed(
         self
@@ -766,6 +764,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
                 return
             assert event.failure["code"] == 91
             self.configure_fail_point_sync(command_args_inner)
+            self.addCleanup(self.configure_fail_point_sync, {}, off=True)
             listener.failed_events.append(event)
 
         listener.failed = failed
@@ -773,6 +772,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         client = await self.async_rs_client(retryWrites=True, event_listeners=[listener])
 
         self.configure_fail_point_sync(command_args)
+        self.addCleanup(self.configure_fail_point_sync, {}, off=True)
 
         # Attempt an insertOne operation on any record for any database and collection.
         # Expect the insertOne to fail with a server error.
@@ -783,9 +783,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         assert exc.exception.errors["code"] == 91
         # Assert that the error does not contain the error label `NoWritesPerformed`.
         assert "NoWritesPerformed" not in exc.exception.errors["errorLabels"]
-
-        # Disable the fail point.
-        self.configure_fail_point_sync({}, off=True)
 
 
 if __name__ == "__main__":
