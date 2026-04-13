@@ -653,7 +653,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
                 self.simple_client(multi_host)
 
     async def test_max_adaptive_retries(self):
-        # Assert that max adaptive retries default to 2.
+        # Assert that max adaptive retries defaults to 2.
         c = self.simple_client(connect=False)
         self.assertEqual(c.options.max_adaptive_retries, 2)
 
