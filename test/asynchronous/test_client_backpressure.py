@@ -37,7 +37,7 @@ from pymongo.errors import OperationFailure, PyMongoError
 
 _IS_SYNC = False
 
-# Mock an system overload error.
+# Mock a system overload error.
 mock_overload_error = {
     "configureFailPoint": "failCommand",
     "mode": {"times": 1},
