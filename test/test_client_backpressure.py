@@ -21,21 +21,19 @@ import sys
 from time import perf_counter
 from unittest.mock import patch
 
+from pymongo.common import MAX_ADAPTIVE_RETRIES
+
 sys.path[0:0] = [""]
 
 from test import (
     IntegrationTest,
-    PyMongoTestCase,
     client_context,
     unittest,
 )
 from test.unified_format import generate_test_classes
 from test.utils_shared import EventListener, OvertCommandListener
 
-import pymongo
 from pymongo.errors import OperationFailure, PyMongoError
-from pymongo.synchronous import helpers
-from pymongo.synchronous.helpers import _MAX_RETRIES, _RetryPolicy, _TokenBucket
 
 _IS_SYNC = True
 
@@ -51,6 +49,12 @@ mock_overload_error = {
 }
 
 
+def get_mock_overload_error(times: int):
+    error = mock_overload_error.copy()
+    error["mode"] = {"times": times}
+    return error
+
+
 class TestBackpressure(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
@@ -59,14 +63,12 @@ class TestBackpressure(IntegrationTest):
         self.db.t.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
-        fail_many = mock_overload_error.copy()
-        fail_many["mode"] = {"times": _MAX_RETRIES}
+        fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
             self.db.command("find", "t")
 
-        # Ensure command stops retrying after _MAX_RETRIES.
-        fail_too_many = mock_overload_error.copy()
-        fail_too_many["mode"] = {"times": _MAX_RETRIES + 1}
+        # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
+        fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.command("find", "t")
@@ -79,14 +81,12 @@ class TestBackpressure(IntegrationTest):
         self.db.t.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
-        fail_many = mock_overload_error.copy()
-        fail_many["mode"] = {"times": _MAX_RETRIES}
+        fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
             self.db.t.find_one()
 
-        # Ensure command stops retrying after _MAX_RETRIES.
-        fail_too_many = mock_overload_error.copy()
-        fail_too_many["mode"] = {"times": _MAX_RETRIES + 1}
+        # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
+        fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.t.find_one()
@@ -97,14 +97,12 @@ class TestBackpressure(IntegrationTest):
     @client_context.require_failCommand_appName
     def test_retry_overload_error_insert_one(self):
         # Ensure command is retried on overload error.
-        fail_many = mock_overload_error.copy()
-        fail_many["mode"] = {"times": _MAX_RETRIES}
+        fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
             self.db.t.insert_one({"x": 1})
 
-        # Ensure command stops retrying after _MAX_RETRIES.
-        fail_too_many = mock_overload_error.copy()
-        fail_too_many["mode"] = {"times": _MAX_RETRIES + 1}
+        # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
+        fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.t.insert_one({"x": 1})
@@ -119,14 +117,12 @@ class TestBackpressure(IntegrationTest):
         self.db.t.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
-        fail_many = mock_overload_error.copy()
-        fail_many["mode"] = {"times": _MAX_RETRIES}
+        fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
             self.db.t.update_many({}, {"$set": {"x": 2}})
 
-        # Ensure command stops retrying after _MAX_RETRIES.
-        fail_too_many = mock_overload_error.copy()
-        fail_too_many["mode"] = {"times": _MAX_RETRIES + 1}
+        # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
+        fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
                 self.db.t.update_many({}, {"$set": {"x": 2}})
@@ -142,7 +138,7 @@ class TestBackpressure(IntegrationTest):
         # Ensure command is retried on overload error.
         fail_many = {
             "configureFailPoint": "failCommand",
-            "mode": {"times": _MAX_RETRIES},
+            "mode": {"times": MAX_ADAPTIVE_RETRIES},
             "data": {
                 "failCommands": ["getMore"],
                 "errorCode": 462,  # IngressRequestRateLimitExceeded
@@ -154,9 +150,9 @@ class TestBackpressure(IntegrationTest):
         with self.fail_point(fail_many):
             cursor.to_list()
 
-        # Ensure command stops retrying after _MAX_RETRIES.
+        # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = fail_many.copy()
-        fail_too_many["mode"] = {"times": _MAX_RETRIES + 1}
+        fail_too_many["mode"] = {"times": MAX_ADAPTIVE_RETRIES + 1}
         cursor = coll.find(batch_size=2)
         cursor.next()
         with self.fail_point(fail_too_many):
@@ -165,50 +161,6 @@ class TestBackpressure(IntegrationTest):
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
-
-
-class TestRetryPolicy(PyMongoTestCase):
-    def test_retry_policy(self):
-        capacity = 10
-        retry_policy = _RetryPolicy(_TokenBucket(capacity=capacity), adaptive_retry=True)
-        self.assertEqual(retry_policy.attempts, helpers._MAX_RETRIES)
-        self.assertEqual(retry_policy.backoff_initial, helpers._BACKOFF_INITIAL)
-        self.assertEqual(retry_policy.backoff_max, helpers._BACKOFF_MAX)
-        for i in range(1, helpers._MAX_RETRIES + 1):
-            self.assertTrue(retry_policy.should_retry(i, 0))
-        self.assertFalse(retry_policy.should_retry(helpers._MAX_RETRIES + 1, 0))
-        for i in range(capacity - helpers._MAX_RETRIES):
-            self.assertTrue(retry_policy.should_retry(1, 0))
-        # No tokens left, should not retry.
-        self.assertFalse(retry_policy.should_retry(1, 0))
-        self.assertEqual(retry_policy.token_bucket.tokens, 0)
-
-        # record_success should generate tokens.
-        for _ in range(int(2 / helpers.DEFAULT_RETRY_TOKEN_RETURN)):
-            retry_policy.record_success(retry=False)
-        self.assertAlmostEqual(retry_policy.token_bucket.tokens, 2)
-        for i in range(2):
-            self.assertTrue(retry_policy.should_retry(1, 0))
-        self.assertFalse(retry_policy.should_retry(1, 0))
-
-        # Recording a successful retry should return 1 additional token.
-        retry_policy.record_success(retry=True)
-        self.assertAlmostEqual(
-            retry_policy.token_bucket.tokens, 1 + helpers.DEFAULT_RETRY_TOKEN_RETURN
-        )
-        self.assertTrue(retry_policy.should_retry(1, 0))
-        self.assertFalse(retry_policy.should_retry(1, 0))
-        self.assertAlmostEqual(retry_policy.token_bucket.tokens, helpers.DEFAULT_RETRY_TOKEN_RETURN)
-
-    def test_retry_policy_csot(self):
-        retry_policy = _RetryPolicy(_TokenBucket())
-        self.assertTrue(retry_policy.should_retry(1, 0.5))
-        with pymongo.timeout(0.5):
-            self.assertTrue(retry_policy.should_retry(1, 0))
-            self.assertTrue(retry_policy.should_retry(1, 0.1))
-            # Would exceed the timeout, should not retry.
-            self.assertFalse(retry_policy.should_retry(1, 1.0))
-        self.assertTrue(retry_policy.should_retry(1, 1.0))
 
 
 # Prose tests.
@@ -270,14 +222,14 @@ class TestClientBackpressure(IntegrationTest):
                 collection.insert_one({"a": 1})
             end1 = perf_counter()
 
-            # f. Compare the two time between the two runs.
-            # The sum of 5 backoffs is 3.1 seconds. There is a 1-second window to account for potential variance between the two
+            # f. Compare the times between the two runs.
+            # The sum of 2 backoffs is 0.3 seconds. There is a 0.3-second window to account for potential variance between the two
             # runs.
-            self.assertTrue(abs((end1 - start1) - (end0 - start0 + 3.1)) < 1)
+            self.assertTrue(abs((end1 - start1) - (end0 - start0 + 0.3)) < 0.3)
 
     @client_context.require_failCommand_appName
     def test_03_overload_retries_limited(self):
-        # Drivers should test that without adaptive retries enabled, overload errors are retried a maximum of five times.
+        # Drivers should test that overload errors are retried a maximum of two times.
 
         # 1. Let `client` be a `MongoClient`.
         client = self.client
@@ -300,28 +252,27 @@ class TestClientBackpressure(IntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 coll.find_one({})
 
-        # 5. Assert that the raised error contains both the `RetryableError` and `SystemOverLoadedError` error labels.
+        # 5. Assert that the raised error contains both the `RetryableError` and `SystemOverloadedError` error labels.
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
-        # 6. Assert that the total number of started commands is MAX_RETRIES + 1.
-        self.assertEqual(len(self.listener.started_events), _MAX_RETRIES + 1)
+        # 6. Assert that the total number of started commands is MAX_ADAPTIVE_RETRIES + 1.
+        self.assertEqual(len(self.listener.started_events), MAX_ADAPTIVE_RETRIES + 1)
 
     @client_context.require_failCommand_appName
-    def test_04_adaptive_retries_limited_by_tokens(self):
-        # Drivers should test that when enabled, adaptive retries are limited by the number of tokens in the bucket.
+    def test_04_overload_retries_limited_configured(self):
+        # Drivers should test that overload errors are retried a maximum of maxAdaptiveRetries times.
+        max_retries = 1
 
-        # 1. Let `client` be a `MongoClient` with adaptiveRetries=True.
-        client = self.rs_or_single_client(adaptive_retries=True, event_listeners=[self.listener])
-        # 2. Set `client`'s retry token bucket to have 2 tokens.
-        client._retry_policy.token_bucket.tokens = 2
-        # 3. Let `coll` be a collection.
+        # 1. Let `client` be a `MongoClient` with `maxAdaptiveRetries=1` and command event monitoring enabled.
+        client = self.single_client(maxAdaptiveRetries=max_retries, event_listeners=[self.listener])
+        # 2. Let `coll` be a collection.
         coll = client.pymongo_test.coll
 
-        # 4. Configure the following failpoint:
+        # 3. Configure the following failpoint:
         failpoint = {
             "configureFailPoint": "failCommand",
-            "mode": {"times": 3},
+            "mode": "alwaysOn",
             "data": {
                 "failCommands": ["find"],
                 "errorCode": 462,  # IngressRequestRateLimitExceeded
@@ -329,17 +280,17 @@ class TestClientBackpressure(IntegrationTest):
             },
         }
 
-        # 5. Perform a find operation with `coll` that fails.
+        # 4. Perform a find operation with `coll` that fails.
         with self.fail_point(failpoint):
             with self.assertRaises(PyMongoError) as error:
                 coll.find_one({})
 
-        # 6. Assert that the raised error contains both the `RetryableError` and `SystemOverLoadedError` error labels.
+        # 5. Assert that the raised error contains both the `RetryableError` and `SystemOverloadedError` error labels.
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
-        # 7. Assert that the total number of started commands is 3: one for the initial attempt and two for the retries.
-        self.assertEqual(len(self.listener.started_events), 3)
+        # 6. Assert that the total number of started commands is max_retries + 1.
+        self.assertEqual(len(self.listener.started_events), max_retries + 1)
 
 
 # Location of JSON test specifications.
