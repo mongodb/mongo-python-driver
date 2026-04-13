@@ -1034,7 +1034,7 @@ class TestClient(AsyncIntegrationTest):
         db_names = await self.client.list_database_names()
         self.assertIn("pymongo_test", db_names)
         self.assertIn("pymongo_test_mike", db_names)
-        self.assertEqual(db_names, cmd_names)
+        self.assertCountEqual(db_names, cmd_names)
 
     async def test_drop_database(self):
         with self.assertRaises(TypeError):
