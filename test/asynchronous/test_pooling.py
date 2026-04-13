@@ -29,7 +29,6 @@ from pymongo import AsyncMongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _async_create_lock
-from pymongo.read_preferences import ReadPreference
 
 sys.path[0:0] = [""]
 

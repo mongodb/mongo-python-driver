@@ -705,7 +705,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             async with self.client.start_session() as s:
                 await s.with_transaction(callback)
             end = time.monotonic()
-        self.assertLess(abs(end - start - (no_backoff_time + 2.2)), 1)  # sum of 5 backoffs is 2.2
+        self.assertLess(abs(end - start - (no_backoff_time + 2.2)), 1)  # sum of 13 backoffs is 2.2
 
 
 class TestOptionsInsideTransactionProse(AsyncTransactionsBase):

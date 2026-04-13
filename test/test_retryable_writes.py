@@ -48,6 +48,7 @@ from pymongo.errors import (
     AutoReconnect,
     ConnectionFailure,
     NotPrimaryError,
+    PyMongoError,
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
@@ -771,9 +772,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
 
         # Attempt an insertOne operation on any record for any database and collection.
         # Expect the insertOne to fail with a server error.
-        from pymongo.errors import OperationFailure
-
-        with self.assertRaises(Exception) as exc:
+        with self.assertRaises(PyMongoError) as exc:
             client.test.test.insert_one({})
 
         # Assert that the error code of the server error is 91.
