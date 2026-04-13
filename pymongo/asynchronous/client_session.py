@@ -516,9 +516,14 @@ def _within_time_limit(start_time: float, backoff: float = 0) -> bool:
 def _make_timeout_error(error: BaseException) -> PyMongoError:
     """Convert error to a NetworkTimeout or ExecutionTimeout as appropriate."""
     if _csot.remaining() is not None:
-        return ExecutionTimeout(str(error), 50, {"ok": 0, "errmsg": str(error), "code": 50})
+        timeout_error: PyMongoError = ExecutionTimeout(
+            str(error), 50, {"ok": 0, "errmsg": str(error), "code": 50}
+        )
     else:
-        return NetworkTimeout(str(error))
+        timeout_error = NetworkTimeout(str(error))
+    if isinstance(error, PyMongoError):
+        timeout_error._error_labels = error._error_labels.copy()
+    return timeout_error
 
 
 _T = TypeVar("_T")
@@ -804,15 +809,17 @@ class AsyncClientSession:
                     await self.commit_transaction()
                 except PyMongoError as exc:
                     last_error = exc
-                    if not _within_time_limit(start_time):
-                        raise _make_timeout_error(last_error) from exc
                     if exc.has_error_label(
                         "UnknownTransactionCommitResult"
                     ) and not _max_time_expired_error(exc):
+                        if not _within_time_limit(start_time):
+                            raise _make_timeout_error(last_error) from exc
                         # Retry the commit.
                         continue
 
                     if exc.has_error_label("TransientTransactionError"):
+                        if not _within_time_limit(start_time):
+                            raise _make_timeout_error(last_error) from exc
                         # Retry the entire transaction.
                         break
                     raise
