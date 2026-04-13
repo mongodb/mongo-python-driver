@@ -59,6 +59,7 @@ from pymongo.errors import (
     InvalidOperation,
     NotPrimaryError,
     OperationFailure,
+    PyMongoError,
     WaitQueueTimeoutError,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
@@ -561,13 +562,9 @@ class _ClientBulk:
                         error, ConnectionFailure
                     ) and not isinstance(error, (NotPrimaryError, WaitQueueTimeoutError))
 
-                    retryable_label_error = (
-                        hasattr(error, "details")
-                        and isinstance(error.details, dict)
-                        and "errorLabels" in error.details
-                        and isinstance(error.details["errorLabels"], list)
-                        and "RetryableError" in error.details["errorLabels"]
-                    )
+                    retryable_label_error = isinstance(
+                        error, PyMongoError
+                    ) and error.has_error_label("RetryableError")
 
                     # Synthesize the full bulk result without modifying the
                     # current one because this write operation may be retried.
