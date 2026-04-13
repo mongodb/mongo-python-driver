@@ -1,4 +1,4 @@
-Follow these rules in this repo (summary). Full details: see `AGENTS.md` in the repository root.
+Follow these rules in this repo (summary). Full details: see [AGENTS.md](../AGENTS.md) in the repository root.
 
 - Security: never introduce hardcoded secrets; avoid injection/dynamic execution hazards.
 - Performance: watch for inefficient loops and resource leaks; clean up resources.
