@@ -2853,9 +2853,8 @@ class _ClientConnectionRetryable(Generic[T]):
                         exc_code = getattr(exc, "code", None)
                         overloaded = exc.has_error_label("SystemOverloadedError")
                         always_retryable = exc.has_error_label("RetryableError") and overloaded
-                        if (
-                            not self._client.options.retry_reads
-                            or not always_retryable
+                        if not self._client.options.retry_reads or (
+                            not always_retryable
                             and (
                                 self._is_not_eligible_for_retry()
                                 or (
@@ -2934,7 +2933,7 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 self._always_retryable = always_retryable
                 if overloaded:
-                    delay = self._retry_policy.backoff(self._attempt_number) if overloaded else 0
+                    delay = self._retry_policy.backoff(self._attempt_number)
                     if not await self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
