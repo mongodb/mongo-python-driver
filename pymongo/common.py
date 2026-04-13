@@ -239,13 +239,6 @@ def validate_readable(option: str, value: Any) -> Optional[str]:
     return value
 
 
-def validate_positive_integer_or_none(option: str, value: Any) -> Optional[int]:
-    """Validate that 'value' is a positive integer or None."""
-    if value is None:
-        return value
-    return validate_positive_integer(option, value)
-
-
 def validate_non_negative_integer_or_none(option: str, value: Any) -> Optional[int]:
     """Validate that 'value' is a positive integer or 0 or None."""
     if value is None:
@@ -265,20 +258,6 @@ def validate_string_or_none(option: str, value: Any) -> Optional[str]:
     if value is None:
         return value
     return validate_string(option, value)
-
-
-def validate_int_or_basestring(option: str, value: Any) -> Union[int, str]:
-    """Validates that 'value' is an integer or string."""
-    if isinstance(value, int):
-        return value
-    elif isinstance(value, str):
-        try:
-            return int(value)
-        except ValueError:
-            return value
-    raise TypeError(
-        f"Wrong type for {option}, value must be an integer or a string, not {type(value)}"
-    )
 
 
 def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[int, str]:
@@ -826,16 +805,6 @@ TIMEOUT_OPTIONS: list[str] = [
     "sockettimeoutms",
     "waitqueuetimeoutms",
 ]
-
-_AUTH_OPTIONS = frozenset(["authmechanismproperties"])
-
-
-def validate_auth_option(option: str, value: Any) -> tuple[str, Any]:
-    """Validate optional authentication parameters."""
-    lower, value = validate(option, value)
-    if lower not in _AUTH_OPTIONS:
-        raise ConfigurationError(f"Unknown option: {option}. Must be in {_AUTH_OPTIONS}")
-    return option, value
 
 
 def _get_validator(
