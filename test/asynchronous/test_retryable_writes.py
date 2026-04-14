@@ -791,7 +791,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         listener = OvertCommandListener()
 
         # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
-        # code `91` (NotWritablePrimary) and `RetryableError` and `SystemOverloadedError` labels.
+        # code `91` (ShutdownInProgress) and `RetryableError` and `SystemOverloadedError` labels.
         overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
