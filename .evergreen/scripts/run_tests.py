@@ -4,7 +4,9 @@ import json
 import logging
 import os
 import platform
+import shlex
 import shutil
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -151,6 +153,30 @@ def run() -> None:
     if os.environ.get("PYMONGOCRYPT_LIB"):
         handle_pymongocrypt()
 
+    # Check if Rust extension is being used
+    LOGGER.info(f"PYMONGO_USE_RUST={os.environ.get('PYMONGO_USE_RUST', 'not set')}")
+    LOGGER.info(f"PYMONGO_BUILD_RUST={os.environ.get('PYMONGO_BUILD_RUST', 'not set')}")
+
+    if os.environ.get("PYMONGO_USE_RUST") or os.environ.get("PYMONGO_BUILD_RUST"):
+        try:
+            import bson
+
+            impl = bson.get_bson_implementation()
+            has_rust = bson.has_rust()
+            has_c = bson.has_c()
+
+            LOGGER.info(f"BSON implementation in use: {impl}")
+            LOGGER.info(f"Has Rust: {has_rust}, Has C: {has_c}")
+
+            if impl == "rust":
+                LOGGER.info("✓ Rust extension is ACTIVE")
+            elif impl == "c":
+                LOGGER.info("✓ C extension is ACTIVE")
+            else:
+                LOGGER.info("✓ Pure Python implementation is ACTIVE")
+        except Exception as e:
+            LOGGER.warning(f"Could not check BSON implementation: {e}")
+
     LOGGER.info(f"Test setup:\n{AUTH=}\n{SSL=}\n{UV_ARGS=}\n{TEST_ARGS=}")
 
     # Record the start time for a perf test.
@@ -201,6 +227,16 @@ def run() -> None:
 
     if os.environ.get("DEBUG_LOG"):
         TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG}".split())
+
+    if os.environ.get("COVERAGE"):
+        binary = sys.executable.replace(os.sep, "/")
+        cmd = f"{binary} -m coverage run -m pytest {' '.join(TEST_ARGS)} {' '.join(sys.argv[1:])}"
+        result = subprocess.run(shlex.split(cmd), check=False)  # noqa: S603
+        cmd = f"{binary} -m coverage report"
+        subprocess.run(shlex.split(cmd), check=False)  # noqa: S603
+        if result.returncode != 0:
+            print(result.stderr)
+        sys.exit(result.returncode)
 
     # Run local tests.
     ret = pytest.main(TEST_ARGS + sys.argv[1:])

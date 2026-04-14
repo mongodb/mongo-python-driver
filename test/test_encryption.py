@@ -872,6 +872,8 @@ class TestViews(EncryptionIntegrationTest):
 
 
 class TestCorpus(EncryptionIntegrationTest):
+    # PYTHON-5708: Encryption tests sending large payloads fail on some mongocryptd versions.
+    @client_context.require_version_max(6, 99)
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def setUp(self):
         super().setUp()
@@ -1048,6 +1050,8 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
     client_encrypted: MongoClient
     listener: OvertCommandListener
 
+    # PYTHON-5708: Encryption tests sending large payloads fail on some mongocryptd versions.
+    @client_context.require_version_max(6, 99)
     def setUp(self):
         super().setUp()
         db = client_context.client.db

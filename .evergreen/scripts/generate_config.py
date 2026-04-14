@@ -318,7 +318,7 @@ def create_green_framework_variants():
 def create_no_c_ext_variants():
     host = DEFAULT_HOST
     tasks = [".test-standard"]
-    expansions = dict(COVERAGE="1")
+    expansions = dict()
     handle_c_ext(C_EXTS[0], expansions)
     display_name = get_variant_name("No C Ext", host)
     return [create_variant(tasks, display_name, host=host, expansions=expansions)]
@@ -344,8 +344,12 @@ def create_test_numpy_tasks():
     tasks = []
     for python in MIN_MAX_PYTHON:
         tags = ["binary", "vector", f"python-{python}", "test-numpy"]
-        task_name = get_task_name("test-numpy", python=python)
-        test_func = FunctionCall(func="test numpy", vars=dict(TOOLCHAIN_VERSION=python))
+        vars = dict(TOOLCHAIN_VERSION=python)
+        if python == MIN_MAX_PYTHON[-1]:
+            tags.append("pr")
+            vars["COVERAGE"] = "1"
+        task_name = get_task_name("test-numpy", python=python, **vars)
+        test_func = FunctionCall(func="test numpy", vars=vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
     return tasks
 
@@ -397,6 +401,7 @@ def create_oidc_auth_variants():
                     tags=["pr"],
                     host=host,
                     batchtime=BATCHTIME_DAY,
+                    expansions=dict(COVERAGE="1"),
                 )
             )
     return variants
@@ -596,7 +601,7 @@ def create_server_version_tasks():
             expansions["TEST_MIN_DEPS"] = "1"
         if "t" in python:
             tags.append("free-threaded")
-        if python not in PYPYS and "t" not in python:
+        if "pr" in tags:
             expansions["COVERAGE"] = "1"
         name = get_task_name(
             "test-server-version",
@@ -661,6 +666,8 @@ def create_test_non_standard_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
+        elif pr:
+            expansions["COVERAGE"] = "1"
         name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
@@ -703,6 +710,8 @@ def create_test_standard_auth_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
+        elif pr:
+            expansions["COVERAGE"] = "1"
         name = get_task_name("test-standard-auth", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
@@ -741,6 +750,8 @@ def create_standard_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
+        elif pr:
+            expansions["COVERAGE"] = "1"
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
@@ -810,8 +821,11 @@ def create_aws_tasks():
         if "t" in python:
             tags.append("free-threaded")
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, TOOLCHAIN_VERSION=python)
-        if python == ALL_PYTHONS[0]:
+        if python == MIN_MAX_PYTHON[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
+        elif python == MIN_MAX_PYTHON[-1]:
+            tags.append("pr")
+            test_vars["COVERAGE"] = "1"
         name = get_task_name(f"{base_name}-{test_type}", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         funcs = [server_func, assume_func, test_func]
@@ -849,11 +863,11 @@ def create_oidc_tasks():
     tasks = []
     for sub_test in ["default", "azure", "gcp", "eks", "aks", "gke"]:
         vars = dict(TEST_NAME="auth_oidc", SUB_TEST_NAME=sub_test)
-        test_func = FunctionCall(func="run tests", vars=vars)
-        task_name = f"test-auth-oidc-{sub_test}"
         tags = ["auth_oidc"]
         if sub_test != "default":
             tags.append("auth_oidc_remote")
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = get_task_name(f"test-auth-oidc-{sub_test}", **vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
 
     return tasks
@@ -903,14 +917,14 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         )
         if python == ALL_PYTHONS[0]:
             vars["TEST_MIN_DEPS"] = "1"
-        test_func = FunctionCall(func="run tests", vars=vars)
-
         tags = ["ocsp", f"ocsp-{algo}", version]
         if "disableStapling" not in variant:
             tags.append("ocsp-staple")
-        if algo == "valid-cert-server-staples" and version == "latest":
+        if base_task_name == "valid-cert-server-staples" and version == "latest":
             tags.append("pr")
-
+            if "TEST_MIN_DEPS" not in vars:
+                vars["COVERAGE"] = "1"
+        test_func = FunctionCall(func="run tests", vars=vars)
         task_name = get_task_name(f"test-ocsp-{algo}-{base_task_name}", **vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
 
@@ -958,11 +972,15 @@ def create_search_index_tasks():
 
 def create_perf_tasks():
     tasks = []
-    for version, ssl, sync in product(["8.0"], ["ssl", "nossl"], ["sync", "async"]):
+    for version, ssl, sync in product(["8.0"], ["ssl", "nossl"], ["sync", "async", "rust"]):
         vars = dict(VERSION=f"v{version}-perf", SSL=ssl)
         server_func = FunctionCall(func="run server", vars=vars)
-        vars = dict(TEST_NAME="perf", SUB_TEST_NAME=sync)
-        test_func = FunctionCall(func="run tests", vars=vars)
+        test_vars = dict(TEST_NAME="perf", SUB_TEST_NAME=sync)
+        # Enable Rust for rust perf tests
+        if sync == "rust":
+            test_vars["PYMONGO_BUILD_RUST"] = "1"
+            test_vars["PYMONGO_USE_RUST"] = "1"
+        test_func = FunctionCall(func="run tests", vars=test_vars)
         attach_func = FunctionCall(func="attach benchmark test results")
         send_func = FunctionCall(func="send dashboard data")
         task_name = f"perf-{version}-standalone"
@@ -970,6 +988,8 @@ def create_perf_tasks():
             task_name += "-ssl"
         if sync == "async":
             task_name += "-async"
+        elif sync == "rust":
+            task_name += "-rust"
         tags = ["perf"]
         commands = [server_func, test_func, attach_func, send_func]
         tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
@@ -1087,7 +1107,7 @@ def create_upload_coverage_codecov_func():
         "github_pr_number",
         "github_pr_head_branch",
         "github_author",
-        "is_patch",
+        "requester",
         "branch_name",
     ]
     args = [
@@ -1189,6 +1209,8 @@ def create_run_server_func():
         "LOAD_BALANCER",
         "LOCAL_ATLAS",
         "NO_EXT",
+        "PYMONGO_BUILD_RUST",
+        "PYMONGO_USE_RUST",
     ]
     args = [".evergreen/just.sh", "run-server", "${TEST_NAME}"]
     sub_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
@@ -1222,6 +1244,8 @@ def create_run_tests_func():
         "IS_WIN32",
         "REQUIRE_FIPS",
         "TEST_MIN_DEPS",
+        "PYMONGO_BUILD_RUST",
+        "PYMONGO_USE_RUST",
     ]
     args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
     setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
@@ -1230,7 +1254,7 @@ def create_run_tests_func():
 
 
 def create_test_numpy_func():
-    includes = ["TOOLCHAIN_VERSION"]
+    includes = ["TOOLCHAIN_VERSION", "COVERAGE"]
     test_cmd = get_subprocess_exec(
         include_expansions_in_env=includes, args=[".evergreen/just.sh", "test-numpy"]
     )
@@ -1281,6 +1305,55 @@ def create_send_dashboard_data_func():
         ),
     ]
     return "send dashboard data", cmds
+
+
+def create_rust_variants():
+    """Create build variants that test with Rust extension alongside C extension."""
+    variants = []
+
+    # Test Rust on Linux (primary platform) - runs on PRs
+    # Run standard tests with Rust enabled (both sync and async)
+    variant = create_variant(
+        [".test-standard .server-latest .pr"],
+        "Test with Rust Extension",
+        host=DEFAULT_HOST,
+        tags=["rust", "pr"],
+        expansions=dict(
+            PYMONGO_BUILD_RUST="1",
+            PYMONGO_USE_RUST="1",
+        ),
+    )
+    variants.append(variant)
+
+    # Test on macOS ARM64 (important for M1/M2 Macs)
+    variant = create_variant(
+        [".test-standard .server-latest !.pr"],
+        "Test with Rust Extension - macOS ARM64",
+        host=HOSTS["macos-arm64"],
+        tags=["rust"],
+        batchtime=BATCHTIME_WEEK,
+        expansions=dict(
+            PYMONGO_BUILD_RUST="1",
+            PYMONGO_USE_RUST="1",
+        ),
+    )
+    variants.append(variant)
+
+    # Test on Windows (important for cross-platform compatibility)
+    variant = create_variant(
+        [".test-standard .server-latest !.pr"],
+        "Test with Rust Extension - Windows",
+        host=HOSTS["win64"],
+        tags=["rust"],
+        batchtime=BATCHTIME_WEEK,
+        expansions=dict(
+            PYMONGO_BUILD_RUST="1",
+            PYMONGO_USE_RUST="1",
+        ),
+    )
+    variants.append(variant)
+
+    return variants
 
 
 mod = sys.modules[__name__]

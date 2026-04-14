@@ -43,3 +43,8 @@ test/lambda/*.json
 xunit-results/
 coverage.xml
 server.log
+.coverage
+
+# Rust build artifacts
+target/
+Cargo.lock

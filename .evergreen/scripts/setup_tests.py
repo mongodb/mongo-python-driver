@@ -32,6 +32,8 @@ PASS_THROUGH_ENV = [
     "UV_PYTHON",
     "REQUIRE_FIPS",
     "IS_WIN32",
+    "PYMONGO_USE_RUST",
+    "PYMONGO_BUILD_RUST",
 ]
 
 # Map the test name to test extra.
@@ -152,6 +154,10 @@ def handle_test_env() -> None:
 
     # Start compiling the args we'll pass to uv.
     UV_ARGS = ["--extra test --no-group dev"]
+
+    # If USE_ACTIVE_VENV is set, add --active to UV_ARGS so run-tests.sh uses the active venv.
+    if is_set("USE_ACTIVE_VENV"):
+        UV_ARGS.append("--active")
 
     test_title = test_name
     if sub_test_name:
@@ -324,7 +330,8 @@ def handle_test_env() -> None:
         version = os.environ.get("VERSION", "latest")
         cmd = [
             "bash",
-            f"{DRIVERS_TOOLS}/.evergreen/run-orchestration.sh",
+            f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh",
+            "start",
             "--ssl",
             "--version",
             version,
@@ -431,6 +438,9 @@ def handle_test_env() -> None:
         # We do not want the default client_context to be initialized.
         write_env("DISABLE_CONTEXT")
 
+    if test_name == "numpy":
+        UV_ARGS.append("--with numpy")
+
     if test_name == "perf":
         data_dir = ROOT / "specifications/source/benchmarking/data"
         if not data_dir.exists():
@@ -447,7 +457,7 @@ def handle_test_env() -> None:
 
         # PYTHON-4769 Run perf_test.py directly otherwise pytest's test collection negatively
         # affects the benchmark results.
-        if sub_test_name == "sync":
+        if sub_test_name == "sync" or sub_test_name == "rust":
             TEST_ARGS = f"test/performance/perf_test.py {TEST_ARGS}"
         else:
             TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
@@ -458,18 +468,24 @@ def handle_test_env() -> None:
         # Keep in sync with combine-coverage.sh.
         # coverage >=5 is needed for relative_files=true.
         UV_ARGS.append("--group coverage")
-        TEST_ARGS = f"{TEST_ARGS} --cov"
         write_env("COVERAGE")
 
     if opts.green_framework:
         framework = opts.green_framework or os.environ["GREEN_FRAMEWORK"]
         UV_ARGS.append(f"--group {framework}")
+        if framework == "gevent" and opts.test_min_deps:
+            # PYTHON-5729.  This can be removed when the min supported gevent is moved to 25.9.1.
+            UV_ARGS.append('--with "setuptools==81.0"')
 
     else:
         TEST_ARGS = f"-v --durations=5 {TEST_ARGS}"
         TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
+
+        # For test_bson, run the specific test file
+        if test_name == "test_bson":
+            TEST_ARGS = f"test/test_bson.py {TEST_ARGS}"
 
     write_env("TEST_ARGS", TEST_ARGS)
     write_env("UV_ARGS", " ".join(UV_ARGS))

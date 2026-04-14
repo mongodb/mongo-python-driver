@@ -17,8 +17,11 @@ from __future__ import annotations
 
 import asyncio
 import builtins
+import functools
+import random
 import socket
 import sys
+import time as time  # noqa: PLC0414 # needed in sync version
 from typing import (
     Any,
     Callable,
@@ -26,6 +29,8 @@ from typing import (
     cast,
 )
 
+from pymongo import _csot
+from pymongo.common import MAX_ADAPTIVE_RETRIES
 from pymongo.errors import (
     OperationFailure,
 )
@@ -38,6 +43,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def _handle_reauth(func: F) -> F:
+    @functools.wraps(func)
     def inner(*args: Any, **kwargs: Any) -> Any:
         no_reauth = kwargs.pop("no_reauth", False)
         from pymongo.message import _BulkWriteContext
@@ -68,6 +74,46 @@ def _handle_reauth(func: F) -> F:
             raise
 
     return cast(F, inner)
+
+
+_BACKOFF_INITIAL = 0.1
+_BACKOFF_MAX = 10
+
+
+def _backoff(
+    attempt: int, initial_delay: float = _BACKOFF_INITIAL, max_delay: float = _BACKOFF_MAX
+) -> float:
+    jitter = random.random()  # noqa: S311
+    return jitter * min(initial_delay * (2**attempt), max_delay)
+
+
+class _RetryPolicy:
+    """A retry limiter that performs exponential backoff with jitter."""
+
+    def __init__(
+        self,
+        attempts: int = MAX_ADAPTIVE_RETRIES,
+        backoff_initial: float = _BACKOFF_INITIAL,
+        backoff_max: float = _BACKOFF_MAX,
+    ):
+        self.attempts = attempts
+        self.backoff_initial = backoff_initial
+        self.backoff_max = backoff_max
+
+    def backoff(self, attempt: int) -> float:
+        """Return the backoff duration for the given attempt."""
+        return _backoff(max(0, attempt - 1), self.backoff_initial, self.backoff_max)
+
+    def should_retry(self, attempt: int, delay: float) -> bool:
+        """Return if we have retry attempts remaining and the next backoff would not exceed a timeout."""
+        if attempt > self.attempts:
+            return False
+
+        if _csot.get_timeout():
+            if time.monotonic() + delay > _csot.get_deadline():
+                return False
+
+        return True
 
 
 def _getaddrinfo(

@@ -57,11 +57,14 @@ lint-manual *args="": && resync
 
 [group('test')]
 test *args="-v --durations=5 --maxfail=10": && resync
-    uv run --extra test python -m pytest {{args}}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    uv run ${USE_ACTIVE_VENV:+--active} --extra test python -m pytest {{args}}
 
 [group('test')]
-test-numpy: && resync
-    uv run --extra test --with numpy python -m pytest test/test_bson.py
+test-numpy *args="": && resync
+    just setup-tests numpy {{args}}
+    just run-tests test/test_bson.py
 
 [group('test')]
 run-tests *args: && resync
@@ -79,6 +82,25 @@ teardown-tests:
 integration-tests:
     bash integration_tests/run.sh
 
+[group('test')]
+test-coverage *args="":
+    just setup-tests --cov
+    just run-tests {{args}}
+
+[group('coverage')]
+coverage-report:
+    uv tool run --with "coverage[toml]" coverage report
+
+[group('coverage')]
+coverage-html:
+    uv tool run --with "coverage[toml]" coverage html
+    @echo "Coverage report generated in htmlcov/index.html"
+
+[group('coverage')]
+coverage-xml:
+    uv tool run --with "coverage[toml]" coverage xml
+    @echo "Coverage report generated in coverage.xml"
+
 [group('server')]
 run-server *args="":
     bash .evergreen/scripts/run-server.sh {{args}}
@@ -86,3 +108,31 @@ run-server *args="":
 [group('server')]
 stop-server:
     bash .evergreen/scripts/stop-server.sh
+
+[group('rust')]
+rust-build:
+    cd bson/_rbson && ./build.sh
+
+[group('rust')]
+rust-clean:
+    rm -f bson/_rbson*.so bson/_rbson*.pyd
+    cd bson/_rbson && cargo clean
+
+[group('rust')]
+rust-rebuild: rust-clean rust-build
+
+[group('rust')]
+rust-install:
+    PYMONGO_BUILD_RUST=1 pip install --force-reinstall --no-deps .
+
+[group('rust')]
+rust-install-full:
+    PYMONGO_BUILD_RUST=1 pip install --force-reinstall .
+
+[group('rust')]
+rust-test:
+    PYMONGO_USE_RUST=1 uv run --extra test python -m pytest test/test_bson.py -v
+
+[group('rust')]
+rust-check:
+    @python -c 'import os; os.environ["PYMONGO_USE_RUST"] = "1"; import bson; print("Rust extension:", bson.get_bson_implementation())'

@@ -51,7 +51,6 @@ dev = []
 pip = ["pip>=20.2"]
 gevent = ["gevent>=21.12"]
 coverage = [
-    "pytest-cov>=4.0.0",
     "coverage[toml]>=5,<=7.10.7"
 ]
 mockupdb = [
@@ -133,6 +132,7 @@ markers = [
     "mockupdb: tests that rely on mockupdb",
     "default: default test suite",
     "default_async: default async test suite",
+    "test_bson: bson module tests",
 ]
 
 [tool.mypy]

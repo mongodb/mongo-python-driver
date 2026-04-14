@@ -59,6 +59,7 @@ from pymongo.errors import (
     InvalidOperation,
     NotPrimaryError,
     OperationFailure,
+    PyMongoError,
     WaitQueueTimeoutError,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
@@ -563,9 +564,17 @@ class _AsyncClientBulk:
                         error, ConnectionFailure
                     ) and not isinstance(error, (NotPrimaryError, WaitQueueTimeoutError))
 
+                    retryable_label_error = isinstance(
+                        error, PyMongoError
+                    ) and error.has_error_label("RetryableError")
+
                     # Synthesize the full bulk result without modifying the
                     # current one because this write operation may be retried.
-                    if retryable and (retryable_top_level_error or retryable_network_error):
+                    if retryable and (
+                        retryable_top_level_error
+                        or retryable_network_error
+                        or retryable_label_error
+                    ):
                         full = copy.deepcopy(full_result)
                         _merge_command(self.ops, self.idx_offset, full, result)
                         _throw_client_bulk_write_exception(full, self.verbose_results)

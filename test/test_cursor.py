@@ -30,7 +30,12 @@ import pymongo
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import (
+    IntegrationTest,
+    client_context,
+    skip_if_rust_bson,
+    unittest,
+)
 from test.utils import flaky
 from test.utils_shared import (
     AllowListEventListener,
@@ -1498,6 +1503,7 @@ class TestCursor(IntegrationTest):
             self.assertTrue(ctx.exception.timeout)
 
 
+@skip_if_rust_bson
 class TestRawBatchCursor(IntegrationTest):
     def test_find_raw(self):
         c = self.db.test
@@ -1671,6 +1677,7 @@ class TestRawBatchCursor(IntegrationTest):
             cursor.close()
 
 
+@skip_if_rust_bson
 class TestRawBatchCommandCursor(IntegrationTest):
     def test_aggregate_raw(self):
         c = self.db.test
