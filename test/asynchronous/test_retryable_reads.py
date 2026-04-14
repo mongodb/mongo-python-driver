@@ -21,7 +21,9 @@ import sys
 import threading
 from test.asynchronous.utils import async_set_fail_point
 
-from pymongo.errors import OperationFailure
+from pymongo import AsyncMongoClient, MongoClient
+from pymongo.common import MAX_ADAPTIVE_RETRIES
+from pymongo.errors import OperationFailure, PyMongoError
 
 sys.path[0:0] = [""]
 
@@ -38,6 +40,7 @@ from test.utils_shared import (
 )
 
 from pymongo.monitoring import (
+    CommandFailedEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
     ConnectionCheckOutFailedReason,
@@ -145,6 +148,20 @@ class TestPoolPausedError(AsyncIntegrationTest):
 
 
 class TestRetryableReads(AsyncIntegrationTest):
+    async def asyncSetUp(self) -> None:
+        await super().asyncSetUp()
+        self.setup_client = MongoClient(**async_client_context.default_client_options)
+        self.addCleanup(self.setup_client.close)
+
+    # TODO: After PYTHON-4595 we can use async event handlers and remove this workaround.
+    def configure_fail_point_sync(self, command_args, off=False) -> None:
+        cmd = {"configureFailPoint": "failCommand"}
+        cmd.update(command_args)
+        if off:
+            cmd["mode"] = "off"
+            cmd.pop("data", None)
+        self.setup_client.admin.command(cmd)
+
     @async_client_context.require_multiple_mongoses
     @async_client_context.require_failCommand_fail_point
     async def test_retryable_reads_are_retried_on_a_different_mongos_when_one_is_available(self):
@@ -382,6 +399,58 @@ class TestRetryableReads(AsyncIntegrationTest):
 
         # 6. Assert that both events occurred on the same server.
         assert listener.failed_events[0].connection_id == listener.succeeded_events[0].connection_id
+
+    @async_client_context.require_failCommand_fail_point
+    @async_client_context.require_version_min(4, 4, 0)
+    async def test_overload_then_nonoverload_retries_increased_reads(self) -> None:
+        # Create a client.
+        listener = OvertCommandListener()
+
+        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
+        # code `91` (NotWritablePrimary) and `RetryableError` and `SystemOverloadedError` labels.
+        overload_fail_point = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+                "errorCode": 91,
+            },
+        }
+
+        # Configure a fail point with error code `91` (ShutdownInProgress) with only the `RetryableError` error label.
+        non_overload_fail_point = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "failCommands": ["find"],
+                "errorCode": 91,
+                "errorLabels": ["RetryableError"],
+            },
+        }
+
+        def failed(event: CommandFailedEvent) -> None:
+            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
+            if listener.failed_events:
+                return
+            assert event.failure["code"] == 91
+            self.configure_fail_point_sync(non_overload_fail_point)
+            self.addCleanup(self.configure_fail_point_sync, {}, off=True)
+            listener.failed_events.append(event)
+
+        listener.failed = failed
+
+        client = await self.async_rs_client(event_listeners=[listener])
+        await client.test.test.insert_one({})
+
+        self.configure_fail_point_sync(overload_fail_point)
+        self.addCleanup(self.configure_fail_point_sync, {}, off=True)
+
+        with self.assertRaises(PyMongoError):
+            await client.test.test.find_one()
+
+        started_finds = [e for e in listener.started_events if e.command_name == "find"]
+        self.assertEqual(len(started_finds), MAX_ADAPTIVE_RETRIES + 1)
 
 
 if __name__ == "__main__":

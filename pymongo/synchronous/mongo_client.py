@@ -2769,7 +2769,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._last_error: Optional[Exception] = None
         self._retrying = False
         self._always_retryable = False
-        self._multiple_retries = _csot.get_timeout() is not None
+        self._max_retries = float("inf") if _csot.get_timeout() is not None else 1
         self._client = mongo_client
         self._retry_policy = mongo_client._retry_policy
         self._func = func
@@ -2842,6 +2842,8 @@ class _ClientConnectionRetryable(Generic[T]):
                         # ConnectionFailures do not supply a code property
                         exc_code = getattr(exc, "code", None)
                         overloaded = exc.has_error_label("SystemOverloadedError")
+                        if overloaded:
+                            self._max_retries = self._client.options.max_adaptive_retries
                         always_retryable = exc.has_error_label("RetryableError") and overloaded
                         if not self._client.options.retry_reads or (
                             not always_retryable
@@ -2880,6 +2882,8 @@ class _ClientConnectionRetryable(Generic[T]):
                         exc_to_check = exc.error
                     retryable_write_label = exc_to_check.has_error_label("RetryableWriteError")
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
+                    if overloaded:
+                        self._max_retries = self._client.options.max_adaptive_retries
                     always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
 
                     # Always retry abortTransaction and commitTransaction up to once
@@ -2933,7 +2937,9 @@ class _ClientConnectionRetryable(Generic[T]):
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""
-        return not self._retryable or (self._is_retrying() and not self._multiple_retries)
+        return not self._retryable or (
+            self._is_retrying() and self._attempt_number >= self._max_retries
+        )
 
     def _is_retrying(self) -> bool:
         """Checks if the exchange is currently undergoing a retry"""
