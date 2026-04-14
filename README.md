@@ -216,4 +216,4 @@ pip install -e ".[test]"
 pytest
 ```
 
-For more advanced testing scenarios, see the [contributing guide](./CONTRIBUTING.md#running-tests-locally).
+For more advanced testing scenarios, see the [contributing guide](https://github.com/mongodb/mongo-python-driver/blob/master/CONTRIBUTING.md#running-tests-locally).
