@@ -150,7 +150,7 @@ class TestPoolPausedError(AsyncIntegrationTest):
 class TestRetryableReads(AsyncIntegrationTest):
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
-        self.setup_client = MongoClient(**async_client_context.default_client_options)
+        self.setup_client = MongoClient(**async_client_context.client_options)
         self.addCleanup(self.setup_client.close)
 
     # TODO: After PYTHON-4595 we can use async event handlers and remove this workaround.
