@@ -401,7 +401,7 @@ class TestRetryableReads(AsyncIntegrationTest):
         assert listener.failed_events[0].connection_id == listener.succeeded_events[0].connection_id
 
     @async_client_context.require_failCommand_fail_point
-    @async_client_context.require_version_min(4, 4, 0)
+    @async_client_context.require_version_min(4, 4, 0)  # type:ignore[untyped-decorator]
     async def test_overload_then_nonoverload_retries_increased_reads(self) -> None:
         # Create a client.
         listener = OvertCommandListener()

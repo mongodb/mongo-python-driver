@@ -782,8 +782,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         # Assert that the error does not contain the error label `NoWritesPerformed`.
         assert "NoWritesPerformed" not in exc.exception.errors["errorLabels"]
 
-    @client_context.require_failCommand_fail_point
-    @client_context.require_version_min(4, 4, 0)
     def test_overload_then_nonoverload_retries_increased_writes(self) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()

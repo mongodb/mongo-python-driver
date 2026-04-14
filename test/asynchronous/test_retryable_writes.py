@@ -786,8 +786,6 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         # Assert that the error does not contain the error label `NoWritesPerformed`.
         assert "NoWritesPerformed" not in exc.exception.errors["errorLabels"]
 
-    @async_client_context.require_failCommand_fail_point
-    @async_client_context.require_version_min(4, 4, 0)
     async def test_overload_then_nonoverload_retries_increased_writes(self) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()

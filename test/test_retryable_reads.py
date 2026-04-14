@@ -399,7 +399,7 @@ class TestRetryableReads(IntegrationTest):
         assert listener.failed_events[0].connection_id == listener.succeeded_events[0].connection_id
 
     @client_context.require_failCommand_fail_point
-    @client_context.require_version_min(4, 4, 0)
+    @client_context.require_version_min(4, 4, 0)  # type:ignore[untyped-decorator]
     def test_overload_then_nonoverload_retries_increased_reads(self) -> None:
         # Create a client.
         listener = OvertCommandListener()
