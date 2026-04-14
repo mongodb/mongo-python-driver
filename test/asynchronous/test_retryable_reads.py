@@ -21,7 +21,7 @@ import sys
 import threading
 from test.asynchronous.utils import async_set_fail_point
 
-from pymongo import AsyncMongoClient, MongoClient
+from pymongo import MongoClient
 from pymongo.common import MAX_ADAPTIVE_RETRIES
 from pymongo.errors import OperationFailure, PyMongoError
 
