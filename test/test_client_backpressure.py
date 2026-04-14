@@ -19,6 +19,7 @@ import os
 import pathlib
 import sys
 from time import perf_counter
+from unittest import mock
 from unittest.mock import patch
 
 from pymongo.common import MAX_ADAPTIVE_RETRIES
@@ -228,7 +229,7 @@ class TestClientBackpressure(IntegrationTest):
             self.assertTrue(abs((end1 - start1) - (end0 - start0 + 0.3)) < 0.3)
 
     @client_context.require_failCommand_appName
-    def test_03_overload_retries_limited(self):
+    def test_02_overload_retries_limited(self):
         # Drivers should test that overload errors are retried a maximum of two times.
 
         # 1. Let `client` be a `MongoClient`.
@@ -260,7 +261,7 @@ class TestClientBackpressure(IntegrationTest):
         self.assertEqual(len(self.listener.started_events), MAX_ADAPTIVE_RETRIES + 1)
 
     @client_context.require_failCommand_appName
-    def test_04_overload_retries_limited_configured(self):
+    def test_03_overload_retries_limited_configured(self):
         # Drivers should test that overload errors are retried a maximum of maxAdaptiveRetries times.
         max_retries = 1
 
@@ -291,6 +292,40 @@ class TestClientBackpressure(IntegrationTest):
 
         # 6. Assert that the total number of started commands is max_retries + 1.
         self.assertEqual(len(self.listener.started_events), max_retries + 1)
+
+    @client_context.require_failCommand_fail_point
+    def test_04_backoff_is_not_applied_for_non_overload_errors(self):
+        # Drivers should test that backoff is not applied for non-overload retryable errors.
+        if _IS_SYNC:
+            mock_target = "pymongo.synchronous.helpers._RetryPolicy.backoff"
+        else:
+            mock_target = "pymongo.helpers._RetryPolicy.backoff"
+
+        # 1. Let `client` be a `MongoClient`.
+        client = self.client
+
+        # 2. Let `coll` be a collection.
+        coll = client.test.test
+        coll.insert_one({})
+
+        # 3. Configure a failpoint with a retryable error that is NOT an overload error.
+        failpoint = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "errorCode": 91,  # ShutdownInProgress
+                "errorLabels": ["RetryableError"],
+            },
+        }
+
+        # 4. Perform a find operation with `coll` that succeeds on its first retry attempt.
+        with mock.patch(mock_target, return_value=1) as mock_backoff:
+            with self.fail_point(failpoint):
+                coll.find_one({})
+
+        # 5. Assert that no backoff was used for the retry attempt.
+        mock_backoff.assert_not_called()
 
 
 # Location of JSON test specifications.
