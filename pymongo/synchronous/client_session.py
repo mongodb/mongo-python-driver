@@ -136,6 +136,7 @@ Classes
 from __future__ import annotations
 
 import collections
+import random
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
@@ -160,7 +161,9 @@ from pymongo import _csot
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
+    ExecutionTimeout,
     InvalidOperation,
+    NetworkTimeout,
     OperationFailure,
     PyMongoError,
     WTimeoutError,
@@ -426,12 +429,16 @@ class _Transaction:
         self.recovery_token = None
         self.attempt = 0
         self.client = client
+        self.has_completed_command = False
 
     def active(self) -> bool:
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
 
     def starting(self) -> bool:
         return self.state == _TxnState.STARTING
+
+    def set_starting(self) -> None:
+        self.state = _TxnState.STARTING
 
     @property
     def pinned_conn(self) -> Optional[Connection]:
@@ -458,6 +465,7 @@ class _Transaction:
         self.sharded = False
         self.recovery_token = None
         self.attempt = 0
+        self.has_completed_command = False
 
     def __del__(self) -> None:
         if self.conn_mgr:
@@ -492,11 +500,29 @@ _UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(  # 
 # This limit is non-configurable and was chosen to be twice the 60 second
 # default value of MongoDB's `transactionLifetimeLimitSeconds` parameter.
 _WITH_TRANSACTION_RETRY_TIME_LIMIT = 120
+_BACKOFF_MAX = 0.500  # 500ms max backoff
+_BACKOFF_INITIAL = 0.005  # 5ms initial backoff
 
 
-def _within_time_limit(start_time: float) -> bool:
+def _within_time_limit(start_time: float, backoff: float = 0) -> bool:
     """Are we within the with_transaction retry limit?"""
-    return time.monotonic() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
+    remaining = _csot.remaining()
+    if remaining is not None and remaining <= 0:
+        return False
+    return time.monotonic() + backoff - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
+
+
+def _make_timeout_error(error: BaseException) -> PyMongoError:
+    """Convert error to a NetworkTimeout or ExecutionTimeout as appropriate."""
+    if _csot.remaining() is not None:
+        timeout_error: PyMongoError = ExecutionTimeout(
+            str(error), 50, {"ok": 0, "errmsg": str(error), "code": 50}
+        )
+    else:
+        timeout_error = NetworkTimeout(str(error))
+    if isinstance(error, PyMongoError):
+        timeout_error._error_labels = error._error_labels.copy()
+    return timeout_error
 
 
 _T = TypeVar("_T")
@@ -743,21 +769,32 @@ class ClientSession:
             https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback
         """
         start_time = time.monotonic()
+        retry = 0
+        last_error: Optional[BaseException] = None
         while True:
+            if retry:  # Implement exponential backoff on retry.
+                jitter = random.random()  # noqa: S311
+                backoff = jitter * min(_BACKOFF_INITIAL * (1.5**retry), _BACKOFF_MAX)
+                if not _within_time_limit(start_time, backoff):
+                    assert last_error is not None
+                    raise _make_timeout_error(last_error) from last_error
+                time.sleep(backoff)
+            retry += 1
             self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
             try:
                 ret = callback(self)
             # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
             except BaseException as exc:
+                last_error = exc
                 if self.in_transaction:
                     self.abort_transaction()
-                if (
-                    isinstance(exc, PyMongoError)
-                    and exc.has_error_label("TransientTransactionError")
-                    and _within_time_limit(start_time)
+                if isinstance(exc, PyMongoError) and exc.has_error_label(
+                    "TransientTransactionError"
                 ):
-                    # Retry the entire transaction.
-                    continue
+                    if _within_time_limit(start_time):
+                        # Retry the entire transaction.
+                        continue
+                    raise _make_timeout_error(last_error) from exc
                 raise
 
             if not self.in_transaction:
@@ -768,17 +805,18 @@ class ClientSession:
                 try:
                     self.commit_transaction()
                 except PyMongoError as exc:
-                    if (
-                        exc.has_error_label("UnknownTransactionCommitResult")
-                        and _within_time_limit(start_time)
-                        and not _max_time_expired_error(exc)
-                    ):
+                    last_error = exc
+                    if exc.has_error_label(
+                        "UnknownTransactionCommitResult"
+                    ) and not _max_time_expired_error(exc):
+                        if not _within_time_limit(start_time):
+                            raise _make_timeout_error(last_error) from exc
                         # Retry the commit.
                         continue
 
-                    if exc.has_error_label("TransientTransactionError") and _within_time_limit(
-                        start_time
-                    ):
+                    if exc.has_error_label("TransientTransactionError"):
+                        if not _within_time_limit(start_time):
+                            raise _make_timeout_error(last_error) from exc
                         # Retry the entire transaction.
                         break
                     raise

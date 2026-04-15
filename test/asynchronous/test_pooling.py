@@ -513,6 +513,39 @@ class TestPooling(_TestPoolingBase):
             str(error.exception),
         )
 
+    @async_client_context.require_failCommand_appName
+    async def test_pool_backpressure_preserves_existing_connections(self):
+        client = await self.async_rs_or_single_client()
+        coll = client.pymongo_test.t
+        pool = await async_get_pool(client)
+        await coll.insert_many([{"x": 1} for _ in range(10)])
+        t = SocketGetter(self.c, pool)
+        await t.start()
+        while t.state != "connection":
+            await asyncio.sleep(0.1)
+
+        assert not t.sock.conn_closed()
+
+        # Mock a session establishment overload.
+        mock_connection_fail = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "closeConnection": True,
+            },
+        }
+
+        async with self.fail_point(mock_connection_fail):
+            await coll.find_one({})
+
+        # Make sure the existing socket was not affected.
+        assert not t.sock.conn_closed()
+
+        # Cleanup
+        await t.release_conn()
+        await t.join()
+        await pool.close()
+
 
 class TestPoolMaxSize(_TestPoolingBase):
     async def test_max_pool_size(self):
