@@ -452,6 +452,7 @@ class TestRetryableReads(IntegrationTest):
         self.assertEqual(len(started_finds), MAX_ADAPTIVE_RETRIES + 1)
 
     @client_context.require_failCommand_fail_point
+    @client_context.require_version_min(4, 4, 0)  # type:ignore[untyped-decorator]
     def test_backoff_is_not_applied_for_non_overload_errors(self):
         if _IS_SYNC:
             mock_target = "pymongo.synchronous.helpers._RetryPolicy.backoff"
