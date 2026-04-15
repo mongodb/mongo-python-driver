@@ -19,11 +19,9 @@ import os
 import pathlib
 import sys
 from time import perf_counter
-from unittest import mock
 from unittest.mock import patch
 
 from pymongo.common import MAX_ADAPTIVE_RETRIES
-from pymongo.monitoring import CommandFailedEvent
 
 sys.path[0:0] = [""]
 
