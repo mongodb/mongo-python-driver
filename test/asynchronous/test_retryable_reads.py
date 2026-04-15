@@ -265,14 +265,17 @@ class TestRetryableReads(AsyncIntegrationTest):
     @async_client_context.require_secondaries_count(1)
     @async_client_context.require_failCommand_fail_point
     @async_client_context.require_version_min(4, 4, 0)
-    async def test_03_01_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available(
+    async def test_03_01_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available_and_overload_retargeting_is_enabled(
         self
     ):
         listener = OvertCommandListener()
 
-        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
+        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, `enableOverloadRetargeting=True`, and command event monitoring enabled.
         client = await self.async_rs_or_single_client(
-            event_listeners=[listener], retryReads=True, readPreference="primaryPreferred"
+            event_listeners=[listener],
+            retryReads=True,
+            readPreference="primaryPreferred",
+            enableOverloadRetargeting=True,
         )
 
         # 2. Configure a fail point with the RetryableError and SystemOverloadedError error labels.
@@ -337,6 +340,47 @@ class TestRetryableReads(AsyncIntegrationTest):
         self.assertEqual(len(listener.succeeded_events), 1)
 
         # 6. Assert that both events occurred the same server.
+        assert listener.failed_events[0].connection_id == listener.succeeded_events[0].connection_id
+
+    @async_client_context.require_replica_set
+    @async_client_context.require_secondaries_count(1)
+    @async_client_context.require_failCommand_fail_point
+    @async_client_context.require_version_min(4, 4, 0)
+    async def test_03_03_retryable_reads_caused_by_overload_errors_are_retried_on_the_same_replicaset_server_when_one_is_available_and_overload_retargeting_is_disabled(
+        self
+    ):
+        listener = OvertCommandListener()
+
+        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
+        client = await self.async_rs_or_single_client(
+            event_listeners=[listener],
+            retryReads=True,
+            readPreference="primaryPreferred",
+        )
+
+        # 2. Configure a fail point with the RetryableError and SystemOverloadedError error labels.
+        command_args = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+                "errorCode": 6,
+            },
+        }
+        await async_set_fail_point(client, command_args)
+
+        # 3. Reset the command event monitor to clear the fail point command from its stored events.
+        listener.reset()
+
+        # 4. Execute a `find` command with `client`.
+        await client.t.t.find_one({})
+
+        # 5. Assert that one failed command event and one successful command event occurred.
+        self.assertEqual(len(listener.failed_events), 1)
+        self.assertEqual(len(listener.succeeded_events), 1)
+
+        # 6. Assert that both events occurred on the same server.
         assert listener.failed_events[0].connection_id == listener.succeeded_events[0].connection_id
 
 
