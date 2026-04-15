@@ -21,6 +21,9 @@ import pprint
 import sys
 import threading
 from test.utils import flaky, set_fail_point
+from unittest import mock
+
+from pymongo.common import MAX_ADAPTIVE_RETRIES
 
 sys.path[0:0] = [""]
 
@@ -779,6 +782,111 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         assert exc.exception.errors["code"] == 91
         # Assert that the error does not contain the error label `NoWritesPerformed`.
         assert "NoWritesPerformed" not in exc.exception.errors["errorLabels"]
+
+    def test_overload_then_nonoverload_retries_increased_writes(self) -> None:
+        # Create a client with retryWrites=true.
+        listener = OvertCommandListener()
+
+        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
+        # code `91` (ShutdownInProgress) and `RetryableError` and `SystemOverloadedError` labels.
+        overload_fail_point = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["insert"],
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+                "errorCode": 91,
+            },
+        }
+
+        # Configure a fail point with error code `91` (ShutdownInProgress) with the `RetryableError` and `RetryableWriteError` error labels.
+        non_overload_fail_point = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "failCommands": ["insert"],
+                "errorCode": 91,
+                "errorLabels": ["RetryableError", "RetryableWriteError"],
+            },
+        }
+
+        def failed(event: CommandFailedEvent) -> None:
+            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
+            if listener.failed_events:
+                return
+            assert event.failure["code"] == 91
+            self.configure_fail_point_sync(non_overload_fail_point)
+            self.addCleanup(self.configure_fail_point_sync, {}, off=True)
+            listener.failed_events.append(event)
+
+        listener.failed = failed
+
+        client = self.rs_client(retryWrites=True, event_listeners=[listener])
+
+        self.configure_fail_point_sync(overload_fail_point)
+        self.addCleanup(self.configure_fail_point_sync, {}, off=True)
+
+        with self.assertRaises(PyMongoError):
+            client.test.test.insert_one({"x": 1})
+
+        started_inserts = [e for e in listener.started_events if e.command_name == "insert"]
+        self.assertEqual(len(started_inserts), MAX_ADAPTIVE_RETRIES + 1)
+
+    def test_backoff_is_not_applied_for_non_overload_errors(self):
+        if _IS_SYNC:
+            mock_target = "pymongo.synchronous.helpers._RetryPolicy.backoff"
+        else:
+            mock_target = "pymongo.helpers._RetryPolicy.backoff"
+
+        # Create a client.
+        listener = OvertCommandListener()
+
+        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
+        # code `91` (ShutdownInProgress) and `RetryableError` and `SystemOverloadedError` labels.
+        overload_fail_point = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["insert"],
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+                "errorCode": 91,
+            },
+        }
+
+        # Configure a fail point with error code `91` (ShutdownInProgress) with only the `RetryableError` error label.
+        non_overload_fail_point = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {
+                "failCommands": ["insert"],
+                "errorCode": 91,
+                "errorLabels": ["RetryableError", "RetryableWriteError"],
+            },
+        }
+
+        def failed(event: CommandFailedEvent) -> None:
+            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
+            if listener.failed_events:
+                return
+            assert event.failure["code"] == 91
+            self.configure_fail_point_sync(non_overload_fail_point)
+            self.addCleanup(self.configure_fail_point_sync, {}, off=True)
+            listener.failed_events.append(event)
+
+        listener.failed = failed
+
+        client = self.rs_client(event_listeners=[listener])
+
+        self.configure_fail_point_sync(overload_fail_point)
+        self.addCleanup(self.configure_fail_point_sync, {}, off=True)
+
+        # Perform a findOne operation with coll. Expect the operation to fail.
+        with mock.patch(mock_target, return_value=0) as mock_backoff:
+            with self.assertRaises(PyMongoError):
+                client.test.test.insert_one({})
+
+        # Assert that backoff was applied only once for the initial overload error and not for the subsequent non-overload retryable errors.
+        self.assertEqual(mock_backoff.call_count, 1)
 
 
 if __name__ == "__main__":
