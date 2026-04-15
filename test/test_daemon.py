@@ -145,6 +145,28 @@ class TestSpawnDaemonWindows(unittest.TestCase):
         self.assertIs(RuntimeWarning, w[0].category)
         self.assertIn("nonexistent_command", str(w[0].message))
 
+    def test_uses_detached_process_flag(self):
+        # DETACHED_PROCESS must be passed so the child survives parent exit.
+        mock_popen = MagicMock()
+        with patch("subprocess.Popen", return_value=mock_popen) as mock_cls:
+            _spawn_daemon(["somecommand"])
+        kwargs = mock_cls.call_args[1]
+        self.assertEqual(daemon_module._DETACHED_PROCESS, kwargs["creationflags"])
+
+    def test_uses_devnull_for_stdio(self):
+        # stdin/stdout/stderr must be redirected to devnull to fully detach.
+        mock_popen = MagicMock()
+        with patch("subprocess.Popen", return_value=mock_popen) as mock_cls:
+            _spawn_daemon(["somecommand"])
+        kwargs = mock_cls.call_args[1]
+        self.assertIsNotNone(kwargs.get("stdin"))
+        self.assertIsNotNone(kwargs.get("stdout"))
+        self.assertIsNotNone(kwargs.get("stderr"))
+
+    def test_detached_process_constant_value(self):
+        # Value must match the Windows DETACHED_PROCESS process creation flag.
+        self.assertEqual(0x00000008, daemon_module._DETACHED_PROCESS)
+
 
 @unittest.skipIf(sys.platform == "win32", "Unix only")
 class TestMainBlock(unittest.TestCase):
