@@ -16,7 +16,7 @@ PyMongo 4.17 brings a number of changes including:
   See <PLACEHOLDER> for examples and more information.
 - Added support for MongoDB's Intelligent Workload Management (IWM) and ingress connection rate limiting features.
   The driver now gracefully handles write-blocking scenarios and optimizes connection establishment during high-load conditions to maintain application availability.
-  See <DOCSP-55426> and <DOCSP-57078> for more information.
+  See the `IWM <https://www.mongodb.com/docs/atlas/intelligent-workload-management>`_ or `Overload Error <https://www.mongodb.com/docs/atlas/overload-errors/?interface=driver&language=python>`_ docs for more information.
 
 Changes in Version 4.16.0 (2026/01/07)
 --------------------------------------
