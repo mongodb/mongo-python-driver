@@ -156,8 +156,7 @@ class TestRetryableReads(IntegrationTest):
 
     # TODO: After PYTHON-4595 we can use async event handlers and remove this workaround.
     def configure_fail_point_sync(self, command_args, off=False) -> None:
-        cmd = {"configureFailPoint": "failCommand"}
-        cmd.update(command_args)
+        cmd = {"configureFailPoint": "failCommand", **command_args}
         if off:
             cmd["mode"] = "off"
             cmd.pop("data", None)
