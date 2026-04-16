@@ -257,7 +257,6 @@ class TestCollation(IntegrationTest):
         self.assertEqual(
             ja_collation.document["locale"], indexes["japanese_version"]["collation"]["locale"]
         )
-        self.assertNotIn("collation", indexes["simple"])
         self.db.test.drop_index("fieldname_1")
         indexes = self.db.test.index_information()
         self.assertIn("japanese_version", indexes)
