@@ -22,7 +22,7 @@ import threading
 from test.asynchronous.utils import async_ensure_all_connected, async_set_fail_point
 from unittest import mock
 
-from pymongo import MongoClient, ReadPreference
+from pymongo import MongoClient
 from pymongo.common import MAX_ADAPTIVE_RETRIES
 from pymongo.errors import OperationFailure, PyMongoError
 
