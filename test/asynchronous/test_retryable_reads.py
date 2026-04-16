@@ -19,10 +19,10 @@ import os
 import pprint
 import sys
 import threading
-from test.asynchronous.utils import async_set_fail_point
+from test.asynchronous.utils import async_ensure_all_connected, async_set_fail_point
 from unittest import mock
 
-from pymongo import MongoClient
+from pymongo import MongoClient, ReadPreference
 from pymongo.common import MAX_ADAPTIVE_RETRIES
 from pymongo.errors import OperationFailure, PyMongoError
 
@@ -295,6 +295,9 @@ class TestRetryableReads(AsyncIntegrationTest):
             enableOverloadRetargeting=True,
         )
 
+        # Ensure the client has discovered all nodes.
+        await async_ensure_all_connected(client)
+
         # 2. Configure a fail point with the RetryableError and SystemOverloadedError error labels.
         command_args = {
             "configureFailPoint": "failCommand",
@@ -333,6 +336,9 @@ class TestRetryableReads(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(
             event_listeners=[listener], retryReads=True, readPreference="primaryPreferred"
         )
+
+        # Ensure the client has discovered all nodes.
+        await async_ensure_all_connected(client)
 
         # 2. Configure a fail point with the RetryableError error label.
         command_args = {
@@ -374,6 +380,9 @@ class TestRetryableReads(AsyncIntegrationTest):
             retryReads=True,
             readPreference="primaryPreferred",
         )
+
+        # Ensure the client has discovered all nodes.
+        await async_ensure_all_connected(client)
 
         # 2. Configure a fail point with the RetryableError and SystemOverloadedError error labels.
         command_args = {
