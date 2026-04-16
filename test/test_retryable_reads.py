@@ -19,7 +19,7 @@ import os
 import pprint
 import sys
 import threading
-from test.utils import set_fail_point
+from test.utils import ensure_all_connected, set_fail_point
 from unittest import mock
 
 from pymongo import MongoClient
@@ -293,6 +293,9 @@ class TestRetryableReads(IntegrationTest):
             enableOverloadRetargeting=True,
         )
 
+        # Ensure the client has discovered all nodes.
+        ensure_all_connected(client)
+
         # 2. Configure a fail point with the RetryableError and SystemOverloadedError error labels.
         command_args = {
             "configureFailPoint": "failCommand",
@@ -331,6 +334,9 @@ class TestRetryableReads(IntegrationTest):
         client = self.rs_or_single_client(
             event_listeners=[listener], retryReads=True, readPreference="primaryPreferred"
         )
+
+        # Ensure the client has discovered all nodes.
+        ensure_all_connected(client)
 
         # 2. Configure a fail point with the RetryableError error label.
         command_args = {
@@ -372,6 +378,9 @@ class TestRetryableReads(IntegrationTest):
             retryReads=True,
             readPreference="primaryPreferred",
         )
+
+        # Ensure the client has discovered all nodes.
+        ensure_all_connected(client)
 
         # 2. Configure a fail point with the RetryableError and SystemOverloadedError error labels.
         command_args = {
