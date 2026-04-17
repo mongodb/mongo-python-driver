@@ -2,3 +2,6 @@
 # you can also set after_n_builds on comments independently
 comment:
   after_n_builds: 100
+
+ignore:
+  - "pymongo/event_loggers.py"
