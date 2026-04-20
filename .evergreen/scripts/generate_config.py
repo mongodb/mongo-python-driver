@@ -97,6 +97,8 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
             tasks = [
                 f".test-standard !.pypy .server-{version}" for version in get_versions_from("6.0")
             ]
+        if host_name == "win64":
+            tasks.append(".test-no-orchestration !.pypy")
         host = HOSTS[host_name]
         tags = ["standard-non-linux"]
         expansions = dict()

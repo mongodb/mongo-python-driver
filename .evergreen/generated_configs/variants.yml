@@ -615,6 +615,7 @@ buildvariants:
   - name: test-win64
     tasks:
       - name: .test-standard !.pypy
+      - name: .test-no-orchestration !.pypy
     display_name: "* Test Win64"
     run_on:
       - windows-2022-latest-small
