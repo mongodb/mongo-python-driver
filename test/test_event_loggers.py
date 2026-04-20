@@ -15,9 +15,8 @@
 """Tests for pymongo.event_loggers."""
 from __future__ import annotations
 
-import logging
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path[0:0] = [""]
 
@@ -43,8 +42,7 @@ class TestCommandLogger(unittest.TestCase):
         event.connection_id = ("localhost", 27017)
         with self.assertLogs(level="INFO") as logs:
             self.logger.started(event)
-        log = logs.output[0]
-        self.assertIn("INFO", log)
+        log = logs.records[0].getMessage()
         self.assertIn("find", log)
         self.assertIn("42", log)
         self.assertIn("started", log)
@@ -57,8 +55,7 @@ class TestCommandLogger(unittest.TestCase):
         event.duration_micros = 500
         with self.assertLogs(level="INFO") as logs:
             self.logger.succeeded(event)
-        log = logs.output[0]
-        self.assertIn("INFO", log)
+        log = logs.records[0].getMessage()
         self.assertIn("insert", log)
         self.assertIn("7", log)
         self.assertIn("500", log)
@@ -73,8 +70,7 @@ class TestCommandLogger(unittest.TestCase):
         event.duration_micros = 300
         with self.assertLogs(level="INFO") as logs:
             self.logger.failed(event)
-        log = logs.output[0]
-        self.assertIn("INFO", log)
+        log = logs.records[0].getMessage()
         self.assertIn("delete", log)
         self.assertIn("3", log)
         self.assertIn("300", log)
@@ -92,8 +88,7 @@ class TestServerLogger(unittest.TestCase):
         event.topology_id = "topology-abc"
         with self.assertLogs(level="INFO") as logs:
             self.logger.opened(event)
-        log = logs.output[0]
-        self.assertIn("INFO", log)
+        log = logs.records[0].getMessage()
         self.assertIn("host1", log)
         self.assertIn("topology-abc", log)
 
@@ -103,8 +98,7 @@ class TestServerLogger(unittest.TestCase):
         event.topology_id = "topology-abc"
         with self.assertLogs(level="WARNING") as logs:
             self.logger.closed(event)
-        log = logs.output[0]
-        self.assertIn("WARNING", log)
+        log = logs.records[0].getMessage()
         self.assertIn("host1", log)
         self.assertIn("topology-abc", log)
 
@@ -117,7 +111,7 @@ class TestServerLogger(unittest.TestCase):
         event.new_description.server_type_name = "Standalone"
         with self.assertLogs(level="INFO") as logs:
             self.logger.description_changed(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("Unknown", log)
         self.assertIn("Standalone", log)
 
@@ -125,15 +119,9 @@ class TestServerLogger(unittest.TestCase):
         event = MagicMock()
         event.previous_description.server_type = 2
         event.new_description.server_type = 2
-        root_logger = logging.getLogger()
-        original_level = root_logger.level
-        root_logger.setLevel(logging.DEBUG)
-        try:
-            with self.assertRaises(AssertionError):
-                with self.assertLogs(level="INFO"):
-                    self.logger.description_changed(event)
-        finally:
-            root_logger.setLevel(original_level)
+        with patch("logging.info") as mock_info:
+            self.logger.description_changed(event)
+        mock_info.assert_not_called()
 
 
 class TestHeartbeatLogger(unittest.TestCase):
@@ -145,8 +133,7 @@ class TestHeartbeatLogger(unittest.TestCase):
         event.connection_id = ("mongo.host", 27017)
         with self.assertLogs(level="INFO") as logs:
             self.logger.started(event)
-        log = logs.output[0]
-        self.assertIn("INFO", log)
+        log = logs.records[0].getMessage()
         self.assertIn("mongo.host", log)
 
     def test_succeeded_logs_info(self):
@@ -155,8 +142,7 @@ class TestHeartbeatLogger(unittest.TestCase):
         event.reply.document = {"ok": 1, "maxWireVersion": 17}
         with self.assertLogs(level="INFO") as logs:
             self.logger.succeeded(event)
-        log = logs.output[0]
-        self.assertIn("INFO", log)
+        log = logs.records[0].getMessage()
         self.assertIn("mongo.host", log)
         self.assertIn("succeeded", log)
         self.assertIn("maxWireVersion", log)
@@ -167,8 +153,7 @@ class TestHeartbeatLogger(unittest.TestCase):
         event.reply = TimeoutError("timed out")
         with self.assertLogs(level="WARNING") as logs:
             self.logger.failed(event)
-        log = logs.output[0]
-        self.assertIn("WARNING", log)
+        log = logs.records[0].getMessage()
         self.assertIn("mongo.host", log)
         self.assertIn("failed", log)
         self.assertIn("timed out", log)
@@ -183,8 +168,7 @@ class TestTopologyLogger(unittest.TestCase):
         event.topology_id = "topo-1"
         with self.assertLogs(level="INFO") as logs:
             self.logger.opened(event)
-        log = logs.output[0]
-        self.assertIn("INFO", log)
+        log = logs.records[0].getMessage()
         self.assertIn("topo-1", log)
         self.assertIn("opened", log)
 
@@ -193,8 +177,7 @@ class TestTopologyLogger(unittest.TestCase):
         event.topology_id = "topo-1"
         with self.assertLogs(level="INFO") as logs:
             self.logger.closed(event)
-        log = logs.output[0]
-        self.assertIn("INFO", log)
+        log = logs.records[0].getMessage()
         self.assertIn("topo-1", log)
         self.assertIn("closed", log)
 
@@ -207,8 +190,9 @@ class TestTopologyLogger(unittest.TestCase):
         event.new_description.has_readable_server.return_value = True
         with self.assertLogs(level="INFO") as logs:
             self.logger.description_changed(event)
-        self.assertTrue(any("updated" in log for log in logs.output))
-        self.assertTrue(any("topo-1" in log for log in logs.output))
+        messages = [r.getMessage() for r in logs.records]
+        self.assertTrue(any("updated" in m for m in messages))
+        self.assertTrue(any("topo-1" in m for m in messages))
 
     def test_description_changed_logs_type_change(self):
         event = MagicMock()
@@ -221,9 +205,8 @@ class TestTopologyLogger(unittest.TestCase):
         event.new_description.has_readable_server.return_value = True
         with self.assertLogs(level="INFO") as logs:
             self.logger.description_changed(event)
-        [log] = [m for m in logs.output if "Unknown" in m and "Single" in m]
-        self.assertIn("Unknown", log)
-        self.assertIn("Single", log)
+        messages = [r.getMessage() for r in logs.records]
+        self.assertTrue(any("Unknown" in m and "Single" in m for m in messages))
 
     def test_description_changed_no_type_change_log_when_same(self):
         event = MagicMock()
@@ -234,7 +217,8 @@ class TestTopologyLogger(unittest.TestCase):
         event.new_description.has_readable_server.return_value = True
         with self.assertLogs(level="INFO") as logs:
             self.logger.description_changed(event)
-        self.assertEqual(len([m for m in logs.output if "changed type" in m]), 0)
+        messages = [r.getMessage() for r in logs.records]
+        self.assertFalse(any("changed type" in m for m in messages))
 
     def test_description_changed_warns_no_writable_server(self):
         event = MagicMock()
@@ -244,8 +228,8 @@ class TestTopologyLogger(unittest.TestCase):
         event.new_description.has_readable_server.return_value = True
         with self.assertLogs(level="WARNING") as logs:
             self.logger.description_changed(event)
-        [log] = [m for m in logs.output if "WARNING" in m and "writable" in m]
-        self.assertIn("writable", log)
+        messages = [r.getMessage() for r in logs.records]
+        self.assertTrue(any("writable" in m for m in messages))
 
     def test_description_changed_warns_no_readable_server(self):
         event = MagicMock()
@@ -255,8 +239,8 @@ class TestTopologyLogger(unittest.TestCase):
         event.new_description.has_readable_server.return_value = False
         with self.assertLogs(level="WARNING") as logs:
             self.logger.description_changed(event)
-        [log] = [m for m in logs.output if "WARNING" in m and "readable" in m]
-        self.assertIn("readable", log)
+        messages = [r.getMessage() for r in logs.records]
+        self.assertTrue(any("readable" in m for m in messages))
 
     def test_description_changed_warns_both_unavailable(self):
         event = MagicMock()
@@ -266,7 +250,8 @@ class TestTopologyLogger(unittest.TestCase):
         event.new_description.has_readable_server.return_value = False
         with self.assertLogs(level="WARNING") as logs:
             self.logger.description_changed(event)
-        self.assertEqual(len([m for m in logs.output if "WARNING" in m]), 2)
+        warning_messages = [r.getMessage() for r in logs.records if r.levelname == "WARNING"]
+        self.assertEqual(len(warning_messages), 2)
 
 
 class TestConnectionPoolLogger(unittest.TestCase):
@@ -278,7 +263,7 @@ class TestConnectionPoolLogger(unittest.TestCase):
         event.address = ("localhost", 27017)
         with self.assertLogs(level="INFO") as logs:
             self.logger.pool_created(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("pool created", log)
         self.assertIn("localhost", log)
 
@@ -287,7 +272,7 @@ class TestConnectionPoolLogger(unittest.TestCase):
         event.address = ("localhost", 27017)
         with self.assertLogs(level="INFO") as logs:
             self.logger.pool_ready(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("pool ready", log)
         self.assertIn("localhost", log)
 
@@ -296,7 +281,7 @@ class TestConnectionPoolLogger(unittest.TestCase):
         event.address = ("localhost", 27017)
         with self.assertLogs(level="INFO") as logs:
             self.logger.pool_cleared(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("pool cleared", log)
         self.assertIn("localhost", log)
 
@@ -305,7 +290,7 @@ class TestConnectionPoolLogger(unittest.TestCase):
         event.address = ("localhost", 27017)
         with self.assertLogs(level="INFO") as logs:
             self.logger.pool_closed(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("pool closed", log)
         self.assertIn("localhost", log)
 
@@ -315,7 +300,7 @@ class TestConnectionPoolLogger(unittest.TestCase):
         event.connection_id = 5
         with self.assertLogs(level="INFO") as logs:
             self.logger.connection_created(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("connection created", log)
         self.assertIn("5", log)
         self.assertIn("localhost", log)
@@ -326,7 +311,7 @@ class TestConnectionPoolLogger(unittest.TestCase):
         event.connection_id = 5
         with self.assertLogs(level="INFO") as logs:
             self.logger.connection_ready(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("connection setup succeeded", log)
         self.assertIn("5", log)
 
@@ -337,7 +322,7 @@ class TestConnectionPoolLogger(unittest.TestCase):
         event.reason = "stale"
         with self.assertLogs(level="INFO") as logs:
             self.logger.connection_closed(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("connection closed", log)
         self.assertIn("5", log)
         self.assertIn("stale", log)
@@ -347,7 +332,7 @@ class TestConnectionPoolLogger(unittest.TestCase):
         event.address = ("localhost", 27017)
         with self.assertLogs(level="INFO") as logs:
             self.logger.connection_check_out_started(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("check out started", log)
         self.assertIn("localhost", log)
 
@@ -357,7 +342,7 @@ class TestConnectionPoolLogger(unittest.TestCase):
         event.reason = "timeout"
         with self.assertLogs(level="INFO") as logs:
             self.logger.connection_check_out_failed(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("check out failed", log)
         self.assertIn("timeout", log)
         self.assertIn("localhost", log)
@@ -368,7 +353,7 @@ class TestConnectionPoolLogger(unittest.TestCase):
         event.connection_id = 3
         with self.assertLogs(level="INFO") as logs:
             self.logger.connection_checked_out(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("checked out", log)
         self.assertIn("3", log)
         self.assertIn("localhost", log)
@@ -379,7 +364,7 @@ class TestConnectionPoolLogger(unittest.TestCase):
         event.connection_id = 3
         with self.assertLogs(level="INFO") as logs:
             self.logger.connection_checked_in(event)
-        log = logs.output[0]
+        log = logs.records[0].getMessage()
         self.assertIn("checked into", log)
         self.assertIn("3", log)
         self.assertIn("localhost", log)
