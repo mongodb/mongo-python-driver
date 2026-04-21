@@ -19,9 +19,13 @@ import sys
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, Mock, patch
 
+import pytest
+
 sys.path[0:0] = [""]
 
 from test import unittest
+
+pytestmark = pytest.mark.ocsp
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
