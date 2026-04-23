@@ -17,10 +17,10 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 import sys
 import threading
 import time
-import weakref
 
 sys.path[0:0] = [""]
 
@@ -255,24 +255,18 @@ class TestRegisterExecutor(unittest.TestCase):
         before = len(pe_module._EXECUTORS)
         _register_executor(ex)
         self.assertEqual(len(pe_module._EXECUTORS), before + 1)
-        # When executor is GC'd the ref is cleaned up.
-        ref_count_before = len(pe_module._EXECUTORS)
+        # Find the specific weakref we just registered.
+        ref = next(r for r in pe_module._EXECUTORS if r() is ex)
         del ex
-        self.assertLessEqual(len(pe_module._EXECUTORS), ref_count_before)
+        gc.collect()
+        # The weakref callback must have removed our specific ref.
+        self.assertNotIn(ref, pe_module._EXECUTORS)
 
     def test_shutdown_executors_stops_running_executors(self):
-        stopped = threading.Event()
-
-        def target():
-            stopped.wait(timeout=5)
-            return True
-
-        ex = _make_sync(target=target)
+        ex = _make_sync(interval=30.0)
         ex.open()
         time.sleep(0.05)
-        _register_executor(ex)
         _shutdown_executors()
-        stopped.set()
         ex.join(timeout=2)
         self.assertTrue(ex._stopped)
 
@@ -382,6 +376,9 @@ class TestAsyncPeriodicExecutorTarget(unittest.TestCase):
             await asyncio.wait_for(ran.wait(), timeout=2)
             await ex.join(timeout=2)
             self.assertTrue(ex._stopped)
+            # Retrieve the task exception to avoid "Task exception was never retrieved".
+            if ex._task is not None and ex._task.done():
+                ex._task.exception()
 
         _run(_test())
 
@@ -390,7 +387,7 @@ class TestAsyncPeriodicExecutorTarget(unittest.TestCase):
             call_times = []
 
             async def target():
-                call_times.append(asyncio.get_event_loop().time())
+                call_times.append(asyncio.get_running_loop().time())
                 if len(call_times) >= 2:
                     return False
                 return True
