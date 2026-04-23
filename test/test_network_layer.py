@@ -280,7 +280,7 @@ class TestPyMongoProtocolProcessCompressionHeader(unittest.TestCase):
     def test_returns_op_code_and_compressor_id(self):
         async def _test():
             proto = await _make_protocol()
-            # op_code=2013, unknown int=0, compressor_id=1 (snappy)
+            # op_code=2013, uncompressed_size=0, compressor_id=1 (snappy)
             data = struct.pack("<iiB", 2013, 0, 1)
             proto._compression_header = memoryview(bytearray(data))
             return proto.process_compression_header()
