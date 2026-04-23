@@ -46,8 +46,8 @@ from pymongo.network_layer import (
 # ---------------------------------------------------------------------------
 
 
-def _run(coro):
-    return asyncio.run(coro)
+def _run(coroutine):
+    return asyncio.run(coroutine)
 
 
 async def _make_protocol(timeout=None):
