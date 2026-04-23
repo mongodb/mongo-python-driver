@@ -24,10 +24,11 @@ from __future__ import annotations
 import asyncio
 import struct
 import sys
-import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path[0:0] = [""]
+
+from test import unittest
 
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
@@ -45,13 +46,11 @@ from pymongo.network_layer import (
 # ---------------------------------------------------------------------------
 
 
-def _run(coro):
-    """Run a coroutine synchronously for testing."""
-    return asyncio.run(coro)
+def _run(coroutine):
+    return asyncio.run(coroutine)
 
 
 async def _make_protocol(timeout=None):
-    """Create a PyMongoProtocol with a stubbed transport."""
     proto = PyMongoProtocol(timeout=timeout)
     mock_transport = MagicMock()
     mock_transport.is_closing.return_value = False
@@ -60,7 +59,6 @@ async def _make_protocol(timeout=None):
 
 
 def _make_header(length, request_id, response_to, op_code):
-    """Pack a 16-byte MongoDB wire-protocol header."""
     return struct.pack("<iiii", length, request_id, response_to, op_code)
 
 
@@ -141,7 +139,7 @@ class TestNetworkingInterface(unittest.TestCase):
         self.assertEqual(self.iface.fileno(), 42)
 
     def test_recv_into_delegates(self):
-        buf = bytearray(10)
+        buf = memoryview(bytearray(10))
         self.mock_sock.recv_into.return_value = 7
         result = self.iface.recv_into(buf)
         self.assertEqual(result, 7)
@@ -282,7 +280,7 @@ class TestPyMongoProtocolProcessCompressionHeader(unittest.TestCase):
     def test_returns_op_code_and_compressor_id(self):
         async def _test():
             proto = await _make_protocol()
-            # op_code=2013, unknown int=0, compressor_id=1 (snappy)
+            # op_code=2013, uncompressed_size=0, compressor_id=1 (snappy)
             data = struct.pack("<iiB", 2013, 0, 1)
             proto._compression_header = memoryview(bytearray(data))
             return proto.process_compression_header()
