@@ -41,50 +41,54 @@ try:
 except ImportError:
     _HAVE_PYOPENSSL = False
 
-_requires_pyopenssl = unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL not installed")
-
 
 # ---------------------------------------------------------------------------
 # Pure functions (no SSL context required)
 # ---------------------------------------------------------------------------
 
 
-@_requires_pyopenssl
 class TestIsIpAddress(unittest.TestCase):
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_ipv4(self):
         self.assertTrue(_is_ip_address("192.168.1.1"))
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_ipv6(self):
         self.assertTrue(_is_ip_address("::1"))
         self.assertTrue(_is_ip_address("2001:db8::1"))
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_hostname_is_not_ip(self):
         self.assertFalse(_is_ip_address("example.com"))
         self.assertFalse(_is_ip_address("localhost"))
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_invalid_string_returns_false(self):
         self.assertFalse(_is_ip_address("not-an-ip"))
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_unicode_error_returns_false(self):
         # UnicodeError path: some inputs that can't be decoded.
         # ip_address raises UnicodeError for byte strings with non-ASCII.
         self.assertFalse(_is_ip_address(b"\xff\xfe"))
 
 
-@_requires_pyopenssl
 class TestRaggedEof(unittest.TestCase):
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_matching_args_returns_true(self):
         from OpenSSL.SSL import SysCallError
 
         exc = SysCallError(-1, "Unexpected EOF")
         self.assertTrue(_ragged_eof(exc))
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_non_matching_args_returns_false(self):
         from OpenSSL.SSL import SysCallError
 
         exc = SysCallError(0, "something else")
         self.assertFalse(_ragged_eof(exc))
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_wrong_code_returns_false(self):
         from OpenSSL.SSL import SysCallError
 
@@ -97,48 +101,56 @@ class TestRaggedEof(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-@_requires_pyopenssl
 class TestSSLContextConstruction(unittest.TestCase):
     def _make(self):
         return SSLContext(PROTOCOL_SSLv23)
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_protocol_property(self):
         ctx = self._make()
         self.assertEqual(ctx.protocol, PROTOCOL_SSLv23)
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_default_check_hostname(self):
         ctx = self._make()
         self.assertTrue(ctx.check_hostname)
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_set_check_hostname_false(self):
         ctx = self._make()
         ctx.check_hostname = False
         self.assertFalse(ctx.check_hostname)
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_set_check_hostname_invalid_raises(self):
         ctx = self._make()
         with self.assertRaises(TypeError):
             ctx.check_hostname = "yes"
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_default_check_ocsp_endpoint(self):
         ctx = self._make()
         self.assertTrue(ctx.check_ocsp_endpoint)
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_set_check_ocsp_endpoint_false(self):
         ctx = self._make()
         ctx.check_ocsp_endpoint = False
         self.assertFalse(ctx.check_ocsp_endpoint)
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_verify_mode_roundtrip(self):
         ctx = self._make()
         ctx.verify_mode = ssl.CERT_REQUIRED
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_verify_mode_cert_none(self):
         ctx = self._make()
         ctx.verify_mode = ssl.CERT_NONE
         self.assertEqual(ctx.verify_mode, ssl.CERT_NONE)
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_options_setter_and_getter(self):
         ctx = self._make()
         from pymongo.pyopenssl_context import OP_NO_SSLv2
@@ -153,8 +165,8 @@ class TestSSLContextConstruction(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-@_requires_pyopenssl
 class TestLoadCertifi(unittest.TestCase):
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_raises_when_certifi_unavailable(self):
         from pymongo.errors import ConfigurationError
 
@@ -164,6 +176,7 @@ class TestLoadCertifi(unittest.TestCase):
                 ctx._load_certifi()
         self.assertIn("certifi", str(exc_ctx.exception))
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_loads_when_certifi_available(self):
         if not _ctx_module._HAVE_CERTIFI:
             self.skipTest("certifi not installed")
@@ -178,8 +191,8 @@ class TestLoadCertifi(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-@_requires_pyopenssl
 class TestLoadDefaultCerts(unittest.TestCase):
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_darwin_calls_load_certifi(self):
         with patch.object(_ctx_module._sys, "platform", "darwin"):
             with patch.object(SSLContext, "_load_certifi") as mock_certifi:
@@ -188,6 +201,7 @@ class TestLoadDefaultCerts(unittest.TestCase):
                     ctx.load_default_certs()
         mock_certifi.assert_called()
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_win32_calls_load_wincerts(self):
         with patch.object(_ctx_module._sys, "platform", "win32"):
             with patch.object(SSLContext, "_load_wincerts") as mock_wincerts:
@@ -197,6 +211,7 @@ class TestLoadDefaultCerts(unittest.TestCase):
         # Should have tried to load "CA" and "ROOT" stores.
         self.assertEqual(mock_wincerts.call_count, 2)
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_win32_falls_back_to_certifi_on_exception(self):
         with patch.object(_ctx_module._sys, "platform", "win32"):
             with patch.object(SSLContext, "_load_wincerts", side_effect=Exception("no certs")):
@@ -206,6 +221,7 @@ class TestLoadDefaultCerts(unittest.TestCase):
                         ctx.load_default_certs()
         mock_certifi.assert_called()
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_linux_no_certifi_call(self):
         with patch.object(_ctx_module._sys, "platform", "linux"):
             with patch.object(SSLContext, "_load_certifi") as mock_certifi:
@@ -214,6 +230,7 @@ class TestLoadDefaultCerts(unittest.TestCase):
                     ctx.load_default_certs()
         mock_certifi.assert_not_called()
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_calls_set_default_verify_paths(self):
         with patch.object(_ctx_module._sys, "platform", "linux"):
             ctx = SSLContext(PROTOCOL_SSLv23)
@@ -227,8 +244,8 @@ class TestLoadDefaultCerts(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-@_requires_pyopenssl
 class TestSetDefaultVerifyPaths(unittest.TestCase):
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_delegates_to_ctx(self):
         ctx = SSLContext(PROTOCOL_SSLv23)
         with patch.object(ctx._ctx, "set_default_verify_paths") as mock_sdvp:
@@ -241,8 +258,8 @@ class TestSetDefaultVerifyPaths(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-@_requires_pyopenssl
 class TestLoadVerifyLocations(unittest.TestCase):
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_delegates_to_ctx(self):
         ctx = SSLContext(PROTOCOL_SSLv23)
         with patch.object(ctx._ctx, "load_verify_locations") as mock_lvl:
