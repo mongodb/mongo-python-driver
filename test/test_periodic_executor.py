@@ -59,6 +59,10 @@ def _make_async(interval=30.0, min_interval=0.01, target=None, name="test"):
     )
 
 
+def _run(coro):
+    return asyncio.run(coro)
+
+
 # ---------------------------------------------------------------------------
 # PeriodicExecutor (sync / threading)
 # ---------------------------------------------------------------------------
@@ -309,34 +313,34 @@ class TestAsyncPeriodicExecutorBasic(unittest.TestCase):
 
 class TestAsyncPeriodicExecutorLifecycle(unittest.TestCase):
     def test_open_creates_task(self):
-        async def run():
+        async def _test():
             ex = _make_async()
             ex.open()
             self.assertIsNotNone(ex._task)
             ex.close()
             await ex.join(timeout=1)
 
-        asyncio.run(run())
+        _run(_test())
 
     def test_close_cancels_task(self):
-        async def run():
+        async def _test():
             ex = _make_async()
             ex.open()
             ex.close()
             await ex.join(timeout=1)
             self.assertTrue(ex._stopped)
 
-        asyncio.run(run())
+        _run(_test())
 
     def test_join_without_open_is_safe(self):
-        async def run():
+        async def _test():
             ex = _make_async()
             await ex.join(timeout=0.01)  # Should not raise.
 
-        asyncio.run(run())
+        _run(_test())
 
     def test_multiple_open_calls_have_no_effect(self):
-        async def run():
+        async def _test():
             ex = _make_async()
             ex.open()
             task_id = id(ex._task)
@@ -345,12 +349,12 @@ class TestAsyncPeriodicExecutorLifecycle(unittest.TestCase):
             ex.close()
             await ex.join(timeout=1)
 
-        asyncio.run(run())
+        _run(_test())
 
 
 class TestAsyncPeriodicExecutorTarget(unittest.TestCase):
     def test_target_returning_false_stops_executor(self):
-        async def run():
+        async def _test():
             ran = asyncio.Event()
 
             async def target():
@@ -363,10 +367,10 @@ class TestAsyncPeriodicExecutorTarget(unittest.TestCase):
             await ex.join(timeout=2)
             self.assertTrue(ex._stopped)
 
-        asyncio.run(run())
+        _run(_test())
 
     def test_target_exception_stops_executor(self):
-        async def run():
+        async def _test():
             ran = asyncio.Event()
 
             async def target():
@@ -379,10 +383,10 @@ class TestAsyncPeriodicExecutorTarget(unittest.TestCase):
             await ex.join(timeout=2)
             self.assertTrue(ex._stopped)
 
-        asyncio.run(run())
+        _run(_test())
 
     def test_skip_sleep_flag_skips_interval(self):
-        async def run():
+        async def _test():
             call_times = []
 
             async def target():
@@ -398,10 +402,10 @@ class TestAsyncPeriodicExecutorTarget(unittest.TestCase):
             self.assertGreaterEqual(len(call_times), 2)
             self.assertLess(call_times[1] - call_times[0], 5.0)
 
-        asyncio.run(run())
+        _run(_test())
 
     def test_open_after_target_returns_false_creates_new_task(self):
-        async def run():
+        async def _test():
             call_count = [0]
 
             async def target():
@@ -417,7 +421,7 @@ class TestAsyncPeriodicExecutorTarget(unittest.TestCase):
             self.assertGreaterEqual(call_count[0], 2)
             self.assertIsNot(ex._task, first_task)
 
-        asyncio.run(run())
+        _run(_test())
 
 
 if __name__ == "__main__":
