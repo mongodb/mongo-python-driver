@@ -17,10 +17,11 @@
 from __future__ import annotations
 
 import sys
-import unittest
 from unittest.mock import patch
 
 sys.path[0:0] = [""]
+
+from test import unittest
 
 from pymongo.compression_support import (
     CompressionSettings,
