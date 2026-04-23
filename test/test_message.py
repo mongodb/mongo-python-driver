@@ -24,6 +24,7 @@ sys.path[0:0] = [""]
 from test import unittest
 
 from bson import CodecOptions
+from pymongo.compression_support import ZlibContext
 from pymongo.errors import DocumentTooLarge
 from pymongo.message import (
     MAX_INT32,
@@ -56,17 +57,7 @@ from pymongo.read_preferences import Primary, ReadPreference, Secondary, Seconda
 # ---------------------------------------------------------------------------
 
 _OPTS = CodecOptions()
-
-
-class _MockCtx:
-    """Minimal compression context for testing _compress."""
-
-    compressor_id = 2  # zlib id
-
-    def compress(self, data: bytes) -> bytes:
-        import zlib
-
-        return zlib.compress(data)
+_ZLIB_CTX = ZlibContext(-1)  # default zlib compression level
 
 
 class _MockConn:
@@ -242,14 +233,14 @@ class TestConvertWriteResult(unittest.TestCase):
 
 class TestCompress(unittest.TestCase):
     def test_returns_request_id_and_bytes(self):
-        ctx = _MockCtx()
+        ctx = _ZLIB_CTX
         data = b"hello world"
         request_id, msg = _compress(2013, data, ctx)
         self.assertIsInstance(request_id, int)
         self.assertIsInstance(msg, bytes)
 
     def test_compressed_message_has_op_compressed_header(self):
-        ctx = _MockCtx()
+        ctx = _ZLIB_CTX
         data = b"hello world"
         _request_id, msg = _compress(2013, data, ctx)
         # Header: 4 bytes msglen, 4 bytes requestId, 4 bytes responseTo, 4 bytes opCode
@@ -272,7 +263,7 @@ class TestOpMsgNoHeader(unittest.TestCase):
 
     def test_command_with_docs(self):
         cmd = {"insert": "col"}
-        docs = [{"_id": 1, "x": 2}, {"_id": 3, "x": 4}]
+        docs: list = [{"_id": 1, "x": 2}, {"_id": 3, "x": 4}]
         data, total_size, max_doc_size = _op_msg_no_header(0, cmd, "documents", docs, _OPTS)
         self.assertIsInstance(data, bytes)
         self.assertGreater(max_doc_size, 0)
@@ -331,7 +322,7 @@ class TestOpMsg(unittest.TestCase):
         self.assertNotIn("$readPreference", cmd)
 
     def test_with_compression_context(self):
-        ctx = _MockCtx()
+        ctx = _ZLIB_CTX
         cmd: dict = {"ping": 1}
         rid, msg, total_size, max_doc_size = _op_msg(0, cmd, "testdb", None, _OPTS, ctx)
         self.assertIsInstance(rid, int)
@@ -378,7 +369,7 @@ class TestQueryUncompressed(unittest.TestCase):
 
 class TestQueryCompressed(unittest.TestCase):
     def test_returns_compressed(self):
-        ctx = _MockCtx()
+        ctx = _ZLIB_CTX
         rid, msg, max_bson_size = _query_compressed(0, "db.col", 0, 0, {}, None, _OPTS, ctx)
         self.assertIsInstance(rid, int)
         op_code = struct.unpack("<i", msg[12:16])[0]
@@ -392,7 +383,7 @@ class TestQuery(unittest.TestCase):
         self.assertEqual(op_code, 2004)
 
     def test_compressed_path(self):
-        ctx = _MockCtx()
+        ctx = _ZLIB_CTX
         rid, msg, max_bson_size = _query(0, "db.col", 0, 0, {}, None, _OPTS, ctx)
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2012)
@@ -423,7 +414,7 @@ class TestGetMoreUncompressed(unittest.TestCase):
 
 class TestGetMoreCompressed(unittest.TestCase):
     def test_returns_compressed(self):
-        ctx = _MockCtx()
+        ctx = _ZLIB_CTX
         rid, msg = _get_more_compressed("db.col", 0, 0, ctx)
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2012)
@@ -436,7 +427,7 @@ class TestGetMore(unittest.TestCase):
         self.assertEqual(op_code, 2005)
 
     def test_compressed_path(self):
-        ctx = _MockCtx()
+        ctx = _ZLIB_CTX
         rid, msg = _get_more("db.col", 0, 0, ctx)
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2012)
@@ -555,30 +546,30 @@ class TestGenFindCommand(unittest.TestCase):
 class TestGenGetMoreCommand(unittest.TestCase):
     def test_basic(self):
         conn = _MockConn()
-        cmd = _gen_get_more_command(12345, "col", None, None, None, conn)
+        cmd = _gen_get_more_command(12345, "col", None, None, None, conn)  # type: ignore[arg-type]
         self.assertEqual(cmd["getMore"], 12345)
         self.assertEqual(cmd["collection"], "col")
 
     def test_with_batch_size(self):
         conn = _MockConn()
-        cmd = _gen_get_more_command(1, "col", 100, None, None, conn)
+        cmd = _gen_get_more_command(1, "col", 100, None, None, conn)  # type: ignore[arg-type]
         self.assertEqual(cmd["batchSize"], 100)
 
     def test_with_max_await_time_ms(self):
         conn = _MockConn()
-        cmd = _gen_get_more_command(1, "col", None, 500, None, conn)
+        cmd = _gen_get_more_command(1, "col", None, 500, None, conn)  # type: ignore[arg-type]
         self.assertEqual(cmd["maxTimeMS"], 500)
 
     def test_comment_added_on_high_wire_version(self):
         conn = _MockConn()
         conn.max_wire_version = 9
-        cmd = _gen_get_more_command(1, "col", None, None, "my comment", conn)
+        cmd = _gen_get_more_command(1, "col", None, None, "my comment", conn)  # type: ignore[arg-type]
         self.assertEqual(cmd["comment"], "my comment")
 
     def test_comment_not_added_on_low_wire_version(self):
         conn = _MockConn()
         conn.max_wire_version = 8
-        cmd = _gen_get_more_command(1, "col", None, None, "my comment", conn)
+        cmd = _gen_get_more_command(1, "col", None, None, "my comment", conn)  # type: ignore[arg-type]
         self.assertNotIn("comment", cmd)
 
 
