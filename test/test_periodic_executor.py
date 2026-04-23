@@ -59,8 +59,8 @@ def _make_async(interval=30.0, min_interval=0.01, target=None, name="test"):
     )
 
 
-def _run(coro):
-    return asyncio.run(coro)
+def _run(coroutine):
+    return asyncio.run(coroutine)
 
 
 # ---------------------------------------------------------------------------
