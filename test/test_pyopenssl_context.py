@@ -153,11 +153,10 @@ class TestSSLContextConstruction(unittest.TestCase):
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_options_setter_and_getter(self):
         ctx = self._make()
-        from pymongo.pyopenssl_context import OP_NO_SSLv2
+        from pymongo.pyopenssl_context import OP_NO_SSLv3
 
-        ctx.options = OP_NO_SSLv2
-        # options getter returns the current bitmask.
-        self.assertGreaterEqual(ctx.options, 0)
+        ctx.options = OP_NO_SSLv3
+        self.assertTrue(ctx.options & OP_NO_SSLv3)
 
 
 # ---------------------------------------------------------------------------
@@ -208,8 +207,9 @@ class TestLoadDefaultCerts(unittest.TestCase):
                 with patch("OpenSSL.SSL.Context.set_default_verify_paths"):
                     ctx = SSLContext(PROTOCOL_SSLv23)
                     ctx.load_default_certs()
-        # Should have tried to load "CA" and "ROOT" stores.
-        self.assertEqual(mock_wincerts.call_count, 2)
+        calls = [call.args[0] for call in mock_wincerts.call_args_list]
+        self.assertIn("CA", calls)
+        self.assertIn("ROOT", calls)
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_win32_falls_back_to_certifi_on_exception(self):
