@@ -24,10 +24,11 @@ from __future__ import annotations
 import asyncio
 import struct
 import sys
-import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path[0:0] = [""]
+
+from test import unittest
 
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
@@ -46,12 +47,10 @@ from pymongo.network_layer import (
 
 
 def _run(coro):
-    """Run a coroutine synchronously for testing."""
     return asyncio.run(coro)
 
 
 async def _make_protocol(timeout=None):
-    """Create a PyMongoProtocol with a stubbed transport."""
     proto = PyMongoProtocol(timeout=timeout)
     mock_transport = MagicMock()
     mock_transport.is_closing.return_value = False
@@ -60,7 +59,6 @@ async def _make_protocol(timeout=None):
 
 
 def _make_header(length, request_id, response_to, op_code):
-    """Pack a 16-byte MongoDB wire-protocol header."""
     return struct.pack("<iiii", length, request_id, response_to, op_code)
 
 
