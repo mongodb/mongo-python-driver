@@ -141,7 +141,7 @@ class TestNetworkingInterface(unittest.TestCase):
         self.assertEqual(self.iface.fileno(), 42)
 
     def test_recv_into_delegates(self):
-        buf = bytearray(10)
+        buf = memoryview(bytearray(10))
         self.mock_sock.recv_into.return_value = 7
         result = self.iface.recv_into(buf)
         self.assertEqual(result, 7)
