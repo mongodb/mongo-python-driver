@@ -83,8 +83,10 @@ class TestValidateCompressors(unittest.TestCase):
         self.assertEqual(result, ["zlib"])
 
     def test_string_input_comma_separated(self):
-        result = validate_compressors(None, "zlib,snappy")
+        with patch("pymongo.compression_support._have_snappy", return_value=True):
+            result = validate_compressors(None, "zlib,snappy")
         self.assertIn("zlib", result)
+        self.assertIn("snappy", result)
 
     def test_iterable_input(self):
         result = validate_compressors(None, ["zlib"])
@@ -132,9 +134,10 @@ class TestValidateCompressors(unittest.TestCase):
         result = validate_compressors(None, ["zlib"])
         self.assertEqual(result, ["zlib"])
 
-    def test_multiple_valid_compressors(self):
-        result = validate_compressors(None, ["zlib"])
-        self.assertIn("zlib", result)
+    def test_multiple_valid_compressors_preserves_order(self):
+        with patch("pymongo.compression_support._have_snappy", return_value=True):
+            result = validate_compressors(None, ["zlib", "snappy"])
+        self.assertEqual(result, ["zlib", "snappy"])
 
     def test_empty_list_returns_empty(self):
         result = validate_compressors(None, [])
