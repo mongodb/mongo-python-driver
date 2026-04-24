@@ -145,7 +145,7 @@ class TestAsyncPeriodicExecutorTarget(AsyncPeriodicExecutorTestBase):
 
                 def target():
                     ran.set()
-                    raise RuntimeError("boom")
+                    raise RuntimeError("error")
 
                 self.executor = _make_executor(target=target)
                 self.executor.open()
@@ -161,7 +161,7 @@ class TestAsyncPeriodicExecutorTarget(AsyncPeriodicExecutorTestBase):
 
             async def target():
                 ran.set()
-                raise RuntimeError("async boom")
+                raise RuntimeError("error")
 
             self.executor = _make_executor(target=target)
             self.executor.open()
