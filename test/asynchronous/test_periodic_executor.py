@@ -26,7 +26,7 @@ sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncUnitTest, unittest
 
-import pymongo.periodic_executor as pe_module
+from pymongo import periodic_executor
 from pymongo.periodic_executor import (
     AsyncPeriodicExecutor,
     _register_executor,
@@ -251,21 +251,21 @@ class TestRegisterExecutor(AsyncUnitTest):
     if _IS_SYNC:
 
         def setUp(self):
-            self._orig = set(pe_module._EXECUTORS)
+            self._orig = set(periodic_executor._EXECUTORS)
 
         def tearDown(self):
-            pe_module._EXECUTORS.clear()
-            pe_module._EXECUTORS.update(self._orig)
+            periodic_executor._EXECUTORS.clear()
+            periodic_executor._EXECUTORS.update(self._orig)
 
         def test_register_adds_weakref(self):
             ex = _make_executor()
-            before = len(pe_module._EXECUTORS)
+            before = len(periodic_executor._EXECUTORS)
             _register_executor(ex)
-            self.assertEqual(len(pe_module._EXECUTORS), before + 1)
-            ref = next(r for r in pe_module._EXECUTORS if r() is ex)
+            self.assertEqual(len(periodic_executor._EXECUTORS), before + 1)
+            ref = next(r for r in periodic_executor._EXECUTORS if r() is ex)
             del ex
             gc.collect()
-            self.assertNotIn(ref, pe_module._EXECUTORS)
+            self.assertNotIn(ref, periodic_executor._EXECUTORS)
 
         def test_shutdown_executors_stops_running_executors(self):
             ran = threading.Event()
@@ -282,7 +282,7 @@ class TestRegisterExecutor(AsyncUnitTest):
             self.assertTrue(ex._stopped)
 
         def test_shutdown_executors_safe_when_empty(self):
-            pe_module._EXECUTORS.clear()
+            periodic_executor._EXECUTORS.clear()
             _shutdown_executors()
 
 
