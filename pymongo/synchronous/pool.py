@@ -75,7 +75,11 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
 )
-from pymongo.network_layer import NetworkingInterface, receive_message, sendall
+from pymongo.network_layer_shared import (
+    NetworkingInterface,
+    receive_message,
+    sendall,
+)
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
     SSLErrors,

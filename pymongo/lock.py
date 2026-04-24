@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Internal helpers for lock and condition coordination primitives."""
+"""Internal helpers for lock and condition coordination primitives, shared by async and sync.
+
+This module is intentionally kept in the top-level pymongo/ package because it
+provides both threading.Lock (for sync code) and the asyncio Lock/Condition
+backports (for async code). They co-exist here to give callers a single import
+point. This file is not processed by synchro."""
 
 from __future__ import annotations
 

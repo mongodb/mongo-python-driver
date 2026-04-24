@@ -78,7 +78,11 @@ from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
 )
-from pymongo.network_layer import AsyncNetworkingInterface, async_receive_message, async_sendall
+from pymongo.network_layer_shared import (
+    AsyncNetworkingInterface,
+    async_receive_message,
+    async_sendall,
+)
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
     SSLErrors,

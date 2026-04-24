@@ -37,7 +37,11 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     _CertificateError,
 )
 from pymongo.helpers_shared import _get_timeout_details, format_timeout_details
-from pymongo.network_layer import AsyncNetworkingInterface, NetworkingInterface, PyMongoProtocol
+from pymongo.network_layer_shared import (
+    AsyncNetworkingInterface,
+    NetworkingInterface,
+    PyMongoProtocol,
+)
 from pymongo.pool_options import PoolOptions
 from pymongo.ssl_support import PYSSLError, SSLError, _has_sni
 
