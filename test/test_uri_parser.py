@@ -465,7 +465,6 @@ class TestURI(unittest.TestCase):
             "tlsInsecure": True,
             "tlsDisableOCSPEndpointCheck": True,
         }
-        print(parse_uri(uri)["options"])
         self.assertEqual(res, parse_uri(uri)["options"])
 
     def test_normalize_options(self):
