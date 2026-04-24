@@ -28,4 +28,4 @@ This file provides instructions for AI coding assistants (Claude Code, GitHub Co
 
 - Unit tests live in `test/`; async equivalents live in `test/asynchronous/`.
 - Run `python tools/synchro.py` after editing async test files to keep sync counterparts up to date.
-- Do not add tests to `test/synchronous/` directly.
+- Do not directly edit `test/` files that have counterparts in `test/asynchronous/` unless the change includes `_IS_SYNC`.
