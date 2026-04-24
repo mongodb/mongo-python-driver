@@ -76,7 +76,7 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.helpers_shared import _get_timeout_details
-from pymongo.network_layer import sendall
+from pymongo.network_layer_shared import sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
@@ -210,7 +210,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                     if _IS_SYNC:
                         data = conn.recv(kms_context.bytes_needed)
                     else:
-                        from pymongo.network_layer import (  # type: ignore[attr-defined]
+                        from pymongo.network_layer_shared import (  # type: ignore[attr-defined]
                             receive_data_socket,
                         )
 

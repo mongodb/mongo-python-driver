@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Internal network layer helper methods."""
+"""Internal network layer helper methods, shared by both async and sync code.
+
+This module is intentionally kept in the top-level pymongo/ package (rather than
+pymongo/asynchronous/ or pymongo/synchronous/) because it contains both the async
+networking classes (AsyncNetworkingInterface, PyMongoProtocol) and the sync
+NetworkingInterface. The two implementations share enough internal logic that
+splitting them would require duplication or a complex import dependency chain.
+This file is not processed by synchro."""
 from __future__ import annotations
 
 import asyncio

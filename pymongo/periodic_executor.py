@@ -12,7 +12,13 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Run a target function on a background thread."""
+"""Periodic executor for background tasks, shared by both async and sync code.
+
+This module is intentionally kept in the top-level pymongo/ package because it
+defines both AsyncPeriodicExecutor (asyncio task-based) and PeriodicExecutor
+(threading-based). The two classes are fundamentally different at runtime but
+share an interface, and synchro cannot auto-generate one from the other.
+This file is not processed by synchro."""
 
 from __future__ import annotations
 

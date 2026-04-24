@@ -38,7 +38,7 @@ from pymongo.errors import (
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
-from pymongo.network_layer import (
+from pymongo.network_layer_shared import (
     receive_message,
     sendall,
 )
