@@ -47,7 +47,7 @@ def _make_executor(interval=30.0, min_interval=0.01, target=None, name="test"):
     )
 
 
-class _AsyncPeriodicExecutorTestBase(AsyncUnitTest):
+class AsyncPeriodicExecutorTestBase(AsyncUnitTest):
     async def asyncSetUp(self):
         self.ex = _make_executor()
 
@@ -64,7 +64,7 @@ class TestAsyncPeriodicExecutorRepr(AsyncUnitTest):
         self.assertIn("exec", r)
 
 
-class TestAsyncPeriodicExecutorBasic(_AsyncPeriodicExecutorTestBase):
+class TestAsyncPeriodicExecutorBasic(AsyncPeriodicExecutorTestBase):
     async def test_wake_sets_event(self):
         self.assertFalse(self.ex._event)
         self.ex.wake()
@@ -80,7 +80,7 @@ class TestAsyncPeriodicExecutorBasic(_AsyncPeriodicExecutorTestBase):
         self.assertTrue(self.ex._skip_sleep)
 
 
-class TestAsyncPeriodicExecutorLifecycle(_AsyncPeriodicExecutorTestBase):
+class TestAsyncPeriodicExecutorLifecycle(AsyncPeriodicExecutorTestBase):
     async def test_open_starts_worker(self):
         self.ex.open()
         if _IS_SYNC:
@@ -111,7 +111,7 @@ class TestAsyncPeriodicExecutorLifecycle(_AsyncPeriodicExecutorTestBase):
             self.assertEqual(worker_id, id(self.ex._task))
 
 
-class TestAsyncPeriodicExecutorTarget(_AsyncPeriodicExecutorTestBase):
+class TestAsyncPeriodicExecutorTarget(AsyncPeriodicExecutorTestBase):
     async def test_target_returning_false_stops_executor(self):
         if _IS_SYNC:
             ran = threading.Event()
