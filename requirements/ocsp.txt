@@ -8,6 +8,6 @@
 # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
 certifi>=2023.7.22;os.name=='nt' or sys_platform=='darwin'
 pyopenssl>=23.2.0
-requests>=2.23.0,<3.0
+requests>=2.32.5,<3.0
 cryptography>=42.0.0
 service_identity>=23.1.0
