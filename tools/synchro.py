@@ -279,6 +279,7 @@ converted_tests = [
     "unified_format.py",
     "utils_selection_tests.py",
     "utils.py",
+    "test_periodic_executor.py",
 ]
 
 
