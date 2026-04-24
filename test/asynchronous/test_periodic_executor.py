@@ -59,9 +59,9 @@ class AsyncPeriodicExecutorTestBase(AsyncUnitTest):
 class TestAsyncPeriodicExecutorRepr(AsyncUnitTest):
     async def test_repr_contains_class_and_name(self):
         executor = _make_executor(name="exec")
-        r = repr(executor)
-        self.assertIn("AsyncPeriodicExecutor", r)
-        self.assertIn("exec", r)
+        executor_repr = repr(executor)
+        self.assertIn("AsyncPeriodicExecutor", executor_repr)
+        self.assertIn("exec", executor_repr)
 
 
 class TestAsyncPeriodicExecutorBasic(AsyncPeriodicExecutorTestBase):

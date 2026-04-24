@@ -57,9 +57,9 @@ class PeriodicExecutorTestBase(UnitTest):
 class TestPeriodicExecutorRepr(UnitTest):
     def test_repr_contains_class_and_name(self):
         executor = _make_executor(name="exec")
-        r = repr(executor)
-        self.assertIn("PeriodicExecutor", r)
-        self.assertIn("exec", r)
+        executor_repr = repr(executor)
+        self.assertIn("PeriodicExecutor", executor_repr)
+        self.assertIn("exec", executor_repr)
 
 
 class TestPeriodicExecutorBasic(PeriodicExecutorTestBase):
