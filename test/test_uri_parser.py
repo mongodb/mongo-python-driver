@@ -31,6 +31,9 @@ from pymongo import ReadPreference
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.synchronous.uri_parser import parse_uri
 from pymongo.uri_parser_shared import (
+    _unquoted_percent,
+    parse_host,
+    parse_ipv6_literal_host,
     parse_userinfo,
     split_hosts,
     split_options,
@@ -462,7 +465,6 @@ class TestURI(unittest.TestCase):
             "tlsInsecure": True,
             "tlsDisableOCSPEndpointCheck": True,
         }
-        print(parse_uri(uri)["options"])
         self.assertEqual(res, parse_uri(uri)["options"])
 
     def test_normalize_options(self):
@@ -558,6 +560,175 @@ class TestURI(unittest.TestCase):
     def test_parse_uri_options_type(self):
         opts = parse_uri("mongodb://localhost:27017")["options"]
         self.assertIsInstance(opts, dict)
+
+    def test_unquoted_percent(self):
+        # Empty string and strings without percent signs are always safe.
+        self.assertFalse(_unquoted_percent(""))
+        self.assertFalse(_unquoted_percent("no_percent_here"))
+        # Valid percent-encoded sequences are not flagged.
+        self.assertFalse(_unquoted_percent("%25"))  # %25 decodes to literal "%"
+        self.assertFalse(_unquoted_percent("%40"))  # %40 decodes to "@"
+        self.assertFalse(_unquoted_percent("user%40domain.com"))
+        self.assertFalse(_unquoted_percent("%2B"))  # %2B decodes to "+"
+        self.assertFalse(_unquoted_percent("%E2%85%A8"))  # multi-byte sequence
+        self.assertFalse(_unquoted_percent("%2525"))  # double-encoded: %25 -> %
+        # Unescaped percent signs (invalid percent encodings) are flagged.
+        self.assertTrue(_unquoted_percent("%foo"))  # 'o' is not a hex digit
+        self.assertTrue(_unquoted_percent("50%off"))  # 'o' is not a hex digit
+        self.assertTrue(_unquoted_percent("100%"))  # trailing bare %
+
+    def test_parse_ipv6_literal_host_direct(self):
+        # IPv6 without explicit port uses default_port.
+        self.assertEqual(("::1", 27017), parse_ipv6_literal_host("[::1]", 27017))
+        self.assertEqual(("::1", None), parse_ipv6_literal_host("[::1]", None))
+        # IPv6 with explicit port returns port as a string (int conversion
+        # happens later in parse_host).
+        host, port = parse_ipv6_literal_host("[::1]:27018", 27017)
+        self.assertEqual("::1", host)
+        self.assertEqual("27018", port)
+        # Full-form IPv6 address without port.
+        full_ipv6 = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+        host, port = parse_ipv6_literal_host(f"[{full_ipv6}]", 27017)
+        self.assertEqual(full_ipv6, host)
+        self.assertEqual(27017, port)
+        # Missing closing bracket must raise.
+        self.assertRaises(ValueError, parse_ipv6_literal_host, "[::1", 27017)
+
+    def test_parse_host_case_normalization(self):
+        # Hostnames are normalized to lowercase (RFC 4343).
+        self.assertEqual(("localhost", 27017), parse_host("LOCALHOST:27017"))
+        self.assertEqual(("example.com", 27017), parse_host("Example.COM"))
+        self.assertEqual(("example.com", 27017), parse_host("EXAMPLE.COM:27017"))
+        # IP addresses are unaffected but still lowercased (no-op for digits).
+        self.assertEqual(("192.168.1.1", 27017), parse_host("192.168.1.1:27017"))
+        # IPv6 literal addresses are lowercased.
+        self.assertEqual(("::1", 27017), parse_host("[::1]:27017"))
+
+    def test_parse_host_port_boundaries(self):
+        # Ports 1-65535 are valid.
+        self.assertEqual(("localhost", 1), parse_host("localhost:1"))
+        self.assertEqual(("localhost", 65535), parse_host("localhost:65535"))
+        # Port 0 is invalid.
+        self.assertRaises(ValueError, parse_host, "localhost:0")
+        # Port 65536 is invalid.
+        self.assertRaises(ValueError, parse_host, "localhost:65536")
+
+    def test_tls_option_conflicts(self):
+        # tlsInsecure cannot coexist with any of the options it implicitly sets.
+        self.assertRaises(
+            InvalidURI, split_options, "tlsInsecure=true&tlsAllowInvalidCertificates=true"
+        )
+        # The conflict is based on presence, not value.
+        self.assertRaises(
+            InvalidURI, split_options, "tlsInsecure=true&tlsAllowInvalidHostnames=false"
+        )
+        self.assertRaises(
+            InvalidURI, split_options, "tlsInsecure=true&tlsDisableOCSPEndpointCheck=true"
+        )
+        # tlsAllowInvalidCertificates and tlsDisableOCSPEndpointCheck are mutually exclusive.
+        self.assertRaises(
+            InvalidURI,
+            split_options,
+            "tlsAllowInvalidCertificates=true&tlsDisableOCSPEndpointCheck=true",
+        )
+        # ssl and tls must agree when both are present.
+        self.assertRaises(InvalidURI, split_options, "ssl=true&tls=false")
+        self.assertRaises(InvalidURI, split_options, "ssl=false&tls=true")
+        # Matching ssl/tls values are allowed.
+        self.assertIsNotNone(split_options("ssl=true&tls=true"))
+        self.assertIsNotNone(split_options("ssl=false&tls=false"))
+
+    def test_split_options_mixed_delimiters(self):
+        # Mixing '&' and ';' as option separators is not permitted.
+        self.assertRaises(InvalidURI, split_options, "ssl=true&tls=true;appname=foo")
+        self.assertRaises(InvalidURI, split_options, "appname=foo;ssl=true&tls=true")
+
+    def test_split_options_duplicate_warning(self):
+        # Specifying the same option key more than once emits a warning.
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            split_options("appname=foo&appname=bar")
+        self.assertEqual(1, len(w))
+        self.assertIn("Duplicate URI option", str(w[0].message))
+
+    def test_split_options_empty_authsource(self):
+        # An empty authSource value must be rejected.
+        self.assertRaises(InvalidURI, split_options, "authSource=")
+
+    def test_check_options_conflicts(self):
+        # directConnection=true is incompatible with multiple hosts.
+        self.assertRaises(
+            ConfigurationError,
+            parse_uri,
+            "mongodb://host1,host2/?directConnection=true",
+        )
+        # loadBalanced=true is incompatible with multiple hosts.
+        self.assertRaises(
+            ConfigurationError,
+            parse_uri,
+            "mongodb://host1,host2/?loadBalanced=true",
+        )
+        # directConnection=true and loadBalanced=true cannot coexist.
+        self.assertRaises(
+            ConfigurationError,
+            parse_uri,
+            "mongodb://localhost/?directConnection=true&loadBalanced=true",
+        )
+        # loadBalanced=true and replicaSet cannot coexist.
+        self.assertRaises(
+            ConfigurationError,
+            parse_uri,
+            "mongodb://localhost/?loadBalanced=true&replicaSet=rs0",
+        )
+
+    def test_validate_uri_edge_cases(self):
+        # URI with nothing after the scheme is invalid.
+        self.assertRaises(InvalidURI, parse_uri, "mongodb://")
+        # srvServiceName is only valid with mongodb+srv://.
+        self.assertRaises(
+            ConfigurationError,
+            parse_uri,
+            "mongodb://localhost/?srvServiceName=myService",
+        )
+        # srvMaxHosts is only valid with mongodb+srv://.
+        self.assertRaises(
+            ConfigurationError,
+            parse_uri,
+            "mongodb://localhost/?srvMaxHosts=1",
+        )
+        # Dollar sign is a prohibited character in database names.
+        self.assertRaises(InvalidURI, parse_uri, "mongodb://localhost/%24db")
+        # Space is a prohibited character in database names.
+        self.assertRaises(InvalidURI, parse_uri, "mongodb://localhost/my%20db")
+
+    def test_validate_uri_srv_structure(self):
+        # SRV URIs require exactly one hostname with no port number.
+        with patch("pymongo.uri_parser_shared._have_dnspython", return_value=True):
+            # Multiple hosts in an SRV URI are not allowed.
+            self.assertRaises(
+                InvalidURI,
+                parse_uri,
+                "mongodb+srv://host1.example.com,host2.example.com",
+            )
+            # A port number in a SRV URI is not allowed.
+            self.assertRaises(
+                InvalidURI,
+                parse_uri,
+                "mongodb+srv://host1.example.com:27017",
+            )
+            # directConnection=true is incompatible with SRV URIs.
+            self.assertRaises(
+                ConfigurationError,
+                parse_uri,
+                "mongodb+srv://host1.example.com/?directConnection=true",
+            )
+        # Without dnspython installed, SRV URIs raise ConfigurationError.
+        with patch("pymongo.uri_parser_shared._have_dnspython", return_value=False):
+            self.assertRaises(
+                ConfigurationError,
+                parse_uri,
+                "mongodb+srv://host1.example.com",
+            )
 
 
 if __name__ == "__main__":
