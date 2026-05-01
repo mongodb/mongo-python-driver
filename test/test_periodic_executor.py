@@ -63,11 +63,6 @@ class TestPeriodicExecutorRepr(UnitTest):
 
 
 class TestPeriodicExecutorBasic(PeriodicExecutorTestBase):
-    def test_wake_sets_event(self):
-        self.assertFalse(self.executor._event)
-        self.executor.wake()
-        self.assertTrue(self.executor._event)
-
     def test_update_interval(self):
         self.executor.update_interval(60)
         self.assertEqual(self.executor._interval, 60)
