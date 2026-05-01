@@ -505,13 +505,18 @@ python3 ./.evergreen/scripts/resync-all-specs.py
 
 Follow the [Python Driver Release Process Wiki](https://wiki.corp.mongodb.com/display/DRIVERS/Python+Driver+Release+Process).
 
-## Asyncio considerations
+## Project Structure and Asyncio Considerations
 
-PyMongo adds asyncio capability by modifying the source files in `*/asynchronous` to `*/synchronous` using
-[unasync](https://github.com/python-trio/unasync/) and some custom transforms.
+PyMongo's source code is located in the `pymongo` directory and is further divided into the `pymongo/asynchronous` and `pymongo/synchronous` subdirectories.
+All files in the `synchronous` subdirectory are generated from the `asynchronous` subdirectory using the `synchro` pre-commit hook, which uses [unasync](https://github.com/python-trio/unasync/) and some custom transforms.
 
-Where possible, edit the code in `*/asynchronous/*.py` and not the synchronous files.
-You can run `pre-commit run --all-files synchro` before running tests if you are testing synchronous code.
+As a result, **all modifications** must be made in the top-level `pymongo` directory or the `pymongo/asynchronous` directory.
+Any changes made to files in the `pymongo/synchronous` directory will be overwritten by the `synchro` hook when it is run, which happens automatically on commit.
+
+Some top-level files (e.g. `pymongo/collection.py`) are re-export files for existing import compatibility and should not be modified directly.
+The other top-level files (e.g. `pymongo/network_layer.py`, `pymongo/pool_shared.py`) contain either shared code used in both the asynchronous and synchronous APIs, or code that is very different between the two APIs and therefore cannot be generated from the async version using `synchro`.
+
+You can run `pre-commit run --all-files synchro` before running tests to generate the latest version of the synchronous code.
 
 To prevent the `synchro` hook from accidentally overwriting code, it first checks to see whether a sync version
 of a file is changing and not its async counterpart, and will fail.
