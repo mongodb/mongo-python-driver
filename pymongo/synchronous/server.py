@@ -27,12 +27,15 @@ from typing import (
 )
 
 from bson import _decode_all_selective
+from pymongo.command_helpers import (
+    _log_command_failed,
+    _log_command_started,
+    _log_command_succeeded,
+)
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers_shared import _check_command_response
 from pymongo.logger import (
-    _COMMAND_LOGGER,
     _SDAM_LOGGER,
-    _CommandStatusMessage,
     _debug_log,
     _SDAMStatusMessage,
 )
@@ -170,22 +173,7 @@ class Server:
             message = operation.get_message(read_preference, conn, True)
             request_id, data, max_doc_size = self._split_message(message)
 
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=cmd,
-                commandName=next(iter(cmd)),
-                databaseName=dbn,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-            )
+        _log_command_started(client, conn, cmd, dbn, request_id, request_id)
 
         if publish:
             if "$db" not in cmd:
@@ -224,24 +212,17 @@ class Server:
                 failure: _DocumentOut = exc.details  # type: ignore[assignment]
             else:
                 failure = _convert_exception(exc)
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(cmd)),
-                    databaseName=dbn,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=conn.id,
-                    serverConnectionId=conn.server_connection_id,
-                    serverHost=conn.address[0],
-                    serverPort=conn.address[1],
-                    serviceId=conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
+            _log_command_failed(
+                client,
+                conn,
+                cmd,
+                dbn,
+                request_id,
+                request_id,
+                failure,
+                duration,
+                isinstance(exc, OperationFailure),
+            )
             if publish:
                 assert listeners is not None
                 listeners.publish_command_failure(
@@ -258,23 +239,7 @@ class Server:
         duration = datetime.now() - start
         # Must publish in find / getMore / explain command response format.
         res = docs[0]
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.SUCCEEDED,
-                clientId=client._topology_settings._topology_id,
-                durationMS=duration,
-                reply=res,
-                commandName=next(iter(cmd)),
-                databaseName=dbn,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-            )
+        _log_command_succeeded(client, conn, cmd, dbn, request_id, request_id, res, duration)
         if publish:
             assert listeners is not None
             listeners.publish_command_success(
