@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import copy
 import datetime
-import logging
 from collections.abc import MutableMapping
 from itertools import islice
 from typing import (
@@ -45,6 +44,11 @@ from pymongo.bulk_shared import (
     _raise_bulk_write_error,
     _Run,
 )
+from pymongo.command_helpers import (
+    _log_command_failed,
+    _log_command_started,
+    _log_command_succeeded,
+)
 from pymongo.common import (
     validate_is_document_type,
     validate_ok_for_replace,
@@ -57,7 +61,6 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import (
     _DELETE,
     _INSERT,
@@ -252,44 +255,15 @@ class _AsyncBulk:
     ) -> dict[str, Any]:
         """A proxy for SocketInfo.write_command that handles event publishing."""
         cmd[bwc.field] = docs
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=cmd,
-                commandName=next(iter(cmd)),
-                databaseName=bwc.db_name,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=bwc.conn.id,
-                serverConnectionId=bwc.conn.server_connection_id,
-                serverHost=bwc.conn.address[0],
-                serverPort=bwc.conn.address[1],
-                serviceId=bwc.conn.service_id,
-            )
+        _log_command_started(client, bwc.conn, cmd, bwc.db_name, request_id, request_id)
         if bwc.publish:
             bwc._start(cmd, request_id, docs)
         try:
             reply = await bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc]
             duration = datetime.datetime.now() - bwc.start_time
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.SUCCEEDED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    reply=reply,
-                    commandName=next(iter(cmd)),
-                    databaseName=bwc.db_name,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=bwc.conn.id,
-                    serverConnectionId=bwc.conn.server_connection_id,
-                    serverHost=bwc.conn.address[0],
-                    serverPort=bwc.conn.address[1],
-                    serviceId=bwc.conn.service_id,
-                )
+            _log_command_succeeded(
+                client, bwc.conn, cmd, bwc.db_name, request_id, request_id, reply, duration
+            )
             if bwc.publish:
                 bwc._succeed(request_id, reply, duration)  # type: ignore[arg-type]
             await client._process_response(reply, bwc.session)  # type: ignore[arg-type]
@@ -299,24 +273,17 @@ class _AsyncBulk:
                 failure: _DocumentOut = exc.details  # type: ignore[assignment]
             else:
                 failure = _convert_exception(exc)
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(cmd)),
-                    databaseName=bwc.db_name,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=bwc.conn.id,
-                    serverConnectionId=bwc.conn.server_connection_id,
-                    serverHost=bwc.conn.address[0],
-                    serverPort=bwc.conn.address[1],
-                    serviceId=bwc.conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
+            _log_command_failed(
+                client,
+                bwc.conn,
+                cmd,
+                bwc.db_name,
+                request_id,
+                request_id,
+                failure,
+                duration,
+                isinstance(exc, OperationFailure),
+            )
 
             if bwc.publish:
                 bwc._fail(request_id, failure, duration)
@@ -337,22 +304,7 @@ class _AsyncBulk:
         client: AsyncMongoClient[Any],
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for AsyncConnection.unack_write that handles event publishing."""
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=cmd,
-                commandName=next(iter(cmd)),
-                databaseName=bwc.db_name,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=bwc.conn.id,
-                serverConnectionId=bwc.conn.server_connection_id,
-                serverHost=bwc.conn.address[0],
-                serverPort=bwc.conn.address[1],
-                serviceId=bwc.conn.service_id,
-            )
+        _log_command_started(client, bwc.conn, cmd, bwc.db_name, request_id, request_id)
         if bwc.publish:
             cmd = bwc._start(cmd, request_id, docs)
         try:
@@ -363,23 +315,9 @@ class _AsyncBulk:
             else:
                 # Comply with APM spec.
                 reply = {"ok": 1}
-                if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _COMMAND_LOGGER,
-                        message=_CommandStatusMessage.SUCCEEDED,
-                        clientId=client._topology_settings._topology_id,
-                        durationMS=duration,
-                        reply=reply,
-                        commandName=next(iter(cmd)),
-                        databaseName=bwc.db_name,
-                        requestId=request_id,
-                        operationId=request_id,
-                        driverConnectionId=bwc.conn.id,
-                        serverConnectionId=bwc.conn.server_connection_id,
-                        serverHost=bwc.conn.address[0],
-                        serverPort=bwc.conn.address[1],
-                        serviceId=bwc.conn.service_id,
-                    )
+                _log_command_succeeded(
+                    client, bwc.conn, cmd, bwc.db_name, request_id, request_id, reply, duration
+                )
             if bwc.publish:
                 bwc._succeed(request_id, reply, duration)
         except Exception as exc:
@@ -390,24 +328,17 @@ class _AsyncBulk:
                 failure = exc.details  # type: ignore[assignment]
             else:
                 failure = _convert_exception(exc)
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(cmd)),
-                    databaseName=bwc.db_name,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=bwc.conn.id,
-                    serverConnectionId=bwc.conn.server_connection_id,
-                    serverHost=bwc.conn.address[0],
-                    serverPort=bwc.conn.address[1],
-                    serviceId=bwc.conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
+            _log_command_failed(
+                client,
+                bwc.conn,
+                cmd,
+                bwc.db_name,
+                request_id,
+                request_id,
+                failure,
+                duration,
+                isinstance(exc, OperationFailure),
+            )
             if bwc.publish:
                 assert bwc.start_time is not None
                 bwc._fail(request_id, failure, duration)

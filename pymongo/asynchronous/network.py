@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import datetime
-import logging
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -30,12 +29,16 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo import _csot, helpers_shared, message
+from pymongo.command_helpers import (
+    _log_command_failed,
+    _log_command_started,
+    _log_command_succeeded,
+)
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
 )
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import (
@@ -160,22 +163,7 @@ async def command(
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
     if client is not None:
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=spec,
-                commandName=next(iter(spec)),
-                databaseName=dbname,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-            )
+        _log_command_started(client, conn, spec, dbname, request_id, request_id)
     if publish:
         assert listeners is not None
         assert address is not None
@@ -222,24 +210,17 @@ async def command(
         else:
             failure = message._convert_exception(exc)
         if client is not None:
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(spec)),
-                    databaseName=dbname,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=conn.id,
-                    serverConnectionId=conn.server_connection_id,
-                    serverHost=conn.address[0],
-                    serverPort=conn.address[1],
-                    serviceId=conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
+            _log_command_failed(
+                client,
+                conn,
+                spec,
+                dbname,
+                request_id,
+                request_id,
+                failure,
+                duration,
+                isinstance(exc, OperationFailure),
+            )
         if publish:
             assert listeners is not None
             assert address is not None
@@ -256,24 +237,17 @@ async def command(
         raise
     duration = datetime.datetime.now() - start
     if client is not None:
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.SUCCEEDED,
-                clientId=client._topology_settings._topology_id,
-                durationMS=duration,
-                reply=response_doc,
-                commandName=next(iter(spec)),
-                databaseName=dbname,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-                speculative_authenticate="speculativeAuthenticate" in orig,
-            )
+        _log_command_succeeded(
+            client,
+            conn,
+            spec,
+            dbname,
+            request_id,
+            request_id,
+            response_doc,
+            duration,
+            "speculativeAuthenticate" in orig,
+        )
     if publish:
         assert listeners is not None
         assert address is not None
