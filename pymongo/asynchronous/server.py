@@ -37,7 +37,7 @@ from pymongo.logger import (
     _debug_log,
     _SDAMStatusMessage,
 )
-from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
+from pymongo.message import _convert_exception, _GetMore, _Query
 from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
@@ -161,13 +161,13 @@ class Server:
         publish = listeners.enabled_for_commands
         start = datetime.now()
 
-        use_cmd = operation.use_command(conn)
+        operation.use_command(conn)
         more_to_come = operation.conn_mgr and operation.conn_mgr.more_to_come
-        cmd, dbn = await self.operation_to_command(operation, conn, use_cmd)
+        cmd, dbn = await self.operation_to_command(operation, conn, True)
         if more_to_come:
             request_id = 0
         else:
-            message = operation.get_message(read_preference, conn, use_cmd)
+            message = operation.get_message(read_preference, conn, True)
             request_id, data, max_doc_size = self._split_message(message)
 
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
@@ -208,23 +208,16 @@ class Server:
                 reply = await conn.receive_message(request_id)
 
             # Unpack and check for command errors.
-            if use_cmd:
-                user_fields = _CURSOR_DOC_FIELDS
-                legacy_response = False
-            else:
-                user_fields = None
-                legacy_response = True
             docs = unpack_res(
                 reply,
                 operation.cursor_id,
                 operation.codec_options,
-                legacy_response=legacy_response,
-                user_fields=user_fields,
+                legacy_response=False,
+                user_fields=_CURSOR_DOC_FIELDS,
             )
-            if use_cmd:
-                first = docs[0]
-                await operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
-                _check_command_response(first, conn.max_wire_version, pool_opts=conn.opts)  # type:ignore[has-type]
+            first = docs[0]
+            await operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
+            _check_command_response(first, conn.max_wire_version, pool_opts=conn.opts)  # type:ignore[has-type]
         except Exception as exc:
             duration = datetime.now() - start
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
@@ -263,18 +256,8 @@ class Server:
                 )
             raise
         duration = datetime.now() - start
-        # Must publish in find / getMore / explain command response
-        # format.
-        if use_cmd:
-            res = docs[0]
-        elif operation.name == "explain":
-            res = docs[0] if docs else {}
-        else:
-            res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}  # type: ignore[union-attr]
-            if operation.name == "find":
-                res["cursor"]["firstBatch"] = docs
-            else:
-                res["cursor"]["nextBatch"] = docs
+        # Must publish in find / getMore / explain command response format.
+        res = docs[0]
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
@@ -308,21 +291,14 @@ class Server:
         # Decrypt response.
         client = operation.client  # type: ignore[assignment]
         if client and client._encrypter:
-            if use_cmd:
-                decrypted = await client._encrypter.decrypt(reply.raw_command_response())
-                docs = _decode_all_selective(decrypted, operation.codec_options, user_fields)
+            decrypted = await client._encrypter.decrypt(reply.raw_command_response())
+            docs = _decode_all_selective(decrypted, operation.codec_options, _CURSOR_DOC_FIELDS)
 
         response: Response
 
         if client._should_pin_cursor(operation.session) or operation.exhaust:  # type: ignore[arg-type]
             conn.pin_cursor()
-            if isinstance(reply, _OpMsg):
-                # In OP_MSG, the server keeps sending only if the
-                # more_to_come flag is set.
-                more_to_come = reply.more_to_come
-            else:
-                # In OP_REPLY, the server keeps sending until cursor_id is 0.
-                more_to_come = bool(operation.exhaust and reply.cursor_id)
+            more_to_come = reply.more_to_come
             if operation.conn_mgr:
                 operation.conn_mgr.update_exhaust(more_to_come)
             response = PinnedResponse(
@@ -331,7 +307,7 @@ class Server:
                 conn=conn,
                 duration=duration,
                 request_id=request_id,
-                from_command=use_cmd,
+                from_command=True,
                 docs=docs,
                 more_to_come=more_to_come,
             )
@@ -341,7 +317,7 @@ class Server:
                 address=self._description.address,
                 duration=duration,
                 request_id=request_id,
-                from_command=use_cmd,
+                from_command=True,
                 docs=docs,
             )
 
