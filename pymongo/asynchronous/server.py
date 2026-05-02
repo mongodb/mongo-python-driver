@@ -26,18 +26,14 @@ from typing import (
     Union,
 )
 
-from bson import _decode_all_selective
 from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.errors import NotPrimaryError, OperationFailure
-from pymongo.helpers_shared import _check_command_response
+from pymongo.asynchronous.network import _network_command_core
 from pymongo.logger import (
-    _COMMAND_LOGGER,
     _SDAM_LOGGER,
-    _CommandStatusMessage,
     _debug_log,
     _SDAMStatusMessage,
 )
-from pymongo.message import _convert_exception, _GetMore, _OpMsg, _Query
+from pymongo.message import _GetMore, _Query
 from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
@@ -54,8 +50,6 @@ if TYPE_CHECKING:
     from pymongo.typings import _DocumentOut
 
 _IS_SYNC = False
-
-_CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
 class Server:
@@ -158,171 +152,45 @@ class Server:
         :param client: An AsyncMongoClient instance.
         """
         assert listeners is not None
-        publish = listeners.enabled_for_commands
         start = datetime.now()
 
-        use_cmd = operation.use_command(conn)
+        operation.use_command(conn)
         more_to_come = operation.conn_mgr and operation.conn_mgr.more_to_come
-        cmd, dbn = await self.operation_to_command(operation, conn, use_cmd)
+        cmd, dbn = await self.operation_to_command(operation, conn, True)
         if more_to_come:
             request_id = 0
+            msg = None
+            max_doc_size = 0
         else:
-            message = operation.get_message(read_preference, conn, use_cmd)
-            request_id, data, max_doc_size = self._split_message(message)
+            op_message = operation.get_message(read_preference, conn, True)
+            request_id, msg, max_doc_size = self._split_message(op_message)
 
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=cmd,
-                commandName=next(iter(cmd)),
-                databaseName=dbn,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-            )
+        if listeners.enabled_for_commands and "$db" not in cmd:
+            cmd["$db"] = dbn
 
-        if publish:
-            if "$db" not in cmd:
-                cmd["$db"] = dbn
-            assert listeners is not None
-            listeners.publish_command_start(
-                cmd,
-                dbn,
-                request_id,
-                conn.address,
-                conn.server_connection_id,
-                service_id=conn.service_id,
-            )
-
-        try:
-            if more_to_come:
-                reply = await conn.receive_message(None)
-            else:
-                await conn.send_message(data, max_doc_size)
-                reply = await conn.receive_message(request_id)
-
-            # Unpack and check for command errors.
-            if use_cmd:
-                user_fields = _CURSOR_DOC_FIELDS
-                legacy_response = False
-            else:
-                user_fields = None
-                legacy_response = True
-            docs = unpack_res(
-                reply,
-                operation.cursor_id,
-                operation.codec_options,
-                legacy_response=legacy_response,
-                user_fields=user_fields,
-            )
-            if use_cmd:
-                first = docs[0]
-                await operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
-                _check_command_response(first, conn.max_wire_version, pool_opts=conn.opts)  # type:ignore[has-type]
-        except Exception as exc:
-            duration = datetime.now() - start
-            if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure: _DocumentOut = exc.details  # type: ignore[assignment]
-            else:
-                failure = _convert_exception(exc)
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(cmd)),
-                    databaseName=dbn,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=conn.id,
-                    serverConnectionId=conn.server_connection_id,
-                    serverHost=conn.address[0],
-                    serverPort=conn.address[1],
-                    serviceId=conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
-            if publish:
-                assert listeners is not None
-                listeners.publish_command_failure(
-                    duration,
-                    failure,
-                    operation.name,
-                    request_id,
-                    conn.address,
-                    conn.server_connection_id,
-                    service_id=conn.service_id,
-                    database_name=dbn,
-                )
-            raise
-        duration = datetime.now() - start
-        # Must publish in find / getMore / explain command response
-        # format.
-        if use_cmd:
-            res = docs[0]
-        elif operation.name == "explain":
-            res = docs[0] if docs else {}
-        else:
-            res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}  # type: ignore[union-attr]
-            if operation.name == "find":
-                res["cursor"]["firstBatch"] = docs
-            else:
-                res["cursor"]["nextBatch"] = docs
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.SUCCEEDED,
-                clientId=client._topology_settings._topology_id,
-                durationMS=duration,
-                reply=res,
-                commandName=next(iter(cmd)),
-                databaseName=dbn,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-            )
-        if publish:
-            assert listeners is not None
-            listeners.publish_command_success(
-                duration,
-                res,
-                operation.name,
-                request_id,
-                conn.address,
-                conn.server_connection_id,
-                service_id=conn.service_id,
-                database_name=dbn,
-            )
-
-        # Decrypt response.
-        client = operation.client  # type: ignore[assignment]
-        if client and client._encrypter:
-            if use_cmd:
-                decrypted = await client._encrypter.decrypt(reply.raw_command_response())
-                docs = _decode_all_selective(decrypted, operation.codec_options, user_fields)
+        docs, reply, duration = await _network_command_core(
+            conn=conn,
+            dbname=dbn,
+            spec=cmd,
+            request_id=request_id,
+            msg=msg,
+            max_doc_size=max_doc_size,
+            codec_options=operation.codec_options,
+            session=operation.session,  # type: ignore[arg-type]
+            client=client,
+            listeners=listeners,
+            address=conn.address,
+            start=start,
+            more_to_come=more_to_come,
+            unpack_res=unpack_res,
+            cursor_id=operation.cursor_id,
+        )
 
         response: Response
-
+        client = operation.client  # type: ignore[assignment]
         if client._should_pin_cursor(operation.session) or operation.exhaust:  # type: ignore[arg-type]
             conn.pin_cursor()
-            if isinstance(reply, _OpMsg):
-                # In OP_MSG, the server keeps sending only if the
-                # more_to_come flag is set.
-                more_to_come = reply.more_to_come
-            else:
-                # In OP_REPLY, the server keeps sending until cursor_id is 0.
-                more_to_come = bool(operation.exhaust and reply.cursor_id)
+            more_to_come = reply.more_to_come  # type: ignore[union-attr]
             if operation.conn_mgr:
                 operation.conn_mgr.update_exhaust(more_to_come)
             response = PinnedResponse(
@@ -331,7 +199,7 @@ class Server:
                 conn=conn,
                 duration=duration,
                 request_id=request_id,
-                from_command=use_cmd,
+                from_command=True,
                 docs=docs,
                 more_to_come=more_to_come,
             )
@@ -341,7 +209,7 @@ class Server:
                 address=self._description.address,
                 duration=duration,
                 request_id=request_id,
-                from_command=use_cmd,
+                from_command=True,
                 docs=docs,
             )
 
