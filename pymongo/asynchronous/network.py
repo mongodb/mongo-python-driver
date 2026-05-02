@@ -19,6 +19,7 @@ import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Mapping,
     MutableMapping,
     Optional,
@@ -41,10 +42,6 @@ from pymongo.errors import (
 )
 from pymongo.message import _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
-from pymongo.network_layer import (
-    async_receive_message,
-    async_sendall,
-)
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -59,6 +56,166 @@ if TYPE_CHECKING:
     from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = False
+
+_CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
+
+
+async def _network_command_core(
+    conn: AsyncConnection,
+    dbname: str,
+    spec: MutableMapping[str, Any],
+    request_id: int,
+    msg: Optional[bytes],
+    max_doc_size: int,
+    codec_options: CodecOptions[_DocumentType],
+    session: Optional[AsyncClientSession],
+    client: Optional[AsyncMongoClient[Any]],
+    listeners: Optional[_EventListeners],
+    address: Optional[_Address],
+    start: datetime.datetime,
+    check: bool = True,
+    allowable_errors: Optional[Sequence[Union[str, int]]] = None,
+    parse_write_concern_error: bool = False,
+    user_fields: Optional[Mapping[str, Any]] = None,
+    unacknowledged: bool = False,
+    more_to_come: bool = False,
+    unpack_res: Optional[Callable[..., list[_DocumentOut]]] = None,
+    cursor_id: Optional[int] = None,
+    orig: Optional[MutableMapping[str, Any]] = None,
+    speculative_hello: bool = False,
+) -> tuple[list[_DocumentOut], Optional[_OpMsg], datetime.timedelta]:
+    """Send/receive a command and return (docs, raw_reply, duration).
+
+    Handles APM logging, send/receive, unpacking, response processing,
+    and decryption. Both the standard command path and the cursor
+    (find/getMore) path go through this function.
+    """
+    publish = listeners is not None and listeners.enabled_for_commands
+    name = next(iter(spec))
+    reply: Optional[_OpMsg] = None
+    docs: list[_DocumentOut] = []
+
+    if client is not None:
+        _log_command_started(client, conn, spec, dbname, request_id, request_id)
+    if publish:
+        assert listeners is not None
+        assert address is not None
+        listeners.publish_command_start(
+            orig if orig is not None else spec,
+            dbname,
+            request_id,
+            address,
+            conn.server_connection_id,
+            service_id=conn.service_id,
+        )
+
+    try:
+        if more_to_come:
+            reply = await conn.receive_message(None)
+        else:
+            assert msg is not None
+            await conn.send_message(msg, max_doc_size)
+            if unacknowledged:
+                # Unacknowledged write: fake a successful command response.
+                docs = [{"ok": 1}]  # type: ignore[list-item]
+            else:
+                reply = await conn.receive_message(request_id)
+
+        if reply is not None:
+            conn.more_to_come = reply.more_to_come
+            if unpack_res is not None:
+                docs = unpack_res(
+                    reply,
+                    cursor_id,
+                    codec_options,
+                    legacy_response=False,
+                    user_fields=_CURSOR_DOC_FIELDS,
+                )
+            else:
+                docs = list(
+                    reply.unpack_response(codec_options=codec_options, user_fields=user_fields)
+                )
+            response_doc = docs[0]
+            if not conn.ready:
+                cluster_time = response_doc.get("$clusterTime")
+                if cluster_time:
+                    conn._cluster_time = cluster_time
+            if client:
+                await client._process_response(response_doc, session)
+            if check:
+                helpers_shared._check_command_response(
+                    response_doc,
+                    conn.max_wire_version,
+                    allowable_errors,
+                    parse_write_concern_error=parse_write_concern_error,
+                )
+    except Exception as exc:
+        duration = datetime.datetime.now() - start
+        if isinstance(exc, (NotPrimaryError, OperationFailure)):
+            failure: _DocumentOut = exc.details  # type: ignore[assignment]
+        else:
+            failure = message._convert_exception(exc)
+        if client is not None:
+            _log_command_failed(
+                client,
+                conn,
+                spec,
+                dbname,
+                request_id,
+                request_id,
+                failure,
+                duration,
+                isinstance(exc, OperationFailure),
+            )
+        if publish:
+            assert listeners is not None
+            assert address is not None
+            listeners.publish_command_failure(
+                duration,
+                failure,
+                name,
+                request_id,
+                address,
+                conn.server_connection_id,
+                service_id=conn.service_id,
+                database_name=dbname,
+            )
+        raise
+    duration = datetime.datetime.now() - start
+    if client is not None:
+        _log_command_succeeded(
+            client,
+            conn,
+            spec,
+            dbname,
+            request_id,
+            request_id,
+            docs[0],
+            duration,
+            speculative_hello,
+        )
+    if publish:
+        assert listeners is not None
+        assert address is not None
+        listeners.publish_command_success(
+            duration,
+            docs[0],
+            name,
+            request_id,
+            address,
+            conn.server_connection_id,
+            service_id=conn.service_id,
+            speculative_hello=speculative_hello,
+            database_name=dbname,
+        )
+
+    # Decrypt response.
+    if client and client._encrypter and reply is not None:
+        decrypted = await client._encrypter.decrypt(reply.raw_command_response())
+        decrypt_fields = _CURSOR_DOC_FIELDS if unpack_res is not None else user_fields
+        docs = list(_decode_all_selective(decrypted, codec_options, decrypt_fields))
+
+    return docs, reply, duration
 
 
 async def command(
@@ -159,114 +316,30 @@ async def command(
         request_id, msg, size = message._query(
             0, ns, 0, -1, spec, None, codec_options, compression_ctx
         )
+        max_doc_size = 0
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-    if client is not None:
-        _log_command_started(client, conn, spec, dbname, request_id, request_id)
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        listeners.publish_command_start(
-            orig,
-            dbname,
-            request_id,
-            address,
-            conn.server_connection_id,
-            service_id=conn.service_id,
-        )
 
-    try:
-        await async_sendall(conn.conn.get_conn, msg)
-        if use_op_msg and unacknowledged:
-            # Unacknowledged, fake a successful command response.
-            reply = None
-            response_doc: _DocumentOut = {"ok": 1}
-        else:
-            reply = await async_receive_message(conn, request_id)
-            conn.more_to_come = reply.more_to_come
-            unpacked_docs = reply.unpack_response(
-                codec_options=codec_options, user_fields=user_fields
-            )
-
-            response_doc = unpacked_docs[0]
-            if not conn.ready:
-                cluster_time = response_doc.get("$clusterTime")
-                if cluster_time:
-                    conn._cluster_time = cluster_time
-            if client:
-                await client._process_response(response_doc, session)
-            if check:
-                helpers_shared._check_command_response(
-                    response_doc,
-                    conn.max_wire_version,
-                    allowable_errors,
-                    parse_write_concern_error=parse_write_concern_error,
-                )
-    except Exception as exc:
-        duration = datetime.datetime.now() - start
-        if isinstance(exc, (NotPrimaryError, OperationFailure)):
-            failure: _DocumentOut = exc.details  # type: ignore[assignment]
-        else:
-            failure = message._convert_exception(exc)
-        if client is not None:
-            _log_command_failed(
-                client,
-                conn,
-                spec,
-                dbname,
-                request_id,
-                request_id,
-                failure,
-                duration,
-                isinstance(exc, OperationFailure),
-            )
-        if publish:
-            assert listeners is not None
-            assert address is not None
-            listeners.publish_command_failure(
-                duration,
-                failure,
-                name,
-                request_id,
-                address,
-                conn.server_connection_id,
-                service_id=conn.service_id,
-                database_name=dbname,
-            )
-        raise
-    duration = datetime.datetime.now() - start
-    if client is not None:
-        _log_command_succeeded(
-            client,
-            conn,
-            spec,
-            dbname,
-            request_id,
-            request_id,
-            response_doc,
-            duration,
-            "speculativeAuthenticate" in orig,
-        )
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        listeners.publish_command_success(
-            duration,
-            response_doc,
-            name,
-            request_id,
-            address,
-            conn.server_connection_id,
-            service_id=conn.service_id,
-            speculative_hello=speculative_hello,
-            database_name=dbname,
-        )
-
-    if client and client._encrypter and reply:
-        decrypted = await client._encrypter.decrypt(reply.raw_command_response())
-        response_doc = cast(
-            "_DocumentOut", _decode_all_selective(decrypted, codec_options, user_fields)[0]
-        )
-
-    return response_doc  # type: ignore[return-value]
+    docs, _reply, _duration = await _network_command_core(
+        conn=conn,
+        dbname=dbname,
+        spec=spec,
+        request_id=request_id,
+        msg=msg,
+        max_doc_size=max_doc_size,
+        codec_options=codec_options,
+        session=session,
+        client=client,
+        listeners=listeners,
+        address=address,
+        start=start,
+        check=check,
+        allowable_errors=allowable_errors,
+        parse_write_concern_error=parse_write_concern_error,
+        user_fields=user_fields,
+        unacknowledged=unacknowledged,
+        orig=orig,
+        speculative_hello=speculative_hello,
+    )
+    return cast("_DocumentType", docs[0])
