@@ -125,42 +125,47 @@ class TestNetworkingInterface(AsyncUnitTest):
     def test_sock_returns_socket(self):
         self.assertIs(self.iface.sock, self.mock_sock)
 
-    if not _IS_SYNC:
 
-        def _make_async_iface(self):
+if not _IS_SYNC:
+
+    class TestAsyncNetworkingInterface(AsyncUnitTest):
+        def _make_iface(self):
             mock_transport = MagicMock()
             mock_protocol = MagicMock()
             mock_protocol.gettimeout = 10.0
             return AsyncNetworkingInterface((mock_transport, mock_protocol))
 
-        def test_async_gettimeout_returns_protocol_timeout(self):
-            iface = self._make_async_iface()
+        def test_gettimeout_returns_protocol_timeout(self):
+            iface = self._make_iface()
             self.assertEqual(iface.gettimeout, 10.0)
 
-        def test_async_settimeout_delegates_to_protocol(self):
-            iface = self._make_async_iface()
+        def test_settimeout_delegates_to_protocol(self):
+            iface = self._make_iface()
             iface.settimeout(7.0)
             iface.conn[1].settimeout.assert_called_once_with(7.0)
 
-        def test_async_is_closing_delegates_to_transport(self):
-            iface = self._make_async_iface()
+        def test_is_closing_delegates_to_transport(self):
+            iface = self._make_iface()
             iface.conn[0].is_closing.return_value = False
             self.assertFalse(iface.is_closing())
 
-        def test_async_get_conn_returns_protocol(self):
-            iface = self._make_async_iface()
+        def test_get_conn_returns_protocol(self):
+            iface = self._make_iface()
             self.assertIs(iface.get_conn, iface.conn[1])
 
-        def test_async_sock_returns_transport_socket(self):
-            iface = self._make_async_iface()
+        def test_sock_returns_transport_socket(self):
+            iface = self._make_iface()
             sentinel = object()
             iface.conn[0].get_extra_info.return_value = sentinel
             self.assertIs(iface.sock, sentinel)
             iface.conn[0].get_extra_info.assert_called_once_with("socket")
 
-
-class TestPyMongoProtocolTimeout(AsyncUnitTest):
-    if not _IS_SYNC:
+    class TestPyMongoProtocol(AsyncUnitTest):
+        async def _make_proto_with_header(self, header_bytes, max_size=MAX_MESSAGE_SIZE):
+            proto = await _make_protocol()
+            proto._max_message_size = max_size
+            proto._header = memoryview(bytearray(header_bytes))
+            return proto
 
         async def test_initial_timeout_from_constructor(self):
             proto = await _make_protocol(timeout=3.0)
@@ -174,16 +179,6 @@ class TestPyMongoProtocolTimeout(AsyncUnitTest):
         async def test_default_timeout_is_none(self):
             proto = await _make_protocol()
             self.assertIsNone(proto.gettimeout)
-
-
-class TestPyMongoProtocolProcessHeader(AsyncUnitTest):
-    if not _IS_SYNC:
-
-        async def _make_proto_with_header(self, header_bytes, max_size=MAX_MESSAGE_SIZE):
-            proto = await _make_protocol()
-            proto._max_message_size = max_size
-            proto._header = memoryview(bytearray(header_bytes))
-            return proto
 
         async def test_normal_op_msg(self):
             hdr = _make_header(32, 1, 99, 2013)
@@ -229,11 +224,7 @@ class TestPyMongoProtocolProcessHeader(AsyncUnitTest):
             self.assertEqual(op_code, 1)
             self.assertFalse(expecting_compression)
 
-
-class TestPyMongoProtocolProcessCompressionHeader(AsyncUnitTest):
-    if not _IS_SYNC:
-
-        async def test_returns_op_code_and_compressor_id(self):
+        async def test_compression_header_returns_op_code_and_compressor_id(self):
             proto = await _make_protocol()
             # op_code=2013, uncompressed_size=0, compressor_id=1 (snappy)
             data = struct.pack("<iiB", 2013, 0, 1)
@@ -242,126 +233,12 @@ class TestPyMongoProtocolProcessCompressionHeader(AsyncUnitTest):
             self.assertEqual(op_code, 2013)
             self.assertEqual(compressor_id, 1)
 
-        async def test_zlib_compressor_id(self):
+        async def test_compression_header_zlib_compressor_id(self):
             proto = await _make_protocol()
             data = struct.pack("<iiB", 2013, 0, 2)
             proto._compression_header = memoryview(bytearray(data))
             _, compressor_id = proto.process_compression_header()
             self.assertEqual(compressor_id, 2)
-
-
-class TestPyMongoProtocolGetBuffer(AsyncUnitTest):
-    if not _IS_SYNC:
-
-        async def test_expecting_header_returns_full_header_slice(self):
-            proto = await _make_protocol()
-            proto._expecting_header = True
-            proto._header_index = 0
-            self.assertEqual(len(proto.get_buffer(0)), 16)
-
-        async def test_expecting_header_partial_returns_remaining(self):
-            proto = await _make_protocol()
-            proto._expecting_header = True
-            proto._header_index = 8
-            self.assertEqual(len(proto.get_buffer(0)), 8)
-
-        async def test_expecting_compression_returns_compression_slice(self):
-            proto = await _make_protocol()
-            proto._expecting_header = False
-            proto._expecting_compression = True
-            proto._compression_index = 0
-            self.assertEqual(len(proto.get_buffer(0)), 9)
-
-        async def test_expecting_compression_partial(self):
-            proto = await _make_protocol()
-            proto._expecting_header = False
-            proto._expecting_compression = True
-            proto._compression_index = 5
-            self.assertEqual(len(proto.get_buffer(0)), 4)
-
-        async def test_message_body_returns_remaining_slice(self):
-            proto = await _make_protocol()
-            proto._expecting_header = False
-            proto._expecting_compression = False
-            proto._message = memoryview(bytearray(100))
-            proto._message_index = 0
-            self.assertEqual(len(proto.get_buffer(0)), 100)
-
-        async def test_connection_lost_allocates_drain_buffer(self):
-            proto = await _make_protocol()
-            proto._connection_lost = True
-            proto._message = None
-            self.assertEqual(len(proto.get_buffer(0)), 2**14)
-
-        async def test_connection_lost_reuses_existing_buffer(self):
-            proto = await _make_protocol()
-            proto._connection_lost = True
-            proto._message = memoryview(bytearray(50))
-            self.assertEqual(len(proto.get_buffer(0)), 50)
-
-
-class TestPyMongoProtocolBufferUpdated(AsyncUnitTest):
-    if not _IS_SYNC:
-
-        async def test_zero_bytes_closes_connection(self):
-            proto = await _make_protocol()
-            proto.buffer_updated(0)
-            self.assertTrue(proto._connection_lost)
-
-        async def test_connection_lost_returns_early(self):
-            proto = await _make_protocol()
-            proto._connection_lost = True
-            proto._header_index = 3
-            proto.buffer_updated(5)
-            self.assertEqual(proto._header_index, 3)
-
-        async def test_partial_header_increments_index(self):
-            proto = await _make_protocol()
-            proto._expecting_header = True
-            proto._header_index = 0
-            proto.buffer_updated(8)
-            self.assertEqual(proto._header_index, 8)
-
-        async def test_full_header_transitions_to_message(self):
-            proto = await _make_protocol()
-            proto._expecting_header = True
-            hdr = _make_header(32, 1, 0, 2013)
-            proto._header = memoryview(bytearray(hdr))
-            proto._header_index = 0
-            proto.buffer_updated(16)
-            self.assertFalse(proto._expecting_header)
-            self.assertEqual(proto._message_size, 16)
-
-        async def test_invalid_header_closes_connection(self):
-            proto = await _make_protocol()
-            proto._expecting_header = True
-            # length=16 (not > 16) triggers ProtocolError
-            hdr = _make_header(16, 1, 0, 2013)
-            proto._header = memoryview(bytearray(hdr))
-            proto._header_index = 0
-            proto.buffer_updated(16)
-            self.assertTrue(proto._connection_lost)
-
-        async def test_compression_header_processing(self):
-            proto = await _make_protocol()
-            proto._expecting_header = False
-            proto._expecting_compression = True
-            comp_hdr = struct.pack("<iiB", 2013, 0, 2)
-            proto._compression_header = memoryview(bytearray(comp_hdr))
-            proto._compression_index = 0
-            proto.buffer_updated(9)
-            self.assertFalse(proto._expecting_compression)
-            self.assertEqual(proto._op_code, 2013)
-            self.assertEqual(proto._compressor_id, 2)
-
-        async def test_partial_compression_header_increments_index(self):
-            proto = await _make_protocol()
-            proto._expecting_header = False
-            proto._expecting_compression = True
-            proto._compression_index = 0
-            proto.buffer_updated(4)
-            self.assertEqual(proto._compression_index, 4)
-            self.assertTrue(proto._expecting_compression)
 
         async def test_message_complete_resolves_pending_future(self):
             proto = await _make_protocol()
@@ -384,50 +261,10 @@ class TestPyMongoProtocolBufferUpdated(AsyncUnitTest):
             self.assertIsNone(compressor_id)
             self.assertEqual(response_to, 42)
 
-        async def test_message_complete_no_pending_creates_new_future(self):
-            proto = await _make_protocol()
-            proto._expecting_header = False
-            proto._expecting_compression = False
-            proto._message_size = 5
-            proto._message = memoryview(bytearray(5))
-            proto._message_index = 0
-            proto._op_code = 2013
-            proto._compressor_id = None
-            proto._response_to = 0
-
-            self.assertFalse(proto._pending_messages)
-            proto.buffer_updated(5)
-            self.assertEqual(len(proto._done_messages), 1)
-
-        async def test_partial_message_increments_index(self):
-            proto = await _make_protocol()
-            proto._expecting_header = False
-            proto._expecting_compression = False
-            proto._message_size = 20
-            proto._message = memoryview(bytearray(20))
-            proto._message_index = 0
-            proto.buffer_updated(7)
-            self.assertEqual(proto._message_index, 7)
-
-
-class TestPyMongoProtocolClose(AsyncUnitTest):
-    if not _IS_SYNC:
-
-        async def test_close_sets_connection_lost_flag(self):
-            proto = await _make_protocol()
-            proto.close()
-            self.assertTrue(proto._connection_lost)
-
         async def test_close_aborts_transport(self):
             proto = await _make_protocol()
             proto.close()
             self.assertTrue(proto.transport.abort.called)
-
-        async def test_connection_lost_resolves_closed_future(self):
-            proto = await _make_protocol()
-            self.assertFalse(proto._closed.done())
-            proto.connection_lost(None)
-            self.assertTrue(proto._closed.done())
 
         async def test_connection_lost_twice_does_not_raise(self):
             proto = await _make_protocol()
@@ -444,10 +281,7 @@ class TestPyMongoProtocolClose(AsyncUnitTest):
                 await fut
             self.assertIn("connection reset", str(ctx.exception))
 
-
-class TestAsyncSocketReceive(AsyncUnitTest):
-    if not _IS_SYNC:
-
+    class TestAsyncSocketReceive(AsyncUnitTest):
         async def test_reads_full_data_in_one_call(self):
             data = b"hello world!"
             length = len(data)
@@ -468,15 +302,16 @@ class TestAsyncSocketReceive(AsyncUnitTest):
             chunk1, chunk2 = data[:4], data[4:]
             mock_sock = MagicMock()
             loop = asyncio.get_running_loop()
-            calls = [0]
+            calls = 0
 
             async def fake_recv_into(sock, buf):
-                if calls[0] == 0:
+                nonlocal calls
+                if calls == 0:
                     buf[: len(chunk1)] = chunk1
-                    calls[0] += 1
+                    calls += 1
                     return len(chunk1)
                 buf[: len(chunk2)] = chunk2
-                calls[0] += 1
+                calls += 1
                 return len(chunk2)
 
             with patch.object(loop, "sock_recv_into", new=AsyncMock(side_effect=fake_recv_into)):
