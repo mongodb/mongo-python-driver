@@ -3308,6 +3308,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
 class TestExplicitTextEncryptionProse(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(8, 2, -1)
+    @client_context.require_version_max(8, 99, 99)
     @client_context.require_libmongocrypt_min(1, 15, 1)
     @client_context.require_pymongocrypt_min(1, 16, 0)
     def setUp(self):
