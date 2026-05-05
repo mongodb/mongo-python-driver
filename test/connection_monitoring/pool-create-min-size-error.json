@@ -9,7 +9,9 @@
   ],
   "failPoint": {
     "configureFailPoint": "failCommand",
-    "mode": "alwaysOn",
+    "mode": {
+      "times": 50
+    },
     "data": {
       "failCommands": [
         "isMaster",
