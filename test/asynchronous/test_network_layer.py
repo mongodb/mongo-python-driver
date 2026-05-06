@@ -226,7 +226,7 @@ if not _IS_SYNC:
 
         async def test_compression_header_returns_op_code_and_compressor_id(self):
             protocol = await _make_protocol()
-            # op_code=2013, uncompressed_size=0, compressor_id=1 (snappy)
+            # <iiB: little-endian, i32 op code=2013, i32 uncompressed size=0, u8 compressor id=1 (snappy)
             data = struct.pack("<iiB", 2013, 0, 1)
             protocol._compression_header = memoryview(bytearray(data))
             op_code, compressor_id = protocol.process_compression_header()
