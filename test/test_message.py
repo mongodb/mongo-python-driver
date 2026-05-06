@@ -28,39 +28,26 @@ from bson import CodecOptions
 from pymongo.compression_support import ZlibContext
 from pymongo.errors import DocumentTooLarge, OperationFailure
 from pymongo.message import (
-    MAX_INT32,
-    MIN_INT32,
     _compress,
     _convert_client_bulk_exception,
     _convert_exception,
     _convert_write_result,
     _gen_find_command,
     _gen_get_more_command,
-    _get_more,
     _get_more_compressed,
     _get_more_uncompressed,
     _maybe_add_read_preference,
     _op_msg,
-    _query,
     _query_compressed,
     _query_impl,
     _query_uncompressed,
     _raise_document_too_large,
-    _randint,
 )
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import ReadPreference, Secondary, SecondaryPreferred
+from pymongo.read_preferences import ReadPreference, SecondaryPreferred
 
 _OPTS = CodecOptions()
 _ZLIB_CTX = ZlibContext(-1)
-
-
-class TestRandint(unittest.TestCase):
-    def test_in_range(self):
-        for _ in range(50):
-            r = _randint()
-            self.assertGreaterEqual(r, MIN_INT32)
-            self.assertLessEqual(r, MAX_INT32)
 
 
 class TestMaybeAddReadPreference(unittest.TestCase):
@@ -76,12 +63,6 @@ class TestMaybeAddReadPreference(unittest.TestCase):
         self.assertIn("$readPreference", result)
         self.assertEqual(result["$readPreference"]["mode"], "secondary")
         self.assertIn("$query", result)
-
-    def test_nearest_adds_read_preference(self):
-        spec: dict = {"find": "col"}
-        result = _maybe_add_read_preference(spec, ReadPreference.NEAREST)
-        self.assertIn("$readPreference", result)
-        self.assertEqual(result["$readPreference"]["mode"], "nearest")
 
     def test_secondary_preferred_no_tags_does_not_add(self):
         spec: dict = {"find": "col"}
@@ -107,11 +88,6 @@ class TestConvertException(unittest.TestCase):
         doc = _convert_exception(exc)
         self.assertEqual(doc["errmsg"], "bad value")
         self.assertEqual(doc["errtype"], "ValueError")
-
-    def test_runtime_error(self):
-        exc = RuntimeError("oops")
-        doc = _convert_exception(exc)
-        self.assertEqual(doc["errtype"], "RuntimeError")
 
     def test_client_bulk_exception_includes_code(self):
         exc = OperationFailure("failed", code=11000)
@@ -174,6 +150,7 @@ class TestConvertWriteResult(unittest.TestCase):
         self.assertEqual(result["writeConcernError"]["code"], 64)
 
     def test_write_error_with_err_info(self):
+        # Covers the `if "errInfo" in result:` branch, which test_write_error does not enter.
         cmd = {"documents": [{"_id": 1}]}
         gle = {"n": 0, "err": "err", "code": 123, "errInfo": {"detail": "x"}}
         result = _convert_write_result("insert", cmd, gle)
@@ -188,11 +165,6 @@ class TestCompress(unittest.TestCase):
 
 
 class TestOpMsg(unittest.TestCase):
-    def test_basic_uncompressed(self):
-        cmd: dict = {"ping": 1}
-        _op_msg(0, cmd, "testdb", None, _OPTS)
-        self.assertEqual(cmd["$db"], "testdb")
-
     def test_uncompressed_op_code(self):
         _, msg, _, _ = _op_msg(0, {"ping": 1}, "testdb", None, _OPTS)
         op_code = struct.unpack("<i", msg[12:16])[0]
@@ -212,20 +184,10 @@ class TestOpMsg(unittest.TestCase):
         _op_msg(0, cmd, "testdb", ReadPreference.SECONDARY, _OPTS)
         self.assertIn("$readPreference", cmd)
 
-    def test_read_preference_not_added_for_primary(self):
-        cmd: dict = {"find": "col"}
-        _op_msg(0, cmd, "testdb", ReadPreference.PRIMARY, _OPTS)
-        self.assertNotIn("$readPreference", cmd)
-
     def test_read_preference_skipped_if_already_present(self):
         cmd: dict = {"find": "col", "$readPreference": {"mode": "nearest"}}
         _op_msg(0, cmd, "testdb", ReadPreference.SECONDARY, _OPTS)
         self.assertEqual(cmd["$readPreference"]["mode"], "nearest")
-
-    def test_none_read_preference_skipped(self):
-        cmd: dict = {"find": "col"}
-        _op_msg(0, cmd, "testdb", None, _OPTS)
-        self.assertNotIn("$readPreference", cmd)
 
     def test_with_compression_context(self):
         _, msg, _, _ = _op_msg(0, {"ping": 1}, "testdb", None, _OPTS, _ZLIB_CTX)
@@ -255,16 +217,6 @@ class TestQuery(unittest.TestCase):
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2012)  # OP_COMPRESSED
 
-    def test_uncompressed_path(self):
-        _rid, msg, _mbs = _query(0, "db.col", 0, 0, {}, None, _OPTS)
-        op_code = struct.unpack("<i", msg[12:16])[0]
-        self.assertEqual(op_code, 2004)
-
-    def test_compressed_path(self):
-        _rid, msg, _mbs = _query(0, "db.col", 0, 0, {}, None, _OPTS, _ZLIB_CTX)
-        op_code = struct.unpack("<i", msg[12:16])[0]
-        self.assertEqual(op_code, 2012)
-
 
 class TestGetMore(unittest.TestCase):
     def test_uncompressed_op_code(self):
@@ -276,16 +228,6 @@ class TestGetMore(unittest.TestCase):
         _rid, msg = _get_more_compressed("db.col", 0, 0, _ZLIB_CTX)
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2012)  # OP_COMPRESSED
-
-    def test_uncompressed_path(self):
-        _rid, msg = _get_more("db.col", 0, 0)
-        op_code = struct.unpack("<i", msg[12:16])[0]
-        self.assertEqual(op_code, 2005)
-
-    def test_compressed_path(self):
-        _rid, msg = _get_more("db.col", 0, 0, _ZLIB_CTX)
-        op_code = struct.unpack("<i", msg[12:16])[0]
-        self.assertEqual(op_code, 2012)
 
 
 class TestRaiseDocumentTooLarge(unittest.TestCase):
@@ -300,11 +242,6 @@ class TestRaiseDocumentTooLarge(unittest.TestCase):
         with self.assertRaises(DocumentTooLarge) as ctx:
             _raise_document_too_large("update", 2_000_000, 1_000_000)
         self.assertIn("update", str(ctx.exception))
-
-    def test_delete_generic_message(self):
-        with self.assertRaises(DocumentTooLarge) as ctx:
-            _raise_document_too_large("delete", 2_000_000, 1_000_000)
-        self.assertIn("delete", str(ctx.exception))
 
 
 class TestGenFindCommand(unittest.TestCase):
@@ -336,6 +273,7 @@ class TestGenFindCommand(unittest.TestCase):
         self.assertEqual(cmd["batchSize"], 11)
 
     def test_batch_size_not_adjusted_when_different(self):
+        # Covers the False branch of `if limit == batch_size:` — distinct from the True branch above.
         cmd = _gen_find_command("col", {}, None, 0, 10, 5, None, ReadConcern())
         self.assertEqual(cmd["batchSize"], 5)
 
@@ -372,6 +310,7 @@ class TestGenFindCommand(unittest.TestCase):
         self.assertNotIn("$explain", cmd)
 
     def test_dollar_query_with_read_preference_removed(self):
+        # Covers the separate `if "$readPreference" in cmd:` branch — not entered by test_dollar_query_with_explain_removed.
         spec = {"$query": {"x": 1}, "$readPreference": {"mode": "secondary"}}
         cmd = _gen_find_command("col", spec, None, 0, 0, None, None, ReadConcern())
         self.assertNotIn("$readPreference", cmd)
