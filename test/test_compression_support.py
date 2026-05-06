@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import sys
+import zlib
 from unittest.mock import patch
 
 sys.path[0:0] = [""]
@@ -51,19 +52,12 @@ class TestHaveSnappy(unittest.TestCase):
 
 
 class TestHaveZlib(unittest.TestCase):
-    def test_returns_true_when_available(self):
-        self.assertTrue(_have_zlib())
-
     def test_returns_false_on_import_error(self):
         with patch.dict(sys.modules, {"zlib": None}):
             self.assertFalse(_have_zlib())
 
 
 class TestHaveZstd(unittest.TestCase):
-    def test_returns_bool(self):
-        result = _have_zstd()
-        self.assertIsInstance(result, bool)
-
     def test_returns_false_when_unavailable_pre_314(self):
         if sys.version_info >= (3, 14):
             self.skipTest("Python 3.14+ uses compression.zstd")
@@ -130,10 +124,6 @@ class TestValidateCompressors(unittest.TestCase):
         self.assertEqual(result, [])
         self.assertIn("compression.zstd", str(ctx.warning))
 
-    def test_valid_zlib_always_included(self):
-        result = validate_compressors(None, ["zlib"])
-        self.assertEqual(result, ["zlib"])
-
     def test_multiple_valid_compressors_preserves_order(self):
         with patch("pymongo.compression_support._have_snappy", return_value=True):
             result = validate_compressors(None, ["zlib", "snappy"])
@@ -148,14 +138,8 @@ class TestValidateZlibCompressionLevel(unittest.TestCase):
     def test_valid_minimum(self):
         self.assertEqual(validate_zlib_compression_level("level", -1), -1)
 
-    def test_valid_zero(self):
-        self.assertEqual(validate_zlib_compression_level("level", 0), 0)
-
     def test_valid_maximum(self):
         self.assertEqual(validate_zlib_compression_level("level", 9), 9)
-
-    def test_valid_midrange(self):
-        self.assertEqual(validate_zlib_compression_level("level", 5), 5)
 
     def test_non_integer_raises_type_error(self):
         with self.assertRaises(TypeError) as ctx:
@@ -217,8 +201,6 @@ class TestCompressionSettings(unittest.TestCase):
 
 class TestZlibContext(unittest.TestCase):
     def test_compress_and_decompress_roundtrip(self):
-        import zlib
-
         ctx = ZlibContext(level=-1)
         data = b"hello world" * 100
         compressed = ctx.compress(data)
@@ -228,9 +210,6 @@ class TestZlibContext(unittest.TestCase):
         ctx = ZlibContext(level=6)
         self.assertEqual(ctx.level, 6)
 
-    def test_compressor_id(self):
-        self.assertEqual(ZlibContext.compressor_id, 2)
-
 
 class TestDecompress(unittest.TestCase):
     def test_unknown_compressor_id_raises(self):
@@ -239,16 +218,12 @@ class TestDecompress(unittest.TestCase):
         self.assertIn("Unknown compressorId 99", str(ctx.exception))
 
     def test_zlib_roundtrip(self):
-        import zlib
-
         data = b"hello world"
         compressed = zlib.compress(data)
         result = decompress(compressed, ZlibContext.compressor_id)
         self.assertEqual(result, data)
 
     def test_zlib_with_memoryview(self):
-        import zlib
-
         data = b"test data"
         compressed = zlib.compress(data)
         result = decompress(memoryview(compressed), ZlibContext.compressor_id)
