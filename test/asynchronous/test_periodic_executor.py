@@ -152,6 +152,7 @@ class TestAsyncPeriodicExecutor(AsyncPeriodicExecutorTestBase):
         if _IS_SYNC:
             woken.wait(timeout=2)
         else:
+            assert isinstance(woken, asyncio.Event)
             await asyncio.wait_for(woken.wait(), timeout=2)
         self.executor.wake()
         await self.executor.join(timeout=3)
