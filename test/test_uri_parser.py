@@ -557,6 +557,11 @@ class TestURI(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r"Port contains whitespace character: '\\n'"):
             parse_uri("mongodb://localhost:27\n017")
 
+    def test_parse_uri_options_returns_dict(self):
+        # Regression: PYTHON-5421 changed the return type from
+        # _CaseInsensitiveDictionary to plain dict.
+        self.assertIsInstance(parse_uri("mongodb://localhost:27017")["options"], dict)
+
     def test_unquoted_percent(self):
         self.assertFalse(_unquoted_percent(""))
         self.assertFalse(_unquoted_percent("no_percent_here"))
@@ -615,8 +620,8 @@ class TestURI(unittest.TestCase):
         )
         self.assertRaises(InvalidURI, split_options, "ssl=true&tls=false")
         self.assertRaises(InvalidURI, split_options, "ssl=false&tls=true")
-        self.assertTrue(split_options("ssl=true&tls=true"))
-        self.assertTrue(split_options("ssl=false&tls=false"))
+        self.assertEqual(split_options("ssl=true&tls=true"), {"tls": True})
+        self.assertEqual(split_options("ssl=false&tls=false"), {"tls": False})
 
     def test_split_options_mixed_delimiters(self):
         self.assertRaises(InvalidURI, split_options, "ssl=true&tls=true;appname=foo")
