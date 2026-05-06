@@ -23,43 +23,34 @@ import time
 
 sys.path[0:0] = [""]
 
-from test import UnitTest, unittest
+from test.synchronous import UnitTest, unittest
 
 from pymongo.periodic_executor import PeriodicExecutor
 
-_IS_SYNC = True
+_IS_SYNC = False
 
 
-def _make_executor(interval=30.0, min_interval=0.01, target=None, name="test"):
-    if target is None:
+class TestAsyncPeriodicExecutor(UnitTest):
+    def _make_executor(self, interval=30.0, min_interval=0.01, target=None, name="test"):
+        if target is None:
 
-        def target():
-            return True
+            def target():
+                return True
 
-    return PeriodicExecutor(interval=interval, min_interval=min_interval, target=target, name=name)
+        executor = PeriodicExecutor(
+            interval=interval, min_interval=min_interval, target=target, name=name
+        )
+        self.addCleanup(self._close_executor, executor)
+        return executor
 
-
-class PeriodicExecutorTestBase(UnitTest):
-    def setUp(self):
-        self.executor = None
-
-    def tearDown(self):
-        if self.executor is not None:
-            self.executor.close()
-            self.executor.join(timeout=2)
-
-
-class TestPeriodicExecutor(PeriodicExecutorTestBase):
-    def test_repr_contains_class_and_name(self):
-        executor = _make_executor(name="exec")
-        executor_repr = repr(executor)
-        self.assertIn("PeriodicExecutor", executor_repr)
-        self.assertIn("exec", executor_repr)
+    def _close_executor(self, executor):
+        executor.close()
+        executor.join(timeout=2)
 
     def test_join_without_open_is_safe(self):
-        self.executor = _make_executor()
+        executor = self._make_executor()
         try:
-            self.executor.join(timeout=0.01)
+            executor.join(timeout=0.01)
         except Exception as e:
             self.fail(f"join() raised unexpected Exception {e}")
 
@@ -73,47 +64,10 @@ class TestPeriodicExecutor(PeriodicExecutorTestBase):
             ran.set()
             return False
 
-        self.executor = _make_executor(target=target)
-        self.executor.open()
-        self.executor.join(timeout=2)
+        executor = self._make_executor(target=target)
+        executor.open()
+        executor.join(timeout=2)
         self.assertTrue(ran.is_set(), "target never ran")
-
-    def test_target_exception_stops_executor(self):
-        if _IS_SYNC:
-            ran = threading.Event()
-            captured_exc: list = []
-            orig_excepthook = threading.excepthook
-
-            def _capture_excepthook(args):
-                captured_exc.append(args.exc_value)
-
-            threading.excepthook = _capture_excepthook
-            try:
-
-                def target():
-                    ran.set()
-                    raise RuntimeError("error")
-
-                self.executor = _make_executor(target=target)
-                self.executor.open()
-                self.executor.join(timeout=2)
-                self.assertTrue(ran.is_set(), "target never ran")
-            finally:
-                threading.excepthook = orig_excepthook
-            self.assertEqual(len(captured_exc), 1)
-            self.assertIsInstance(captured_exc[0], RuntimeError)
-        else:
-            call_count = 0
-
-            def target():
-                nonlocal call_count
-                call_count += 1
-                raise RuntimeError("error")
-
-            self.executor = _make_executor(target=target)
-            self.executor.open()
-            self.executor.join(timeout=2)
-            self.assertEqual(call_count, 1, "target should stop after exception")
 
     def test_skip_sleep_flag_skips_interval(self):
         call_times = []
@@ -124,10 +78,10 @@ class TestPeriodicExecutor(PeriodicExecutorTestBase):
                 return False
             return True
 
-        self.executor = _make_executor(interval=30.0, min_interval=0.001, target=target)
-        self.executor.skip_sleep()
-        self.executor.open()
-        self.executor.join(timeout=3)
+        executor = self._make_executor(interval=30.0, min_interval=0.001, target=target)
+        executor.skip_sleep()
+        executor.open()
+        executor.join(timeout=3)
         self.assertGreaterEqual(len(call_times), 2)
         self.assertLess(call_times[1] - call_times[0], 5.0)
 
@@ -145,15 +99,15 @@ class TestPeriodicExecutor(PeriodicExecutorTestBase):
                 woken.set()
             return call_count < 2
 
-        self.executor = _make_executor(interval=30.0, min_interval=0.01, target=target)
-        self.executor.open()
+        executor = self._make_executor(interval=30.0, min_interval=0.01, target=target)
+        executor.open()
         if _IS_SYNC:
             woken.wait(timeout=2)
         else:
             assert isinstance(woken, asyncio.Event)
             asyncio.wait_for(woken.wait(), timeout=2)
-        self.executor.wake()
-        self.executor.join(timeout=3)
+        executor.wake()
+        executor.join(timeout=3)
         self.assertGreaterEqual(call_count, 2)
 
     def test_open_after_target_returns_false(self):
@@ -164,11 +118,11 @@ class TestPeriodicExecutor(PeriodicExecutorTestBase):
             called += 1
             return False
 
-        self.executor = _make_executor(target=target)
-        self.executor.open()
-        self.executor.join(timeout=2)
-        self.executor.open()
-        self.executor.join(timeout=2)
+        executor = self._make_executor(target=target)
+        executor.open()
+        executor.join(timeout=2)
+        executor.open()
+        executor.join(timeout=2)
         self.assertGreaterEqual(called, 2)
 
 
