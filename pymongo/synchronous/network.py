@@ -40,7 +40,7 @@ from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
 )
-from pymongo.message import _OpMsg
+from pymongo.message import _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 
 if TYPE_CHECKING:
@@ -83,7 +83,7 @@ def _network_command_core(
     cursor_id: Optional[int] = None,
     orig: Optional[MutableMapping[str, Any]] = None,
     speculative_hello: bool = False,
-) -> tuple[list[_DocumentOut], Optional[_OpMsg], datetime.timedelta]:
+) -> tuple[list[_DocumentOut], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
     """Send/receive a command and return (docs, raw_reply, duration).
 
     Handles APM logging, send/receive, unpacking, response processing,
@@ -92,7 +92,7 @@ def _network_command_core(
     """
     publish = listeners is not None and listeners.enabled_for_commands
     name = next(iter(spec))
-    reply: Optional[_OpMsg] = None
+    reply: Optional[Union[_OpReply, _OpMsg]] = None
     docs: list[_DocumentOut] = []
 
     if client is not None:
@@ -213,7 +213,7 @@ def _network_command_core(
     if client and client._encrypter and reply is not None:
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
         decrypt_fields = _CURSOR_DOC_FIELDS if unpack_res is not None else user_fields
-        docs = list(_decode_all_selective(decrypted, codec_options, decrypt_fields))
+        docs = list(_decode_all_selective(decrypted, codec_options, decrypt_fields))  # type: ignore[arg-type]
 
     return docs, reply, duration
 

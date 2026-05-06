@@ -155,7 +155,7 @@ class Server:
         start = datetime.now()
 
         operation.use_command(conn)
-        more_to_come = operation.conn_mgr and operation.conn_mgr.more_to_come
+        more_to_come = bool(operation.conn_mgr and operation.conn_mgr.more_to_come)
         cmd, dbn = await self.operation_to_command(operation, conn, True)
         if more_to_come:
             request_id = 0
@@ -186,6 +186,7 @@ class Server:
             cursor_id=operation.cursor_id,
         )
 
+        assert reply is not None
         response: Response
         client = operation.client  # type: ignore[assignment]
         if client._should_pin_cursor(operation.session) or operation.exhaust:  # type: ignore[arg-type]
