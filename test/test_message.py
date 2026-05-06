@@ -24,7 +24,7 @@ sys.path[0:0] = [""]
 
 from test import unittest
 
-from bson import CodecOptions
+from bson import CodecOptions, encode
 from pymongo.compression_support import ZlibContext
 from pymongo.errors import DocumentTooLarge, OperationFailure
 from pymongo.message import (
@@ -39,7 +39,6 @@ from pymongo.message import (
     _maybe_add_read_preference,
     _op_msg,
     _query_compressed,
-    _query_impl,
     _query_uncompressed,
     _raise_document_too_large,
 )
@@ -98,6 +97,11 @@ class TestConvertException(unittest.TestCase):
 
 
 class TestConvertWriteResult(unittest.TestCase):
+    """Tests for _convert_write_result.
+
+    In the update command spec, `q` is the query/filter and `u` is the update document.
+    """
+
     def test_insert_basic(self):
         cmd = {"documents": [{"_id": 1}, {"_id": 2}]}
         result = _convert_write_result("insert", cmd, {"n": 0})
@@ -116,12 +120,12 @@ class TestConvertWriteResult(unittest.TestCase):
         self.assertIn("upserted", result)
         self.assertEqual(result["upserted"][0]["_id"], 42)
 
-    def test_update_implicit_upsert_from_updatedExisting_false(self):
-        cmd = {"updates": [{"q": {"_id": 99}, "u": {"$set": {"x": 1}}}]}
-        result = _convert_write_result(
-            "update", cmd, {"n": 1, "updatedExisting": False, "upserted": None}
-        )
-        self.assertIn("upserted", result)
+    def test_update_upsert_id_precedence(self):
+        # When _id is in both the update document and the query spec,
+        # the update document's _id wins.
+        cmd = {"updates": [{"q": {"_id": 99}, "u": {"_id": 42}}]}
+        result = _convert_write_result("update", cmd, {"n": 1, "updatedExisting": False})
+        self.assertEqual(result["upserted"][0]["_id"], 42)
 
     def test_update_upsert_no_upserted_id_from_query(self):
         cmd = {"updates": [{"q": {"_id": 77}, "u": {"$set": {"x": 1}}}]}
@@ -159,25 +163,26 @@ class TestConvertWriteResult(unittest.TestCase):
 
 class TestCompress(unittest.TestCase):
     def test_compressed_message_has_op_compressed_header(self):
-        _request_id, msg = _compress(2013, b"hello world", _ZLIB_CTX)
+        msg = _compress(2013, b"hello world", _ZLIB_CTX)[1]
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2012)  # OP_COMPRESSED
 
 
 class TestOpMsg(unittest.TestCase):
     def test_uncompressed_op_code(self):
-        _, msg, _, _ = _op_msg(0, {"ping": 1}, "testdb", None, _OPTS)
+        msg = _op_msg(0, {"ping": 1}, "testdb", None, _OPTS)[1]
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2013)  # OP_MSG
 
     def test_max_doc_size_zero_without_docs(self):
-        _, _, _, max_doc_size = _op_msg(0, {"ping": 1}, "testdb", None, _OPTS)
+        max_doc_size = _op_msg(0, {"ping": 1}, "testdb", None, _OPTS)[3]
         self.assertEqual(max_doc_size, 0)
 
-    def test_max_doc_size_nonzero_with_docs(self):
-        cmd: dict = {"insert": "col", "documents": [{"_id": 1, "x": 2}, {"_id": 3, "x": 4}]}
-        _, _, _, max_doc_size = _op_msg(0, cmd, "testdb", None, _OPTS)
-        self.assertGreater(max_doc_size, 0)
+    def test_max_doc_size_matches_largest_encoded_doc(self):
+        docs = [{"_id": 1, "x": 2}, {"_id": 3, "x": 4}]
+        cmd: dict = {"insert": "col", "documents": docs}
+        max_doc_size = _op_msg(0, cmd, "testdb", None, _OPTS)[3]
+        self.assertEqual(max_doc_size, max(len(encode(d)) for d in docs))
 
     def test_read_preference_added_for_non_primary(self):
         cmd: dict = {"find": "col"}
@@ -190,7 +195,7 @@ class TestOpMsg(unittest.TestCase):
         self.assertEqual(cmd["$readPreference"]["mode"], "nearest")
 
     def test_with_compression_context(self):
-        _, msg, _, _ = _op_msg(0, {"ping": 1}, "testdb", None, _OPTS, _ZLIB_CTX)
+        msg = _op_msg(0, {"ping": 1}, "testdb", None, _OPTS, _ZLIB_CTX)[1]
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2012)  # OP_COMPRESSED
 
@@ -202,30 +207,26 @@ class TestOpMsg(unittest.TestCase):
         self.assertEqual(cmd["documents"], docs)
 
 
-class TestQuery(unittest.TestCase):
-    def test_basic(self):
-        _, max_bson_size = _query_impl(0, "db.col", 0, 0, {"x": 1}, None, _OPTS)
-        self.assertGreater(max_bson_size, 0)
+class TestLegacyWireOps(unittest.TestCase):
+    """Tests for pre-OP_MSG wire ops (OP_QUERY and OP_GET_MORE), compressed and uncompressed."""
 
-    def test_uncompressed_op_code(self):
-        _rid, msg, _mbs = _query_uncompressed(0, "db.col", 0, 0, {}, None, _OPTS)
+    def test_query_uncompressed_op_code(self):
+        msg = _query_uncompressed(0, "db.col", 0, 0, {}, None, _OPTS)[1]
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2004)  # OP_QUERY
 
-    def test_compressed_op_code(self):
-        _rid, msg, _mbs = _query_compressed(0, "db.col", 0, 0, {}, None, _OPTS, _ZLIB_CTX)
+    def test_query_compressed_op_code(self):
+        msg = _query_compressed(0, "db.col", 0, 0, {}, None, _OPTS, _ZLIB_CTX)[1]
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2012)  # OP_COMPRESSED
 
-
-class TestGetMore(unittest.TestCase):
-    def test_uncompressed_op_code(self):
-        _rid, msg = _get_more_uncompressed("db.col", 0, 0)
+    def test_get_more_uncompressed_op_code(self):
+        msg = _get_more_uncompressed("db.col", 0, 0)[1]
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2005)  # OP_GET_MORE
 
-    def test_compressed_op_code(self):
-        _rid, msg = _get_more_compressed("db.col", 0, 0, _ZLIB_CTX)
+    def test_get_more_compressed_op_code(self):
+        msg = _get_more_compressed("db.col", 0, 0, _ZLIB_CTX)[1]
         op_code = struct.unpack("<i", msg[12:16])[0]
         self.assertEqual(op_code, 2012)  # OP_COMPRESSED
 
@@ -252,7 +253,7 @@ class TestGenFindCommand(unittest.TestCase):
 
     def test_with_projection(self):
         cmd = _gen_find_command("col", {}, {"x": 1}, 0, 0, None, None, ReadConcern())
-        self.assertIn("projection", cmd)
+        self.assertEqual(cmd["projection"], {"x": 1})
 
     def test_with_skip(self):
         cmd = _gen_find_command("col", {}, None, 5, 0, None, None, ReadConcern())
@@ -279,7 +280,7 @@ class TestGenFindCommand(unittest.TestCase):
 
     def test_read_concern_level_included(self):
         cmd = _gen_find_command("col", {}, None, 0, 0, None, None, ReadConcern("majority"))
-        self.assertIn("readConcern", cmd)
+        self.assertEqual(cmd["readConcern"], {"level": "majority"})
 
     def test_query_with_dollar_query_modifier(self):
         spec = {"$query": {"x": 1}, "$orderby": {"x": 1}}
