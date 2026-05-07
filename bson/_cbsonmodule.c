@@ -109,6 +109,7 @@ struct module_state {
 #define DATETIME_CLAMP 2
 #define DATETIME_MS 3
 #define DATETIME_AUTO 4
+#define PYTHON_3_12 0x030C0000
 
 /* Converts integer to its string representation in decimal notation. */
 extern int cbson_long_long_to_str(long long num, char* str, size_t size) {
@@ -249,8 +250,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
  */
 static int write_raw_doc(buffer_t buffer, PyObject* raw, PyObject* _raw);
 
-/* 3.12 */
-#if PY_VERSION_HEX >= 0x030C0000
+#if PY_VERSION_HEX >= PYTHON_3_12
 /* Transfer traceback from old_exc to new_exc.
  * Steals reference to old_exc. */
 static PyObject* _transfer_traceback(PyObject *old_exc, PyObject *new_exc) {
@@ -266,8 +266,7 @@ static PyObject* _transfer_traceback(PyObject *old_exc, PyObject *new_exc) {
 
 /* Rewrap the current exception as InvalidBSON(str(e)) if it is not already an InvalidBSON error. */
 static void _rewrap_as_invalid_bson(void) {
-/* 3.12 */
-#if PY_VERSION_HEX >= 0x030C0000
+#if PY_VERSION_HEX >= PYTHON_3_12
     PyObject *exc = PyErr_GetRaisedException();
     if (exc && PyErr_GivenExceptionMatches(exc, PyExc_Exception)) {
         PyObject *InvalidBSON = _error("InvalidBSON");
@@ -357,8 +356,7 @@ static PyObject* datetime_from_millis(long long millis) {
                                           timeinfo.tm_sec,
                                           microseconds);
     if(!datetime) {
-        /* 3.12 */
-        #if PY_VERSION_HEX >= 0x030C0000
+        #if PY_VERSION_HEX >= PYTHON_3_12
             PyObject *exc = PyErr_GetRaisedException();
 
             /* Only add additional error message on ValueError exceptions. */
@@ -1768,8 +1766,7 @@ fail:
 /* Update Invalid Document error to include doc as a property.
  */
 void handle_invalid_doc_error(PyObject* dict) {
-/* 3.12 */
-#if PY_VERSION_HEX >= 0x030C0000
+#if PY_VERSION_HEX >= PYTHON_3_12
     PyObject *exc = PyErr_GetRaisedException();
     PyObject *msg = NULL, *new_msg = NULL;
     PyObject *InvalidDocument = NULL;
