@@ -46,6 +46,8 @@ from pymongo.common import (
     MAX_MESSAGE_SIZE,
     MAX_WIRE_VERSION,
     MAX_WRITE_BATCH_SIZE,
+    MIN_SUPPORTED_SERVER_VERSION,
+    MIN_SUPPORTED_WIRE_VERSION,
     ORDERED_TYPES,
 )
 from pymongo.errors import (  # type:ignore[attr-defined]
@@ -235,13 +237,12 @@ class AsyncConnection:
             await self.close_conn(ConnectionClosedReason.STALE)
 
     def hello_cmd(self) -> dict[str, Any]:
-        # Handshake spec requires us to use OP_MSG+hello command for the
-        # initial handshake in load balanced or stable API mode.
+        # As of PYTHON-5713, always use OP_MSG for the handshake since all
+        # supported servers (MongoDB 4.2+, wire version >= 8) support it.
+        self.op_msg_enabled = True
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
-            self.op_msg_enabled = True
             return {HelloCompat.CMD: 1}
-        else:
-            return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
+        return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
 
     async def hello(self) -> Hello[dict[str, Any]]:
         return await self._hello(None, None)
@@ -291,6 +292,19 @@ class AsyncConnection:
         if performing_handshake:
             self.connect_rtt = time.monotonic() - start
         hello = Hello(doc, awaitable=awaitable)
+        # OP_MSG requires wire version 6+.
+        if hello.max_wire_version < 6:
+            raise ConfigurationError(
+                "Server at %s:%d reports wire version %d, but this version of "
+                "PyMongo requires at least %d (MongoDB %s)."
+                % (
+                    self.address[0],
+                    self.address[1] or 0,
+                    hello.max_wire_version,
+                    MIN_SUPPORTED_WIRE_VERSION,
+                    MIN_SUPPORTED_SERVER_VERSION,
+                )
+            )
         self.is_writable = hello.is_writable
         self.max_wire_version = hello.max_wire_version
         self.max_bson_size = hello.max_bson_size

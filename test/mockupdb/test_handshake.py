@@ -13,12 +13,13 @@
 # limitations under the License.
 from __future__ import annotations
 
+import re
 import unittest
 
 import pytest
 
 try:
-    from mockupdb import Command, MockupDB, OpMsg, OpMsgReply, OpQuery, OpReply, absent, go
+    from mockupdb import Command, MockupDB, OpMsg, OpMsgReply, OpReply, absent, go
 
     _HAVE_MOCKUPDB = True
 except ImportError:
@@ -28,8 +29,8 @@ except ImportError:
 from bson.objectid import ObjectId
 from pymongo import MongoClient, has_c
 from pymongo import version as pymongo_version
-from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
-from pymongo.errors import OperationFailure
+from pymongo.common import MIN_SUPPORTED_SERVER_VERSION, MIN_SUPPORTED_WIRE_VERSION
+from pymongo.errors import ConfigurationError, OperationFailure, ServerSelectionTimeoutError
 from pymongo.server_api import ServerApi, ServerApiVersion
 
 pytestmark = pytest.mark.mockupdb
@@ -53,7 +54,7 @@ def _check_handshake_data(request):
 
 class TestHandshake(unittest.TestCase):
     def hello_with_option_helper(self, protocol, **kwargs):
-        hello = "ismaster" if isinstance(protocol(), OpQuery) else "hello"
+        hello = "hello" if ("apiVersion" in kwargs or "loadBalanced" in kwargs) else "ismaster"
         # `db.command("hello"|"ismaster")` commands are the same for primaries and
         # secondaries, so we only need one server.
         primary = MockupDB()
@@ -165,7 +166,7 @@ class TestHandshake(unittest.TestCase):
         future = go(client.db.command, "whatever")
 
         for request in primary:
-            if request.matches(Command("ismaster")):
+            if request.matches("ismaster"):
                 if request.client_port == heartbeat.client_port:
                     # This is the monitor again, keep going.
                     request.ok(primary_response)
@@ -242,11 +243,10 @@ class TestHandshake(unittest.TestCase):
             self.hello_with_option_helper(Command, apiVersion="1")
 
     def test_handshake_not_either(self):
-        # If we don't specify either option then it should be using
-        # OP_QUERY for the initial step of the handshake.
-        self.hello_with_option_helper(Command)
+        # As of PYTHON-5713, always use OP_MSG for the initial handshake.
+        self.hello_with_option_helper(OpMsg)
         with self.assertRaisesRegex(AssertionError, "does not match"):
-            self.hello_with_option_helper(OpMsg)
+            self.hello_with_option_helper(Command)
 
     def test_handshake_max_wire(self):
         server = MockupDB()
@@ -291,6 +291,26 @@ class TestHandshake(unittest.TestCase):
         self.assertTrue(
             self.found_auth_msg, "Could not find authentication command with correct protocol"
         )
+
+    def test_handshake_op_msg_not_supported(self):
+        # If a server responds with maxWireVersion < 6 (no OP_MSG support),
+        # the wire version error must surface to the user.
+        server = MockupDB()
+        server.autoresponds("ismaster", ok=1, ismaster=True, minWireVersion=0, maxWireVersion=5)
+        server.run()
+        self.addCleanup(server.stop)
+
+        client = MongoClient(server.uri, serverSelectionTimeoutMS=500)
+        self.addCleanup(client.close)
+
+        # The ConfigurationError from _hello() is stored as the server's error
+        # and surfaces inside ServerSelectionTimeoutError.
+        expected = re.escape(
+            "reports wire version 5, but this version of PyMongo requires at least "
+            "%d (MongoDB %s)." % (MIN_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_SERVER_VERSION)
+        )
+        with self.assertRaisesRegex(ServerSelectionTimeoutError, expected):
+            client.db.command("ping")
 
 
 if __name__ == "__main__":
