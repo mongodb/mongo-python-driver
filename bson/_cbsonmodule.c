@@ -2155,7 +2155,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             }
             memcpy(&length, buffer + *position, 4);
             length = BSON_UINT32_FROM_LE(length);
-            if (length > max - 5) { // Account for 5-byte header. max >= 5 guaranteed above
+            if (max - 5 < length) { // Account for 5-byte header. max >= 5 guaranteed above
                 goto invalid;
             }
 
