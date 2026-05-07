@@ -1101,7 +1101,11 @@ class AsyncClientSession:
         read_preference: _ServerMode,
         conn: AsyncConnection,
     ) -> None:
-        if not conn.supports_sessions:
+        # getMores must be sent with a session if the cursor was opened with one
+        operation = next(iter(command))
+        if not conn.supports_sessions and (
+            isinstance(self._server_session, _EmptyServerSession) or operation != "getMore"
+        ):
             if not self._implicit:
                 raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
             return
