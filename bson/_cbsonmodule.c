@@ -109,6 +109,7 @@ struct module_state {
 #define DATETIME_CLAMP 2
 #define DATETIME_MS 3
 #define DATETIME_AUTO 4
+#define PYTHON_3_12 0x030C0000
 
 /* Converts integer to its string representation in decimal notation. */
 extern int cbson_long_long_to_str(long long num, char* str, size_t size) {
@@ -249,6 +250,67 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
  */
 static int write_raw_doc(buffer_t buffer, PyObject* raw, PyObject* _raw);
 
+#if PY_VERSION_HEX >= PYTHON_3_12
+/* Transfer traceback from old_exc to new_exc.
+ * Steals reference to old_exc. */
+static PyObject* _transfer_traceback(PyObject *old_exc, PyObject *new_exc) {
+    PyObject *tb = PyException_GetTraceback(old_exc);
+    if (tb) {
+        PyException_SetTraceback(new_exc, tb);
+        Py_DECREF(tb);
+    }
+    Py_DECREF(old_exc);
+    return new_exc;
+}
+#endif
+
+/* Rewrap the current exception as InvalidBSON(str(e)) if it is not already an InvalidBSON error. */
+static void _rewrap_as_invalid_bson(void) {
+#if PY_VERSION_HEX >= PYTHON_3_12
+    PyObject *exc = PyErr_GetRaisedException();
+    if (exc && PyErr_GivenExceptionMatches(exc, PyExc_Exception)) {
+        PyObject *InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            if (!PyErr_GivenExceptionMatches(exc, InvalidBSON)) {
+                PyObject *err_msg = PyObject_Str(exc);
+                if (err_msg) {
+                    PyObject *new_exc = PyObject_CallOneArg(InvalidBSON, err_msg);
+                    if (new_exc) {
+                        exc = _transfer_traceback(exc, new_exc);
+                    }
+                }
+                Py_XDECREF(err_msg);
+            }
+            Py_DECREF(InvalidBSON);
+        }
+    }
+    /* Steals reference to exc. */
+    PyErr_SetRaisedException(exc);
+#else
+    PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
+    PyObject *InvalidBSON = NULL;
+    PyErr_Fetch(&etype, &evalue, &etrace);
+    if (PyErr_GivenExceptionMatches(etype, PyExc_Exception)) {
+        InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            if (!PyErr_GivenExceptionMatches(etype, InvalidBSON)) {
+                Py_DECREF(etype);
+                etype = InvalidBSON;
+                if (evalue) {
+                    PyObject *msg = PyObject_Str(evalue);
+                    Py_DECREF(evalue);
+                    evalue = msg;
+                }
+                PyErr_NormalizeException(&etype, &evalue, &etrace);
+            } else {
+                Py_DECREF(InvalidBSON);
+            }
+        }
+    }
+    PyErr_Restore(etype, evalue, etrace);
+#endif
+}
+
 /* Date stuff */
 static PyObject* datetime_from_millis(long long millis) {
     /* To encode a datetime instance like datetime(9999, 12, 31, 23, 59, 59, 999999)
@@ -294,34 +356,57 @@ static PyObject* datetime_from_millis(long long millis) {
                                           timeinfo.tm_sec,
                                           microseconds);
     if(!datetime) {
-        PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
+        #if PY_VERSION_HEX >= PYTHON_3_12
+            PyObject *exc = PyErr_GetRaisedException();
 
-        /*
-        * Calling _error clears the error state, so fetch it first.
-        */
-        PyErr_Fetch(&etype, &evalue, &etrace);
-
-        /* Only add addition error message on ValueError exceptions. */
-        if (PyErr_GivenExceptionMatches(etype, PyExc_ValueError)) {
-            if (evalue) {
-                PyObject* err_msg = PyObject_Str(evalue);
+            /* Only add additional error message on ValueError exceptions. */
+            if (exc && PyErr_GivenExceptionMatches(exc, PyExc_ValueError)) {
+                PyObject* err_msg = PyObject_Str(exc);
                 if (err_msg) {
                     PyObject* appendage = PyUnicode_FromString(" (Consider Using CodecOptions(datetime_conversion=DATETIME_AUTO) or MongoClient(datetime_conversion='DATETIME_AUTO')). See: https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes");
                     if (appendage) {
                         PyObject* msg = PyUnicode_Concat(err_msg, appendage);
                         if (msg) {
-                            Py_DECREF(evalue);
-                            evalue = msg;
+                            PyObject* new_exc = PyObject_CallOneArg(PyExc_ValueError, msg);
+                            if (new_exc) {
+                                exc = _transfer_traceback(exc, new_exc);
+                            }
+                            Py_DECREF(msg);
                         }
                     }
                     Py_XDECREF(appendage);
                 }
                 Py_XDECREF(err_msg);
             }
-            PyErr_NormalizeException(&etype, &evalue, &etrace);
-        }
-        /* Steals references to args. */
-        PyErr_Restore(etype, evalue, etrace);
+            /* Steals reference to exc. */
+            PyErr_SetRaisedException(exc);
+        #else
+            /* Calling _error clears the error state, so fetch it first.*/
+            PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
+            PyErr_Fetch(&etype, &evalue, &etrace);
+
+            /* Only add additional error message on ValueError exceptions. */
+            if (PyErr_GivenExceptionMatches(etype, PyExc_ValueError)) {
+                if (evalue) {
+                    PyObject* err_msg = PyObject_Str(evalue);
+                    if (err_msg) {
+                        PyObject* appendage = PyUnicode_FromString(" (Consider Using CodecOptions(datetime_conversion=DATETIME_AUTO) or MongoClient(datetime_conversion='DATETIME_AUTO')). See: https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes");
+                        if (appendage) {
+                            PyObject* msg = PyUnicode_Concat(err_msg, appendage);
+                            if (msg) {
+                                Py_DECREF(evalue);
+                                evalue = msg;
+                            }
+                        }
+                        Py_XDECREF(appendage);
+                    }
+                    Py_XDECREF(err_msg);
+                }
+                PyErr_NormalizeException(&etype, &evalue, &etrace);
+            }
+            /* Steals references to args. */
+            PyErr_Restore(etype, evalue, etrace);
+        #endif
     }
     return datetime;
 }
@@ -1681,6 +1766,46 @@ fail:
 /* Update Invalid Document error to include doc as a property.
  */
 void handle_invalid_doc_error(PyObject* dict) {
+#if PY_VERSION_HEX >= PYTHON_3_12
+    PyObject *exc = PyErr_GetRaisedException();
+    PyObject *msg = NULL, *new_msg = NULL;
+    PyObject *InvalidDocument = NULL;
+
+    if (exc == NULL) {
+        return;
+    }
+
+    InvalidDocument = _error("InvalidDocument");
+    if (InvalidDocument == NULL) {
+        goto cleanup;
+    }
+
+    if (PyErr_GivenExceptionMatches(exc, InvalidDocument)) {
+        msg = PyObject_Str(exc);
+        if (msg) {
+            const char *msg_utf8 = PyUnicode_AsUTF8(msg);
+            if (msg_utf8 == NULL) {
+                goto cleanup;
+            }
+            new_msg = PyUnicode_FromFormat("Invalid document: %s", msg_utf8);
+            if (new_msg == NULL) {
+                goto cleanup;
+            }
+            /* Add doc to the error instance as a property. */
+            PyObject* exc_args[2] = {new_msg, dict};
+            PyObject* new_exc = PyObject_Vectorcall(InvalidDocument, exc_args, 2, NULL);
+            if (new_exc) {
+                exc = _transfer_traceback(exc, new_exc);
+            }
+        }
+    }
+cleanup:
+    /* Steals reference to exc. */
+    PyErr_SetRaisedException(exc);
+    Py_XDECREF(msg);
+    Py_XDECREF(InvalidDocument);
+    Py_XDECREF(new_msg);
+#else
     PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
     PyObject *msg = NULL, *new_msg = NULL, *new_evalue = NULL;
     PyErr_Fetch(&etype, &evalue, &etrace);
@@ -1723,6 +1848,7 @@ cleanup:
     Py_XDECREF(InvalidDocument);
     Py_XDECREF(new_evalue);
     Py_XDECREF(new_msg);
+#endif
 }
 
 
@@ -2155,7 +2281,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             }
             memcpy(&length, buffer + *position, 4);
             length = BSON_UINT32_FROM_LE(length);
-            if (max < length) {
+            if (max - 5 < length) { // Account for 5-byte header. max >= 5 guaranteed above
                 goto invalid;
             }
 
@@ -2654,42 +2780,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
      * Wrap any non-InvalidBSON errors in InvalidBSON.
      */
     if (PyErr_Occurred()) {
-        PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
-        PyObject *InvalidBSON = NULL;
-
-        /*
-         * Calling _error clears the error state, so fetch it first.
-         */
-        PyErr_Fetch(&etype, &evalue, &etrace);
-
-        /* Dont reraise anything but PyExc_Exceptions as InvalidBSON. */
-        if (PyErr_GivenExceptionMatches(etype, PyExc_Exception)) {
-            InvalidBSON = _error("InvalidBSON");
-            if (InvalidBSON) {
-                if (!PyErr_GivenExceptionMatches(etype, InvalidBSON)) {
-                    /*
-                     * Raise InvalidBSON(str(e)).
-                     */
-                    Py_DECREF(etype);
-                    etype = InvalidBSON;
-
-                    if (evalue) {
-                        PyObject *msg = PyObject_Str(evalue);
-                        Py_DECREF(evalue);
-                        evalue = msg;
-                    }
-                    PyErr_NormalizeException(&etype, &evalue, &etrace);
-                } else {
-                    /*
-                     * The current exception matches InvalidBSON, so we don't
-                     * need this reference after all.
-                     */
-                    Py_DECREF(InvalidBSON);
-                }
-            }
-        }
-        /* Steals references to args. */
-        PyErr_Restore(etype, evalue, etrace);
+        _rewrap_as_invalid_bson();
     } else {
         PyObject *InvalidBSON = _error("InvalidBSON");
         if (InvalidBSON) {
@@ -2727,25 +2818,7 @@ static int _element_to_dict(PyObject* self, const char* string,
     if (!*name) {
         /* If NULL is returned then wrap the UnicodeDecodeError
            in an InvalidBSON error */
-        PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
-        PyObject *InvalidBSON = NULL;
-
-        PyErr_Fetch(&etype, &evalue, &etrace);
-        if (PyErr_GivenExceptionMatches(etype, PyExc_Exception)) {
-            InvalidBSON = _error("InvalidBSON");
-            if (InvalidBSON) {
-                Py_DECREF(etype);
-                etype = InvalidBSON;
-
-                if (evalue) {
-                    PyObject *msg = PyObject_Str(evalue);
-                    Py_DECREF(evalue);
-                    evalue = msg;
-                }
-                PyErr_NormalizeException(&etype, &evalue, &etrace);
-            }
-        }
-        PyErr_Restore(etype, evalue, etrace);
+        _rewrap_as_invalid_bson();
         return -1;
     }
     position += (unsigned)name_length + 1;

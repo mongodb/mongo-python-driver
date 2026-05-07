@@ -1269,6 +1269,22 @@ class TestBSON(unittest.TestCase):
             encode(doc)
         self.assertEqual(cm.exception.document, doc)
 
+    def test_binary_length_accounts_for_header(self):
+        size = 20
+        binary_length = 12  # 5 more than the actual 7 bytes
+
+        payload = b""
+        payload += struct.pack("<i", size)  # document size
+        payload += b"\x05"  # type = Binary
+        payload += b"a\x00"  # key "a"
+        payload += struct.pack("<I", binary_length)  # Binary length (inflated)
+        payload += b"\x00"  # subtype 0
+        payload += b"\x41" * 7  # value
+        payload += b"\x00"  # EOO
+
+        with self.assertRaises(InvalidBSON):
+            decode(payload)
+
 
 class TestCodecOptions(unittest.TestCase):
     def test_document_class(self):
