@@ -15,7 +15,6 @@
 """Test the client_session module."""
 from __future__ import annotations
 
-import asyncio
 import copy
 import sys
 import time
@@ -23,8 +22,6 @@ from inspect import iscoroutinefunction
 from io import BytesIO
 from test.asynchronous.helpers import ExceptionCatchingTask
 from typing import Any, Callable, List, Set, Tuple
-
-from pymongo.synchronous.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 
@@ -45,7 +42,7 @@ from test.utils_shared import (
 
 from bson import DBRef
 from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
-from pymongo import ASCENDING, AsyncMongoClient, _csot, monitoring
+from pymongo import ASCENDING, AsyncMongoClient, monitoring
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.helpers import anext
@@ -937,6 +934,39 @@ class TestSession(AsyncIntegrationTest):
         self.assertFalse(s2.has_ended)
 
         await s2.end_session()
+
+    async def test_getmore_preserves_lsid_after_session_support_lost(self):
+        listener = OvertCommandListener()
+        client = await self.async_rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
+        coll = client.pymongo_test.test
+        await coll.drop()
+        await coll.insert_many([{"x": i} for i in range(10)])
+        self.addAsyncCleanup(coll.drop)
+
+        async with client.start_session() as s:
+            cursor = coll.find({}, batch_size=2, session=s)
+            await anext(cursor)
+
+            find_event = next(e for e in listener.started_events if e.command_name == "find")
+            lsid = find_event.command["lsid"]
+
+            # Simulate a node stepping down: mark idle connections as not supporting sessions.
+            for server in client._topology._servers.values():
+                for conn in server.pool.conns:
+                    conn.supports_sessions = False
+
+            listener.reset()
+            await cursor.to_list()
+
+        getmore_events = [e for e in listener.started_events if e.command_name == "getMore"]
+        self.assertGreater(len(getmore_events), 0, "expected at least one getMore command")
+        for event in getmore_events:
+            self.assertIn(
+                "lsid", event.command, "getMore must include lsid when session is materialized"
+            )
+            self.assertEqual(
+                lsid, event.command["lsid"], "getMore lsid must match the session lsid from find"
+            )
 
 
 class TestCausalConsistency(AsyncUnitTest):
