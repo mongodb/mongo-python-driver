@@ -1233,6 +1233,8 @@ async def async_setup():
 
 async def async_teardown():
     global_knobs.disable()
+    if async_client_context.client is not None:
+        await async_client_context.client.close()
     garbage = []
     for g in gc.garbage:
         garbage.append(f"GARBAGE: {g!r}")

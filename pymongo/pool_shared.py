@@ -207,6 +207,7 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
             sock = socket.socket(af, socktype, proto)
         # Fallback when SOCK_CLOEXEC isn't available.
         _set_non_inheritable_non_atomic(sock.fileno())
+        sock_returned = False
         try:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             # CSOT: apply timeout to socket connect.
@@ -223,14 +224,17 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
                 asyncio.get_running_loop().sock_connect(sock, sa), timeout=timeout
             )
             sock.settimeout(timeout)
+            sock_returned = True
             return sock
         except asyncio.TimeoutError as e:
-            sock.close()
             err = socket.timeout("timed out")
             err.__cause__ = e
         except OSError as e:
-            sock.close()
             err = e  # type: ignore[assignment]
+        finally:
+            # Always close the socket if it wasn't returned to avoid leaks.
+            if not sock_returned:
+                sock.close()
 
     if err is not None:
         raise err
@@ -307,48 +311,59 @@ async def _configured_protocol_interface(
     Sets protocol's SSL and timeout options.
     """
     sock = await _async_create_connection(address, options)
-    ssl_context = options._ssl_context
-    timeout = options.socket_timeout
+    sock_adopted = False
+    try:
+        ssl_context = options._ssl_context
+        timeout = options.socket_timeout
 
-    if ssl_context is None:
-        return AsyncNetworkingInterface(
-            await asyncio.get_running_loop().create_connection(
+        if ssl_context is None:
+            result = await asyncio.get_running_loop().create_connection(
                 lambda: PyMongoProtocol(timeout=timeout), sock=sock
             )
-        )
+            sock_adopted = True
+            return AsyncNetworkingInterface(result)
 
-    host = address[0]
-    try:
-        # We have to pass hostname / ip address to wrap_socket
-        # to use SSLContext.check_hostname.
-        transport, protocol = await asyncio.get_running_loop().create_connection(  # type: ignore[call-overload]
-            lambda: PyMongoProtocol(timeout=timeout),
-            sock=sock,
-            server_hostname=host,
-            ssl=ssl_context,
-        )
-    except _CertificateError:
-        # Raise _CertificateError directly like we do after match_hostname
-        # below.
-        raise
-    except (OSError, *SSLErrors) as exc:
-        # We raise AutoReconnect for transient and permanent SSL handshake
-        # failures alike. Permanent handshake failures, like protocol
-        # mismatch, will be turned into ServerSelectionTimeoutErrors later.
-        details = _get_timeout_details(options)
-        _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
-    if (
-        ssl_context.verify_mode
-        and not ssl_context.check_hostname
-        and not options.tls_allow_invalid_hostnames
-    ):
+        host = address[0]
         try:
-            ssl.match_hostname(transport.get_extra_info("peercert"), hostname=host)  # type:ignore[attr-defined,unused-ignore]
+            # We have to pass hostname / ip address to wrap_socket
+            # to use SSLContext.check_hostname.
+            transport, protocol = await asyncio.get_running_loop().create_connection(  # type: ignore[call-overload]
+                lambda: PyMongoProtocol(timeout=timeout),
+                sock=sock,
+                server_hostname=host,
+                ssl=ssl_context,
+            )
+            sock_adopted = True
         except _CertificateError:
-            transport.abort()
+            # Raise _CertificateError directly like we do after match_hostname
+            # below.
             raise
+        except (OSError, *SSLErrors) as exc:
+            # We raise AutoReconnect for transient and permanent SSL handshake
+            # failures alike. Permanent handshake failures, like protocol
+            # mismatch, will be turned into ServerSelectionTimeoutErrors later.
+            details = _get_timeout_details(options)
+            _raise_connection_failure(
+                address, exc, "SSL handshake failed: ", timeout_details=details
+            )
+        if (
+            ssl_context.verify_mode
+            and not ssl_context.check_hostname
+            and not options.tls_allow_invalid_hostnames
+        ):
+            try:
+                ssl.match_hostname(transport.get_extra_info("peercert"), hostname=host)  # type:ignore[attr-defined,unused-ignore]
+            except _CertificateError:
+                transport.abort()
+                raise
 
-    return AsyncNetworkingInterface((transport, protocol))
+        return AsyncNetworkingInterface((transport, protocol))
+    finally:
+        # If cancellation or any exception lands between sock creation and
+        # transport adoption, asyncio.create_connection has not registered
+        # cleanup for the sock — close it ourselves so it doesn't leak.
+        if not sock_adopted:
+            sock.close()
 
 
 def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:

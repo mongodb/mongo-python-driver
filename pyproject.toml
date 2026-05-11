@@ -108,11 +108,6 @@ filterwarnings = [
     # pytest-asyncio known issue: https://github.com/pytest-dev/pytest-asyncio/issues/1032
     "module:.*WindowsSelectorEventLoopPolicy:DeprecationWarning",
     "module:.*et_event_loop_policy:DeprecationWarning",
-    # TODO: Remove as part of PYTHON-3923.
-    "module:unclosed <socket.socket:ResourceWarning",
-    "module:unclosed <ssl.SSLSocket:ResourceWarning",
-    "module:unclosed <socket object:ResourceWarning",
-    "module:unclosed transport:ResourceWarning",
     # pytest-asyncio known issue: https://github.com/pytest-dev/pytest-asyncio/issues/724
     "module:unclosed event loop:ResourceWarning",
     # https://github.com/dateutil/dateutil/issues/1314

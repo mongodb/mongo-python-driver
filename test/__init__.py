@@ -1217,6 +1217,8 @@ def setup():
 
 def teardown():
     global_knobs.disable()
+    if client_context.client is not None:
+        client_context.client.close()
     garbage = []
     for g in gc.garbage:
         garbage.append(f"GARBAGE: {g!r}")

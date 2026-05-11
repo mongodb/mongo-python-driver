@@ -1061,34 +1061,43 @@ class Pool:
             raise
 
         conn = Connection(networking_interface, self, self.address, conn_id, self.is_sdam)  # type: ignore[arg-type]
-        with self.lock:
-            self.active_contexts.add(conn.cancel_context)
-            self.active_contexts.discard(tmp_context)
-        if tmp_context.cancelled:
-            conn.cancel_context.cancel()
-        completed_hello = False
         try:
-            if not self.is_sdam:
-                conn.hello()
-                completed_hello = True
-                self.is_writable = conn.is_writable
-            if handler:
-                handler.contribute_socket(conn, completed_handshake=False)
-
-            conn.authenticate()
-        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException as e:
             with self.lock:
-                self.active_contexts.discard(conn.cancel_context)
-            if not completed_hello:
-                self._handle_connection_error(e)
-            conn.close_conn(ConnectionClosedReason.ERROR)
+                self.active_contexts.add(conn.cancel_context)
+                self.active_contexts.discard(tmp_context)
+            if tmp_context.cancelled:
+                conn.cancel_context.cancel()
+            completed_hello = False
+            try:
+                if not self.is_sdam:
+                    conn.hello()
+                    completed_hello = True
+                    self.is_writable = conn.is_writable
+                if handler:
+                    handler.contribute_socket(conn, completed_handshake=False)
+
+                conn.authenticate()
+            # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
+            except BaseException as e:
+                with self.lock:
+                    self.active_contexts.discard(conn.cancel_context)
+                if not completed_hello:
+                    self._handle_connection_error(e)
+                conn.close_conn(ConnectionClosedReason.ERROR)
+                raise
+
+            if handler:
+                handler.client._topology.receive_cluster_time(conn._cluster_time)
+
+            return conn
+        # Catch cancellations that interrupt outside the inner try block above
+        except BaseException:
+            if not conn.closed:
+                try:
+                    conn.close_conn(ConnectionClosedReason.ERROR)
+                except BaseException:  # noqa: S110
+                    pass
             raise
-
-        if handler:
-            handler.client._topology.receive_cluster_time(conn._cluster_time)
-
-        return conn
 
     @contextlib.contextmanager
     def checkout(
