@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Upcoming
+--------
+
+- Added experimental support for Atlas Stream Processing (ASP).
+  :class:`~pymongo.asynchronous.stream_processing.AsyncStreamProcessingClient`
+  and :class:`~pymongo.synchronous.stream_processing.StreamProcessingClient`
+  enable native client-side management of stream processors in an ASP workspace,
+  including ``createStreamProcessor``, ``startStreamProcessor``,
+  ``stopStreamProcessor``, ``dropStreamProcessor``, ``getStreamProcessor``,
+  ``getStreamProcessorStats``, and the two-phase sample cursor protocol
+  (``startSampleStreamProcessor`` / ``getMoreSampleStreamProcessor``). See the
+  :mod:`stream_processing` API docs for details. The API is experimental and
+  may change before the driver specification is finalized.
+
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
 

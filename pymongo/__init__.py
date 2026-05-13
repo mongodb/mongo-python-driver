@@ -45,6 +45,21 @@ __all__ = [
     "WriteConcern",
     "has_c",
     "timeout",
+    # Atlas Stream Processing (experimental)
+    "AsyncSampleCursor",
+    "AsyncStreamProcessingClient",
+    "AsyncStreamProcessor",
+    "AsyncStreamProcessors",
+    "SampleCursor",
+    "StreamProcessingClient",
+    "StreamProcessor",
+    "StreamProcessors",
+    "CreateStreamProcessorOptions",
+    "GetStreamProcessorSamplesOptions",
+    "GetStreamProcessorSamplesResult",
+    "GetStreamProcessorStatsOptions",
+    "StartStreamProcessorOptions",
+    "StreamProcessorInfo",
 ]
 
 ASCENDING = 1
@@ -104,6 +119,28 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.collection import ReturnDocument
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
+
+# Atlas Stream Processing (experimental)
+from pymongo.asynchronous.stream_processing import (
+    AsyncSampleCursor,
+    AsyncStreamProcessingClient,
+    AsyncStreamProcessor,
+    AsyncStreamProcessors,
+)
+from pymongo.synchronous.stream_processing import (
+    SampleCursor,
+    StreamProcessingClient,
+    StreamProcessor,
+    StreamProcessors,
+)
+from pymongo.stream_processing_options import (
+    CreateStreamProcessorOptions,
+    GetStreamProcessorSamplesOptions,
+    GetStreamProcessorSamplesResult,
+    GetStreamProcessorStatsOptions,
+    StartStreamProcessorOptions,
+    StreamProcessorInfo,
+)
 
 # Public module compatibility imports
 # isort: off

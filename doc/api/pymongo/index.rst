@@ -56,6 +56,7 @@ Sub-modules:
    results
    server_api
    server_description
+   stream_processing
    topology_description
    uri_parser
    write_concern
