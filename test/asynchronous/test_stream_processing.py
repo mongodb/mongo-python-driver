@@ -18,6 +18,7 @@ All tests run offline — no live workspace is required.  The wire layer is
 stubbed out by replacing ``_command`` on the client with a lightweight spy
 that records calls and returns pre-configured responses.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -31,6 +32,7 @@ sys.path[0:0] = [""]
 
 _IS_SYNC = False
 
+import pymongo.asynchronous.stream_processing
 from bson import Timestamp
 from pymongo import (
     AsyncSampleCursor,
@@ -44,9 +46,7 @@ from pymongo import (
     StartStreamProcessorOptions,
     StreamProcessorInfo,
 )
-import pymongo.asynchronous.stream_processing
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
-
 
 # ---------------------------------------------------------------------------
 # Spy helper
@@ -167,9 +167,7 @@ class TestStreamProcessingClientConfig(unittest.TestCase):
     def test_workspace_endpoint_detection(self) -> None:
         from pymongo.asynchronous.stream_processing import _is_workspace_endpoint
 
-        self.assertTrue(
-            _is_workspace_endpoint("atlas-stream-foo.virginia-usa.a.query.mongodb.net")
-        )
+        self.assertTrue(_is_workspace_endpoint("atlas-stream-foo.virginia-usa.a.query.mongodb.net"))
         self.assertTrue(_is_workspace_endpoint("something.a.query.mongodb.net"))
         self.assertFalse(_is_workspace_endpoint("cluster0.mongodb.net"))
         self.assertFalse(_is_workspace_endpoint("localhost"))
@@ -495,7 +493,9 @@ class AsyncTestSampleCursor(unittest.IsolatedAsyncioTestCase):
             responses=[{"cursorId": 0, "firstBatch": [{"a": 1}, {"a": 2}, {"a": 3}]}]
         )
         proc = AsyncStreamProcessor(client=client, name="demo")
-        docs = [doc async for doc in proc.sample()]
+        docs = []
+        async for doc in proc.sample():
+            docs.append(doc)
         self.assertEqual(docs, [{"a": 1}, {"a": 2}, {"a": 3}])
         self.assertEqual(len(calls), 1)
 
@@ -508,7 +508,9 @@ class AsyncTestSampleCursor(unittest.IsolatedAsyncioTestCase):
             ]
         )
         proc = AsyncStreamProcessor(client=client, name="demo")
-        docs = [doc async for doc in proc.sample()]
+        docs = []
+        async for doc in proc.sample():
+            docs.append(doc)
         self.assertEqual(docs, [{"a": 1}, {"a": 2}, {"a": 3}])
         self.assertEqual(len(calls), 3)
 
@@ -521,14 +523,14 @@ class AsyncTestSampleCursor(unittest.IsolatedAsyncioTestCase):
             ]
         )
         proc = AsyncStreamProcessor(client=client, name="demo")
-        docs = [doc async for doc in proc.sample()]
+        docs = []
+        async for doc in proc.sample():
+            docs.append(doc)
         self.assertEqual(docs, [{"a": 1}])
         self.assertEqual(len(calls), 3)
 
     async def test_sample_iterator_stops_after_cursor_id_zero(self) -> None:
-        client, calls = _spy_client(
-            responses=[{"cursorId": 0, "firstBatch": [{"a": 1}]}]
-        )
+        client, calls = _spy_client(responses=[{"cursorId": 0, "firstBatch": [{"a": 1}]}])
         proc = AsyncStreamProcessor(client=client, name="demo")
         cursor = proc.sample()
         first = await cursor.__anext__()
@@ -548,9 +550,7 @@ class AsyncTestSampleCursor(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(calls), 0)
 
     async def test_sample_cursor_alive_property(self) -> None:
-        client, _ = _spy_client(
-            responses=[{"cursorId": 0, "firstBatch": [{"a": 1}]}]
-        )
+        client, _ = _spy_client(responses=[{"cursorId": 0, "firstBatch": [{"a": 1}]}])
         proc = AsyncStreamProcessor(client=client, name="demo")
         cursor = proc.sample()
         self.assertTrue(cursor.alive)
@@ -628,9 +628,7 @@ class AsyncTestErrorHandling(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_info_propagates_operation_failure(self) -> None:
         client, _ = _spy_client(raises=self._failure(9))
-        await self._assert_propagates(
-            lambda: AsyncStreamProcessors(client).get_info("p"), 9
-        )
+        await self._assert_propagates(lambda: AsyncStreamProcessors(client).get_info("p"), 9)
 
     async def test_stats_propagates_operation_failure(self) -> None:
         client, _ = _spy_client(raises=self._failure(72))
@@ -653,9 +651,7 @@ class AsyncTestErrorHandling(unittest.IsolatedAsyncioTestCase):
 
     def test_no_operation_failure_caught_in_module(self) -> None:
         """Structural: verify no try/except hides server errors in either module."""
-        for mod in (
-            pymongo.asynchronous.stream_processing,
-        ):
+        for mod in (pymongo.asynchronous.stream_processing,):
             src = inspect.getsource(mod)
             self.assertNotIn("except OperationFailure", src, mod.__name__)
             self.assertNotIn("except PyMongoError", src, mod.__name__)
@@ -674,7 +670,11 @@ class AsyncTestSpecCompliance(unittest.IsolatedAsyncioTestCase):
         """Each command must route as retryable or non-retryable per the spec."""
         cases: list[tuple[str, Any, bool]] = [
             # (label, coroutine-factory, expected_retryable_read)
-            ("create", lambda c: AsyncStreamProcessors(c).create("demo", pipeline=[{"$x": 1}]), False),
+            (
+                "create",
+                lambda c: AsyncStreamProcessors(c).create("demo", pipeline=[{"$x": 1}]),
+                False,
+            ),
             ("start", lambda c: AsyncStreamProcessor(client=c, name="demo").start(), False),
             ("stop", lambda c: AsyncStreamProcessor(client=c, name="demo").stop(), False),
             ("drop", lambda c: AsyncStreamProcessor(client=c, name="demo").drop(), False),
@@ -682,7 +682,9 @@ class AsyncTestSpecCompliance(unittest.IsolatedAsyncioTestCase):
             ("stats", lambda c: AsyncStreamProcessor(client=c, name="demo").stats(), True),
             (
                 "get_samples_initial",
-                lambda c: AsyncStreamProcessor(client=c, name="demo").get_stream_processor_samples(),
+                lambda c: AsyncStreamProcessor(
+                    client=c, name="demo"
+                ).get_stream_processor_samples(),
                 False,
             ),
             (

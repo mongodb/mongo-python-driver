@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Python driver for MongoDB."""
+
 from __future__ import annotations
 
 from typing import ContextManager, Optional
@@ -104,6 +105,14 @@ TEXT = "text"
 from pymongo import _csot
 from pymongo._version import __version__, get_version_string, version_tuple
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
+# Atlas Stream Processing (experimental)
+from pymongo.asynchronous.stream_processing import (
+    AsyncSampleCursor,
+    AsyncStreamProcessingClient,
+    AsyncStreamProcessor,
+    AsyncStreamProcessors,
+)
 from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION, has_c
 from pymongo.cursor import CursorType
 from pymongo.operations import (
@@ -116,23 +125,6 @@ from pymongo.operations import (
     UpdateOne,
 )
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.collection import ReturnDocument
-from pymongo.synchronous.mongo_client import MongoClient
-from pymongo.write_concern import WriteConcern
-
-# Atlas Stream Processing (experimental)
-from pymongo.asynchronous.stream_processing import (
-    AsyncSampleCursor,
-    AsyncStreamProcessingClient,
-    AsyncStreamProcessor,
-    AsyncStreamProcessors,
-)
-from pymongo.synchronous.stream_processing import (
-    SampleCursor,
-    StreamProcessingClient,
-    StreamProcessor,
-    StreamProcessors,
-)
 from pymongo.stream_processing_options import (
     CreateStreamProcessorOptions,
     GetStreamProcessorSamplesOptions,
@@ -141,6 +133,15 @@ from pymongo.stream_processing_options import (
     StartStreamProcessorOptions,
     StreamProcessorInfo,
 )
+from pymongo.synchronous.collection import ReturnDocument
+from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.stream_processing import (
+    SampleCursor,
+    StreamProcessingClient,
+    StreamProcessor,
+    StreamProcessors,
+)
+from pymongo.write_concern import WriteConcern
 
 # Public module compatibility imports
 # isort: off

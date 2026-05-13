@@ -17,6 +17,7 @@
 These classes are shared between the synchronous and asynchronous APIs —
 no async/sync split is needed for plain dataclasses.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -55,7 +56,7 @@ class StartStreamProcessorOptions:
 
     workers: Optional[int] = None
     clear_checkpoints: Optional[bool] = None
-    start_at_operation_time: Optional["Timestamp"] = None
+    start_at_operation_time: Optional[Timestamp] = None
     start_after: Optional[Mapping[str, Any]] = None
     tier: Optional[str] = None
     enable_auto_scaling: Optional[bool] = None
@@ -138,11 +139,11 @@ class StreamProcessorInfo:
     so that unknown or future fields are not silently discarded.
     """
 
-    id: str
+    id: Optional[str]
     name: str
     state: str  # plain str — drivers MUST NOT hard-code this as an Enum
     pipeline: list[Mapping[str, Any]]
-    pipeline_version: int
+    pipeline_version: Optional[int]
     tier: Optional[str] = None
     dlq: Optional[Mapping[str, Any]] = None
     stream_meta_field_name: Optional[str] = None
@@ -161,18 +162,18 @@ class StreamProcessorInfo:
     raw: Mapping[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_response(cls, doc: Mapping[str, Any]) -> "StreamProcessorInfo":
+    def from_response(cls, doc: Mapping[str, Any]) -> StreamProcessorInfo:
         """Construct a :class:`StreamProcessorInfo` from a server response document.
 
         Maps camelCase server keys to Python snake_case fields and stashes the
         full *doc* in :attr:`raw` so no fields are silently dropped.
         """
         return cls(
-            id=doc["id"],
+            id=doc.get("id"),
             name=doc["name"],
             state=doc["state"],
-            pipeline=doc["pipeline"],
-            pipeline_version=doc["pipelineVersion"],
+            pipeline=doc.get("pipeline", []),
+            pipeline_version=doc.get("pipelineVersion"),
             tier=doc.get("tier"),
             dlq=doc.get("dlq"),
             stream_meta_field_name=doc.get("streamMetaFieldName"),

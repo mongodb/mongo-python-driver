@@ -51,11 +51,11 @@ do not maintain a closed list of valid codes — applications should branch
 on ``exc.code`` only when they need to react to a specific known code, and
 should always have a generic fallback for unknown codes.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping, Optional
 
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.errors import ConfigurationError, InvalidOperation
 from pymongo.operations import _Op
 from pymongo.stream_processing_options import (
@@ -66,6 +66,7 @@ from pymongo.stream_processing_options import (
     StartStreamProcessorOptions,
     StreamProcessorInfo,
 )
+from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.uri_parser_shared import SRV_SCHEME, _validate_uri
 
 if TYPE_CHECKING:
@@ -146,7 +147,7 @@ class StreamProcessingClient:
         if not uri_has_auth_source and not any(k.lower() == "authsource" for k in kwargs):
             kwargs["authSource"] = "admin"
 
-        self._client: MongoClient = MongoClient(*args, **kwargs)
+        self._client: MongoClient[Any] = MongoClient(*args, **kwargs)
 
     # NOTE: Per the ASP driver spec, server errors MUST be surfaced as-is.
     # Do NOT introduce error-code branching, rewrapping, or filtering anywhere
@@ -180,7 +181,7 @@ class StreamProcessingClient:
             return admin._retryable_read_command(cmd, session=session, operation=operation)
         return admin.command(cmd, session=session)
 
-    def stream_processors(self) -> "StreamProcessors":
+    def stream_processors(self) -> StreamProcessors:
         """Return a handle for managing stream processors in this workspace."""
         return StreamProcessors(self)
 
@@ -188,14 +189,14 @@ class StreamProcessingClient:
         """Close the underlying client and release all resources."""
         self._client.close()
 
-    def __enter__(self) -> "StreamProcessingClient":
+    def __enter__(self) -> StreamProcessingClient:
         return self
 
     def __exit__(
         self,
         exc_type: Optional[type[BaseException]],
         exc_val: Optional[BaseException],
-        exc_tb: Optional["TracebackType"],
+        exc_tb: Optional[TracebackType],
     ) -> None:
         self.close()
 
@@ -215,7 +216,7 @@ class StreamProcessors:
     Obtained via :meth:`StreamProcessingClient.stream_processors`.
     """
 
-    def __init__(self, client: "StreamProcessingClient") -> None:
+    def __init__(self, client: StreamProcessingClient) -> None:
         self._client = client
 
     def create(
@@ -261,7 +262,7 @@ class StreamProcessors:
                 cmd["options"] = opts
         self._client._command(cmd, session=session)
 
-    def get(self, name: str) -> "StreamProcessor":
+    def get(self, name: str) -> StreamProcessor:
         """Return a handle for an existing stream processor by name.
 
         This is a pure factory method — it does **not** contact the server
@@ -297,7 +298,8 @@ class StreamProcessors:
             raise InvalidOperation("Stream processor name must be a non-empty string.")
         cmd: dict[str, Any] = {_Op.GET_STREAM_PROCESSOR: name}
         response = self._client._command(cmd, retryable_read=True, session=session)
-        return StreamProcessorInfo.from_response(response)
+        doc = response.get("result", response)
+        return StreamProcessorInfo.from_response(doc)
 
 
 class StreamProcessor:
@@ -307,7 +309,7 @@ class StreamProcessor:
     Obtain via :meth:`StreamProcessors.get`.
     """
 
-    def __init__(self, *, client: "StreamProcessingClient", name: str) -> None:
+    def __init__(self, *, client: StreamProcessingClient, name: str) -> None:
         if not name or not name.strip():
             raise InvalidOperation("Stream processor name must be a non-empty string.")
         self._client = client
@@ -374,9 +376,7 @@ class StreamProcessor:
             :class:`~pymongo.client_session.ClientSession` to use
             for this operation.
         """
-        self._client._command(
-            {_Op.STOP_STREAM_PROCESSOR: self.name}, session=session
-        )
+        self._client._command({_Op.STOP_STREAM_PROCESSOR: self.name}, session=session)
 
     def drop(
         self,
@@ -393,9 +393,7 @@ class StreamProcessor:
             :class:`~pymongo.client_session.ClientSession` to use
             for this operation.
         """
-        self._client._command(
-            {_Op.DROP_STREAM_PROCESSOR: self.name}, session=session
-        )
+        self._client._command({_Op.DROP_STREAM_PROCESSOR: self.name}, session=session)
 
     def stats(
         self,
@@ -461,9 +459,7 @@ class StreamProcessor:
             options = GetStreamProcessorSamplesOptions()
 
         if options.cursor_id == 0:
-            raise InvalidOperation(
-                "Sample cursor is exhausted; cursor_id 0 cannot be continued."
-            )
+            raise InvalidOperation("Sample cursor is exhausted; cursor_id 0 cannot be continued.")
 
         if options.cursor_id is None:
             cmd: dict[str, Any] = {_Op.START_SAMPLE_STREAM_PROCESSOR: self.name}
@@ -472,7 +468,7 @@ class StreamProcessor:
             resp = self._client._command(cmd, session=session)
             return GetStreamProcessorSamplesResult(
                 cursor_id=int(resp["cursorId"]),
-                documents=list(resp["firstBatch"]),
+                documents=list(resp.get("firstBatch", [])),
             )
         else:
             cmd = {
@@ -484,7 +480,7 @@ class StreamProcessor:
             resp = self._client._command(cmd, session=session)
             return GetStreamProcessorSamplesResult(
                 cursor_id=int(resp["cursorId"]),
-                documents=list(resp["nextBatch"]),
+                documents=list(resp.get("nextBatch", resp.get("messages", []))),
             )
 
     def sample(
@@ -493,7 +489,7 @@ class StreamProcessor:
         batch_size: Optional[int] = None,
         *,
         session: Optional[ClientSession] = None,
-    ) -> "SampleCursor":
+    ) -> SampleCursor:
         """Open a sample cursor over this stream processor's output.
 
         Returns an async iterator that yields sampled documents until the
@@ -541,10 +537,10 @@ class SampleCursor:
     def __init__(
         self,
         *,
-        processor: "StreamProcessor",
+        processor: StreamProcessor,
         limit: Optional[int] = None,
         batch_size: Optional[int] = None,
-        session: Optional["ClientSession"] = None,
+        session: Optional[ClientSession] = None,
     ) -> None:
         self._processor = processor
         self._limit = limit
@@ -587,9 +583,7 @@ class SampleCursor:
                 batch_size=self._batch_size,
             )
 
-        result = self._processor.get_stream_processor_samples(
-            opts, session=self._session
-        )
+        result = self._processor.get_stream_processor_samples(opts, session=self._session)
         self._cursor_id = result.cursor_id
         self._buffer.extend(result.documents)
 
@@ -597,7 +591,7 @@ class SampleCursor:
         if result.cursor_id == 0:
             self._exhausted = True
 
-    def __iter__(self) -> "SampleCursor":
+    def __iter__(self) -> SampleCursor:
         return self
 
     def __next__(self) -> Mapping[str, Any]:
@@ -627,13 +621,13 @@ class SampleCursor:
         """
         self._closed = True
 
-    def __enter__(self) -> "SampleCursor":
+    def __enter__(self) -> SampleCursor:
         return self
 
     def __exit__(
         self,
         exc_type: Optional[type[BaseException]],
         exc_val: Optional[BaseException],
-        exc_tb: Optional["TracebackType"],
+        exc_tb: Optional[TracebackType],
     ) -> None:
         self.close()

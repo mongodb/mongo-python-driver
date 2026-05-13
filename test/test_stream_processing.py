@@ -18,6 +18,7 @@ All tests run offline — no live workspace is required.  The wire layer is
 stubbed out by replacing ``_command`` on the client with a lightweight spy
 that records calls and returns pre-configured responses.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -31,22 +32,21 @@ sys.path[0:0] = [""]
 
 _IS_SYNC = True
 
+import pymongo.synchronous.stream_processing
 from bson import Timestamp
 from pymongo import (
-    SampleCursor,
-    StreamProcessingClient,
-    StreamProcessor,
-    StreamProcessors,
     CreateStreamProcessorOptions,
     GetStreamProcessorSamplesOptions,
     GetStreamProcessorSamplesResult,
     GetStreamProcessorStatsOptions,
+    SampleCursor,
     StartStreamProcessorOptions,
+    StreamProcessingClient,
+    StreamProcessor,
     StreamProcessorInfo,
+    StreamProcessors,
 )
-import pymongo.synchronous.stream_processing
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
-
 
 # ---------------------------------------------------------------------------
 # Spy helper
@@ -167,9 +167,7 @@ class TestStreamProcessingClientConfig(unittest.TestCase):
     def test_workspace_endpoint_detection(self) -> None:
         from pymongo.synchronous.stream_processing import _is_workspace_endpoint
 
-        self.assertTrue(
-            _is_workspace_endpoint("atlas-stream-foo.virginia-usa.a.query.mongodb.net")
-        )
+        self.assertTrue(_is_workspace_endpoint("atlas-stream-foo.virginia-usa.a.query.mongodb.net"))
         self.assertTrue(_is_workspace_endpoint("something.a.query.mongodb.net"))
         self.assertFalse(_is_workspace_endpoint("cluster0.mongodb.net"))
         self.assertFalse(_is_workspace_endpoint("localhost"))
@@ -465,9 +463,7 @@ class TestSampleCursor(unittest.TestCase):
     def test_get_samples_continuation_sends_get_more(self) -> None:
         client, calls = _spy_client(responses=[{"cursorId": 0, "nextBatch": [{"y": 2}]}])
         proc = StreamProcessor(client=client, name="demo")
-        result = proc.get_stream_processor_samples(
-            GetStreamProcessorSamplesOptions(cursor_id=42)
-        )
+        result = proc.get_stream_processor_samples(GetStreamProcessorSamplesOptions(cursor_id=42))
         cmd = calls[0]["cmd"]
         self.assertIn("getMoreSampleStreamProcessor", cmd)
         self.assertEqual(cmd.get("cursorId"), 42)
@@ -495,7 +491,9 @@ class TestSampleCursor(unittest.TestCase):
             responses=[{"cursorId": 0, "firstBatch": [{"a": 1}, {"a": 2}, {"a": 3}]}]
         )
         proc = StreamProcessor(client=client, name="demo")
-        docs = [doc for doc in proc.sample()]
+        docs = []
+        for doc in proc.sample():
+            docs.append(doc)
         self.assertEqual(docs, [{"a": 1}, {"a": 2}, {"a": 3}])
         self.assertEqual(len(calls), 1)
 
@@ -508,7 +506,9 @@ class TestSampleCursor(unittest.TestCase):
             ]
         )
         proc = StreamProcessor(client=client, name="demo")
-        docs = [doc for doc in proc.sample()]
+        docs = []
+        for doc in proc.sample():
+            docs.append(doc)
         self.assertEqual(docs, [{"a": 1}, {"a": 2}, {"a": 3}])
         self.assertEqual(len(calls), 3)
 
@@ -521,14 +521,14 @@ class TestSampleCursor(unittest.TestCase):
             ]
         )
         proc = StreamProcessor(client=client, name="demo")
-        docs = [doc for doc in proc.sample()]
+        docs = []
+        for doc in proc.sample():
+            docs.append(doc)
         self.assertEqual(docs, [{"a": 1}])
         self.assertEqual(len(calls), 3)
 
     def test_sample_iterator_stops_after_cursor_id_zero(self) -> None:
-        client, calls = _spy_client(
-            responses=[{"cursorId": 0, "firstBatch": [{"a": 1}]}]
-        )
+        client, calls = _spy_client(responses=[{"cursorId": 0, "firstBatch": [{"a": 1}]}])
         proc = StreamProcessor(client=client, name="demo")
         cursor = proc.sample()
         first = cursor.__next__()
@@ -548,9 +548,7 @@ class TestSampleCursor(unittest.TestCase):
         self.assertEqual(len(calls), 0)
 
     def test_sample_cursor_alive_property(self) -> None:
-        client, _ = _spy_client(
-            responses=[{"cursorId": 0, "firstBatch": [{"a": 1}]}]
-        )
+        client, _ = _spy_client(responses=[{"cursorId": 0, "firstBatch": [{"a": 1}]}])
         proc = StreamProcessor(client=client, name="demo")
         cursor = proc.sample()
         self.assertTrue(cursor.alive)
@@ -610,33 +608,23 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_start_propagates_operation_failure(self) -> None:
         client, _ = _spy_client(raises=self._failure(72))
-        self._assert_propagates(
-            lambda: StreamProcessor(client=client, name="p").start(), 72
-        )
+        self._assert_propagates(lambda: StreamProcessor(client=client, name="p").start(), 72)
 
     def test_stop_propagates_operation_failure(self) -> None:
         client, _ = _spy_client(raises=self._failure(125))
-        self._assert_propagates(
-            lambda: StreamProcessor(client=client, name="p").stop(), 125
-        )
+        self._assert_propagates(lambda: StreamProcessor(client=client, name="p").stop(), 125)
 
     def test_drop_propagates_operation_failure(self) -> None:
         client, _ = _spy_client(raises=self._failure(1))
-        self._assert_propagates(
-            lambda: StreamProcessor(client=client, name="p").drop(), 1
-        )
+        self._assert_propagates(lambda: StreamProcessor(client=client, name="p").drop(), 1)
 
     def test_get_info_propagates_operation_failure(self) -> None:
         client, _ = _spy_client(raises=self._failure(9))
-        self._assert_propagates(
-            lambda: StreamProcessors(client).get_info("p"), 9
-        )
+        self._assert_propagates(lambda: StreamProcessors(client).get_info("p"), 9)
 
     def test_stats_propagates_operation_failure(self) -> None:
         client, _ = _spy_client(raises=self._failure(72))
-        self._assert_propagates(
-            lambda: StreamProcessor(client=client, name="p").stats(), 72
-        )
+        self._assert_propagates(lambda: StreamProcessor(client=client, name="p").stats(), 72)
 
     def test_get_stream_processor_samples_propagates_operation_failure(self) -> None:
         client, _ = _spy_client(raises=self._failure(9))
@@ -653,9 +641,7 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_no_operation_failure_caught_in_module(self) -> None:
         """Structural: verify no try/except hides server errors in either module."""
-        for mod in (
-            pymongo.synchronous.stream_processing,
-        ):
+        for mod in (pymongo.synchronous.stream_processing,):
             src = inspect.getsource(mod)
             self.assertNotIn("except OperationFailure", src, mod.__name__)
             self.assertNotIn("except PyMongoError", src, mod.__name__)
