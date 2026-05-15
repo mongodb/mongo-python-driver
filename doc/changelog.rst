@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Changes in Version 4.18.0 (2026/XX/XX)
+--------------------------------------
+PyMongo 4.18 brings a number of changes including:
+
+- Improved connection pool throughput under concurrent load by replacing the
+  single pool lock with fine-grained locks to reduce lock contention.
+
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
 
