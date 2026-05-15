@@ -861,18 +861,18 @@ class Pool:
             with self._conns_lock:
                 self.conns = keep
 
-            if close:
-                with self.lock:
-                    self.state = PoolState.CLOSED
-            # Clear the wait queue
-            with self._max_connecting_cond:
-                self._max_connecting_cond.notify_all()
-            with self.size_cond:
-                self.size_cond.notify_all()
+        if close:
+            with self.lock:
+                self.state = PoolState.CLOSED
+        # Clear the wait queue
+        with self._max_connecting_cond:
+            self._max_connecting_cond.notify_all()
+        with self.size_cond:
+            self.size_cond.notify_all()
 
-            if interrupt_connections:
-                for context in self.active_contexts.copy():
-                    context.cancel()
+        if interrupt_connections:
+            for context in self.active_contexts.copy():
+                context.cancel()
 
         listeners = self.opts._event_listeners
         # CMAP spec says that close() MUST close sockets before publishing the
