@@ -796,7 +796,7 @@ class Pool:
         self.ncursors = 0
         self.ntxns = 0
         # This lock protects self.active_contexts, self.active_sockets,
-        # self.__pinned_sockets, self.ncursors, and self.ntxns.
+        # self.__pinned_sockets, self.ncursors, self.next_connection_id, and self.ntxns.
         self._active_contexts_lock = _async_create_lock()
 
     async def ready(self) -> None:
@@ -867,8 +867,10 @@ class Pool:
                 async with self.lock:
                     self.state = PoolState.CLOSED
             # Clear the wait queue
-            self._max_connecting_cond.notify_all()
-            self.size_cond.notify_all()
+            async with self._max_connecting_cond:
+                self._max_connecting_cond.notify_all()
+            async with self.size_cond:
+                self.size_cond.notify_all()
 
             if interrupt_connections:
                 for context in self.active_contexts.copy():
