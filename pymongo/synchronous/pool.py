@@ -960,9 +960,12 @@ class Pool:
 
         if self.opts.max_idle_time_seconds is not None:
             close_conns = []
-            conns = self.conns.copy()
-            while conns and conns[-1].idle_time_seconds() > self.opts.max_idle_time_seconds:
-                close_conns.append(conns.pop())
+            with self.lock:
+                while (
+                    self.conns
+                    and self.conns[-1].idle_time_seconds() > self.opts.max_idle_time_seconds
+                ):
+                    close_conns.append(self.conns.pop())
             if not _IS_SYNC:
                 asyncio.gather(
                     *[conn.close_conn(ConnectionClosedReason.IDLE) for conn in close_conns],  # type: ignore[func-returns-value]
