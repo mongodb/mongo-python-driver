@@ -360,9 +360,10 @@ async def _configured_protocol_interface(
 
         return AsyncNetworkingInterface((transport, protocol))
     finally:
-        # If cancellation or any exception lands between sock creation and
+        # If cancellation or any exception lands between socket creation and
         # transport adoption, asyncio.create_connection has not registered
-        # cleanup for the sock — close it ourselves so it doesn't leak.
+        # cleanup for the sock.
+        # Close it ourselves to prevent leaks.
         if not sock_adopted:
             sock.close()
 
