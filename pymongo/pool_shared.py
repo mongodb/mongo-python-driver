@@ -224,6 +224,7 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
                 asyncio.get_running_loop().sock_connect(sock, sa), timeout=timeout
             )
             sock.settimeout(timeout)
+            # Set immediately before return. Do not insert an await between this and the return
             sock_returned = True
             return sock
         except asyncio.TimeoutError as e:
