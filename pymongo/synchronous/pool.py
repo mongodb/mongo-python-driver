@@ -800,8 +800,8 @@ class Pool:
     def ready(self) -> None:
         # Take the lock to avoid the race condition described in PYTHON-2699.
         state_changed = False
-        if self.state != PoolState.READY:
-            with self.lock:
+        with self.lock:
+            if self.state != PoolState.READY:
                 self.state = PoolState.READY
                 state_changed = True
         if not state_changed:
@@ -830,13 +830,12 @@ class Pool:
         interrupt_connections: bool = False,
     ) -> None:
         old_state = self.state
-        if self.closed:
-            return
         is_fork = False
         with self.lock:
+            if self.closed:
+                return
             if self.opts.pause_enabled and pause and not self.opts.load_balanced:
                 old_state, self.state = self.state, PoolState.PAUSED
-            self.gen.inc(service_id)
             newpid = os.getpid()
             if self.pid != newpid:
                 self.pid = newpid
@@ -846,19 +845,21 @@ class Pool:
                 self.active_sockets = 0
             with self._operation_count_lock:
                 self.operation_count = 0
-        with self._conns_lock:
-            if service_id is None:
+        if service_id is None:
+            with self._conns_lock:
+                self.gen.inc(service_id)
                 sockets, self.conns = self.conns, collections.deque()
         if service_id is not None:
             discard: collections.deque = collections.deque()  # type: ignore[type-arg]
             keep: collections.deque = collections.deque()  # type: ignore[type-arg]
-            for conn in self.conns:
-                if conn.service_id == service_id:
-                    discard.append(conn)
-                else:
-                    keep.append(conn)
-            sockets = discard
             with self._conns_lock:
+                self.gen.inc(service_id)
+                for conn in self.conns:
+                    if conn.service_id == service_id:
+                        discard.append(conn)
+                    else:
+                        keep.append(conn)
+                sockets = discard
                 self.conns = keep
 
         if close:
@@ -930,8 +931,9 @@ class Pool:
         Pool.
         """
         self.is_writable = is_writable
-        for _socket in self.conns:
-            _socket.update_is_writable(self.is_writable)  # type: ignore[arg-type]
+        with self._conns_lock:
+            for _socket in self.conns:
+                _socket.update_is_writable(self.is_writable)  # type: ignore[arg-type]
 
     def reset(
         self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
@@ -960,7 +962,7 @@ class Pool:
 
         if self.opts.max_idle_time_seconds is not None:
             close_conns = []
-            with self.lock:
+            with self._conns_lock:
                 while (
                     self.conns
                     and self.conns[-1].idle_time_seconds() > self.opts.max_idle_time_seconds
@@ -996,13 +998,13 @@ class Pool:
                 close_conn = False
                 # Close connection and return if the pool was reset during
                 # socket creation or while acquiring the pool lock.
-                if self.gen.get_overall() != reference_generation:
-                    close_conn = True
-                if not close_conn:
-                    with self._conns_lock:
+                with self._conns_lock:
+                    if self.gen.get_overall() != reference_generation:
+                        close_conn = True
+                    else:
                         self.conns.appendleft(conn)
-                    with self._active_contexts_lock:
-                        self.active_contexts.discard(conn.cancel_context)
+                with self._active_contexts_lock:
+                    self.active_contexts.discard(conn.cancel_context)
                 if close_conn:
                     conn.close_conn(ConnectionClosedReason.STALE)
                     return
@@ -1406,13 +1408,14 @@ class Pool:
                     )
             else:
                 close_conn = False
-                if self.stale_generation(conn.generation, conn.service_id):
-                    close_conn = True
-                else:
-                    conn.update_last_checkin_time()
-                    conn.update_is_writable(bool(self.is_writable))
-                    with self._conns_lock:
+                with self._conns_lock:
+                    if self.stale_generation(conn.generation, conn.service_id):
+                        close_conn = True
+                    else:
+                        conn.update_last_checkin_time()
+                        conn.update_is_writable(bool(self.is_writable))
                         self.conns.appendleft(conn)
+                if not close_conn:
                     with self._max_connecting_cond:
                         # Notify any threads waiting to create a connection.
                         self._max_connecting_cond.notify()
