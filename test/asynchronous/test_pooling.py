@@ -172,6 +172,7 @@ class _TestPoolingBase(AsyncIntegrationTest):
         kwargs["server_api"] = pool_options.server_api
         pool = Pool(pair, PoolOptions(*args, **kwargs))
         await pool.ready()
+        self.addAsyncCleanup(pool.close)
         return pool
 
 

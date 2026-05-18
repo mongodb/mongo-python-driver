@@ -172,6 +172,7 @@ class _TestPoolingBase(IntegrationTest):
         kwargs["server_api"] = pool_options.server_api
         pool = Pool(pair, PoolOptions(*args, **kwargs))
         pool.ready()
+        self.addCleanup(pool.close)
         return pool
 
 
