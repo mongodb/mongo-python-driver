@@ -851,9 +851,12 @@ class Pool:
         # publishing the PoolClearedEvent.
         if close:
             if not _IS_SYNC:
-                asyncio.gather(
-                    *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets],  # type: ignore[func-returns-value]
-                    return_exceptions=True,
+                # Shield the closing of connections to avoid leaks
+                asyncio.shield(
+                    asyncio.gather(
+                        *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets],  # type: ignore[func-returns-value]
+                        return_exceptions=True,
+                    )
                 )
             else:
                 for conn in sockets:
@@ -888,9 +891,12 @@ class Pool:
                         interrupt_connections=interrupt_connections,
                     )
             if not _IS_SYNC:
-                asyncio.gather(
-                    *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
-                    return_exceptions=True,
+                # Shield the closing of connections to avoid leaks
+                asyncio.shield(
+                    asyncio.gather(
+                        *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
+                        return_exceptions=True,
+                    )
                 )
             else:
                 for conn in sockets:
