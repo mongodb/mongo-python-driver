@@ -707,10 +707,10 @@ class Pool:
         :param options: a PoolOptions instance
         :param is_sdam: whether to call hello for each new Connection
         """
-        # Main lock only used to protect updating attributes.
+        # Lock only used to protect updating attributes like self.state.
         # Avoid any additional work while holding the lock.
         # If looping over an attribute, copy the container and do not take the lock.
-        self.lock = _create_lock()
+        self._state_lock = _create_lock()
 
         if options.pause_enabled:
             self.state = PoolState.PAUSED
@@ -726,6 +726,8 @@ class Pool:
         # This lock should only be contended by threads adding/removing connections.
         self._conns_lock = _create_lock()
 
+        self.active_contexts: set[_CancellationContext] = set()
+        self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
         # Track whether the sockets in this pool are writeable or not.
@@ -785,8 +787,6 @@ class Pool:
         # This lock should be contended on every operation.
         self._operation_count_lock = _create_lock()
 
-        self.active_contexts: set[_CancellationContext] = set()
-        self.active_sockets = 0
         # Retain references to pinned connections to prevent the CPython GC
         # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
@@ -800,7 +800,7 @@ class Pool:
     def ready(self) -> None:
         # Take the lock to avoid the race condition described in PYTHON-2699.
         state_changed = False
-        with self.lock:
+        with self._state_lock:
             if self.state != PoolState.READY:
                 self.state = PoolState.READY
                 state_changed = True
@@ -831,7 +831,7 @@ class Pool:
     ) -> None:
         old_state = self.state
         is_fork = False
-        with self.lock:
+        with self._state_lock:
             if self.closed:
                 return
             if self.opts.pause_enabled and pause and not self.opts.load_balanced:
@@ -863,7 +863,7 @@ class Pool:
                 self.conns = keep
 
         if close:
-            with self.lock:
+            with self._state_lock:
                 self.state = PoolState.CLOSED
         # Clear the wait queue
         with self._max_connecting_cond:
@@ -956,7 +956,7 @@ class Pool:
         pool.
         """
         # Take the lock to avoid the race condition described in PYTHON-2699.
-        with self.lock:
+        with self._state_lock:
             if self.state != PoolState.READY:
                 return
 
