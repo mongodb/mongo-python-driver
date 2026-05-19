@@ -571,8 +571,18 @@ class Connection:
         # shutdown.
         try:
             self.conn.close()
-        except Exception:  # noqa: S110
-            pass
+        except BaseException as exc:
+            # Force-abort the underlying transport so the socket fd is
+            # released even if the graceful close raised or was cancelled
+            # before reaching transport.abort().
+            transport = getattr(self.conn.get_conn, "transport", None)
+            if transport is not None:
+                try:
+                    transport.abort()
+                except Exception:  # noqa: S110
+                    pass
+            if not isinstance(exc, Exception):
+                raise
 
     def conn_closed(self) -> bool:
         """Return True if we know socket has been closed, False otherwise."""
@@ -851,12 +861,9 @@ class Pool:
         # publishing the PoolClearedEvent.
         if close:
             if not _IS_SYNC:
-                # Shield the closing of connections to avoid leaks
-                asyncio.shield(
-                    asyncio.gather(
-                        *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets],  # type: ignore[func-returns-value]
-                        return_exceptions=True,
-                    )
+                asyncio.gather(
+                    *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets],  # type: ignore[func-returns-value]
+                    return_exceptions=True,
                 )
             else:
                 for conn in sockets:
@@ -891,12 +898,9 @@ class Pool:
                         interrupt_connections=interrupt_connections,
                     )
             if not _IS_SYNC:
-                # Shield the closing of connections to avoid leaks
-                asyncio.shield(
-                    asyncio.gather(
-                        *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
-                        return_exceptions=True,
-                    )
+                asyncio.gather(
+                    *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
+                    return_exceptions=True,
                 )
             else:
                 for conn in sockets:
@@ -1066,7 +1070,19 @@ class Pool:
                 _raise_connection_failure(self.address, error, timeout_details=details)
             raise
 
-        conn = Connection(networking_interface, self, self.address, conn_id, self.is_sdam)  # type: ignore[arg-type]
+        try:
+            conn = Connection(networking_interface, self, self.address, conn_id, self.is_sdam)  # type: ignore[arg-type]
+        except BaseException:
+            # Release the networking_interface's transport if Connection
+            # construction failed, since no Connection exists yet to
+            # close_conn() through the outer cleanup path.
+            transport = getattr(networking_interface.get_conn, "transport", None)
+            if transport is not None:
+                try:
+                    transport.abort()
+                except Exception:  # noqa: S110
+                    pass
+            raise
         try:
             with self.lock:
                 self.active_contexts.add(conn.cancel_context)
