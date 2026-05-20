@@ -40,6 +40,22 @@ trap "cleanup_tests" SIGINT ERR
 echo "Running tests with UV_PYTHON=${UV_PYTHON:-}..."
 echo "UV_ARGS=${UV_ARGS}"
 export PYTHONTRACEMALLOC=20
+# PYTHON-3923 leak diagnostic: log AsyncConnection lifecycle to a file that
+# bypasses pytest stdio capture. Reset the file before each run so we only
+# see traces from this run.
+export PYMONGO_LEAK_TRACE_FILE=/tmp/pymongo_leak_trace.log
+: > "$PYMONGO_LEAK_TRACE_FILE" || true
+
+# Always dump the trace file on script exit (pass or fail) so CI captures it.
+dump_leak_trace() {
+  if [ -s "$PYMONGO_LEAK_TRACE_FILE" ]; then
+    echo "=================== PYMONGO_LEAK_TRACE BEGIN ==================="
+    cat "$PYMONGO_LEAK_TRACE_FILE"
+    echo "==================== PYMONGO_LEAK_TRACE END ===================="
+  fi
+}
+trap "dump_leak_trace" EXIT
+
 uv run ${UV_ARGS} --reinstall-package pymongo .evergreen/scripts/run_tests.py "$@"
 echo "Running tests with UV_PYTHON=${UV_PYTHON:-}... done."
 

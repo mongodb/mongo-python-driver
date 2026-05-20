@@ -112,6 +112,22 @@ if TYPE_CHECKING:
 _IS_SYNC = False
 
 
+# Diagnostic for PYTHON-3923: tag each AsyncConnection lifecycle event so we
+# can identify which conns are created but never reach _close_conn.
+# Writes to a file so pytest's stdio capture (per-test, only-on-failure) does
+# not swallow the trace. Path is configurable via PYMONGO_LEAK_TRACE_FILE;
+# default is "/tmp/pymongo_leak_trace.log". Remove once the leak is identified.
+_LEAK_TRACE_PATH = os.environ.get("PYMONGO_LEAK_TRACE_FILE", "/tmp/pymongo_leak_trace.log")
+
+
+def _leak_trace(msg: str) -> None:
+    try:
+        with open(_LEAK_TRACE_PATH, "a") as _f:  # noqa: S108
+            _f.write(f"PYMONGO_LEAK_TRACE: t={time.monotonic():.4f} pid={os.getpid()} {msg}\n")
+    except Exception:  # noqa: S110
+        pass
+
+
 class AsyncConnection:
     """Store a connection with some metadata.
 
@@ -180,6 +196,48 @@ class AsyncConnection:
         self.creation_time = time.monotonic()
         # For gossiping $clusterTime from the connection handshake to the client.
         self._cluster_time = None
+        # NOTE: the parameter `id` shadows the built-in id() in this scope, so
+        # we must not call id(self) here. Use repr() or skip obj_id.
+        _leak_trace(
+            f"created conn_id={self.id} addr={self.address} is_sdam={self.is_sdam}"
+        )
+
+    def __del__(self) -> None:
+        # Defense-in-depth: if an AsyncConnection is GC'd without
+        # close_conn() having run (e.g. its parent Pool was discarded
+        # before reset/close, or a Pool._reset gather was cancelled
+        # before any close_conn task got CPU), abort the transport so
+        # the socket fd is released and the unclosed-transport
+        # ResourceWarning is not raised.
+        try:
+            if not self.closed:
+                # Probe transport state so we can tell whether Part A's
+                # sync-abort in Pool._reset already released the fd
+                # (state=closing) or this is a genuine untouched leak
+                # (state=open).
+                state = "unknown"
+                try:
+                    transport = self.conn.get_conn.transport
+                    if transport is None:
+                        state = "none"
+                    elif transport.is_closing():
+                        state = "closing"
+                    else:
+                        state = "open"
+                except Exception:  # noqa: S110
+                    pass
+                _leak_trace(
+                    f"GC-WITHOUT-CLOSE conn_id={self.id} addr={self.address} "
+                    f"is_sdam={self.is_sdam} transport={state}"
+                )
+                try:
+                    transport = self.conn.get_conn.transport
+                    if transport is not None:
+                        transport.abort()
+                except Exception:  # noqa: S110
+                    pass
+        except Exception:  # noqa: S110
+            pass
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
@@ -565,6 +623,23 @@ class AsyncConnection:
 
     async def _close_conn(self) -> None:
         """Close this connection."""
+        _leak_trace(
+            f"_close_conn conn_id={self.id} addr={self.address} "
+            f"already_closed={self.closed} obj_id={id(self):x}"
+        )
+        # Force-abort the underlying transport first so the socket fd is
+        # released even if a previous _close_conn already set self.closed
+        # but didn't reach transport.abort() (e.g. cancelled mid-close), or
+        # if the graceful close path below raises. transport.abort() is
+        # idempotent — _SelectorTransport._force_close returns early when
+        # _conn_lost is already set.
+        if not _IS_SYNC:
+            transport = self.conn.get_conn.transport
+            if transport is not None:
+                try:
+                    transport.abort()
+                except Exception:  # noqa: S110
+                    pass
         if self.closed:
             return
         self.closed = True
@@ -573,18 +648,8 @@ class AsyncConnection:
         # shutdown.
         try:
             await self.conn.close()
-        except BaseException as exc:
-            # Force-abort the underlying transport so the socket fd is
-            # released even if the graceful close raised or was cancelled
-            # before reaching transport.abort().
-            transport = getattr(self.conn.get_conn, "transport", None)
-            if transport is not None:
-                try:
-                    transport.abort()
-                except Exception:  # noqa: S110
-                    pass
-            if not isinstance(exc, Exception):
-                raise
+        except Exception:  # noqa: S110
+            pass
 
     def conn_closed(self) -> bool:
         """Return True if we know socket has been closed, False otherwise."""
@@ -846,6 +911,12 @@ class Pool:
                         keep.append(conn)
                 sockets = discard
                 self.conns = keep
+            _leak_trace(
+                f"_reset close={close} addr={self.address} "
+                f"deque_size={len(sockets)} "
+                f"conn_ids={[c.id for c in sockets]} "
+                f"obj_ids={[hex(id(c))[2:] for c in sockets]}"
+            )
 
             if close:
                 self.state = PoolState.CLOSED
@@ -856,6 +927,23 @@ class Pool:
             if interrupt_connections:
                 for context in self.active_contexts:
                     context.cancel()
+
+        # Synchronously abort the transports of all snapshotted conns. This
+        # releases the socket fd and schedules _call_connection_lost before
+        # any await. If the gather below is cancelled (e.g. by test
+        # teardown propagating a CancelledError into _reset), the inner
+        # close_conn() Tasks are cancelled before their body runs, so the
+        # transport.abort() inside _close_conn() never fires and the
+        # snapshotted conns leak. transport.abort() is idempotent — the
+        # close_conn coroutines below remain safe to run.
+        if not _IS_SYNC:
+            for conn in sockets:
+                try:
+                    transport = conn.conn.get_conn.transport
+                    if transport is not None:
+                        transport.abort()
+                except Exception:  # noqa: S110
+                    pass
 
         listeners = self.opts._event_listeners
         # CMAP spec says that close() MUST close sockets before publishing the
@@ -979,18 +1067,31 @@ class Pool:
                     self._pending += 1
                     incremented = True
                 conn = await self.connect()
-                close_conn = False
-                async with self.lock:
-                    # Close connection and return if the pool was reset during
-                    # socket creation or while acquiring the pool lock.
-                    if self.gen.get_overall() != reference_generation:
-                        close_conn = True
-                    if not close_conn:
-                        self.conns.appendleft(conn)
-                        self.active_contexts.discard(conn.cancel_context)
-                if close_conn:
-                    await conn.close_conn(ConnectionClosedReason.STALE)
-                    return
+                try:
+                    close_conn = False
+                    async with self.lock:
+                        # Close connection and return if the pool was reset during
+                        # socket creation or while acquiring the pool lock.
+                        if self.gen.get_overall() != reference_generation:
+                            close_conn = True
+                        if not close_conn:
+                            self.conns.appendleft(conn)
+                            self.active_contexts.discard(conn.cancel_context)
+                    if close_conn:
+                        await conn.close_conn(ConnectionClosedReason.STALE)
+                        return
+                except BaseException:
+                    # If cancellation or any other exception lands between
+                    # connect() returning and the conn being appended to the
+                    # deque (or closed via stale-generation), the conn would
+                    # otherwise be orphaned. Close it explicitly to release
+                    # the underlying socket.
+                    if not conn.closed:
+                        try:
+                            await conn.close_conn(ConnectionClosedReason.ERROR)
+                        except BaseException:  # noqa: S110
+                            pass
+                    raise
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
@@ -1086,6 +1187,8 @@ class Pool:
                     transport.abort()
                 except Exception:  # noqa: S110
                     pass
+            async with self.lock:
+                self.active_contexts.discard(tmp_context)
             raise
         try:
             async with self.lock:
@@ -1160,26 +1263,30 @@ class Pool:
 
         conn = await self._get_conn(checkout_started_time, handler=handler)
 
-        duration = time.monotonic() - checkout_started_time
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_checked_out(self.address, conn.id, duration)
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-                driverConnectionId=conn.id,
-                durationMS=duration,
-            )
         try:
+            duration = time.monotonic() - checkout_started_time
+            if self.enabled_for_cmap:
+                assert listeners is not None
+                listeners.publish_connection_checked_out(self.address, conn.id, duration)
+            if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
+                    clientId=self._client_id,
+                    serverHost=self.address[0],
+                    serverPort=self.address[1],
+                    driverConnectionId=conn.id,
+                    durationMS=duration,
+                )
             async with self.lock:
                 self.active_contexts.add(conn.cancel_context)
             yield conn
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException:
+        except BaseException as _checkout_exc:
+            _leak_trace(
+                f"checkout-except conn_id={conn.id} addr={self.address} "
+                f"obj_id={id(conn):x} exc={type(_checkout_exc).__name__}"
+            )
             # Exception in caller. Ensure the connection gets returned.
             # Note that when pinned is True, the session owns the
             # connection and it is responsible for checking the connection
@@ -1191,7 +1298,20 @@ class Pool:
                 exc_type, exc_val, _ = sys.exc_info()
                 await handler.handle(exc_type, exc_val)
             if not pinned and conn.active:
-                await self.checkin(conn)
+                try:
+                    await self.checkin(conn)
+                except BaseException:
+                    # If checkin is interrupted (e.g., cancellation during a
+                    # lock acquire), the conn is left neither in the deque
+                    # nor closed. Force-abort the transport so the socket fd
+                    # is released instead of leaking on GC.
+                    transport = getattr(conn.conn.get_conn, "transport", None)
+                    if transport is not None:
+                        try:
+                            transport.abort()
+                        except Exception:  # noqa: S110
+                            pass
+                    raise
             raise
         if conn.pinned_txn:
             async with self.lock:
@@ -1364,6 +1484,10 @@ class Pool:
 
         :param conn: The connection to check into the pool.
         """
+        _leak_trace(
+            f"checkin-enter conn_id={conn.id} addr={self.address} "
+            f"pool_closed={self.closed} conn_closed={conn.closed} obj_id={id(conn):x}"
+        )
         txn = conn.pinned_txn
         cursor = conn.pinned_cursor
         conn.active = False
@@ -1423,6 +1547,11 @@ class Pool:
                         self._max_connecting_cond.notify()
                 if close_conn:
                     await conn.close_conn(ConnectionClosedReason.STALE)
+                else:
+                    _leak_trace(
+                        f"checkin-appendleft conn_id={conn.id} addr={self.address} "
+                        f"obj_id={id(conn):x}"
+                    )
 
         async with self.size_cond:
             if txn:
