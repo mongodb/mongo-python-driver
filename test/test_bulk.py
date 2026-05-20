@@ -945,17 +945,16 @@ class TestBulkWriteConcern(BulkTestBase):
         if not client_context.test_commands_enabled:
             self.skipTest("Test commands must be enabled.")
 
-        # Use the rsSyncApplyStop failpoint to pause replication on a
+        # Use the stopReplProducer failpoint to pause replication on a
         # secondary which will cause a wtimeout error.
-        self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="alwaysOn")
+        self.secondary.admin.command("configureFailPoint", "stopReplProducer", mode="alwaysOn")
 
         try:
             coll = self.coll.with_options(write_concern=WriteConcern(w=self.w, wtimeout=1))
             return coll.bulk_write(requests, ordered=ordered)
         finally:
-            self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="off")
+            self.secondary.admin.command("configureFailPoint", "stopReplProducer", mode="off")
 
-    @client_context.require_version_max(7, 1)  # PYTHON-4560
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     def test_write_concern_failure_ordered(self):
@@ -1037,7 +1036,6 @@ class TestBulkWriteConcern(BulkTestBase):
         failed = details["writeErrors"][0]
         self.assertIn("duplicate", failed["errmsg"])
 
-    @client_context.require_version_max(7, 1)  # PYTHON-4560
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     def test_write_concern_failure_unordered(self):
