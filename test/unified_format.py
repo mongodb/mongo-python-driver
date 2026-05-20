@@ -335,7 +335,7 @@ class EntityMapUtil:
                 while True:
                     if (time.monotonic() - t0) > spec["awaitMinPoolSizeMS"] * 1000:
                         raise ValueError("Test timed out during awaitMinPoolSize")
-                    with pool.lock:
+                    with pool._conns_lock:
                         if len(pool.conns) + pool.active_sockets >= pool.opts.min_pool_size:
                             break
                     time.sleep(0.1)
