@@ -168,7 +168,7 @@ class PoolLocker(ExceptionCatchingTask):
         self.unlock = create_async_event()
 
     async def lock_pool(self):
-        async with self.pool.lock:
+        async with self.pool._conns_lock:
             self.locked.set()
             # Wait for the unlock flag.
             unlock_pool = await self.wait(self.unlock, 10)
