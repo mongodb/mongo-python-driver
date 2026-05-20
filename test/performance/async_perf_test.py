@@ -56,11 +56,12 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncPyMongoTestCase, async_client_context, unittest
+from test.asynchronous import AsyncPyMongoTestCase, async_client_context, get_loop, unittest
 
 from bson import encode
 from gridfs import AsyncGridFSBucket
 from pymongo import (
+    AsyncMongoClient,
     DeleteOne,
     InsertOne,
     ReplaceOne,
@@ -97,6 +98,9 @@ def tearDownModule():
             opf.write(output)
     else:
         print(output)
+
+    if getattr(async_client_context, "client", None):
+        get_loop().run_until_complete(async_client_context.client.close())
 
 
 class Timer:
@@ -295,6 +299,56 @@ class TestFindOneByIDUnlimitedTasks(TestFindOneByID):
     async def do_task(self):
         find_one = self.corpus.find_one
         await asyncio.gather(*[find_one({"_id": _id}) for _id in self.inserted_ids])
+
+
+class SmallReadTest(PerformanceTest):
+    dataset = "small_doc.json"
+    n_tasks = 1
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        with open(  # noqa: ASYNC101
+            os.path.join(TEST_PATH, os.path.join("single_and_multi_document", self.dataset))
+        ) as data:
+            self.document = json.loads(data.read())
+
+        self.data_size = len(encode(self.document)) * NUM_DOCS
+
+        client_options = dict(async_client_context.client_options)
+        client_options["minPoolSize"] = self.n_tasks
+        self.client = AsyncMongoClient(**client_options)
+
+        await self.client.drop_database("perftest")
+        self.corpus = self.client.perftest.corpus
+        result = await self.corpus.insert_many([self.document.copy() for _ in range(NUM_DOCS)])
+        self.inserted_ids = result.inserted_ids
+
+        await self.client.admin.command("ping")
+        await self.corpus.find_one({"_id": self.inserted_ids[0]})
+
+    async def asyncTearDown(self):
+        try:
+            await super().asyncTearDown()
+            await self.client.drop_database("perftest")
+        finally:
+            await self.client.close()
+
+    async def before(self):
+        pass
+
+    async def after(self):
+        pass
+
+
+class TestSmallReadFindOneByID(SmallReadTest, AsyncPyMongoTestCase):
+    async def do_task(self):
+        find_one = self.corpus.find_one
+        for _id in self.inserted_ids:
+            await find_one({"_id": _id})
+
+
+class TestSmallReadFindOneByID8Tasks(TestSmallReadFindOneByID):
+    n_tasks = 8
 
 
 class SmallDocInsertTest(TestDocument):

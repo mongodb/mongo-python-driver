@@ -100,6 +100,9 @@ def tearDownModule():
     else:
         print(output)
 
+    if getattr(client_context, "client", None):
+        client_context.client.close()
+
 
 class Timer:
     def __enter__(self):
@@ -392,6 +395,74 @@ class TestFindOneByID(FindTest, unittest.TestCase):
 
 class TestFindOneByID8Threads(TestFindOneByID):
     n_threads = 8
+
+
+class SmallReadTest(PerformanceTest):
+    dataset = "small_doc.json"
+    n_threads = 1
+
+    def setUp(self):
+        super().setUp()
+        with open(
+            os.path.join(TEST_PATH, os.path.join("single_and_multi_document", self.dataset))
+        ) as data:
+            self.document = json.loads(data.read())
+
+        self.data_size = len(encode(self.document)) * NUM_DOCS
+
+        client_options = dict(client_context.client_options)
+        client_options["minPoolSize"] = self.n_threads
+        self.client = MongoClient(**client_options)
+
+        self.client.drop_database("perftest")
+        self.corpus = self.client.perftest.corpus
+        result = self.corpus.insert_many([self.document.copy() for _ in range(NUM_DOCS)])
+        self.inserted_ids = result.inserted_ids
+
+        self.client.admin.command("ping")
+        self.corpus.find_one({"_id": self.inserted_ids[0]})
+
+    def tearDown(self):
+        try:
+            super().tearDown()
+            self.client.drop_database("perftest")
+        finally:
+            self.client.close()
+
+    def before(self):
+        pass
+
+    def after(self):
+        pass
+
+
+class TestSmallReadFindOneByID(SmallReadTest, unittest.TestCase):
+    def do_task(self):
+        find_one = self.corpus.find_one
+        for _id in self.inserted_ids:
+            find_one({"_id": _id})
+
+
+class TestSmallReadFindOneByID8Threads(TestSmallReadFindOneByID):
+    n_threads = 8
+
+
+class TestSmallReadFindOneByID8ThreadsPerClient(SmallReadTest, unittest.TestCase):
+    n_threads = 8
+
+    def do_task(self):
+        client_options = dict(client_context.client_options)
+        client = MongoClient(**client_options)
+        try:
+            corpus = client.perftest.corpus
+            client.admin.command("ping")
+            corpus.find_one({"_id": self.inserted_ids[0]})
+
+            find_one = corpus.find_one
+            for _id in self.inserted_ids:
+                find_one({"_id": _id})
+        finally:
+            client.close()
 
 
 class SmallDocInsertTest(TestDocument):
