@@ -240,15 +240,6 @@ def _check_command_response(
         return
 
     details = response
-    # Mongos returns the error details in a 'raw' object
-    # for some errors.
-    if "raw" in response:
-        for shard in response["raw"].values():
-            # Grab the first non-empty raw error from a shard.
-            if shard.get("errmsg") and not shard.get("ok"):
-                details = shard
-                break
-
     errmsg = details["errmsg"]
     code = details.get("code")
 
