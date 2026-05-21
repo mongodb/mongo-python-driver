@@ -2666,11 +2666,11 @@ class TestClientPool(MockClientTest):
 
         wait_until(lambda: len(c.nodes) == 1, "connect")
         self.assertEqual(c.address, ("c", 3))
-        # Assert that we create 1 pooled connection.
+        # Wait for the pooled connection to be registered
         listener.wait_for_event(monitoring.ConnectionReadyEvent, 1)
         self.assertEqual(listener.event_count(monitoring.ConnectionCreatedEvent), 1)
         arbiter = c._topology.get_server_by_address(("c", 3))
-        self.assertEqual(len(arbiter.pool.conns), 1)
+        wait_until(lambda: len(arbiter.pool.conns) == 1, "create 1 pooled connection")
         # Arbiter pool is marked ready.
         self.assertEqual(listener.event_count(monitoring.PoolReadyEvent), 1)
 
