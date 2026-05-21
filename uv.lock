@@ -1598,7 +1598,7 @@ requires-dist = [
     { name = "pyopenssl", marker = "extra == 'ocsp'", specifier = ">=26.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.2" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.24.0" },
-    { name = "python-snappy", marker = "extra == 'snappy'", specifier = ">=0.6.0" },
+    { name = "python-snappy", marker = "extra == 'snappy'", specifier = ">=0.7.3" },
     { name = "readthedocs-sphinx-search", marker = "extra == 'docs'", specifier = "~=0.3" },
     { name = "requests", marker = "extra == 'ocsp'", specifier = ">=2.23.0,<3.0" },
     { name = "service-identity", marker = "extra == 'ocsp'", specifier = ">=23.1.0" },
