@@ -198,21 +198,10 @@ class Monitor(MonitorBase):
 
     def close(self) -> None:
         self.gc_safe_close()
-        # Run rtt_monitor.close() and self._pool.close() independently so a
-        # failure in rtt cleanup does not skip the monitor pool's close, which
-        # would otherwise orphan its conn deque.
-        rtt_error: Optional[BaseException] = None
-        try:
-            self._rtt_monitor.close()
-        except BaseException as exc:
-            rtt_error = exc
-        # Close the monitor pool. This both closes the conn in the deque
-        # and marks the pool CLOSED, so any in-flight check_once that checks
-        # the conn back in will close it via close_conn(POOL_CLOSED) rather
-        # than returning it to the deque of a pool that is about to be GC'd.
-        self._pool.close()
-        if rtt_error is not None:
-            raise rtt_error
+        self._rtt_monitor.close()
+        # Increment the generation and maybe close the socket. If the executor
+        # thread has the socket checked out, it will be closed when checked in.
+        self._reset_connection()
 
     def _reset_connection(self) -> None:
         # Clear our pooled connection.
@@ -465,10 +454,9 @@ class _RttMonitor(MonitorBase):
 
     def close(self) -> None:
         self.gc_safe_close()
-        # Close the RTT monitor pool. If the executor task has the socket
-        # checked out, checkin will close it via close_conn(POOL_CLOSED)
-        # because the pool is now CLOSED.
-        self._pool.close()
+        # Increment the generation and maybe close the socket. If the executor
+        # thread has the socket checked out, it will be closed when checked in.
+        self._pool.reset()
 
     def add_sample(self, sample: float) -> None:
         """Add a RTT sample."""

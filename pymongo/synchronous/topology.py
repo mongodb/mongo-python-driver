@@ -720,16 +720,8 @@ class Topology:
         """
         with self._lock:
             old_td = self._description
-            first_close_error: Optional[BaseException] = None
             for server in self._servers.values():
-                # Each server.close must run independently. A failure on one
-                # server (e.g. its monitor's cleanup raising) must not skip
-                # close() on the remaining servers, or their pool conns leak.
-                try:
-                    server.close()
-                except BaseException as exc:
-                    if first_close_error is None:
-                        first_close_error = exc
+                server.close()
                 if not _IS_SYNC:
                     self._monitor_tasks.append(server._monitor)
 
@@ -788,11 +780,6 @@ class Topology:
             self.__events_executor.close()
             self.__events_executor.join(1)
             process_events_queue(weakref.ref(self._events))  # type: ignore[arg-type]
-
-        # Re-raise the first server.close() error (if any) after we've done
-        # everything we can to clean up the rest of the topology.
-        if first_close_error is not None:
-            raise first_close_error
 
     @property
     def description(self) -> TopologyDescription:
@@ -992,14 +979,7 @@ class Topology:
 
         for address, server in list(self._servers.items()):
             if not self._description.has_server(address):
-                # Each server.close must run independently. If one server's
-                # cleanup raises, we still need to remove it from _servers and
-                # add its monitor to _monitor_tasks, and we must process the
-                # remaining servers, otherwise their pool conns leak.
-                try:
-                    server.close()
-                except BaseException:  # noqa: S110
-                    pass
+                server.close()
                 if not _IS_SYNC:
                     self._monitor_tasks.append(server._monitor)
                 self._servers.pop(address)

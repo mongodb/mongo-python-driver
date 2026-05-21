@@ -568,14 +568,6 @@ class Connection:
 
     def _close_conn(self) -> None:
         """Close this connection."""
-        # Force-abort the underlying transport first so the socket fd is
-        # released even if a previous _close_conn already set self.closed
-        # but didn't reach transport.abort() (e.g. cancelled mid-close), or
-        # if the graceful close path below raises. transport.abort() is
-        # idempotent — _SelectorTransport._force_close returns early when
-        # _conn_lost is already set.
-        if not _IS_SYNC:
-            self.conn.abort()
         if self.closed:
             return
         self.closed = True
@@ -858,18 +850,6 @@ class Pool:
                 for context in self.active_contexts:
                     context.cancel()
 
-        # Abort the transports of all snapshotted conns. This
-        # releases the socket fd and schedules _call_connection_lost before
-        # any await. If the gather below is cancelled (e.g. by test
-        # teardown propagating a CancelledError into _reset), the inner
-        # close_conn() Tasks are cancelled before their body runs, so the
-        # transport.abort() inside _close_conn() never fires and the
-        # snapshotted conns leak. transport.abort() is idempotent — the
-        # close_conn coroutines below remain safe to run.
-        if not _IS_SYNC:
-            for conn in sockets:
-                conn.conn.abort()
-
         listeners = self.opts._event_listeners
         # CMAP spec says that close() MUST close sockets before publishing the
         # PoolClosedEvent but that reset() SHOULD close sockets *after*
@@ -990,31 +970,18 @@ class Pool:
                     self._pending += 1
                     incremented = True
                 conn = self.connect()
-                try:
-                    close_conn = False
-                    with self.lock:
-                        # Close connection and return if the pool was reset during
-                        # socket creation or while acquiring the pool lock.
-                        if self.gen.get_overall() != reference_generation:
-                            close_conn = True
-                        if not close_conn:
-                            self.conns.appendleft(conn)
-                            self.active_contexts.discard(conn.cancel_context)
-                    if close_conn:
-                        conn.close_conn(ConnectionClosedReason.STALE)
-                        return
-                except BaseException:
-                    # If cancellation or any other exception lands between
-                    # connect() returning and the conn being appended to the
-                    # deque (or closed via stale-generation), the conn would
-                    # otherwise be orphaned. Close it explicitly to release
-                    # the underlying socket.
-                    if not conn.closed:
-                        try:
-                            conn.close_conn(ConnectionClosedReason.ERROR)
-                        except BaseException:  # noqa: S110
-                            pass
-                    raise
+                close_conn = False
+                with self.lock:
+                    # Close connection and return if the pool was reset during
+                    # socket creation or while acquiring the pool lock.
+                    if self.gen.get_overall() != reference_generation:
+                        close_conn = True
+                    if not close_conn:
+                        self.conns.appendleft(conn)
+                        self.active_contexts.discard(conn.cancel_context)
+                if close_conn:
+                    conn.close_conn(ConnectionClosedReason.STALE)
+                    return
             finally:
                 if incremented:
                     # Notify after adding the socket to the pool.
@@ -1108,43 +1075,34 @@ class Pool:
             with self.lock:
                 self.active_contexts.discard(tmp_context)
             raise
+        with self.lock:
+            self.active_contexts.add(conn.cancel_context)
+            self.active_contexts.discard(tmp_context)
+        if tmp_context.cancelled:
+            conn.cancel_context.cancel()
+        completed_hello = False
         try:
-            with self.lock:
-                self.active_contexts.add(conn.cancel_context)
-                self.active_contexts.discard(tmp_context)
-            if tmp_context.cancelled:
-                conn.cancel_context.cancel()
-            completed_hello = False
-            try:
-                if not self.is_sdam:
-                    conn.hello()
-                    completed_hello = True
-                    self.is_writable = conn.is_writable
-                if handler:
-                    handler.contribute_socket(conn, completed_handshake=False)
-
-                conn.authenticate()
-            # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-            except BaseException as e:
-                with self.lock:
-                    self.active_contexts.discard(conn.cancel_context)
-                if not completed_hello:
-                    self._handle_connection_error(e)
-                conn.close_conn(ConnectionClosedReason.ERROR)
-                raise
-
+            if not self.is_sdam:
+                conn.hello()
+                completed_hello = True
+                self.is_writable = conn.is_writable
             if handler:
-                handler.client._topology.receive_cluster_time(conn._cluster_time)
+                handler.contribute_socket(conn, completed_handshake=False)
 
-            return conn
-        # Catch cancellations that interrupt outside the inner try block above
-        except BaseException:
-            if not conn.closed:
-                try:
-                    conn.close_conn(ConnectionClosedReason.ERROR)
-                except BaseException:  # noqa: S110
-                    pass
+            conn.authenticate()
+        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
+        except BaseException as e:
+            with self.lock:
+                self.active_contexts.discard(conn.cancel_context)
+            if not completed_hello:
+                self._handle_connection_error(e)
+            conn.close_conn(ConnectionClosedReason.ERROR)
             raise
+
+        if handler:
+            handler.client._topology.receive_cluster_time(conn._cluster_time)
+
+        return conn
 
     @contextlib.contextmanager
     def checkout(
@@ -1181,21 +1139,21 @@ class Pool:
 
         conn = self._get_conn(checkout_started_time, handler=handler)
 
+        duration = time.monotonic() - checkout_started_time
+        if self.enabled_for_cmap:
+            assert listeners is not None
+            listeners.publish_connection_checked_out(self.address, conn.id, duration)
+        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _CONNECTION_LOGGER,
+                message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
+                clientId=self._client_id,
+                serverHost=self.address[0],
+                serverPort=self.address[1],
+                driverConnectionId=conn.id,
+                durationMS=duration,
+            )
         try:
-            duration = time.monotonic() - checkout_started_time
-            if self.enabled_for_cmap:
-                assert listeners is not None
-                listeners.publish_connection_checked_out(self.address, conn.id, duration)
-            if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _CONNECTION_LOGGER,
-                    message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
-                    clientId=self._client_id,
-                    serverHost=self.address[0],
-                    serverPort=self.address[1],
-                    driverConnectionId=conn.id,
-                    durationMS=duration,
-                )
             with self.lock:
                 self.active_contexts.add(conn.cancel_context)
             yield conn
@@ -1212,15 +1170,7 @@ class Pool:
                 exc_type, exc_val, _ = sys.exc_info()
                 handler.handle(exc_type, exc_val)
             if not pinned and conn.active:
-                try:
-                    self.checkin(conn)
-                except BaseException:
-                    # If checkin is interrupted (e.g., cancellation during a
-                    # lock acquire), the conn is left neither in the deque
-                    # nor closed. Force-abort the transport so the socket fd
-                    # is released instead of leaking on GC.
-                    conn.conn.abort()
-                    raise
+                self.checkin(conn)
             raise
         if conn.pinned_txn:
             with self.lock:
