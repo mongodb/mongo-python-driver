@@ -181,6 +181,16 @@ class Connection:
         # For gossiping $clusterTime from the connection handshake to the client.
         self._cluster_time = None
 
+    def __del__(self) -> None:
+        # Ensure all async connections are properly cleaned up on GC :
+        if not _IS_SYNC and not self.closed:
+            try:
+                transport = self.conn.get_conn.transport
+                if transport is not None:
+                    transport.abort()
+            except Exception:  # noqa: S110
+                pass
+
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
         if timeout == self.last_timeout:
@@ -857,6 +867,23 @@ class Pool:
             if interrupt_connections:
                 for context in self.active_contexts:
                     context.cancel()
+
+        # Synchronously abort the transports of all snapshotted conns. This
+        # releases the socket fd and schedules _call_connection_lost before
+        # any await. If the gather below is cancelled (e.g. by test
+        # teardown propagating a CancelledError into _reset), the inner
+        # close_conn() Tasks are cancelled before their body runs, so the
+        # transport.abort() inside _close_conn() never fires and the
+        # snapshotted conns leak. transport.abort() is idempotent — the
+        # close_conn coroutines below remain safe to run.
+        if not _IS_SYNC:
+            for conn in sockets:
+                try:
+                    transport = conn.conn.get_conn.transport
+                    if transport is not None:
+                        transport.abort()
+                except Exception:  # noqa: S110
+                    pass
 
         listeners = self.opts._event_listeners
         # CMAP spec says that close() MUST close sockets before publishing the
