@@ -402,6 +402,9 @@ class NetworkingInterfaceBase:
     def is_closing(self) -> bool:
         raise NotImplementedError
 
+    def abort(self) -> None:
+        raise NotImplementedError
+
     @property
     def get_conn(self) -> Any:
         raise NotImplementedError
@@ -429,6 +432,9 @@ class AsyncNetworkingInterface(NetworkingInterfaceBase):
     def is_closing(self) -> bool:
         return self.conn[0].is_closing()
 
+    def abort(self) -> None:
+        self.conn[1].abort()
+
     @property
     def get_conn(self) -> PyMongoProtocol:
         return self.conn[1]
@@ -453,6 +459,9 @@ class NetworkingInterface(NetworkingInterfaceBase):
 
     def is_closing(self) -> bool:
         return self.conn.is_closing()
+
+    def abort(self) -> None:
+        return
 
     @property
     def get_conn(self) -> Union[socket.socket, _sslConn]:
@@ -674,6 +683,21 @@ class PyMongoProtocol(BufferedProtocol):
         self.transport.abort()
         self._resolve_pending_messages(exc)
         self._connection_lost = True
+
+    def abort(self) -> None:
+        """Synchronously abort the underlying transport. Idempotent, best-effort.
+
+        Unlike :meth:`close`, this does not resolve pending messages and is
+        safe to call during cleanup paths where the protocol may be
+        partially initialized or the event loop already closed.
+        """
+        transport = self.transport
+        if transport is None:
+            return
+        try:
+            transport.abort()
+        except Exception:  # noqa: S110
+            pass
 
     def connection_lost(self, exc: Optional[Exception] = None) -> None:
         self._resolve_pending_messages(exc)

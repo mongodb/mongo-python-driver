@@ -182,14 +182,9 @@ class AsyncConnection:
         self._cluster_time = None
 
     def __del__(self) -> None:
-        # Ensure all async connections are properly cleaned up on GC :
-        if not _IS_SYNC and not self.closed:
-            try:
-                transport = self.conn.get_conn.transport
-                if transport is not None:
-                    transport.abort()
-            except Exception:  # noqa: S110
-                pass
+        # Ensure all async connections are properly cleaned up on GC
+        if not _IS_SYNC and not getattr(self, "closed", True):
+            self.conn.abort()
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
@@ -582,12 +577,7 @@ class AsyncConnection:
         # idempotent — _SelectorTransport._force_close returns early when
         # _conn_lost is already set.
         if not _IS_SYNC:
-            transport = self.conn.get_conn.transport
-            if transport is not None:
-                try:
-                    transport.abort()
-                except Exception:  # noqa: S110
-                    pass
+            self.conn.abort()
         if self.closed:
             return
         self.closed = True
@@ -870,7 +860,7 @@ class Pool:
                 for context in self.active_contexts:
                     context.cancel()
 
-        # Synchronously abort the transports of all snapshotted conns. This
+        # Abort the transports of all snapshotted conns. This
         # releases the socket fd and schedules _call_connection_lost before
         # any await. If the gather below is cancelled (e.g. by test
         # teardown propagating a CancelledError into _reset), the inner
@@ -880,12 +870,7 @@ class Pool:
         # close_conn coroutines below remain safe to run.
         if not _IS_SYNC:
             for conn in sockets:
-                try:
-                    transport = conn.conn.get_conn.transport
-                    if transport is not None:
-                        transport.abort()
-                except Exception:  # noqa: S110
-                    pass
+                conn.conn.abort()
 
         listeners = self.opts._event_listeners
         # CMAP spec says that close() MUST close sockets before publishing the
@@ -1123,12 +1108,7 @@ class Pool:
             # Release the networking_interface's transport if AsyncConnection
             # construction failed, since no AsyncConnection exists yet to
             # close_conn() through the outer cleanup path.
-            transport = getattr(networking_interface.get_conn, "transport", None)
-            if transport is not None:
-                try:
-                    transport.abort()
-                except Exception:  # noqa: S110
-                    pass
+            networking_interface.abort()
             async with self.lock:
                 self.active_contexts.discard(tmp_context)
             raise
@@ -1243,12 +1223,7 @@ class Pool:
                     # lock acquire), the conn is left neither in the deque
                     # nor closed. Force-abort the transport so the socket fd
                     # is released instead of leaking on GC.
-                    transport = getattr(conn.conn.get_conn, "transport", None)
-                    if transport is not None:
-                        try:
-                            transport.abort()
-                        except Exception:  # noqa: S110
-                            pass
+                    conn.conn.abort()
                     raise
             raise
         if conn.pinned_txn:

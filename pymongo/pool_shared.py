@@ -362,7 +362,7 @@ async def _configured_protocol_interface(
         if not sock_adopted:
             # If the protocol owns the transport, it also adopted the socket and needs to be cleaned up from the transport
             if protocol.transport is not None:
-                protocol.transport.abort()
+                protocol.abort()
             # Otherwise the socket was never adopted, close it directly
             else:
                 sock.close()
