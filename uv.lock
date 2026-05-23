@@ -1595,7 +1595,7 @@ requires-dist = [
     { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.1.0,<2.0.0" },
     { name = "pymongo-auth-aws", marker = "extra == 'encryption'", specifier = ">=1.1.0,<2.0.0" },
     { name = "pymongocrypt", marker = "extra == 'encryption'", specifier = ">=1.13.0,<2.0.0" },
-    { name = "pyopenssl", marker = "extra == 'ocsp'", specifier = ">=26.0.0" },
+    { name = "pyopenssl", marker = "extra == 'ocsp'", specifier = ">=26.2.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.2" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.24.0" },
     { name = "python-snappy", marker = "extra == 'snappy'", specifier = ">=0.7.3" },
