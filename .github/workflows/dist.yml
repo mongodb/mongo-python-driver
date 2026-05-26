@@ -35,7 +35,7 @@ jobs:
         # https://github.com/github/feedback/discussions/7835#discussioncomment-1769026
         buildplat:
         - [ubuntu-latest, "manylinux_x86_64", "cp3*-manylinux_x86_64"]
-        - [ubuntu-latest, "manylinux_aarch64", "cp3*-manylinux_aarch64"]
+        - [ubuntu-24.04-arm, "manylinux_aarch64", "cp3*-manylinux_aarch64"]
         - [ubuntu-latest, "manylinux_ppc64le", "cp3*-manylinux_ppc64le"]
         - [ubuntu-latest, "manylinux_s390x", "cp3*-manylinux_s390x"]
         - [ubuntu-latest, "manylinux_i686", "cp3*-manylinux_i686"]
