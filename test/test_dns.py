@@ -290,7 +290,7 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
         ]
         self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
-    def test_5_when_srv_hostname_has_two_dot_separated_parts_it_is_valid_for_the_returned_hostname_to_be_identical(
+    def test_5_when_srv_hostname_has_three_or_more_dot_separated_parts_it_is_valid_for_the_returned_hostname_to_be_identical(
         self
     ):
         test_cases = [
