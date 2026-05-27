@@ -661,6 +661,10 @@ class _BulkWriteContext(_BulkWriteContextBase):
             codec,
         )
 
+    def prepare_command(self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]) -> None:
+        """Add the batch field to the command document for telemetry."""
+        cmd[self.field] = docs
+
     def batch_command(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
     ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]]]:
@@ -904,6 +908,16 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
             0,
             codec,
         )
+
+    def prepare_command(
+        self,
+        cmd: MutableMapping[str, Any],
+        op_docs: list[Mapping[str, Any]],
+        ns_docs: list[Mapping[str, Any]],
+    ) -> None:
+        """Add the ops and nsInfo fields to the command document for telemetry."""
+        cmd["ops"] = op_docs
+        cmd["nsInfo"] = ns_docs
 
     def batch_command(
         self,

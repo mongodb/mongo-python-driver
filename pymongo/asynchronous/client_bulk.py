@@ -234,8 +234,7 @@ class _AsyncClientBulk:
         client: AsyncMongoClient[Any],
     ) -> dict[str, Any]:
         """A proxy for AsyncConnection.write_command that handles event publishing."""
-        cmd["ops"] = op_docs
-        cmd["nsInfo"] = ns_docs
+        bwc.prepare_command(cmd, op_docs, ns_docs)
         with _CommandTelemetry(
             client=client,
             command_name=bwc.name,
@@ -278,8 +277,7 @@ class _AsyncClientBulk:
         client: AsyncMongoClient[Any],
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for AsyncConnection.unack_write that handles event publishing."""
-        cmd["ops"] = op_docs
-        cmd["nsInfo"] = ns_docs
+        bwc.prepare_command(cmd, op_docs, ns_docs)
         with _CommandTelemetry(
             client=client,
             command_name=bwc.name,

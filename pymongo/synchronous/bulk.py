@@ -248,7 +248,7 @@ class _Bulk:
         client: MongoClient[Any],
     ) -> dict[str, Any]:
         """A proxy for SocketInfo.write_command that handles event publishing."""
-        cmd[bwc.field] = docs
+        bwc.prepare_command(cmd, docs)
         with _CommandTelemetry(
             client=client,
             command_name=bwc.name,
@@ -284,7 +284,7 @@ class _Bulk:
         client: MongoClient[Any],
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for Connection.unack_write that handles event publishing."""
-        cmd[bwc.field] = docs
+        bwc.prepare_command(cmd, docs)
         with _CommandTelemetry(
             client=client,
             command_name=bwc.name,
